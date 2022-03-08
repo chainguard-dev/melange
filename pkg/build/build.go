@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/yaml.v3"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"gopkg.in/yaml.v3"
 )
 
 type Package struct {
@@ -43,9 +43,9 @@ type Copyright struct {
 }
 
 type Pipeline struct {
-	Uses string
-	With map[string]string
-	Runs string
+	Uses     string
+	With     map[string]string
+	Runs     string
 	Pipeline []Pipeline
 }
 
@@ -66,6 +66,7 @@ type Context struct {
 	ConfigFile      string
 	SourceDateEpoch time.Time
 	WorkspaceDir    string
+	PipelineDir     string
 }
 
 type Dependencies struct {
@@ -74,8 +75,9 @@ type Dependencies struct {
 
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
-		ConfigFile: ".melange.yaml",
+		ConfigFile:   ".melange.yaml",
 		WorkspaceDir: ".",
+		PipelineDir:  "/usr/share/melange/pipelines",
 	}
 
 	for _, opt := range opts {
@@ -138,6 +140,22 @@ func WithBuildDate(s string) Option {
 	}
 }
 
+// WithWorkspaceDir sets the workspace directory to use.
+func WithWorkspaceDir(workspaceDir string) Option {
+	return func(ctx *Context) error {
+		ctx.WorkspaceDir = workspaceDir
+		return nil
+	}
+}
+
+// WithPipelineDir sets the pipeline directory to use.
+func WithPipelineDir(pipelineDir string) Option {
+	return func(ctx *Context) error {
+		ctx.PipelineDir = pipelineDir
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(configFile string) error {
 	data, err := os.ReadFile(configFile)
@@ -159,8 +177,8 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 	// is merged.
 	bc := apko_build.Context{
 		ImageConfiguration: ctx.Configuration.Environment,
-		WorkDir: workspaceDir,
-		UseProot: true,
+		WorkDir:            workspaceDir,
+		UseProot:           true,
 	}
 	bc.Summarize()
 

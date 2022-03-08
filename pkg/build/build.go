@@ -43,6 +43,7 @@ type Copyright struct {
 }
 
 type Pipeline struct {
+	Name     string
 	Uses     string
 	With     map[string]string
 	Runs     string
@@ -206,6 +207,12 @@ func (ctx *Context) BuildPackage() error {
 
 	if err := ctx.BuildWorkspace(guestDir); err != nil {
 		return fmt.Errorf("unable to build workspace: %w", err)
+	}
+
+	for _, p := range ctx.Configuration.Pipeline {
+		if err := p.Run(ctx); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
+		}
 	}
 
 	return nil

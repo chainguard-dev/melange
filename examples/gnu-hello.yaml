@@ -21,9 +21,9 @@ environment:
     repositories:
       - https://dl-cdn.alpinelinux.org/alpine/edge/main
     packages:
-      - alpine-base
+      - alpine-baselayout-data
+      - busybox
       - build-base
-      - busybox-ifupdown
 
 pipeline:
   - uses: fetch

@@ -26,6 +26,7 @@ func New() *cobra.Command {
 		SilenceUsage:      true,
 	}
 
+	cmd.AddCommand(Build())
 	cmd.AddCommand(version.Version())
 	return cmd
 }

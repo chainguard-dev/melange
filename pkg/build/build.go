@@ -171,6 +171,11 @@ func (cfg *Configuration) Load(configFile string) error {
 }
 
 func (ctx *Context) BuildWorkspace(workspaceDir string) error {
+	// Prepare workspace directory
+	if err := os.MkdirAll(ctx.WorkspaceDir, 0755); err != nil {
+		return err
+	}
+
 	log.Printf("building workspace in '%s' with apko", workspaceDir)
 
 	// TODO(kaniini): update to apko 0.2 Build.New() when WithImageConfiguration

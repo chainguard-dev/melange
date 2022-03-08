@@ -36,7 +36,7 @@ func Build() *cobra.Command {
 				build.WithBuildDate(buildDate),
 			}
 
-			if len(args) > 1 {
+			if len(args) > 0 {
 				options = append(options, build.WithConfig(args[0]))
 			}
 

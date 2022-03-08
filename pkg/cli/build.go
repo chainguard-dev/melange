@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
@@ -24,6 +25,8 @@ import (
 
 func Build() *cobra.Command {
 	var buildDate string
+	var workspaceDir string
+	var pipelineDir string
 
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -34,6 +37,8 @@ func Build() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := []build.Option{
 				build.WithBuildDate(buildDate),
+				build.WithWorkspaceDir(workspaceDir),
+				build.WithPipelineDir(pipelineDir),
 			}
 
 			if len(args) > 0 {
@@ -44,7 +49,14 @@ func Build() *cobra.Command {
 		},
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
+	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", cwd, "directory used for the workspace at /home/build")
+	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", cwd, "directory used to store defined pipelines")
 
 	return cmd
 }

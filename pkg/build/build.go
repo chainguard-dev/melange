@@ -168,6 +168,20 @@ func (cfg *Configuration) Load(configFile string) error {
 		return fmt.Errorf("unable to parse configuration file: %w", err)
 	}
 
+	grp := apko_types.Group{
+		GroupName: "build",
+		GID: 1000,
+		Members: []string{"build"},
+	}
+	cfg.Environment.Accounts.Groups = []apko_types.Group{grp}
+
+	usr := apko_types.User{
+		UserName: "build",
+		UID: 1000,
+		GID: 1000,
+	}
+	cfg.Environment.Accounts.Users = []apko_types.User{usr}
+
 	return nil
 }
 

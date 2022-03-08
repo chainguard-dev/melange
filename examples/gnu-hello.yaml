@@ -30,6 +30,7 @@ pipeline:
     with:
       uri: https://ftp.gnu.org/gnu/hello/hello-${{package.version}}.tar.gz
       expected-sha256: cf04af86dc085268c5f4470fbae49b18afbc221b78096aab842d934a76bad0ab
+      extract: true
   - uses: autoconf/configure
   - uses: autoconf/make
   - uses: autoconf/make-install

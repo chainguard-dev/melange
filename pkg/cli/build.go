@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
@@ -56,7 +57,7 @@ func Build() *cobra.Command {
 
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", cwd, "directory used for the workspace at /home/build")
-	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", cwd, "directory used to store defined pipelines")
+	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", filepath.Join(cwd, "pipelines"), "directory used to store defined pipelines")
 
 	return cmd
 }

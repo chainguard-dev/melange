@@ -2,6 +2,8 @@
 bitbucket.org/creachadair/shell v0.0.6/go.mod h1:8Qqi/cYk7vPnsOePHroKXDJYmb5x7ENhtiFtfZq8K+M=
 chainguard.dev/apko v0.1.2 h1:A9q+1Vqt85/ROKndOulssaq6SZys2xN0RfmDnGFUCGo=
 chainguard.dev/apko v0.1.2/go.mod h1:h6M3TL8hfsGtKqlGyQD3iiRsi61pFM26VKNq7bFiY5A=
+chainguard.dev/apko v0.1.3-0.20220307194156-7a873c6937b7 h1:qtgTJyivsNVmUCZJwA/ZU26pLycjNbZ3EClgZv65UXc=
+chainguard.dev/apko v0.1.3-0.20220307194156-7a873c6937b7/go.mod h1:Fj/7O4wRO7fDZL7oZ5cDInaEIr/8EpRJf1ii+sw2NIY=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
@@ -821,6 +823,8 @@ go.etcd.io/etcd/client/pkg/v3 v3.5.0/go.mod h1:IJHfcCEKxYu1Os13ZdwCwIUTUVGYTSAM3
 go.etcd.io/etcd/client/pkg/v3 v3.5.1/go.mod h1:IJHfcCEKxYu1Os13ZdwCwIUTUVGYTSAM3YSwc9/Ac1g=
 go.etcd.io/etcd/client/v2 v2.305.0/go.mod h1:h9puh54ZTgAKtEbut2oe9P4L/oqKCVB6xsXlzd7alYQ=
 go.etcd.io/etcd/client/v2 v2.305.1/go.mod h1:pMEacxZW7o8pg4CrFE7pquyCJJzZvkvdD2RibOCCCGs=
+go.lsp.dev/uri v0.3.0 h1:KcZJmh6nFIBeJzTugn5JTU6OOyG0lDOo3R9KwTxTYbo=
+go.lsp.dev/uri v0.3.0/go.mod h1:P5sbO1IQR+qySTWOCnhnK7phBx+W3zbLqSMDJNTw88I=
 go.mozilla.org/mozlog v0.0.0-20170222151521-4bb13139d403/go.mod h1:jHoPAGnDrCy6kaI2tAze5Prf0Nr0w/oNkROt2lw3n3o=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=

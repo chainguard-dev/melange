@@ -46,6 +46,7 @@ type Pipeline struct {
 	Uses string
 	With map[string]string
 	Runs string
+	Pipeline []Pipeline
 }
 
 type Subpackage struct {

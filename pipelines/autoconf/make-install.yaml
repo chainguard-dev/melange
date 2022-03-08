@@ -1,0 +1,4 @@
+name: Run autoconf make install
+
+pipeline:
+  - runs: make install DESTDIR="${{targets.destdir}}"

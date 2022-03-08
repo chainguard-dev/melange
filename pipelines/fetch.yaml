@@ -1,0 +1,11 @@
+name: Fetch and extract external object into workspace
+
+pipeline:
+  - runs: |
+      wget ${{inputs.uri}}
+      bn=$(basename ${{inputs.uri}})
+      printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
+      if [ "${{inputs.extract}}" = "true" ]; then
+        bn=$(basename ${{inputs.uri}})
+        tar zxf ${{inputs.uri}}
+      fi

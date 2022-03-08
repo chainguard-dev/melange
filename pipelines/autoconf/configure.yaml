@@ -1,0 +1,11 @@
+name: Run autoconf configure script
+
+pipeline:
+  - runs: |
+      ./configure \
+        --prefix=/usr \
+        --libdir=/lib \
+        --mandir=/usr/share/man \
+        --infodir=/usr/share/info \
+        --localstatedir=/var \
+        ${{inputs.arguments}}

@@ -1,0 +1,4 @@
+name: Run autoconf make
+
+pipeline:
+  - runs: make -j$(nproc)

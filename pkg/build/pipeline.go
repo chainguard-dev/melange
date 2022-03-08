@@ -1,0 +1,143 @@
+// Copyright 2022 Chainguard, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package build
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+func (p *Pipeline) Identity() string {
+	if p.Name != "" {
+		return p.Name
+	}
+	if p.Uses != "" {
+		return p.Uses
+	}
+	return "???"
+}
+
+func replacerFromMap(with map[string]string) *strings.Replacer {
+	replacements := []string{}
+	for k, v := range with {
+		replacements = append(replacements, k, v)
+	}
+	return strings.NewReplacer(replacements...)
+}
+
+func mutateWith(ctx *Context, with map[string]string) map[string]string {
+	nw := map[string]string{
+		"${{package.name}}": ctx.Configuration.Package.Name,
+		"${{package.version}}": ctx.Configuration.Package.Version,
+		"${{package.epoch}}": strconv.FormatUint(ctx.Configuration.Package.Epoch, 10),
+		"${{targets.destdir}}": fmt.Sprintf("/home/build/melange-out/%s", ctx.Configuration.Package.Name),
+	}
+
+	for k, v := range with {
+		// already mutated?
+		if strings.HasPrefix(k, "${{") {
+			nw[k] = v
+		} else {
+			nk := fmt.Sprintf("${{inputs.%s}}", k)
+			nw[nk] = v
+		}
+	}
+
+	replacer := replacerFromMap(nw)
+	for k, v := range nw {
+		nw[k] = replacer.Replace(v)
+	}
+
+	return nw
+}
+
+func (p *Pipeline) loadUse(ctx *Context, uses string, with map[string]string) error {
+	data, err := os.ReadFile(filepath.Join(ctx.PipelineDir, uses + ".yaml"))
+	if err != nil {
+		return fmt.Errorf("unable to load pipeline: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, p); err != nil {
+		return fmt.Errorf("unable to parse pipeline: %w", err)
+	}
+
+	p.With = mutateWith(ctx, with)
+
+	// TODO(kaniini): merge, rather than replace sub-pipeline withs
+	for k, _ := range p.Pipeline {
+		p.Pipeline[k].With = p.With
+	}
+
+	return nil
+}
+
+func (p *Pipeline) dumpWith() {
+	for k, v := range p.With {
+		log.Printf("    %s: %s", k, v)
+	}
+}
+
+func (p *Pipeline) evalUse(ctx *Context) error {
+	sp := Pipeline{}
+
+	if err := sp.loadUse(ctx, p.Uses, p.With); err != nil {
+		return err
+	}
+
+	log.Printf("  using %s", p.Uses)
+	sp.dumpWith()
+
+	if err := sp.Run(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Pipeline) evalRun(ctx *Context) error {
+	replacer := replacerFromMap(p.With)
+	fragment := replacer.Replace(p.Runs)
+
+	log.Printf("fragment [%s]", fragment)
+
+	return nil
+}
+
+func (p *Pipeline) Run(ctx *Context) error {
+	if p.Identity() != "???" {
+		log.Printf("running step %s", p.Identity())
+	}
+
+	if p.Uses != "" {
+		return p.evalUse(ctx)
+	}
+	if p.Runs != "" {
+		return p.evalRun(ctx)
+	}
+
+	for _, sp := range p.Pipeline {
+		if err := sp.Run(ctx); err != nil {
+			return nil
+		}
+	}
+
+	return nil
+}

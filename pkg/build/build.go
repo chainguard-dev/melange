@@ -16,11 +16,13 @@ package build
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
+	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 )
 
@@ -62,6 +64,7 @@ type Context struct {
 	Configuration   Configuration
 	ConfigFile      string
 	SourceDateEpoch time.Time
+	WorkspaceDir    string
 }
 
 type Dependencies struct {
@@ -71,6 +74,7 @@ type Dependencies struct {
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
 		ConfigFile: ".melange.yaml",
+		WorkspaceDir: ".",
 	}
 
 	for _, opt := range opts {
@@ -147,6 +151,44 @@ func (cfg *Configuration) Load(configFile string) error {
 	return nil
 }
 
-func (ctx *Context) BuildPackage() error {
+func (ctx *Context) BuildWorkspace(workspaceDir string) error {
+	log.Printf("building workspace in '%s' with apko", workspaceDir)
+
+	// TODO(kaniini): update to apko 0.2 Build.New() when WithImageConfiguration
+	// is merged.
+	bc := apko_build.Context{
+		ImageConfiguration: ctx.Configuration.Environment,
+		WorkDir: workspaceDir,
+		UseProot: true,
+	}
+	bc.Summarize()
+
+	if err := bc.BuildImage(); err != nil {
+		return fmt.Errorf("unable to generate image: %w", err)
+	}
+
+	log.Printf("successfully built workspace with apko")
+
 	return nil
+}
+
+func (ctx *Context) BuildPackage() error {
+	ctx.Summarize()
+
+	guestDir, err := os.MkdirTemp("", "melange-guest-*")
+	if err != nil {
+		return fmt.Errorf("unable to make guest directory: %w", err)
+	}
+
+	if err := ctx.BuildWorkspace(guestDir); err != nil {
+		return fmt.Errorf("unable to build workspace: %w", err)
+	}
+
+	return nil
+}
+
+func (ctx *Context) Summarize() {
+	log.Printf("melange is building:")
+	log.Printf("  configuration file: %s", ctx.ConfigFile)
+	log.Printf("  workspace dir: %s", ctx.WorkspaceDir)
 }

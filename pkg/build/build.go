@@ -29,7 +29,7 @@ type Package struct {
 	Version            string
 	Epoch              uint64
 	Description        string
-	TargetArchitecture []string `yaml,"target-architecture"`
+	TargetArchitecture []string `yaml:"target-architecture"`
 	Copyright          []Copyright
 	Dependencies       Dependencies
 }

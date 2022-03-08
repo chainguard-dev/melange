@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -68,6 +69,7 @@ type Context struct {
 	SourceDateEpoch time.Time
 	WorkspaceDir    string
 	PipelineDir     string
+	GuestDir        string
 }
 
 type Dependencies struct {
@@ -218,6 +220,7 @@ func (ctx *Context) BuildPackage() error {
 	if err != nil {
 		return fmt.Errorf("unable to make guest directory: %w", err)
 	}
+	ctx.GuestDir = guestDir
 
 	if err := ctx.BuildWorkspace(guestDir); err != nil {
 		return fmt.Errorf("unable to build workspace: %w", err)
@@ -236,4 +239,11 @@ func (ctx *Context) Summarize() {
 	log.Printf("melange is building:")
 	log.Printf("  configuration file: %s", ctx.ConfigFile)
 	log.Printf("  workspace dir: %s", ctx.WorkspaceDir)
+}
+
+func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
+	args = append([]string{"-r", ctx.GuestDir, "-i", "1000:1000", "-b", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir), "-w", "/home/build"}, args...)
+	cmd := exec.Command("proot", args...)
+
+	return cmd, nil
 }

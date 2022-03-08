@@ -15,7 +15,9 @@
 package build
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -112,11 +114,50 @@ func (p *Pipeline) evalUse(ctx *Context) error {
 	return nil
 }
 
+func monitorPipe(pipe io.ReadCloser) {
+	defer pipe.Close()
+
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		log.Printf("%s", scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("warning: %v", err)
+	}
+}
+
 func (p *Pipeline) evalRun(ctx *Context) error {
 	replacer := replacerFromMap(p.With)
 	fragment := replacer.Replace(p.Runs)
+	script := fmt.Sprintf("#!/bin/sh\nset -e\n%s\nexit 0\n", fragment)
+	command := []string{"/bin/sh", "-c", script}
 
-	log.Printf("fragment [%s]", fragment)
+	cmd, err := ctx.WorkspaceCmd(command...)
+	if err != nil {
+		return err
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	go monitorPipe(stdout)
+	go monitorPipe(stderr)
+
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -135,7 +176,7 @@ func (p *Pipeline) Run(ctx *Context) error {
 
 	for _, sp := range p.Pipeline {
 		if err := sp.Run(ctx); err != nil {
-			return nil
+			return err
 		}
 	}
 

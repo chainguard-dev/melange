@@ -24,6 +24,8 @@ environment:
       - alpine-baselayout-data
       - busybox
       - build-base
+      - ssl_client
+      - ca-certificates-bundle
 
 pipeline:
   - uses: fetch

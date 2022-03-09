@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -202,6 +203,8 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		ImageConfiguration: ctx.Configuration.Environment,
 		WorkDir:            workspaceDir,
 		UseProot:           true,
+		// TODO(kaniini): maybe support multiarch builds somehow
+		Arch:               apko_types.Architecture(runtime.GOARCH),
 	}
 	bc.Summarize()
 

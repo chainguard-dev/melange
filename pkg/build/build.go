@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -206,6 +207,16 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 
 	if err := bc.BuildImage(); err != nil {
 		return fmt.Errorf("unable to generate image: %w", err)
+	}
+
+	// Copy /etc/resolv.conf
+	data, err := os.ReadFile("/etc/resolv.conf")
+	if err != nil {
+		return fmt.Errorf("unable to read resolv.conf: %w", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(workspaceDir, "/etc/resolv.conf"), data, 0644); err != nil {
+		return err
 	}
 
 	log.Printf("successfully built workspace with apko")

@@ -252,9 +252,22 @@ func (ctx *Context) Summarize() {
 	log.Printf("  workspace dir: %s", ctx.WorkspaceDir)
 }
 
-func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
-	args = append([]string{"-r", ctx.GuestDir, "-i", "1000:1000", "-b", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir), "-w", "/home/build"}, args...)
+func (ctx *Context) PrivilegedWorkspaceCmd(args ...string) (*exec.Cmd, error) {
+	args = append([]string{"-S", ctx.GuestDir, "-i", "1000:1000", "-b", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir), "-w", "/home/build"}, args...)
 	cmd := exec.Command("proot", args...)
+
+	return cmd, nil
+}
+
+func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
+	baseargs := []string{
+		"--bind", ctx.GuestDir, "/",
+		"--bind", ctx.WorkspaceDir, "/home/build",
+		"--proc", "/proc",
+		"--chdir", "/home/build",
+	}
+	args = append(baseargs, args...)
+	cmd := exec.Command("bwrap", args...)
 
 	return cmd, nil
 }

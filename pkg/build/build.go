@@ -240,9 +240,27 @@ func (ctx *Context) BuildPackage() error {
 		return fmt.Errorf("unable to build workspace: %w", err)
 	}
 
+	// run the main pipeline
+	log.Printf("running the main pipeline")
+	pctx := PipelineContext{
+		Context: ctx,
+		Package: &ctx.Configuration.Package,
+	}
 	for _, p := range ctx.Configuration.Pipeline {
-		if err := p.Run(ctx); err != nil {
+		if err := p.Run(&pctx); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
+		}
+	}
+
+	// run any pipelines for subpackages
+	for _, sp := range ctx.Configuration.Subpackages {
+		log.Printf("running pipeline for subpackage %s", sp.Name)
+		pctx.Subpackage = &sp
+
+		for _, p := range sp.Pipeline {
+			if err := p.Run(&pctx); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
 		}
 	}
 

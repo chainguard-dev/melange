@@ -27,6 +27,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type PipelineContext struct {
+	Context    *Context
+	Package    *Package
+	Subpackage *Subpackage
+}
+
 func (p *Pipeline) Identity() string {
 	if p.Name != "" {
 		return p.Name
@@ -45,12 +51,16 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 	return strings.NewReplacer(replacements...)
 }
 
-func mutateWith(ctx *Context, with map[string]string) map[string]string {
+func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string {
 	nw := map[string]string{
-		"${{package.name}}": ctx.Configuration.Package.Name,
-		"${{package.version}}": ctx.Configuration.Package.Version,
-		"${{package.epoch}}": strconv.FormatUint(ctx.Configuration.Package.Epoch, 10),
-		"${{targets.destdir}}": fmt.Sprintf("/home/build/melange-out/%s", ctx.Configuration.Package.Name),
+		"${{package.name}}": ctx.Package.Name,
+		"${{package.version}}": ctx.Package.Version,
+		"${{package.epoch}}": strconv.FormatUint(ctx.Package.Epoch, 10),
+		"${{targets.destdir}}": fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+	}
+
+	if ctx.Subpackage != nil {
+		nw["${{targets.subpkgdir}}"] = fmt.Sprintf("/home/build/melange-out/%s", ctx.Subpackage.Name)
 	}
 
 	for k, v := range with {
@@ -71,8 +81,8 @@ func mutateWith(ctx *Context, with map[string]string) map[string]string {
 	return nw
 }
 
-func (p *Pipeline) loadUse(ctx *Context, uses string, with map[string]string) error {
-	data, err := os.ReadFile(filepath.Join(ctx.PipelineDir, uses + ".yaml"))
+func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
+	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses + ".yaml"))
 	if err != nil {
 		return fmt.Errorf("unable to load pipeline: %w", err)
 	}
@@ -97,7 +107,7 @@ func (p *Pipeline) dumpWith() {
 	}
 }
 
-func (p *Pipeline) evalUse(ctx *Context) error {
+func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	sp := Pipeline{}
 
 	if err := sp.loadUse(ctx, p.Uses, p.With); err != nil {
@@ -127,13 +137,13 @@ func monitorPipe(pipe io.ReadCloser) {
 	}
 }
 
-func (p *Pipeline) evalRun(ctx *Context) error {
+func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	replacer := replacerFromMap(p.With)
 	fragment := replacer.Replace(p.Runs)
 	script := fmt.Sprintf("#!/bin/sh\nset -e\n%s\nexit 0\n", fragment)
 	command := []string{"/bin/sh", "-c", script}
 
-	cmd, err := ctx.WorkspaceCmd(command...)
+	cmd, err := ctx.Context.WorkspaceCmd(command...)
 	if err != nil {
 		return err
 	}
@@ -162,7 +172,7 @@ func (p *Pipeline) evalRun(ctx *Context) error {
 	return nil
 }
 
-func (p *Pipeline) Run(ctx *Context) error {
+func (p *Pipeline) Run(ctx *PipelineContext) error {
 	if p.Identity() != "???" {
 		log.Printf("running step %s", p.Identity())
 	}

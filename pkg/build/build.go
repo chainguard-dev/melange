@@ -264,6 +264,21 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
+	// emit main package
+	pkg := pctx.Package
+	log.Printf("generating package %s", pkg.Name)
+	if err := pkg.Emit(&pctx); err != nil {
+		return fmt.Errorf("unable to emit package: %w", err)
+	}
+
+	// emit subpackages
+	for _, sp := range ctx.Configuration.Subpackages {
+		log.Printf("generating subpackage %s", sp.Name)
+		if err := sp.Emit(&pctx); err != nil {
+			return fmt.Errorf("unable to emit package: %w", err)
+		}
+	}
+
 	return nil
 }
 

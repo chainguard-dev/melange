@@ -222,16 +222,6 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		return fmt.Errorf("unable to generate image: %w", err)
 	}
 
-	// Copy /etc/resolv.conf
-	data, err := os.ReadFile("/etc/resolv.conf")
-	if err != nil {
-		return fmt.Errorf("unable to read resolv.conf: %w", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(workspaceDir, "/etc/resolv.conf"), data, 0644); err != nil {
-		return err
-	}
-
 	log.Printf("successfully built workspace with apko")
 
 	return nil
@@ -307,6 +297,7 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 	baseargs := []string{
 		"--bind", ctx.GuestDir, "/",
 		"--bind", ctx.WorkspaceDir, "/home/build",
+		"--bind", "/etc/resolv.conf", "/etc/resolv.conf",
 		"--proc", "/proc",
 		"--chdir", "/home/build",
 	}

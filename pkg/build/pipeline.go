@@ -140,7 +140,8 @@ func monitorPipe(pipe io.ReadCloser) {
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	replacer := replacerFromMap(p.With)
 	fragment := replacer.Replace(p.Runs)
-	script := fmt.Sprintf("#!/bin/sh\nset -e\n%s\nexit 0\n", fragment)
+	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)
 	command := []string{"/bin/sh", "-c", script}
 
 	cmd, err := ctx.Context.WorkspaceCmd(command...)

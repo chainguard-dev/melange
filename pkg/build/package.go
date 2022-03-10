@@ -150,6 +150,17 @@ func (pc *PackageContext) EmitPackage() error {
 	}
 
 	// prepare control.tar.gz
+	multitarctx, err := tarball.NewContext(
+		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
+		tarball.WithOverrideUIDGID(0, 0),
+		tarball.WithOverrideUname("root"),
+		tarball.WithOverrideGname("root"),
+		tarball.WithSkipClose(true),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to build tarball context: %w", err)
+	}
+
 	var controlBuf bytes.Buffer
 	if err := pc.GenerateControlData(&controlBuf); err != nil {
 		return fmt.Errorf("unable to process control template: %w", err)
@@ -168,7 +179,7 @@ func (pc *PackageContext) EmitPackage() error {
 
 	controlDigest := sha1.New() // nolint:gosec
 	controlMW := io.MultiWriter(controlDigest, controlTarGz)
-	if err := tarctx.WriteArchiveFromFS(".", controlFS, controlMW); err != nil {
+	if err := multitarctx.WriteArchiveFromFS(".", controlFS, controlMW); err != nil {
 		return fmt.Errorf("unable to write control tarball: %w", err)
 	}
 

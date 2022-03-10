@@ -1,0 +1,58 @@
+project_name: apko
+
+before:
+  hooks:
+    - go mod download
+
+env:
+  - COSIGN_EXPERIMENTAL=true
+
+builds:
+- id: apko-build
+  binary: apko
+  main: ./
+  env:
+  - CGO_ENABLED=0
+  goos:
+    # apko requires alpine, so only build linux binaries.
+    - linux
+  goarch:
+    - "386"
+    - amd64
+    - arm64
+  flags:
+    - -trimpath
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  ldflags:
+    - -extldflags "-static"
+    - "{{ .Env.LDFLAGS }}"
+
+signs:
+  - id: apko-cosign
+    cmd: cosign
+    certificate: "${artifact}.crt"
+    args: ["sign-blob", "--output-signature", "${signature}", "--output-certificate", "${certificate}", "${artifact}"]
+    artifacts: all
+
+archives:
+- files:
+    - LICENSE
+  wrap_in_directory: true
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+
+release:
+  draft: false
+  prerelease: true
+  name_template: "Release {{ .Tag }}"

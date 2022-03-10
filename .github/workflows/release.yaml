@@ -1,0 +1,67 @@
+
+name: Create Release
+
+on:
+  push:
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+env:
+  GO_VERSION: 1.17.x
+
+jobs:
+  cli:
+    name: Release the CLI
+    runs-on: ubuntu-latest
+
+    # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+    - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    - uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846 # v2.4.0
+    - uses: sigstore/cosign-installer@581838fbedd492d2350a9ecd427a95d6de1e5d01 # v2.0.1
+    - uses: goreleaser/goreleaser-action@b953231f81b8dfd023c58e0854a721e35037f28b # v2.8.1
+      with:
+        version: v1.5.0
+        install-only: true
+    - name: Release
+      run: make release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  ko-build:
+    name: Release melange image
+    runs-on: ubuntu-latest
+
+    # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+
+    env:
+      KO_DOCKER_REPO: ghcr.io/${{ github.repository }}
+      COSIGN_EXPERIMENTAL: "true"
+
+    steps:
+    - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    - uses: imjasonh/setup-ko@2c3450ca27f6e6f2b02e72a40f2163c281a1f675 # v0.4
+      with:
+        version: v0.10.0
+    - uses: sigstore/cosign-installer@581838fbedd492d2350a9ecd427a95d6de1e5d01 # v2.0.1
+    - uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1.13.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ github.token }}
+    - uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846 # v2.4.0
+    - name: Publish/Sign melange image
+      run: |
+        make sign-image

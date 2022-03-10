@@ -17,7 +17,7 @@ baseImageOverrides:
   chainguard.dev/apko: docker.io/alpine:latest
 
 builds:
-- id: apko
+- id: melange
   env:
   - CGO_ENABLED=0
   flags:

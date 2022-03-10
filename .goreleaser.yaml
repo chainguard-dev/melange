@@ -1,4 +1,4 @@
-project_name: apko
+project_name: melange
 
 before:
   hooks:
@@ -8,13 +8,13 @@ env:
   - COSIGN_EXPERIMENTAL=true
 
 builds:
-- id: apko-build
-  binary: apko
+- id: melange-build
+  binary: melange
   main: ./
   env:
   - CGO_ENABLED=0
   goos:
-    # apko requires alpine, so only build linux binaries.
+    # melange requires alpine, so only build linux binaries.
     - linux
   goarch:
     - "386"
@@ -28,7 +28,7 @@ builds:
     - "{{ .Env.LDFLAGS }}"
 
 signs:
-  - id: apko-cosign
+  - id: melange-cosign
     cmd: cosign
     certificate: "${artifact}.crt"
     args: ["sign-blob", "--output-signature", "${signature}", "--output-certificate", "${certificate}", "${artifact}"]

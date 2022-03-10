@@ -28,6 +28,7 @@ func Build() *cobra.Command {
 	var buildDate string
 	var workspaceDir string
 	var pipelineDir string
+	var signingKey string
 
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -40,6 +41,7 @@ func Build() *cobra.Command {
 				build.WithBuildDate(buildDate),
 				build.WithWorkspaceDir(workspaceDir),
 				build.WithPipelineDir(pipelineDir),
+				build.WithSigningKey(signingKey),
 			}
 
 			if len(args) > 0 {
@@ -58,6 +60,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", cwd, "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", filepath.Join(cwd, "pipelines"), "directory used to store defined pipelines")
+	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 
 	return cmd
 }

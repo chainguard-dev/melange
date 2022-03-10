@@ -72,6 +72,7 @@ type Context struct {
 	WorkspaceDir    string
 	PipelineDir     string
 	GuestDir        string
+	SigningKey      string
 }
 
 type Dependencies struct {
@@ -157,6 +158,14 @@ func WithWorkspaceDir(workspaceDir string) Option {
 func WithPipelineDir(pipelineDir string) Option {
 	return func(ctx *Context) error {
 		ctx.PipelineDir = pipelineDir
+		return nil
+	}
+}
+
+// WithSigningKey sets the signing key path to use.
+func WithSigningKey(signingKey string) Option {
+	return func(ctx *Context) error {
+		ctx.SigningKey = signingKey
 		return nil
 	}
 }

@@ -66,13 +66,14 @@ type Configuration struct {
 }
 
 type Context struct {
-	Configuration   Configuration
-	ConfigFile      string
-	SourceDateEpoch time.Time
-	WorkspaceDir    string
-	PipelineDir     string
-	GuestDir        string
-	SigningKey      string
+	Configuration     Configuration
+	ConfigFile        string
+	SourceDateEpoch   time.Time
+	WorkspaceDir      string
+	PipelineDir       string
+	GuestDir          string
+	SigningKey        string
+	SigningPassphrase string
 }
 
 type Dependencies struct {
@@ -183,15 +184,15 @@ func (cfg *Configuration) Load(configFile string) error {
 
 	grp := apko_types.Group{
 		GroupName: "build",
-		GID: 1000,
-		Members: []string{"build"},
+		GID:       1000,
+		Members:   []string{"build"},
 	}
 	cfg.Environment.Accounts.Groups = []apko_types.Group{grp}
 
 	usr := apko_types.User{
 		UserName: "build",
-		UID: 1000,
-		GID: 1000,
+		UID:      1000,
+		GID:      1000,
 	}
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
 
@@ -213,7 +214,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		WorkDir:            workspaceDir,
 		UseProot:           true,
 		// TODO(kaniini): maybe support multiarch builds somehow
-		Arch:               apko_types.Architecture(runtime.GOARCH),
+		Arch: apko_types.Architecture(runtime.GOARCH),
 	}
 	bc.Summarize()
 

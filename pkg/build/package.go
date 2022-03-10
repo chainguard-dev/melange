@@ -28,7 +28,7 @@ import (
 	"text/template"
 
 	"chainguard.dev/apko/pkg/tarball"
-	_ "chainguard.dev/melange/internal/sign"
+	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
 )
 
@@ -87,6 +87,10 @@ datahash = {{.DataHash}}
 func (pc *PackageContext) GenerateControlData(w io.Writer) error {
 	tmpl := template.New("control")
 	return template.Must(tmpl.Parse(controlTemplate)).Execute(w, pc)
+}
+
+func (pc *PackageContext) SignatureName() string {
+	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Context.SigningKey))
 }
 
 func combine(out io.Writer, inputs ...io.Reader) error {
@@ -190,14 +194,41 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to rewind control tarball: %w", err)
 	}
 
-	// TODO(kaniini): support signing
+	combinedParts := []io.Reader{controlTarGz, dataTarGz}
+
+	if pc.Context.SigningKey != "" {
+		signatureFS := memfs.New()
+		signatureBuf, err := sign.RSASignSHA1Digest(controlDigest.Sum(nil),
+			pc.Context.SigningKey, pc.Context.SigningPassphrase)
+		if err := signatureFS.WriteFile(pc.SignatureName(), signatureBuf, 0644); err != nil {
+			return fmt.Errorf("unable to build signature FS: %w", err)
+		}
+
+		signatureTarGz, err := os.CreateTemp("", "melange-signature-*.tar.gz")
+		if err != nil {
+			return fmt.Errorf("unable to open temporary file for writing: %w", err)
+		}
+		defer signatureTarGz.Close()
+
+		if err := multitarctx.WriteArchiveFromFS(".", signatureFS, signatureTarGz); err != nil {
+			return fmt.Errorf("unable to write signature tarball: %w", err)
+		}
+
+		if _, err := signatureTarGz.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("unable to rewind signature tarball: %w", err)
+		}
+
+		combinedParts = append([]io.Reader{signatureTarGz}, combinedParts...)
+	}
+
+	// build the final tarball
 	outFile, err := os.Create(pc.Filename())
 	if err != nil {
 		return fmt.Errorf("unable to create apk file: %w", err)
 	}
 	defer outFile.Close()
 
-	if err := combine(outFile, controlTarGz, dataTarGz); err != nil {
+	if err := combine(outFile, combinedParts...); err != nil {
 		return fmt.Errorf("unable to write apk file: %w", err)
 	}
 

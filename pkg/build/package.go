@@ -126,6 +126,10 @@ func (pc *PackageContext) EmitPackage() error {
 
 	fsys := os.DirFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
 		fi, err := d.Info()
 		if err != nil {
 			return err

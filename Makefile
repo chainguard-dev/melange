@@ -93,7 +93,7 @@ melange: $(SRCS) ## Builds melange
 install: $(SRCS) melange ## Builds and moves melange into BINDIR (default /usr/bin)
 	install -Dm755 melange ${DESTDIR}${BINDIR}/melange
 	install -dm755 ${DESTDIR}/usr/share/melange/pipelines
-	find pipelines -type f -exec install -Dm644 "{}" "${DESTDIR}/usr/share/melange/pipelines/" \;
+	tar c -C pipelines . | tar x -C "${DESTDIR}/usr/share/melange/pipelines"
 
 #####################
 # lint / test section

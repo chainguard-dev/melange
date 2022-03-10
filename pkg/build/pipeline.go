@@ -53,9 +53,9 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 
 func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string {
 	nw := map[string]string{
-		"${{package.name}}": ctx.Package.Name,
+		"${{package.name}}":    ctx.Package.Name,
 		"${{package.version}}": ctx.Package.Version,
-		"${{package.epoch}}": strconv.FormatUint(ctx.Package.Epoch, 10),
+		"${{package.epoch}}":   strconv.FormatUint(ctx.Package.Epoch, 10),
 		"${{targets.destdir}}": fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
 	}
 
@@ -82,7 +82,7 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 }
 
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
-	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses + ".yaml"))
+	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses+".yaml"))
 	if err != nil {
 		return fmt.Errorf("unable to load pipeline: %w", err)
 	}

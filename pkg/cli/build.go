@@ -31,9 +31,9 @@ func Build() *cobra.Command {
 	var signingKey string
 
 	cmd := &cobra.Command{
-		Use:   "build",
-		Short: "Build a package from a YAML configuration file",
-		Long: `Build a package from a YAML configuration file.`,
+		Use:     "build",
+		Short:   "Build a package from a YAML configuration file",
+		Long:    `Build a package from a YAML configuration file.`,
 		Example: `  melange build [config.yaml]`,
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {

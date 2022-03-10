@@ -114,6 +114,7 @@ func (pc *PackageContext) EmitPackage() error {
 		tarball.WithOverrideUIDGID(0, 0),
 		tarball.WithOverrideUname("root"),
 		tarball.WithOverrideGname("root"),
+		tarball.WithUseChecksums(true),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to build tarball context: %w", err)

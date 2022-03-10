@@ -3,17 +3,15 @@ module chainguard.dev/melange
 go 1.17
 
 require (
-	chainguard.dev/apko v0.1.3-0.20220309214351-9cc6134a5dbd
+	chainguard.dev/apko v0.1.3-0.20220310011318-2f452fc079ae
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.3.0
-	github.com/stretchr/testify v1.7.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	sigs.k8s.io/release-utils v0.5.0
 )
 
 require (
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dominodatalab/os-release v0.0.0-20190522011736-bcdb4a3e3c2f // indirect
 	github.com/google/go-containerregistry v0.8.1-0.20220223122423-dd8d514a9b24 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
@@ -21,7 +19,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	gitlab.alpinelinux.org/alpine/go v0.3.0 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect

@@ -94,7 +94,7 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 	p.With = mutateWith(ctx, with)
 
 	// TODO(kaniini): merge, rather than replace sub-pipeline withs
-	for k, _ := range p.Pipeline {
+	for k := range p.Pipeline {
 		p.Pipeline[k].With = p.With
 	}
 

@@ -204,6 +204,10 @@ func (pc *PackageContext) EmitPackage() error {
 		signatureFS := memfs.New()
 		signatureBuf, err := sign.RSASignSHA1Digest(controlDigest.Sum(nil),
 			pc.Context.SigningKey, pc.Context.SigningPassphrase)
+		if err != nil {
+			return fmt.Errorf("unable to generate signature: %w", err)
+		}
+
 		if err := signatureFS.WriteFile(pc.SignatureName(), signatureBuf, 0644); err != nil {
 			return fmt.Errorf("unable to build signature FS: %w", err)
 		}

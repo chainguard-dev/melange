@@ -297,6 +297,7 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--bind", ctx.GuestDir, "/",
 		"--bind", ctx.WorkspaceDir, "/home/build",
 		"--bind", "/etc/resolv.conf", "/etc/resolv.conf",
+		"--unshare-pid",
 		"--proc", "/proc",
 		"--chdir", "/home/build",
 	}

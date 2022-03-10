@@ -5,7 +5,7 @@ go 1.17
 require (
 	chainguard.dev/apko v0.1.3-0.20220310155312-70f73af7ed76
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	sigs.k8s.io/release-utils v0.5.0
 )

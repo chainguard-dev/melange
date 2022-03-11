@@ -4,13 +4,14 @@ on:
   push:
   pull_request:
 
-env:
-  GO_VERSION: 1.17.x
-
 jobs:
   build:
     name: Release melange image
     runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+      options: |
+        --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
     steps:
     - uses: actions/checkout@main
@@ -19,15 +20,5 @@ jobs:
     # VM...
     - name: Run e2e script in Docker
       run: |
-        docker run --cap-add NET_ADMIN --cap-add SYS_ADMIN --device /dev/fuse \
-          --security-opt seccomp=unconfined \
-          --workdir /github/workspace --rm -e INPUT_ARGS -e HOME -e GITHUB_REF \
-          -e GITHUB_SHA -e GITHUB_REPOSITORY -e GITHUB_ACTOR -e GITHUB_WORKFLOW \
-          -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e GITHUB_EVENT_NAME -e GITHUB_WORKSPACE \
-          -e GITHUB_ACTION -e GITHUB_EVENT_PATH -e RUNNER_OS -e RUNNER_TOOL_CACHE \
-          -e RUNNER_TEMP -e RUNNER_WORKSPACE -v /var/run/docker.sock:/var/run/docker.sock \
-          -v '/home/runner/work/_temp/_github_home:/github/home' \
-          -v '/home/runner/work/_temp/_github_workflow:/github/workflow' \
-          -v '/dev:/dev' \
-          -v ${GITHUB_WORKSPACE}:/github/workspace -i alpine:latest \
-          /github/workspace/hack/e2e-bootstrap.sh
+        cd ${GITHUB_WORKSPACE}
+        ./hack/e2e-bootstrap.sh

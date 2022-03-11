@@ -28,6 +28,7 @@ func Build() *cobra.Command {
 	var workspaceDir string
 	var pipelineDir string
 	var signingKey string
+	var useProot bool
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -41,6 +42,7 @@ func Build() *cobra.Command {
 				build.WithWorkspaceDir(workspaceDir),
 				build.WithPipelineDir(pipelineDir),
 				build.WithSigningKey(signingKey),
+				build.WithUseProot(useProot),
 			}
 
 			if len(args) > 0 {
@@ -60,6 +62,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", cwd, "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
+	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 
 	return cmd
 }

@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Release melange image
+    name: bootstrap package
     runs-on: ubuntu-latest
     container:
       image: alpine:latest
@@ -14,11 +14,40 @@ jobs:
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
     steps:
-    - uses: actions/checkout@main
-    # We have to do this because GitHub Actions does not make it
-    # easy to disable seccomp, despite giving root access to the underlying
-    # VM...
-    - name: Run e2e script in Docker
+    - name: Fetch dependencies
       run: |
-        cd ${GITHUB_WORKSPACE}
-        ./hack/e2e-bootstrap.sh
+        cat >/etc/apk/repositories <<_EOF_
+        https://dl-cdn.alpinelinux.org/alpine/edge/main
+        https://dl-cdn.alpinelinux.org/alpine/edge/community
+        https://dl-cdn.alpinelinux.org/alpine/edge/testing
+        _EOF_
+
+        apk upgrade -Ua
+        apk add go cosign build-base git bubblewrap
+    - uses: actions/checkout@main
+    - name: Build bootstrap melange tool (stage1)
+      run: make melange
+    - name: Build stage2 melange package with bootstrap melange
+      run: ./melange build --pipeline-dir=pipelines/
+    - name: Install stage2 melange package
+      run: apk add --allow-untrusted ./melange-*.apk
+    - name: Move stage2 artifacts to stage2 directory
+      run: |
+        mkdir stage2
+        mv melange-*.apk stage2
+    - name: Verify operation of stage2 melange
+      run: melange version
+    - name: Build stage3 melange package with stage2 melange
+      run: melange build
+    - name: Install stage3 melange package
+      run: apk add --allow-untrusted ./melange-*.apk
+    - name: Move stage3 artifacts to stage3 directory
+      run: |
+        mkdir stage3
+        mv melange-*.apk stage3
+    - name: Ensure melange package is reproducible
+      run: |
+        sha256sum stage2/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
+    - name: Verify operation of stage3 melange
+      run: melange version
+

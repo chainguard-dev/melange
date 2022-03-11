@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.17
 
 require (
-	chainguard.dev/apko v0.1.3-0.20220311210550-1ed34d8d9ad8
+	chainguard.dev/apko v0.1.3-0.20220314191307-16e3a74c4c4a
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b

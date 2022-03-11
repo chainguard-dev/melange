@@ -73,6 +73,7 @@ type Context struct {
 	GuestDir          string
 	SigningKey        string
 	SigningPassphrase string
+	UseProot          bool
 }
 
 type Dependencies struct {
@@ -170,6 +171,14 @@ func WithSigningKey(signingKey string) Option {
 	}
 }
 
+// WithUseProot sets whether or not proot should be used.
+func WithUseProot(useProot bool) Option {
+	return func(ctx *Context) error {
+		ctx.UseProot = useProot
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(configFile string) error {
 	data, err := os.ReadFile(configFile)
@@ -211,7 +220,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 	bc := apko_build.Context{
 		ImageConfiguration: ctx.Configuration.Environment,
 		WorkDir:            workspaceDir,
-		UseProot:           true,
+		UseProot:           ctx.UseProot,
 		// TODO(kaniini): maybe support multiarch builds somehow
 		Arch: apko_types.Architecture(runtime.GOARCH),
 	}
@@ -298,6 +307,7 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--bind", ctx.WorkspaceDir, "/home/build",
 		"--bind", "/etc/resolv.conf", "/etc/resolv.conf",
 		"--unshare-pid",
+		"--dev", "/dev",
 		"--proc", "/proc",
 		"--chdir", "/home/build",
 	}

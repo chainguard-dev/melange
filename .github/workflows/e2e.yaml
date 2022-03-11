@@ -20,7 +20,7 @@ jobs:
     - name: Run e2e script in Docker
       run: |
         docker run --cap-add NET_ADMIN --cap-add SYS_ADMIN --device /dev/fuse \
-          --security-opt apparmor:unconfined --security-opt seccomp=unconfined \
+          --security-opt seccomp=unconfined \
           --workdir /github/workspace --rm -e INPUT_ARGS -e HOME -e GITHUB_REF \
           -e GITHUB_SHA -e GITHUB_REPOSITORY -e GITHUB_ACTOR -e GITHUB_WORKFLOW \
           -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e GITHUB_EVENT_NAME -e GITHUB_WORKSPACE \

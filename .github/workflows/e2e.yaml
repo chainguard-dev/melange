@@ -30,4 +30,4 @@ jobs:
           -v '/home/runner/work/_temp/_github_workflow:/github/workflow' \
           -v '/dev:/dev' \
           -v ${GITHUB_WORKSPACE}:/github/workspace -i alpine:latest \
-          /github/workspace/e2e.sh
+          /github/workspace/hack/e2e-bootstrap.sh

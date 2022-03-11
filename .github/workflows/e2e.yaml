@@ -4,30 +4,50 @@ on:
   push:
   pull_request:
 
-env:
-  GO_VERSION: 1.17.x
-
 jobs:
   build:
-    name: Release melange image
+    name: bootstrap package
     runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+      options: |
+        --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
     steps:
-    - uses: actions/checkout@main
-    # We have to do this because GitHub Actions does not make it
-    # easy to disable seccomp, despite giving root access to the underlying
-    # VM...
-    - name: Run e2e script in Docker
+    - name: Fetch dependencies
       run: |
-        docker run --cap-add NET_ADMIN --cap-add SYS_ADMIN --device /dev/fuse \
-          --security-opt apparmor:unconfined --security-opt seccomp=unconfined \
-          --workdir /github/workspace --rm -e INPUT_ARGS -e HOME -e GITHUB_REF \
-          -e GITHUB_SHA -e GITHUB_REPOSITORY -e GITHUB_ACTOR -e GITHUB_WORKFLOW \
-          -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e GITHUB_EVENT_NAME -e GITHUB_WORKSPACE \
-          -e GITHUB_ACTION -e GITHUB_EVENT_PATH -e RUNNER_OS -e RUNNER_TOOL_CACHE \
-          -e RUNNER_TEMP -e RUNNER_WORKSPACE -v /var/run/docker.sock:/var/run/docker.sock \
-          -v '/home/runner/work/_temp/_github_home:/github/home' \
-          -v '/home/runner/work/_temp/_github_workflow:/github/workflow' \
-          -v '/dev:/dev' \
-          -v ${GITHUB_WORKSPACE}:/github/workspace -i alpine:latest \
-          /github/workspace/hack/e2e-bootstrap.sh
+        cat >/etc/apk/repositories <<_EOF_
+        https://dl-cdn.alpinelinux.org/alpine/edge/main
+        https://dl-cdn.alpinelinux.org/alpine/edge/community
+        https://dl-cdn.alpinelinux.org/alpine/edge/testing
+        _EOF_
+
+        apk upgrade -Ua
+        apk add go cosign build-base git bubblewrap
+    - uses: actions/checkout@main
+    - name: Build bootstrap melange tool (stage1)
+      run: make melange
+    - name: Build stage2 melange package with bootstrap melange
+      run: ./melange build --pipeline-dir=pipelines/
+    - name: Install stage2 melange package
+      run: apk add --allow-untrusted ./melange-*.apk
+    - name: Move stage2 artifacts to stage2 directory
+      run: |
+        mkdir stage2
+        mv melange-*.apk stage2
+    - name: Verify operation of stage2 melange
+      run: melange version
+    - name: Build stage3 melange package with stage2 melange
+      run: melange build
+    - name: Install stage3 melange package
+      run: apk add --allow-untrusted ./melange-*.apk
+    - name: Move stage3 artifacts to stage3 directory
+      run: |
+        mkdir stage3
+        mv melange-*.apk stage3
+    - name: Ensure melange package is reproducible
+      run: |
+        sha256sum stage2/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
+    - name: Verify operation of stage3 melange
+      run: melange version
+

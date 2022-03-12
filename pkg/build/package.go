@@ -94,16 +94,6 @@ func (pc *PackageContext) SignatureName() string {
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Context.SigningKey))
 }
 
-func combine(out io.Writer, inputs ...io.Reader) error {
-	for _, input := range inputs {
-		if _, err := io.Copy(out, input); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // TODO(kaniini): generate APKv3 packages
 func (pc *PackageContext) EmitPackage() error {
 	log.Printf("generating package %s", pc.Identity())

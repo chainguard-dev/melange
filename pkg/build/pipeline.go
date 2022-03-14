@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -73,9 +74,13 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 		}
 	}
 
+	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.]*}}`)
 	replacer := replacerFromMap(nw)
 	for k, v := range nw {
-		nw[k] = replacer.Replace(v)
+		nv := replacer.Replace(v)
+		nv = re.ReplaceAllString(nv, "")
+
+		nw[k] = nv
 	}
 
 	return nw

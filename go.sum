@@ -1,8 +1,8 @@
 4d63.com/gochecknoglobals v0.1.0/go.mod h1:wfdC5ZjKSPr7CybKEcgJhUOgeAQW1+7WcyK8OvUilfo=
 bazil.org/fuse v0.0.0-20160811212531-371fbbdaa898/go.mod h1:Xbm+BRKSBEpa4q4hTSxohYNQpsxXPbPry4JJWOB3LB8=
 bitbucket.org/creachadair/shell v0.0.6/go.mod h1:8Qqi/cYk7vPnsOePHroKXDJYmb5x7ENhtiFtfZq8K+M=
-chainguard.dev/apko v0.1.3-0.20220311210550-1ed34d8d9ad8 h1:fVY0CWJf0jqPvmZXL2kQxAHU/8zCA0/OkXp11BUaszo=
-chainguard.dev/apko v0.1.3-0.20220311210550-1ed34d8d9ad8/go.mod h1:dRGDW8wzmftmnIDM0zIJ1HaKpiQpfYEr6F2u1Bq+8Ew=
+chainguard.dev/apko v0.1.3-0.20220314191307-16e3a74c4c4a h1:m9r549hRL9V2QvlF0owI/AClcPd1OdyQ0JENcx7hi5g=
+chainguard.dev/apko v0.1.3-0.20220314191307-16e3a74c4c4a/go.mod h1:oa5I5C6X4Y/Li6DBcros3zZRKclUzusWik/30PSM/6k=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=

@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	apkofs "chainguard.dev/apko/pkg/fs"
 	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
@@ -93,25 +94,9 @@ func (pc *PackageContext) SignatureName() string {
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Context.SigningKey))
 }
 
-func combine(out io.Writer, inputs ...io.Reader) error {
-	for _, input := range inputs {
-		if _, err := io.Copy(out, input); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // TODO(kaniini): generate APKv3 packages
 func (pc *PackageContext) EmitPackage() error {
 	log.Printf("generating package %s", pc.Identity())
-
-	dataTarGz, err := os.CreateTemp("", "melange-data-*.tar.gz")
-	if err != nil {
-		return fmt.Errorf("unable to open temporary file for writing: %w", err)
-	}
-	defer dataTarGz.Close()
 
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
@@ -144,18 +129,13 @@ func (pc *PackageContext) EmitPackage() error {
 	// TODO(kaniini): generate so:/cmd: virtuals for the filesystem
 	// prepare data.tar.gz
 	dataDigest := sha256.New()
-	dataMW := io.MultiWriter(dataDigest, dataTarGz)
-	if err := tarctx.WriteArchiveFromFS(pc.WorkspaceSubdir(), fsys, dataMW); err != nil {
+	if err := tarctx.WriteArchive(dataDigest, apkofs.DirFS(pc.WorkspaceSubdir())); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)
 	}
 
 	pc.DataHash = hex.EncodeToString(dataDigest.Sum(nil))
 	log.Printf("  data.tar.gz installed-size: %d", pc.InstalledSize)
 	log.Printf("  data.tar.gz digest: %s", pc.DataHash)
-
-	if _, err := dataTarGz.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("unable to rewind data tarball: %w", err)
-	}
 
 	// prepare control.tar.gz
 	multitarctx, err := tarball.NewContext(
@@ -179,26 +159,22 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to build control FS: %w", err)
 	}
 
-	controlTarGz, err := os.CreateTemp("", "melange-control-*.tar.gz")
-	if err != nil {
-		return fmt.Errorf("unable to open temporary file for writing: %w", err)
-	}
-	defer controlTarGz.Close()
-
 	controlDigest := sha1.New() // nolint:gosec
-	controlMW := io.MultiWriter(controlDigest, controlTarGz)
-	if err := multitarctx.WriteArchiveFromFS(".", controlFS, controlMW); err != nil {
+	if err := multitarctx.WriteArchive(controlDigest, controlFS); err != nil {
 		return fmt.Errorf("unable to write control tarball: %w", err)
 	}
 
 	controlHash := hex.EncodeToString(controlDigest.Sum(nil))
 	log.Printf("  control.tar.gz digest: %s", controlHash)
 
-	if _, err := controlTarGz.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("unable to rewind control tarball: %w", err)
+	// build the final tarball
+	outFile, err := os.Create(pc.Filename())
+	if err != nil {
+		return fmt.Errorf("unable to create apk file: %w", err)
 	}
+	defer outFile.Close()
 
-	combinedParts := []io.Reader{controlTarGz, dataTarGz}
+	mtar := tarball.Out(outFile)
 
 	if pc.Context.SigningKey != "" {
 		signatureFS := memfs.New()
@@ -212,33 +188,20 @@ func (pc *PackageContext) EmitPackage() error {
 			return fmt.Errorf("unable to build signature FS: %w", err)
 		}
 
-		signatureTarGz, err := os.CreateTemp("", "melange-signature-*.tar.gz")
-		if err != nil {
-			return fmt.Errorf("unable to open temporary file for writing: %w", err)
-		}
-		defer signatureTarGz.Close()
-
-		if err := multitarctx.WriteArchiveFromFS(".", signatureFS, signatureTarGz); err != nil {
+		if err := mtar.Append(multitarctx, signatureFS); err != nil {
 			return fmt.Errorf("unable to write signature tarball: %w", err)
 		}
-
-		if _, err := signatureTarGz.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("unable to rewind signature tarball: %w", err)
-		}
-
-		combinedParts = append([]io.Reader{signatureTarGz}, combinedParts...)
 	}
 
-	// build the final tarball
-	outFile, err := os.Create(pc.Filename())
-	if err != nil {
-		return fmt.Errorf("unable to create apk file: %w", err)
+	if err := mtar.Append(multitarctx, controlFS); err != nil {
+		return fmt.Errorf("unable to write control tarball: %w", err)
 	}
-	defer outFile.Close()
 
-	if err := combine(outFile, combinedParts...); err != nil {
-		return fmt.Errorf("unable to write apk file: %w", err)
+	if err := mtar.Append(tarctx, apkofs.DirFS(pc.WorkspaceSubdir())); err != nil {
+		return fmt.Errorf("unable to write data tarball: %w", err)
 	}
+
+	mtar.Close()
 
 	log.Printf("wrote %s", outFile.Name())
 

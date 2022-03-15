@@ -1,0 +1,14 @@
+contents:
+  repositories:
+    - http://dl-cdn.alpinelinux.org/alpine/edge/main
+    - /github/workspace/repo
+  # TODO(kaniini): Remove me when apko 0.2 is released.
+  keyring:
+    - /etc/apk/keys/alpine-devel@lists.alpinelinux.org-4a6a0840.rsa.pub
+    - /etc/apk/keys/alpine-devel@lists.alpinelinux.org-5261cecb.rsa.pub
+    - /etc/apk/keys/alpine-devel@lists.alpinelinux.org-6165ee59.rsa.pub
+    - /github/workspace/melange.rsa.pub
+  packages:
+    - alpine-baselayout-data
+    - apk-tools
+    - melange

@@ -13,6 +13,12 @@ jobs:
       options: |
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
+    # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+
     steps:
     - name: Fetch dependencies
       run: |

@@ -12,3 +12,6 @@ contents:
     - alpine-baselayout-data
     - apk-tools
     - melange
+
+entrypoint:
+  command: /usr/bin/melange

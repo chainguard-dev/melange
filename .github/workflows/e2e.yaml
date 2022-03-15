@@ -23,7 +23,7 @@ jobs:
         _EOF_
 
         apk upgrade -Ua
-        apk add go cosign build-base git bubblewrap
+        apk add go cosign build-base git bubblewrap apko
     - uses: actions/checkout@main
     - name: Build bootstrap melange tool (stage1)
       run: make melange
@@ -54,4 +54,12 @@ jobs:
         sha256sum stage2/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
     - name: Verify operation of stage3 melange
       run: melange version
-
+    - name: Prepare local repository
+      run: |
+        mkdir -p ${GITHUB_WORKSPACE}/repo/$(apk --print-arch)
+        mv stage3/melange-*.apk ${GITHUB_WORKSPACE}/repo/$(apk --print-arch)/
+        apk index ${GITHUB_WORKSPACE}/repo/$(apk --print-arch)/*.apk --output ${GITHUB_WORKSPACE}/repo/$(apk --print-arch)/APKINDEX.tar.gz
+    - name: Sign local repository index
+      run: melange sign-index --signing-key=melange.rsa ${GITHUB_WORKSPACE}/repo/$(apk --print-arch)/APKINDEX.tar.gz
+    - name: Build melange OCI image with apko
+      run: apko publish .apko.yaml ghcr.io/${{ github.repository }}:${{ github.sha }}

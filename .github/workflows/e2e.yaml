@@ -29,7 +29,7 @@ jobs:
         _EOF_
 
         apk upgrade -Ua
-        apk add go cosign build-base git bubblewrap apko
+        apk add go cosign build-base git bubblewrap apko docker
     - uses: actions/checkout@main
     - name: Build bootstrap melange tool (stage1)
       run: make melange
@@ -60,6 +60,11 @@ jobs:
         sha256sum stage2/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
     - name: Verify operation of stage3 melange
       run: melange version
+    - uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b # v1.13.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ github.token }}
     - name: Prepare local repository
       run: |
         mkdir -p ${GITHUB_WORKSPACE}/repo/$(apk --print-arch)

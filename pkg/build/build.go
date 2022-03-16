@@ -74,6 +74,7 @@ type Context struct {
 	SigningKey        string
 	SigningPassphrase string
 	UseProot          bool
+	OutDir            string
 }
 
 type Dependencies struct {
@@ -85,6 +86,7 @@ func New(opts ...Option) (*Context, error) {
 		ConfigFile:   ".melange.yaml",
 		WorkspaceDir: ".",
 		PipelineDir:  "/usr/share/melange/pipelines",
+		OutDir:       ".",
 	}
 
 	for _, opt := range opts {
@@ -175,6 +177,14 @@ func WithSigningKey(signingKey string) Option {
 func WithUseProot(useProot bool) Option {
 	return func(ctx *Context) error {
 		ctx.UseProot = useProot
+		return nil
+	}
+}
+
+// WithOutDir sets the output directory to use for the packages.
+func WithOutDir(outDir string) Option {
+	return func(ctx *Context) error {
+		ctx.OutDir = outDir
 		return nil
 	}
 }

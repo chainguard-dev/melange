@@ -38,6 +38,7 @@ type PackageContext struct {
 	PackageName   string
 	InstalledSize int64
 	DataHash      string
+	OutDir        string
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
@@ -52,6 +53,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Context:     ctx.Context,
 		Origin:      &ctx.Context.Configuration.Package,
 		PackageName: spkg.Name,
+		OutDir:      ctx.Context.OutDir,
 	}
 	return pc.EmitPackage()
 }
@@ -61,7 +63,7 @@ func (pc *PackageContext) Identity() string {
 }
 
 func (pc *PackageContext) Filename() string {
-	return fmt.Sprintf("%s.apk", pc.Identity())
+	return fmt.Sprintf("%s/%s.apk", pc.OutDir, pc.Identity())
 }
 
 func (pc *PackageContext) WorkspaceSubdir() string {
@@ -230,6 +232,10 @@ func (pc *PackageContext) EmitPackage() error {
 	}
 
 	// build the final tarball
+	if err := os.MkdirAll(pc.OutDir, 0755); err != nil {
+		return fmt.Errorf("unable to create output directory: %w", err)
+	}
+
 	outFile, err := os.Create(pc.Filename())
 	if err != nil {
 		return fmt.Errorf("unable to create apk file: %w", err)

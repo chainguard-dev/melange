@@ -15,10 +15,10 @@
 package cli
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"context"
 	"encoding/pem"
 	"fmt"
 	"log"

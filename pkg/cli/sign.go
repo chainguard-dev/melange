@@ -16,8 +16,8 @@ package cli
 
 import (
 	"bytes"
-	"crypto/sha1" // nolint:gosec
 	"context"
+	"crypto/sha1" // nolint:gosec
 	"fmt"
 	"io"
 	"log"

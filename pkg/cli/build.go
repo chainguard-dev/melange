@@ -29,6 +29,7 @@ func Build() *cobra.Command {
 	var pipelineDir string
 	var signingKey string
 	var useProot bool
+	var outDir string
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -43,6 +44,7 @@ func Build() *cobra.Command {
 				build.WithPipelineDir(pipelineDir),
 				build.WithSigningKey(signingKey),
 				build.WithUseProot(useProot),
+				build.WithOutDir(outDir),
 			}
 
 			if len(args) > 0 {
@@ -63,6 +65,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
+	cmd.Flags().StringVar(&outDir, "out-dir", cwd, "directory where packages will be output")
 
 	return cmd
 }

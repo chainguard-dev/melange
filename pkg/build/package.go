@@ -40,6 +40,7 @@ type PackageContext struct {
 	InstalledSize int64
 	DataHash      string
 	OutDir        string
+	Logger        *log.Logger
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
@@ -55,6 +56,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Origin:      &ctx.Context.Configuration.Package,
 		PackageName: spkg.Name,
 		OutDir:      ctx.Context.OutDir,
+		Logger:      log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
 	}
 	return pc.EmitPackage()
 }
@@ -108,7 +110,7 @@ func combine(out io.Writer, inputs ...io.Reader) error {
 
 // TODO(kaniini): generate APKv3 packages
 func (pc *PackageContext) EmitPackage() error {
-	log.Printf("generating package %s", pc.Identity())
+	pc.Logger.Printf("generating package %s", pc.Identity())
 
 	dataTarGz, err := os.CreateTemp("", "melange-data-*.tar.gz")
 	if err != nil {
@@ -153,8 +155,8 @@ func (pc *PackageContext) EmitPackage() error {
 	}
 
 	pc.DataHash = hex.EncodeToString(dataDigest.Sum(nil))
-	log.Printf("  data.tar.gz installed-size: %d", pc.InstalledSize)
-	log.Printf("  data.tar.gz digest: %s", pc.DataHash)
+	pc.Logger.Printf("  data.tar.gz installed-size: %d", pc.InstalledSize)
+	pc.Logger.Printf("  data.tar.gz digest: %s", pc.DataHash)
 
 	if _, err := dataTarGz.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("unable to rewind data tarball: %w", err)
@@ -195,7 +197,7 @@ func (pc *PackageContext) EmitPackage() error {
 	}
 
 	controlHash := hex.EncodeToString(controlDigest.Sum(nil))
-	log.Printf("  control.tar.gz digest: %s", controlHash)
+	pc.Logger.Printf("  control.tar.gz digest: %s", controlHash)
 
 	if _, err := controlTarGz.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("unable to rewind control tarball: %w", err)
@@ -247,7 +249,7 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to write apk file: %w", err)
 	}
 
-	log.Printf("wrote %s", outFile.Name())
+	pc.Logger.Printf("wrote %s", outFile.Name())
 
 	return nil
 }

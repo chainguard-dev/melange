@@ -50,6 +50,7 @@ type Pipeline struct {
 	With     map[string]string
 	Runs     string
 	Pipeline []Pipeline
+	logger   *log.Logger
 }
 
 type Subpackage struct {
@@ -75,6 +76,8 @@ type Context struct {
 	SigningPassphrase string
 	UseProot          bool
 	OutDir            string
+	Logger            *log.Logger
+	Arch              apko_types.Architecture
 }
 
 type Dependencies struct {
@@ -87,6 +90,8 @@ func New(opts ...Option) (*Context, error) {
 		WorkspaceDir: ".",
 		PipelineDir:  "/usr/share/melange/pipelines",
 		OutDir:       ".",
+		Logger:       log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+		Arch:         apko_types.ParseArchitecture(runtime.GOARCH),
 	}
 
 	for _, opt := range opts {
@@ -223,7 +228,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		return err
 	}
 
-	log.Printf("building workspace in '%s' with apko", workspaceDir)
+	ctx.Logger.Printf("building workspace in '%s' with apko", workspaceDir)
 
 	// TODO(kaniini): update to apko 0.2 Build.New() when WithImageConfiguration
 	// is merged.
@@ -232,7 +237,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		WorkDir:            workspaceDir,
 		UseProot:           ctx.UseProot,
 		// TODO(kaniini): maybe support multiarch builds somehow
-		Arch: apko_types.ParseArchitecture(runtime.GOARCH),
+		Arch: ctx.Arch,
 	}
 
 	if err := bc.Refresh(); err != nil {
@@ -245,7 +250,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		return fmt.Errorf("unable to generate image: %w", err)
 	}
 
-	log.Printf("successfully built workspace with apko")
+	ctx.Logger.Printf("successfully built workspace with apko")
 
 	return nil
 }
@@ -264,7 +269,7 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	// run the main pipeline
-	log.Printf("running the main pipeline")
+	ctx.Logger.Printf("running the main pipeline")
 	pctx := PipelineContext{
 		Context: ctx,
 		Package: &ctx.Configuration.Package,
@@ -277,7 +282,7 @@ func (ctx *Context) BuildPackage() error {
 
 	// run any pipelines for subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
-		log.Printf("running pipeline for subpackage %s", sp.Name)
+		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 		pctx.Subpackage = &sp
 
 		for _, p := range sp.Pipeline {
@@ -304,9 +309,9 @@ func (ctx *Context) BuildPackage() error {
 }
 
 func (ctx *Context) Summarize() {
-	log.Printf("melange is building:")
-	log.Printf("  configuration file: %s", ctx.ConfigFile)
-	log.Printf("  workspace dir: %s", ctx.WorkspaceDir)
+	ctx.Logger.Printf("melange is building:")
+	ctx.Logger.Printf("  configuration file: %s", ctx.ConfigFile)
+	ctx.Logger.Printf("  workspace dir: %s", ctx.WorkspaceDir)
 }
 
 func (ctx *Context) PrivilegedWorkspaceCmd(args ...string) (*exec.Cmd, error) {

@@ -94,7 +94,7 @@ func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) erro
 	}
 
 	var sigBuffer bytes.Buffer
-	if err := multitarctx.WriteArchiveFromFS(".", sigFS, &sigBuffer); err != nil {
+	if err := multitarctx.WriteArchive(&sigBuffer, sigFS); err != nil {
 		return fmt.Errorf("unable to write signature tarball: %w", err)
 	}
 

@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.17
 
 require (
-	chainguard.dev/apko v0.1.3-0.20220311210550-1ed34d8d9ad8
+	chainguard.dev/apko v0.2.3-0.20220321194407-e8d8b3697d07
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -28,5 +28,4 @@ require (
 	gitlab.alpinelinux.org/alpine/go v0.3.1 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 )

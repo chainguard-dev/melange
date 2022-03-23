@@ -232,8 +232,13 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		WorkDir:            workspaceDir,
 		UseProot:           ctx.UseProot,
 		// TODO(kaniini): maybe support multiarch builds somehow
-		Arch: apko_types.Architecture(runtime.GOARCH),
+		Arch: apko_types.ParseArchitecture(runtime.GOARCH),
 	}
+
+	if err := bc.Refresh(); err != nil {
+		return fmt.Errorf("unable to refresh build context: %w", err)
+	}
+
 	bc.Summarize()
 
 	if err := bc.BuildImage(); err != nil {

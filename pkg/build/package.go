@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	apkofs "chainguard.dev/apko/pkg/fs"
 	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
@@ -126,7 +127,7 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to build tarball context: %w", err)
 	}
 
-	fsys := os.DirFS(pc.WorkspaceSubdir())
+	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -147,7 +148,7 @@ func (pc *PackageContext) EmitPackage() error {
 	// prepare data.tar.gz
 	dataDigest := sha256.New()
 	dataMW := io.MultiWriter(dataDigest, dataTarGz)
-	if err := tarctx.WriteArchiveFromFS(pc.WorkspaceSubdir(), fsys, dataMW); err != nil {
+	if err := tarctx.WriteArchive(dataMW, fsys); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)
 	}
 
@@ -189,7 +190,7 @@ func (pc *PackageContext) EmitPackage() error {
 
 	controlDigest := sha1.New() // nolint:gosec
 	controlMW := io.MultiWriter(controlDigest, controlTarGz)
-	if err := multitarctx.WriteArchiveFromFS(".", controlFS, controlMW); err != nil {
+	if err := multitarctx.WriteArchive(controlMW, controlFS); err != nil {
 		return fmt.Errorf("unable to write control tarball: %w", err)
 	}
 
@@ -220,7 +221,7 @@ func (pc *PackageContext) EmitPackage() error {
 		}
 		defer signatureTarGz.Close()
 
-		if err := multitarctx.WriteArchiveFromFS(".", signatureFS, signatureTarGz); err != nil {
+		if err := multitarctx.WriteArchive(signatureTarGz, signatureFS); err != nil {
 			return fmt.Errorf("unable to write signature tarball: %w", err)
 		}
 

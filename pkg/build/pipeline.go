@@ -111,18 +111,21 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 
 func (p *Pipeline) dumpWith() {
 	for k, v := range p.With {
-		log.Printf("    %s: %s", k, v)
+		p.logger.Printf("    %s: %s", k, v)
 	}
 }
 
 func (p *Pipeline) evalUse(ctx *PipelineContext) error {
-	sp := Pipeline{}
+	sp, err := NewPipeline(ctx)
+	if err != nil {
+		return err
+	}
 
 	if err := sp.loadUse(ctx, p.Uses, p.With); err != nil {
 		return err
 	}
 
-	log.Printf("  using %s", p.Uses)
+	p.logger.Printf("  using %s", p.Uses)
 	sp.dumpWith()
 
 	if err := sp.Run(ctx); err != nil {
@@ -132,16 +135,16 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	return nil
 }
 
-func monitorPipe(pipe io.ReadCloser) {
+func (p *Pipeline) monitorPipe(pipe io.ReadCloser) {
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
-		log.Printf("%s", scanner.Text())
+		p.logger.Printf("%s", scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Printf("warning: %v", err)
+		p.logger.Printf("warning: %v", err)
 	}
 }
 
@@ -170,8 +173,8 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 		return err
 	}
 
-	go monitorPipe(stdout)
-	go monitorPipe(stderr)
+	go p.monitorPipe(stdout)
+	go p.monitorPipe(stderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err
@@ -181,8 +184,14 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 }
 
 func (p *Pipeline) Run(ctx *PipelineContext) error {
+	if p.logger == nil {
+		if err := p.initializeFromContext(ctx); err != nil {
+			return err
+		}
+	}
+
 	if p.Identity() != "???" {
-		log.Printf("running step %s", p.Identity())
+		p.logger.Printf("running step %s", p.Identity())
 	}
 
 	if p.Uses != "" {
@@ -199,4 +208,24 @@ func (p *Pipeline) Run(ctx *PipelineContext) error {
 	}
 
 	return nil
+}
+
+func (p *Pipeline) initializeFromContext(ctx *PipelineContext) error {
+	name := ctx.Package.Name
+	if ctx.Subpackage != nil {
+		name = ctx.Subpackage.Name
+	}
+	p.logger = log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix)
+
+	return nil
+}
+
+func NewPipeline(ctx *PipelineContext) (*Pipeline, error) {
+	p := Pipeline{}
+
+	if err := p.initializeFromContext(ctx); err != nil {
+		return nil, err
+	}
+
+	return &p, nil
 }

@@ -74,16 +74,19 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 		}
 	}
 
-	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.]*}}`)
-	replacer := replacerFromMap(nw)
+	// do the actual mutations
 	for k, v := range nw {
-		nv := replacer.Replace(v)
-		nv = re.ReplaceAllString(nv, "")
-
-		nw[k] = nv
+		nw[k] = mutateStringFromMap(nw, v)
 	}
 
 	return nw
+}
+
+func mutateStringFromMap(with map[string]string, input string) string {
+	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.]*}}`)
+	replacer := replacerFromMap(with)
+	output := replacer.Replace(input)
+	return re.ReplaceAllString(output, "")
 }
 
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
@@ -143,8 +146,7 @@ func monitorPipe(pipe io.ReadCloser) {
 }
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
-	replacer := replacerFromMap(p.With)
-	fragment := replacer.Replace(p.Runs)
+	fragment := mutateStringFromMap(p.With, p.Runs)
 	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)
 	command := []string{"/bin/sh", "-c", script}

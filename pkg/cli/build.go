@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
@@ -65,7 +66,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
-	cmd.Flags().StringVar(&outDir, "out-dir", cwd, "directory where packages will be output")
+	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
 
 	return cmd
 }

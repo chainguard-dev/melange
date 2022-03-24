@@ -32,26 +32,23 @@ jobs:
         ./melange keygen
         mv melange.rsa.pub /etc/apk/keys
     - name: Build stage2 melange package with bootstrap melange
-      run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa
+      run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64
     - name: Install stage2 melange package
-      run: apk add ./melange-*.apk
+      run: apk add ./packages/x86_64/melange-*.apk
     - name: Move stage2 artifacts to stage2 directory
       run: |
-        mkdir stage2
-        mv melange-*.apk stage2
+        mv packages stage2
     - name: Verify operation of stage2 melange
       run: melange version
     - name: Build stage3 melange package with stage2 melange
-      run: melange build --signing-key=melange.rsa
+      run: melange build --signing-key=melange.rsa --arch x86_64
     - name: Install stage3 melange package
-      run: apk add ./melange-*.apk
+      run: apk add ./packages/x86_64/melange-*.apk
     - name: Move stage3 artifacts to stage3 directory
       run: |
-        mkdir stage3
-        mv melange-*.apk stage3
+        mv packages stage3
     - name: Ensure melange package is reproducible
       run: |
-        sha256sum stage2/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
+        sha256sum stage2/x86_64/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
     - name: Verify operation of stage3 melange
       run: melange version
-

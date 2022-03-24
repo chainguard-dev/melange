@@ -7,6 +7,7 @@ require (
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	sigs.k8s.io/release-utils v0.5.0
 )
@@ -30,5 +31,4 @@ require (
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	gitlab.alpinelinux.org/alpine/go v0.3.1 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 )

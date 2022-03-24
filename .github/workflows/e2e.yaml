@@ -31,12 +31,11 @@ jobs:
       run: |
         ./melange keygen
         mv melange.rsa.pub /etc/apk/keys
-    - name: Prepare build workspace
+    - name: Prepare build workspace for stage2
       run: |
-        mkdir workspace/
-        git clone . workspace/x86_64
+        git clone . workspace-stage2/x86_64
     - name: Build stage2 melange package with bootstrap melange
-      run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64 --workspace-dir workspace/
+      run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64 --workspace-dir workspace-stage2/
     - name: Install stage2 melange package
       run: apk add ./packages/x86_64/melange-*.apk
     - name: Move stage2 artifacts to stage2 directory
@@ -44,8 +43,11 @@ jobs:
         mv packages stage2
     - name: Verify operation of stage2 melange
       run: melange version
+    - name: Prepare build workspace for stage3
+      run: |
+        git clone . workspace-stage3/x86_64
     - name: Build stage3 melange package with stage2 melange
-      run: melange build --signing-key=melange.rsa --arch x86_64 --workspace-dir workspace/
+      run: melange build --signing-key=melange.rsa --arch x86_64 --workspace-dir workspace-stage3/
     - name: Install stage3 melange package
       run: apk add ./packages/x86_64/melange-*.apk
     - name: Move stage3 artifacts to stage3 directory

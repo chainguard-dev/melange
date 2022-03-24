@@ -23,6 +23,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func Build() *cobra.Command {
@@ -80,17 +81,29 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 		archs = apko_types.AllArchs
 	}
 
+	var errg errgroup.Group
+
 	for _, arch := range archs {
-		opts := append(base_opts, build.WithArch(arch))
+		arch := arch
 
-		bc, err := build.New(opts...)
-		if err != nil {
-			return err
-		}
+		errg.Go(func() error {
+			opts := append(base_opts, build.WithArch(arch))
 
-		if err := bc.BuildPackage(); err != nil {
-			return fmt.Errorf("failed to build package: %w", err)
-		}
+			bc, err := build.New(opts...)
+			if err != nil {
+				return err
+			}
+
+			if err := bc.BuildPackage(); err != nil {
+				return fmt.Errorf("failed to build package: %w", err)
+			}
+
+			return nil
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return err
 	}
 
 	return nil

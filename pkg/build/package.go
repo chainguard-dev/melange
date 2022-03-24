@@ -55,7 +55,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Context:     ctx.Context,
 		Origin:      &ctx.Context.Configuration.Package,
 		PackageName: spkg.Name,
-		OutDir:      ctx.Context.OutDir,
+		OutDir:      filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
 		Logger:      log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
 	}
 	return pc.EmitPackage()

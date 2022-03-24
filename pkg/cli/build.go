@@ -18,9 +18,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func Build() *cobra.Command {
@@ -30,6 +33,7 @@ func Build() *cobra.Command {
 	var signingKey string
 	var useProot bool
 	var outDir string
+	var archstrs []string
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -38,6 +42,7 @@ func Build() *cobra.Command {
 		Example: `  melange build [config.yaml]`,
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			archs := apko_types.ParseArchitectures(archstrs)
 			options := []build.Option{
 				build.WithBuildDate(buildDate),
 				build.WithWorkspaceDir(workspaceDir),
@@ -51,7 +56,7 @@ func Build() *cobra.Command {
 				options = append(options, build.WithConfig(args[0]))
 			}
 
-			return BuildCmd(cmd.Context(), options...)
+			return BuildCmd(cmd.Context(), archs, options...)
 		},
 	}
 
@@ -65,19 +70,40 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
-	cmd.Flags().StringVar(&outDir, "out-dir", cwd, "directory where packages will be output")
+	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
+	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config.")
 
 	return cmd
 }
 
-func BuildCmd(ctx context.Context, opts ...build.Option) error {
-	bc, err := build.New(opts...)
-	if err != nil {
-		return err
+func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ...build.Option) error {
+	if len(archs) == 0 {
+		archs = apko_types.AllArchs
 	}
 
-	if err := bc.BuildPackage(); err != nil {
-		return fmt.Errorf("failed to build package: %w", err)
+	var errg errgroup.Group
+
+	for _, arch := range archs {
+		arch := arch
+
+		errg.Go(func() error {
+			opts := append(base_opts, build.WithArch(arch))
+
+			bc, err := build.New(opts...)
+			if err != nil {
+				return err
+			}
+
+			if err := bc.BuildPackage(); err != nil {
+				return fmt.Errorf("failed to build package: %w", err)
+			}
+
+			return nil
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return err
 	}
 
 	return nil

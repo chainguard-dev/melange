@@ -194,6 +194,14 @@ func WithOutDir(outDir string) Option {
 	}
 }
 
+// WithArch sets the build architecture to use for this build context.
+func WithArch(arch apko_types.Architecture) Option {
+	return func(ctx *Context) error {
+		ctx.Arch = arch
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(configFile string) error {
 	data, err := os.ReadFile(configFile)

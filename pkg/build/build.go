@@ -119,6 +119,8 @@ func New(opts ...Option) (*Context, error) {
 		ctx.SourceDateEpoch = time.Unix(sec, 0)
 	}
 
+	ctx.Logger.SetPrefix(fmt.Sprintf("melange (%s/%s): ", ctx.Configuration.Package.Name, ctx.Arch.ToAPK()))
+
 	return &ctx, nil
 }
 

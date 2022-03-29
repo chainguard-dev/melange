@@ -125,6 +125,40 @@ func dedup(in []string) []string {
 	return out
 }
 
+func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
+	pc.Logger.Printf("scanning for commands...")
+
+	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		if mode.Perm() & 0555 == 0555 {
+			if strings.Contains(path, "bin") {
+				basename := filepath.Base(path)
+				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s-r%d", basename, pc.Origin.Version, pc.Origin.Epoch))
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
@@ -210,6 +244,7 @@ func (pc *PackageContext) GenerateDependencies() error {
 	generated := Dependencies{}
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
+		generateCmdProviders,
 	}
 
 	for _, gen := range generators {

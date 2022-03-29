@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"crypto/sha256"
+	"debug/elf"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -25,6 +26,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"text/template"
 
 	apkofs "chainguard.dev/apko/pkg/fs"
@@ -41,22 +44,25 @@ type PackageContext struct {
 	DataHash      string
 	OutDir        string
 	Logger        *log.Logger
+	Dependencies  Dependencies
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
 	fakesp := Subpackage{
-		Name: pkg.Name,
+		Name:         pkg.Name,
+		Dependencies: pkg.Dependencies,
 	}
 	return fakesp.Emit(ctx)
 }
 
 func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 	pc := PackageContext{
-		Context:     ctx.Context,
-		Origin:      &ctx.Context.Configuration.Package,
-		PackageName: spkg.Name,
-		OutDir:      filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
-		Logger:      log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
+		Context:      ctx.Context,
+		Origin:       &ctx.Context.Configuration.Package,
+		PackageName:  spkg.Name,
+		OutDir:       filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
+		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
+		Dependencies: spkg.Dependencies,
 	}
 	return pc.EmitPackage()
 }
@@ -83,8 +89,11 @@ pkgdesc = {{.Origin.Description}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}
-{{- range $dep := .Origin.Dependencies.Runtime }}
+{{- range $dep := .Dependencies.Runtime }}
 depend = {{ $dep }}
+{{- end }}
+{{- range $dep := .Dependencies.Provides }}
+provides = {{ $dep }}
 {{- end }}
 datahash = {{.DataHash}}
 `
@@ -96,6 +105,163 @@ func (pc *PackageContext) GenerateControlData(w io.Writer) error {
 
 func (pc *PackageContext) SignatureName() string {
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Context.SigningKey))
+}
+
+type DependencyGenerator func(*PackageContext, *Dependencies) error
+
+func dedup(in []string) []string {
+	sort.Strings(in)
+	out := make([]string, 0, len(in))
+
+	var prev string
+	for _, cur := range in {
+		if cur == prev {
+			continue
+		}
+		out = append(out, cur)
+		prev = cur
+	}
+
+	return out
+}
+
+func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
+	pc.Logger.Printf("scanning for commands...")
+
+	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		if mode.Perm() & 0555 == 0555 {
+			if strings.Contains(path, "bin") {
+				basename := filepath.Base(path)
+				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s-r%d", basename, pc.Origin.Version, pc.Origin.Epoch))
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
+	pc.Logger.Printf("scanning for shared object dependencies...")
+
+	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		if mode.Perm() & 0555 == 0555 {
+			basename := filepath.Base(path)
+			if strings.Contains(basename, ".so.") {
+				// TODO(kaniini): use strings.Cut when go1.18 is required
+				parts := strings.Split(basename, ".so.")
+
+				var libver string
+				if len(parts) > 1 {
+					libver = parts[1]
+				} else {
+					libver = "0"
+				}
+
+				generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", basename, libver))
+			}
+
+			// most likely a shell script instead of an ELF, so treat any
+			// error as non-fatal.
+			// TODO(kaniini): use DirFS for this
+			ef, err := elf.Open(filepath.Join(pc.WorkspaceSubdir(), path))
+			if err != nil {
+				return nil
+			}
+			defer ef.Close()
+
+			libs, err := ef.ImportedLibraries()
+			if err != nil {
+				pc.Logger.Printf("WTF: ImportedLibraries() returned error: %v", err)
+				return nil
+			}
+
+			for _, lib := range libs {
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dep *Dependencies) Summarize(logger *log.Logger) {
+	if len(dep.Runtime) > 0 {
+		logger.Printf("  runtime:")
+
+		for _, dep := range dep.Runtime {
+			logger.Printf("    %s", dep)
+		}
+	}
+
+	if len(dep.Provides) > 0 {
+		logger.Printf("  provides:")
+
+		for _, dep := range dep.Provides {
+			logger.Printf("    %s", dep)
+		}
+	}
+}
+
+func (pc *PackageContext) GenerateDependencies() error {
+	generated := Dependencies{}
+	generators := []DependencyGenerator{
+		generateSharedObjectNameDeps,
+		generateCmdProviders,
+	}
+
+	for _, gen := range generators {
+		if err := gen(pc, &generated); err != nil {
+			return err
+		}
+	}
+
+	newruntime := append(pc.Dependencies.Runtime, generated.Runtime...)
+	pc.Dependencies.Runtime = dedup(newruntime)
+
+	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
+	pc.Dependencies.Provides = dedup(newprovides)
+
+	pc.Dependencies.Summarize(pc.Logger)
+
+	return nil
 }
 
 func combine(out io.Writer, inputs ...io.Reader) error {
@@ -146,7 +312,11 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to preprocess package data: %w", err)
 	}
 
-	// TODO(kaniini): generate so:/cmd: virtuals for the filesystem
+	// generate so:/cmd: virtuals for the filesystem
+	if err := pc.GenerateDependencies(); err != nil {
+		return fmt.Errorf("unable to build final dependencies set: %w", err)
+	}
+
 	// prepare data.tar.gz
 	dataDigest := sha256.New()
 	dataMW := io.MultiWriter(dataDigest, dataTarGz)

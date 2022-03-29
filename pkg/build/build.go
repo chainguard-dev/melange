@@ -55,8 +55,9 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
-	Name     string
-	Pipeline []Pipeline
+	Name         string
+	Pipeline     []Pipeline
+	Dependencies Dependencies
 }
 
 type Configuration struct {
@@ -82,7 +83,8 @@ type Context struct {
 }
 
 type Dependencies struct {
-	Runtime []string
+	Runtime  []string
+	Provides []string
 }
 
 func New(opts ...Option) (*Context, error) {

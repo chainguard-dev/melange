@@ -104,6 +104,21 @@ func (pc *PackageContext) SignatureName() string {
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Context.SigningKey))
 }
 
+type DependencyGenerator func(*PackageContext, *Dependencies) error
+
+func (pc *PackageContext) GenerateDependencies() error {
+	generated := Dependencies{}
+	generators := []DependencyGenerator{}
+
+	for _, gen := range generators {
+		if err := gen(pc, &generated); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func combine(out io.Writer, inputs ...io.Reader) error {
 	for _, input := range inputs {
 		if _, err := io.Copy(out, input); err != nil {
@@ -152,7 +167,11 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to preprocess package data: %w", err)
 	}
 
-	// TODO(kaniini): generate so:/cmd: virtuals for the filesystem
+	// generate so:/cmd: virtuals for the filesystem
+	if err := pc.GenerateDependencies(); err != nil {
+		return fmt.Errorf("unable to build final dependencies set: %w", err)
+	}
+
 	// prepare data.tar.gz
 	dataDigest := sha256.New()
 	dataMW := io.MultiWriter(dataDigest, dataTarGz)

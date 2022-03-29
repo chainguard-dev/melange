@@ -83,7 +83,8 @@ type Context struct {
 }
 
 type Dependencies struct {
-	Runtime []string
+	Runtime  []string
+	Provides []string
 }
 
 func New(opts ...Option) (*Context, error) {

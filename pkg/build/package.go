@@ -41,22 +41,25 @@ type PackageContext struct {
 	DataHash      string
 	OutDir        string
 	Logger        *log.Logger
+	Dependencies  Dependencies
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
 	fakesp := Subpackage{
-		Name: pkg.Name,
+		Name:         pkg.Name,
+		Dependencies: pkg.Dependencies,
 	}
 	return fakesp.Emit(ctx)
 }
 
 func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 	pc := PackageContext{
-		Context:     ctx.Context,
-		Origin:      &ctx.Context.Configuration.Package,
-		PackageName: spkg.Name,
-		OutDir:      filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
-		Logger:      log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
+		Context:      ctx.Context,
+		Origin:       &ctx.Context.Configuration.Package,
+		PackageName:  spkg.Name,
+		OutDir:       filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
+		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
+		Dependencies: spkg.Dependencies,
 	}
 	return pc.EmitPackage()
 }
@@ -83,8 +86,11 @@ pkgdesc = {{.Origin.Description}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}
-{{- range $dep := .Origin.Dependencies.Runtime }}
+{{- range $dep := .Dependencies.Runtime }}
 depend = {{ $dep }}
+{{- end }}
+{{- range $dep := .Dependencies.Provides }}
+provides = {{ $dep }}
 {{- end }}
 datahash = {{.DataHash}}
 `

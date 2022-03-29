@@ -55,8 +55,9 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
-	Name     string
-	Pipeline []Pipeline
+	Name         string
+	Pipeline     []Pipeline
+	Dependencies Dependencies
 }
 
 type Configuration struct {

@@ -242,14 +242,13 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 
 	ctx.Logger.Printf("building workspace in '%s' with apko", workspaceDir)
 
-	// TODO(kaniini): update to apko 0.2 Build.New() when WithImageConfiguration
-	// is merged.
-	bc := apko_build.Context{
-		ImageConfiguration: ctx.Configuration.Environment,
-		WorkDir:            workspaceDir,
-		UseProot:           ctx.UseProot,
-		// TODO(kaniini): maybe support multiarch builds somehow
-		Arch: ctx.Arch,
+	bc, err := apko_build.New(workspaceDir,
+		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
+		apko_build.WithProot(ctx.UseProot),
+		apko_build.WithArch(ctx.Arch),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create build context: %w", err)
 	}
 
 	if err := bc.Refresh(); err != nil {

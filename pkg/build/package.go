@@ -180,19 +180,6 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 
 		if mode.Perm() & 0555 == 0555 {
 			basename := filepath.Base(path)
-			if strings.Contains(basename, ".so.") {
-				// TODO(kaniini): use strings.Cut when go1.18 is required
-				parts := strings.Split(basename, ".so.")
-
-				var libver string
-				if len(parts) > 1 {
-					libver = parts[1]
-				} else {
-					libver = "0"
-				}
-
-				generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", basename, libver))
-			}
 
 			// most likely a shell script instead of an ELF, so treat any
 			// error as non-fatal.
@@ -211,6 +198,28 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 
 			for _, lib := range libs {
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+			}
+
+			if strings.Contains(basename, ".so.") {
+				sonames, err := ef.DynString(elf.DT_SONAME)
+				// most likely SONAME is not set on this object
+				if err != nil {
+					pc.Logger.Printf("WARNING: library %s lacks SONAME", path)
+					return nil
+				}
+
+				for _, soname := range sonames {
+					parts := strings.Split(soname, ".so.")
+
+					var libver string
+					if len(parts) > 1 {
+						libver = parts[1]
+					} else {
+						libver = "0"
+					}
+
+					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+				}
 			}
 		}
 

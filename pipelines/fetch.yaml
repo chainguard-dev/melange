@@ -1,5 +1,26 @@
 name: Fetch and extract external object into workspace
 
+inputs:
+  strip-components:
+    description: |
+      The number of path components to strip while extracting.
+    default: 1
+
+  extract:
+    description: |
+      Whether to extract the downloaded artifact as a source tarball.
+    default: true
+
+  expected-sha256:
+    description: |
+      The expected SHA256 of the downloaded artifact.
+    required: true
+
+  uri:
+    description: |
+      The URI to fetch as an artifact.
+    required: true
+
 pipeline:
   - runs: |
       wget ${{inputs.uri}}
@@ -7,5 +28,5 @@ pipeline:
       printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
       if [ "${{inputs.extract}}" = "true" ]; then
         bn=$(basename ${{inputs.uri}})
-        tar -zx --strip-components=1 -f $bn
+        tar -zx '--strip-components=${{inputs.strip-components}}' -f $bn
       fi

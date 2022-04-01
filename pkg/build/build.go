@@ -60,11 +60,18 @@ type Subpackage struct {
 	Dependencies Dependencies
 }
 
+type Input struct {
+	Description string
+	Default     string
+	Required    bool
+}
+
 type Configuration struct {
 	Package     Package
 	Environment apko_types.ImageConfiguration
 	Pipeline    []Pipeline
 	Subpackages []Subpackage
+	Inputs      map[string]Input
 }
 
 type Context struct {

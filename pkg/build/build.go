@@ -51,6 +51,7 @@ type Pipeline struct {
 	With     map[string]string
 	Runs     string
 	Pipeline []Pipeline
+	Inputs   map[string]Input
 	logger   *log.Logger
 }
 
@@ -58,6 +59,12 @@ type Subpackage struct {
 	Name         string
 	Pipeline     []Pipeline
 	Dependencies Dependencies
+}
+
+type Input struct {
+	Description string
+	Default     string
+	Required    bool
 }
 
 type Configuration struct {

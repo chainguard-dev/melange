@@ -89,6 +89,24 @@ func mutateStringFromMap(with map[string]string, input string) string {
 	return re.ReplaceAllString(output, "")
 }
 
+func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
+	// this is the worst case possible length, assuming no overlap.
+	length := len(left) + len(right)
+	output := make(map[string]string, length)
+
+	// copy the left-side first
+	for k, v := range left {
+		output[k] = v
+	}
+
+	// overlay the right-side on top
+	for k, v := range right {
+		output[k] = v
+	}
+
+	return output
+}
+
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
 	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses+".yaml"))
 	if err != nil {
@@ -101,9 +119,8 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 
 	p.With = mutateWith(ctx, with)
 
-	// TODO(kaniini): merge, rather than replace sub-pipeline withs
 	for k := range p.Pipeline {
-		p.Pipeline[k].With = p.With
+		p.Pipeline[k].With = rightJoinMap(p.With, p.Pipeline[k].With)
 	}
 
 	return nil

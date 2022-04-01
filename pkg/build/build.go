@@ -51,6 +51,7 @@ type Pipeline struct {
 	With     map[string]string
 	Runs     string
 	Pipeline []Pipeline
+	Inputs   map[string]Input
 	logger   *log.Logger
 }
 
@@ -71,7 +72,6 @@ type Configuration struct {
 	Environment apko_types.ImageConfiguration
 	Pipeline    []Pipeline
 	Subpackages []Subpackage
-	Inputs      map[string]Input
 }
 
 type Context struct {

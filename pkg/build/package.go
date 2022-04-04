@@ -21,6 +21,7 @@ import (
 	"debug/elf"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"log"
@@ -101,6 +102,43 @@ datahash = {{.DataHash}}
 func (pc *PackageContext) GenerateControlData(w io.Writer) error {
 	tmpl := template.New("control")
 	return template.Must(tmpl.Parse(controlTemplate)).Execute(w, pc)
+}
+
+func (pc *PackageContext) generateControlSection(digest hash.Hash, w io.WriteSeeker) (hash.Hash, error) {
+	tarctx, err := tarball.NewContext(
+		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
+		tarball.WithOverrideUIDGID(0, 0),
+		tarball.WithOverrideUname("root"),
+		tarball.WithOverrideGname("root"),
+		tarball.WithSkipClose(true),
+	)
+	if err != nil {
+		return digest, fmt.Errorf("unable to build tarball context: %w", err)
+	}
+
+	var controlBuf bytes.Buffer
+	if err := pc.GenerateControlData(&controlBuf); err != nil {
+		return digest, fmt.Errorf("unable to process control template: %w", err)
+	}
+
+	fsys := memfs.New()
+	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
+		return digest, fmt.Errorf("unable to build control FS: %w", err)
+	}
+
+	mw := io.MultiWriter(digest, w)
+	if err := tarctx.WriteArchive(mw, fsys); err != nil {
+		return digest, fmt.Errorf("unable to write control tarball: %w", err)
+	}
+
+	controlHash := hex.EncodeToString(digest.Sum(nil))
+	pc.Logger.Printf("  control.tar.gz digest: %s", controlHash)
+
+	if _, err := w.Seek(0, io.SeekStart); err != nil {
+		return digest, fmt.Errorf("unable to rewind control tarball: %w", err)
+	}
+
+	return digest, nil
 }
 
 func (pc *PackageContext) SignatureName() string {
@@ -284,27 +322,7 @@ func combine(out io.Writer, inputs ...io.Reader) error {
 }
 
 // TODO(kaniini): generate APKv3 packages
-func (pc *PackageContext) EmitPackage() error {
-	pc.Logger.Printf("generating package %s", pc.Identity())
-
-	dataTarGz, err := os.CreateTemp("", "melange-data-*.tar.gz")
-	if err != nil {
-		return fmt.Errorf("unable to open temporary file for writing: %w", err)
-	}
-	defer dataTarGz.Close()
-
-	tarctx, err := tarball.NewContext(
-		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
-		tarball.WithOverrideUIDGID(0, 0),
-		tarball.WithOverrideUname("root"),
-		tarball.WithOverrideGname("root"),
-		tarball.WithUseChecksums(true),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to build tarball context: %w", err)
-	}
-
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+func (pc *PackageContext) calculateInstalledSize(fsys fs.FS) error {
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -321,28 +339,39 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to preprocess package data: %w", err)
 	}
 
-	// generate so:/cmd: virtuals for the filesystem
-	if err := pc.GenerateDependencies(); err != nil {
-		return fmt.Errorf("unable to build final dependencies set: %w", err)
+	return nil
+}
+
+func (pc *PackageContext) emitDataSection(fsys fs.FS, w io.WriteSeeker) error {
+	tarctx, err := tarball.NewContext(
+		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
+		tarball.WithOverrideUIDGID(0, 0),
+		tarball.WithOverrideUname("root"),
+		tarball.WithOverrideGname("root"),
+		tarball.WithUseChecksums(true),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to build tarball context: %w", err)
 	}
 
-	// prepare data.tar.gz
-	dataDigest := sha256.New()
-	dataMW := io.MultiWriter(dataDigest, dataTarGz)
-	if err := tarctx.WriteArchive(dataMW, fsys); err != nil {
+	digest := sha256.New()
+	mw := io.MultiWriter(digest, w)
+	if err := tarctx.WriteArchive(mw, fsys); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)
 	}
 
-	pc.DataHash = hex.EncodeToString(dataDigest.Sum(nil))
-	pc.Logger.Printf("  data.tar.gz installed-size: %d", pc.InstalledSize)
+	pc.DataHash = hex.EncodeToString(digest.Sum(nil))
 	pc.Logger.Printf("  data.tar.gz digest: %s", pc.DataHash)
 
-	if _, err := dataTarGz.Seek(0, io.SeekStart); err != nil {
+	if _, err := w.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("unable to rewind data tarball: %w", err)
 	}
 
-	// prepare control.tar.gz
-	multitarctx, err := tarball.NewContext(
+	return nil
+}
+
+func (pc *PackageContext) emitNormalSignatureSection(h hash.Hash, w io.WriteSeeker) error {
+	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
 		tarball.WithOverrideUIDGID(0, 0),
 		tarball.WithOverrideUname("root"),
@@ -353,61 +382,99 @@ func (pc *PackageContext) EmitPackage() error {
 		return fmt.Errorf("unable to build tarball context: %w", err)
 	}
 
-	var controlBuf bytes.Buffer
-	if err := pc.GenerateControlData(&controlBuf); err != nil {
-		return fmt.Errorf("unable to process control template: %w", err)
+	fsys := memfs.New()
+	sigbuf, err := sign.RSASignSHA1Digest(h.Sum(nil), pc.Context.SigningKey, pc.Context.SigningPassphrase)
+	if err != nil {
+		return fmt.Errorf("unable to generate signature: %w", err)
 	}
 
-	controlFS := memfs.New()
-	if err := controlFS.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
-		return fmt.Errorf("unable to build control FS: %w", err)
+	if err := fsys.WriteFile(pc.SignatureName(), sigbuf, 0644); err != nil {
+		return fmt.Errorf("unable to build signature FS: %w", err)
 	}
 
+	if err := tarctx.WriteArchive(w, fsys); err != nil {
+		return fmt.Errorf("unable to write signature tarball: %w", err)
+	}
+
+	if _, err := w.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("unable to rewind signature tarball: %w", err)
+	}
+
+	return nil
+}
+
+func (pc *PackageContext) wantSignature() bool {
+	return pc.Context.SigningKey != ""
+}
+
+func (pc *PackageContext) EmitPackage() error {
+	pc.Logger.Printf("generating package %s", pc.Identity())
+
+	// filesystem for the data package
+	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+
+	// generate so:/cmd: virtuals for the filesystem
+	if err := pc.GenerateDependencies(); err != nil {
+		return fmt.Errorf("unable to build final dependencies set: %w", err)
+	}
+
+	// walk the filesystem to calculate the installed-size
+	if err := pc.calculateInstalledSize(fsys); err != nil {
+		return err
+	}
+
+	pc.Logger.Printf("  installed-size: %d", pc.InstalledSize)
+
+	// prepare data.tar.gz
+	dataTarGz, err := os.CreateTemp("", "melange-data-*.tar.gz")
+	if err != nil {
+		return fmt.Errorf("unable to open temporary file for writing: %w", err)
+	}
+	defer dataTarGz.Close()
+	defer os.Remove(dataTarGz.Name())
+
+	if err := pc.emitDataSection(fsys, dataTarGz); err != nil {
+		return err
+	}
+
+	// prepare control.tar.gz
 	controlTarGz, err := os.CreateTemp("", "melange-control-*.tar.gz")
 	if err != nil {
 		return fmt.Errorf("unable to open temporary file for writing: %w", err)
 	}
 	defer controlTarGz.Close()
+	defer os.Remove(controlTarGz.Name())
 
-	controlDigest := sha1.New() // nolint:gosec
-	controlMW := io.MultiWriter(controlDigest, controlTarGz)
-	if err := multitarctx.WriteArchive(controlMW, controlFS); err != nil {
-		return fmt.Errorf("unable to write control tarball: %w", err)
+	var controlDigest hash.Hash
+
+	// APKv2 style signature is a SHA-1 hash on the control digest,
+	// APKv2+Fulcio style signature is an SHA-256 hash on the control
+	// digest.
+	controlDigest = sha256.New()
+
+	// Key-based signature (normal), use SHA-1
+	if pc.Context.SigningKey != "" {
+		controlDigest = sha1.New()
 	}
 
-	controlHash := hex.EncodeToString(controlDigest.Sum(nil))
-	pc.Logger.Printf("  control.tar.gz digest: %s", controlHash)
-
-	if _, err := controlTarGz.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("unable to rewind control tarball: %w", err)
+	finalDigest, err := pc.generateControlSection(controlDigest, controlTarGz)
+	if err != nil {
+		return err
 	}
 
 	combinedParts := []io.Reader{controlTarGz, dataTarGz}
 
-	if pc.Context.SigningKey != "" {
-		signatureFS := memfs.New()
-		signatureBuf, err := sign.RSASignSHA1Digest(controlDigest.Sum(nil),
-			pc.Context.SigningKey, pc.Context.SigningPassphrase)
-		if err != nil {
-			return fmt.Errorf("unable to generate signature: %w", err)
-		}
-
-		if err := signatureFS.WriteFile(pc.SignatureName(), signatureBuf, 0644); err != nil {
-			return fmt.Errorf("unable to build signature FS: %w", err)
-		}
-
+	if pc.wantSignature() {
 		signatureTarGz, err := os.CreateTemp("", "melange-signature-*.tar.gz")
 		if err != nil {
 			return fmt.Errorf("unable to open temporary file for writing: %w", err)
 		}
 		defer signatureTarGz.Close()
+		defer os.Remove(signatureTarGz.Name())
 
-		if err := multitarctx.WriteArchive(signatureTarGz, signatureFS); err != nil {
-			return fmt.Errorf("unable to write signature tarball: %w", err)
-		}
-
-		if _, err := signatureTarGz.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("unable to rewind signature tarball: %w", err)
+		// TODO(kaniini): Emit fulcio signature if signing key not configured.
+		if err := pc.emitNormalSignatureSection(finalDigest, signatureTarGz); err != nil {
+			return err
 		}
 
 		combinedParts = append([]io.Reader{signatureTarGz}, combinedParts...)

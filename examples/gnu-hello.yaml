@@ -24,6 +24,7 @@ environment:
       - alpine-baselayout-data
       - busybox
       - build-base
+      - scanelf
       - ssl_client
       - ca-certificates-bundle
 
@@ -35,6 +36,7 @@ pipeline:
   - uses: autoconf/configure
   - uses: autoconf/make
   - uses: autoconf/make-install
+  - uses: strip
 
 subpackages:
   - name: "hello-doc"

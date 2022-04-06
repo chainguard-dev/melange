@@ -16,7 +16,7 @@ function run() {
 }
 
 function docker_run() {
-    docker run --rm -w /melange -v $(pwd):/melange --entrypoint /melange/hack/run-devenv.sh apko-inception:latest run $@
+    docker run --privileged --rm -w /melange -v $(pwd):/melange --entrypoint /melange/hack/run-devenv.sh apko-inception:latest run $@
 }
 
 case "$1" in

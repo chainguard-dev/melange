@@ -184,6 +184,7 @@ func (p *Pipeline) monitorPipe(pipe io.ReadCloser) {
 }
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
+	p.With = mutateWith(ctx, p.With)
 	fragment := mutateStringFromMap(p.With, p.Runs)
 	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)

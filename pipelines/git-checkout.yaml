@@ -1,0 +1,26 @@
+name: Check out sources from git
+
+inputs:
+  repository:
+    description: |
+      The repository to check out sources from.
+    required: true
+
+  destination:
+    description: |
+      The path to check out the sources to.
+    default: .
+
+  depth:
+    description: |
+      The depth to use when cloning.
+    default: 50
+
+  branch:
+    description: |
+      The branch to check out, otherwise HEAD is checked out.
+
+pipeline:
+  - runs: |
+      [ -z '${{inputs.branch}}' ] && branch='--branch ${{inputs.branch}}'
+      git clone $branch --depth ${{inputs.depth} ${{inputs.repository}} ${{inputs.destination}}

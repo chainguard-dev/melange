@@ -24,7 +24,7 @@ jobs:
 
         apk upgrade -Ua
         apk add go cosign build-base git bubblewrap
-    - uses: actions/checkout@main
+    - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Build bootstrap melange tool (stage1)
       run: make melange
     - name: Generate a package signing keypair

@@ -1,0 +1,11 @@
+name: Compile project with meson
+
+inputs:
+  output-dir:
+    description: |
+      The output directory for the Meson build.
+    default: output
+
+pipeline:
+  - runs: |
+      meson compile -j $(nproc) -C ${{inputs.output-dir}}

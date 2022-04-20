@@ -16,4 +16,6 @@ inputs:
 
 pipeline:
   - runs: |
-      meson . ${{inputs.output-dir}} ${{inputs.opts}}
+      meson . ${{inputs.output-dir}} \
+        --prefix=/usr \
+        ${{inputs.opts}}

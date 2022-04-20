@@ -1,0 +1,15 @@
+name: Configure project with meson
+
+inputs:
+  output-dir:
+    description: |
+      The output directory for the Meson build.
+    default: output
+
+  opts:
+    description: |
+      Compile options for the Meson build.
+
+pipeline:
+  - runs: |
+      meson . ${{inputs.output-dir}} ${{inputs.opts}}

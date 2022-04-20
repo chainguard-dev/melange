@@ -1,5 +1,9 @@
 name: Apply patches
 
+needs:
+  packages:
+    - patch
+
 inputs:
   strip-components:
     description: |

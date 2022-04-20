@@ -1,4 +1,8 @@
 name: Run autoconf make install
 
+needs:
+  packages:
+    - make
+
 pipeline:
   - runs: make install DESTDIR="${{targets.destdir}}"

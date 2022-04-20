@@ -1,4 +1,8 @@
 name: Run autoconf make
 
+needs:
+  packages:
+    - make
+
 pipeline:
   - runs: make -j$(nproc)

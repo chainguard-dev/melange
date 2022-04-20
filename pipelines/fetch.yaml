@@ -1,5 +1,9 @@
 name: Fetch and extract external object into workspace
 
+needs:
+  packages:
+    - wget
+
 inputs:
   strip-components:
     description: |

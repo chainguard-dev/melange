@@ -28,9 +28,7 @@ environment:
       - fuse3-dev
       - glib-dev
       - coreutils
-      - meson
       - py3-docutils
-      - git
 
 pipeline:
   - uses: git-checkout

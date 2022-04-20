@@ -1,5 +1,9 @@
 name: Check out sources from git
 
+needs:
+  packages:
+    - git
+
 inputs:
   repository:
     description: |

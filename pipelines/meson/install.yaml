@@ -1,5 +1,9 @@
 name: Install project with meson
 
+needs:
+  packages:
+    - meson
+
 inputs:
   output-dir:
     description: |

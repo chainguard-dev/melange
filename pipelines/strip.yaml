@@ -1,5 +1,9 @@
 name: Strip binaries
 
+needs:
+  packages:
+    - binutils
+
 pipeline:
   - runs: |
       cd "${{targets.destdir}}"

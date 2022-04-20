@@ -1,5 +1,9 @@
 name: Configure project with meson
 
+needs:
+  packages:
+    - meson
+
 inputs:
   output-dir:
     description: |
@@ -12,4 +16,6 @@ inputs:
 
 pipeline:
   - runs: |
-      meson . ${{inputs.output-dir}} ${{inputs.opts}}
+      meson . ${{inputs.output-dir}} \
+        --prefix=/usr \
+        ${{inputs.opts}}

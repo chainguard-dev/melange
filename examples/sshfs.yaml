@@ -1,0 +1,42 @@
+package:
+  name: sshfs
+  version: 3.7.2
+  epoch: 0
+  description: "FUSE client based on the SSH File Transfer Protocol"
+  target-architecture:
+    - all
+  copyright:
+    - paths:
+      - "*"
+      attestation: |
+        Copyright (C) 2004 Miklos Szeredi <miklos@szeredi.hu>
+      license: GPL-2.0-or-later
+  dependencies:
+    runtime:
+
+environment:
+  contents:
+    repositories:
+      - https://dl-cdn.alpinelinux.org/alpine/edge/main
+    packages:
+      - alpine-baselayout-data
+      - busybox
+      - build-base
+      - scanelf
+      - ssl_client
+      - ca-certificates-bundle
+      - fuse3-dev
+      - glib-dev
+      - coreutils
+      - meson
+      - py3-docutils
+      - git
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/libfuse/sshfs
+  - uses: meson/configure
+  - uses: meson/compile
+  - uses: meson/install
+  - uses: strip

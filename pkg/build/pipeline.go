@@ -108,6 +108,10 @@ func rightJoinMap(left map[string]string, right map[string]string) map[string]st
 }
 
 func validateWith(data map[string]string, inputs map[string]Input) (map[string]string, error) {
+	if data == nil {
+		data = make(map[string]string)
+	}
+
 	for k, v := range inputs {
 		if data[k] == "" && v.Default != "" {
 			data[k] = v.Default

@@ -271,3 +271,33 @@ func NewPipeline(ctx *PipelineContext) (*Pipeline, error) {
 
 	return &p, nil
 }
+
+// TODO(kaniini): Precompile pipeline before running / evaluating its
+// needs.
+func (p *Pipeline) ApplyNeeds(ctx *PipelineContext) error {
+	ic := &ctx.Context.Configuration.Environment
+
+	for _, pkg := range p.Needs.Packages {
+		p.logger.Printf("  adding package %q for pipeline %q", pkg, p.Identity())
+		ic.Contents.Packages = append(ic.Contents.Packages, pkg)
+	}
+
+	if p.Uses != "" {
+		sp, err := NewPipeline(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := sp.loadUse(ctx, p.Uses, p.With); err != nil {
+			return err
+		}
+
+		if err := sp.ApplyNeeds(ctx); err != nil {
+			return err
+		}
+	}
+
+	ic.Contents.Packages = dedup(ic.Contents.Packages)
+
+	return nil
+}

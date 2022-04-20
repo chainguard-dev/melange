@@ -283,11 +283,23 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 func (ctx *Context) BuildPackage() error {
 	ctx.Summarize()
 
+	pctx := PipelineContext{
+		Context: ctx,
+		Package: &ctx.Configuration.Package,
+	}
+
 	guestDir, err := os.MkdirTemp("", "melange-guest-*")
 	if err != nil {
 		return fmt.Errorf("unable to make guest directory: %w", err)
 	}
 	ctx.GuestDir = guestDir
+
+	ctx.Logger.Printf("evaluating pipelines for package requirements")
+	for _, p := range ctx.Configuration.Pipeline {
+		if err := p.ApplyNeeds(&pctx); err != nil {
+			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
+		}
+	}
 
 	if err := ctx.BuildWorkspace(guestDir); err != nil {
 		return fmt.Errorf("unable to build workspace: %w", err)
@@ -295,10 +307,6 @@ func (ctx *Context) BuildPackage() error {
 
 	// run the main pipeline
 	ctx.Logger.Printf("running the main pipeline")
-	pctx := PipelineContext{
-		Context: ctx,
-		Package: &ctx.Configuration.Package,
-	}
 	for _, p := range ctx.Configuration.Pipeline {
 		if err := p.Run(&pctx); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)

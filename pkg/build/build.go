@@ -45,6 +45,10 @@ type Copyright struct {
 	License     string
 }
 
+type Needs struct {
+	Packages []string
+}
+
 type Pipeline struct {
 	Name     string
 	Uses     string
@@ -52,6 +56,7 @@ type Pipeline struct {
 	Runs     string
 	Pipeline []Pipeline
 	Inputs   map[string]Input
+	Needs    Needs
 	logger   *log.Logger
 }
 

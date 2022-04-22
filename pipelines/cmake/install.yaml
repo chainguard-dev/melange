@@ -1,0 +1,16 @@
+name: Build a CMake project
+
+needs:
+  packages:
+    - cmake
+    - ninja
+
+inputs:
+  output-dir:
+    description: |
+      The output directory for the CMake build.
+    default: output
+
+pipeline:
+  - runs: |
+      DESTDIR="${{targets.destdir}}" cmake --install ${{inputs.output-dir}}

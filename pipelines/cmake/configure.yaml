@@ -1,0 +1,24 @@
+name: Configure a CMake project
+
+needs:
+  packages:
+    - cmake
+    - ninja
+
+inputs:
+  output-dir:
+    description: |
+      The output directory for the CMake build.
+    default: output
+
+  opts:
+    description: |
+      Compile options for the CMake build.
+
+pipeline:
+  - runs: |
+      cmake -B ${{inputs.output-dir}} -G Ninja \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
+        ${{inputs.opts}}

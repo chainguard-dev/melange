@@ -1,0 +1,37 @@
+package:
+  name: mbedtls
+  version: 2.16.12
+  epoch: 0
+  description: "ARM mbed TLS library"
+  target-architecture:
+    - all
+  copyright:
+    - paths:
+      - "*"
+      license: Apache-2.0
+  dependencies:
+    runtime:
+
+environment:
+  contents:
+    repositories:
+      - https://dl-cdn.alpinelinux.org/alpine/edge/main
+    packages:
+      - alpine-baselayout-data
+      - busybox
+      - build-base
+      - scanelf
+      - ssl_client
+      - ca-certificates-bundle
+      - perl
+      - python3
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/Mbed-TLS/mbedtls
+      branch: mbedtls-2.16
+  - uses: cmake/configure
+  - uses: cmake/build
+  - uses: cmake/install
+  - uses: strip

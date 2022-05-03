@@ -1,4 +1,3 @@
-
 name: Create Release
 
 on:
@@ -7,7 +6,7 @@ on:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 env:
-  GO_VERSION: 1.17.x
+  GO_VERSION: 1.17
 
 jobs:
   cli:
@@ -20,9 +19,10 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab # v3.0.0
       with:
         go-version: ${{ env.GO_VERSION }}
+        check-latest: true
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v2.4.0
     - uses: sigstore/cosign-installer@bb61838e7ee5bf314f85f2e219b3706835fa6306 # v2.0.1
     - uses: goreleaser/goreleaser-action@b953231f81b8dfd023c58e0854a721e35037f28b # v2.8.1
@@ -49,9 +49,10 @@ jobs:
       COSIGN_EXPERIMENTAL: "true"
 
     steps:
-    - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab # v3.0.0
       with:
         go-version: ${{ env.GO_VERSION }}
+        check-latest: true
     - uses: imjasonh/setup-ko@2c3450ca27f6e6f2b02e72a40f2163c281a1f675 # v0.4
       with:
         version: v0.10.0

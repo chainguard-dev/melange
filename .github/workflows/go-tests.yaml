@@ -1,4 +1,3 @@
----
 name: Go Tests
 
 on:
@@ -11,13 +10,13 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.17.7]
+        go-version: [1.17]
     runs-on: ubuntu-latest
     steps:
-    - name: Install Go
-      uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab # v3.0.0
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab # v3.0.0
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - name: Test

@@ -19,7 +19,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab # v3.0.0
+    - uses: actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2 # v3.0.0
       with:
         go-version: ${{ env.GO_VERSION }}
         check-latest: true
@@ -49,7 +49,7 @@ jobs:
       COSIGN_EXPERIMENTAL: "true"
 
     steps:
-    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab # v3.0.0
+    - uses: actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2 # v3.0.0
       with:
         go-version: ${{ env.GO_VERSION }}
         check-latest: true

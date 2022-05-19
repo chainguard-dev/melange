@@ -92,6 +92,8 @@ type Context struct {
 	OutDir            string
 	Logger            *log.Logger
 	Arch              apko_types.Architecture
+	ExtraKeys         []string
+	ExtraRepos        []string
 }
 
 type Dependencies struct {
@@ -220,6 +222,22 @@ func WithArch(arch apko_types.Architecture) Option {
 	}
 }
 
+// WithExtraKeys adds a set of extra keys to the build context.
+func WithExtraKeys(extraKeys []string) Option {
+	return func(ctx *Context) error {
+		ctx.ExtraKeys = extraKeys
+		return nil
+	}
+}
+
+// WithExtraRepos adds a set of extra repos to the build context.
+func WithExtraRepos(extraRepos []string) Option {
+	return func(ctx *Context) error {
+		ctx.ExtraRepos = extraRepos
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(configFile string) error {
 	data, err := os.ReadFile(configFile)
@@ -260,6 +278,8 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
 		apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
+		apko_build.WithExtraKeys(ctx.ExtraKeys),
+		apko_build.WithExtraRepos(ctx.ExtraRepos),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)

@@ -34,6 +34,8 @@ func Build() *cobra.Command {
 	var useProot bool
 	var outDir string
 	var archstrs []string
+	var extraKeys []string
+	var extraRepos []string
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -50,6 +52,8 @@ func Build() *cobra.Command {
 				build.WithSigningKey(signingKey),
 				build.WithUseProot(useProot),
 				build.WithOutDir(outDir),
+				build.WithExtraKeys(extraKeys),
+				build.WithExtraRepos(extraRepos),
 			}
 
 			if len(args) > 0 {
@@ -72,6 +76,8 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config.")
+	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 
 	return cmd
 }

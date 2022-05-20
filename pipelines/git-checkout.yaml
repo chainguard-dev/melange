@@ -26,6 +26,5 @@ inputs:
 
 pipeline:
   - runs: |
-      set -x
       [ -n '${{inputs.branch}}' ] && branch='--branch ${{inputs.branch}}'
       git clone $branch --depth ${{inputs.depth}} ${{inputs.repository}} ${{inputs.destination}}

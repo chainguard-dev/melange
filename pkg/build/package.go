@@ -235,7 +235,9 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 			}
 
 			for _, lib := range libs {
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+				if strings.Contains(lib, ".so.") {
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+				}
 			}
 
 			if strings.Contains(basename, ".so.") {

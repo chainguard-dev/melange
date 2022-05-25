@@ -163,6 +163,17 @@ func dedup(in []string) []string {
 	return out
 }
 
+func allowedPrefix(path string, prefixes []string) bool {
+	for _, pfx := range prefixes {
+		if strings.HasPrefix(path, pfx) {
+			return true
+		}
+	}
+
+	return false
+}
+
+var cmdPrefixes = []string{"./bin", "./sbin", "./usr/bin", "./usr/sbin"}
 func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for commands...")
 
@@ -183,7 +194,7 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 		}
 
 		if mode.Perm() & 0555 == 0555 {
-			if strings.Contains(path, "bin") {
+			if allowedPrefix(path, cmdPrefixes) {
 				basename := filepath.Base(path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s-r%d", basename, pc.Origin.Version, pc.Origin.Epoch))
 			}

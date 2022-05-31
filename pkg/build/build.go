@@ -118,7 +118,7 @@ func New(opts ...Option) (*Context, error) {
 
 	// If no config file is explicitly requested for the build context
 	// we check if .melange.yaml or melange.yaml exist.
-	checks := []string{".melange.yaml", "melange.yaml"}
+	checks := []string{".melange.yaml", ".melange.yml", "melange.yaml", "melange.yml"}
 	if ctx.ConfigFile == "" {
 		for _, chk := range checks {
 			if _, err := os.Stat(chk); err == nil {

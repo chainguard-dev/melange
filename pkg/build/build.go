@@ -103,7 +103,6 @@ type Dependencies struct {
 
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
-		ConfigFile:   ".melange.yaml",
 		WorkspaceDir: ".",
 		PipelineDir:  "/usr/share/melange/pipelines",
 		OutDir:       ".",
@@ -115,6 +114,22 @@ func New(opts ...Option) (*Context, error) {
 		if err := opt(&ctx); err != nil {
 			return nil, err
 		}
+	}
+
+	// If no config file is explicitly requested for the build context
+	// we check if .melange.yaml or melange.yaml exist.
+	checks := []string{".melange.yaml", "melange.yaml"}
+	if ctx.ConfigFile == "" {
+		for _, chk := range checks {
+			if _, err := os.Stat(chk); err == nil {
+				ctx.ConfigFile = chk
+			}
+		}
+	}
+
+	// If no config file could be automatically detected, error.
+	if ctx.ConfigFile == "" {
+		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 
 	if err := ctx.Configuration.Load(ctx.ConfigFile); err != nil {

@@ -400,6 +400,7 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--dev", "/dev",
 		"--proc", "/proc",
 		"--chdir", "/home/build",
+		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
 	}
 	args = append(baseargs, args...)
 	cmd := exec.Command("bwrap", args...)

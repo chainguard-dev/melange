@@ -124,6 +124,7 @@ func New(opts ...Option) (*Context, error) {
 			if _, err := os.Stat(chk); err == nil {
 				ctx.Logger.Printf("no configuration file provided -- using %s", chk)
 				ctx.ConfigFile = chk
+				break
 			}
 		}
 	}

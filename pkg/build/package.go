@@ -173,7 +173,7 @@ func allowedPrefix(path string, prefixes []string) bool {
 	return false
 }
 
-var cmdPrefixes = []string{"./bin", "./sbin", "./usr/bin", "./usr/sbin"}
+var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
 func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for commands...")
 

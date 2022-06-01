@@ -32,6 +32,8 @@ pipeline:
       repository: https://github.com/Mbed-TLS/mbedtls
       branch: mbedtls-2.16
   - uses: cmake/configure
+    with:
+      opts: -DUSE_SHARED_MBEDTLS_LIBRARY=ON
   - uses: cmake/build
   - uses: cmake/install
   - uses: strip

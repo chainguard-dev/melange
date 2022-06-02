@@ -33,6 +33,7 @@ func Build() *cobra.Command {
 	var sourceDir string
 	var signingKey string
 	var useProot bool
+	var emptyWorkspace bool
 	var outDir string
 	var archstrs []string
 	var extraKeys []string
@@ -52,6 +53,7 @@ func Build() *cobra.Command {
 				build.WithPipelineDir(pipelineDir),
 				build.WithSigningKey(signingKey),
 				build.WithUseProot(useProot),
+				build.WithEmptyWorkspace(emptyWorkspace),
 				build.WithOutDir(outDir),
 				build.WithExtraKeys(extraKeys),
 				build.WithExtraRepos(extraRepos),
@@ -84,6 +86,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
+	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config.")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")

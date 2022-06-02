@@ -15,6 +15,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -29,6 +30,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,6 +102,7 @@ type Context struct {
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
+	ignorePatterns    []*xignore.Pattern
 }
 
 type Dependencies struct {
@@ -381,10 +384,61 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	return nil
 }
 
+func (ctx *Context) LoadIgnoreRules() error {
+	ignorePath := filepath.Join(ctx.SourceDir, ctx.WorkspaceIgnore)
+
+	if _, err := os.Stat(ignorePath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+
+		return err
+	}
+
+	ctx.Logger.Printf("loading ignore rules from %s", ignorePath)
+
+	inF, err := os.Open(ignorePath)
+	if err != nil {
+		return err
+	}
+	defer inF.Close()
+
+	ignF := xignore.Ignorefile{}
+	if err := ignF.FromReader(inF); err != nil {
+		return err
+	}
+
+	for _, rule := range ignF.Patterns {
+		pattern := xignore.NewPattern(rule)
+
+		if err := pattern.Prepare(); err != nil {
+			return err
+		}
+
+		ctx.ignorePatterns = append(ctx.ignorePatterns, pattern)
+	}
+
+	return nil
+}
+
+func (ctx *Context) matchesIgnorePattern(path string) bool {
+	for _, pat := range ctx.ignorePatterns {
+		if pat.Match(path) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (ctx *Context) PopulateWorkspace() error {
 	if ctx.EmptyWorkspace {
 		ctx.Logger.Printf("empty workspace requested")
 		return nil
+	}
+
+	if err := ctx.LoadIgnoreRules(); err != nil {
+		return err
 	}
 
 	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
@@ -403,6 +457,10 @@ func (ctx *Context) PopulateWorkspace() error {
 
 		mode := fi.Mode()
 		if !mode.IsRegular() {
+			return nil
+		}
+
+		if ctx.matchesIgnorePattern(path) {
 			return nil
 		}
 

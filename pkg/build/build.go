@@ -15,7 +15,10 @@
 package build
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +29,8 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 )
 
@@ -84,16 +89,20 @@ type Context struct {
 	ConfigFile        string
 	SourceDateEpoch   time.Time
 	WorkspaceDir      string
+	WorkspaceIgnore   string
 	PipelineDir       string
+	SourceDir         string
 	GuestDir          string
 	SigningKey        string
 	SigningPassphrase string
 	UseProot          bool
+	EmptyWorkspace    bool
 	OutDir            string
 	Logger            *log.Logger
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
+	ignorePatterns    []*xignore.Pattern
 }
 
 type Dependencies struct {
@@ -103,11 +112,13 @@ type Dependencies struct {
 
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
-		WorkspaceDir: ".",
-		PipelineDir:  "/usr/share/melange/pipelines",
-		OutDir:       ".",
-		Logger:       log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
-		Arch:         apko_types.ParseArchitecture(runtime.GOARCH),
+		WorkspaceDir:    "./workspace",
+		WorkspaceIgnore: ".melangeignore",
+		PipelineDir:     "/usr/share/melange/pipelines",
+		SourceDir:       ".",
+		OutDir:          ".",
+		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
 
 	for _, opt := range opts {
@@ -199,10 +210,34 @@ func WithWorkspaceDir(workspaceDir string) Option {
 	}
 }
 
+// WithWorkspaceIgnore sets the workspace ignore rules file to use.
+func WithWorkspaceIgnore(workspaceIgnore string) Option {
+	return func(ctx *Context) error {
+		ctx.WorkspaceIgnore = workspaceIgnore
+		return nil
+	}
+}
+
+// WithEmptyWorkspace sets whether the workspace should be empty.
+func WithEmptyWorkspace(emptyWorkspace bool) Option {
+	return func(ctx *Context) error {
+		ctx.EmptyWorkspace = emptyWorkspace
+		return nil
+	}
+}
+
 // WithPipelineDir sets the pipeline directory to use.
 func WithPipelineDir(pipelineDir string) Option {
 	return func(ctx *Context) error {
 		ctx.PipelineDir = pipelineDir
+		return nil
+	}
+}
+
+// WithSourceDir sets the source directory to use.
+func WithSourceDir(sourceDir string) Option {
+	return func(ctx *Context) error {
+		ctx.SourceDir = sourceDir
 		return nil
 	}
 }
@@ -317,6 +352,132 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 	return nil
 }
 
+func copyFile(base, src, dest string, perm fs.FileMode) error {
+	basePath := filepath.Join(base, src)
+	destPath := filepath.Join(dest, src)
+	destDir := filepath.Dir(destPath)
+
+	inF, err := os.Open(basePath)
+	if err != nil {
+		return err
+	}
+	defer inF.Close()
+
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
+	}
+
+	outF, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer outF.Close()
+
+	if _, err := io.Copy(outF, inF); err != nil {
+		return err
+	}
+
+	if err := os.Chmod(destPath, perm); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctx *Context) LoadIgnoreRules() error {
+	ignorePath := filepath.Join(ctx.SourceDir, ctx.WorkspaceIgnore)
+
+	if _, err := os.Stat(ignorePath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+
+		return err
+	}
+
+	ctx.Logger.Printf("loading ignore rules from %s", ignorePath)
+
+	inF, err := os.Open(ignorePath)
+	if err != nil {
+		return err
+	}
+	defer inF.Close()
+
+	ignF := xignore.Ignorefile{}
+	if err := ignF.FromReader(inF); err != nil {
+		return err
+	}
+
+	for _, rule := range ignF.Patterns {
+		pattern := xignore.NewPattern(rule)
+
+		if err := pattern.Prepare(); err != nil {
+			return err
+		}
+
+		ctx.ignorePatterns = append(ctx.ignorePatterns, pattern)
+	}
+
+	return nil
+}
+
+func (ctx *Context) matchesIgnorePattern(path string) bool {
+	for _, pat := range ctx.ignorePatterns {
+		if pat.Match(path) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (ctx *Context) PopulateWorkspace() error {
+	if ctx.EmptyWorkspace {
+		ctx.Logger.Printf("empty workspace requested")
+		return nil
+	}
+
+	if err := ctx.LoadIgnoreRules(); err != nil {
+		return err
+	}
+
+	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
+
+	fsys := apkofs.DirFS(ctx.SourceDir)
+
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		if ctx.matchesIgnorePattern(path) {
+			return nil
+		}
+
+		ctx.Logger.Printf("  -> %s", path)
+
+		if err := copyFile(ctx.SourceDir, path, ctx.WorkspaceDir, mode.Perm()); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ctx *Context) BuildPackage() error {
 	ctx.Summarize()
 
@@ -340,6 +501,10 @@ func (ctx *Context) BuildPackage() error {
 
 	if err := ctx.BuildWorkspace(guestDir); err != nil {
 		return fmt.Errorf("unable to build workspace: %w", err)
+	}
+
+	if err := ctx.PopulateWorkspace(); err != nil {
+		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
 
 	// run the main pipeline

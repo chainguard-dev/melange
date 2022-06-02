@@ -103,7 +103,7 @@ type Dependencies struct {
 
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
-		WorkspaceDir: ".",
+		WorkspaceDir: "./workspace",
 		PipelineDir:  "/usr/share/melange/pipelines",
 		OutDir:       ".",
 		Logger:       log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),

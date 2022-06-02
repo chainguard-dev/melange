@@ -16,6 +16,8 @@ package build
 
 import (
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +28,7 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	apkofs "chainguard.dev/apko/pkg/fs"
 	"gopkg.in/yaml.v3"
 )
 
@@ -327,6 +330,72 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 	return nil
 }
 
+func copyFile(base, src, dest string, perm fs.FileMode) error {
+	basePath := filepath.Join(base, src)
+	destPath := filepath.Join(dest, src)
+	destDir := filepath.Dir(destPath)
+
+	inF, err := os.Open(basePath)
+	if err != nil {
+		return err
+	}
+	defer inF.Close()
+
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
+	}
+
+	outF, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer outF.Close()
+
+	if _, err := io.Copy(outF, inF); err != nil {
+		return err
+	}
+
+	if err := os.Chmod(destPath, perm); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctx *Context) PopulateWorkspace(workspaceDir string) error {
+	ctx.Logger.Printf("populating workspace %s from %s", workspaceDir, ctx.SourceDir)
+
+	fsys := apkofs.DirFS(ctx.SourceDir)
+
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		ctx.Logger.Printf("  -> %s", path)
+
+		if err := copyFile(ctx.SourceDir, path, workspaceDir, mode.Perm()); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ctx *Context) BuildPackage() error {
 	ctx.Summarize()
 
@@ -350,6 +419,10 @@ func (ctx *Context) BuildPackage() error {
 
 	if err := ctx.BuildWorkspace(guestDir); err != nil {
 		return fmt.Errorf("unable to build workspace: %w", err)
+	}
+
+	if err := ctx.PopulateWorkspace(ctx.WorkspaceDir); err != nil {
+		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
 
 	// run the main pipeline

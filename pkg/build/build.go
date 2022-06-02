@@ -87,6 +87,7 @@ type Context struct {
 	ConfigFile        string
 	SourceDateEpoch   time.Time
 	WorkspaceDir      string
+	WorkspaceIgnore   string
 	PipelineDir       string
 	SourceDir         string
 	GuestDir          string
@@ -108,12 +109,13 @@ type Dependencies struct {
 
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
-		WorkspaceDir: "./workspace",
-		PipelineDir:  "/usr/share/melange/pipelines",
-		SourceDir:    ".",
-		OutDir:       ".",
-		Logger:       log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
-		Arch:         apko_types.ParseArchitecture(runtime.GOARCH),
+		WorkspaceDir:    "./workspace",
+		WorkspaceIgnore: ".melangeignore",
+		PipelineDir:     "/usr/share/melange/pipelines",
+		SourceDir:       ".",
+		OutDir:          ".",
+		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
 
 	for _, opt := range opts {
@@ -201,6 +203,14 @@ func WithBuildDate(s string) Option {
 func WithWorkspaceDir(workspaceDir string) Option {
 	return func(ctx *Context) error {
 		ctx.WorkspaceDir = workspaceDir
+		return nil
+	}
+}
+
+// WithWorkspaceIgnore sets the workspace ignore rules file to use.
+func WithWorkspaceIgnore(workspaceIgnore string) Option {
+	return func(ctx *Context) error {
+		ctx.WorkspaceIgnore = workspaceIgnore
 		return nil
 	}
 }

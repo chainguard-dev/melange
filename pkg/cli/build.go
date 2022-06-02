@@ -30,6 +30,7 @@ func Build() *cobra.Command {
 	var buildDate string
 	var workspaceDir string
 	var pipelineDir string
+	var sourceDir string
 	var signingKey string
 	var useProot bool
 	var outDir string
@@ -58,6 +59,14 @@ func Build() *cobra.Command {
 
 			if len(args) > 0 {
 				options = append(options, build.WithConfig(args[0]))
+
+				if sourceDir == "" {
+					sourceDir = filepath.Dir(args[0])
+				}
+			}
+
+			if sourceDir != "" {
+				options = append(options, build.WithSourceDir(sourceDir))
 			}
 
 			return BuildCmd(cmd.Context(), archs, options...)
@@ -72,6 +81,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", cwd, "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
+	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")

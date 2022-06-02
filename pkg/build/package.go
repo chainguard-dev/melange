@@ -174,6 +174,7 @@ func allowedPrefix(path string, prefixes []string) bool {
 }
 
 var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
+
 func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for commands...")
 
@@ -193,7 +194,7 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 			return nil
 		}
 
-		if mode.Perm() & 0555 == 0555 {
+		if mode.Perm()&0555 == 0555 {
 			if allowedPrefix(path, cmdPrefixes) {
 				basename := filepath.Base(path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s-r%d", basename, pc.Origin.Version, pc.Origin.Epoch))
@@ -227,7 +228,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 			return nil
 		}
 
-		if mode.Perm() & 0555 == 0555 {
+		if mode.Perm()&0555 == 0555 {
 			basename := filepath.Base(path)
 
 			// most likely a shell script instead of an ELF, so treat any

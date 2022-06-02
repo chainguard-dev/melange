@@ -85,6 +85,7 @@ type Context struct {
 	SourceDateEpoch   time.Time
 	WorkspaceDir      string
 	PipelineDir       string
+	SourceDir         string
 	GuestDir          string
 	SigningKey        string
 	SigningPassphrase string
@@ -105,6 +106,7 @@ func New(opts ...Option) (*Context, error) {
 	ctx := Context{
 		WorkspaceDir: "./workspace",
 		PipelineDir:  "/usr/share/melange/pipelines",
+		SourceDir:    ".",
 		OutDir:       ".",
 		Logger:       log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
 		Arch:         apko_types.ParseArchitecture(runtime.GOARCH),
@@ -203,6 +205,14 @@ func WithWorkspaceDir(workspaceDir string) Option {
 func WithPipelineDir(pipelineDir string) Option {
 	return func(ctx *Context) error {
 		ctx.PipelineDir = pipelineDir
+		return nil
+	}
+}
+
+// WithSourceDir sets the source directory to use.
+func WithSourceDir(sourceDir string) Option {
+	return func(ctx *Context) error {
+		ctx.SourceDir = sourceDir
 		return nil
 	}
 }

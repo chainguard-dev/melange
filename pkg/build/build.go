@@ -93,6 +93,7 @@ type Context struct {
 	SigningKey        string
 	SigningPassphrase string
 	UseProot          bool
+	EmptyWorkspace    bool
 	OutDir            string
 	Logger            *log.Logger
 	Arch              apko_types.Architecture
@@ -200,6 +201,14 @@ func WithBuildDate(s string) Option {
 func WithWorkspaceDir(workspaceDir string) Option {
 	return func(ctx *Context) error {
 		ctx.WorkspaceDir = workspaceDir
+		return nil
+	}
+}
+
+// WithEmptyWorkspace sets whether the workspace should be empty.
+func WithEmptyWorkspace(emptyWorkspace bool) Option {
+	return func(ctx *Context) error {
+		ctx.EmptyWorkspace = emptyWorkspace
 		return nil
 	}
 }
@@ -362,8 +371,13 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	return nil
 }
 
-func (ctx *Context) PopulateWorkspace(workspaceDir string) error {
-	ctx.Logger.Printf("populating workspace %s from %s", workspaceDir, ctx.SourceDir)
+func (ctx *Context) PopulateWorkspace() error {
+	if ctx.EmptyWorkspace {
+		ctx.Logger.Printf("empty workspace requested")
+		return nil
+	}
+
+	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
 
 	fsys := apkofs.DirFS(ctx.SourceDir)
 
@@ -384,7 +398,7 @@ func (ctx *Context) PopulateWorkspace(workspaceDir string) error {
 
 		ctx.Logger.Printf("  -> %s", path)
 
-		if err := copyFile(ctx.SourceDir, path, workspaceDir, mode.Perm()); err != nil {
+		if err := copyFile(ctx.SourceDir, path, ctx.WorkspaceDir, mode.Perm()); err != nil {
 			return err
 		}
 
@@ -421,7 +435,7 @@ func (ctx *Context) BuildPackage() error {
 		return fmt.Errorf("unable to build workspace: %w", err)
 	}
 
-	if err := ctx.PopulateWorkspace(ctx.WorkspaceDir); err != nil {
+	if err := ctx.PopulateWorkspace(); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
 

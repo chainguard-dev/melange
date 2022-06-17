@@ -24,4 +24,3 @@ builds:
   - -trimpath
   ldflags:
   - -extldflags "-static"
-  - "{{ .Env.LDFLAGS }}"

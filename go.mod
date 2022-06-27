@@ -6,7 +6,7 @@ require (
 	chainguard.dev/apko v0.2.3-0.20220328190039-4b6dcc1b2106
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.5.0
-	github.com/stretchr/testify v1.7.3
+	github.com/stretchr/testify v1.7.5
 	github.com/zealic/xignore v0.3.3
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 	gopkg.in/yaml.v3 v3.0.1

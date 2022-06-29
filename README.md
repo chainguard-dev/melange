@@ -28,7 +28,7 @@ the form of OCI container images with [apko][apko].
 
 ## Install
 
-Melange has a dependency on [Alpine Linux](https://www.alpinelinux.org/)
+Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools).
 tooling. Currently the easiest way to run melange is inside an Alpine VM or
 container. If you're on MacOS, you can use a Lima VM, as [documented for
 apko](https://github.com/chainguard-dev/apko/blob/main/mac/README.md).

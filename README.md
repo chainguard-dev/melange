@@ -101,6 +101,18 @@ And then pass the `--signing-key` argument to `melange build`.
 You can also sign APK indexes (generated with the `apk index`
 command) using `melange sign-index`.
 
+The quickest way to get an environment for running apko on Mac or Linux is to clone the repo and use the scripts under the hack
+directory:
+
+```
+$ ./hack/make-devenv.sh
+...
+[melange] ❯ make install
+...
+[melange] ❯ melange build examples/gnu-hello.yaml --arch x86_64
+...
+```
+
 ## Usage with apko
 
 To use a melange built APK in apko, either upload it to a package repository or

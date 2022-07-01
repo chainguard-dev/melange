@@ -73,9 +73,8 @@ load_image() {
 }
 
 run() {
-    docker run --rm -w /melange -v $(pwd):/melange -ti \
-        --cap-add NET_ADMIN --cap-add SYS_ADMIN \
-        --security-opt seccomp=unconfined --security-opt apparmor:unconfined \
+    docker run --rm -w "${PWD}" -v "${PWD}:${PWD}" -ti \
+        -v /var/run/docker.sock:/var/run/docker.sock \
         ${IMAGE_TAG}:latest hack/make-devenv.sh setup
 }
 

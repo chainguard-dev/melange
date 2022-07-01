@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -556,7 +557,9 @@ func (ctx *Context) PrivilegedWorkspaceCmd(args ...string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
+// WorkspaceCmd relies on external tool (either bubblewrap or docker)
 func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
+	executable := "bwrap"
 	baseargs := []string{
 		"--bind", ctx.GuestDir, "/",
 		"--bind", ctx.WorkspaceDir, "/home/build",
@@ -567,8 +570,30 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--chdir", "/home/build",
 		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
 	}
+	if ref := runningDockerImage(); ref != "" && dockerSockExists() {
+		executable = "docker"
+		baseargs = []string{
+			"run", "--rm",
+			"-v", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir),
+			"-w", "/home/build",
+			"-e", fmt.Sprintf("SOURCE_DATE_EPOCH=%d", ctx.SourceDateEpoch.Unix()),
+			ref,
+		}
+	}
 	args = append(baseargs, args...)
-	cmd := exec.Command("bwrap", args...)
+	cmd := exec.Command(executable, args...)
 
 	return cmd, nil
+}
+
+func runningDockerImage() string {
+	out, _ := exec.Command("sh", "-c", "cat /etc/hostname | xargs docker inspect | jq -r .[0].Config.Image | sed 's/^null$//'").Output()
+	return strings.Trim(string(out), "\n")
+}
+
+func dockerSockExists() bool {
+	if _, err := os.Stat("/var/run/docker.sock"); errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	return true
 }

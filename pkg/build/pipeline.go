@@ -211,6 +211,7 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 		return err
 	}
 
+	p.logger.Printf("running command: %s", strings.Join(cmd.Args, " "))
 	if err := cmd.Start(); err != nil {
 		return err
 	}

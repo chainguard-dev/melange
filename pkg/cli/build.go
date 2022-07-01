@@ -81,7 +81,7 @@ func Build() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
-	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", filepath.Join(cwd, "workspace"), "directory used for the workspace at /home/build")
+	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")

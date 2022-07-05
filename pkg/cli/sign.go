@@ -67,6 +67,8 @@ func readAndHashIndex(indexFile string) ([]byte, []byte, error) {
 }
 
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
+	log.Printf("signing index %s with key %s", indexFile, signingKey)
+
 	indexData, indexDigest, err := readAndHashIndex(indexFile)
 	if err != nil {
 		return err
@@ -76,6 +78,8 @@ func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) erro
 	if err != nil {
 		return fmt.Errorf("unable to sign index: %w", err)
 	}
+
+	log.Printf("appending signature to index %s", indexFile)
 
 	sigFS := memfs.New()
 	if err := sigFS.WriteFile(fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(signingKey)), sigData, 0644); err != nil {
@@ -92,6 +96,8 @@ func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) erro
 	if err != nil {
 		return fmt.Errorf("unable to build tarball context: %w", err)
 	}
+
+	log.Printf("writing signed index to %s", indexFile)
 
 	var sigBuffer bytes.Buffer
 	if err := multitarctx.WriteArchive(&sigBuffer, sigFS); err != nil {

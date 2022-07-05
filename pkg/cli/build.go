@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -99,6 +100,8 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 	if len(archs) == 0 {
 		archs = apko_types.AllArchs
 	}
+
+	log.Printf("building for %v", archs)
 
 	var errg errgroup.Group
 

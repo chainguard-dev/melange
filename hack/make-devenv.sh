@@ -53,6 +53,7 @@ contents:
     - tree
     - make
     - docker-cli
+    - qemu
   entrypoint:
     command: /bin/sh -l
 EOT

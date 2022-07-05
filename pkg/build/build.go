@@ -591,19 +591,11 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		if err := ioutil.WriteFile(tmpDockerfile, []byte("FROM scratch\nADD . /"), 0644); err != nil {
 			return nil, err
 		}
-		currentDir, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		if err := os.Chdir(ctx.GuestDir); err != nil {
-			return nil, err
-		}
 		dockerBuildArgs := []string{"build", "-t", newImageName, "-f", tmpDockerfile, "."}
-		ctx.Logger.Printf("running command: cd %s && docker %s", ctx.GuestDir, strings.Join(dockerBuildArgs, " "))
-		if err := exec.Command("docker", dockerBuildArgs...).Run(); err != nil {
-			return nil, err
-		}
-		if err := os.Chdir(currentDir); err != nil {
+		ctx.Logger.Printf("running command: cd %s %% docker %s", ctx.GuestDir, strings.Join(dockerBuildArgs, " "))
+		dockerBuildCmd := exec.Command("docker", dockerBuildArgs...)
+		dockerBuildCmd.Dir = ctx.GuestDir
+		if err := dockerBuildCmd.Run(); err != nil {
 			return nil, err
 		}
 		executable = "docker"

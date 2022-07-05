@@ -115,7 +115,6 @@ type Dependencies struct {
 
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
-		WorkspaceDir:    "./workspace",
 		WorkspaceIgnore: ".melangeignore",
 		PipelineDir:     "/usr/share/melange/pipelines",
 		SourceDir:       ".",
@@ -128,6 +127,19 @@ func New(opts ...Option) (*Context, error) {
 		if err := opt(&ctx); err != nil {
 			return nil, err
 		}
+	}
+
+	// If no workspace directory is explicitly requested, create a
+	// temporary directory for it.  Otherwise, ensure we are in a
+	// subdir for this specific build context.
+	if ctx.WorkspaceDir != "" {
+		ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
+	} else {
+		tmpdir, err := os.MkdirTemp("", "melange-workspace-*")
+		if err != nil {
+			return nil, fmt.Errorf("unable to create workspace dir: %w", err)
+		}
+		ctx.WorkspaceDir = tmpdir
 	}
 
 	// If no config file is explicitly requested for the build context
@@ -167,7 +179,6 @@ func New(opts ...Option) (*Context, error) {
 		ctx.SourceDateEpoch = time.Unix(sec, 0)
 	}
 
-	ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
 	ctx.Logger.SetPrefix(fmt.Sprintf("melange (%s/%s): ", ctx.Configuration.Package.Name, ctx.Arch.ToAPK()))
 
 	return &ctx, nil

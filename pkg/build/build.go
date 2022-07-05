@@ -583,7 +583,7 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--chdir", "/home/build",
 		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
 	}
-	if dockerSockExists() {
+	if dockerCommandExists() && dockerSockExists() {
 		// Must first build an image, using guest dir as the rootfs
 		d := digest.FromString(ctx.GuestDir)
 		newImageName := fmt.Sprintf("melange-%s-%s", d.Algorithm(), d.Hex())
@@ -619,6 +619,11 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 	cmd := exec.Command(executable, args...)
 
 	return cmd, nil
+}
+
+func dockerCommandExists() bool {
+	_, err := exec.LookPath("docker")
+	return err == nil
 }
 
 func dockerSockExists() bool {

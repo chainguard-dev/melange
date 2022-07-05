@@ -48,7 +48,6 @@ contents:
     - cosign
     - build-base
     - git
-    - bubblewrap
     - alpine-base
     - jq
     - tree
@@ -58,11 +57,11 @@ contents:
     command: /bin/sh -l
 EOT
     rm -rf apko
-    apk add git go
+    apk add git go make
     git clone "${APKO_REPO}" -b "${APKO_REF}"
-    (cd apko && go run main.go build --sbom=false ../melange-devenv-apko.yaml ${IMAGE_TAG} ../_output/${DEVENV_IMAGE_TARBALL})
+    (cd apko && make install)
+    apko build --sbom=false melange-devenv-apko.yaml ${IMAGE_TAG} _output/${DEVENV_IMAGE_TARBALL}
     rm -rf apko
-
     chown ${BUILD_UID}:${BUILD_GID} _output/${DEVENV_IMAGE_TARBALL}
 }
 

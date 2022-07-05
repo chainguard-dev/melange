@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -31,6 +32,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/opencontainers/go-digest"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 )
@@ -570,25 +572,42 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--chdir", "/home/build",
 		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
 	}
-	if ref := runningDockerImage(); ref != "" && dockerSockExists() {
+	if dockerSockExists() {
+		// Must first build an image, using guest dir as the rootfs
+		d := digest.FromString(ctx.GuestDir)
+		newImageName := fmt.Sprintf("melange-%s-%s", d.Algorithm(), d.Hex())
+		tmpDockerfile := fmt.Sprintf("/tmp/Dockerfile.%s", newImageName)
+		if err := ioutil.WriteFile(tmpDockerfile, []byte("FROM scratch\nADD . /"), 0644); err != nil {
+			return nil, err
+		}
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		if err := os.Chdir(ctx.GuestDir); err != nil {
+			return nil, err
+		}
+		dockerBuildArgs := []string{"build", "-t", newImageName, "-f", tmpDockerfile, "."}
+		ctx.Logger.Printf("running command: cd %s && docker %s", ctx.GuestDir, strings.Join(dockerBuildArgs, " "))
+		if err := exec.Command("docker", dockerBuildArgs...).Run(); err != nil {
+			return nil, err
+		}
+		if err := os.Chdir(currentDir); err != nil {
+			return nil, err
+		}
 		executable = "docker"
 		baseargs = []string{
 			"run", "--rm",
 			"-v", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir),
 			"-w", "/home/build",
 			"-e", fmt.Sprintf("SOURCE_DATE_EPOCH=%d", ctx.SourceDateEpoch.Unix()),
-			ref,
+			newImageName,
 		}
 	}
 	args = append(baseargs, args...)
 	cmd := exec.Command(executable, args...)
 
 	return cmd, nil
-}
-
-func runningDockerImage() string {
-	out, _ := exec.Command("sh", "-c", "cat /etc/hostname | xargs docker inspect | jq -r .[0].Config.Image | sed 's/^null$//'").Output()
-	return strings.Trim(string(out), "\n")
 }
 
 func dockerSockExists() bool {

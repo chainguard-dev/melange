@@ -592,7 +592,7 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 			return nil, err
 		}
 		dockerBuildArgs := []string{"build", "-t", newImageName, "-f", tmpDockerfile, "."}
-		ctx.Logger.Printf("running command: cd %s %% docker %s", ctx.GuestDir, strings.Join(dockerBuildArgs, " "))
+		ctx.Logger.Printf("running command: cd %s && docker %s", ctx.GuestDir, strings.Join(dockerBuildArgs, " "))
 		dockerBuildCmd := exec.Command("docker", dockerBuildArgs...)
 		dockerBuildCmd.Dir = ctx.GuestDir
 		if err := dockerBuildCmd.Run(); err != nil {

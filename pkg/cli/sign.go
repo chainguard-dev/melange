@@ -15,7 +15,9 @@
 package cli
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha1" // nolint:gosec
 	"fmt"
@@ -23,6 +25,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
@@ -49,6 +52,37 @@ func SignIndex() *cobra.Command {
 	return cmd
 }
 
+func indexIsAlreadySigned(indexFile string) bool {
+	index, err := os.Open(indexFile)
+	if err != nil {
+		log.Fatalf("cannot open index %s: %v", indexFile, err)
+	}
+	defer index.Close()
+
+	gzi, err := gzip.NewReader(index)
+	if err != nil {
+		log.Fatalf("cannot open index %s: %v", indexFile, err)
+	}
+	defer gzi.Close()
+
+	tari := tar.NewReader(gzi)
+	for {
+		hdr, err := tari.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("cannot read index %s: %v", indexFile, err)
+		}
+
+		if strings.HasPrefix(hdr.Name, ".SIGN.RSA") {
+			return true
+		}
+	}
+
+	return false
+}
+
 func readAndHashIndex(indexFile string) ([]byte, []byte, error) {
 	index, err := os.Open(indexFile)
 	if err != nil {
@@ -67,6 +101,11 @@ func readAndHashIndex(indexFile string) ([]byte, []byte, error) {
 }
 
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
+	if indexIsAlreadySigned(indexFile) {
+		log.Printf("index %s is already signed, doing nothing", indexFile)
+		return nil
+	}
+
 	log.Printf("signing index %s with key %s", indexFile, signingKey)
 
 	indexData, indexDigest, err := readAndHashIndex(indexFile)

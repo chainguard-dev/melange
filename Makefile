@@ -90,7 +90,7 @@ melange: $(SRCS) ## Builds melange
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $@ ./
 
 .PHONY: install
-install: $(SRCS) melange ## Builds and moves melange into BINDIR (default /usr/bin)
+install: $(SRCS) ## Installs melange into BINDIR (default /usr/bin)
 	install -Dm755 melange ${DESTDIR}${BINDIR}/melange
 	install -dm755 ${DESTDIR}/usr/share/melange/pipelines
 	tar c -C pipelines . | tar x -C "${DESTDIR}/usr/share/melange/pipelines"

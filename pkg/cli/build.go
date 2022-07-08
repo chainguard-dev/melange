@@ -105,17 +105,28 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 
 	var errg errgroup.Group
 
+	// Set up the build contexts before running them.  This avoids various
+	// race conditions and the possibility that a context may be garbage
+	// collected before it is actually run.
+	//
+	// Yes, this happens.  Really.
+	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
+	bcs := []*build.Context{}
 	for _, arch := range archs {
-		arch := arch
+		opts := append(base_opts, build.WithArch(arch))
+
+		bc, err := build.New(opts...)
+		if err != nil {
+			return err
+		}
+
+		bcs = append(bcs, bc)
+	}
+
+	for _, bc := range bcs {
+		bc := bc
 
 		errg.Go(func() error {
-			opts := append(base_opts, build.WithArch(arch))
-
-			bc, err := build.New(opts...)
-			if err != nil {
-				return err
-			}
-
 			if err := bc.BuildPackage(); err != nil {
 				return fmt.Errorf("failed to build package: %w", err)
 			}

@@ -107,9 +107,9 @@ directory:
 ```
 $ ./hack/make-devenv.sh
 ...
-[melange] ❯ make install
+[melange] ❯ make melange install
 ...
-[melange] ❯ melange build examples/gnu-hello.yaml --workspace-dir="$(pwd)/workspace"
+[melange] ❯ melange build examples/gnu-hello.yaml
 ...
 ```
 

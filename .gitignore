@@ -16,7 +16,6 @@
 .vscode/*
 
 melange
-melange-devenv-apko.yaml
 apko/
 packages/
 workspace/

@@ -15,6 +15,8 @@
 package build
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +27,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"text/template"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -95,6 +98,7 @@ type Context struct {
 	GuestDir          string
 	SigningKey        string
 	SigningPassphrase string
+	Template          string
 	UseProot          bool
 	EmptyWorkspace    bool
 	OutDir            string
@@ -157,7 +161,7 @@ func New(opts ...Option) (*Context, error) {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 
-	if err := ctx.Configuration.Load(ctx.ConfigFile); err != nil {
+	if err := ctx.Configuration.Load(ctx.ConfigFile, ctx.Template); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
@@ -301,14 +305,25 @@ func WithExtraRepos(extraRepos []string) Option {
 	}
 }
 
+func WithTemplate(template string) Option {
+	return func(ctx *Context) error {
+		ctx.Template = template
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
-func (cfg *Configuration) Load(configFile string) error {
+func (cfg *Configuration) Load(configFile, template string) error {
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
+	templatized, err := applyTemplate(data, template)
+	if err != nil {
+		return fmt.Errorf("unable to apply template: %w", err)
+	}
 
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	if err := yaml.Unmarshal(templatized, cfg); err != nil {
 		return fmt.Errorf("unable to parse configuration file: %w", err)
 	}
 
@@ -327,6 +342,27 @@ func (cfg *Configuration) Load(configFile string) error {
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
 
 	return nil
+}
+
+func applyTemplate(contents []byte, t string) ([]byte, error) {
+	if t == "" {
+		return contents, nil
+	}
+
+	var i map[string]interface{}
+	if err := json.Unmarshal([]byte(t), &i); err != nil {
+		return nil, err
+	}
+	tmpl, err := template.New("template").Parse(string(contents))
+	if err != nil {
+		return nil, err
+	}
+	tmpl = tmpl.Option("missingkey=error")
+	buf := bytes.NewBuffer([]byte{})
+	if err := tmpl.Execute(buf, i); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (ctx *Context) BuildWorkspace(workspaceDir string) error {

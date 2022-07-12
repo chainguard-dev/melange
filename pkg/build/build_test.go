@@ -26,11 +26,13 @@ import (
 const defaultTemplateYaml = `package:
   name: nginx
   version: 100
+  test: ${{package.name}}
 `
 
 const templatized = `package:
-  name: {{ .Package }}
-  version: {{ .Version }}
+  name: [[ .Package ]]
+  version: [[ .Version ]]
+  test: ${{package.name}}
 `
 
 func TestApplyTemplate(t *testing.T) {

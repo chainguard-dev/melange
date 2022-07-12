@@ -353,7 +353,7 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 	if err := json.Unmarshal([]byte(t), &i); err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("template").Parse(string(contents))
+	tmpl, err := template.New("template").Delims("[[", "]]").Parse(string(contents))
 	if err != nil {
 		return nil, err
 	}

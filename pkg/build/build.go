@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -353,7 +354,19 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 	if err := json.Unmarshal([]byte(t), &i); err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("template").Delims("[[", "]]").Parse(string(contents))
+
+	// First, replace all protected pipeline templated vars temporarily
+	// So that we can apply the Go template
+	// We have to do this bc go templates doesn't support ignoring certain fields: https://github.com/golang/go/issues/31147
+
+	sr := substitutionReplacements()
+
+	protected := string(contents)
+	for k, v := range sr {
+		protected = strings.ReplaceAll(protected, k, v)
+	}
+
+	tmpl, err := template.New("").Parse(protected)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +375,24 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 	if err := tmpl.Execute(buf, i); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+
+	// Add the pipeline templating back in
+	templateApplied := buf.String()
+	for k, v := range sr {
+		templateApplied = strings.ReplaceAll(templateApplied, v, k)
+	}
+
+	return []byte(templateApplied), nil
+}
+
+func substitutionReplacements() map[string]string {
+	return map[string]string{
+		substitutionPackageName:    "MELANGE_TEMP_REPLACEMENT_PACAKAGE_NAME",
+		substitutionPackageVersion: "MELANGE_TEMP_REPLACEMENT_PACAKAGE_VERSION",
+		substitutionPackageEpoch:   "MELANGE_TEMP_REPLACEMENT_PACAKAGE_EPOCH",
+		substitutionTargetsDestdir: "MELANGE_TEMP_REPLACEMENT_DESTDIR",
+		substitutionSubPkgDir:      "MELANGE_TEMP_REPLACEMENT_SUBPKGDIR",
+	}
 }
 
 func (ctx *Context) BuildWorkspace(workspaceDir string) error {

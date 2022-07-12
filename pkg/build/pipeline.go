@@ -28,6 +28,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	substitutionPackageName    = "${{package.name}}"
+	substitutionPackageVersion = "${{package.version}}"
+	substitutionPackageEpoch   = "${{package.epoch}}"
+	substitutionTargetsDestdir = "${{targets.destdir}}"
+	substitutionSubPkgDir      = "${{targets.subpkgdir}}"
+)
+
 type PipelineContext struct {
 	Context    *Context
 	Package    *Package
@@ -53,16 +61,7 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 }
 
 func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string {
-	nw := map[string]string{
-		"${{package.name}}":    ctx.Package.Name,
-		"${{package.version}}": ctx.Package.Version,
-		"${{package.epoch}}":   strconv.FormatUint(ctx.Package.Epoch, 10),
-		"${{targets.destdir}}": fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
-	}
-
-	if ctx.Subpackage != nil {
-		nw["${{targets.subpkgdir}}"] = fmt.Sprintf("/home/build/melange-out/%s", ctx.Subpackage.Name)
-	}
+	nw := substitutionMap(ctx)
 
 	for k, v := range with {
 		// already mutated?
@@ -77,6 +76,21 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 	// do the actual mutations
 	for k, v := range nw {
 		nw[k] = mutateStringFromMap(nw, v)
+	}
+
+	return nw
+}
+
+func substitutionMap(ctx *PipelineContext) map[string]string {
+	nw := map[string]string{
+		substitutionPackageName:    ctx.Package.Name,
+		substitutionPackageVersion: ctx.Package.Version,
+		substitutionPackageEpoch:   strconv.FormatUint(ctx.Package.Epoch, 10),
+		substitutionTargetsDestdir: fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+	}
+
+	if ctx.Subpackage != nil {
+		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", ctx.Subpackage.Name)
 	}
 
 	return nw

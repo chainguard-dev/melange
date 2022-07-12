@@ -26,11 +26,13 @@ import (
 const defaultTemplateYaml = `package:
   name: nginx
   version: 100
+  test: ${{package.name}}
 `
 
 const templatized = `package:
   name: {{ .Package }}
   version: {{ .Version }}
+  test: ${{package.name}}
 `
 
 func TestApplyTemplate(t *testing.T) {
@@ -143,5 +145,22 @@ func TestLoadConfiguration(t *testing.T) {
 				t.Fatalf("actual didn't match expected: %s", d)
 			}
 		})
+	}
+}
+
+// Makes sure the substitution map in pipeline.go matches the one in build.go
+// TODO: priyawadhwa@, it would be better to use a single map so we don't risk losing substitutions
+func TestSubstitutionReplacementMap(t *testing.T) {
+	pipelineMap := substitutionMap(&PipelineContext{
+		Package:    &Package{Name: "package"},
+		Subpackage: &Subpackage{Name: "subpackage"},
+	})
+	buildMap := substitutionReplacements()
+
+	// make sure all the keys in pipelineMap exist in buildMap
+	for k := range pipelineMap {
+		if _, ok := buildMap[k]; !ok {
+			t.Fatalf("please add %s to substitutionReplacements() in build.go", k)
+		}
 	}
 }

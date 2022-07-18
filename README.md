@@ -122,11 +122,13 @@ make melange install
 
 Melange provides the following default substitutions which can be referenced in the build file pipeline:
 
-* "${{package.name}}"
-* "${{package.version}}"
-* "${{package.epoch}}"
-* "${{targets.destdir}}"
-* "${{targets.subpkgdir}}"
+| **Substitution**         | **Description**                                   |
+|--------------------------|---------------------------------------------------|
+| `${{package.name}}`      | Package name                                      |
+| `${{package.version}}`   | Package version                                   |
+| `${{package.epoch}}`     | Package epoch                                     |
+| `${{targets.destdir}}`   | Directory where targets will be stored            |
+| `${{targets.subpkgdir}}` | Directory where subpackage targets will be stored |
 
 An example build file pipeline with subsitutuions:
 

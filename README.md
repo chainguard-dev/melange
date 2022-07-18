@@ -118,6 +118,47 @@ Then inside the environment, to re-build/re-install melange with local changes:
 make melange install
 ```
 
+## Default Substitutions
+
+Melange provides the following default substitutions which can be referenced in the build file pipeline:
+
+| **Substitution**         | **Description**                                   |
+|--------------------------|---------------------------------------------------|
+| `${{package.name}}`      | Package name                                      |
+| `${{package.version}}`   | Package version                                   |
+| `${{package.epoch}}`     | Package epoch                                     |
+| `${{targets.destdir}}`   | Directory where targets will be stored            |
+| `${{targets.subpkgdir}}` | Directory where subpackage targets will be stored |
+
+An example build file pipeline with subsitutuions:
+
+```yaml
+pipeline:
+  - name: 'Create tmp dir'
+    runs: mkdir ${{targets.destdir}}/var/lib/${{package.name}}/tmp
+```
+
+## Build File Templating
+
+The build file can be templated via [Go templates](https://pkg.go.dev/text/template).
+The template is then passed in as a JSON string via the `--template` flag.
+With templating the same build file can be used for building multiple packages.
+
+For example, use templating to build nginx at multiple versions first by formatting the build file:
+
+```yaml
+package:
+  name: nginx
+  version: {{ .Version }}
+```
+
+and passing in the template via the `--template` flag:
+
+```
+melange build --template '{"Version": "1.20.3"}'
+melange build --template '{"Version": "1.22.0"}'
+```
+
 ## Usage with apko
 
 To use a melange built APK in apko, either upload it to a package repository or

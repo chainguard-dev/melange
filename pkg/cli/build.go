@@ -40,6 +40,7 @@ func Build() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var template string
+	var dependencyLog string
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -60,6 +61,7 @@ func Build() *cobra.Command {
 				build.WithExtraKeys(extraKeys),
 				build.WithExtraRepos(extraRepos),
 				build.WithTemplate(template),
+				build.WithDependencyLog(dependencyLog),
 			}
 
 			if len(args) > 0 {
@@ -92,6 +94,7 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
 	cmd.Flags().StringVar(&template, "template", "", "template to apply to melange config (optional)")
+	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config.")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")

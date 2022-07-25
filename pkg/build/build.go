@@ -107,6 +107,7 @@ type Context struct {
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
+	DependencyLog     string
 	ignorePatterns    []*xignore.Pattern
 }
 
@@ -309,6 +310,14 @@ func WithExtraRepos(extraRepos []string) Option {
 func WithTemplate(template string) Option {
 	return func(ctx *Context) error {
 		ctx.Template = template
+		return nil
+	}
+}
+
+// WithDependencyLog sets a filename to use for dependency logging.
+func WithDependencyLog(logFile string) Option {
+	return func(ctx *Context) error {
+		ctx.DependencyLog = logFile
 		return nil
 	}
 }

@@ -214,16 +214,6 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
-	deplog := &io.Discard
-
-	if pc.Context.DependencyLog != "" {
-		deplog, err := os.Create(pc.Context.DependencyLog)
-		if err != nil {
-			pc.Logger.Printf("WARNING: Unable to open dependency log: %v", err)
-		}
-		defer deplog.Close()
-	}
-
 	depends := map[string][]string{}
 
 	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
@@ -295,9 +285,19 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 		return err
 	}
 
-	je := json.NewEncoder(*deplog)
-	if err := je.Encode(depends); err != nil {
-		return err
+	if pc.Context.DependencyLog != "" {
+		pc.Logger.Printf("writing dependency log")
+
+		logFile, err := os.Create(fmt.Sprintf("%s.%s", pc.Context.DependencyLog, pc.Arch))
+		if err != nil {
+			pc.Logger.Printf("WARNING: Unable to open dependency log: %v", err)
+		}
+		defer logFile.Close()
+
+		je := json.NewEncoder(logFile)
+		if err := je.Encode(depends); err != nil {
+			return err
+		}
 	}
 
 	return nil

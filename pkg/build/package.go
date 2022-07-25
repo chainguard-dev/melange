@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"io"
@@ -213,6 +214,18 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
+	deplog := &io.Discard
+
+	if pc.Context.DependencyLog != "" {
+		deplog, err := os.Create(pc.Context.DependencyLog)
+		if err != nil {
+			pc.Logger.Printf("WARNING: Unable to open dependency log: %v", err)
+		}
+		defer deplog.Close()
+	}
+
+	depends := map[string][]string{}
+
 	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -250,6 +263,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 			for _, lib := range libs {
 				if strings.Contains(lib, ".so.") {
 					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+					depends[lib] = append(depends[lib], path)
 				}
 			}
 
@@ -278,6 +292,11 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 
 		return nil
 	}); err != nil {
+		return err
+	}
+
+	je := json.NewEncoder(*deplog)
+	if err := je.Encode(depends); err != nil {
 		return err
 	}
 

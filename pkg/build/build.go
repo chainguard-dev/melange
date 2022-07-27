@@ -549,6 +549,7 @@ func (ctx *Context) OverlayBinSh() error {
 	if err != nil {
 		return fmt.Errorf("copying overlay /bin/sh: %w", err)
 	}
+	defer outF.Close()
 
 	if _, err := io.Copy(outF, inF); err != nil {
 		return fmt.Errorf("copying overlay /bin/sh: %w", err)

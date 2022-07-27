@@ -108,6 +108,7 @@ type Context struct {
 	ExtraKeys         []string
 	ExtraRepos        []string
 	DependencyLog     string
+	BinShOverlay      string
 	ignorePatterns    []*xignore.Pattern
 }
 
@@ -318,6 +319,15 @@ func WithTemplate(template string) Option {
 func WithDependencyLog(logFile string) Option {
 	return func(ctx *Context) error {
 		ctx.DependencyLog = logFile
+		return nil
+	}
+}
+
+// WithBinShOverlay sets a filename to copy from when installing /bin/sh
+// into a build environment.
+func WithBinShOverlay(binShOverlay string) Option {
+	return func(ctx *Context) error {
+		ctx.BinShOverlay = binShOverlay
 		return nil
 	}
 }

@@ -108,6 +108,7 @@ type Context struct {
 	ExtraKeys         []string
 	ExtraRepos        []string
 	DependencyLog     string
+	BinShOverlay      string
 	ignorePatterns    []*xignore.Pattern
 }
 
@@ -322,6 +323,15 @@ func WithDependencyLog(logFile string) Option {
 	}
 }
 
+// WithBinShOverlay sets a filename to copy from when installing /bin/sh
+// into a build environment.
+func WithBinShOverlay(binShOverlay string) Option {
+	return func(ctx *Context) error {
+		ctx.BinShOverlay = binShOverlay
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(configFile, template string) error {
 	data, err := os.ReadFile(configFile)
@@ -517,6 +527,41 @@ func (ctx *Context) matchesIgnorePattern(path string) bool {
 	return false
 }
 
+func (ctx *Context) OverlayBinSh() error {
+	if ctx.BinShOverlay == "" {
+		return nil
+	}
+
+	targetPath := filepath.Join(ctx.GuestDir, "bin", "sh")
+
+	inF, err := os.Open(ctx.BinShOverlay)
+	if err != nil {
+		return fmt.Errorf("copying overlay /bin/sh: %w", err)
+	}
+	defer inF.Close()
+
+	// We unlink the target first because it might be a symlink.
+	if err := os.Remove(targetPath); err != nil {
+		return fmt.Errorf("copying overlay /bin/sh: %w", err)
+	}
+
+	outF, err := os.Create(targetPath)
+	if err != nil {
+		return fmt.Errorf("copying overlay /bin/sh: %w", err)
+	}
+	defer outF.Close()
+
+	if _, err := io.Copy(outF, inF); err != nil {
+		return fmt.Errorf("copying overlay /bin/sh: %w", err)
+	}
+
+	if err := os.Chmod(targetPath, 0o755); err != nil {
+		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
+	}
+
+	return nil
+}
+
 func (ctx *Context) PopulateWorkspace() error {
 	if ctx.EmptyWorkspace {
 		ctx.Logger.Printf("empty workspace requested")
@@ -587,6 +632,10 @@ func (ctx *Context) BuildPackage() error {
 
 	if err := ctx.BuildWorkspace(guestDir); err != nil {
 		return fmt.Errorf("unable to build workspace: %w", err)
+	}
+
+	if err := ctx.OverlayBinSh(); err != nil {
+		return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 	}
 
 	if err := ctx.PopulateWorkspace(); err != nil {

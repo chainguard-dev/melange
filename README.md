@@ -26,12 +26,43 @@ the form of OCI container images with [apko][apko].
 
    [apko]: https://github.com/chainguard-dev/apko
 
-## Install
+## Installation
 
-Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools).
-Currently the easiest way to run melange is inside an Alpine VM or
-container. If you're on MacOS, you can use a Lima VM, as [documented for
-apko](https://github.com/chainguard-dev/apko/blob/main/mac/README.md).
+Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools). If
+you're not running on Alpine Linux or another apk-based distribution, the quickest way to get
+melange running is to use the [OCI Container (Docker) image](https://github.com/distroless/melange):
+
+```
+$ docker run distroless.dev/melange version
+  __  __   _____   _          _      _   _    ____   _____
+ |  \/  | | ____| | |        / \    | \ | |  / ___| | ____|
+ | |\/| | |  _|   | |       / _ \   |  \| | | |  _  |  _|
+ | |  | | | |___  | |___   / ___ \  | |\  | | |_| | | |___
+ |_|  |_| |_____| |_____| /_/   \_\ |_| \_|  \____| |_____|
+melange
+
+GitVersion:    v0.1.0-63-g3572123
+GitCommit:     35721233dd26cea5c01f7907d5126f9a8a7c55bd
+GitTreeState:  clean
+BuildDate:     2022-07-28T23:06:34
+GoVersion:     go1.18.4
+Compiler:      gc
+Platform:      linux/arm64
+```
+
+To use the examples, you'll generally want to mount your current directory into the container and
+provide elevated privileges e.g:
+
+```
+$ docker run --privileged -v "$PWD":/work distroless.dev/melange build /work/examples/gnu-hello.yaml
+...
+```
+
+The above examples require [Docker](https://docs.docker.com/get-docker/), but should also work with
+other runtimes such as [podman](https://podman.io/getting-started/installation).
+
+Alternatively, if you're on a Mac, you can use the [apko instructions for
+Lima](https://github.com/chainguard-dev/apko/mac/README.md#Lima) to run an Alpine Linux VM.
 
 ## Quickstart
 

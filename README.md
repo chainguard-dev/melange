@@ -68,7 +68,7 @@ Lima](https://github.com/chainguard-dev/apko/mac/README.md#Lima) to run an Alpin
 
 A melange build file looks like:
 
-```
+```yaml
 package:
   name: hello
   version: 2.12

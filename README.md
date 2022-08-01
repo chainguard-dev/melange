@@ -132,23 +132,6 @@ And then pass the `--signing-key` argument to `melange build`.
 You can also sign APK indexes (generated with the `apk index`
 command) using `melange sign-index`.
 
-The quickest way to get an environment for running melange on Mac or Linux
-is to clone the repo and run the following:
-
-```
-docker run --rm -w "${PWD}" -v "${PWD}:${PWD}" -ti --privileged --entrypoint sh \
-  distroless.dev/melange:latest -c \
-    'apk add make --force-broken-world && \
-      apk add go --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community --force-broken-world && \
-      printf "\nWelcome to the melange development environment!\n\n\n" && \
-      export PS1="[melange] ❯ " && sh -i'
-```
-
-Then inside the environment, to re-build/re-install melange with local changes:
-```
-make melange install
-```
-
 ## Default Substitutions
 
 Melange provides the following default substitutions which can be referenced in the build file pipeline:

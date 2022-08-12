@@ -1,9 +1,8 @@
 # melange
 
-Build APK packages using declarative pipelines.
+Build apk packages using declarative pipelines.
 
-Commonly used to provide custom packages for container images built with
-[apko][apko].
+Commonly used to provide custom packages for container images built with [apko][apko].
 
 Key features:
 
@@ -28,12 +27,12 @@ the form of OCI container images with [apko][apko].
 
 ## Installation
 
-Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools). If
-you're not running on Alpine Linux or another apk-based distribution, the quickest way to get
-melange running is to use the [OCI Container (Docker) image](https://github.com/distroless/melange):
+Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools). If you're not on Alpine Linux or another apk-based distribution, the quickest way to get melange running is to use the [OCI Container (Docker) image](https://github.com/distroless/melange):
 
+```shell
+docker run distroless.dev/melange version
 ```
-$ docker run distroless.dev/melange version
+```
   __  __   _____   _          _      _   _    ____   _____
  |  \/  | | ____| | |        / \    | \ | |  / ___| | ____|
  | |\/| | |  _|   | |       / _ \   |  \| | | |  _  |  _|
@@ -41,28 +40,24 @@ $ docker run distroless.dev/melange version
  |_|  |_| |_____| |_____| /_/   \_\ |_| \_|  \____| |_____|
 melange
 
-GitVersion:    v0.1.0-63-g3572123
-GitCommit:     35721233dd26cea5c01f7907d5126f9a8a7c55bd
+GitVersion:    v0.1.0-67-g108fd6a
+GitCommit:     108fd6a5e400bd100ef6db813380de44516de6e6
 GitTreeState:  clean
-BuildDate:     2022-07-28T23:06:34
-GoVersion:     go1.18.4
+BuildDate:     2022-08-01T13:36:41
+GoVersion:     go1.18.5
 Compiler:      gc
-Platform:      linux/arm64
+Platform:      linux/amd64
 ```
 
-To use the examples, you'll generally want to mount your current directory into the container and
-provide elevated privileges e.g:
+To use the examples, you'll generally want to mount your current directory into the container and provide elevated privileges e.g:
 
-```
-$ docker run --privileged -v "$PWD":/work distroless.dev/melange build /work/examples/gnu-hello.yaml
-...
+```shell
+docker run --privileged -v "$PWD":/work distroless.dev/melange build examples/gnu-hello.yaml
 ```
 
-The above examples require [Docker](https://docs.docker.com/get-docker/), but should also work with
-other runtimes such as [podman](https://podman.io/getting-started/installation).
+These examples require [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
 
-Alternatively, if you're on a Mac, you can use the [apko instructions for
-Lima](https://github.com/chainguard-dev/apko/mac/README.md#Lima) to run an Alpine Linux VM.
+Alternatively, if you're on a Mac, you can use the [apko instructions for Lima](https://github.com/chainguard-dev/apko/mac/README.md#Lima) to run an Alpine Linux VM.
 
 ## Quickstart
 
@@ -112,25 +107,64 @@ pipeline:
 
 We can build this with:
 
-    # melange build examples/gnu-hello.yaml
+```shell
+melange build examples/gnu-hello.yaml
+```
 
-This will create a `packages` folder, with an entry for each architecture
-supported by the package. If you only want to build for the current
-architecture, `--arch $(uname -m)`. Inside the architecture directory will be
-APK files for each package built in the pipeline.
+or, with Docker:
 
-If you want to sign your APKs, create a signing key with the
-`melange keygen` command:
+```shell
+docker run --privileged --rm -v "${PWD}":/work \
+  distroless.dev/melange examples/gnu-hello.yaml
+```
 
-    # melange keygen
-    generating keypair with a 4096 bit prime, please wait...
-    wrote private key to melange.rsa
-    wrote public key to melange.rsa.pub
+This will create a `packages` folder, with an entry for each architecture supported by the package. If you only want to build for the current architecture, you can add `--arch $(uname -m)` to the build command. Inside the architecture directory you should find apk files for each package built in the pipeline.
+
+If you want to sign your APKs, create a signing key with the `melange keygen` command:
+
+```shell
+melange keygen
+```
+```
+ generating keypair with a 4096 bit prime, please wait...
+ wrote private key to melange.rsa
+ wrote public key to melange.rsa.pub
+```
 
 And then pass the `--signing-key` argument to `melange build`.
 
-You can also sign APK indexes (generated with the `apk index`
-command) using `melange sign-index`.
+## Creating and Signing apk Indexes
+
+Before installing your melange-generated apks, you'll need to generate a valid apk index for your packages. These can also be signed using the `melange sign-index` command.
+
+Run the following command to generate an apk index for your `packages/` folder:
+
+```shell
+docker run --rm -v "${PWD}":/work \
+    --entrypoint sh \
+    distroless.dev/melange -c \
+        'cd packages && for d in `find . -type d -mindepth 1`; do \
+            ( \
+                cd $d && \
+                apk index -o APKINDEX.tar.gz *.apk && \
+                melange sign-index --signing-key=../../melange.rsa APKINDEX.tar.gz\
+            ) \
+        done'
+```
+
+## Debugging melange Builds
+
+To include debug-level information on melange builds, edit your `melange.yaml` file and include `set -x` in your pipeline. You can add this flag at any point of your pipeline commands to further debug a specific section of your build.
+
+```yaml
+...
+pipeline:
+  - name: Build Minicli application
+    runs: |
+      set -x
+      APP_HOME="${{targets.destdir}}/usr/share/hello-minicli"
+...
+```
 
 ## Default Substitutions
 
@@ -168,22 +202,16 @@ package:
 
 and passing in the template via the `--template` flag:
 
-```
+```shell
 melange build --template '{"Version": "1.20.3"}'
 melange build --template '{"Version": "1.22.0"}'
 ```
 
 ## Usage with apko
 
-To use a melange built APK in apko, either upload it to a package repository or
-use a "local" repository. Using a local repository allows a melange build and
-apko build to run in the same directory (or GitHub repo) without using external
-storage. An example of this approach can be seen in the [nginx-image-demo
-repo](https://github.com/chainguard-dev/nginx-image-demo/). 
+To use a melange built APK in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage. 
+An example of this approach can be seen in the [nginx-image-demo repo](https://github.com/chainguard-dev/nginx-image-demo/). 
 
 ### Coming soon: Keyless signatures
 
-We are working to enable keyless signatures using [Sigstore
-Fulcio](https://github.com/SigStore/fulcio), which can be used with traditional
-signed indices to remove the need to have sensitive key material inside the
-build environment.
+We are working to enable keyless signatures using [Sigstore Fulcio](https://github.com/SigStore/fulcio), which can be used with traditional signed indices to remove the need to have sensitive key material inside the build environment.

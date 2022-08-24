@@ -428,6 +428,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
+		apko_build.WithDebugLogging(true),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)

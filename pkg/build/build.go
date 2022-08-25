@@ -38,6 +38,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type PackageOption struct {
+	NoProvides bool `yaml:"no-provides"`
+	NoDepends  bool `yaml:"no-depends"`
+	NoCommands bool `yaml:"no-commands"`
+}
+
 type Package struct {
 	Name               string
 	Version            string
@@ -46,6 +52,7 @@ type Package struct {
 	TargetArchitecture []string `yaml:"target-architecture"`
 	Copyright          []Copyright
 	Dependencies       Dependencies
+	Options            PackageOption
 }
 
 type Copyright struct {
@@ -73,6 +80,7 @@ type Subpackage struct {
 	Name         string
 	Pipeline     []Pipeline
 	Dependencies Dependencies
+	Options      PackageOption
 }
 
 type Input struct {

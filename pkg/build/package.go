@@ -181,6 +181,10 @@ func allowedPrefix(path string, prefixes []string) bool {
 var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
 
 func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
+	if pc.Options.NoCommands {
+		return nil
+	}
+
 	pc.Logger.Printf("scanning for commands...")
 
 	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
@@ -253,14 +257,16 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				return nil
 			}
 
-			for _, lib := range libs {
-				if strings.Contains(lib, ".so.") {
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-					depends[lib] = append(depends[lib], path)
+			if !pc.Options.NoDepends {
+				for _, lib := range libs {
+					if strings.Contains(lib, ".so.") {
+						generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+						depends[lib] = append(depends[lib], path)
+					}
 				}
 			}
 
-			if strings.Contains(basename, ".so.") {
+			if !pc.Options.NoProvides && strings.Contains(basename, ".so.") {
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {

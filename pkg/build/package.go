@@ -48,12 +48,14 @@ type PackageContext struct {
 	Logger        *log.Logger
 	Dependencies  Dependencies
 	Arch          string
+	Options       PackageOption
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
 	fakesp := Subpackage{
 		Name:         pkg.Name,
 		Dependencies: pkg.Dependencies,
+		Options:      pkg.Options,
 	}
 	return fakesp.Emit(ctx)
 }
@@ -67,6 +69,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
 		Dependencies: spkg.Dependencies,
 		Arch:         ctx.Context.Arch.ToAPK(),
+		Options:      spkg.Options,
 	}
 	return pc.EmitPackage()
 }

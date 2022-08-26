@@ -39,7 +39,11 @@ import (
 )
 
 type Scriptlets struct {
-	Trigger       string `yaml:"trigger"`
+	Trigger struct {
+		Script string `yaml:"trigger"`
+		Paths  []string
+	}
+
 	PreInstall    string `yaml:"pre-install"`
 	PostInstall   string `yaml:"post-install"`
 	PreDeinstall  string `yaml:"pre-deinstall"`

@@ -40,7 +40,7 @@ import (
 
 type Scriptlets struct {
 	Trigger struct {
-		Script string `yaml:"trigger"`
+		Script string
 		Paths  []string
 	}
 

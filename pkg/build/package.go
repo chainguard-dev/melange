@@ -49,6 +49,7 @@ type PackageContext struct {
 	Dependencies  Dependencies
 	Arch          string
 	Options       PackageOption
+	Scriptlets    Scriptlets
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
@@ -56,6 +57,7 @@ func (pkg *Package) Emit(ctx *PipelineContext) error {
 		Name:         pkg.Name,
 		Dependencies: pkg.Dependencies,
 		Options:      pkg.Options,
+		Scriptlets:   pkg.Scriptlets,
 	}
 	return fakesp.Emit(ctx)
 }
@@ -70,6 +72,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Dependencies: spkg.Dependencies,
 		Arch:         ctx.Context.Arch.ToAPK(),
 		Options:      spkg.Options,
+		Scriptlets:   spkg.Scriptlets,
 	}
 	return pc.EmitPackage()
 }
@@ -101,6 +104,9 @@ depend = {{ $dep }}
 {{- range $dep := .Dependencies.Provides }}
 provides = {{ $dep }}
 {{- end }}
+{{- if .Scriptlets.Trigger.Paths }}
+triggers = {{ range $item := .Scriptlets.Trigger.Paths }}{{ $item }} {{ end }}
+{{- end }}
 datahash = {{.DataHash}}
 `
 
@@ -129,6 +135,55 @@ func (pc *PackageContext) generateControlSection(digest hash.Hash, w io.WriteSee
 	fsys := memfs.New()
 	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
 		return digest, fmt.Errorf("unable to build control FS: %w", err)
+	}
+
+	if pc.Scriptlets.Trigger.Script != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".trigger", []byte(pc.Scriptlets.Trigger.Script), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PreInstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".pre-install", []byte(pc.Scriptlets.PreInstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PostInstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".post-install", []byte(pc.Scriptlets.PostInstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PreDeinstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".pre-deinstall", []byte(pc.Scriptlets.PreDeinstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PostDeinstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".post-deinstall", []byte(pc.Scriptlets.PostDeinstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PreUpgrade != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".pre-upgrade", []byte(pc.Scriptlets.PreUpgrade), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PostUpgrade != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".post-upgrade", []byte(pc.Scriptlets.PostUpgrade), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
 	}
 
 	mw := io.MultiWriter(digest, w)

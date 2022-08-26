@@ -38,6 +38,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type Scriptlets struct {
+	Trigger       string `yaml:"trigger"`
+	PreInstall    string `yaml:"pre-install"`
+	PostInstall   string `yaml:"post-install"`
+	PreDeinstall  string `yaml:"pre-deinstall"`
+	PostDeinstall string `yaml:"post-deinstall"`
+	PreUpgrade    string `yaml:"pre-upgrade"`
+	PostUpgrade   string `yaml:"post-upgrade"`
+}
+
 type PackageOption struct {
 	NoProvides bool `yaml:"no-provides"`
 	NoDepends  bool `yaml:"no-depends"`
@@ -53,6 +63,7 @@ type Package struct {
 	Copyright          []Copyright
 	Dependencies       Dependencies
 	Options            PackageOption
+	Scriptlets         Scriptlets
 }
 
 type Copyright struct {
@@ -81,6 +92,7 @@ type Subpackage struct {
 	Pipeline     []Pipeline
 	Dependencies Dependencies
 	Options      PackageOption
+	Scriptlets   Scriptlets
 }
 
 type Input struct {

@@ -231,18 +231,18 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 		return err
 	}
 
-	finish_stdout := make(chan struct{})
-	finish_stderr := make(chan struct{})
+	finishStdout := make(chan struct{})
+	finishStderr := make(chan struct{})
 
-	go p.monitorPipe(stdout, finish_stdout)
-	go p.monitorPipe(stderr, finish_stderr)
+	go p.monitorPipe(stdout, finishStdout)
+	go p.monitorPipe(stderr, finishStderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err
 	}
 
-	<- finish_stdout
-	<- finish_stderr
+	<-finishStdout
+	<-finishStderr
 
 	return nil
 }

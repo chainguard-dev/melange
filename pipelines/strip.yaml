@@ -3,6 +3,7 @@ name: Strip binaries
 needs:
   packages:
     - binutils
+    - scanelf
 
 pipeline:
   - runs: |

@@ -1,0 +1,6 @@
+name: Split locales
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.subpkgdir}}"/usr/share
+      mv "${{targets.destdir}}"/usr/share/locale "${{targets.subpkgdir}}"/usr/share/locale

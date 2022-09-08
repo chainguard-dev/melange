@@ -16,13 +16,11 @@ package cli
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"log"
-	"os"
 
 	"github.com/spf13/cobra"
-	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
+
+	"chainguard.dev/melange/internal/index"
 )
 
 func Index() *cobra.Command {
@@ -42,32 +40,5 @@ func Index() *cobra.Command {
 }
 
 func IndexCmd(ctx context.Context, apkIndexFilename string, apkFiles []string) error {
-	packages := []*apkrepo.Package{}
-	for _, apkFile := range apkFiles {
-		log.Printf("processing package %s", apkFile)
-		f, err := os.Open(apkFile)
-		if err != nil {
-			return fmt.Errorf("failed to open package %s: %w", apkFile, err)
-		}
-		pkg, err := apkrepo.ParsePackage(f)
-		if err != nil {
-			return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
-		}
-		packages = append(packages, pkg)
-	}
-	index := &apkrepo.ApkIndex{
-		Packages: packages,
-	}
-	log.Printf("generating index at %s", apkIndexFilename)
-	archive, err := apkrepo.ArchiveFromIndex(index)
-	if err != nil {
-		return err
-	}
-	outFile, err := os.Create(apkIndexFilename)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-	_, err = io.Copy(outFile, archive)
-	return err
+	return index.Index(log.Default(), apkIndexFilename, apkFiles)
 }

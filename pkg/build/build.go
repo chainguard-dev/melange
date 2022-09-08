@@ -36,6 +36,9 @@ import (
 	apkofs "chainguard.dev/apko/pkg/fs"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/internal/index"
+	"chainguard.dev/melange/internal/sign"
 )
 
 type Scriptlets struct {
@@ -125,6 +128,7 @@ type Context struct {
 	SigningKey        string
 	SigningPassphrase string
 	Template          string
+	GenerateIndex     bool
 	UseProot          bool
 	EmptyWorkspace    bool
 	OutDir            string
@@ -294,6 +298,14 @@ func WithSourceDir(sourceDir string) Option {
 func WithSigningKey(signingKey string) Option {
 	return func(ctx *Context) error {
 		ctx.SigningKey = signingKey
+		return nil
+	}
+}
+
+// WithGenerateIndex sets whether or not the apk index should be generated.
+func WithGenerateIndex(generateIndex bool) Option {
+	return func(ctx *Context) error {
+		ctx.GenerateIndex = generateIndex
 		return nil
 	}
 }
@@ -703,6 +715,34 @@ func (ctx *Context) BuildPackage() error {
 	for _, sp := range ctx.Configuration.Subpackages {
 		if err := sp.Emit(&pctx); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
+		}
+	}
+
+	// generate APKINDEX.tar.gz and sign it
+	if ctx.GenerateIndex {
+		packagesDir := filepath.Join(pctx.Context.OutDir, pctx.Context.Arch.ToAPK())
+		ctx.Logger.Printf("generating apk index from packages in %s", packagesDir)
+		files, err := os.ReadDir(packagesDir)
+		if err != nil {
+			return fmt.Errorf("unable to list packages: %w", err)
+		}
+		apkFiles := []string{}
+		for _, file := range files {
+			n := filepath.Join(packagesDir, file.Name())
+			if !file.IsDir() && strings.HasSuffix(n, ".apk") {
+				apkFiles = append(apkFiles, n)
+			}
+		}
+		apkIndexFilename := filepath.Join(packagesDir, "APKINDEX.tar.gz")
+		if err := index.Index(ctx.Logger, apkIndexFilename, apkFiles); err != nil {
+			return fmt.Errorf("failed to create index: %w", err)
+		}
+
+		if ctx.SigningKey != "" {
+			ctx.Logger.Printf("signing apk index at %s", apkIndexFilename)
+			if err := sign.SignIndex(ctx.Logger, ctx.SigningKey, apkIndexFilename); err != nil {
+				return fmt.Errorf("failed to sign apk index: %w", err)
+			}
 		}
 	}
 

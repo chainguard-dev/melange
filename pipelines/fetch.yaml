@@ -32,5 +32,5 @@ pipeline:
       printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
       if [ "${{inputs.extract}}" = "true" ]; then
         bn=$(basename ${{inputs.uri}})
-        tar -zx '--strip-components=${{inputs.strip-components}}' -f $bn
+        tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
       fi

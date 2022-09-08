@@ -1,0 +1,34 @@
+name: Split development files
+
+pipeline:
+  - runs: |
+      i= j=
+      cd "${{targets.destdir}}" || exit 0
+
+      libdirs=usr/
+      [ -d lib/ ] && libdirs="lib/ $libdirs"
+      for i in usr/include usr/lib/pkgconfig usr/share/pkgconfig \
+        usr/share/aclocal usr/share/gettext \
+        usr/bin/*-config usr/share/vala/vapi \
+        usr/share/gir-[0-9]* usr/share/qt*/mkspecs \
+        usr/lib/qt*/mkspecs usr/lib/cmake \
+        usr/lib/glade/modules usr/share/glade/catalogs \
+        $(find . -name include -type d) \
+        $(find $libdirs -name '*.a' 2>/dev/null) \
+        $(find $libdirs -name '*.[cho]' \
+          -o -name '*.prl' 2>/dev/null); do
+            if [ -e "${{targets.destdir}}/$i" ] || [ -L "${{targets.destdir}}/$i" ]; then
+              d="${{targets.subpkgdir}}/${i%/*}" # dirname $i
+              mkdir -p "$d"
+              mv "${{targets.destdir}}/$i" "$d"
+              rmdir "${{targets.destdir}}/${i%/*}" 2>/dev/null || :
+            fi
+        done
+
+        # move *.so links needed when linking the apps to -dev packages
+        for i in lib/*.so usr/lib/*.so; do
+          if [ -L "$i" ]; then
+            mkdir -p "${{targets.subpkgdir}}"/"${i%/*}"
+            mv "$i" "${{targets.subpkgdir}}/$i" || return 1
+          fi
+        done

@@ -188,7 +188,7 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) monitorPipe(pipe io.ReadCloser) {
+func (p *Pipeline) monitorPipe(pipe io.ReadCloser, finish chan struct{}) {
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
@@ -199,6 +199,8 @@ func (p *Pipeline) monitorPipe(pipe io.ReadCloser) {
 	if err := scanner.Err(); err != nil {
 		p.logger.Printf("warning: %v", err)
 	}
+
+	finish <- struct{}{}
 }
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
@@ -229,12 +231,18 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 		return err
 	}
 
-	go p.monitorPipe(stdout)
-	go p.monitorPipe(stderr)
+	finishStdout := make(chan struct{})
+	finishStderr := make(chan struct{})
+
+	go p.monitorPipe(stdout, finishStdout)
+	go p.monitorPipe(stderr, finishStderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err
 	}
+
+	<-finishStdout
+	<-finishStderr
 
 	return nil
 }

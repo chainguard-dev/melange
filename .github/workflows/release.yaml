@@ -19,13 +19,13 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a # v3.0.0
+    - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f # v3.0.0
       with:
         go-version: ${{ env.GO_VERSION }}
         check-latest: true
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v2.4.0
-    - uses: sigstore/cosign-installer@09a077b27eb1310dcfb21981bee195b30ce09de0 # v2.4.1
-    - uses: goreleaser/goreleaser-action@68acf3b1adf004ac9c2f0a4259e85c5f66e99bef # v2.8.1
+    - uses: sigstore/cosign-installer@b3413d484cc23cf8778c3d2aa361568d4eb54679 # v2.4.1
+    - uses: goreleaser/goreleaser-action@ff11ca24a9b39f2d36796d1fbd7a4e39c182630a # v2.8.1
       with:
         version: latest
         install-only: true
@@ -49,14 +49,14 @@ jobs:
       COSIGN_EXPERIMENTAL: "true"
 
     steps:
-    - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a # v3.0.0
+    - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f # v3.0.0
       with:
         go-version: ${{ env.GO_VERSION }}
         check-latest: true
 
-    - uses: imjasonh/setup-ko@2c3450ca27f6e6f2b02e72a40f2163c281a1f675 # v0.4
+    - uses: imjasonh/setup-ko@78eea08f10db87a7a23a666a4a6fe2734f2eeb8d # v0.4
 
-    - uses: sigstore/cosign-installer@09a077b27eb1310dcfb21981bee195b30ce09de0 # v2.4.1
+    - uses: sigstore/cosign-installer@b3413d484cc23cf8778c3d2aa361568d4eb54679 # v2.4.1
 
     - uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b # v1.13.0
       with:

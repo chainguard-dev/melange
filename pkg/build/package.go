@@ -48,12 +48,18 @@ type PackageContext struct {
 	Logger        *log.Logger
 	Dependencies  Dependencies
 	Arch          string
+	Options       PackageOption
+	Scriptlets    Scriptlets
+	Description   string
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
 	fakesp := Subpackage{
 		Name:         pkg.Name,
 		Dependencies: pkg.Dependencies,
+		Options:      pkg.Options,
+		Scriptlets:   pkg.Scriptlets,
+		Description:  pkg.Description,
 	}
 	return fakesp.Emit(ctx)
 }
@@ -67,6 +73,9 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
 		Dependencies: spkg.Dependencies,
 		Arch:         ctx.Context.Arch.ToAPK(),
+		Options:      spkg.Options,
+		Scriptlets:   spkg.Scriptlets,
+		Description:  spkg.Description,
 	}
 	return pc.EmitPackage()
 }
@@ -88,7 +97,7 @@ pkgname = {{.PackageName}}
 pkgver = {{.Origin.Version}}-r{{.Origin.Epoch}}
 arch = {{.Arch}}
 size = {{.InstalledSize}}
-pkgdesc = {{.Origin.Description}}
+pkgdesc = {{.Description}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}
@@ -97,6 +106,9 @@ depend = {{ $dep }}
 {{- end }}
 {{- range $dep := .Dependencies.Provides }}
 provides = {{ $dep }}
+{{- end }}
+{{- if .Scriptlets.Trigger.Paths }}
+triggers = {{ range $item := .Scriptlets.Trigger.Paths }}{{ $item }} {{ end }}
 {{- end }}
 datahash = {{.DataHash}}
 `
@@ -126,6 +138,55 @@ func (pc *PackageContext) generateControlSection(digest hash.Hash, w io.WriteSee
 	fsys := memfs.New()
 	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
 		return digest, fmt.Errorf("unable to build control FS: %w", err)
+	}
+
+	if pc.Scriptlets.Trigger.Script != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".trigger", []byte(pc.Scriptlets.Trigger.Script), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PreInstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".pre-install", []byte(pc.Scriptlets.PreInstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PostInstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".post-install", []byte(pc.Scriptlets.PostInstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PreDeinstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".pre-deinstall", []byte(pc.Scriptlets.PreDeinstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PostDeinstall != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".post-deinstall", []byte(pc.Scriptlets.PostDeinstall), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PreUpgrade != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".pre-upgrade", []byte(pc.Scriptlets.PreUpgrade), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
+	}
+
+	if pc.Scriptlets.PostUpgrade != "" {
+		// #nosec G306 -- scriptlets must be executable
+		if err := fsys.WriteFile(".post-upgrade", []byte(pc.Scriptlets.PostUpgrade), 0755); err != nil {
+			return digest, fmt.Errorf("unable to build control FS: %w", err)
+		}
 	}
 
 	mw := io.MultiWriter(digest, w)
@@ -178,6 +239,10 @@ func allowedPrefix(path string, prefixes []string) bool {
 var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
 
 func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
+	if pc.Options.NoCommands {
+		return nil
+	}
+
 	pc.Logger.Printf("scanning for commands...")
 
 	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
@@ -250,14 +315,16 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				return nil
 			}
 
-			for _, lib := range libs {
-				if strings.Contains(lib, ".so.") {
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-					depends[lib] = append(depends[lib], path)
+			if !pc.Options.NoDepends {
+				for _, lib := range libs {
+					if strings.Contains(lib, ".so.") {
+						generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+						depends[lib] = append(depends[lib], path)
+					}
 				}
 			}
 
-			if strings.Contains(basename, ".so.") {
+			if !pc.Options.NoProvides && strings.Contains(basename, ".so.") {
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {

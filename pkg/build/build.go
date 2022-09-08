@@ -38,6 +38,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type Scriptlets struct {
+	Trigger struct {
+		Script string
+		Paths  []string
+	}
+
+	PreInstall    string `yaml:"pre-install"`
+	PostInstall   string `yaml:"post-install"`
+	PreDeinstall  string `yaml:"pre-deinstall"`
+	PostDeinstall string `yaml:"post-deinstall"`
+	PreUpgrade    string `yaml:"pre-upgrade"`
+	PostUpgrade   string `yaml:"post-upgrade"`
+}
+
+type PackageOption struct {
+	NoProvides bool `yaml:"no-provides"`
+	NoDepends  bool `yaml:"no-depends"`
+	NoCommands bool `yaml:"no-commands"`
+}
+
 type Package struct {
 	Name               string
 	Version            string
@@ -46,6 +66,8 @@ type Package struct {
 	TargetArchitecture []string `yaml:"target-architecture"`
 	Copyright          []Copyright
 	Dependencies       Dependencies
+	Options            PackageOption
+	Scriptlets         Scriptlets
 }
 
 type Copyright struct {
@@ -73,6 +95,9 @@ type Subpackage struct {
 	Name         string
 	Pipeline     []Pipeline
 	Dependencies Dependencies
+	Options      PackageOption
+	Scriptlets   Scriptlets
+	Description  string
 }
 
 type Input struct {
@@ -184,6 +209,11 @@ func New(opts ...Option) (*Context, error) {
 	}
 
 	ctx.Logger.SetPrefix(fmt.Sprintf("melange (%s/%s): ", ctx.Configuration.Package.Name, ctx.Arch.ToAPK()))
+
+	// Make sure there is actually a pipeline to run.
+	if len(ctx.Configuration.Pipeline) == 0 {
+		return nil, fmt.Errorf("no pipeline has been configured, check your config for indentation errors")
+	}
 
 	return &ctx, nil
 }
@@ -428,6 +458,7 @@ func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
+		apko_build.WithDebugLogging(true),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)

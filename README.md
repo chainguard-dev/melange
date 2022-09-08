@@ -115,7 +115,7 @@ or, with Docker:
 
 ```shell
 docker run --privileged --rm -v "${PWD}":/work \
-  distroless.dev/melange examples/gnu-hello.yaml
+  distroless.dev/melange build examples/gnu-hello.yaml
 ```
 
 This will create a `packages` folder, with an entry for each architecture supported by the package. If you only want to build for the current architecture, you can add `--arch $(uname -m)` to the build command. Inside the architecture directory you should find apk files for each package built in the pipeline.

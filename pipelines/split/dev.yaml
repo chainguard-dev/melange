@@ -2,10 +2,10 @@ name: Split development files
 
 pipeline:
   - runs: |
-      local i= j=
+      i= j=
       cd "${{targets.destdir}}" || exit 0
 
-      local libdirs=usr/
+      libdirs=usr/
       [ -d lib/ ] && libdirs="lib/ $libdirs"
       for i in usr/include usr/lib/pkgconfig usr/share/pkgconfig \
         usr/share/aclocal usr/share/gettext \

@@ -28,6 +28,7 @@ func New() *cobra.Command {
 
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Keygen())
+	cmd.AddCommand(Index())
 	cmd.AddCommand(SignIndex())
 	cmd.AddCommand(version.Version())
 	return cmd

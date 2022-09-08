@@ -210,6 +210,11 @@ func New(opts ...Option) (*Context, error) {
 
 	ctx.Logger.SetPrefix(fmt.Sprintf("melange (%s/%s): ", ctx.Configuration.Package.Name, ctx.Arch.ToAPK()))
 
+	// Make sure there is actually a pipeline to run.
+	if len(ctx.Configuration.Pipeline) == 0 {
+		return nil, fmt.Errorf("no pipeline has been configured, check your config for indentation errors")
+	}
+
 	return &ctx, nil
 }
 

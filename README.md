@@ -57,7 +57,7 @@ docker run --privileged -v "$PWD":/work distroless.dev/melange build examples/gn
 
 These examples require [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
 
-Alternatively, if you're on a Mac, you can use the [apko instructions for Lima](https://github.com/chainguard-dev/apko/mac/README.md#Lima) to run an Alpine Linux VM.
+Alternatively, if you're on a Mac, you can use the [apko instructions for Lima](https://github.com/chainguard-dev/apko/blob/main/mac/README.md#Lima) to run an Alpine Linux VM.
 
 ## Quickstart
 
@@ -132,25 +132,6 @@ melange keygen
 ```
 
 And then pass the `--signing-key` argument to `melange build`.
-
-## Creating and Signing apk Indexes
-
-Before installing your melange-generated apks, you'll need to generate a valid apk index for your packages. These can also be signed using the `melange sign-index` command.
-
-Run the following command to generate an apk index for your `packages/` folder:
-
-```shell
-docker run --rm -v "${PWD}":/work \
-    --entrypoint sh \
-    distroless.dev/melange -c \
-        'cd packages && for d in `find . -type d -mindepth 1`; do \
-            ( \
-                cd $d && \
-                apk index -o APKINDEX.tar.gz *.apk && \
-                melange sign-index --signing-key=../../melange.rsa APKINDEX.tar.gz\
-            ) \
-        done'
-```
 
 ## Debugging melange Builds
 

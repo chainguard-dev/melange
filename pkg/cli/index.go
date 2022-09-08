@@ -21,8 +21,6 @@ import (
 	"log"
 	"os"
 
-	// nolint:gosec
-
 	"github.com/spf13/cobra"
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
 )

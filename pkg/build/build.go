@@ -97,6 +97,7 @@ type Subpackage struct {
 	Dependencies Dependencies
 	Options      PackageOption
 	Scriptlets   Scriptlets
+	Description  string
 }
 
 type Input struct {

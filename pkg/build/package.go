@@ -50,6 +50,7 @@ type PackageContext struct {
 	Arch          string
 	Options       PackageOption
 	Scriptlets    Scriptlets
+	Description   string
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
@@ -58,6 +59,7 @@ func (pkg *Package) Emit(ctx *PipelineContext) error {
 		Dependencies: pkg.Dependencies,
 		Options:      pkg.Options,
 		Scriptlets:   pkg.Scriptlets,
+		Description:  pkg.Description,
 	}
 	return fakesp.Emit(ctx)
 }
@@ -73,6 +75,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Arch:         ctx.Context.Arch.ToAPK(),
 		Options:      spkg.Options,
 		Scriptlets:   spkg.Scriptlets,
+		Description:  spkg.Description,
 	}
 	return pc.EmitPackage()
 }
@@ -94,7 +97,7 @@ pkgname = {{.PackageName}}
 pkgver = {{.Origin.Version}}-r{{.Origin.Epoch}}
 arch = {{.Arch}}
 size = {{.InstalledSize}}
-pkgdesc = {{.Origin.Description}}
+pkgdesc = {{.Description}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}

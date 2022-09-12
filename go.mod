@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	chainguard.dev/apko v0.5.1-0.20220830000151-937b2b254237
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0

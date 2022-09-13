@@ -718,6 +718,16 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
+	// clean build guest container
+	if err := os.RemoveAll(ctx.GuestDir); err != nil {
+		ctx.Logger.Printf("WARNING: unable to clean guest container: %s", err)
+	}
+
+	// clean build environment
+	if err := os.RemoveAll(ctx.WorkspaceDir); err != nil {
+		ctx.Logger.Printf("WARNING: unable to clean workspace: %s", err)
+	}
+
 	// generate APKINDEX.tar.gz and sign it
 	if ctx.GenerateIndex {
 		packagesDir := filepath.Join(pctx.Context.OutDir, pctx.Context.Arch.ToAPK())

@@ -759,10 +759,18 @@ func (ctx *Context) BuildPackage() error {
 	return nil
 }
 
+func (ctx *Context) SummarizePaths() {
+	ctx.Logger.Printf("  workspace dir: %s", ctx.WorkspaceDir)
+
+	if ctx.GuestDir != "" {
+		ctx.Logger.Printf("  guest dir: %s", ctx.GuestDir)
+	}
+}
+
 func (ctx *Context) Summarize() {
 	ctx.Logger.Printf("melange is building:")
 	ctx.Logger.Printf("  configuration file: %s", ctx.ConfigFile)
-	ctx.Logger.Printf("  workspace dir: %s", ctx.WorkspaceDir)
+	ctx.SummarizePaths()
 }
 
 func (ctx *Context) PrivilegedWorkspaceCmd(args ...string) (*exec.Cmd, error) {

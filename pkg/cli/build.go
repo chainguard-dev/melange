@@ -140,6 +140,9 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 
 		errg.Go(func() error {
 			if err := bc.BuildPackage(); err != nil {
+				log.Printf("ERROR: failed to build package. the build environment has been preserved:")
+				bc.SummarizePaths()
+
 				return fmt.Errorf("failed to build package: %w", err)
 			}
 

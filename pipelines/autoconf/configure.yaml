@@ -4,7 +4,7 @@ pipeline:
   - runs: |
       ./configure \
         --prefix=/usr \
-        --libdir=/lib \
+        --libdir=/usr/lib \
         --mandir=/usr/share/man \
         --infodir=/usr/share/info \
         --localstatedir=/var \

@@ -26,7 +26,7 @@ func Test_mutateStringFromMap(t *testing.T) {
 		"${{inputs.bar}}": "bar",
 	}
 
-	input1 := "${{inputs.foo}} ${{inputs.baz}}"
+	input1 := "${{inputs.foo}} ${{inputs.baz-bah-boom}}"
 	output1 := mutateStringFromMap(keys, input1)
 
 	require.Equal(t, output1, "foo ", "bogus variable substitution not deleted")

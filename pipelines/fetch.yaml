@@ -18,10 +18,12 @@ inputs:
   expected-sha256:
     description: |
       The expected SHA256 of the downloaded artifact.
+    default: ""
 
   expected-sha512:
     description: |
       The expected SHA512 of the downloaded artifact.
+    default: ""
 
   uri:
     description: |

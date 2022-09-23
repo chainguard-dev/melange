@@ -18,12 +18,10 @@ inputs:
   expected-sha256:
     description: |
       The expected SHA256 of the downloaded artifact.
-    default: "NOTSET"
 
   expected-sha512:
     description: |
       The expected SHA512 of the downloaded artifact.
-    default: "NOTSET"
 
   uri:
     description: |
@@ -32,17 +30,18 @@ inputs:
 
 pipeline:
   - runs: |
-      wget ${{inputs.uri}}
-      bn=$(basename ${{inputs.uri}})
-      if [ "${{inputs.expected-sha256}}" != "NOTSET" ]; then
-        printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
-      fi
-      if [ "${{inputs.expected-sha512}}" != "NOTSET" ]; then
-        printf "%s  %s\n" '${{inputs.expected-sha512}}' $bn | sha512sum -c
-      fi
-      if [ "${{inputs.expected-sha512}}" == "NOTSET" && "${{inputs.expected-sha256}}" == "NOTSET" ]; then
+      if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ]; then
         printf "One of expected-sha256 or expected-sha512 is required"
         exit 1
+      fi
+
+      wget ${{inputs.uri}}
+      bn=$(basename ${{inputs.uri}})
+
+      if [ "${{inputs.expected-sha256}}" != "" ]; then
+        printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
+      else
+        printf "%s  %s\n" '${{inputs.expected-sha512}}' $bn | sha512sum -c
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then

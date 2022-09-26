@@ -1,8 +1,16 @@
 name: Run autoconf make
 
+inputs:
+  dir:
+    description: |
+      The directory containing the Makefile.
+    default: .
+
 needs:
   packages:
     - make
 
 pipeline:
-  - runs: make -j$(nproc)
+  - runs: |
+      cd ${{inputs.dir}}
+      make -j$(nproc)

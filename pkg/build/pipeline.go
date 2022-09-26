@@ -97,7 +97,7 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 }
 
 func mutateStringFromMap(with map[string]string, input string) string {
-	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.]*}}`)
+	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.-]*}}`)
 	replacer := replacerFromMap(with)
 	output := replacer.Replace(input)
 	return re.ReplaceAllString(output, "")

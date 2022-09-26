@@ -1,8 +1,16 @@
 name: Run autoconf make install
 
+inputs:
+  dir:
+    description: |
+      The directory containing the Makefile.
+    default: .
+
 needs:
   packages:
     - make
 
 pipeline:
-  - runs: make install DESTDIR="${{targets.destdir}}"
+  - runs: |
+      cd ${{inputs.dir}}
+      make install DESTDIR="${{targets.destdir}}"

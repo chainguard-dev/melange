@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"github.com/spf13/cobra/doc"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -36,6 +37,11 @@ func Index() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&apkIndexFilename, "output", "o", "APKINDEX.tar.gz", "Output generated index to FILE")
+	err := doc.GenMarkdownTree(cmd, "./docs/")
+
+	if err != nil {
+		log.Fatal(err)
+	}
 	return cmd
 }
 

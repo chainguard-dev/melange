@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/spf13/cobra/doc"
 	"log"
 	"os"
 
@@ -96,7 +97,11 @@ func Keygen() *cobra.Command {
 	}
 
 	cmd.Flags().IntVar(&keySize, "key-size", 4096, "the size of the prime to calculate (in bits)")
+	err := doc.GenMarkdownTree(cmd, "./docs/")
 
+	if err != nil {
+		log.Fatal(err)
+	}
 	return cmd
 }
 

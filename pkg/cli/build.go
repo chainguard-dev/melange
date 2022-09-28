@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/cobra/doc"
 	"log"
 	"os"
 	"path/filepath"
@@ -105,6 +106,11 @@ func Build() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 
+	err = doc.GenMarkdownTree(cmd, "./docs/")
+
+	if err != nil {
+		log.Fatal(err)
+	}
 	return cmd
 }
 

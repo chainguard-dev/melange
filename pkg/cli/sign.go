@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"github.com/spf13/cobra/doc"
 	"log"
 
 	"chainguard.dev/melange/internal/sign"
@@ -37,7 +38,11 @@ func SignIndex() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&signingKey, "signing-key", "melange.rsa", "the signing key to use")
+	err := doc.GenMarkdownTree(cmd, "./docs/")
 
+	if err != nil {
+		log.Fatal(err)
+	}
 	return cmd
 }
 

@@ -791,6 +791,12 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--chdir", "/home/build",
 		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
 	}
+
+	// Add any user-provided env vars
+	for k, v := range ctx.Configuration.Environment.Environment {
+		baseargs = append(baseargs, "--setenv", k, v)
+	}
+
 	args = append(baseargs, args...)
 	cmd := exec.Command("bwrap", args...)
 

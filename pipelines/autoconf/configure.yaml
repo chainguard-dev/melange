@@ -1,7 +1,14 @@
 name: Run autoconf configure script
 
+inputs:
+  dir:
+    description: |
+      The directory containing the configure script.
+    default: .
+
 pipeline:
   - runs: |
+      cd ${{inputs.dir}}
       ./configure \
         --prefix=/usr \
         --libdir=/usr/lib \

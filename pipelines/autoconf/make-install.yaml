@@ -12,5 +12,4 @@ needs:
 
 pipeline:
   - runs: |
-      cd ${{inputs.dir}}
-      make install DESTDIR="${{targets.destdir}}"
+      make -C "${{inputs.dir}}" install DESTDIR="${{targets.destdir}}"

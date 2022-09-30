@@ -97,6 +97,7 @@ pkgname = {{.PackageName}}
 pkgver = {{.Origin.Version}}-r{{.Origin.Epoch}}
 arch = {{.Arch}}
 size = {{.InstalledSize}}
+origin = {{.Origin.Name}}
 pkgdesc = {{.Description}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}

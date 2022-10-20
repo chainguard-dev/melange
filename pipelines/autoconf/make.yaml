@@ -12,4 +12,4 @@ needs:
 
 pipeline:
   - runs: |
-      make -C "${{inputs.dir}}" -j$(nproc)
+      make -C "${{inputs.dir}}" -j$(nproc) V=1

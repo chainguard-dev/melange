@@ -1,0 +1,18 @@
+name: Split static library files
+
+pipeline:
+  - runs: |
+      i= j=
+      cd "${{targets.destdir}}" || exit 0
+
+      libdirs=usr/
+      [ -d lib/ ] && libdirs="lib/ $libdirs"
+      for i in \
+        $(find $libdirs -name '*.a' 2>/dev/null); do
+            if [ -e "${{targets.destdir}}/$i" ] || [ -L "${{targets.destdir}}/$i" ]; then
+              d="${{targets.subpkgdir}}/${i%/*}" # dirname $i
+              mkdir -p "$d"
+              mv "${{targets.destdir}}/$i" "$d"
+              rmdir "${{targets.destdir}}/${i%/*}" 2>/dev/null || :
+            fi
+        done

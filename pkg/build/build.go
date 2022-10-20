@@ -139,6 +139,7 @@ type Context struct {
 	DependencyLog     string
 	BinShOverlay      string
 	ignorePatterns    []*xignore.Pattern
+	CacheDir          string
 }
 
 type Dependencies struct {
@@ -152,6 +153,7 @@ func New(opts ...Option) (*Context, error) {
 		PipelineDir:     "/usr/share/melange/pipelines",
 		SourceDir:       ".",
 		OutDir:          ".",
+		CacheDir:        "/var/cache/melange",
 		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
@@ -290,6 +292,14 @@ func WithPipelineDir(pipelineDir string) Option {
 func WithSourceDir(sourceDir string) Option {
 	return func(ctx *Context) error {
 		ctx.SourceDir = sourceDir
+		return nil
+	}
+}
+
+// WithCacheDir sets the cache directory to use.
+func WithCacheDir(cacheDir string) Option {
+	return func(ctx *Context) error {
+		ctx.CacheDir = cacheDir
 		return nil
 	}
 }
@@ -459,7 +469,7 @@ func substitutionReplacements() map[string]string {
 func (ctx *Context) BuildWorkspace(workspaceDir string) error {
 	// Prepare workspace directory
 	if err := os.MkdirAll(ctx.WorkspaceDir, 0755); err != nil {
-		return err
+		return fmt.Errorf("mkdir -p %s: %w", ctx.WorkspaceDir, err)
 	}
 
 	ctx.Logger.Printf("building workspace in '%s' with apko", workspaceDir)
@@ -503,12 +513,12 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	defer inF.Close()
 
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("mkdir -p %s: %w", destDir, err)
 	}
 
 	outF, err := os.Create(destPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("create %s: %w", destPath, err)
 	}
 	defer outF.Close()
 
@@ -605,6 +615,54 @@ func (ctx *Context) OverlayBinSh() error {
 	return nil
 }
 
+func (ctx *Context) PopulateCache() error {
+	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
+
+	fsys := apkofs.DirFS(ctx.CacheDir)
+
+	// mkdir /var/cache/melange
+	if err := os.MkdirAll("/var/cache/melange", 0o755); err != nil {
+		return err
+	}
+
+	// --cache-dir doesn't exist, nothing to do.
+	if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		// Skip files in the cache that aren't named like sha256:... or sha512:...
+		// This is likely a bug, and won't be matched by any fetch.
+		base := filepath.Base(fi.Name())
+		if !strings.HasPrefix(base, "sha256:") &&
+			!strings.HasPrefix(base, "sha512:") {
+			return nil
+		}
+
+		ctx.Logger.Printf("  -> %s", path)
+
+		if err := copyFile(ctx.CacheDir, path, "/var/cache/melange", mode.Perm()); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (ctx *Context) PopulateWorkspace() error {
 	if ctx.EmptyWorkspace {
 		ctx.Logger.Printf("empty workspace requested")
@@ -619,7 +677,7 @@ func (ctx *Context) PopulateWorkspace() error {
 
 	fsys := apkofs.DirFS(ctx.SourceDir)
 
-	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -645,11 +703,7 @@ func (ctx *Context) PopulateWorkspace() error {
 		}
 
 		return nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 func (ctx *Context) BuildPackage() error {
@@ -681,6 +735,9 @@ func (ctx *Context) BuildPackage() error {
 		return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 	}
 
+	if err := ctx.PopulateCache(); err != nil {
+		return fmt.Errorf("unable to populate cache: %w", err)
+	}
 	if err := ctx.PopulateWorkspace(); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
@@ -790,6 +847,14 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--proc", "/proc",
 		"--chdir", "/home/build",
 		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
+	}
+
+	if ctx.CacheDir != "" {
+		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
+			baseargs = append(baseargs, "--bind", ctx.CacheDir, "/var/cache/melange")
+		} else {
+			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
+		}
 	}
 
 	// Add any user-provided env vars

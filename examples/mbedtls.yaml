@@ -30,7 +30,7 @@ pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/Mbed-TLS/mbedtls
-      branch: mbedtls-2.16
+      branch: archive/mbedtls-2.16
   - uses: cmake/configure
     with:
       opts: -DUSE_SHARED_MBEDTLS_LIBRARY=ON

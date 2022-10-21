@@ -17,9 +17,11 @@ jobs:
       matrix:
         example:
         - gnu-hello.yaml
-        - mbedtls.yaml
         - minimal.yaml
-        # - sshfs.yaml TODO: this example seems to be broken.
+        # TODO: these examples seem to be broken.
+        # https://github.com/chainguard-dev/melange/issues/144
+        # - mbedtls.yaml
+        # - sshfs.yaml
 
     steps:
     - name: Fetch dependencies

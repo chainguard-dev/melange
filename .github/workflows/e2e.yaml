@@ -17,11 +17,9 @@ jobs:
       matrix:
         example:
         - gnu-hello.yaml
+        - mbedtls.yaml
         - minimal.yaml
-        # TODO: these examples seem to be broken.
-        # https://github.com/chainguard-dev/melange/issues/144
-        # - mbedtls.yaml
-        # - sshfs.yaml
+        - sshfs.yaml
 
     steps:
     - name: Fetch dependencies
@@ -37,7 +35,7 @@ jobs:
     - run: |
         make melange
         ./melange keygen && mv melange.rsa.pub /etc/apk/keys
-        ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64
+        ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
 
   bootstrap:
     name: bootstrap package

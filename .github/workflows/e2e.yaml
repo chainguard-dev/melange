@@ -19,7 +19,7 @@ jobs:
         - gnu-hello.yaml
         - mbedtls.yaml
         - minimal.yaml
-        - sshfs.yaml
+        # - sshfs.yaml TODO: this example seems to be broken.
 
     steps:
     - name: Fetch dependencies

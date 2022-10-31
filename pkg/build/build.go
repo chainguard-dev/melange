@@ -139,6 +139,7 @@ type Context struct {
 	DependencyLog     string
 	BinShOverlay      string
 	ignorePatterns    []*xignore.Pattern
+	DisableNetwork    bool
 }
 
 type Dependencies struct {
@@ -372,6 +373,12 @@ func WithBinShOverlay(binShOverlay string) Option {
 		ctx.BinShOverlay = binShOverlay
 		return nil
 	}
+}
+
+// WithDisableNetwork disables networking in the build environment.
+var WithDisableNetwork Option = func(ctx *Context) error {
+	ctx.DisableNetwork = true
+	return nil
 }
 
 // Load the configuration data from the build context configuration file.
@@ -790,6 +797,10 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 		"--proc", "/proc",
 		"--chdir", "/home/build",
 		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
+	}
+
+	if ctx.DisableNetwork {
+		baseargs = append(baseargs, "--unshare-net")
 	}
 
 	// Add any user-provided env vars

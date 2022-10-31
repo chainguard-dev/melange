@@ -45,14 +45,14 @@ type Scriptlets struct {
 	Trigger struct {
 		Script string
 		Paths  []string
-	}
+	} `yaml:"trigger,omitempty"`
 
-	PreInstall    string `yaml:"pre-install"`
-	PostInstall   string `yaml:"post-install"`
-	PreDeinstall  string `yaml:"pre-deinstall"`
-	PostDeinstall string `yaml:"post-deinstall"`
-	PreUpgrade    string `yaml:"pre-upgrade"`
-	PostUpgrade   string `yaml:"post-upgrade"`
+	PreInstall    string `yaml:"pre-install,omitempty"`
+	PostInstall   string `yaml:"post-install,omitempty"`
+	PreDeinstall  string `yaml:"pre-deinstall,omitempty"`
+	PostDeinstall string `yaml:"post-deinstall,omitempty"`
+	PreUpgrade    string `yaml:"pre-upgrade,omitempty"`
+	PostUpgrade   string `yaml:"post-upgrade,omitempty"`
 }
 
 type PackageOption struct {
@@ -62,21 +62,21 @@ type PackageOption struct {
 }
 
 type Package struct {
-	Name               string
-	Version            string
-	Epoch              uint64
-	Description        string
-	TargetArchitecture []string `yaml:"target-architecture"`
-	Copyright          []Copyright
-	Dependencies       Dependencies
-	Options            PackageOption
-	Scriptlets         Scriptlets
+	Name               string        `yaml:"name"`
+	Version            string        `yaml:"version"`
+	Epoch              uint64        `yaml:"epoch"`
+	Description        string        `yaml:"description,omitempty"`
+	TargetArchitecture []string      `yaml:"target-architecture"`
+	Copyright          []Copyright   `yaml:"copyright,omitempty"`
+	Dependencies       Dependencies  `yaml:"dependencies,omitempty"`
+	Options            PackageOption `yaml:"options,omitempty"`
+	Scriptlets         Scriptlets    `yaml:"scriptlets,omitempty"`
 }
 
 type Copyright struct {
-	Paths       []string
-	Attestation string
-	License     string
+	Paths       []string `yaml:"paths"`
+	Attestation string   `yaml:"attestation"`
+	License     string   `yaml:"license"`
 }
 
 type Needs struct {
@@ -84,23 +84,23 @@ type Needs struct {
 }
 
 type Pipeline struct {
-	Name     string
-	Uses     string
-	With     map[string]string
-	Runs     string
-	Pipeline []Pipeline
-	Inputs   map[string]Input
-	Needs    Needs
+	Name     string            `yaml:"name,omitempty"`
+	Uses     string            `yaml:"uses,omitempty"`
+	With     map[string]string `yaml:"with,omitempty"`
+	Runs     string            `yaml:"runs,omitempty"`
+	Pipeline []Pipeline        `yaml:"pipeline,omitempty"`
+	Inputs   map[string]Input  `yaml:"inputs,omitempty"`
+	Needs    Needs             `yaml:"needs,omitempty"`
 	logger   *log.Logger
 }
 
 type Subpackage struct {
-	Name         string
-	Pipeline     []Pipeline
-	Dependencies Dependencies
-	Options      PackageOption
-	Scriptlets   Scriptlets
-	Description  string
+	Name         string        `yaml:"name"`
+	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
+	Dependencies Dependencies  `yaml:"dependencies,omitempty"`
+	Options      PackageOption `yaml:"packageOption,omitempty"`
+	Scriptlets   Scriptlets    `yaml:"scriptlets,omitempty"`
+	Description  string        `yaml:"description,omitempty"`
 }
 
 type Input struct {
@@ -143,8 +143,8 @@ type Context struct {
 }
 
 type Dependencies struct {
-	Runtime  []string
-	Provides []string
+	Runtime  []string `yaml:"runtime,omitempty"`
+	Provides []string `yaml:"provides,omitempty"`
 }
 
 func New(opts ...Option) (*Context, error) {

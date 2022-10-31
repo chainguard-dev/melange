@@ -35,8 +35,25 @@ pipeline:
         exit 1
       fi
 
-      wget ${{inputs.uri}}
       bn=$(basename ${{inputs.uri}})
+
+      if [ ! "${{inputs.expected-sha256}}" == "" ]; then
+        fn="/var/cache/melange/sha256:${{inputs.expected-sha256}}"
+        if [ -f $fn ]; then
+          printf "fetch: found $fn in cache\n"
+          cp $fn $bn
+        fi
+      else
+        fn="/var/cache/melange/sha512:${{inputs.expected-sha512}}"
+        if [ -f $fn ]; then
+          printf "fetch: found $fn in cache\n"
+          cp $fn $bn
+        fi
+      fi
+
+      if [ ! -f $bn ]; then
+        wget ${{inputs.uri}}
+      fi
 
       if [ "${{inputs.expected-sha256}}" != "" ]; then
         printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
@@ -45,6 +62,5 @@ pipeline:
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then
-        bn=$(basename ${{inputs.uri}})
         tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
       fi

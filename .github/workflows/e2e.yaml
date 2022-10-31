@@ -5,7 +5,39 @@ on:
   pull_request:
 
 jobs:
-  build:
+  examples:
+    name: build examples
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+      options: |
+        --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
+
+    strategy:
+      matrix:
+        example:
+        - gnu-hello.yaml
+        - mbedtls.yaml
+        - minimal.yaml
+        - sshfs.yaml
+
+    steps:
+    - name: Fetch dependencies
+      run: |
+        cat >/etc/apk/repositories <<_EOF_
+        https://dl-cdn.alpinelinux.org/alpine/edge/main
+        https://dl-cdn.alpinelinux.org/alpine/edge/community
+        https://dl-cdn.alpinelinux.org/alpine/edge/testing
+        _EOF_
+        apk upgrade -Ua
+        apk add go build-base bubblewrap
+    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    - run: |
+        make melange
+        ./melange keygen && mv melange.rsa.pub /etc/apk/keys
+        ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
+
+  bootstrap:
     name: bootstrap package
     runs-on: ubuntu-latest
     container:

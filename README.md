@@ -52,7 +52,7 @@ Platform:      linux/amd64
 To use the examples, you'll generally want to mount your current directory into the container and provide elevated privileges e.g:
 
 ```shell
-docker run --privileged -v "$PWD":/work distroless.dev/melange build examples/gnu-hello.yaml
+docker run --privileged -v "$PWD":/work cgr.dev/chainguard/melange build examples/gnu-hello.yaml
 ```
 
 These examples require [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
@@ -190,8 +190,8 @@ melange build --template '{"Version": "1.22.0"}'
 
 ## Usage with apko
 
-To use a melange built APK in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage. 
-An example of this approach can be seen in the [nginx-image-demo repo](https://github.com/chainguard-dev/nginx-image-demo/). 
+To use a melange built APK in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage.
+An example of this approach can be seen in the [nginx-image-demo repo](https://github.com/chainguard-dev/nginx-image-demo/).
 
 ### Coming soon: Keyless signatures
 

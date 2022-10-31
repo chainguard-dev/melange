@@ -6,7 +6,7 @@ require (
 	chainguard.dev/apko v0.5.1-0.20220830000151-937b2b254237
 	github.com/google/go-cmp v0.5.9
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.1
 	github.com/zealic/xignore v0.3.3
 	gitlab.alpinelinux.org/alpine/go v0.6.0
@@ -47,7 +47,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect

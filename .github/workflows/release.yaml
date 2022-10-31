@@ -24,7 +24,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         check-latest: true
     - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v2.4.0
-    - uses: sigstore/cosign-installer@ced07f21fb1da67979f539bbc6304c16c0677e76 # v2.4.1
+    - uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # v2.4.1
     - uses: goreleaser/goreleaser-action@ff11ca24a9b39f2d36796d1fbd7a4e39c182630a # v2.8.1
       with:
         version: latest
@@ -56,7 +56,7 @@ jobs:
 
     - uses: imjasonh/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.4
 
-    - uses: sigstore/cosign-installer@ced07f21fb1da67979f539bbc6304c16c0677e76 # v2.4.1
+    - uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # v2.4.1
 
     - uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # v1.13.0
       with:

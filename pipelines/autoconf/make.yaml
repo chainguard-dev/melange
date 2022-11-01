@@ -6,10 +6,15 @@ inputs:
       The directory containing the Makefile.
     default: .
 
+  opts:
+    description: |
+      Options to pass to the make command.
+    default: ''
+
 needs:
   packages:
     - make
 
 pipeline:
   - runs: |
-      make -C "${{inputs.dir}}" -j$(nproc) V=1
+      make -C "${{inputs.dir}}" -j$(nproc) V=1 ${{inputs.opts}}

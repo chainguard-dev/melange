@@ -37,8 +37,7 @@ import (
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
-	"chainguard.dev/melange/internal/index"
-	"chainguard.dev/melange/internal/sign"
+	"chainguard.dev/melange/pkg/index"
 )
 
 type Scriptlets struct {
@@ -787,28 +786,20 @@ func (ctx *Context) BuildPackage() error {
 
 	// generate APKINDEX.tar.gz and sign it
 	if ctx.GenerateIndex {
-		packagesDir := filepath.Join(pctx.Context.OutDir, pctx.Context.Arch.ToAPK())
-		ctx.Logger.Printf("generating apk index from packages in %s", packagesDir)
-		files, err := os.ReadDir(packagesDir)
-		if err != nil {
-			return fmt.Errorf("unable to list packages: %w", err)
-		}
-		apkFiles := []string{}
-		for _, file := range files {
-			n := filepath.Join(packagesDir, file.Name())
-			if !file.IsDir() && strings.HasSuffix(n, ".apk") {
-				apkFiles = append(apkFiles, n)
-			}
-		}
-		apkIndexFilename := filepath.Join(packagesDir, "APKINDEX.tar.gz")
-		if err := index.Index(ctx.Logger, apkIndexFilename, apkFiles); err != nil {
-			return fmt.Errorf("failed to create index: %w", err)
+		packageDir := filepath.Join(pctx.Context.OutDir, pctx.Context.Arch.ToAPK())
+		ctx.Logger.Printf("generating apk index from packages in %s", packageDir)
+
+		opts := []index.Option{
+			index.WithPackageDir(packageDir),
+			index.WithSigningKey(ctx.SigningKey),
+			index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),
 		}
 
-		if ctx.SigningKey != "" {
-			ctx.Logger.Printf("signing apk index at %s", apkIndexFilename)
-			if err := sign.SignIndex(ctx.Logger, ctx.SigningKey, apkIndexFilename); err != nil {
-				return fmt.Errorf("failed to sign apk index: %w", err)
+		if ctx, err := index.New(opts...); err != nil {
+			return fmt.Errorf("unable to create index ctx: %w", err)
+		} else {
+			if err := ctx.GenerateIndex(); err != nil {
+				return fmt.Errorf("unable to generate index: %w", err)
 			}
 		}
 	}

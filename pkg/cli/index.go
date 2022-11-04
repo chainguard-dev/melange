@@ -16,11 +16,9 @@ package cli
 
 import (
 	"context"
-	"log"
 
+	"chainguard.dev/melange/pkg/index"
 	"github.com/spf13/cobra"
-
-	"chainguard.dev/melange/internal/index"
 )
 
 func Index() *cobra.Command {
@@ -32,13 +30,22 @@ func Index() *cobra.Command {
 		Example: `  melange index -o APKINDEX.tar.gz *.apk`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return IndexCmd(cmd.Context(), apkIndexFilename, args)
+			options := []index.Option{
+				index.WithIndexFile(apkIndexFilename),
+				index.WithPackageFiles(args),
+			}
+
+			return IndexCmd(cmd.Context(), options...)
 		},
 	}
 	cmd.Flags().StringVarP(&apkIndexFilename, "output", "o", "APKINDEX.tar.gz", "Output generated index to FILE")
 	return cmd
 }
 
-func IndexCmd(ctx context.Context, apkIndexFilename string, apkFiles []string) error {
-	return index.Index(log.Default(), apkIndexFilename, apkFiles)
+func IndexCmd(ctx context.Context, opts ...index.Option) error {
+	ic, err := index.New(opts...)
+	if err != nil {
+		return err
+	}
+	return ic.GenerateIndex()
 }

@@ -34,6 +34,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
@@ -443,7 +444,7 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 		protected = strings.ReplaceAll(protected, k, v)
 	}
 
-	tmpl, err := template.New("").Parse(protected)
+	tmpl, err := template.New("").Funcs(sprig.FuncMap()).Parse(protected)
 	if err != nil {
 		return nil, err
 	}

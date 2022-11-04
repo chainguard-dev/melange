@@ -444,7 +444,7 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 		protected = strings.ReplaceAll(protected, k, v)
 	}
 
-	tmpl, err := template.New("").Funcs(sprig.FuncMap()).Parse(protected)
+	tmpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(protected)
 	if err != nil {
 		return nil, err
 	}

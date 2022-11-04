@@ -34,6 +34,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
@@ -424,13 +425,12 @@ func (cfg *Configuration) Load(configFile, template string) error {
 }
 
 func applyTemplate(contents []byte, t string) ([]byte, error) {
-	if t == "" {
-		return contents, nil
-	}
-
 	var i map[string]interface{}
-	if err := json.Unmarshal([]byte(t), &i); err != nil {
-		return nil, err
+
+	if t != "" {
+		if err := json.Unmarshal([]byte(t), &i); err != nil {
+			return nil, err
+		}
 	}
 
 	// First, replace all protected pipeline templated vars temporarily
@@ -444,7 +444,7 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 		protected = strings.ReplaceAll(protected, k, v)
 	}
 
-	tmpl, err := template.New("").Parse(protected)
+	tmpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(protected)
 	if err != nil {
 		return nil, err
 	}

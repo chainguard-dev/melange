@@ -117,29 +117,30 @@ type Configuration struct {
 }
 
 type Context struct {
-	Configuration     Configuration
-	ConfigFile        string
-	SourceDateEpoch   time.Time
-	WorkspaceDir      string
-	WorkspaceIgnore   string
-	PipelineDir       string
-	SourceDir         string
-	GuestDir          string
-	SigningKey        string
-	SigningPassphrase string
-	Template          string
-	GenerateIndex     bool
-	UseProot          bool
-	EmptyWorkspace    bool
-	OutDir            string
-	Logger            *log.Logger
-	Arch              apko_types.Architecture
-	ExtraKeys         []string
-	ExtraRepos        []string
-	DependencyLog     string
-	BinShOverlay      string
-	ignorePatterns    []*xignore.Pattern
-	CacheDir          string
+	Configuration      Configuration
+	ConfigFile         string
+	SourceDateEpoch    time.Time
+	WorkspaceDir       string
+	WorkspaceIgnore    string
+	PipelineDir        string
+	BuiltinPipelineDir string
+	SourceDir          string
+	GuestDir           string
+	SigningKey         string
+	SigningPassphrase  string
+	Template           string
+	GenerateIndex      bool
+	UseProot           bool
+	EmptyWorkspace     bool
+	OutDir             string
+	Logger             *log.Logger
+	Arch               apko_types.Architecture
+	ExtraKeys          []string
+	ExtraRepos         []string
+	DependencyLog      string
+	BinShOverlay       string
+	ignorePatterns     []*xignore.Pattern
+	CacheDir           string
 }
 
 type Dependencies struct {
@@ -150,7 +151,6 @@ type Dependencies struct {
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
 		WorkspaceIgnore: ".melangeignore",
-		PipelineDir:     "/usr/share/melange/pipelines",
 		SourceDir:       ".",
 		OutDir:          ".",
 		CacheDir:        "/var/cache/melange",
@@ -280,10 +280,18 @@ func WithEmptyWorkspace(emptyWorkspace bool) Option {
 	}
 }
 
-// WithPipelineDir sets the pipeline directory to use.
+// WithPipelineDir sets the pipeline directory to extend the built-in pipeline directory.
 func WithPipelineDir(pipelineDir string) Option {
 	return func(ctx *Context) error {
 		ctx.PipelineDir = pipelineDir
+		return nil
+	}
+}
+
+// WithBuiltinPipelineDirectory sets the pipeline directory to use.
+func WithBuiltinPipelineDirectory(builtinPipelineDir string) Option {
+	return func(ctx *Context) error {
+		ctx.BuiltinPipelineDir = builtinPipelineDir
 		return nil
 	}
 }

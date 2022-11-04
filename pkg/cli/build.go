@@ -27,6 +27,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const BuiltinPipelineDir = "/usr/share/melange/pipelines"
+
 func Build() *cobra.Command {
 	var buildDate string
 	var workspaceDir string
@@ -93,7 +95,7 @@ func Build() *cobra.Command {
 
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
-	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "/usr/share/melange/pipelines", "directory used to store defined pipelines")
+	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "/var/cache/melange", "directory used for cached inputs")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
@@ -128,7 +130,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Context{}
 	for _, arch := range archs {
-		opts := append(base_opts, build.WithArch(arch))
+		opts := append(base_opts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
 
 		bc, err := build.New(opts...)
 		if err != nil {

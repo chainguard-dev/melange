@@ -14,7 +14,7 @@
 
 baseImageOverrides:
   # TODO(mattmoor): Talk to kaniini about the best image to use here.
-  chainguard.dev/apko: docker.io/alpine:latest
+  chainguard.dev/melange: docker.io/alpine:latest
 
 builds:
 - id: melange

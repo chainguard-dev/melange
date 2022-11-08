@@ -16,6 +16,7 @@ package build
 
 import (
 	"bufio"
+	"embed"
 	"errors"
 	"fmt"
 	"io"
@@ -140,15 +141,23 @@ func validateWith(data map[string]string, inputs map[string]Input) (map[string]s
 	return data, nil
 }
 
+//go:embed pipelines/*
+var f embed.FS
+
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
 	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses+".yaml"))
-	if err != nil && errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) {
 		// fallback to the builtin pipeline directory search if the given file doesn't exist in the given pipeline directory
 
 		// search the given pipeline within the built-in pipeline directory which is `/usr/share/melange/pipelines` in this case
 		data, err = os.ReadFile(filepath.Join(ctx.Context.BuiltinPipelineDir, uses+".yaml"))
-		if err != nil {
-			return fmt.Errorf("unable to load pipeline: %w", err)
+		if errors.Is(err, os.ErrNotExist) {
+			// fallback to the embedded pipelines compiled into the binary.
+
+			data, err = f.ReadFile("pipelines/" + uses + ".yaml")
+			if err != nil {
+				return fmt.Errorf("unable to load pipeline: %w", err)
+			}
 		}
 	}
 

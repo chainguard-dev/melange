@@ -24,7 +24,6 @@ import (
 
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 func Describe() *cobra.Command {
@@ -83,14 +82,7 @@ func DescribePipelineCmd(ctx context.Context, pipelineDir string, pipelineName s
 		}
 		loadedFrom = "embeded pipelines"
 	}
-	p, err := build.NewPipeline(&build.PipelineContext{
-		Context:    &build.Context{},
-		Package:    &build.Package{Name: "dummy"},
-		Subpackage: &build.Subpackage{Name: "dummy-subpackage"},
-	})
-	if err := yaml.Unmarshal(data, p); err != nil {
-		return fmt.Errorf("unable to parse pipeline: %w", err)
-	}
+
 	log.Printf("Pipeline [%s] content:\n", pipelineName)
 	log.Printf("%s\n", string(data))
 	log.Printf("Loaded [%s] from: %s", pipelineName, loadedFrom)

@@ -142,7 +142,7 @@ func validateWith(data map[string]string, inputs map[string]Input) (map[string]s
 }
 
 //go:embed pipelines/*
-var f embed.FS
+var EmbededPipelines embed.FS
 
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
 	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses+".yaml"))
@@ -154,7 +154,7 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 		if errors.Is(err, os.ErrNotExist) {
 			// fallback to the embedded pipelines compiled into the binary.
 
-			data, err = f.ReadFile("pipelines/" + uses + ".yaml")
+			data, err = EmbededPipelines.ReadFile("pipelines/" + uses + ".yaml")
 			if err != nil {
 				return fmt.Errorf("unable to load pipeline: %w", err)
 			}

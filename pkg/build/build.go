@@ -868,3 +868,26 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 
 	return cmd, nil
 }
+
+// BuildFlavor determines if a build context uses glibc or musl, it returns
+// "gnu" for GNU systems, and "musl" for musl systems.
+func (ctx *Context) BuildFlavor() string {
+	matches, err := filepath.Glob(filepath.Join(ctx.GuestDir, "lib*", "libc.so.6"))
+	if err != nil || len(matches) == 0 {
+		return "musl"
+	}
+
+	return "gnu"
+}
+
+// BuildTripletGnu returns the GNU autoconf build triplet, for example
+// `x86_64-pc-linux-gnu`.
+func (ctx *Context) BuildTripletGnu() string {
+	return ctx.Arch.ToTriplet(ctx.BuildFlavor())
+}
+
+// BuildTripletRust returns the Rust/Cargo build triplet, for example
+// `x86_64-unknown-linux-gnu`.
+func (ctx *Context) BuildTripletRust() string {
+	return ctx.Arch.ToRustTriplet(ctx.BuildFlavor())
+}

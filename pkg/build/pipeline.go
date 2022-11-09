@@ -31,11 +31,13 @@ import (
 )
 
 const (
-	substitutionPackageName    = "${{package.name}}"
-	substitutionPackageVersion = "${{package.version}}"
-	substitutionPackageEpoch   = "${{package.epoch}}"
-	substitutionTargetsDestdir = "${{targets.destdir}}"
-	substitutionSubPkgDir      = "${{targets.subpkgdir}}"
+	substitutionPackageName     = "${{package.name}}"
+	substitutionPackageVersion  = "${{package.version}}"
+	substitutionPackageEpoch    = "${{package.epoch}}"
+	substitutionTargetsDestdir  = "${{targets.destdir}}"
+	substitutionSubPkgDir       = "${{targets.subpkgdir}}"
+	substitutionHostTripletGnu  = "${{host.triplet.gnu}}"
+	substitutionHostTripletRust = "${{host.triplet.rust}}"
 )
 
 type PipelineContext struct {

@@ -31,11 +31,13 @@ import (
 )
 
 const (
-	substitutionPackageName    = "${{package.name}}"
-	substitutionPackageVersion = "${{package.version}}"
-	substitutionPackageEpoch   = "${{package.epoch}}"
-	substitutionTargetsDestdir = "${{targets.destdir}}"
-	substitutionSubPkgDir      = "${{targets.subpkgdir}}"
+	substitutionPackageName     = "${{package.name}}"
+	substitutionPackageVersion  = "${{package.version}}"
+	substitutionPackageEpoch    = "${{package.epoch}}"
+	substitutionTargetsDestdir  = "${{targets.destdir}}"
+	substitutionSubPkgDir       = "${{targets.subpkgdir}}"
+	substitutionHostTripletGnu  = "${{host.triplet.gnu}}"
+	substitutionHostTripletRust = "${{host.triplet.rust}}"
 )
 
 type PipelineContext struct {
@@ -85,10 +87,12 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 
 func substitutionMap(ctx *PipelineContext) map[string]string {
 	nw := map[string]string{
-		substitutionPackageName:    ctx.Package.Name,
-		substitutionPackageVersion: ctx.Package.Version,
-		substitutionPackageEpoch:   strconv.FormatUint(ctx.Package.Epoch, 10),
-		substitutionTargetsDestdir: fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+		substitutionPackageName:     ctx.Package.Name,
+		substitutionPackageVersion:  ctx.Package.Version,
+		substitutionPackageEpoch:    strconv.FormatUint(ctx.Package.Epoch, 10),
+		substitutionTargetsDestdir:  fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+		substitutionHostTripletGnu:  ctx.Context.BuildTripletGnu(),
+		substitutionHostTripletRust: ctx.Context.BuildTripletRust(),
 	}
 
 	if ctx.Subpackage != nil {
@@ -140,9 +144,6 @@ func validateWith(data map[string]string, inputs map[string]Input) (map[string]s
 
 	return data, nil
 }
-
-//go:embed pipelines/*
-var f embed.FS
 
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
 	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses+".yaml"))
@@ -339,3 +340,6 @@ func (p *Pipeline) ApplyNeeds(ctx *PipelineContext) error {
 
 	return nil
 }
+
+//go:embed pipelines/*
+var f embed.FS

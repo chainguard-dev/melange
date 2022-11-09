@@ -465,11 +465,13 @@ func applyTemplate(contents []byte, t string) ([]byte, error) {
 
 func substitutionReplacements() map[string]string {
 	return map[string]string{
-		substitutionPackageName:    "MELANGE_TEMP_REPLACEMENT_PACAKAGE_NAME",
-		substitutionPackageVersion: "MELANGE_TEMP_REPLACEMENT_PACAKAGE_VERSION",
-		substitutionPackageEpoch:   "MELANGE_TEMP_REPLACEMENT_PACAKAGE_EPOCH",
-		substitutionTargetsDestdir: "MELANGE_TEMP_REPLACEMENT_DESTDIR",
-		substitutionSubPkgDir:      "MELANGE_TEMP_REPLACEMENT_SUBPKGDIR",
+		substitutionPackageName:     "MELANGE_TEMP_REPLACEMENT_PACAKAGE_NAME",
+		substitutionPackageVersion:  "MELANGE_TEMP_REPLACEMENT_PACAKAGE_VERSION",
+		substitutionPackageEpoch:    "MELANGE_TEMP_REPLACEMENT_PACAKAGE_EPOCH",
+		substitutionTargetsDestdir:  "MELANGE_TEMP_REPLACEMENT_DESTDIR",
+		substitutionSubPkgDir:       "MELANGE_TEMP_REPLACEMENT_SUBPKGDIR",
+		substitutionHostTripletGnu:  "MELANGE_TEMP_REPLACEMENT_HOST_TRIPLET_GNU",
+		substitutionHostTripletRust: "MELANGE_TEMP_REPLACEMENT_HOST_TRIPLET_RUST",
 	}
 }
 
@@ -865,4 +867,27 @@ func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 	cmd := exec.Command("bwrap", args...)
 
 	return cmd, nil
+}
+
+// BuildFlavor determines if a build context uses glibc or musl, it returns
+// "gnu" for GNU systems, and "musl" for musl systems.
+func (ctx *Context) BuildFlavor() string {
+	matches, err := filepath.Glob(filepath.Join(ctx.GuestDir, "lib*", "libc.so.6"))
+	if err != nil || len(matches) == 0 {
+		return "musl"
+	}
+
+	return "gnu"
+}
+
+// BuildTripletGnu returns the GNU autoconf build triplet, for example
+// `x86_64-pc-linux-gnu`.
+func (ctx *Context) BuildTripletGnu() string {
+	return ctx.Arch.ToTriplet(ctx.BuildFlavor())
+}
+
+// BuildTripletRust returns the Rust/Cargo build triplet, for example
+// `x86_64-unknown-linux-gnu`.
+func (ctx *Context) BuildTripletRust() string {
+	return ctx.Arch.ToRustTriplet(ctx.BuildFlavor())
 }

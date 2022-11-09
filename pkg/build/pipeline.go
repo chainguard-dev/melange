@@ -145,9 +145,6 @@ func validateWith(data map[string]string, inputs map[string]Input) (map[string]s
 	return data, nil
 }
 
-//go:embed pipelines/*
-var f embed.FS
-
 func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]string) error {
 	data, err := os.ReadFile(filepath.Join(ctx.Context.PipelineDir, uses+".yaml"))
 	if errors.Is(err, os.ErrNotExist) {
@@ -343,3 +340,6 @@ func (p *Pipeline) ApplyNeeds(ctx *PipelineContext) error {
 
 	return nil
 }
+
+//go:embed pipelines/*
+var f embed.FS

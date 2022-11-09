@@ -3,6 +3,7 @@ name: Fetch and extract external object into workspace
 needs:
   packages:
     - wget
+    - unzip
 
 inputs:
   strip-components:
@@ -62,5 +63,9 @@ pipeline:
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then
-        tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
+        file $bn | grep -q 'Zip archive data' && isziparchive="true" || isziparchive="false"
+        if [ $isziparchive = "true" ]; then
+          unzip $bn
+        else
+          tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
       fi

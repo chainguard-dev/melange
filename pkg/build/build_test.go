@@ -154,6 +154,7 @@ func TestSubstitutionReplacementMap(t *testing.T) {
 	pipelineMap := substitutionMap(&PipelineContext{
 		Package:    &Package{Name: "package"},
 		Subpackage: &Subpackage{Name: "subpackage"},
+		Context:    &Context{},
 	})
 	buildMap := substitutionReplacements()
 

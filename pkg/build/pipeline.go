@@ -31,13 +31,15 @@ import (
 )
 
 const (
-	substitutionPackageName     = "${{package.name}}"
-	substitutionPackageVersion  = "${{package.version}}"
-	substitutionPackageEpoch    = "${{package.epoch}}"
-	substitutionTargetsDestdir  = "${{targets.destdir}}"
-	substitutionSubPkgDir       = "${{targets.subpkgdir}}"
-	substitutionHostTripletGnu  = "${{host.triplet.gnu}}"
-	substitutionHostTripletRust = "${{host.triplet.rust}}"
+	substitutionPackageName          = "${{package.name}}"
+	substitutionPackageVersion       = "${{package.version}}"
+	substitutionPackageEpoch         = "${{package.epoch}}"
+	substitutionTargetsDestdir       = "${{targets.destdir}}"
+	substitutionSubPkgDir            = "${{targets.subpkgdir}}"
+	substitutionHostTripletGnu       = "${{host.triplet.gnu}}"
+	substitutionHostTripletRust      = "${{host.triplet.rust}}"
+	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
+	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
 )
 
 type PipelineContext struct {
@@ -87,12 +89,14 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 
 func substitutionMap(ctx *PipelineContext) map[string]string {
 	nw := map[string]string{
-		substitutionPackageName:     ctx.Package.Name,
-		substitutionPackageVersion:  ctx.Package.Version,
-		substitutionPackageEpoch:    strconv.FormatUint(ctx.Package.Epoch, 10),
-		substitutionTargetsDestdir:  fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
-		substitutionHostTripletGnu:  ctx.Context.BuildTripletGnu(),
-		substitutionHostTripletRust: ctx.Context.BuildTripletRust(),
+		substitutionPackageName:          ctx.Package.Name,
+		substitutionPackageVersion:       ctx.Package.Version,
+		substitutionPackageEpoch:         strconv.FormatUint(ctx.Package.Epoch, 10),
+		substitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+		substitutionHostTripletGnu:       ctx.Context.BuildTripletGnu(),
+		substitutionHostTripletRust:      ctx.Context.BuildTripletRust(),
+		substitutionCrossTripletGnuGlibc: ctx.Context.Arch.ToTriplet("gnu"),
+		substitutionCrossTripletGnuMusl:  ctx.Context.Arch.ToTriplet("musl"),
 	}
 
 	if ctx.Subpackage != nil {

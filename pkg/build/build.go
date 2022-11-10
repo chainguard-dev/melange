@@ -398,14 +398,13 @@ func (cfg *Configuration) Load(configFile, template string) error {
 	if err != nil {
 		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
-	templatized, err := applyTemplate(data, template)
+
+	config, err := ParseConfig(data, template)
 	if err != nil {
-		return fmt.Errorf("unable to apply template: %w", err)
+		return err
 	}
 
-	if err := yaml.Unmarshal(templatized, cfg); err != nil {
-		return fmt.Errorf("unable to parse configuration file: %w", err)
-	}
+	*cfg = *config
 
 	grp := apko_types.Group{
 		GroupName: "build",
@@ -422,6 +421,22 @@ func (cfg *Configuration) Load(configFile, template string) error {
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
 
 	return nil
+}
+
+// ParseConfig parses a configuration file into a Configuration, applying a template if necessary.
+func ParseConfig(configFile []byte, template string) (*Configuration, error) {
+	templatized, err := applyTemplate(configFile, template)
+	if err != nil {
+		return nil, fmt.Errorf("unable to apply template: %w", err)
+	}
+
+	cfg := &Configuration{}
+
+	if err := yaml.Unmarshal(templatized, cfg); err != nil {
+		return nil, fmt.Errorf("unable to parse configuration file: %w", err)
+	}
+
+	return cfg, nil
 }
 
 func applyTemplate(contents []byte, t string) ([]byte, error) {

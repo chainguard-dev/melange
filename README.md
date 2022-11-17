@@ -167,27 +167,6 @@ pipeline:
     runs: mkdir ${{targets.destdir}}/var/lib/${{package.name}}/tmp
 ```
 
-## Build File Templating
-
-The build file can be templated via [Go templates](https://pkg.go.dev/text/template).
-The template is then passed in as a JSON string via the `--template` flag.
-With templating the same build file can be used for building multiple packages.
-
-For example, use templating to build nginx at multiple versions first by formatting the build file:
-
-```yaml
-package:
-  name: nginx
-  version: {{ .Version }}
-```
-
-and passing in the template via the `--template` flag:
-
-```shell
-melange build --template '{"Version": "1.20.3"}'
-melange build --template '{"Version": "1.22.0"}'
-```
-
 ## Usage with apko
 
 To use a melange built APK in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage.

@@ -35,6 +35,7 @@ func Build() *cobra.Command {
 	var pipelineDir string
 	var sourceDir string
 	var cacheDir string
+	var guestDir string
 	var signingKey string
 	var generateIndex bool
 	var useProot bool
@@ -61,6 +62,7 @@ func Build() *cobra.Command {
 				build.WithWorkspaceDir(workspaceDir),
 				build.WithPipelineDir(pipelineDir),
 				build.WithCacheDir(cacheDir),
+				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
 				build.WithUseProot(useProot),
@@ -100,6 +102,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "/var/cache/melange", "directory used for cached inputs")
+	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")

@@ -61,6 +61,6 @@ pipeline:
         printf "%s  %s\n" '${{inputs.expected-sha512}}' $bn | sha512sum -c
       fi
 
-      if [ "${{inputs.extract}}" = "true" ]; then
+      if [ "${{inputs.extract}}" == "true" ]; then
         tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
       fi

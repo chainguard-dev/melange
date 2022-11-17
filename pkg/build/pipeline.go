@@ -268,6 +268,36 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	return nil
 }
 
+func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
+	ctx := pctx.Context
+
+	if ctx.ContinueLabel == "" {
+		return true
+	}
+
+	if ctx.ContinueLabel == p.Label {
+		ctx.foundContinuation = true
+	}
+
+	return ctx.foundContinuation
+}
+
+func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {
+	if p.Identity() != "???" {
+		p.logger.Printf("running step %s", p.Identity())
+	}
+
+	if p.Uses != "" {
+		return p.evalUse(ctx)
+	}
+
+	if p.Runs != "" {
+		return p.evalRun(ctx)
+	}
+
+	return nil
+}
+
 func (p *Pipeline) Run(ctx *PipelineContext) error {
 	if p.Label != "" && p.Label == ctx.Context.BreakpointLabel {
 		return fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
@@ -279,15 +309,10 @@ func (p *Pipeline) Run(ctx *PipelineContext) error {
 		}
 	}
 
-	if p.Identity() != "???" {
-		p.logger.Printf("running step %s", p.Identity())
-	}
-
-	if p.Uses != "" {
-		return p.evalUse(ctx)
-	}
-	if p.Runs != "" {
-		return p.evalRun(ctx)
+	if p.shouldEvaluateBranch(ctx) {
+		if err := p.evaluateBranch(ctx); err != nil {
+			return err
+		}
 	}
 
 	for _, sp := range p.Pipeline {

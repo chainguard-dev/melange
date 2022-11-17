@@ -144,6 +144,7 @@ type Context struct {
 	CacheDir           string
 	BreakpointLabel    string
 	ContinueLabel      string
+	foundContinuation  bool
 }
 
 type Dependencies struct {

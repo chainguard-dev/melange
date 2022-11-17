@@ -172,7 +172,13 @@ func New(opts ...Option) (*Context, error) {
 	// temporary directory for it.  Otherwise, ensure we are in a
 	// subdir for this specific build context.
 	if ctx.WorkspaceDir != "" {
-		ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
+		// If we are continuing the build, do not modify the workspace
+		// directory path.
+		// TODO(kaniini): Clean up the logic for this, perhaps by signalling
+		// multi-arch builds to the build context.
+		if ctx.ContinueLabel == "" {
+			ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
+		}
 	} else {
 		tmpdir, err := os.MkdirTemp("", "melange-workspace-*")
 		if err != nil {

@@ -21,6 +21,7 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 const defaultTemplateYaml = `package:
@@ -35,55 +36,13 @@ const templatized = `package:
   test: ${{package.name}}
 `
 
-func TestApplyTemplate(t *testing.T) {
-	tests := []struct {
-		description string
-		contents    string
-		template    string
-		expected    string
-		shouldErr   bool
-	}{
-		{
-			description: "no template",
-			contents:    defaultTemplateYaml,
-			expected:    defaultTemplateYaml,
-		}, {
-			description: "valid template",
-			contents:    templatized,
-			template:    `{"Package": "nginx", "Version": 100}`,
-			expected:    defaultTemplateYaml,
-		}, {
-			description: "incomplete template",
-			contents:    templatized,
-			template:    `{"Package": "nginx"}`,
-			shouldErr:   true,
-		}, {
-			description: "invalid template",
-			contents:    templatized,
-			template:    `{"Package": "nginx", "Version": 100`,
-			shouldErr:   true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.description, func(t *testing.T) {
-			actual, err := applyTemplate([]byte(test.contents), test.template)
-			if err != nil && test.shouldErr {
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if d := cmp.Diff(string(actual), test.expected); d != "" {
-				t.Fatalf("actual didn't match expected: %s", d)
-			}
-		})
-	}
-}
-
 func TestLoadConfiguration(t *testing.T) {
 	expected := &Configuration{
-		Package: Package{Name: "nginx", Version: "100"},
+		Package: Package{
+			Name:    "nginx",
+			Version: "100",
+		},
+		Subpackages: []Subpackage{},
 	}
 	expected.Environment.Accounts.Users = []apko_types.User{{
 		UserName: "build",
@@ -96,72 +55,110 @@ func TestLoadConfiguration(t *testing.T) {
 		Members:   []string{"build"},
 	}}
 
-	tests := []struct {
-		description string
-		contents    string
-		template    string
-		expected    *Configuration
-		shouldErr   bool
-	}{
-		{
-			description: "no template",
-			contents:    defaultTemplateYaml,
-			expected:    expected,
-		}, {
-			description: "valid template",
-			contents:    templatized,
-			template:    `{"Package": "nginx", "Version": 100}`,
-			expected:    expected,
-		}, {
-			description: "incomplete template",
-			contents:    templatized,
-			template:    `{"Package": "nginx"}`,
-			shouldErr:   true,
-		}, {
-			description: "invalid template",
-			contents:    templatized,
-			template:    `{"Hello": "world"}`,
-			shouldErr:   true,
-		},
+	dir := t.TempDir()
+	f := filepath.Join(dir, "config")
+	if err := ioutil.WriteFile(f, []byte(defaultTemplateYaml), 0755); err != nil {
+		t.Fatal(err)
 	}
 
-	for _, test := range tests {
-		t.Run(test.description, func(t *testing.T) {
-			dir := t.TempDir()
-			f := filepath.Join(dir, "config")
-			if err := ioutil.WriteFile(f, []byte(test.contents), 0755); err != nil {
-				t.Fatal(err)
-			}
-
-			cfg := &Configuration{}
-			err := cfg.Load(f, test.template)
-			if test.shouldErr && err == nil {
-				t.Fatal("expected test to fail but it passed")
-			}
-			if test.shouldErr {
-				return
-			}
-			if d := cmp.Diff(cfg, test.expected); d != "" {
-				t.Fatalf("actual didn't match expected: %s", d)
-			}
-		})
+	cfg := &Configuration{}
+	if err := cfg.Load(f); err != nil {
+		t.Fatal(err)
+	}
+	if d := cmp.Diff(expected, cfg); d != "" {
+		t.Fatalf("actual didn't match expected: %s", d)
 	}
 }
 
-// Makes sure the substitution map in pipeline.go matches the one in build.go
-// TODO: priyawadhwa@, it would be better to use a single map so we don't risk losing substitutions
-func TestSubstitutionReplacementMap(t *testing.T) {
-	pipelineMap := substitutionMap(&PipelineContext{
-		Package:    &Package{Name: "package"},
-		Subpackage: &Subpackage{Name: "subpackage"},
-		Context:    &Context{},
-	})
-	buildMap := substitutionReplacements()
+func TestLoadConfiguration_RangeSubpackages(t *testing.T) {
+	contents := `
+package:
+  name: hello
+  version: world
 
-	// make sure all the keys in pipelineMap exist in buildMap
-	for k := range pipelineMap {
-		if _, ok := buildMap[k]; !ok {
-			t.Fatalf("please add %s to substitutionReplacements() in build.go", k)
-		}
+pipeline:
+- name: hello
+  runs: world
+
+data:
+  - name: ninja-turtles
+    items:
+    - key: Michelangelo
+      value: orange
+    - key: Raphael
+      value: red
+    - key: Leonardo
+      value: blue
+    - key: Donatello
+      value: purple
+  - name: animals
+    items:
+    - key: dogs
+      value: loyal
+    - key: cats
+      value: angry
+    - key: turtles
+      value: slow
+
+subpackages:
+  - range: animals
+    name: ${{range.key}}
+    pipeline:
+      - runs: ${{range.key}} are ${{range.value}}
+  - range: ninja-turtles
+    name: ${{range.key}}
+    pipeline:
+      - runs: ${{range.key}}'s color is ${{range.value}}
+`
+
+	expected := []Subpackage{{
+		Name: "dogs",
+		Pipeline: []Pipeline{{
+			Runs: "dogs are loyal",
+		}},
+	}, {
+		Name: "cats",
+		Pipeline: []Pipeline{{
+			Runs: "cats are angry",
+		}},
+	}, {
+		Name: "turtles",
+		Pipeline: []Pipeline{{
+			Runs: "turtles are slow",
+		}},
+	}, {
+		Name: "Michelangelo",
+		Pipeline: []Pipeline{{
+			Runs: "Michelangelo's color is orange",
+		}},
+	}, {
+		Name: "Raphael",
+		Pipeline: []Pipeline{{
+			Runs: "Raphael's color is red",
+		}},
+	}, {
+		Name: "Leonardo",
+		Pipeline: []Pipeline{{
+			Runs: "Leonardo's color is blue",
+		}},
+	}, {
+		Name: "Donatello",
+		Pipeline: []Pipeline{{
+			Runs: "Donatello's color is purple",
+		}},
+	}}
+
+	dir := t.TempDir()
+	f := filepath.Join(dir, "config")
+	if err := ioutil.WriteFile(f, []byte(contents), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &Configuration{}
+	if err := cfg.Load(f); err != nil {
+		t.Fatal(err)
+	}
+	if d := cmp.Diff(expected, cfg.Subpackages, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
+		t.Fatalf("actual didn't match expected: %s", d)
 	}
 }

@@ -15,7 +15,7 @@
 package build
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,19 +24,13 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-const defaultTemplateYaml = `package:
+func TestLoadConfiguration(t *testing.T) {
+	contents := `
+package:
   name: nginx
   version: 100
   test: ${{package.name}}
 `
-
-const templatized = `package:
-  name: {{ .Package }}
-  version: {{ .Version }}
-  test: ${{package.name}}
-`
-
-func TestLoadConfiguration(t *testing.T) {
 	expected := &Configuration{
 		Package: Package{
 			Name:    "nginx",
@@ -55,9 +49,8 @@ func TestLoadConfiguration(t *testing.T) {
 		Members:   []string{"build"},
 	}}
 
-	dir := t.TempDir()
-	f := filepath.Join(dir, "config")
-	if err := ioutil.WriteFile(f, []byte(defaultTemplateYaml), 0755); err != nil {
+	f := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(f, []byte(contents), 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -148,9 +141,8 @@ subpackages:
 		}},
 	}}
 
-	dir := t.TempDir()
-	f := filepath.Join(dir, "config")
-	if err := ioutil.WriteFile(f, []byte(contents), 0755); err != nil {
+	f := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(f, []byte(contents), 0755); err != nil {
 		t.Fatal(err)
 	}
 

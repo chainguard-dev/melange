@@ -143,6 +143,7 @@ type Context struct {
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
 	BreakpointLabel    string
+	ContinueLabel      string
 }
 
 type Dependencies struct {
@@ -407,6 +408,15 @@ func WithBinShOverlay(binShOverlay string) Option {
 func WithBreakpointLabel(breakpointLabel string) Option {
 	return func(ctx *Context) error {
 		ctx.BreakpointLabel = breakpointLabel
+		return nil
+	}
+}
+
+// WithContinueLabel sets a label to continue build execution from.  This
+// requires a preserved build environment and workspace.
+func WithContinueLabel(continueLabel string) Option {
+	return func(ctx *Context) error {
+		ctx.ContinueLabel = continueLabel
 		return nil
 	}
 }

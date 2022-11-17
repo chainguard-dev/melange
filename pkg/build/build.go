@@ -503,15 +503,21 @@ func substitutionReplacements() map[string]string {
 	}
 }
 
-func (ctx *Context) BuildWorkspace(workspaceDir string) error {
+// BuildGuest invokes apko to build the guest environment.
+func (ctx *Context) BuildGuest() error {
 	// Prepare workspace directory
 	if err := os.MkdirAll(ctx.WorkspaceDir, 0755); err != nil {
 		return fmt.Errorf("mkdir -p %s: %w", ctx.WorkspaceDir, err)
 	}
 
-	ctx.Logger.Printf("building workspace in '%s' with apko", workspaceDir)
+	// Prepare guest directory
+	if err := os.MkdirAll(ctx.GuestDir, 0755); err != nil {
+		return fmt.Errorf("mkdir -p %s: %w", ctx.GuestDir, err)
+	}
 
-	bc, err := apko_build.New(workspaceDir,
+	ctx.Logger.Printf("building workspace in '%s' with apko", ctx.GuestDir)
+
+	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
 		apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
@@ -751,11 +757,13 @@ func (ctx *Context) BuildPackage() error {
 		Package: &ctx.Configuration.Package,
 	}
 
-	guestDir, err := os.MkdirTemp("", "melange-guest-*")
-	if err != nil {
-		return fmt.Errorf("unable to make guest directory: %w", err)
+	if ctx.GuestDir == "" {
+		guestDir, err := os.MkdirTemp("", "melange-guest-*")
+		if err != nil {
+			return fmt.Errorf("unable to make guest directory: %w", err)
+		}
+		ctx.GuestDir = guestDir
 	}
-	ctx.GuestDir = guestDir
 
 	ctx.Logger.Printf("evaluating pipelines for package requirements")
 	for _, p := range ctx.Configuration.Pipeline {
@@ -764,8 +772,8 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
-	if err := ctx.BuildWorkspace(guestDir); err != nil {
-		return fmt.Errorf("unable to build workspace: %w", err)
+	if err := ctx.BuildGuest(); err != nil {
+		return fmt.Errorf("unable to build guest: %w", err)
 	}
 
 	if err := ctx.OverlayBinSh(); err != nil {

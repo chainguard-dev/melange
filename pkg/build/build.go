@@ -91,6 +91,7 @@ type Pipeline struct {
 	Pipeline []Pipeline        `yaml:"pipeline,omitempty"`
 	Inputs   map[string]Input  `yaml:"inputs,omitempty"`
 	Needs    Needs             `yaml:"needs,omitempty"`
+	Label    string            `yaml:"label,omitempty"`
 	logger   *log.Logger
 }
 
@@ -141,6 +142,9 @@ type Context struct {
 	BinShOverlay       string
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
+	BreakpointLabel    string
+	ContinueLabel      string
+	foundContinuation  bool
 }
 
 type Dependencies struct {
@@ -168,7 +172,13 @@ func New(opts ...Option) (*Context, error) {
 	// temporary directory for it.  Otherwise, ensure we are in a
 	// subdir for this specific build context.
 	if ctx.WorkspaceDir != "" {
-		ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
+		// If we are continuing the build, do not modify the workspace
+		// directory path.
+		// TODO(kaniini): Clean up the logic for this, perhaps by signalling
+		// multi-arch builds to the build context.
+		if ctx.ContinueLabel == "" {
+			ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
+		}
 	} else {
 		tmpdir, err := os.MkdirTemp("", "melange-workspace-*")
 		if err != nil {
@@ -260,6 +270,14 @@ func WithBuildDate(s string) Option {
 func WithWorkspaceDir(workspaceDir string) Option {
 	return func(ctx *Context) error {
 		ctx.WorkspaceDir = workspaceDir
+		return nil
+	}
+}
+
+// WithGuestDir sets the guest directory to use.
+func WithGuestDir(guestDir string) Option {
+	return func(ctx *Context) error {
+		ctx.GuestDir = guestDir
 		return nil
 	}
 }
@@ -392,6 +410,24 @@ func WithBinShOverlay(binShOverlay string) Option {
 	}
 }
 
+// WithBreakpointLabel sets a label to stop build execution at.  The build
+// environment and workspace are preserved.
+func WithBreakpointLabel(breakpointLabel string) Option {
+	return func(ctx *Context) error {
+		ctx.BreakpointLabel = breakpointLabel
+		return nil
+	}
+}
+
+// WithContinueLabel sets a label to continue build execution from.  This
+// requires a preserved build environment and workspace.
+func WithContinueLabel(continueLabel string) Option {
+	return func(ctx *Context) error {
+		ctx.ContinueLabel = continueLabel
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(configFile, template string) error {
 	data, err := os.ReadFile(configFile)
@@ -492,15 +528,21 @@ func substitutionReplacements() map[string]string {
 	}
 }
 
-func (ctx *Context) BuildWorkspace(workspaceDir string) error {
+// BuildGuest invokes apko to build the guest environment.
+func (ctx *Context) BuildGuest() error {
 	// Prepare workspace directory
 	if err := os.MkdirAll(ctx.WorkspaceDir, 0755); err != nil {
 		return fmt.Errorf("mkdir -p %s: %w", ctx.WorkspaceDir, err)
 	}
 
-	ctx.Logger.Printf("building workspace in '%s' with apko", workspaceDir)
+	// Prepare guest directory
+	if err := os.MkdirAll(ctx.GuestDir, 0755); err != nil {
+		return fmt.Errorf("mkdir -p %s: %w", ctx.GuestDir, err)
+	}
 
-	bc, err := apko_build.New(workspaceDir,
+	ctx.Logger.Printf("building workspace in '%s' with apko", ctx.GuestDir)
+
+	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
 		apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
@@ -740,11 +782,13 @@ func (ctx *Context) BuildPackage() error {
 		Package: &ctx.Configuration.Package,
 	}
 
-	guestDir, err := os.MkdirTemp("", "melange-guest-*")
-	if err != nil {
-		return fmt.Errorf("unable to make guest directory: %w", err)
+	if ctx.GuestDir == "" {
+		guestDir, err := os.MkdirTemp("", "melange-guest-*")
+		if err != nil {
+			return fmt.Errorf("unable to make guest directory: %w", err)
+		}
+		ctx.GuestDir = guestDir
 	}
-	ctx.GuestDir = guestDir
 
 	ctx.Logger.Printf("evaluating pipelines for package requirements")
 	for _, p := range ctx.Configuration.Pipeline {
@@ -753,8 +797,8 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
-	if err := ctx.BuildWorkspace(guestDir); err != nil {
-		return fmt.Errorf("unable to build workspace: %w", err)
+	if err := ctx.BuildGuest(); err != nil {
+		return fmt.Errorf("unable to build guest: %w", err)
 	}
 
 	if err := ctx.OverlayBinSh(); err != nil {

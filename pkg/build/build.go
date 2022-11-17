@@ -142,6 +142,7 @@ type Context struct {
 	BinShOverlay       string
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
+	BreakpointLabel    string
 }
 
 type Dependencies struct {
@@ -389,6 +390,15 @@ func WithDependencyLog(logFile string) Option {
 func WithBinShOverlay(binShOverlay string) Option {
 	return func(ctx *Context) error {
 		ctx.BinShOverlay = binShOverlay
+		return nil
+	}
+}
+
+// WithBreakpointLabel sets a label to stop build execution at.  The build
+// environment and workspace are preserved.
+func WithBreakpointLabel(breakpointLabel string) Option {
+	return func(ctx *Context) error {
+		ctx.BreakpointLabel = breakpointLabel
 		return nil
 	}
 }

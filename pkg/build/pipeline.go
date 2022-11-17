@@ -269,6 +269,10 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 }
 
 func (p *Pipeline) Run(ctx *PipelineContext) error {
+	if p.Label != "" && p.Label == ctx.Context.BreakpointLabel {
+		return fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
+	}
+
 	if p.logger == nil {
 		if err := p.initializeFromContext(ctx); err != nil {
 			return err

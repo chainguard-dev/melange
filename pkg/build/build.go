@@ -144,7 +144,7 @@ func (d *DataItemList) MarshalYAML() (interface{}, error) {
 	if d == nil {
 		return nil, nil
 	}
-	var m map[string]string
+	m := map[string]string{}
 	for _, i := range *d {
 		m[i.Key] = m[i.Value]
 	}

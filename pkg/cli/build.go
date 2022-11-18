@@ -108,7 +108,7 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
-	go cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
+	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&breakpointLabel, "breakpoint-label", "", "stop build execution at the specified label")
 	cmd.Flags().StringVar(&continueLabel, "continue-label", "", "continue build execution at the specified label")

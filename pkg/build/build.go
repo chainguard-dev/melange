@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -116,8 +117,38 @@ type Configuration struct {
 }
 
 type RangeData struct {
-	Name  string     `yaml:"name"`
-	Items []DataItem `yaml:"items,omitempty"`
+	Name  string       `yaml:"name"`
+	Items DataItemList `yaml:"items"`
+}
+
+type DataItemList []DataItem
+
+func (d *DataItemList) UnmarshalYAML(n *yaml.Node) error {
+	if d == nil {
+		return nil
+	}
+	var m map[string]string
+	if err := n.Decode(&m); err != nil {
+		return err
+	}
+	out := make([]DataItem, 0, len(*d))
+	for k, v := range m {
+		out = append(out, DataItem{Key: k, Value: v})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	*d = out
+	return nil
+}
+
+func (d *DataItemList) MarshalYAML() (interface{}, error) {
+	if d == nil {
+		return nil, nil
+	}
+	var m map[string]string
+	for _, i := range *d {
+		m[i.Key] = m[i.Value]
+	}
+	return m, nil
 }
 
 type DataItem struct {

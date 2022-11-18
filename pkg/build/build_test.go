@@ -76,22 +76,15 @@ pipeline:
 data:
   - name: ninja-turtles
     items:
-    - key: Michelangelo
-      value: orange
-    - key: Raphael
-      value: red
-    - key: Leonardo
-      value: blue
-    - key: Donatello
-      value: purple
+      Michelangelo: orange
+      Raphael: red
+      Leonardo: blue
+      Donatello: purple
   - name: animals
     items:
-    - key: dogs
-      value: loyal
-    - key: cats
-      value: angry
-    - key: turtles
-      value: slow
+      dogs: loyal
+      cats: angry
+      turtles: slow
 
 subpackages:
   - range: animals
@@ -105,19 +98,29 @@ subpackages:
 `
 
 	expected := []Subpackage{{
-		Name: "dogs",
-		Pipeline: []Pipeline{{
-			Runs: "dogs are loyal",
-		}},
-	}, {
 		Name: "cats",
 		Pipeline: []Pipeline{{
 			Runs: "cats are angry",
 		}},
 	}, {
+		Name: "dogs",
+		Pipeline: []Pipeline{{
+			Runs: "dogs are loyal",
+		}},
+	}, {
 		Name: "turtles",
 		Pipeline: []Pipeline{{
 			Runs: "turtles are slow",
+		}},
+	}, {
+		Name: "Donatello",
+		Pipeline: []Pipeline{{
+			Runs: "Donatello's color is purple",
+		}},
+	}, {
+		Name: "Leonardo",
+		Pipeline: []Pipeline{{
+			Runs: "Leonardo's color is blue",
 		}},
 	}, {
 		Name: "Michelangelo",
@@ -128,16 +131,6 @@ subpackages:
 		Name: "Raphael",
 		Pipeline: []Pipeline{{
 			Runs: "Raphael's color is red",
-		}},
-	}, {
-		Name: "Leonardo",
-		Pipeline: []Pipeline{{
-			Runs: "Leonardo's color is blue",
-		}},
-	}, {
-		Name: "Donatello",
-		Pipeline: []Pipeline{{
-			Runs: "Donatello's color is purple",
 		}},
 	}}
 

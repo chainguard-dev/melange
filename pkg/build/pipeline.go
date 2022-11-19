@@ -31,11 +31,15 @@ import (
 )
 
 const (
-	substitutionPackageName    = "${{package.name}}"
-	substitutionPackageVersion = "${{package.version}}"
-	substitutionPackageEpoch   = "${{package.epoch}}"
-	substitutionTargetsDestdir = "${{targets.destdir}}"
-	substitutionSubPkgDir      = "${{targets.subpkgdir}}"
+	substitutionPackageName          = "${{package.name}}"
+	substitutionPackageVersion       = "${{package.version}}"
+	substitutionPackageEpoch         = "${{package.epoch}}"
+	substitutionTargetsDestdir       = "${{targets.destdir}}"
+	substitutionSubPkgDir            = "${{targets.subpkgdir}}"
+	substitutionHostTripletGnu       = "${{host.triplet.gnu}}"
+	substitutionHostTripletRust      = "${{host.triplet.rust}}"
+	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
+	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
 )
 
 type PipelineContext struct {
@@ -85,10 +89,14 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 
 func substitutionMap(ctx *PipelineContext) map[string]string {
 	nw := map[string]string{
-		substitutionPackageName:    ctx.Package.Name,
-		substitutionPackageVersion: ctx.Package.Version,
-		substitutionPackageEpoch:   strconv.FormatUint(ctx.Package.Epoch, 10),
-		substitutionTargetsDestdir: fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+		substitutionPackageName:          ctx.Package.Name,
+		substitutionPackageVersion:       ctx.Package.Version,
+		substitutionPackageEpoch:         strconv.FormatUint(ctx.Package.Epoch, 10),
+		substitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", ctx.Package.Name),
+		substitutionHostTripletGnu:       ctx.Context.BuildTripletGnu(),
+		substitutionHostTripletRust:      ctx.Context.BuildTripletRust(),
+		substitutionCrossTripletGnuGlibc: ctx.Context.Arch.ToTriplet("gnu"),
+		substitutionCrossTripletGnuMusl:  ctx.Context.Arch.ToTriplet("musl"),
 	}
 
 	if ctx.Subpackage != nil {
@@ -263,13 +271,21 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) Run(ctx *PipelineContext) error {
-	if p.logger == nil {
-		if err := p.initializeFromContext(ctx); err != nil {
-			return err
-		}
+func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
+	ctx := pctx.Context
+
+	if ctx.ContinueLabel == "" {
+		return true
 	}
 
+	if ctx.ContinueLabel == p.Label {
+		ctx.foundContinuation = true
+	}
+
+	return ctx.foundContinuation
+}
+
+func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {
 	if p.Identity() != "???" {
 		p.logger.Printf("running step %s", p.Identity())
 	}
@@ -277,8 +293,29 @@ func (p *Pipeline) Run(ctx *PipelineContext) error {
 	if p.Uses != "" {
 		return p.evalUse(ctx)
 	}
+
 	if p.Runs != "" {
 		return p.evalRun(ctx)
+	}
+
+	return nil
+}
+
+func (p *Pipeline) Run(ctx *PipelineContext) error {
+	if p.Label != "" && p.Label == ctx.Context.BreakpointLabel {
+		return fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
+	}
+
+	if p.logger == nil {
+		if err := p.initializeFromContext(ctx); err != nil {
+			return err
+		}
+	}
+
+	if p.shouldEvaluateBranch(ctx) {
+		if err := p.evaluateBranch(ctx); err != nil {
+			return err
+		}
 	}
 
 	for _, sp := range p.Pipeline {
@@ -339,3 +376,6 @@ func (p *Pipeline) ApplyNeeds(ctx *PipelineContext) error {
 
 	return nil
 }
+
+//go:embed pipelines/*
+var f embed.FS

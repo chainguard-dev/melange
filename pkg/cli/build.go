@@ -35,6 +35,7 @@ func Build() *cobra.Command {
 	var pipelineDir string
 	var sourceDir string
 	var cacheDir string
+	var guestDir string
 	var signingKey string
 	var generateIndex bool
 	var useProot bool
@@ -46,6 +47,8 @@ func Build() *cobra.Command {
 	var template string
 	var dependencyLog string
 	var overlayBinSh string
+	var breakpointLabel string
+	var continueLabel string
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -60,6 +63,7 @@ func Build() *cobra.Command {
 				build.WithWorkspaceDir(workspaceDir),
 				build.WithPipelineDir(pipelineDir),
 				build.WithCacheDir(cacheDir),
+				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
 				build.WithUseProot(useProot),
@@ -70,6 +74,8 @@ func Build() *cobra.Command {
 				build.WithTemplate(template),
 				build.WithDependencyLog(dependencyLog),
 				build.WithBinShOverlay(overlayBinSh),
+				build.WithBreakpointLabel(breakpointLabel),
+				build.WithContinueLabel(continueLabel),
 			}
 
 			if len(args) > 0 {
@@ -98,6 +104,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "/var/cache/melange", "directory used for cached inputs")
+	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
@@ -106,6 +113,8 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&template, "template", "", "template to apply to melange config (optional)")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
+	cmd.Flags().StringVar(&breakpointLabel, "breakpoint-label", "", "stop build execution at the specified label")
+	cmd.Flags().StringVar(&continueLabel, "continue-label", "", "continue build execution at the specified label")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config.")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")

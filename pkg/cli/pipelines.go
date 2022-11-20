@@ -139,9 +139,7 @@ func listPipelinesFromDir(dir, ext string) []string {
 		}
 		if filepath.Ext(d.Name()) == ext {
 			// remove pipeline-dir prefix and file extension
-			trimmed := strings.TrimPrefix(path, normalizedPath)
-			trimmed = removeExtFromPath(trimmed)
-
+			trimmed := removePrefixAndExtFromPath(path, dir)
 			matched = append(matched, trimmed)
 		}
 		return nil
@@ -169,7 +167,7 @@ func listEmbededPipelines(fs *embed.FS, dir string) (out []string, err error) {
 			continue
 		}
 
-		var fpWithoutExt = removeExtFromPath(fp)
+		var fpWithoutExt = removePrefixAndExtFromPath(fp, "pipelines/")
 		var _, final, _ = strings.Cut(fpWithoutExt, "/")
 		out = append(out, final)
 	}
@@ -177,8 +175,14 @@ func listEmbededPipelines(fs *embed.FS, dir string) (out []string, err error) {
 	return
 }
 
-func removeExtFromPath(path string) string {
-	extension := filepath.Ext(path)
+func removePrefixAndExtFromPath(path string, prefix string) string {
+	normalizedPrefix := strings.Clone(prefix)
+	if prefix[len(prefix)-1] != '/' {
+		normalizedPrefix += string('/')
+	}
+
+	withoutPrefix := strings.TrimPrefix(path, normalizedPrefix)
+	extension := filepath.Ext(withoutPrefix)
 	pathWithoutExt := path[0 : len(path)-len(extension)]
 	return pathWithoutExt
 }

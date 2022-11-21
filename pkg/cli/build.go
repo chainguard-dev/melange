@@ -44,7 +44,6 @@ func Build() *cobra.Command {
 	var archstrs []string
 	var extraKeys []string
 	var extraRepos []string
-	var template string
 	var dependencyLog string
 	var overlayBinSh string
 	var breakpointLabel string
@@ -71,7 +70,6 @@ func Build() *cobra.Command {
 				build.WithOutDir(outDir),
 				build.WithExtraKeys(extraKeys),
 				build.WithExtraRepos(extraRepos),
-				build.WithTemplate(template),
 				build.WithDependencyLog(dependencyLog),
 				build.WithBinShOverlay(overlayBinSh),
 				build.WithBreakpointLabel(breakpointLabel),
@@ -110,7 +108,6 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
-	cmd.Flags().StringVar(&template, "template", "", "template to apply to melange config (optional)")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&breakpointLabel, "breakpoint-label", "", "stop build execution at the specified label")

@@ -15,8 +15,6 @@
 package build
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -26,15 +24,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
-	"github.com/Masterminds/sprig/v3"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
@@ -96,6 +93,7 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
+	Range        string        `yaml:"range"`
 	Name         string        `yaml:"name"`
 	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
 	Dependencies Dependencies  `yaml:"dependencies,omitempty"`
@@ -113,8 +111,48 @@ type Input struct {
 type Configuration struct {
 	Package     Package
 	Environment apko_types.ImageConfiguration
-	Pipeline    []Pipeline
-	Subpackages []Subpackage
+	Pipeline    []Pipeline   `yaml:"pipeline,omitempty"`
+	Subpackages []Subpackage `yaml:"subpackages,omitempty"`
+	Data        []RangeData  `yaml:"data,omitempty"`
+}
+
+type RangeData struct {
+	Name  string       `yaml:"name"`
+	Items DataItemList `yaml:"items"`
+}
+
+type DataItemList []DataItem
+
+func (d *DataItemList) UnmarshalYAML(n *yaml.Node) error {
+	if d == nil {
+		return nil
+	}
+	var m map[string]string
+	if err := n.Decode(&m); err != nil {
+		return err
+	}
+	out := make([]DataItem, 0, len(*d))
+	for k, v := range m {
+		out = append(out, DataItem{Key: k, Value: v})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	*d = out
+	return nil
+}
+
+func (d *DataItemList) MarshalYAML() (interface{}, error) {
+	if d == nil {
+		return nil, nil
+	}
+	m := map[string]string{}
+	for _, i := range *d {
+		m[i.Key] = m[i.Value]
+	}
+	return m, nil
+}
+
+type DataItem struct {
+	Key, Value string
 }
 
 type Context struct {
@@ -129,7 +167,6 @@ type Context struct {
 	GuestDir           string
 	SigningKey         string
 	SigningPassphrase  string
-	Template           string
 	GenerateIndex      bool
 	UseProot           bool
 	EmptyWorkspace     bool
@@ -205,7 +242,7 @@ func New(opts ...Option) (*Context, error) {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 
-	if err := ctx.Configuration.Load(ctx.ConfigFile, ctx.Template); err != nil {
+	if err := ctx.Configuration.Load(ctx.ConfigFile); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
@@ -386,13 +423,6 @@ func WithExtraRepos(extraRepos []string) Option {
 	}
 }
 
-func WithTemplate(template string) Option {
-	return func(ctx *Context) error {
-		ctx.Template = template
-		return nil
-	}
-}
-
 // WithDependencyLog sets a filename to use for dependency logging.
 func WithDependencyLog(logFile string) Option {
 	return func(ctx *Context) error {
@@ -429,18 +459,60 @@ func WithContinueLabel(continueLabel string) Option {
 }
 
 // Load the configuration data from the build context configuration file.
-func (cfg *Configuration) Load(configFile, template string) error {
+func (cfg *Configuration) Load(configFile string) error {
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
 
-	config, err := ParseConfig(data, template)
-	if err != nil {
-		return err
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return fmt.Errorf("unable to parse configuration file: %w", err)
 	}
 
-	*cfg = *config
+	datas := map[string][]DataItem{}
+	for _, d := range cfg.Data {
+		datas[d.Name] = d.Items
+	}
+	subpackages := []Subpackage{}
+	for _, sp := range cfg.Subpackages {
+		if sp.Range == "" {
+			subpackages = append(subpackages, sp)
+			continue
+		}
+		items, ok := datas[sp.Range]
+		if !ok {
+			return fmt.Errorf("subpackage specified undefined range: %q", sp.Range)
+		}
+
+		for _, it := range items {
+			k, v := it.Key, it.Value
+			replacer := replacerFromMap(map[string]string{
+				"${{range.key}}":   k,
+				"${{range.value}}": v,
+			})
+			thingToAdd := Subpackage{
+				Name:        replacer.Replace(sp.Name),
+				Description: replacer.Replace(sp.Description),
+			}
+			for _, p := range sp.Pipeline {
+				thingToAdd.Pipeline = append(thingToAdd.Pipeline, Pipeline{
+					Name:   p.Name,
+					Uses:   p.Uses,
+					With:   p.With,
+					Inputs: p.Inputs,
+					Needs:  p.Needs,
+					Label:  p.Label,
+					Runs:   replacer.Replace(p.Runs),
+					// TODO: p.Pipeline?
+				})
+			}
+			subpackages = append(subpackages, thingToAdd)
+		}
+	}
+	cfg.Data = nil // TODO: zero this out or not?
+	cfg.Subpackages = subpackages
+
+	// TODO: validate that subpackage ranges have been consumed and applied
 
 	grp := apko_types.Group{
 		GroupName: "build",
@@ -457,75 +529,6 @@ func (cfg *Configuration) Load(configFile, template string) error {
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
 
 	return nil
-}
-
-// ParseConfig parses a configuration file into a Configuration, applying a template if necessary.
-func ParseConfig(configFile []byte, template string) (*Configuration, error) {
-	templatized, err := applyTemplate(configFile, template)
-	if err != nil {
-		return nil, fmt.Errorf("unable to apply template: %w", err)
-	}
-
-	cfg := &Configuration{}
-
-	if err := yaml.Unmarshal(templatized, cfg); err != nil {
-		return nil, fmt.Errorf("unable to parse configuration file: %w", err)
-	}
-
-	return cfg, nil
-}
-
-func applyTemplate(contents []byte, t string) ([]byte, error) {
-	var i map[string]interface{}
-
-	if t != "" {
-		if err := json.Unmarshal([]byte(t), &i); err != nil {
-			return nil, err
-		}
-	}
-
-	// First, replace all protected pipeline templated vars temporarily
-	// So that we can apply the Go template
-	// We have to do this bc go templates doesn't support ignoring certain fields: https://github.com/golang/go/issues/31147
-
-	sr := substitutionReplacements()
-
-	protected := string(contents)
-	for k, v := range sr {
-		protected = strings.ReplaceAll(protected, k, v)
-	}
-
-	tmpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(protected)
-	if err != nil {
-		return nil, err
-	}
-	tmpl = tmpl.Option("missingkey=error")
-	buf := bytes.NewBuffer([]byte{})
-	if err := tmpl.Execute(buf, i); err != nil {
-		return nil, err
-	}
-
-	// Add the pipeline templating back in
-	templateApplied := buf.String()
-	for k, v := range sr {
-		templateApplied = strings.ReplaceAll(templateApplied, v, k)
-	}
-
-	return []byte(templateApplied), nil
-}
-
-func substitutionReplacements() map[string]string {
-	return map[string]string{
-		substitutionPackageName:          "MELANGE_TEMP_REPLACEMENT_PACAKAGE_NAME",
-		substitutionPackageVersion:       "MELANGE_TEMP_REPLACEMENT_PACAKAGE_VERSION",
-		substitutionPackageEpoch:         "MELANGE_TEMP_REPLACEMENT_PACAKAGE_EPOCH",
-		substitutionTargetsDestdir:       "MELANGE_TEMP_REPLACEMENT_DESTDIR",
-		substitutionSubPkgDir:            "MELANGE_TEMP_REPLACEMENT_SUBPKGDIR",
-		substitutionHostTripletGnu:       "MELANGE_TEMP_REPLACEMENT_HOST_TRIPLET_GNU",
-		substitutionHostTripletRust:      "MELANGE_TEMP_REPLACEMENT_HOST_TRIPLET_RUST",
-		substitutionCrossTripletGnuGlibc: "MELANGE_TEMP_REPLACEMENT_CROSS_TRIPLET_GNU_GLIBC",
-		substitutionCrossTripletGnuMusl:  "MELANGE_TEMP_REPLACEMENT_CROSS_TRIPLET_GNU_MUSL",
-	}
 }
 
 // BuildGuest invokes apko to build the guest environment.

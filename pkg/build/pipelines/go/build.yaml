@@ -1,0 +1,56 @@
+name: Run a build using the go compiler
+
+needs:
+  packages:
+    - go
+    - busybox
+    - ca-certificates-bundle
+
+inputs:
+  packages:
+    description: |
+      List of space-separated packages to compile. Files con also be specified.
+      This value is passed as an argument to go build.
+    required: true
+
+  tags:
+    description: |
+      A comma-separated list of build tags to pass to the go compiler
+  
+  output:
+    description: |
+      Filename to use when writing the binary. The final install location inside 
+      the apk will be in prefix / install-dir / output
+    required: true
+
+  prefix:
+    description: |
+      Prefix to relocate binaries
+    default: usr
+
+  ldflags:
+    description:
+      List of [pattern=]arg to pass to the go compiler with -ldflags
+
+  install-dir:
+    description: |
+      Directory where binaries will be installed
+    default: bin
+
+pipeline:
+  - runs: |
+      TAGS=""
+      LDFLAGS=""
+
+      if [ ! "${{inputs.tags}}" == "" ]; then
+        TAGS="${{inputs.tags}}"
+      fi
+
+      if [ ! "${{inputs.ldflags}}" == "" ]; then
+        LDFLAGS="{{inputs.ldflags}}"
+      fi
+
+      DEST_PATH="-o ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
+      
+      go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.packages}}
+      

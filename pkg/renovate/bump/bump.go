@@ -38,8 +38,8 @@ func WithTargetVersion(targetVersion string) Option {
 	}
 }
 
-// Bump returns a renovator which performs a version bump.
-func Bump(opts ...Option) renovate.Renovator {
+// New returns a renovator which performs a version bump.
+func New(opts ...Option) renovate.Renovator {
 	bcfg := BumpConfig{}
 
 	for _, opt := range opts {

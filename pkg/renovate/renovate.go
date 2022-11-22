@@ -35,6 +35,19 @@ func WithConfig(configFile string) Option {
 	}
 }
 
+// New creates a new renovation context.
+func New(opts ...Option) (*Context, error) {
+	c := Context{}
+
+	for _, opt := range opts {
+		if err := opt(&c); err != nil {
+			return nil, err
+		}
+	}
+
+	return &c, nil
+}
+
 // RenovationContext encapsulates state relating to an
 // ongoing renovation.
 type RenovationContext struct {

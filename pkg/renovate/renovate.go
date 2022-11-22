@@ -42,13 +42,6 @@ type RenovationContext struct {
 	Root    yaml.Node
 }
 
-// RenovationConfig encapsulates configuration data relating
-// to a Renovator.
-type RenovationConfig any
-
-// RenovationOption encapsulates mutation of a RenovationConfig.
-type RenovationOption func(cfg *RenovationConfig) error
-
 // Renovator performs a renovation.
 type Renovator func(rc *RenovationContext) error
 

@@ -97,6 +97,7 @@ type Pipeline struct {
 	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
 	logger     *log.Logger
 	steps      int
+	SBOM       SBOM `yaml:"sbom,omitempty"`
 }
 
 type Subpackage struct {
@@ -107,6 +108,10 @@ type Subpackage struct {
 	Options      PackageOption `yaml:"packageOption,omitempty"`
 	Scriptlets   Scriptlets    `yaml:"scriptlets,omitempty"`
 	Description  string        `yaml:"description,omitempty"`
+}
+
+type SBOM struct {
+	Language string `yaml:"language"`
 }
 
 type Input struct {

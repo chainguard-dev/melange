@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Some of this code is based on the bom tool scan code originally
+// found at https://github.com/kubernetes-sigs/bom/blob/main/pkg/spdx/implementation.go
+
 package sbom
 
 import (

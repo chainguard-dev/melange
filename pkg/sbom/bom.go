@@ -24,6 +24,7 @@ type element interface {
 }
 
 type pkg struct {
+	FilesAnalyzed bool
 	Name          string
 	Version       string
 	Relationships []relationship
@@ -32,11 +33,12 @@ type pkg struct {
 type file struct {
 	Name          string
 	Version       string
+	Checksum      []map[string]string
 	Relationships []relationship
 }
 
 type relationship struct {
-	Source *element
-	Target *element
+	Source element
+	Target element
 	Type   string
 }

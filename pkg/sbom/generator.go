@@ -17,7 +17,9 @@ package sbom
 import "fmt"
 
 func NewGenerator() (*Generator, error) {
-	return &Generator{}, nil
+	return &Generator{
+		impl: &defaultGeneratorImplementation{},
+	}, nil
 }
 
 type Spec struct {

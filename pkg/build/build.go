@@ -36,6 +36,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/index"
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 type Scriptlets struct {
@@ -845,6 +846,26 @@ func (ctx *Context) BuildPackage() error {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
 		}
+	}
+
+	// Run the SBOM generator
+	generator, err := sbom.NewGenerator()
+	if err != nil {
+		return fmt.Errorf("creating sbom generator: %w", err)
+	}
+
+	langs := []string{}
+	for i := range ctx.Configuration.Pipeline {
+		langs = append(langs, ctx.Configuration.Pipeline[i].SBOM.Language)
+	}
+
+	if err := generator.GenerateSBOM(&sbom.Spec{
+		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
+		PackageName:    ctx.Configuration.Package.Name,
+		PackageVersion: ctx.Configuration.Package.Version,
+		Languages:      langs,
+	}); err != nil {
+		return fmt.Errorf("writing SBOMs: %w", err)
 	}
 
 	// emit main package

@@ -46,12 +46,19 @@ func (g *Generator) GenerateSBOM(spec *Spec) error {
 		return fmt.Errorf("initializing new SBOM: %w", err)
 	}
 
+	pkg, err := g.impl.GenerateAPKPackage(spec)
+	if err != nil {
+		return fmt.Errorf("generating main package: %w", err)
+	}
+
 	// Add file inventory to packages
 	if g.Options.ScanFiles {
-		if err := g.impl.ScanFiles(spec, sbomDoc); err != nil {
+		if err := g.impl.ScanFiles(spec, &pkg); err != nil {
 			return fmt.Errorf("reading SBOM file inventory: %w", err)
 		}
 	}
+
+	sbomDoc.Packages = append(sbomDoc.Packages, pkg)
 
 	// Scan files for licensing data
 	if g.Options.ScanLicenses {

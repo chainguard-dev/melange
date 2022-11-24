@@ -19,6 +19,7 @@ package sbom
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -31,7 +32,8 @@ import (
 
 type generatorImplementation interface {
 	GenerateDocument(*Spec) (*bom, error)
-	ScanFiles(*Spec, *bom) error
+	GenerateAPKPackage(*Spec) (pkg, error)
+	ScanFiles(*Spec, *pkg) error
 	ScanLicenses(*Spec, *bom) error
 	ReadDependencyData(*Spec, *bom, string) error
 	WriteSBOM(*Spec, *bom) error
@@ -46,9 +48,24 @@ func (di *defaultGeneratorImplementation) GenerateDocument(spec *Spec) (*bom, er
 	}, nil
 }
 
+// GenerateAPKPackage generates the sbom package representing the apk
+func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, error) {
+	if spec.PackageName == "" {
+		return pkg{}, errors.New("unable to generate package, name not specified")
+	}
+	newPackage := pkg{
+		FilesAnalyzed: false,
+		Name:          spec.PackageName,
+		Version:       spec.PackageVersion,
+		Relationships: []relationship{},
+	}
+
+	return newPackage, nil
+}
+
 // ScanFiles reads the files to be packaged in the apk and
 // extracts the required data for the SBOM.
-func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, doc *bom) error {
+func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg) error {
 	dirPath, err := filepath.Abs(spec.Path)
 	if err != nil {
 		return fmt.Errorf("getting absolute directory path: %w", err)
@@ -60,9 +77,7 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, doc *bom) error 
 
 	// logrus.Debugf("Scanning %d files and adding them to the SPDX package", len(fileList))
 
-	dirPackage := pkg{
-		FilesAnalyzed: true,
-	}
+	dirPackage.FilesAnalyzed = true
 
 	g, _ := errgroup.WithContext(context.Background())
 	files := sync.Map{}
@@ -106,7 +121,6 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, doc *bom) error 
 		})
 		return true
 	})
-	doc.Packages = append(doc.Packages, dirPackage)
 	return nil
 }
 

@@ -21,20 +21,42 @@ type bom struct {
 }
 
 type element interface {
+	ID() string
 }
 
 type pkg struct {
 	FilesAnalyzed bool
+	id            string
 	Name          string
 	Version       string
+	HomePage      string
+	Supplier      string
+	Originator    string
+	Copyright     string
+	Checksums     map[string]string
 	Relationships []relationship
 }
 
+func (p *pkg) ID() string {
+	if p.id != "" {
+		return p.id
+	}
+	return "SPDXRef-Package-" + p.Name
+}
+
 type file struct {
+	id            string
 	Name          string
 	Version       string
-	Checksum      []map[string]string
+	Checksums     map[string]string
 	Relationships []relationship
+}
+
+func (f *file) ID() string {
+	if f.id != "" {
+		return f.id
+	}
+	return "SPDXRef-File-" + f.Name
 }
 
 type relationship struct {

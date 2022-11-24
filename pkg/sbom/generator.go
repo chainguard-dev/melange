@@ -18,8 +18,19 @@ import "fmt"
 
 func NewGenerator() (*Generator, error) {
 	return &Generator{
-		impl: &defaultGeneratorImplementation{},
+		impl:    &defaultGeneratorImplementation{},
+		Options: defaultOptions,
 	}, nil
+}
+
+var defaultOptions = Options{
+	ScanLicenses: true,
+	ScanFiles:    true,
+}
+
+type Options struct {
+	ScanLicenses bool
+	ScanFiles    bool
 }
 
 type Spec struct {
@@ -27,11 +38,6 @@ type Spec struct {
 	PackageName    string
 	PackageVersion string
 	Languages      []string
-}
-
-type Options struct {
-	ScanLicenses bool
-	ScanFiles    bool
 }
 
 type Generator struct {

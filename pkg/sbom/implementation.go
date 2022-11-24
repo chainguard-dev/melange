@@ -19,15 +19,19 @@ package sbom
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/release-utils/hash"
+	"sigs.k8s.io/release-utils/version"
 )
 
 type generatorImplementation interface {
@@ -86,7 +90,7 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 		g.Go(func() error {
 			f := file{
 				Name:          path,
-				Checksum:      []map[string]string{},
+				Checksums:     map[string]string{},
 				Relationships: []relationship{},
 			}
 
@@ -96,11 +100,11 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 				"SHA256": hash.SHA256ForFile,
 				"SHA512": hash.SHA512ForFile,
 			} {
-				csum, err := fn(path)
+				csum, err := fn(filepath.Join(dirPath, path))
 				if err != nil {
 					return fmt.Errorf("hashing %s file %s: %w", algo, path, err)
 				}
-				f.Checksum = append(f.Checksum, map[string]string{algo: csum})
+				f.Checksums[algo] = csum
 			}
 
 			files.Store(path, f)
@@ -114,11 +118,20 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 
 	// Add files into the package
 	files.Range(func(key, f any) bool {
-		dirPackage.Relationships = append(dirPackage.Relationships, relationship{
-			Source: &dirPackage,
-			Target: &f,
+
+		rel := relationship{
+			Source: dirPackage,
 			Type:   "CONTAINS",
-		})
+		}
+
+		switch v := f.(type) {
+		case file:
+			rel.Target = &v
+		case pkg:
+			rel.Target = &v
+		}
+
+		dirPackage.Relationships = append(dirPackage.Relationships, rel)
 		return true
 	})
 	return nil
@@ -132,7 +145,155 @@ func (di *defaultGeneratorImplementation) ReadDependencyData(spec *Spec, doc *bo
 	return nil
 }
 
+// addPackage adds a package to the document
+func addPackage(doc *spdx.Document, p *pkg) {
+	spdxPkg := spdx.Package{
+		ID:            p.ID(),
+		Name:          p.Name,
+		Version:       p.Version,
+		FilesAnalyzed: false,
+		HasFiles:      []string{},
+		// LicenseInfoFromFiles: []string{},
+		// LicenseConcluded:     "",
+		// LicenseDeclared:      "",
+		// Description:          "",
+		// DownloadLocation:     "",
+		// Originator:           "",
+		// SourceInfo:           "",
+		CopyrightText: p.Copyright,
+		// PrimaryPurpose:       "",
+		Checksums:    []spdx.Checksum{},
+		ExternalRefs: []spdx.ExternalRef{},
+		// VerificationCode: spdx.PackageVerificationCode{},
+	}
+
+	for algo, c := range p.Checksums {
+		spdxPkg.Checksums = append(spdxPkg.Checksums, spdx.Checksum{
+			Algorithm: algo,
+			Value:     c,
+		})
+	}
+
+	// We need to cycle all files to add them to the package
+	// regardless if they are related else where in the doc
+	for _, rel := range p.Relationships {
+		if f, ok := rel.Target.(*file); ok {
+			spdxPkg.HasFiles = append(spdxPkg.HasFiles, f.ID())
+		}
+	}
+
+	doc.Packages = append(doc.Packages, spdxPkg)
+
+	// Cycle the related objects and add them
+	for _, rel := range p.Relationships {
+		if sbomHasRelationship(doc, rel) {
+			continue
+		}
+		switch v := rel.Target.(type) {
+		case *file:
+			addFile(doc, v)
+		case *pkg:
+			addPackage(doc, v)
+		}
+	}
+}
+
+func addFile(doc *spdx.Document, f *file) {
+	spdxFile := spdx.File{
+		ID:   f.ID(),
+		Name: f.Name,
+		//CopyrightText:     f.Copyright,
+		// NoticeText:        "",
+		//LicenseConcluded:  "",
+		//Description:       "",
+		FileTypes:         []string{},
+		LicenseInfoInFile: []string{},
+		Checksums:         []spdx.Checksum{},
+	}
+
+	for algo, c := range f.Checksums {
+		spdxFile.Checksums = append(spdxFile.Checksums, spdx.Checksum{
+			Algorithm: algo,
+			Value:     c,
+		})
+	}
+
+	doc.Files = append(doc.Files, spdxFile)
+
+	// Cycle the related objects and add them
+	for _, rel := range f.Relationships {
+		if sbomHasRelationship(doc, rel) {
+			continue
+		}
+		switch v := rel.Target.(type) {
+		case *file:
+			addFile(doc, v)
+		case *pkg:
+			addPackage(doc, v)
+		}
+	}
+}
+
+// sbomHasRelationship takes a relationship and an SPDX sbom and heck if
+// it already has it in its rel catalog
+func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
+	for _, spdxRel := range spdxDoc.Relationships {
+		if spdxRel.Element == bomRel.Source.ID() && spdxRel.Related == bomRel.Target.ID() && spdxRel.Type == bomRel.Type {
+			return true
+		}
+	}
+	return false
+}
+
 func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+	spdxDoc := spdx.Document{
+		ID:      fmt.Sprintf("SPDXRef-DOCUMENT-%s", fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion)),
+		Name:    fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion),
+		Version: "SPDX-2.3",
+		CreationInfo: spdx.CreationInfo{
+			Created: time.Now().UTC().Format(time.RFC3339),
+			Creators: []string{
+				fmt.Sprintf("Tool: melange (%s)", version.GetVersionInfo().GitVersion),
+				"Organization: Chainguard, Inc",
+			},
+			LicenseListVersion: "3.16",
+		},
+		DataLicense:          "CC0-1.0",
+		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/",
+		DocumentDescribes:    []string{},
+		Files:                []spdx.File{},
+		Packages:             []spdx.Package{},
+		Relationships:        []spdx.Relationship{},
+		ExternalDocumentRefs: []spdx.ExternalDocumentRef{},
+	}
+
+	for _, p := range doc.Packages {
+		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, p.ID())
+		addPackage(&spdxDoc, &p)
+	}
+
+	for _, f := range doc.Files {
+		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, f.ID())
+		addFile(&spdxDoc, &f)
+	}
+
+	// TODO write
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(true)
+
+	if err := enc.Encode(spdxDoc); err != nil {
+		return fmt.Errorf("encoding spdx sbom: %w", err)
+	}
+
+	// fmt.Println(string(buf))
+	/*
+		var b bytes.Buffer
+		_, err = b.Write(buf)
+		if err != nil {
+			return err
+		}
+	*/
 	return nil
 }
 

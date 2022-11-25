@@ -51,20 +51,6 @@ func WithTargetVersion(targetVersion string) Option {
 	}
 }
 
-// nodeFromMapping takes a yaml.Node (a mapping) and uses yit
-// to find a child node in the mapping with the given key.
-// TODO(kaniini): Move to parent renovate package.
-func nodeFromMapping(parentNode *yaml.Node, key string) (*yaml.Node, error) {
-	it := yit.FromNode(parentNode).
-		ValuesForMap(yit.WithValue(key), yit.All)
-
-	if childNode, ok := it(); ok {
-		return childNode, nil
-	}
-
-	return nil, fmt.Errorf("key '%s' not found in mapping", key)
-}
-
 // New returns a renovator which performs a version bump.
 func New(opts ...Option) renovate.Renovator {
 	bcfg := BumpConfig{}
@@ -81,19 +67,19 @@ func New(opts ...Option) renovate.Renovator {
 		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
 
 		// Find the package.version node first and change it.
-		packageNode, err := nodeFromMapping(rc.Root.Content[0], "package")
+		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
 		if err != nil {
 			return err
 		}
 
-		versionNode, err := nodeFromMapping(packageNode, "version")
+		versionNode, err := renovate.NodeFromMapping(packageNode, "version")
 		if err != nil {
 			return err
 		}
 		versionNode.Value = bcfg.TargetVersion
 
 		// Find our main pipeline YAML node.
-		pipelineNode, err := nodeFromMapping(rc.Root.Content[0], "pipeline")
+		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
 		if err != nil {
 			return err
 		}
@@ -155,12 +141,12 @@ func hashFile(downloadedFile string, digest hash.Hash) (string, error) {
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
 func updateFetch(node *yaml.Node, targetVersion string) error {
-	withNode, err := nodeFromMapping(node, "with")
+	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
 	}
 
-	uriNode, err := nodeFromMapping(withNode, "uri")
+	uriNode, err := renovate.NodeFromMapping(withNode, "uri")
 	if err != nil {
 		return err
 	}
@@ -193,12 +179,12 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	log.Printf("  expected-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.
-	nodeSHA256, err := nodeFromMapping(withNode, "expected-sha256")
+	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
 		nodeSHA256.Value = fileSHA256
 	}
 
-	nodeSHA512, err := nodeFromMapping(withNode, "expected-sha512")
+	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
 		nodeSHA512.Value = fileSHA512
 	}

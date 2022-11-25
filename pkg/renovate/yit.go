@@ -12,25 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cli
+package renovate
 
 import (
-	"github.com/spf13/cobra"
-	"sigs.k8s.io/release-utils/version"
+	"fmt"
+
+	"github.com/dprotaso/go-yit"
+	"gopkg.in/yaml.v3"
 )
 
-func New() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:               "melange",
-		DisableAutoGenTag: true,
-		SilenceUsage:      true,
+// NodeFromMapping takes a yaml.Node (a mapping) and uses yit
+// to find a child node in the mapping with the given key.
+func NodeFromMapping(parentNode *yaml.Node, key string) (*yaml.Node, error) {
+	it := yit.FromNode(parentNode).
+		ValuesForMap(yit.WithValue(key), yit.All)
+
+	if childNode, ok := it(); ok {
+		return childNode, nil
 	}
 
-	cmd.AddCommand(Build())
-	cmd.AddCommand(Bump())
-	cmd.AddCommand(Keygen())
-	cmd.AddCommand(Index())
-	cmd.AddCommand(SignIndex())
-	cmd.AddCommand(version.Version())
-	return cmd
+	return nil, fmt.Errorf("key '%s' not found in mapping", key)
 }

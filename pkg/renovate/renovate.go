@@ -106,7 +106,7 @@ func (rc *RenovationContext) writeConfig() error {
 	enc := yaml.NewEncoder(configFile)
 	defer enc.Close()
 
-	if err := enc.Encode(rc.Root); err != nil {
+	if err := enc.Encode(rc.Root.Content[0]); err != nil {
 		return err
 	}
 

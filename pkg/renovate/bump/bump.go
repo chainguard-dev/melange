@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dprotaso/go-yit"
@@ -125,6 +126,10 @@ func downloadFile(uri string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("got %s when fetching %s", resp.Status, filepath.Base(uri))
+	}
 
 	if _, err := io.Copy(targetFile, resp.Body); err != nil {
 		return "", err

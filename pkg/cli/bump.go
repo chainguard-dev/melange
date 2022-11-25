@@ -41,7 +41,7 @@ func Bump() *cobra.Command {
 				bump.WithTargetVersion(args[1]),
 			)
 
-			if ctx.Renovate(bumpRenovator); err != nil {
+			if err := ctx.Renovate(bumpRenovator); err != nil {
 				return err
 			}
 

@@ -15,7 +15,19 @@
 package bump
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
+	"hash"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	"github.com/dprotaso/go-yit"
+	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/renovate"
 )
@@ -38,6 +50,20 @@ func WithTargetVersion(targetVersion string) Option {
 	}
 }
 
+// nodeFromMapping takes a yaml.Node (a mapping) and uses yit
+// to find a child node in the mapping with the given key.
+// TODO(kaniini): Move to parent renovate package.
+func nodeFromMapping(parentNode *yaml.Node, key string) (*yaml.Node, error) {
+	it := yit.FromNode(parentNode).
+		ValuesForMap(yit.WithValue(key), yit.All)
+
+	if childNode, ok := it(); ok {
+		return childNode, nil
+	}
+
+	return nil, fmt.Errorf("key '%s' not found in mapping", key)
+}
+
 // New returns a renovator which performs a version bump.
 func New(opts ...Option) renovate.Renovator {
 	bcfg := BumpConfig{}
@@ -51,7 +77,126 @@ func New(opts ...Option) renovate.Renovator {
 	}
 
 	return func(rc *renovate.RenovationContext) error {
-		fmt.Printf("renovating with %v", bcfg)
+		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
+
+		// Find the package.version node first and change it.
+		packageNode, err := nodeFromMapping(rc.Root.Content[0], "package")
+		if err != nil {
+			return err
+		}
+
+		versionNode, err := nodeFromMapping(packageNode, "version")
+		if err != nil {
+			return err
+		}
+		versionNode.Value = bcfg.TargetVersion
+
+		// Find our main pipeline YAML node.
+		pipelineNode, err := nodeFromMapping(rc.Root.Content[0], "pipeline")
+		if err != nil {
+			return err
+		}
+
+		// Look for fetch nodes.
+		it := yit.FromNode(pipelineNode).
+			RecurseNodes().
+			Filter(yit.WithMapValue("fetch"))
+
+		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
+			if err := updateFetch(fetchNode, bcfg.TargetVersion); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
+}
+
+// downloadFile downloads a file and returns a path to it in temporary storage.
+func downloadFile(uri string) (string, error) {
+	targetFile, err := os.CreateTemp("", "melange-update-*")
+	if err != nil {
+		return "", err
+	}
+	defer targetFile.Close()
+
+	resp, err := http.Get(uri)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if _, err := io.Copy(targetFile, resp.Body); err != nil {
+		return "", err
+	}
+
+	return targetFile.Name(), nil
+}
+
+// hashFile calculates the hash for a file and returns it as a hex string.
+func hashFile(downloadedFile string, digest hash.Hash) (string, error) {
+	hashedFile, err := os.Open(downloadedFile)
+	if err != nil {
+		return "", err
+	}
+	defer hashedFile.Close()
+
+	if _, err := io.Copy(digest, hashedFile); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(digest.Sum(nil)), nil
+}
+
+// updateFetch takes a "fetch" pipeline node and updates the parameters of it.
+func updateFetch(node *yaml.Node, targetVersion string) error {
+	withNode, err := nodeFromMapping(node, "with")
+	if err != nil {
+		return err
+	}
+
+	uriNode, err := nodeFromMapping(withNode, "uri")
+	if err != nil {
+		return err
+	}
+
+	log.Printf("processing fetch node:")
+
+	// Fetch the new sources.
+	evaluatedUri := strings.ReplaceAll(uriNode.Value, "${{package.version}}", targetVersion)
+	log.Printf("  uri: %s", uriNode.Value)
+	log.Printf("  evaluated: %s", evaluatedUri)
+
+	downloadedFile, err := downloadFile(evaluatedUri)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(downloadedFile)
+	log.Printf("  fetched-as: %s", downloadedFile)
+
+	// Calculate SHA2-256 and SHA2-512 hashes.
+	fileSHA256, err := hashFile(downloadedFile, sha256.New())
+	if err != nil {
+		return err
+	}
+	log.Printf("  expected-sha256: %s", fileSHA256)
+
+	fileSHA512, err := hashFile(downloadedFile, sha512.New())
+	if err != nil {
+		return err
+	}
+	log.Printf("  expected-sha512: %s", fileSHA512)
+
+	// Update expected hash nodes.
+	nodeSHA256, err := nodeFromMapping(withNode, "expected-sha256")
+	if err == nil {
+		nodeSHA256.Value = fileSHA256
+	}
+
+	nodeSHA512, err := nodeFromMapping(withNode, "expected-sha512")
+	if err == nil {
+		nodeSHA512.Value = fileSHA512
+	}
+
+	return nil
 }

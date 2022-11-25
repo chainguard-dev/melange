@@ -78,6 +78,12 @@ func New(opts ...Option) renovate.Renovator {
 		}
 		versionNode.Value = bcfg.TargetVersion
 
+		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
+		if err != nil {
+			return err
+		}
+		epochNode.Value = "0"
+
 		// Find our main pipeline YAML node.
 		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
 		if err != nil {

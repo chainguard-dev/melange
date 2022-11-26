@@ -58,10 +58,12 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 	newPackage := pkg{
-		FilesAnalyzed: false,
-		Name:          spec.PackageName,
-		Version:       spec.PackageVersion,
-		Relationships: []relationship{},
+		FilesAnalyzed:   false,
+		Name:            spec.PackageName,
+		Version:         spec.PackageVersion,
+		Relationships:   []relationship{},
+		LicenseDeclared: spec.License,
+		Copyright:       spec.Copyright,
 	}
 
 	return newPackage, nil
@@ -154,8 +156,8 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		FilesAnalyzed: false,
 		HasFiles:      []string{},
 		// LicenseInfoFromFiles: []string{},
-		// LicenseConcluded:     "",
-		// LicenseDeclared:      "",
+		LicenseConcluded: p.LicenseConcluded,
+		LicenseDeclared:  p.LicenseDeclared,
 		// Description:          "",
 		// DownloadLocation:     "",
 		// Originator:           "",

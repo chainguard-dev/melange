@@ -13,6 +13,8 @@
 // limitations under the License.
 
 // bom captures the internal data model of the SBOMs melange produces
+// into a private, generalized bill of materials model (with relationship
+// data) designed to be transcoded to specific formats.
 package sbom
 
 type bom struct {
@@ -25,16 +27,18 @@ type element interface {
 }
 
 type pkg struct {
-	FilesAnalyzed bool
-	id            string
-	Name          string
-	Version       string
-	HomePage      string
-	Supplier      string
-	Originator    string
-	Copyright     string
-	Checksums     map[string]string
-	Relationships []relationship
+	FilesAnalyzed    bool
+	id               string
+	Name             string
+	Version          string
+	HomePage         string
+	Supplier         string
+	Originator       string
+	Copyright        string
+	LicenseDeclared  string
+	LicenseConcluded string
+	Checksums        map[string]string
+	Relationships    []relationship
 }
 
 func (p *pkg) ID() string {

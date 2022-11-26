@@ -858,12 +858,22 @@ func (ctx *Context) BuildPackage() error {
 	for i := range ctx.Configuration.Pipeline {
 		langs = append(langs, ctx.Configuration.Pipeline[i].SBOM.Language)
 	}
-
+	licenseExpression := ""
+	copyright := ""
+	for _, cp := range ctx.Configuration.Package.Copyright {
+		if licenseExpression != "" {
+			licenseExpression += " OR "
+		}
+		licenseExpression += cp.License
+		copyright += cp.Attestation + "\n"
+	}
 	if err := generator.GenerateSBOM(&sbom.Spec{
 		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
 		PackageName:    ctx.Configuration.Package.Name,
 		PackageVersion: ctx.Configuration.Package.Version,
 		Languages:      langs,
+		License:        licenseExpression,
+		Copyright:      copyright,
 	}); err != nil {
 		return fmt.Errorf("writing SBOMs: %w", err)
 	}

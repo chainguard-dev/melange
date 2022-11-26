@@ -37,6 +37,8 @@ type Spec struct {
 	Path           string
 	PackageName    string
 	PackageVersion string
+	License        string // Full SPDX license expression
+	Copyright      string
 	Languages      []string
 }
 

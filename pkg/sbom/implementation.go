@@ -197,6 +197,11 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		case *pkg:
 			addPackage(doc, v)
 		}
+		doc.Relationships = append(doc.Relationships, spdx.Relationship{
+			Element: rel.Source.ID(),
+			Type:    rel.Type,
+			Related: rel.Target.ID(),
+		})
 	}
 }
 

@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -290,12 +291,24 @@ func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
 }
 
 func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+	// Build the SBOM time, but respect SOURCE_DATE_EPOCH
+	sbomTime := time.Now().UTC().Format(time.RFC3339)
+	if v, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
+		sec, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
+		}
+
+		t := time.Unix(sec, 0)
+		sbomTime = t.UTC().Format(time.RFC3339)
+	}
+
 	spdxDoc := spdx.Document{
 		ID:      fmt.Sprintf("SPDXRef-DOCUMENT-%s", fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion)),
 		Name:    fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion),
 		Version: "SPDX-2.3",
 		CreationInfo: spdx.CreationInfo{
-			Created: time.Now().UTC().Format(time.RFC3339),
+			Created: sbomTime,
 			Creators: []string{
 				fmt.Sprintf("Tool: melange (%s)", version.GetVersionInfo().GitVersion),
 				"Organization: Chainguard, Inc",

@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -299,7 +300,7 @@ func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error 
 				fmt.Sprintf("Tool: melange (%s)", version.GetVersionInfo().GitVersion),
 				"Organization: Chainguard, Inc",
 			},
-			LicenseListVersion: "3.16",
+			LicenseListVersion: "3.18",
 		},
 		DataLicense:          "CC0-1.0",
 		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/",
@@ -320,8 +321,28 @@ func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error 
 		addFile(&spdxDoc, &f)
 	}
 
-	// TODO write
-	enc := json.NewEncoder(os.Stdout)
+	dirPath, err := filepath.Abs(spec.Path)
+	if err != nil {
+		return fmt.Errorf("getting absolute directory path: %w", err)
+	}
+
+	apkSBOMdir := "/var/lib/db/sbom"
+	if err := os.MkdirAll(filepath.Join(dirPath, apkSBOMdir), os.FileMode(0755)); err != nil {
+		return fmt.Errorf("creating SBOM directory in apk filesystem: %w", err)
+	}
+
+	apkSBOMpath := filepath.Join(
+		dirPath, apkSBOMdir,
+		fmt.Sprintf("%s-%s.spdx.json", spec.PackageName, spec.PackageVersion),
+	)
+	f, err := os.Create(apkSBOMpath)
+	if err != nil {
+		return fmt.Errorf("opening SBOM file for writing: %w", err)
+	}
+
+	mwriter := io.MultiWriter(os.Stderr, f)
+
+	enc := json.NewEncoder(mwriter)
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(true)
 
@@ -329,14 +350,6 @@ func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error 
 		return fmt.Errorf("encoding spdx sbom: %w", err)
 	}
 
-	// fmt.Println(string(buf))
-	/*
-		var b bytes.Buffer
-		_, err = b.Write(buf)
-		if err != nil {
-			return err
-		}
-	*/
 	return nil
 }
 

@@ -19,12 +19,15 @@ package sbom
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,12 +61,17 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 	newPackage := pkg{
-		FilesAnalyzed:   false,
-		Name:            spec.PackageName,
-		Version:         spec.PackageVersion,
-		Relationships:   []relationship{},
-		LicenseDeclared: spec.License,
-		Copyright:       spec.Copyright,
+		FilesAnalyzed:    false,
+		Name:             spec.PackageName,
+		Version:          spec.PackageVersion,
+		Relationships:    []relationship{},
+		LicenseDeclared:  spdx.NOASSERTION,
+		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
+		Copyright:        spec.Copyright,
+	}
+
+	if spec.License != "" {
+		newPackage.LicenseDeclared = spec.License
 	}
 
 	return newPackage, nil
@@ -147,6 +155,17 @@ func (di *defaultGeneratorImplementation) ReadDependencyData(spec *Spec, doc *bo
 	return nil
 }
 
+func computeVerificationCode(hashList []string) string {
+	// Sort the strings:
+	sort.Strings(hashList)
+	h := sha1.New()
+	if _, err := h.Write([]byte(strings.Join(hashList, ""))); err != nil {
+		// logrus.Error("getting SHA1 verification of files: %w", err)
+		return ""
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
 	spdxPkg := spdx.Package{
@@ -177,10 +196,27 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 
 	// We need to cycle all files to add them to the package
-	// regardless if they are related else where in the doc
+	// regardless if they are related else where in the doc.
+	// We also need to capture their hashes to produce the
+	// verification code
+	hashList := []string{}
+	excluded := []string{}
 	for _, rel := range p.Relationships {
 		if f, ok := rel.Target.(*file); ok {
 			spdxPkg.HasFiles = append(spdxPkg.HasFiles, f.ID())
+			if h, ok := f.Checksums["SHA1"]; ok {
+				hashList = append(hashList, h)
+			} else {
+				excluded = append(excluded, f.ID())
+			}
+		}
+	}
+
+	verificationCode := computeVerificationCode(hashList)
+	if verificationCode != "" {
+		spdxPkg.VerificationCode.Value = verificationCode
+		if len(excluded) > 0 {
+			spdxPkg.VerificationCode.ExcludedFiles = excluded
 		}
 	}
 

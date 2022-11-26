@@ -290,13 +290,14 @@ func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
 	return false
 }
 
-func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+// buildDocumentSPDX creates an SPDX 2.3 document from our generic representation
+func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 	// Build the SBOM time, but respect SOURCE_DATE_EPOCH
 	sbomTime := time.Now().UTC().Format(time.RFC3339)
 	if v, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
 		sec, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
+			return nil, fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
 		}
 
 		t := time.Unix(sec, 0)
@@ -332,6 +333,15 @@ func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error 
 	for _, f := range doc.Files {
 		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, f.ID())
 		addFile(&spdxDoc, &f)
+	}
+	return &spdxDoc, nil
+}
+
+// WriteSBOM writes the SBOM to the apk filesystem
+func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+	spdxDoc, err := buildDocumentSPDX(spec, doc)
+	if err != nil {
+		return fmt.Errorf("building SPDX document: %w", err)
 	}
 
 	dirPath, err := filepath.Abs(spec.Path)

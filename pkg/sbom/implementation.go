@@ -171,23 +171,18 @@ func computeVerificationCode(hashList []string) string {
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
 	spdxPkg := spdx.Package{
-		ID:            p.ID(),
-		Name:          p.Name,
-		Version:       p.Version,
-		FilesAnalyzed: false,
-		HasFiles:      []string{},
-		// LicenseInfoFromFiles: []string{},
-		LicenseConcluded: p.LicenseConcluded,
-		LicenseDeclared:  p.LicenseDeclared,
-		// Description:          "",
-		// DownloadLocation:     "",
-		// Originator:           "",
-		// SourceInfo:           "",
-		CopyrightText: p.Copyright,
-		// PrimaryPurpose:       "",
-		Checksums:    []spdx.Checksum{},
-		ExternalRefs: []spdx.ExternalRef{},
-		// VerificationCode: spdx.PackageVerificationCode{},
+		ID:                   p.ID(),
+		Name:                 p.Name,
+		Version:              p.Version,
+		FilesAnalyzed:        false,
+		HasFiles:             []string{},
+		LicenseConcluded:     p.LicenseConcluded,
+		LicenseDeclared:      p.LicenseDeclared,
+		DownloadLocation:     spdx.NOASSERTION,
+		LicenseInfoFromFiles: []string{},
+		CopyrightText:        p.Copyright,
+		Checksums:            []spdx.Checksum{},
+		ExternalRefs:         []spdx.ExternalRef{},
 	}
 
 	for algo, c := range p.Checksums {
@@ -217,6 +212,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	verificationCode := computeVerificationCode(hashList)
 	if verificationCode != "" {
 		spdxPkg.VerificationCode.Value = verificationCode
+		spdxPkg.FilesAnalyzed = true
 		if len(excluded) > 0 {
 			spdxPkg.VerificationCode.ExcludedFiles = excluded
 		}
@@ -249,7 +245,7 @@ func addFile(doc *spdx.Document, f *file) {
 		Name: f.Name,
 		//CopyrightText:     f.Copyright,
 		// NoticeText:        "",
-		//LicenseConcluded:  "",
+		LicenseConcluded: spdx.NOASSERTION,
 		//Description:       "",
 		FileTypes:         []string{},
 		LicenseInfoInFile: []string{},

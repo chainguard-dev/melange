@@ -206,8 +206,13 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	p.logger.Printf("  using %s", p.Uses)
 	sp.dumpWith()
 
-	if err := sp.Run(ctx); err != nil {
+	ran, err := sp.Run(ctx)
+	if err != nil {
 		return err
+	}
+
+	if ran {
+		p.steps++
 	}
 
 	return nil
@@ -331,30 +336,50 @@ func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) Run(ctx *PipelineContext) error {
+func (p *Pipeline) checkAssertions(ctx *PipelineContext) error {
+	if p.Assertions.RequiredSteps > 0 && p.steps < p.Assertions.RequiredSteps {
+		return fmt.Errorf("pipeline did not run the required %d steps, only %d", p.Assertions.RequiredSteps, p.steps)
+	}
+
+	return nil
+}
+
+func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 	if p.Label != "" && p.Label == ctx.Context.BreakpointLabel {
-		return fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
+		return false, fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
 	}
 
 	if p.logger == nil {
 		if err := p.initializeFromContext(ctx); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	if p.shouldEvaluateBranch(ctx) {
 		if err := p.evaluateBranch(ctx); err != nil {
-			return err
+			return false, err
 		}
+	} else {
+		return false, nil
 	}
 
 	for _, sp := range p.Pipeline {
-		if err := sp.Run(ctx); err != nil {
-			return err
+		ran, err := sp.Run(ctx)
+
+		if err != nil {
+			return false, err
+		}
+
+		if ran {
+			p.steps++
 		}
 	}
 
-	return nil
+	if err := p.checkAssertions(ctx); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (p *Pipeline) initializeFromContext(ctx *PipelineContext) error {

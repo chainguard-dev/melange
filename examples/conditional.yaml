@@ -22,6 +22,17 @@ environment:
       - ca-certificates-bundle
 
 pipeline:
+  # at least one of the steps in the sub-pipeline below
+  # must run for the build to pass
+  - assertions:
+      required-steps: 1
+    pipeline:
+      - if: ${{build.arch}} == 'x86_64'
+        runs: |
+          echo "build arch is x86_64!"
+      - if: ${{build.arch}} == 'aarch64'
+        runs: |
+          echo "build arch is aarch64!"
   # this should print "package name matches 'hello'!"
   - if: ${{package.name}} == 'hello'
     runs: |

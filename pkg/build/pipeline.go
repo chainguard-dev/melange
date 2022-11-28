@@ -42,6 +42,7 @@ const (
 	substitutionHostTripletRust      = "${{host.triplet.rust}}"
 	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
 	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
+	substitutionBuildArch            = "${{build.arch}}"
 )
 
 type PipelineContext struct {
@@ -99,6 +100,7 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 		substitutionHostTripletRust:      ctx.Context.BuildTripletRust(),
 		substitutionCrossTripletGnuGlibc: ctx.Context.Arch.ToTriplet("gnu"),
 		substitutionCrossTripletGnuMusl:  ctx.Context.Arch.ToTriplet("musl"),
+		substitutionBuildArch:            ctx.Context.Arch.ToAPK(),
 	}
 
 	if ctx.Subpackage != nil {

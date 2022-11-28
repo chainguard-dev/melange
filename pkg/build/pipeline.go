@@ -286,7 +286,6 @@ func (p *Pipeline) evaluateBranchConditional(pctx *PipelineContext) bool {
 	result, err := cond.Evaluate(p.If, lookupWith)
 	if err != nil {
 		panic(fmt.Errorf("could not evaluate if-conditional '%s': %w", p.If, err))
-		return false
 	}
 
 	p.logger.Printf("evaluating if-conditional '%s' --> %t", p.If, result)

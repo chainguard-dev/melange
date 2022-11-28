@@ -49,6 +49,11 @@ func TestExprChainingGroups(t *testing.T) {
 	require.Equal(t, true, result, "lagomorphs are lagomorphs, despite hares being hares")
 }
 
+func TextExprIncomplete(t *testing.T) {
+	_, err := Evaluate("'foo' == ")
+	require.Error(t, err)
+}
+
 func placeholderLookup(key string) (string, error) {
 	if key == "foo.bar" {
 		return "baz", nil

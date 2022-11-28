@@ -388,7 +388,7 @@ func getDirectoryTree(dirPath string) ([]string, error) {
 			return nil
 		}
 
-		fileList = append(fileList, path)
+		fileList = append(fileList, filepath.Join(string(filepath.Separator), path))
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("buiding directory tree: %w", err)

@@ -162,7 +162,6 @@ func computeVerificationCode(hashList []string) string {
 	sort.Strings(hashList)
 	h := sha1.New()
 	if _, err := h.Write([]byte(strings.Join(hashList, ""))); err != nil {
-		// logrus.Error("getting SHA1 verification of files: %w", err)
 		return ""
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -241,12 +240,9 @@ func addPackage(doc *spdx.Document, p *pkg) {
 
 func addFile(doc *spdx.Document, f *file) {
 	spdxFile := spdx.File{
-		ID:   f.ID(),
-		Name: f.Name,
-		//CopyrightText:     f.Copyright,
-		// NoticeText:        "",
-		LicenseConcluded: spdx.NOASSERTION,
-		//Description:       "",
+		ID:                f.ID(),
+		Name:              f.Name,
+		LicenseConcluded:  spdx.NOASSERTION,
 		FileTypes:         []string{},
 		LicenseInfoInFile: []string{},
 		Checksums:         []spdx.Checksum{},

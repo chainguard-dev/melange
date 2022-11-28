@@ -28,6 +28,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/cond"
 )
 
 const (
@@ -40,6 +42,7 @@ const (
 	substitutionHostTripletRust      = "${{host.triplet.rust}}"
 	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
 	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
+	substitutionBuildArch            = "${{build.arch}}"
 )
 
 type PipelineContext struct {
@@ -97,6 +100,7 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 		substitutionHostTripletRust:      ctx.Context.BuildTripletRust(),
 		substitutionCrossTripletGnuGlibc: ctx.Context.Arch.ToTriplet("gnu"),
 		substitutionCrossTripletGnuMusl:  ctx.Context.Arch.ToTriplet("musl"),
+		substitutionBuildArch:            ctx.Context.Arch.ToAPK(),
 	}
 
 	if ctx.Subpackage != nil {
@@ -202,8 +206,13 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	p.logger.Printf("  using %s", p.Uses)
 	sp.dumpWith()
 
-	if err := sp.Run(ctx); err != nil {
+	ran, err := sp.Run(ctx)
+	if err != nil {
 		return err
+	}
+
+	if ran {
+		p.steps++
 	}
 
 	return nil
@@ -268,7 +277,28 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
+func (p *Pipeline) evaluateBranchConditional(pctx *PipelineContext) bool {
+	if p.If == "" {
+		return true
+	}
+
+	lookupWith := func(key string) (string, error) {
+		mutated := mutateWith(pctx, p.With)
+		nk := fmt.Sprintf("${{%s}}", key)
+		return mutated[nk], nil
+	}
+
+	result, err := cond.Evaluate(p.If, lookupWith)
+	if err != nil {
+		panic(fmt.Errorf("could not evaluate if-conditional '%s': %w", p.If, err))
+	}
+
+	p.logger.Printf("evaluating if-conditional '%s' --> %t", p.If, result)
+
+	return result
+}
+
+func (p *Pipeline) isContinuationPoint(pctx *PipelineContext) bool {
 	ctx := pctx.Context
 
 	if ctx.ContinueLabel == "" {
@@ -280,6 +310,14 @@ func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
 	}
 
 	return ctx.foundContinuation
+}
+
+func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
+	if !p.isContinuationPoint(pctx) {
+		return false
+	}
+
+	return p.evaluateBranchConditional(pctx)
 }
 
 func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {
@@ -298,30 +336,50 @@ func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) Run(ctx *PipelineContext) error {
+func (p *Pipeline) checkAssertions(ctx *PipelineContext) error {
+	if p.Assertions.RequiredSteps > 0 && p.steps < p.Assertions.RequiredSteps {
+		return fmt.Errorf("pipeline did not run the required %d steps, only %d", p.Assertions.RequiredSteps, p.steps)
+	}
+
+	return nil
+}
+
+func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 	if p.Label != "" && p.Label == ctx.Context.BreakpointLabel {
-		return fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
+		return false, fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
 	}
 
 	if p.logger == nil {
 		if err := p.initializeFromContext(ctx); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	if p.shouldEvaluateBranch(ctx) {
 		if err := p.evaluateBranch(ctx); err != nil {
-			return err
+			return false, err
 		}
+	} else {
+		return false, nil
 	}
 
 	for _, sp := range p.Pipeline {
-		if err := sp.Run(ctx); err != nil {
-			return err
+		ran, err := sp.Run(ctx)
+
+		if err != nil {
+			return false, err
+		}
+
+		if ran {
+			p.steps++
 		}
 	}
 
-	return nil
+	if err := p.checkAssertions(ctx); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (p *Pipeline) initializeFromContext(ctx *PipelineContext) error {

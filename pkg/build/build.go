@@ -80,16 +80,23 @@ type Needs struct {
 	Packages []string
 }
 
+type PipelineAssertions struct {
+	RequiredSteps int `yaml:"required-steps,omitempty"`
+}
+
 type Pipeline struct {
-	Name     string            `yaml:"name,omitempty"`
-	Uses     string            `yaml:"uses,omitempty"`
-	With     map[string]string `yaml:"with,omitempty"`
-	Runs     string            `yaml:"runs,omitempty"`
-	Pipeline []Pipeline        `yaml:"pipeline,omitempty"`
-	Inputs   map[string]Input  `yaml:"inputs,omitempty"`
-	Needs    Needs             `yaml:"needs,omitempty"`
-	Label    string            `yaml:"label,omitempty"`
-	logger   *log.Logger
+	Name       string             `yaml:"name,omitempty"`
+	Uses       string             `yaml:"uses,omitempty"`
+	With       map[string]string  `yaml:"with,omitempty"`
+	Runs       string             `yaml:"runs,omitempty"`
+	Pipeline   []Pipeline         `yaml:"pipeline,omitempty"`
+	Inputs     map[string]Input   `yaml:"inputs,omitempty"`
+	Needs      Needs              `yaml:"needs,omitempty"`
+	Label      string             `yaml:"label,omitempty"`
+	If         string             `yaml:"if,omitempty"`
+	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
+	logger     *log.Logger
+	steps      int
 }
 
 type Subpackage struct {
@@ -818,7 +825,7 @@ func (ctx *Context) BuildPackage() error {
 	// run the main pipeline
 	ctx.Logger.Printf("running the main pipeline")
 	for _, p := range ctx.Configuration.Pipeline {
-		if err := p.Run(&pctx); err != nil {
+		if _, err := p.Run(&pctx); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
@@ -829,7 +836,7 @@ func (ctx *Context) BuildPackage() error {
 		pctx.Subpackage = &sp
 
 		for _, p := range sp.Pipeline {
-			if err := p.Run(&pctx); err != nil {
+			if _, err := p.Run(&pctx); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
 		}

@@ -28,6 +28,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/cond"
 )
 
 const (
@@ -268,7 +270,29 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
+func (p *Pipeline) evaluateBranchConditional(pctx *PipelineContext) bool {
+	if p.If == "" {
+		return true
+	}
+
+	lookupWith := func(key string) (string, error) {
+		mutated := mutateWith(pctx, p.With)
+		nk := fmt.Sprintf("${{%s}}", key)
+		return mutated[nk], nil
+	}
+
+	result, err := cond.Evaluate(p.If, lookupWith)
+	if err != nil {
+		panic(fmt.Errorf("could not evaluate if-conditional '%s': %w", p.If, err))
+		return false
+	}
+
+	p.logger.Printf("evaluating if-conditional '%s' --> %t", p.If, result)
+
+	return result
+}
+
+func (p *Pipeline) isContinuationPoint(pctx *PipelineContext) bool {
 	ctx := pctx.Context
 
 	if ctx.ContinueLabel == "" {
@@ -280,6 +304,14 @@ func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
 	}
 
 	return ctx.foundContinuation
+}
+
+func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
+	if !p.isContinuationPoint(pctx) {
+		return false
+	}
+
+	return p.evaluateBranchConditional(pctx)
 }
 
 func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {

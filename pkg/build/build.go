@@ -89,6 +89,7 @@ type Pipeline struct {
 	Inputs   map[string]Input  `yaml:"inputs,omitempty"`
 	Needs    Needs             `yaml:"needs,omitempty"`
 	Label    string            `yaml:"label,omitempty"`
+	If       string            `yaml:"if,omitempty"`
 	logger   *log.Logger
 }
 

@@ -52,12 +52,23 @@ func comparisonOp(n *goparsify.Result) {
 	}
 }
 
+// A VariableLookupFunction designates how variables should be
+// resolved when evaluating expressions.
 type VariableLookupFunction func(key string) (string, error)
 
+// NullLookup returns an empty value for any requested variable and
+// does not return an error.  This is the default variable lookup
+// function used by Evaluate.
 func NullLookup(key string) (string, error) {
 	return "", nil
 }
 
+// Evaluate evaluates an input expression.
+// Expressions are groups of string values combined with equal or unequal
+// comparators.  The order of comparison operations can be designated using
+// groups enclosed inside parenthesis.
+// An optional VariableLookupFunction can be provided to provide variable
+// lookups.
 func Evaluate(inputExpr string, lookupFns ...VariableLookupFunction) (bool, error) {
 	lookupFn := NullLookup
 

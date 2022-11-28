@@ -20,29 +20,6 @@ import (
 	"github.com/oec/goparsify"
 )
 
-var equal = goparsify.Exact("==")
-var unequal = goparsify.Exact("!=")
-var comps = goparsify.Any(equal, unequal)
-
-var variableName = goparsify.Chars("a-z0-9.")
-var variable = goparsify.Seq("${{", variableName, "}}").Map(func (n *goparsify.Result) {
-	fmt.Printf("var = %s\n", n.Child[1].Token)
-})
-
-var value = goparsify.Any(goparsify.StringLit("'\""), variable)
-var expr = goparsify.Seq(value, comps, value).Map(func (n *goparsify.Result) {
-	fmt.Printf("expr = %v\n", n)
-
-	switch n.Child[1].Token {
-	case "==":
-		n.Result = n.Child[0].Token == n.Child[2].Token
-	case "!=":
-		n.Result = n.Child[0].Token != n.Child[2].Token
-	default:
-		panic(fmt.Errorf("unrecognized op"))
-	}
-})
-
 func combineOp(n *goparsify.Result) {
 	switch n.Child[1].Token {
 	case "&&":
@@ -64,25 +41,61 @@ func collapseOp(n *goparsify.Result) {
 	}
 }
 
-var and = goparsify.Exact("&&")
-var or = goparsify.Exact("||")
-var chain = goparsify.Any(and, or)
-var combinedExpr = goparsify.Seq(expr, chain, expr).Map(combineOp)
+func comparisonOp(n *goparsify.Result) {
+	switch n.Child[1].Token {
+	case "==":
+		n.Result = n.Child[0].Token == n.Child[2].Token
+	case "!=":
+		n.Result = n.Child[0].Token != n.Child[2].Token
+	default:
+		panic(fmt.Errorf("unrecognized op"))
+	}
+}
 
-var exprChain = goparsify.Some(goparsify.Any(combinedExpr, expr), chain).Map(collapseOp)
+type VariableLookupFunction func(key string) (string, error)
 
-var group = goparsify.Seq("(", goparsify.Cut(), exprChain, ")").Map(func (n *goparsify.Result) {
-	fmt.Printf("group = %v\n", n)
+func NullLookup(key string) (string, error) {
+	return "", nil
+}
 
-	n.Result = n.Child[2].Result
-})
-var groupOrExpr = goparsify.Any(group, exprChain)
-var combinedGroup = goparsify.Seq(groupOrExpr, chain, groupOrExpr).Map(combineOp)
+func Evaluate(inputExpr string, lookupFns ...VariableLookupFunction) (bool, error) {
+	lookupFn := NullLookup
 
-var groupChain = goparsify.Some(goparsify.Any(combinedGroup, groupOrExpr), chain).Map(collapseOp)
+	if len(lookupFns) > 0 {
+		lookupFn = lookupFns[0]
+	}
 
-func Evaluate(expr string) (bool, error) {
-	result, err := goparsify.Run(groupChain, expr, goparsify.UnicodeWhitespace)
+	equal := goparsify.Exact("==")
+	unequal := goparsify.Exact("!=")
+	comps := goparsify.Any(equal, unequal)
+
+	variableName := goparsify.Chars("a-z0-9.")
+	variable := goparsify.Seq("${{", variableName, "}}").Map(func(n *goparsify.Result) {
+		if resolved, err := lookupFn(n.Child[1].Token); err == nil {
+			n.Token = resolved
+			n.Result = resolved
+		}
+	})
+
+	value := goparsify.Any(goparsify.StringLit("'\""), variable)
+	expr := goparsify.Seq(value, comps, value).Map(comparisonOp)
+
+	and := goparsify.Exact("&&")
+	or := goparsify.Exact("||")
+	chain := goparsify.Any(and, or)
+	combinedExpr := goparsify.Seq(expr, chain, expr).Map(combineOp)
+
+	exprChain := goparsify.Some(goparsify.Any(combinedExpr, expr), chain).Map(collapseOp)
+
+	group := goparsify.Seq("(", goparsify.Cut(), exprChain, ")").Map(func(n *goparsify.Result) {
+		n.Result = n.Child[2].Result
+	})
+	groupOrExpr := goparsify.Any(group, exprChain)
+	combinedGroup := goparsify.Seq(groupOrExpr, chain, groupOrExpr).Map(combineOp)
+
+	groupChain := goparsify.Some(goparsify.Any(combinedGroup, groupOrExpr), chain).Map(collapseOp)
+
+	result, err := goparsify.Run(groupChain, inputExpr, goparsify.UnicodeWhitespace)
 	if err != nil {
 		return false, err
 	}
@@ -90,8 +103,6 @@ func Evaluate(expr string) (bool, error) {
 	if rbool, ok := result.(bool); ok {
 		return rbool, nil
 	}
-
-	fmt.Printf("result = %v\n", result)
 
 	return false, fmt.Errorf("got non-boolean result from parser")
 }

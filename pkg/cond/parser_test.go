@@ -15,6 +15,7 @@
 package cond
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,4 +47,22 @@ func TestExprChainingGroups(t *testing.T) {
 	result, err := Evaluate("('rabbit' == 'rabbit' && 'hare' != 'hare') || 'lagomorph' == 'lagomorph'")
 	require.NoErrorf(t, err, "got error: %v", err)
 	require.Equal(t, true, result, "lagomorphs are lagomorphs, despite hares being hares")
+}
+
+func placeholderLookup(key string) (string, error) {
+	if key == "foo.bar" {
+		return "baz", nil
+	}
+
+	return "", fmt.Errorf("unknown key %s", key)
+}
+
+func TestVariableLookup(t *testing.T) {
+	result, err := Evaluate("${{foo.bar}} == 'baz'", placeholderLookup)
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, true, result, "${{foo.bar}} definitely equals baz")
+
+	result, err = Evaluate("'baz' == ${{foo.bar}}", placeholderLookup)
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, true, result, "${{foo.bar}} definitely equals baz")
 }

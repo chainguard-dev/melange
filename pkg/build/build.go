@@ -902,13 +902,6 @@ func (ctx *Context) Summarize() {
 	ctx.SummarizePaths()
 }
 
-func (ctx *Context) PrivilegedWorkspaceCmd(args ...string) (*exec.Cmd, error) {
-	args = append([]string{"-S", ctx.GuestDir, "-i", "1000:1000", "-b", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir), "-w", "/home/build"}, args...)
-	cmd := exec.Command("proot", args...)
-
-	return cmd, nil
-}
-
 func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
 	baseargs := []string{
 		"--bind", ctx.GuestDir, "/",

@@ -15,21 +15,18 @@
 package container
 
 import (
+	"bufio"
+	"io"
 	"log"
 )
 
-type BindMount struct {
-	Source      string
-	Destination string
-}
+func MonitorPipe(logger *log.Logger, pipe io.ReadCloser, finish chan struct{}) {
+	defer pipe.Close()
 
-type Capabilities struct {
-	Networking bool
-}
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		logger.Printf("%s", scanner.Text())
+	}
 
-type Config struct {
-	Mounts       []BindMount
-	Capabilities Capabilities
-	Logger       *log.Logger
-	Environment  map[string]string
+	finish <- struct{}{}
 }

@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env: 
+  SOURCE_DATE_EPOCH: 1669683910
+
 jobs:
   examples:
     name: build examples

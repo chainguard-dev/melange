@@ -128,12 +128,26 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 		return err
 	}
 
-	// Add files into the package
-	files.Range(func(key, f any) bool {
+	// Sort the resulting dataset to ensure deterministic order
+	// to ensure builds are reproducible.
+	pathList := []string{}
+	files.Range(func(key, _ any) bool {
+		pathList = append(pathList, key.(string))
+		return true
+	})
 
+	sort.Strings(pathList)
+
+	// Add files into the package
+	for _, path := range pathList {
 		rel := relationship{
 			Source: dirPackage,
 			Type:   "CONTAINS",
+		}
+
+		f, ok := files.Load(path)
+		if !ok {
+			continue
 		}
 
 		switch v := f.(type) {
@@ -144,8 +158,7 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 		}
 
 		dirPackage.Relationships = append(dirPackage.Relationships, rel)
-		return true
-	})
+	}
 	return nil
 }
 
@@ -184,10 +197,15 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		ExternalRefs:         []spdx.ExternalRef{},
 	}
 
-	for algo, c := range p.Checksums {
+	algos := []string{}
+	for algo := range p.Checksums {
+		algos = append(algos, algo)
+	}
+	sort.Strings(algos)
+	for _, algo := range algos {
 		spdxPkg.Checksums = append(spdxPkg.Checksums, spdx.Checksum{
 			Algorithm: algo,
-			Value:     c,
+			Value:     p.Checksums[algo],
 		})
 	}
 
@@ -248,10 +266,15 @@ func addFile(doc *spdx.Document, f *file) {
 		Checksums:         []spdx.Checksum{},
 	}
 
-	for algo, c := range f.Checksums {
+	algos := []string{}
+	for algo := range f.Checksums {
+		algos = append(algos, algo)
+	}
+	sort.Strings(algos)
+	for _, algo := range algos {
 		spdxFile.Checksums = append(spdxFile.Checksums, spdx.Checksum{
 			Algorithm: algo,
-			Value:     c,
+			Value:     f.Checksums[algo],
 		})
 	}
 
@@ -389,5 +412,6 @@ func getDirectoryTree(dirPath string) ([]string, error) {
 	}); err != nil {
 		return nil, fmt.Errorf("buiding directory tree: %w", err)
 	}
+	sort.Strings(fileList)
 	return fileList, nil
 }

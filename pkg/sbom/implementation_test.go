@@ -29,9 +29,9 @@ func TestGetDirectoryTree(t *testing.T) {
 	d := t.TempDir()
 	original := []string{
 		"/README.go",
+		"/http.go",
 		"/http/agent.go",
 		"/http/httpfakes/fake_agent_implementation.go",
-		"/http.go",
 		"/http_test.go",
 	}
 	for _, tf := range original {

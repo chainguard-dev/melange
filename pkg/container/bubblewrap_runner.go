@@ -51,5 +51,5 @@ func (bw *BWRunner) Run(cfg Config, args ...string) error {
 	args = append(baseargs, args...)
 	execCmd := exec.Command("bwrap", args...)
 
-	return MonitorCmd(cfg, execCmd)
+	return monitorCmd(cfg, execCmd)
 }

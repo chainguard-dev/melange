@@ -21,7 +21,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -968,44 +967,6 @@ func (ctx *Context) Summarize() {
 	ctx.Logger.Printf("melange is building:")
 	ctx.Logger.Printf("  configuration file: %s", ctx.ConfigFile)
 	ctx.SummarizePaths()
-}
-
-func (ctx *Context) PrivilegedWorkspaceCmd(args ...string) (*exec.Cmd, error) {
-	args = append([]string{"-S", ctx.GuestDir, "-i", "1000:1000", "-b", fmt.Sprintf("%s:/home/build", ctx.WorkspaceDir), "-w", "/home/build"}, args...)
-	cmd := exec.Command("proot", args...)
-
-	return cmd, nil
-}
-
-func (ctx *Context) WorkspaceCmd(args ...string) (*exec.Cmd, error) {
-	baseargs := []string{
-		"--bind", ctx.GuestDir, "/",
-		"--bind", ctx.WorkspaceDir, "/home/build",
-		"--bind", "/etc/resolv.conf", "/etc/resolv.conf",
-		"--unshare-pid",
-		"--dev", "/dev",
-		"--proc", "/proc",
-		"--chdir", "/home/build",
-		"--setenv", "SOURCE_DATE_EPOCH", fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
-	}
-
-	if ctx.CacheDir != "" {
-		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
-			baseargs = append(baseargs, "--bind", ctx.CacheDir, "/var/cache/melange")
-		} else {
-			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
-		}
-	}
-
-	// Add any user-provided env vars
-	for k, v := range ctx.Configuration.Environment.Environment {
-		baseargs = append(baseargs, "--setenv", k, v)
-	}
-
-	args = append(baseargs, args...)
-	cmd := exec.Command("bwrap", args...)
-
-	return cmd, nil
 }
 
 // BuildFlavor determines if a build context uses glibc or musl, it returns

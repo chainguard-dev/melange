@@ -15,11 +15,9 @@
 package build
 
 import (
-	"bufio"
 	"embed"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -30,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/cond"
+	"chainguard.dev/melange/pkg/container"
 )
 
 const (
@@ -218,19 +217,42 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) monitorPipe(pipe io.ReadCloser, finish chan struct{}) {
-	defer pipe.Close()
+func (p *Pipeline) workspaceConfig(pctx *PipelineContext) container.Config {
+	ctx := pctx.Context
 
-	scanner := bufio.NewScanner(pipe)
-	for scanner.Scan() {
-		p.logger.Printf("%s", scanner.Text())
+	mounts := []container.BindMount{
+		{Source: ctx.GuestDir, Destination: "/"},
+		{Source: ctx.WorkspaceDir, Destination: "/home/build"},
+		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
 	}
 
-	if err := scanner.Err(); err != nil {
-		p.logger.Printf("warning: %v", err)
+	if ctx.CacheDir != "" {
+		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
+			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
+		} else {
+			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
+		}
 	}
 
-	finish <- struct{}{}
+	// TODO(kaniini): Disable networking capability according to the pipeline requirements.
+	caps := container.Capabilities{
+		Networking: true,
+	}
+
+	cfg := container.Config{
+		Mounts:       mounts,
+		Capabilities: caps,
+		Logger:       p.logger,
+		Environment: map[string]string{
+			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
+		},
+	}
+
+	for k, v := range ctx.Configuration.Environment.Environment {
+		cfg.Environment[k] = v
+	}
+
+	return cfg
 }
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
@@ -242,37 +264,12 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)
 	command := []string{"/bin/sh", "-c", script}
 
-	cmd, err := ctx.Context.WorkspaceCmd(command...)
-	if err != nil {
+	runner := container.GetRunner()
+	config := p.workspaceConfig(ctx)
+
+	if err := runner.Run(config, command...); err != nil {
 		return err
 	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	finishStdout := make(chan struct{})
-	finishStderr := make(chan struct{})
-
-	go p.monitorPipe(stdout, finishStdout)
-	go p.monitorPipe(stderr, finishStderr)
-
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
-
-	<-finishStdout
-	<-finishStderr
 
 	return nil
 }

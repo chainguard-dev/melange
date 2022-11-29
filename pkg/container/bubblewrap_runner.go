@@ -40,6 +40,10 @@ func (bw *BWRunner) Run(cfg Config, args ...string) error {
 		"--proc", "/proc",
 		"--chdir", "/home/build")
 
+	if !cfg.Capabilities.Networking {
+		baseargs = append(baseargs, "--unshare-net")
+	}
+
 	for k, v := range cfg.Environment {
 		baseargs = append(baseargs, "--setenv", k, v)
 	}

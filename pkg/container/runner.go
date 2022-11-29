@@ -48,8 +48,8 @@ func monitorCmd(cfg Config, cmd *exec.Cmd) error {
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go MonitorPipe(cfg.Logger, stdout, finishStdout)
-	go MonitorPipe(cfg.Logger, stderr, finishStderr)
+	go monitorPipe(cfg.Logger, stdout, finishStdout)
+	go monitorPipe(cfg.Logger, stderr, finishStderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err

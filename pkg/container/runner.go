@@ -28,9 +28,9 @@ func GetRunner() Runner {
 	return BubblewrapRunner()
 }
 
-// MonitorCmd sets up the stdout/stderr pipes and then supervises
+// monitorCmd sets up the stdout/stderr pipes and then supervises
 // execution of an exec.Cmd.
-func MonitorCmd(cfg Config, cmd *exec.Cmd) error {
+func monitorCmd(cfg Config, cmd *exec.Cmd) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

@@ -20,7 +20,7 @@ import (
 	"log"
 )
 
-func MonitorPipe(logger *log.Logger, pipe io.ReadCloser, finish chan struct{}) {
+func monitorPipe(logger *log.Logger, pipe io.ReadCloser, finish chan struct{}) {
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)

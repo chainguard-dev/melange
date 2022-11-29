@@ -36,6 +36,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/index"
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 type Scriptlets struct {
@@ -76,6 +77,32 @@ type Copyright struct {
 	License     string   `yaml:"license"`
 }
 
+// LicenseExpression returns an SPDX license expression formed from the
+// data in the copyright structs found in the conf. Its a simple OR for now.
+func (p *Package) LicenseExpression() string {
+	licenseExpression := ""
+	if p.Copyright == nil {
+		return licenseExpression
+	}
+	for _, cp := range p.Copyright {
+		if licenseExpression != "" {
+			licenseExpression += " OR "
+		}
+		licenseExpression += cp.License
+	}
+	return licenseExpression
+}
+
+// FullCopyright returns the concatenated copyright expressions defined
+// in the configuration file.
+func (p *Package) FullCopyright() string {
+	copyright := ""
+	for _, cp := range p.Copyright {
+		copyright += cp.Attestation + "\n"
+	}
+	return copyright
+}
+
 type Needs struct {
 	Packages []string
 }
@@ -97,6 +124,7 @@ type Pipeline struct {
 	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
 	logger     *log.Logger
 	steps      int
+	SBOM       SBOM `yaml:"sbom,omitempty"`
 }
 
 type Subpackage struct {
@@ -107,6 +135,10 @@ type Subpackage struct {
 	Options      PackageOption `yaml:"packageOption,omitempty"`
 	Scriptlets   Scriptlets    `yaml:"scriptlets,omitempty"`
 	Description  string        `yaml:"description,omitempty"`
+}
+
+type SBOM struct {
+	Language string `yaml:"language"`
 }
 
 type Input struct {
@@ -830,16 +862,52 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
+	// Run the SBOM generator
+	generator, err := sbom.NewGenerator()
+	if err != nil {
+		return fmt.Errorf("creating sbom generator: %w", err)
+	}
+
+	// Capture languages declared in pipelines
+	langs := []string{}
+
 	// run any pipelines for subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
 		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 		pctx.Subpackage = &sp
+		langs := []string{}
 
 		for _, p := range sp.Pipeline {
 			if _, err := p.Run(&pctx); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
+			langs = append(langs, p.SBOM.Language)
 		}
+
+		if err := generator.GenerateSBOM(&sbom.Spec{
+			Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name),
+			PackageName:    sp.Name,
+			PackageVersion: ctx.Configuration.Package.Version,
+			Languages:      langs,
+			License:        ctx.Configuration.Package.LicenseExpression(),
+			Copyright:      ctx.Configuration.Package.FullCopyright(),
+		}); err != nil {
+			return fmt.Errorf("writing SBOMs: %w", err)
+		}
+	}
+
+	for i := range ctx.Configuration.Pipeline {
+		langs = append(langs, ctx.Configuration.Pipeline[i].SBOM.Language)
+	}
+	if err := generator.GenerateSBOM(&sbom.Spec{
+		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
+		PackageName:    ctx.Configuration.Package.Name,
+		PackageVersion: ctx.Configuration.Package.Version,
+		Languages:      langs,
+		License:        ctx.Configuration.Package.LicenseExpression(),
+		Copyright:      ctx.Configuration.Package.FullCopyright(),
+	}); err != nil {
+		return fmt.Errorf("writing SBOMs: %w", err)
 	}
 
 	// emit main package

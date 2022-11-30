@@ -98,6 +98,8 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 	files := sync.Map{}
 	for _, path := range fileList {
 		path := path
+
+		// nolint:errcheck
 		g.Execute(func() {
 			f := file{
 				Name:          path,
@@ -113,6 +115,7 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 			} {
 				csum, err := fn(filepath.Join(dirPath, path))
 				if err != nil {
+					// nolint:errcheck
 					g.FirstErrorStore(fmt.Errorf("hashing %s file %s: %w", algo, path, err))
 				}
 				f.Checksums[algo] = csum

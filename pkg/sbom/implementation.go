@@ -18,7 +18,6 @@
 package sbom
 
 import (
-	"context"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -34,7 +33,7 @@ import (
 	"time"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
-	"golang.org/x/sync/errgroup"
+	"github.com/korovkin/limiter"
 	"sigs.k8s.io/release-utils/hash"
 	"sigs.k8s.io/release-utils/version"
 )
@@ -95,11 +94,13 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 
 	dirPackage.FilesAnalyzed = true
 
-	g, _ := errgroup.WithContext(context.Background())
+	g := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
 	files := sync.Map{}
 	for _, path := range fileList {
 		path := path
-		g.Go(func() error {
+
+		// nolint:errcheck
+		g.Execute(func() {
 			f := file{
 				Name:          path,
 				Checksums:     map[string]string{},
@@ -114,17 +115,21 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 			} {
 				csum, err := fn(filepath.Join(dirPath, path))
 				if err != nil {
-					return fmt.Errorf("hashing %s file %s: %w", algo, path, err)
+					// nolint:errcheck
+					g.FirstErrorStore(fmt.Errorf("hashing %s file %s: %w", algo, path, err))
 				}
 				f.Checksums[algo] = csum
 			}
 
 			files.Store(path, f)
-			return nil
 		})
 	}
 
-	if err := g.Wait(); err != nil {
+	if err := g.WaitAndClose(); err != nil {
+		return fmt.Errorf("waiting for limiter to finish: %w", err)
+	}
+
+	if err := g.FirstErrorGet(); err != nil {
 		return err
 	}
 

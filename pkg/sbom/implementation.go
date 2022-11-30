@@ -125,6 +125,10 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 		})
 	}
 
+	if err := g.WaitAndClose(); err != nil {
+		return fmt.Errorf("waiting for limiter to finish: %w", err)
+	}
+
 	if err := g.FirstErrorGet(); err != nil {
 		return err
 	}

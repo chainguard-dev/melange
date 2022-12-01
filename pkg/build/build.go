@@ -131,7 +131,7 @@ type Subpackage struct {
 	Name         string        `yaml:"name"`
 	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
 	Dependencies Dependencies  `yaml:"dependencies,omitempty"`
-	Options      PackageOption `yaml:"packageOption,omitempty"`
+	Options      PackageOption `yaml:"options,omitempty"`
 	Scriptlets   Scriptlets    `yaml:"scriptlets,omitempty"`
 	Description  string        `yaml:"description,omitempty"`
 }

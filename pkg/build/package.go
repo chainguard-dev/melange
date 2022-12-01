@@ -42,6 +42,7 @@ type PackageContext struct {
 	Context       *Context
 	Origin        *Package
 	PackageName   string
+	OriginName    string
 	InstalledSize int64
 	DataHash      string
 	OutDir        string
@@ -67,8 +68,9 @@ func (pkg *Package) Emit(ctx *PipelineContext) error {
 func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 	pc := PackageContext{
 		Context:      ctx.Context,
-		Origin:       &ctx.Context.Configuration.Package,
 		PackageName:  spkg.Name,
+		OriginName:   spkg.Name,
+		Origin:       &ctx.Context.Configuration.Package,
 		OutDir:       filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
 		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
 		Dependencies: spkg.Dependencies,
@@ -77,6 +79,11 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Scriptlets:   spkg.Scriptlets,
 		Description:  spkg.Description,
 	}
+
+	if !ctx.Context.StripOriginName {
+		pc.OriginName = pc.Origin.Name
+	}
+
 	return pc.EmitPackage()
 }
 
@@ -97,7 +104,7 @@ pkgname = {{.PackageName}}
 pkgver = {{.Origin.Version}}-r{{.Origin.Epoch}}
 arch = {{.Arch}}
 size = {{.InstalledSize}}
-origin = {{.Origin.Name}}
+origin = {{.OriginName}}
 pkgdesc = {{.Description}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}

@@ -77,6 +77,7 @@ func New(opts ...Option) renovate.Renovator {
 			return err
 		}
 		versionNode.Value = bcfg.TargetVersion
+		versionNode.Style = yaml.LiteralStyle
 
 		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
 		if err != nil {

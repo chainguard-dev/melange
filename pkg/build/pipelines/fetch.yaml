@@ -28,6 +28,12 @@ inputs:
       The URI to fetch as an artifact.
     required: true
 
+  timeout:
+    description: |
+      The timeout (in seconds) to use for connecting and reading.
+      The fetch will fail if the timeout is hit.
+    default: 5
+
 pipeline:
   - runs: |
       if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ]; then
@@ -52,7 +58,7 @@ pipeline:
       fi
 
       if [ ! -f $bn ]; then
-        wget ${{inputs.uri}}
+        wget -T${{inputs.timeout}} ${{inputs.uri}}
       fi
 
       if [ "${{inputs.expected-sha256}}" != "" ]; then

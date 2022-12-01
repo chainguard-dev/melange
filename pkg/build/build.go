@@ -220,6 +220,7 @@ type Context struct {
 	BreakpointLabel    string
 	ContinueLabel      string
 	foundContinuation  bool
+	StripOriginName    bool
 }
 
 type Dependencies struct {
@@ -492,6 +493,18 @@ func WithBreakpointLabel(breakpointLabel string) Option {
 func WithContinueLabel(continueLabel string) Option {
 	return func(ctx *Context) error {
 		ctx.ContinueLabel = continueLabel
+		return nil
+	}
+}
+
+// WithStripOriginName determines whether the origin name should be stripped
+// from generated packages.  The APK solver uses origin names to flatten
+// possible dependency nodes when solving for a DAG, which means that they
+// should be stripped when building "bootstrap" repositories, as the
+// cross-sysroot packages will be preferred over the native ones otherwise.
+func WithStripOriginName(stripOriginName bool) Option {
+	return func(ctx *Context) error {
+		ctx.StripOriginName = stripOriginName
 		return nil
 	}
 }

@@ -40,6 +40,7 @@ func Build() *cobra.Command {
 	var generateIndex bool
 	var useProot bool
 	var emptyWorkspace bool
+	var stripOriginName bool
 	var outDir string
 	var archstrs []string
 	var extraKeys []string
@@ -74,6 +75,7 @@ func Build() *cobra.Command {
 				build.WithBinShOverlay(overlayBinSh),
 				build.WithBreakpointLabel(breakpointLabel),
 				build.WithContinueLabel(continueLabel),
+				build.WithStripOriginName(stripOriginName),
 			}
 
 			if len(args) > 0 {
@@ -107,6 +109,7 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
+	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")

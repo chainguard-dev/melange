@@ -38,7 +38,8 @@ func (bw *BWRunner) Run(cfg Config, args ...string) error {
 	baseargs = append(baseargs, "--unshare-pid",
 		"--dev", "/dev",
 		"--proc", "/proc",
-		"--chdir", "/home/build")
+		"--chdir", "/home/build",
+		"--clearenv")
 
 	if !cfg.Capabilities.Networking {
 		baseargs = append(baseargs, "--unshare-net")

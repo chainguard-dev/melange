@@ -31,6 +31,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
@@ -221,6 +222,7 @@ type Context struct {
 	ContinueLabel      string
 	foundContinuation  bool
 	StripOriginName    bool
+	EnvFile            string
 }
 
 type Dependencies struct {
@@ -281,7 +283,7 @@ func New(opts ...Option) (*Context, error) {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 
-	if err := ctx.Configuration.Load(ctx.ConfigFile); err != nil {
+	if err := ctx.Configuration.Load(ctx); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
@@ -509,9 +511,20 @@ func WithStripOriginName(stripOriginName bool) Option {
 	}
 }
 
+// WithEnvFile specifies an environment file to use to preload the build
+// environment.  It should contain the CFLAGS and LDFLAGS used by the C
+// toolchain as well as any other desired environment settings for the
+// build environment.
+func WithEnvFile(envFile string) Option {
+	return func(ctx *Context) error {
+		ctx.EnvFile = envFile
+		return nil
+	}
+}
+
 // Load the configuration data from the build context configuration file.
-func (cfg *Configuration) Load(configFile string) error {
-	data, err := os.ReadFile(configFile)
+func (cfg *Configuration) Load(ctx Context) error {
+	data, err := os.ReadFile(ctx.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
@@ -578,6 +591,22 @@ func (cfg *Configuration) Load(configFile string) error {
 		GID:      1000,
 	}
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
+
+	// Merge environment file if needed.
+	if ctx.EnvFile != "" {
+		envMap, err := godotenv.Read(ctx.EnvFile)
+		if err != nil {
+			return fmt.Errorf("loading environment file: %w", err)
+		}
+
+		curEnv := cfg.Environment.Environment
+		cfg.Environment.Environment = envMap
+
+		// Overlay the environment in the YAML on top as override.
+		for k, v := range curEnv {
+			cfg.Environment.Environment[k] = v
+		}
+	}
 
 	return nil
 }

@@ -282,7 +282,7 @@ func New(opts ...Option) (*Context, error) {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 
-	if err := ctx.Configuration.Load(ctx.ConfigFile); err != nil {
+	if err := ctx.Configuration.Load(ctx); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
@@ -522,8 +522,8 @@ func WithEnvFile(envFile string) Option {
 }
 
 // Load the configuration data from the build context configuration file.
-func (cfg *Configuration) Load(configFile string) error {
-	data, err := os.ReadFile(configFile)
+func (cfg *Configuration) Load(ctx Context) error {
+	data, err := os.ReadFile(ctx.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("unable to load configuration file: %w", err)
 	}

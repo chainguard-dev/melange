@@ -54,8 +54,9 @@ package:
 		t.Fatal(err)
 	}
 
+	ctx := Context{ConfigFile: f}
 	cfg := &Configuration{}
-	if err := cfg.Load(f); err != nil {
+	if err := cfg.Load(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if d := cmp.Diff(expected, cfg); d != "" {
@@ -139,8 +140,9 @@ subpackages:
 		t.Fatal(err)
 	}
 
+	ctx := Context{ConfigFile: f}
 	cfg := &Configuration{}
-	if err := cfg.Load(f); err != nil {
+	if err := cfg.Load(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if d := cmp.Diff(expected, cfg.Subpackages, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {

@@ -609,6 +609,10 @@ func (cfg *Configuration) Load(ctx Context) error {
 	}
 
 	// Set up some useful environment variables.
+	if cfg.Environment.Environment == nil {
+		cfg.Environment.Environment = make(map[string]string)
+	}
+
 	cfg.Environment.Environment["HOME"] = "/home/build"
 	cfg.Environment.Environment["GOPATH"] = "/home/build/.cache/go"
 

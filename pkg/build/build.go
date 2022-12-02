@@ -221,6 +221,7 @@ type Context struct {
 	ContinueLabel      string
 	foundContinuation  bool
 	StripOriginName    bool
+	EnvFile            string
 }
 
 type Dependencies struct {
@@ -505,6 +506,17 @@ func WithContinueLabel(continueLabel string) Option {
 func WithStripOriginName(stripOriginName bool) Option {
 	return func(ctx *Context) error {
 		ctx.StripOriginName = stripOriginName
+		return nil
+	}
+}
+
+// WithEnvFile specifies an environment file to use to preload the build
+// environment.  It should contain the CFLAGS and LDFLAGS used by the C
+// toolchain as well as any other desired environment settings for the
+// build environment.
+func WithEnvFile(envFile string) Option {
+	return func(ctx *Context) error {
+		ctx.EnvFile = envFile
 		return nil
 	}
 }

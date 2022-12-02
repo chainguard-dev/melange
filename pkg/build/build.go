@@ -31,6 +31,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
@@ -590,6 +591,22 @@ func (cfg *Configuration) Load(ctx Context) error {
 		GID:      1000,
 	}
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
+
+	// Merge environment file if needed.
+	if ctx.EnvFile != "" {
+		envMap, err := godotenv.Read(ctx.EnvFile)
+		if err != nil {
+			return fmt.Errorf("loading environment file: %w", err)
+		}
+
+		curEnv := cfg.Environment.Environment
+		cfg.Environment.Environment = envMap
+
+		// Overlay the environment in the YAML on top as override.
+		for k, v := range curEnv {
+			cfg.Environment.Environment[k] = v
+		}
+	}
 
 	return nil
 }

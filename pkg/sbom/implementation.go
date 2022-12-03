@@ -383,9 +383,7 @@ func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error 
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}
 
-	mwriter := io.MultiWriter(os.Stderr, f)
-
-	enc := json.NewEncoder(mwriter)
+	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(true)
 

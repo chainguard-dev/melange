@@ -114,10 +114,23 @@ func downloadFile(uri string) (string, error) {
 	}
 	defer targetFile.Close()
 
-	resp, err := http.Get(uri)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// delete the referer header else redirects with sourceforge do not work well.  See https://stackoverflow.com/questions/67203383/downloading-from-sourceforge-wait-and-redirect
+			req.Header.Del("Referer")
+			return nil
+		},
+	}
+
+	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return "", err
 	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {

@@ -6,7 +6,7 @@ require (
 	chainguard.dev/apko v0.5.1-0.20221129023637-7aa15e85ee99
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/google/go-cmp v0.5.9
-	github.com/joho/godotenv v1.3.0
+	github.com/joho/godotenv v1.4.0
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/oec/goparsify v0.2.1
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef

@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.18
 
 require (
-	chainguard.dev/apko v0.5.1-0.20221129023637-7aa15e85ee99
+	chainguard.dev/apko v0.6.0
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/google/go-cmp v0.5.9
 	github.com/joho/godotenv v1.4.0

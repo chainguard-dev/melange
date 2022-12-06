@@ -48,6 +48,10 @@ package:
 		GID:       1000,
 		Members:   []string{"build"},
 	}}
+	expected.Environment.Environment = map[string]string{
+		"HOME": "/home/build",
+		"GOPATH": "/home/build/.cache/go",
+	}
 
 	f := filepath.Join(t.TempDir(), "config")
 	if err := os.WriteFile(f, []byte(contents), 0755); err != nil {

@@ -78,6 +78,7 @@ func New(opts ...Option) renovate.Renovator {
 		}
 		versionNode.Value = bcfg.TargetVersion
 		versionNode.Style = yaml.FlowStyle
+		versionNode.Tag = "!!str"
 
 		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
 		if err != nil {

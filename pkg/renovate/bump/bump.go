@@ -17,20 +17,16 @@ package bump
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
-	"hash"
-	"io"
 	"log"
-	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/renovate"
+	"chainguard.dev/melange/pkg/util"
 )
 
 // BumpConfig contains the configuration data for a bump
@@ -107,59 +103,6 @@ func New(opts ...Option) renovate.Renovator {
 	}
 }
 
-// downloadFile downloads a file and returns a path to it in temporary storage.
-func downloadFile(uri string) (string, error) {
-	targetFile, err := os.CreateTemp("", "melange-update-*")
-	if err != nil {
-		return "", err
-	}
-	defer targetFile.Close()
-
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// delete the referer header else redirects with sourceforge do not work well.  See https://stackoverflow.com/questions/67203383/downloading-from-sourceforge-wait-and-redirect
-			req.Header.Del("Referer")
-			return nil
-		},
-	}
-
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("got %s when fetching %s", resp.Status, filepath.Base(uri))
-	}
-
-	if _, err := io.Copy(targetFile, resp.Body); err != nil {
-		return "", err
-	}
-
-	return targetFile.Name(), nil
-}
-
-// hashFile calculates the hash for a file and returns it as a hex string.
-func hashFile(downloadedFile string, digest hash.Hash) (string, error) {
-	hashedFile, err := os.Open(downloadedFile)
-	if err != nil {
-		return "", err
-	}
-	defer hashedFile.Close()
-
-	if _, err := io.Copy(digest, hashedFile); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(digest.Sum(nil)), nil
-}
-
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
 func updateFetch(node *yaml.Node, targetVersion string) error {
 	withNode, err := renovate.NodeFromMapping(node, "with")
@@ -179,7 +122,7 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	log.Printf("  uri: %s", uriNode.Value)
 	log.Printf("  evaluated: %s", evaluatedUri)
 
-	downloadedFile, err := downloadFile(evaluatedUri)
+	downloadedFile, err := util.DownloadFile(evaluatedUri)
 	if err != nil {
 		return err
 	}
@@ -187,13 +130,13 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	log.Printf("  fetched-as: %s", downloadedFile)
 
 	// Calculate SHA2-256 and SHA2-512 hashes.
-	fileSHA256, err := hashFile(downloadedFile, sha256.New())
+	fileSHA256, err := util.HashFile(downloadedFile, sha256.New())
 	if err != nil {
 		return err
 	}
 	log.Printf("  expected-sha256: %s", fileSHA256)
 
-	fileSHA512, err := hashFile(downloadedFile, sha512.New())
+	fileSHA512, err := util.HashFile(downloadedFile, sha512.New())
 	if err != nil {
 		return err
 	}

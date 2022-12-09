@@ -18,8 +18,10 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dprotaso/go-yit"
@@ -37,7 +39,7 @@ type CacheConfig struct {
 	packageVersion string
 }
 
-// Option sets a config option on a BumpConfig.
+// Option sets a config option on a CacheConfig.
 type Option func(cfg *CacheConfig) error
 
 // WithCacheDir sets the desired target directory for cache
@@ -152,17 +154,45 @@ func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 	// Update expected hash nodes.
 	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
-		if nodeSHA256.Value != fileSHA256 {
-			return fmt.Errorf("SHA256 checksum mismatch")
+		if err := addFileToCache(cfg, downloadedFile, fileSHA256, nodeSHA256.Value, "sha256"); err != nil {
+			return err
 		}
 	}
 
 	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
-		if nodeSHA512.Value != fileSHA512 {
-			return fmt.Errorf("SHA512 checksum mismatch")
+		if err := addFileToCache(cfg, downloadedFile, fileSHA512, nodeSHA512.Value, "sha512"); err != nil {
+			return err
 		}
 	}
+
+	return nil
+}
+
+// addFileToCache adds a file to the CacheDir.
+func addFileToCache(cfg CacheConfig, downloadedFile string, compHash string, cfgHash string, hashFamily string) error {
+	if compHash != cfgHash {
+		return fmt.Errorf("%s mismatch: %s != %s", hashFamily, compHash, cfgHash)
+	}
+
+	destinationPath := filepath.Join(cfg.CacheDir, fmt.Sprintf("%s:%s", hashFamily, cfgHash))
+	destinationFile, err := os.Create(destinationPath)
+	if err != nil {
+		return err
+	}
+	defer destinationFile.Close()
+
+	sourceFile, err := os.Open(downloadedFile)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	if _, err := io.Copy(destinationFile, sourceFile); err != nil {
+		return err
+	}
+
+	log.Printf("  wrote: %s", destinationPath)
 
 	return nil
 }

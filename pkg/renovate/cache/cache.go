@@ -110,7 +110,7 @@ func New(opts ...Option) renovate.Renovator {
 }
 
 // visitFetch takes a "fetch" pipeline node
-func updateFetch(node *yaml.Node, cfg CacheConfig) error {
+func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func updateFetch(node *yaml.Node, cfg CacheConfig) error {
 
 	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
-		if node.SHA512.Value != fileSHA512 {
+		if nodeSHA512.Value != fileSHA512 {
 			return fmt.Errorf("SHA512 checksum mismatch")
 		}
 	}

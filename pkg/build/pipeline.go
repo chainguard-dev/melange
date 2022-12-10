@@ -271,7 +271,11 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)
 	command := []string{"/bin/sh", "-c", script}
 
-	runner := container.GetRunner()
+	runner, err := container.GetRunner()
+	if err != nil {
+		return err
+	}
+
 	config := p.workspaceConfig(ctx)
 
 	if err := runner.Run(config, command...); err != nil {

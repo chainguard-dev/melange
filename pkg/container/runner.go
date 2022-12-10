@@ -15,6 +15,7 @@
 package container
 
 import (
+	"fmt"
 	"os/exec"
 )
 
@@ -25,8 +26,18 @@ type Runner interface {
 
 // GetRunner returns the preferred runner implementation for the
 // given environment.
-func GetRunner() Runner {
-	return BubblewrapRunner()
+func GetRunner() (Runner, error) {
+	runners := []Runner{
+		BubblewrapRunner(),
+	}
+
+	for _, runner := range runners {
+		if runner.TestUsability() {
+			return runner, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no suitable runner implementation found")
 }
 
 // monitorCmd sets up the stdout/stderr pipes and then supervises

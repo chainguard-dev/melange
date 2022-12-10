@@ -63,7 +63,7 @@ type Renovator func(rc *RenovationContext) error
 func (c *Context) Renovate(renovators ...Renovator) error {
 	rc := RenovationContext{Context: c}
 
-	if err := rc.loadConfig(); err != nil {
+	if err := rc.LoadConfig(); err != nil {
 		return err
 	}
 
@@ -73,15 +73,15 @@ func (c *Context) Renovate(renovators ...Renovator) error {
 		}
 	}
 
-	if err := rc.writeConfig(); err != nil {
+	if err := rc.WriteConfig(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// loadConfig loads the configuration data into an AST for renovation.
-func (rc *RenovationContext) loadConfig() error {
+// LoadConfig loads the configuration data into an AST for renovation.
+func (rc *RenovationContext) LoadConfig() error {
 	configData, err := os.ReadFile(rc.Context.ConfigFile)
 	if err != nil {
 		return err
@@ -94,9 +94,9 @@ func (rc *RenovationContext) loadConfig() error {
 	return nil
 }
 
-// writeConfig writes the modified configuration data back to the config
+// WriteConfig writes the modified configuration data back to the config
 // file.
-func (rc *RenovationContext) writeConfig() error {
+func (rc *RenovationContext) WriteConfig() error {
 	configFile, err := os.Create(rc.Context.ConfigFile)
 	if err != nil {
 		return err

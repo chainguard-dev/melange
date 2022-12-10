@@ -49,7 +49,7 @@ package:
 		Members:   []string{"build"},
 	}}
 	expected.Environment.Environment = map[string]string{
-		"HOME": "/home/build",
+		"HOME":   "/home/build",
 		"GOPATH": "/home/build/.cache/go",
 	}
 

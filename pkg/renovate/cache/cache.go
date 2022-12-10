@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bump
+package cache
 
 import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dprotaso/go-yit"
@@ -29,58 +31,64 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
-// BumpConfig contains the configuration data for a bump
+// CacheConfig contains the configuration data for a bump
 // renovator.
-type BumpConfig struct {
-	TargetVersion string
+type CacheConfig struct {
+	CacheDir       string
+	packageName    string
+	packageVersion string
 }
 
-// Option sets a config option on a BumpConfig.
-type Option func(cfg *BumpConfig) error
+// Option sets a config option on a CacheConfig.
+type Option func(cfg *CacheConfig) error
 
-// WithTargetVersion sets the desired target version for the
-// bump renovator.
-func WithTargetVersion(targetVersion string) Option {
-	return func(cfg *BumpConfig) error {
-		cfg.TargetVersion = targetVersion
+// WithCacheDir sets the desired target directory for cache
+// artifacts to be fetched to.
+func WithCacheDir(cacheDir string) Option {
+	return func(cfg *CacheConfig) error {
+		cfg.CacheDir = cacheDir
 		return nil
 	}
 }
 
-// New returns a renovator which performs a version bump.
+// New returns a renovator which fetches cache dependencies.
 func New(opts ...Option) renovate.Renovator {
-	bcfg := BumpConfig{}
+	cfg := CacheConfig{}
 
 	for _, opt := range opts {
-		if err := opt(&bcfg); err != nil {
+		if err := opt(&cfg); err != nil {
 			return func(rc *renovate.RenovationContext) error {
 				return fmt.Errorf("while constructing: %w", err)
 			}
 		}
 	}
 
-	return func(rc *renovate.RenovationContext) error {
-		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
+	if cfg.CacheDir == "" {
+		return func(rc *renovate.RenovationContext) error {
+			return fmt.Errorf("cache directory is not set")
+		}
+	}
 
-		// Find the package.version node first and change it.
+	return func(rc *renovate.RenovationContext) error {
+		// Find the package.name and package.version nodes.
 		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
 		if err != nil {
 			return err
 		}
 
+		nameNode, err := renovate.NodeFromMapping(packageNode, "name")
+		if err != nil {
+			return err
+		}
+		cfg.packageName = nameNode.Value
+
 		versionNode, err := renovate.NodeFromMapping(packageNode, "version")
 		if err != nil {
 			return err
 		}
-		versionNode.Value = bcfg.TargetVersion
-		versionNode.Style = yaml.FlowStyle
-		versionNode.Tag = "!!str"
+		cfg.packageVersion = versionNode.Value
 
-		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
-		if err != nil {
-			return err
-		}
-		epochNode.Value = "0"
+		log.Printf("fetching artifacts relating to %s-%s", cfg.packageName, cfg.packageVersion)
 
 		// Find our main pipeline YAML node.
 		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
@@ -94,7 +102,7 @@ func New(opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("fetch"))
 
 		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := updateFetch(fetchNode, bcfg.TargetVersion); err != nil {
+			if err := visitFetch(fetchNode, cfg); err != nil {
 				return err
 			}
 		}
@@ -103,8 +111,8 @@ func New(opts ...Option) renovate.Renovator {
 	}
 }
 
-// updateFetch takes a "fetch" pipeline node and updates the parameters of it.
-func updateFetch(node *yaml.Node, targetVersion string) error {
+// visitFetch takes a "fetch" pipeline node
+func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -118,7 +126,8 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	log.Printf("processing fetch node:")
 
 	// Fetch the new sources.
-	evaluatedUri := strings.ReplaceAll(uriNode.Value, "${{package.version}}", targetVersion)
+	evaluatedUri := strings.ReplaceAll(uriNode.Value, "${{package.version}}", cfg.packageVersion)
+	evaluatedUri = strings.ReplaceAll(evaluatedUri, "${{package.name}}", cfg.packageName)
 	log.Printf("  uri: %s", uriNode.Value)
 	log.Printf("  evaluated: %s", evaluatedUri)
 
@@ -134,24 +143,56 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("  expected-sha256: %s", fileSHA256)
+	log.Printf("  actual-sha256: %s", fileSHA256)
 
 	fileSHA512, err := util.HashFile(downloadedFile, sha512.New())
 	if err != nil {
 		return err
 	}
-	log.Printf("  expected-sha512: %s", fileSHA512)
+	log.Printf("  actual-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.
 	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
-		nodeSHA256.Value = fileSHA256
+		if err := addFileToCache(cfg, downloadedFile, fileSHA256, nodeSHA256.Value, "sha256"); err != nil {
+			return err
+		}
 	}
 
 	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
-		nodeSHA512.Value = fileSHA512
+		if err := addFileToCache(cfg, downloadedFile, fileSHA512, nodeSHA512.Value, "sha512"); err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+// addFileToCache adds a file to the CacheDir.
+func addFileToCache(cfg CacheConfig, downloadedFile string, compHash string, cfgHash string, hashFamily string) error {
+	if compHash != cfgHash {
+		return fmt.Errorf("%s mismatch: %s != %s", hashFamily, compHash, cfgHash)
+	}
+
+	destinationPath := filepath.Join(cfg.CacheDir, fmt.Sprintf("%s:%s", hashFamily, cfgHash))
+	destinationFile, err := os.Create(destinationPath)
+	if err != nil {
+		return err
+	}
+	defer destinationFile.Close()
+
+	sourceFile, err := os.Open(downloadedFile)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	if _, err := io.Copy(destinationFile, sourceFile); err != nil {
+		return err
+	}
+
+	log.Printf("  wrote: %s", destinationPath)
 
 	return nil
 }

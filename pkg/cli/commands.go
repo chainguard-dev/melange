@@ -31,6 +31,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(Keygen())
 	cmd.AddCommand(Index())
 	cmd.AddCommand(SignIndex())
+	cmd.AddCommand(UpdateCache())
 	cmd.AddCommand(version.Version())
 	return cmd
 }

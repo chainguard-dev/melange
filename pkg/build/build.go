@@ -35,6 +35,7 @@ import (
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/sbom"
 )
@@ -223,6 +224,7 @@ type Context struct {
 	foundContinuation  bool
 	StripOriginName    bool
 	EnvFile            string
+	Runner             container.Runner
 }
 
 type Dependencies struct {
@@ -308,6 +310,13 @@ func New(opts ...Option) (*Context, error) {
 	if len(ctx.Configuration.Pipeline) == 0 {
 		return nil, fmt.Errorf("no pipeline has been configured, check your config for indentation errors")
 	}
+
+	// Check that we actually can run things in containers.
+	runner, err := container.GetRunner()
+	if err != nil {
+		return nil, err
+	}
+	ctx.Runner = runner
 
 	return &ctx, nil
 }

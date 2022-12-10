@@ -660,12 +660,25 @@ func (ctx *Context) BuildGuest() error {
 
 	bc.Summarize()
 
-	if err := bc.BuildImage(); err != nil {
-		return fmt.Errorf("unable to generate image: %w", err)
+	if !ctx.Runner.NeedsImage() {
+		if err := bc.BuildImage(); err != nil {
+			return fmt.Errorf("unable to generate image: %w", err)
+		}
+	} else {
+		if err := ctx.BuildAndPushLocalImage(bc); err != nil {
+			return fmt.Errorf("unable to generate image: %w", err)
+		}
 	}
 
 	ctx.Logger.Printf("successfully built workspace with apko")
 
+	return nil
+}
+
+// BuildAndPushLocalImage uses apko to build and push the image to the local
+// Docker daemon.
+func (ctx *Context) BuildAndPushLocalImage(bc *apko_build.Context) error {
+	ctx.Logger.Printf("BuildAndPushLocalImage: not yet implemented")
 	return nil
 }
 

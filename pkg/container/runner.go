@@ -29,6 +29,7 @@ type Runner interface {
 // given environment.
 func GetRunner() (Runner, error) {
 	runners := []Runner{
+		DockerRunner(),
 		BubblewrapRunner(),
 	}
 

@@ -227,11 +227,18 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 func (p *Pipeline) workspaceConfig(pctx *PipelineContext) container.Config {
 	ctx := pctx.Context
 
-	mounts := []container.BindMount{
-		{Source: ctx.GuestDir, Destination: "/"},
+	mounts := []container.BindMount{}
+
+	if !ctx.Runner.NeedsImage() {
+		mounts = append(mounts, container.BindMount{Source: ctx.GuestDir, Destination: "/"})
+	}
+
+	builtinMounts := []container.BindMount{
 		{Source: ctx.WorkspaceDir, Destination: "/home/build"},
 		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
 	}
+
+	mounts = append(mounts, builtinMounts...)
 
 	if ctx.CacheDir != "" {
 		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {

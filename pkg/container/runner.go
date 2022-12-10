@@ -19,6 +19,7 @@ import (
 )
 
 type Runner interface {
+	TestUsability() bool
 	Run(cfg Config, cmd ...string) error
 }
 

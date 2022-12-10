@@ -29,8 +29,10 @@ import (
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
+	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
@@ -225,6 +227,7 @@ type Context struct {
 	StripOriginName    bool
 	EnvFile            string
 	Runner             container.Runner
+	imgDigest          name.Digest
 }
 
 type Dependencies struct {
@@ -649,6 +652,7 @@ func (ctx *Context) BuildGuest() error {
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
 		apko_build.WithDebugLogging(true),
+		apko_build.WithLocal(true),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)
@@ -678,7 +682,24 @@ func (ctx *Context) BuildGuest() error {
 // BuildAndPushLocalImage uses apko to build and push the image to the local
 // Docker daemon.
 func (ctx *Context) BuildAndPushLocalImage(bc *apko_build.Context) error {
-	ctx.Logger.Printf("BuildAndPushLocalImage: not yet implemented")
+	layerTarGZ, err := bc.BuildLayer()
+	if err != nil {
+		return err
+	}
+	defer os.Remove(layerTarGZ)
+
+	ctx.Logger.Printf("using %s for image layer", layerTarGZ)
+
+	imgDigest, _, err := apko_oci.PublishImageFromLayer(
+		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, ctx.Arch,
+		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, "melange:latest")
+	if err != nil {
+		return err
+	}
+
+	ctx.Logger.Printf("pushed %s as %v", layerTarGZ, imgDigest.Name())
+	ctx.imgDigest = imgDigest
+
 	return nil
 }
 

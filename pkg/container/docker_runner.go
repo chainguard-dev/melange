@@ -15,10 +15,15 @@
 package container
 
 import (
-	"fmt"
+	"context"
+	_ "fmt"
 	"log"
+	"os"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 type DKRunner struct {
@@ -32,7 +37,61 @@ func DockerRunner() Runner {
 
 // Run runs a Docker task given a Config and command string.
 func (dk *DKRunner) Run(cfg Config, args ...string) error {
-	return fmt.Errorf("Run not implemented")
+	stdoutPipeR, stdoutPipeW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	stderrPipeR, stderrPipeW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	ctx := context.Background()
+	resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: cfg.ImgDigest,
+		Cmd: args,
+		Tty: false,
+	}, nil, nil, nil, "")
+	if err != nil {
+		return err
+	}
+
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return err
+	}
+
+	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case <-statusCh:
+	}
+
+	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+
+	finishStdout := make(chan struct{})
+	finishStderr := make(chan struct{})
+
+	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
+	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
+	stdcopy.StdCopy(stdoutPipeW, stderrPipeW, out)
+
+	<-finishStdout
+	<-finishStderr
+
+	return nil
 }
 
 // TestUsability determines if the Docker runner can be used

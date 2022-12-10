@@ -32,4 +32,5 @@ type Config struct {
 	Capabilities Capabilities
 	Logger       *log.Logger
 	Environment  map[string]string
+	ImgDigest    string
 }

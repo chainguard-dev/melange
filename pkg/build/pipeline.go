@@ -266,6 +266,12 @@ func (p *Pipeline) workspaceConfig(pctx *PipelineContext) container.Config {
 		cfg.Environment[k] = v
 	}
 
+	if ctx.Runner.NeedsImage() {
+		repoparts := strings.Split(ctx.imgDigest.Name(), "@")
+		cfg.ImgDigest = fmt.Sprintf("%s:%s", repoparts[0], strings.Split(repoparts[1], ":")[1])
+		ctx.Logger.Printf("ImgDigest = %s", cfg.ImgDigest)
+	}
+
 	return cfg
 }
 

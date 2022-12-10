@@ -21,6 +21,7 @@ import (
 
 type Runner interface {
 	TestUsability() bool
+	NeedsImage() bool
 	Run(cfg Config, cmd ...string) error
 }
 

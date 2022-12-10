@@ -67,3 +67,9 @@ func (bw *BWRunner) TestUsability() bool {
 
 	return true
 }
+
+// NeedsImage determines whether an image is needed for the
+// given runner method.  For Bubblewrap, this is false.
+func (bw *BWRunner) NeedsImage() bool {
+	return false
+}

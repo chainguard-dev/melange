@@ -15,6 +15,7 @@
 package container
 
 import (
+	"log"
 	"os/exec"
 )
 
@@ -53,4 +54,16 @@ func (bw *BWRunner) Run(cfg Config, args ...string) error {
 	execCmd := exec.Command("bwrap", args...)
 
 	return monitorCmd(cfg, execCmd)
+}
+
+// TestUsability determines if the Bubblewrap runner can be used
+// as a container runner.
+func (bw *BWRunner) TestUsability() bool {
+	_, err := exec.LookPath("bwrap")
+	if err != nil {
+		log.Printf("cannot use bubblewrap for containers: bwrap not found on $PATH")
+		return false
+	}
+
+	return true
 }

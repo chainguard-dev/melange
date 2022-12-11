@@ -71,6 +71,21 @@ func (dk *DKRunner) TerminatePod(cfg *Config) error {
 		return fmt.Errorf("pod not running")
 	}
 
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	ctx := context.Background()
+	if err := cli.ContainerRemove(ctx, cfg.PodID, types.ContainerRemoveOptions{
+		Force: true,
+	}); err != nil {
+		return err
+	}
+
+	cfg.Logger.Printf("pod %s terminated.", cfg.PodID)
+
 	return nil
 }
 

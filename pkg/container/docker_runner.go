@@ -22,6 +22,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 )
@@ -44,12 +45,25 @@ func (dk *DKRunner) StartPod(cfg *Config) error {
 	}
 	defer cli.Close()
 
+	mounts := []mount.Mount{}
+	for _, bind := range cfg.Mounts {
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Source: bind.Source,
+			Target: bind.Destination,
+		})
+	}
+
+	hostConfig := &container.HostConfig{
+		Mounts: mounts,
+	}
+
 	ctx := context.Background()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.ImgDigest,
 		Cmd:   []string{"/bin/sh", "-c", "while true; do sleep 5; done"},
 		Tty:   false,
-	}, nil, nil, nil, "")
+	}, hostConfig, nil, nil, "")
 	if err != nil {
 		return err
 	}
@@ -111,7 +125,7 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 	// TODO(kaniini): We want to use the build user here, but for now lets keep
 	// it simple.
 	taskIDResp, err := cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
-		User:         "0",
+		User:         "build",
 		Cmd:          args,
 		WorkingDir:   "/home/build",
 		Env:          environ,

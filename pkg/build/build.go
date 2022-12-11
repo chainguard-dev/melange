@@ -936,6 +936,8 @@ func (ctx *Context) BuildPackage() error {
 		return fmt.Errorf("unable to build guest: %w", err)
 	}
 
+	// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
+	// Probably needs help from apko.
 	if err := ctx.OverlayBinSh(); err != nil {
 		return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 	}
@@ -945,6 +947,11 @@ func (ctx *Context) BuildPackage() error {
 	}
 	if err := ctx.PopulateWorkspace(); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)
+	}
+
+	cfg := ctx.WorkspaceConfig()
+	if err := ctx.Runner.StartPod(cfg); err != nil {
+		return fmt.Errorf("unable to start pod: %w", err)
 	}
 
 	// run the main pipeline
@@ -1014,6 +1021,11 @@ func (ctx *Context) BuildPackage() error {
 		if err := sp.Emit(&pctx); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
+	}
+
+	// terminate pod
+	if err := ctx.Runner.TerminatePod(cfg); err != nil {
+		ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
 	}
 
 	// clean build guest container

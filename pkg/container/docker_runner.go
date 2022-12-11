@@ -159,8 +159,6 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 	default:
 		return fmt.Errorf("task exited with code %d", inspectResp.ExitCode)
 	}
-
-	return nil
 }
 
 // TestUsability determines if the Docker runner can be used

@@ -263,6 +263,15 @@ func New(opts ...Option) (*Context, error) {
 		if ctx.ContinueLabel == "" {
 			ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
 		}
+
+		// Get the absolute path to the workspace dir, which is needed for bind
+		// mounts.
+		absdir, err := filepath.Abs(ctx.WorkspaceDir)
+		if err != nil {
+			return nil, fmt.Errorf("unable to resolve path %s: %w", ctx.WorkspaceDir, err)
+		}
+
+		ctx.WorkspaceDir = absdir
 	} else {
 		tmpdir, err := os.MkdirTemp("", "melange-workspace-*")
 		if err != nil {

@@ -228,6 +228,7 @@ type Context struct {
 	EnvFile            string
 	Runner             container.Runner
 	imgDigest          name.Digest
+	containerConfig    *container.Config
 }
 
 type Dependencies struct {
@@ -1083,4 +1084,62 @@ func (ctx *Context) BuildTripletGnu() string {
 // `x86_64-unknown-linux-gnu`.
 func (ctx *Context) BuildTripletRust() string {
 	return ctx.Arch.ToRustTriplet(ctx.BuildFlavor())
+}
+
+func (ctx *Context) buildWorkspaceConfig() *container.Config {
+	mounts := []container.BindMount{}
+
+	if !ctx.Runner.NeedsImage() {
+		mounts = append(mounts, container.BindMount{Source: ctx.GuestDir, Destination: "/"})
+	}
+
+	builtinMounts := []container.BindMount{
+		{Source: ctx.WorkspaceDir, Destination: "/home/build"},
+		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
+	}
+
+	mounts = append(mounts, builtinMounts...)
+
+	if ctx.CacheDir != "" {
+		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
+			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
+		} else {
+			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
+		}
+	}
+
+	// TODO(kaniini): Disable networking capability according to the pipeline requirements.
+	caps := container.Capabilities{
+		Networking: true,
+	}
+
+	cfg := container.Config{
+		Mounts:       mounts,
+		Capabilities: caps,
+		Logger:       ctx.Logger,
+		Environment: map[string]string{
+			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
+		},
+	}
+
+	for k, v := range ctx.Configuration.Environment.Environment {
+		cfg.Environment[k] = v
+	}
+
+	if ctx.Runner.NeedsImage() {
+		repoparts := strings.Split(ctx.imgDigest.Name(), "@")
+		cfg.ImgDigest = fmt.Sprintf("%s:%s", repoparts[0], strings.Split(repoparts[1], ":")[1])
+		ctx.Logger.Printf("ImgDigest = %s", cfg.ImgDigest)
+	}
+
+	return &cfg
+}
+
+func (ctx *Context) WorkspaceConfig() *container.Config {
+	if ctx.containerConfig != nil {
+		return ctx.containerConfig
+	}
+
+	ctx.containerConfig = ctx.buildWorkspaceConfig()
+	return ctx.containerConfig
 }

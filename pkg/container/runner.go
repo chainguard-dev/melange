@@ -22,7 +22,9 @@ import (
 type Runner interface {
 	TestUsability() bool
 	NeedsImage() bool
-	Run(cfg Config, cmd ...string) error
+	StartPod(cfg *Config) error
+	Run(cfg *Config, cmd ...string) error
+	TerminatePod(cfg *Config) error
 }
 
 // GetRunner returns the preferred runner implementation for the
@@ -44,7 +46,7 @@ func GetRunner() (Runner, error) {
 
 // monitorCmd sets up the stdout/stderr pipes and then supervises
 // execution of an exec.Cmd.
-func monitorCmd(cfg Config, cmd *exec.Cmd) error {
+func monitorCmd(cfg *Config, cmd *exec.Cmd) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

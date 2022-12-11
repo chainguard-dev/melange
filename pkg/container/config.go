@@ -33,4 +33,5 @@ type Config struct {
 	Logger       *log.Logger
 	Environment  map[string]string
 	ImgDigest    string
+	PodID        string
 }

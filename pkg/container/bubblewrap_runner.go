@@ -29,7 +29,7 @@ func BubblewrapRunner() Runner {
 }
 
 // Run runs a Bubblewrap task given a Config and command string.
-func (bw *BWRunner) Run(cfg Config, args ...string) error {
+func (bw *BWRunner) Run(cfg *Config, args ...string) error {
 	baseargs := []string{}
 
 	for _, bind := range cfg.Mounts {
@@ -72,4 +72,16 @@ func (bw *BWRunner) TestUsability() bool {
 // given runner method.  For Bubblewrap, this is false.
 func (bw *BWRunner) NeedsImage() bool {
 	return false
+}
+
+// StartPod starts a pod if necessary.  Not implemented for
+// Bubblewrap runners.
+func (bw *BWRunner) StartPod(cfg *Config) error {
+	return nil
+}
+
+// TerminatePod terminates a pod if necessary.  Not implemented
+// for Bubblewrap runners.
+func (bw *BWRunner) TerminatePod(cfg *Config) error {
+	return nil
 }

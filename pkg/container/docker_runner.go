@@ -16,14 +16,14 @@ package container
 
 import (
 	"context"
-	_ "fmt"
+	"fmt"
 	"log"
-	"os"
+	_ "os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
+	_ "github.com/docker/docker/pkg/stdcopy"
 )
 
 type DKRunner struct {
@@ -35,18 +35,9 @@ func DockerRunner() Runner {
 	return &DKRunner{}
 }
 
-// Run runs a Docker task given a Config and command string.
-func (dk *DKRunner) Run(cfg Config, args ...string) error {
-	stdoutPipeR, stdoutPipeW, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-
-	stderrPipeR, stderrPipeW, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-
+// StartPod starts a pod for supporting a Docker task, if
+// necessary.
+func (dk *DKRunner) StartPod(cfg *Config) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
@@ -56,7 +47,7 @@ func (dk *DKRunner) Run(cfg Config, args ...string) error {
 	ctx := context.Background()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.ImgDigest,
-		Cmd: args,
+		Cmd: []string{"/bin/sh", "-c", "while true; do sleep 5; done"},
 		Tty: false,
 	}, nil, nil, nil, "")
 	if err != nil {
@@ -67,29 +58,52 @@ func (dk *DKRunner) Run(cfg Config, args ...string) error {
 		return err
 	}
 
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
-		}
-	case <-statusCh:
+	cfg.PodID = resp.ID
+	cfg.Logger.Printf("pod %s started.", cfg.PodID)
+
+	return nil
+}
+
+// TerminatePod terminates a pod for supporting a Docker task,
+// if necessary.
+func (dk *DKRunner) TerminatePod(cfg *Config) error {
+	if cfg.PodID == "" {
+		return fmt.Errorf("pod not running")
 	}
 
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-	})
+	return nil
+}
 
-	finishStdout := make(chan struct{})
-	finishStderr := make(chan struct{})
+// Run runs a Docker task given a Config and command string.
+func (dk *DKRunner) Run(cfg *Config, args ...string) error {
+	if cfg.PodID == "" {
+		return fmt.Errorf("pod not running")
+	}
 
-	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
-	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
-	stdcopy.StdCopy(stdoutPipeW, stderrPipeW, out)
+//	stdoutPipeR, stdoutPipeW, err := os.Pipe()
+//	if err != nil {
+//		return err
+//	}
 
-	<-finishStdout
-	<-finishStderr
+//	stderrPipeR, stderrPipeW, err := os.Pipe()
+//	if err != nil {
+//		return err
+//	}
+
+//	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
+//		ShowStdout: true,
+//		ShowStderr: true,
+//	})
+
+//	finishStdout := make(chan struct{})
+//	finishStderr := make(chan struct{})
+
+//	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
+//	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
+//	stdcopy.StdCopy(stdoutPipeW, stderrPipeW, out)
+
+//	<-finishStdout
+//	<-finishStderr
 
 	return nil
 }

@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	_ "os"
+	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	_ "github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 type DKRunner struct {
@@ -95,30 +95,56 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 		return fmt.Errorf("pod not running")
 	}
 
-//	stdoutPipeR, stdoutPipeW, err := os.Pipe()
-//	if err != nil {
-//		return err
-//	}
+	environ := []string{}
+	for k, v := range cfg.Environment {
+		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
+	}
 
-//	stderrPipeR, stderrPipeW, err := os.Pipe()
-//	if err != nil {
-//		return err
-//	}
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
 
-//	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
-//		ShowStdout: true,
-//		ShowStderr: true,
-//	})
+	ctx := context.Background()
 
-//	finishStdout := make(chan struct{})
-//	finishStderr := make(chan struct{})
+	// TODO(kaniini): We want to use the build user here, but for now lets keep
+	// it simple.
+	taskIDResp, err := cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
+		User: "0",
+		Cmd: args,
+		WorkingDir: "/home/build",
+		Env: environ,
+		Tty: false,
+		AttachStderr: true,
+		AttachStdout: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create exec task inside pod: %w", err)
+	}
 
-//	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
-//	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
-//	stdcopy.StdCopy(stdoutPipeW, stderrPipeW, out)
+	attachResp, err := cli.ContainerExecAttach(ctx, taskIDResp.ID, types.ExecStartCheck{
+		Tty: false,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to attach to exec task: %w", err)
+	}
 
-//	<-finishStdout
-//	<-finishStderr
+	if err := dk.waitForCommand(cfg, ctx, attachResp, taskIDResp); err != nil {
+		return err
+	}
+
+	inspectResp, err := cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get exit code from task: %w", err)
+	}
+
+	switch inspectResp.ExitCode {
+	case 0:
+		return nil
+	default:
+		return fmt.Errorf("task exited with code %d", inspectResp.ExitCode)
+	}
 
 	return nil
 }
@@ -140,4 +166,32 @@ func (dk *DKRunner) TestUsability() bool {
 // given runner method.  For Docker, this is true.
 func (dk *DKRunner) NeedsImage() bool {
 	return true
+}
+
+// waitForCommand waits for a command to complete in the pod.
+func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp types.HijackedResponse, taskIDResp types.IDResponse) error {
+	stdoutPipeR, stdoutPipeW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	stderrPipeR, stderrPipeW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	finishStdout := make(chan struct{})
+	finishStderr := make(chan struct{})
+
+	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
+	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
+	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader);
+
+	stdoutPipeW.Close()
+	stderrPipeW.Close()
+
+	<-finishStdout
+	<-finishStderr
+
+	return err
 }

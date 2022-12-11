@@ -12,7 +12,6 @@ require (
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/oec/goparsify v0.2.1
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
-	github.com/sigstore/cosign v1.13.1
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.1
 	github.com/zealic/xignore v0.3.3
@@ -106,6 +105,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
+	github.com/sigstore/cosign v1.13.1 // indirect
 	github.com/sigstore/rekor v0.12.1 // indirect
 	github.com/sigstore/sigstore v1.4.4 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect

@@ -47,8 +47,8 @@ func (dk *DKRunner) StartPod(cfg *Config) error {
 	ctx := context.Background()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.ImgDigest,
-		Cmd: []string{"/bin/sh", "-c", "while true; do sleep 5; done"},
-		Tty: false,
+		Cmd:   []string{"/bin/sh", "-c", "while true; do sleep 5; done"},
+		Tty:   false,
 	}, nil, nil, nil, "")
 	if err != nil {
 		return err
@@ -111,11 +111,11 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 	// TODO(kaniini): We want to use the build user here, but for now lets keep
 	// it simple.
 	taskIDResp, err := cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
-		User: "0",
-		Cmd: args,
-		WorkingDir: "/home/build",
-		Env: environ,
-		Tty: false,
+		User:         "0",
+		Cmd:          args,
+		WorkingDir:   "/home/build",
+		Env:          environ,
+		Tty:          false,
 		AttachStderr: true,
 		AttachStdout: true,
 	})
@@ -185,7 +185,7 @@ func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp 
 
 	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
 	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
-	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader);
+	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
 
 	stdoutPipeW.Close()
 	stderrPipeW.Close()

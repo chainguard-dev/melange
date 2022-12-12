@@ -15,6 +15,7 @@
 package container
 
 import (
+	"log"
 	"os/exec"
 )
 
@@ -28,7 +29,7 @@ func BubblewrapRunner() Runner {
 }
 
 // Run runs a Bubblewrap task given a Config and command string.
-func (bw *BWRunner) Run(cfg Config, args ...string) error {
+func (bw *BWRunner) Run(cfg *Config, args ...string) error {
 	baseargs := []string{}
 
 	for _, bind := range cfg.Mounts {
@@ -53,4 +54,34 @@ func (bw *BWRunner) Run(cfg Config, args ...string) error {
 	execCmd := exec.Command("bwrap", args...)
 
 	return monitorCmd(cfg, execCmd)
+}
+
+// TestUsability determines if the Bubblewrap runner can be used
+// as a container runner.
+func (bw *BWRunner) TestUsability() bool {
+	_, err := exec.LookPath("bwrap")
+	if err != nil {
+		log.Printf("cannot use bubblewrap for containers: bwrap not found on $PATH")
+		return false
+	}
+
+	return true
+}
+
+// NeedsImage determines whether an image is needed for the
+// given runner method.  For Bubblewrap, this is false.
+func (bw *BWRunner) NeedsImage() bool {
+	return false
+}
+
+// StartPod starts a pod if necessary.  Not implemented for
+// Bubblewrap runners.
+func (bw *BWRunner) StartPod(cfg *Config) error {
+	return nil
+}
+
+// TerminatePod terminates a pod if necessary.  Not implemented
+// for Bubblewrap runners.
+func (bw *BWRunner) TerminatePod(cfg *Config) error {
+	return nil
 }

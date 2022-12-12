@@ -27,7 +27,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/cond"
-	"chainguard.dev/melange/pkg/container"
 )
 
 const (
@@ -224,44 +223,6 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) workspaceConfig(pctx *PipelineContext) container.Config {
-	ctx := pctx.Context
-
-	mounts := []container.BindMount{
-		{Source: ctx.GuestDir, Destination: "/"},
-		{Source: ctx.WorkspaceDir, Destination: "/home/build"},
-		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
-	}
-
-	if ctx.CacheDir != "" {
-		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
-			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
-		} else {
-			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
-		}
-	}
-
-	// TODO(kaniini): Disable networking capability according to the pipeline requirements.
-	caps := container.Capabilities{
-		Networking: true,
-	}
-
-	cfg := container.Config{
-		Mounts:       mounts,
-		Capabilities: caps,
-		Logger:       p.logger,
-		Environment: map[string]string{
-			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
-		},
-	}
-
-	for k, v := range ctx.Configuration.Environment.Environment {
-		cfg.Environment[k] = v
-	}
-
-	return cfg
-}
-
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	p.With = mutateWith(ctx, p.With)
 	p.dumpWith()
@@ -270,11 +231,9 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)
 	command := []string{"/bin/sh", "-c", script}
+	config := ctx.Context.WorkspaceConfig()
 
-	runner := container.GetRunner()
-	config := p.workspaceConfig(ctx)
-
-	if err := runner.Run(config, command...); err != nil {
+	if err := ctx.Context.Runner.Run(config, command...); err != nil {
 		return err
 	}
 

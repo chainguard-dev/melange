@@ -29,12 +29,15 @@ import (
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
+	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/sbom"
 )
@@ -223,6 +226,9 @@ type Context struct {
 	foundContinuation  bool
 	StripOriginName    bool
 	EnvFile            string
+	Runner             container.Runner
+	imgDigest          name.Digest
+	containerConfig    *container.Config
 }
 
 type Dependencies struct {
@@ -257,6 +263,15 @@ func New(opts ...Option) (*Context, error) {
 		if ctx.ContinueLabel == "" {
 			ctx.WorkspaceDir = filepath.Join(ctx.WorkspaceDir, ctx.Arch.ToAPK())
 		}
+
+		// Get the absolute path to the workspace dir, which is needed for bind
+		// mounts.
+		absdir, err := filepath.Abs(ctx.WorkspaceDir)
+		if err != nil {
+			return nil, fmt.Errorf("unable to resolve path %s: %w", ctx.WorkspaceDir, err)
+		}
+
+		ctx.WorkspaceDir = absdir
 	} else {
 		tmpdir, err := os.MkdirTemp("", "melange-workspace-*")
 		if err != nil {
@@ -308,6 +323,13 @@ func New(opts ...Option) (*Context, error) {
 	if len(ctx.Configuration.Pipeline) == 0 {
 		return nil, fmt.Errorf("no pipeline has been configured, check your config for indentation errors")
 	}
+
+	// Check that we actually can run things in containers.
+	runner, err := container.GetRunner()
+	if err != nil {
+		return nil, err
+	}
+	ctx.Runner = runner
 
 	return &ctx, nil
 }
@@ -640,6 +662,7 @@ func (ctx *Context) BuildGuest() error {
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
 		apko_build.WithDebugLogging(true),
+		apko_build.WithLocal(true),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)
@@ -651,11 +674,41 @@ func (ctx *Context) BuildGuest() error {
 
 	bc.Summarize()
 
-	if err := bc.BuildImage(); err != nil {
-		return fmt.Errorf("unable to generate image: %w", err)
+	if !ctx.Runner.NeedsImage() {
+		if err := bc.BuildImage(); err != nil {
+			return fmt.Errorf("unable to generate image: %w", err)
+		}
+	} else {
+		if err := ctx.BuildAndPushLocalImage(bc); err != nil {
+			return fmt.Errorf("unable to generate image: %w", err)
+		}
 	}
 
 	ctx.Logger.Printf("successfully built workspace with apko")
+
+	return nil
+}
+
+// BuildAndPushLocalImage uses apko to build and push the image to the local
+// Docker daemon.
+func (ctx *Context) BuildAndPushLocalImage(bc *apko_build.Context) error {
+	layerTarGZ, err := bc.BuildLayer()
+	if err != nil {
+		return err
+	}
+	defer os.Remove(layerTarGZ)
+
+	ctx.Logger.Printf("using %s for image layer", layerTarGZ)
+
+	imgDigest, _, err := apko_oci.PublishImageFromLayer(
+		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, ctx.Arch,
+		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, "melange:latest")
+	if err != nil {
+		return err
+	}
+
+	ctx.Logger.Printf("pushed %s as %v", layerTarGZ, imgDigest.Name())
+	ctx.imgDigest = imgDigest
 
 	return nil
 }
@@ -892,6 +945,8 @@ func (ctx *Context) BuildPackage() error {
 		return fmt.Errorf("unable to build guest: %w", err)
 	}
 
+	// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
+	// Probably needs help from apko.
 	if err := ctx.OverlayBinSh(); err != nil {
 		return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 	}
@@ -901,6 +956,11 @@ func (ctx *Context) BuildPackage() error {
 	}
 	if err := ctx.PopulateWorkspace(); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)
+	}
+
+	cfg := ctx.WorkspaceConfig()
+	if err := ctx.Runner.StartPod(cfg); err != nil {
+		return fmt.Errorf("unable to start pod: %w", err)
 	}
 
 	// run the main pipeline
@@ -972,6 +1032,11 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
+	// terminate pod
+	if err := ctx.Runner.TerminatePod(cfg); err != nil {
+		ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
+	}
+
 	// clean build guest container
 	if err := os.RemoveAll(ctx.GuestDir); err != nil {
 		ctx.Logger.Printf("WARNING: unable to clean guest container: %s", err)
@@ -1040,4 +1105,62 @@ func (ctx *Context) BuildTripletGnu() string {
 // `x86_64-unknown-linux-gnu`.
 func (ctx *Context) BuildTripletRust() string {
 	return ctx.Arch.ToRustTriplet(ctx.BuildFlavor())
+}
+
+func (ctx *Context) buildWorkspaceConfig() *container.Config {
+	mounts := []container.BindMount{}
+
+	if !ctx.Runner.NeedsImage() {
+		mounts = append(mounts, container.BindMount{Source: ctx.GuestDir, Destination: "/"})
+	}
+
+	builtinMounts := []container.BindMount{
+		{Source: ctx.WorkspaceDir, Destination: "/home/build"},
+		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
+	}
+
+	mounts = append(mounts, builtinMounts...)
+
+	if ctx.CacheDir != "" {
+		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
+			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
+		} else {
+			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
+		}
+	}
+
+	// TODO(kaniini): Disable networking capability according to the pipeline requirements.
+	caps := container.Capabilities{
+		Networking: true,
+	}
+
+	cfg := container.Config{
+		Mounts:       mounts,
+		Capabilities: caps,
+		Logger:       ctx.Logger,
+		Environment: map[string]string{
+			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", ctx.SourceDateEpoch.Unix()),
+		},
+	}
+
+	for k, v := range ctx.Configuration.Environment.Environment {
+		cfg.Environment[k] = v
+	}
+
+	if ctx.Runner.NeedsImage() {
+		repoparts := strings.Split(ctx.imgDigest.Name(), "@")
+		cfg.ImgDigest = fmt.Sprintf("%s:%s", repoparts[0], strings.Split(repoparts[1], ":")[1])
+		ctx.Logger.Printf("ImgDigest = %s", cfg.ImgDigest)
+	}
+
+	return &cfg
+}
+
+func (ctx *Context) WorkspaceConfig() *container.Config {
+	if ctx.containerConfig != nil {
+		return ctx.containerConfig
+	}
+
+	ctx.containerConfig = ctx.buildWorkspaceConfig()
+	return ctx.containerConfig
 }

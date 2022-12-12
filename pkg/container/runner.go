@@ -15,22 +15,38 @@
 package container
 
 import (
+	"fmt"
 	"os/exec"
 )
 
 type Runner interface {
-	Run(cfg Config, cmd ...string) error
+	TestUsability() bool
+	NeedsImage() bool
+	StartPod(cfg *Config) error
+	Run(cfg *Config, cmd ...string) error
+	TerminatePod(cfg *Config) error
 }
 
 // GetRunner returns the preferred runner implementation for the
 // given environment.
-func GetRunner() Runner {
-	return BubblewrapRunner()
+func GetRunner() (Runner, error) {
+	runners := []Runner{
+		BubblewrapRunner(),
+		DockerRunner(),
+	}
+
+	for _, runner := range runners {
+		if runner.TestUsability() {
+			return runner, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no suitable runner implementation found")
 }
 
 // monitorCmd sets up the stdout/stderr pipes and then supervises
 // execution of an exec.Cmd.
-func monitorCmd(cfg Config, cmd *exec.Cmd) error {
+func monitorCmd(cfg *Config, cmd *exec.Cmd) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

@@ -15,6 +15,7 @@
 package build
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -32,9 +33,11 @@ import (
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"cloud.google.com/go/storage"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
+	"google.golang.org/api/iterator"
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/container"
@@ -829,6 +832,52 @@ func (ctx *Context) OverlayBinSh() error {
 
 func (ctx *Context) PopulateCache() error {
 	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
+
+	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
+	// tmp dir which is subsequently used as the cache.
+	if strings.HasPrefix(ctx.CacheDir, "gs://") {
+		cctx := context.TODO()
+
+		tmp, err := os.MkdirTemp("", "melange-cache")
+		if err != nil {
+			return err
+		}
+		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
+
+		client, err := storage.NewClient(cctx)
+		if err != nil {
+			return err
+		}
+		b := client.Bucket(bucket)
+		it := b.Objects(cctx, &storage.Query{Prefix: prefix})
+		for {
+			attrs, err := it.Next()
+			if err == iterator.Done {
+				break
+			} else if err != nil {
+				return fmt.Errorf("failed to get next remote cache object: %w", err)
+			}
+			on := attrs.Name
+			rc, err := b.Object(on).NewReader(cctx)
+			if err != nil {
+				return fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
+			}
+			w, err := os.Create(filepath.Join(tmp, on))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(w, rc); err != nil {
+				return fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
+			}
+			if err := rc.Close(); err != nil {
+				return fmt.Errorf("failed to close remote cache object %s: %w", on, err)
+			}
+			ctx.Logger.Printf("cached gs://%s/%s -> %s", bucket, on, w.Name())
+		}
+
+		ctx.Logger.Printf("local cache dir populated at %s", tmp)
+		ctx.CacheDir = tmp
+	}
 
 	fsys := apkofs.DirFS(ctx.CacheDir)
 

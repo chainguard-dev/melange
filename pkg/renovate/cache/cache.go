@@ -15,15 +15,17 @@
 package cache
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
+	"cloud.google.com/go/storage"
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
@@ -175,10 +177,25 @@ func addFileToCache(cfg CacheConfig, downloadedFile string, compHash string, cfg
 		return fmt.Errorf("%s mismatch: %s != %s", hashFamily, compHash, cfgHash)
 	}
 
-	destinationPath := filepath.Join(cfg.CacheDir, fmt.Sprintf("%s:%s", hashFamily, cfgHash))
-	destinationFile, err := os.Create(destinationPath)
-	if err != nil {
-		return err
+	filename := fmt.Sprintf("%s:%s", hashFamily, cfgHash)
+	destinationPath := path.Join(cfg.CacheDir, filename)
+
+	var destinationFile io.WriteCloser
+	if strings.HasPrefix(cfg.CacheDir, "gs://") {
+		cctx := context.TODO()
+
+		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cfg.CacheDir, "gs://"), "/")
+		client, err := storage.NewClient(cctx)
+		if err != nil {
+			return err
+		}
+		destinationFile = client.Bucket(bucket).Object(path.Join(prefix, filename)).NewWriter(cctx)
+	} else {
+		var err error
+		destinationFile, err = os.Create(destinationPath)
+		if err != nil {
+			return err
+		}
 	}
 	defer destinationFile.Close()
 

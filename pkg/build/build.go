@@ -38,6 +38,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/container"
@@ -846,7 +847,12 @@ func (ctx *Context) PopulateCache() error {
 
 		client, err := storage.NewClient(cctx)
 		if err != nil {
-			return err
+			ctx.Logger.Printf("downgrading to anonymous mode: %s", err)
+
+			client, err = storage.NewClient(cctx, option.WithoutAuthentication())
+			if err != nil {
+				return fmt.Errorf("failed to get storage client: %w", err)
+			}
 		}
 		b := client.Bucket(bucket)
 		it := b.Objects(cctx, &storage.Query{Prefix: prefix})

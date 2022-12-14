@@ -135,7 +135,7 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
-	Range        string        `yaml:"range"`
+	Range        string        `yaml:"range,omitempty"`
 	Name         string        `yaml:"name"`
 	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
 	Dependencies Dependencies  `yaml:"dependencies,omitempty"`

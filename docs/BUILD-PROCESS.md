@@ -39,7 +39,7 @@ The usage of the directories is:
 1. Bind-mount the workspace directory into the guest as `{GUEST_DIR}/home/build`.
 1. Run the build process in the guest.
 
-For example, if our source directory is `/home/user/src` with 3 files `main.c`, `go.mod` and `go.sum`; our guest
+For example, if our source directory is `/home/user/src` with 3 files `main.go`, `go.mod` and `go.sum`; our guest
 directory is `/tmp/guest` with busybox as a dependency, and our workspace is `/tmp/ws`, then:
 
 ```
@@ -48,16 +48,16 @@ directory is `/tmp/guest` with busybox as a dependency, and our workspace is `/t
 /home/user/src/go.mod         <-- original file in source
 /home/user/src/go.sum         <-- original file in source
 
-/tmp/ws                       <-- workspace directory, bind-mounted to /tmp/guest/home/build
+/tmp/ws                       <-- workspace directory, bind-mounted to runner:/home/build
 /tmp/ws/main.go               <-- copied from source directory
 /tmp/ws/go.mod                <-- copied from source directory
 /tmp/ws/go.sum                <-- copied from source directory
 
-/tmp/guest                     <-- tmeporary guest directory created by melange
+/tmp/guest                     <-- temporary guest directory created by melange
 /tmp/guest/bin                 <-- files and dirs created by apk package dependencies
 /tmp/guest/bin/busybox         <-- files and dirs created by apk package dependencies
 /tmp/guest/home/build          <-- bind-mounted from workspace at /tmp/ws
-/tmp/guest/home/build/main.go  <-- file in bind-mounted from workspace at /tmp/ws
+/tmp/guest/home/build/main.go  <-- file bind-mounted from workspace at /tmp/ws
 /tmp/guest/home/build/go.mod   <-- file bind-mounted from workspace at /tmp/ws
 /tmp/guest/home/build/go.sum   <-- file bind-mounted from workspace at /tmp/ws
 ```

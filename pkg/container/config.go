@@ -15,6 +15,7 @@
 package container
 
 import (
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
 )
 
@@ -32,6 +33,7 @@ type Config struct {
 	Capabilities Capabilities
 	Logger       log.Logger
 	Environment  map[string]string
-	ImgDigest    string
+	ImgRef       string
 	PodID        string
+	Arch         apko_types.Architecture
 }

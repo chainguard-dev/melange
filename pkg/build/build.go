@@ -29,7 +29,6 @@ import (
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
-	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
@@ -37,7 +36,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/openvex/go-vex/pkg/vex"
 	"github.com/yookoala/realpath"
@@ -325,7 +323,8 @@ type Context struct {
 	EnvFile            string
 	VarsFile           string
 	Runner             container.Runner
-	imgDigest          name.Digest
+	RunnerName         string
+	imgRef             string
 	containerConfig    *container.Config
 	Debug              bool
 	LogPolicy          []string
@@ -374,6 +373,13 @@ func New(opts ...Option) (*Context, error) {
 	}
 	ctx.Logger = logger.WithFields(fields)
 
+	// try to get the runner
+	runner, err := container.GetRunner(ctx.RunnerName, ctx.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get runner %s: %w", ctx.RunnerName, err)
+	}
+	ctx.Runner = runner
+
 	// If no workspace directory is explicitly requested, create a
 	// temporary directory for it.  Otherwise, ensure we are in a
 	// subdir for this specific build context.
@@ -395,7 +401,7 @@ func New(opts ...Option) (*Context, error) {
 
 		ctx.WorkspaceDir = absdir
 	} else {
-		tmpdir, err := os.MkdirTemp("", "melange-workspace-*")
+		tmpdir, err := os.MkdirTemp(ctx.Runner.TempDir(), "melange-workspace-*")
 		if err != nil {
 			return nil, fmt.Errorf("unable to create workspace dir: %w", err)
 		}
@@ -448,11 +454,9 @@ func New(opts ...Option) (*Context, error) {
 	}
 
 	// Check that we actually can run things in containers.
-	runner, err := container.GetRunner(ctx.Logger)
-	if err != nil {
-		return nil, err
+	if !runner.TestUsability() {
+		return nil, fmt.Errorf("unable to run containers")
 	}
-	ctx.Runner = runner
 
 	// Apply build options to the context.
 	for _, optName := range ctx.EnabledBuildOptions {
@@ -737,6 +741,15 @@ func WithDebug(debug bool) Option {
 func WithLogPolicy(policy []string) Option {
 	return func(ctx *Context) error {
 		ctx.LogPolicy = policy
+		return nil
+	}
+}
+
+// WithRunner specifies what runner to use to wrap
+// the build environment.
+func WithRunner(runner string) Option {
+	return func(ctx *Context) error {
+		ctx.RunnerName = runner
 		return nil
 	}
 }
@@ -1084,41 +1097,32 @@ func (ctx *Context) BuildGuest() error {
 
 	bc.Summarize()
 
-	if !ctx.Runner.NeedsImage() {
-		if _, err := bc.BuildImage(); err != nil {
-			return fmt.Errorf("unable to generate image: %w", err)
-		}
-	} else {
-		if err := ctx.BuildAndPushLocalImage(bc); err != nil {
-			return fmt.Errorf("unable to generate image: %w", err)
-		}
+	// lay out the contents for the image in a directory.
+	if _, err := bc.BuildImage(); err != nil {
+		return fmt.Errorf("unable to generate image: %w", err)
 	}
-
-	ctx.Logger.Printf("successfully built workspace with apko")
-
-	return nil
-}
-
-// BuildAndPushLocalImage uses apko to build and push the image to the local
-// Docker daemon.
-func (ctx *Context) BuildAndPushLocalImage(bc *apko_build.Context) error {
-	layerTarGZ, err := bc.BuildLayer()
+	// if the runner needs an image, create an OCI image from the directory and load it.
+	loader := ctx.Runner.OCIImageLoader()
+	if loader == nil {
+		return fmt.Errorf("runner %s does not support OCI image loading", ctx.Runner.Name())
+	}
+	layerTarGZ, err := bc.ImageLayoutToLayer()
 	if err != nil {
 		return err
 	}
 	defer os.Remove(layerTarGZ)
 
 	ctx.Logger.Printf("using %s for image layer", layerTarGZ)
-	cctx := context.TODO()
-	imgDigest, _, err := apko_oci.PublishImageFromLayer(cctx,
-		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, ctx.Arch,
-		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, true, "melange:latest")
+
+	ref, err := loader.LoadImage(layerTarGZ, ctx.Arch, bc)
 	if err != nil {
 		return err
 	}
 
-	ctx.Logger.Printf("pushed %s as %v", layerTarGZ, imgDigest.Name())
-	ctx.imgDigest = imgDigest
+	ctx.Logger.Printf("pushed %s as %v", layerTarGZ, ref)
+	ctx.imgRef = ref
+
+	ctx.Logger.Printf("successfully built workspace with apko")
 
 	return nil
 }
@@ -1436,7 +1440,7 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	if ctx.GuestDir == "" {
-		guestDir, err := os.MkdirTemp("", "melange-guest-*")
+		guestDir, err := os.MkdirTemp(ctx.Runner.TempDir(), "melange-guest-*")
 		if err != nil {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
@@ -1472,6 +1476,7 @@ func (ctx *Context) BuildPackage() error {
 
 	cfg := ctx.WorkspaceConfig()
 	if !ctx.IsBuildLess() {
+		cfg.Arch = ctx.Arch
 		if err := ctx.Runner.StartPod(cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
 		}
@@ -1682,18 +1687,10 @@ func (ctx *Context) buildWorkspaceConfig() *container.Config {
 		return &container.Config{}
 	}
 
-	mounts := []container.BindMount{}
-
-	if !ctx.Runner.NeedsImage() {
-		mounts = append(mounts, container.BindMount{Source: ctx.GuestDir, Destination: "/"})
-	}
-
-	builtinMounts := []container.BindMount{
+	mounts := []container.BindMount{
 		{Source: ctx.WorkspaceDir, Destination: "/home/build"},
 		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
 	}
-
-	mounts = append(mounts, builtinMounts...)
 
 	if ctx.CacheDir != "" {
 		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
@@ -1726,11 +1723,8 @@ func (ctx *Context) buildWorkspaceConfig() *container.Config {
 		cfg.Environment[k] = v
 	}
 
-	if ctx.Runner.NeedsImage() {
-		repoparts := strings.Split(ctx.imgDigest.Name(), "@")
-		cfg.ImgDigest = fmt.Sprintf("%s:%s", repoparts[0], strings.Split(repoparts[1], ":")[1])
-		ctx.Logger.Printf("ImgDigest = %s", cfg.ImgDigest)
-	}
+	cfg.ImgRef = ctx.imgRef
+	ctx.Logger.Printf("ImgRef = %s", cfg.ImgRef)
 
 	return &cfg
 }

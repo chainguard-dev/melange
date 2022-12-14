@@ -17,29 +17,44 @@ package container
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
 	"chainguard.dev/apko/pkg/log"
 
+	apko_build "chainguard.dev/apko/pkg/build"
+	apko_oci "chainguard.dev/apko/pkg/build/oci"
+	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/pkg/util"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/google/go-containerregistry/pkg/name"
+	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-type DKRunner struct {
-	Runner
+const DockerName = "docker"
+
+// docker is a Runner implementation that uses the docker library.
+type docker struct {
+	logger log.Logger
 }
 
 // DockerRunner returns a Docker Runner implementation.
-func DockerRunner() Runner {
-	return &DKRunner{}
+func DockerRunner(logger log.Logger) Runner {
+	return &docker{logger}
+}
+
+func (dk *docker) Name() string {
+	return DockerName
 }
 
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.
-func (dk *DKRunner) StartPod(cfg *Config) error {
+func (dk *docker) StartPod(cfg *Config) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
@@ -59,13 +74,18 @@ func (dk *DKRunner) StartPod(cfg *Config) error {
 		Mounts: mounts,
 	}
 
+	platform := &image_spec.Platform{
+		Architecture: cfg.Arch.String(),
+		OS:           "linux",
+	}
+
 	// ldconfig is run to prime ld.so.cache for glibc packages which require it.
 	ctx := context.Background()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: cfg.ImgDigest,
+		Image: cfg.ImgRef,
 		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
 		Tty:   false,
-	}, hostConfig, nil, nil, "")
+	}, hostConfig, nil, platform, "")
 	if err != nil {
 		return err
 	}
@@ -82,7 +102,7 @@ func (dk *DKRunner) StartPod(cfg *Config) error {
 
 // TerminatePod terminates a pod for supporting a Docker task,
 // if necessary.
-func (dk *DKRunner) TerminatePod(cfg *Config) error {
+func (dk *docker) TerminatePod(cfg *Config) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -105,8 +125,67 @@ func (dk *DKRunner) TerminatePod(cfg *Config) error {
 	return nil
 }
 
+// TestUsability determines if the Docker runner can be used
+// as a container runner.
+func (dk *docker) TestUsability() bool {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		dk.logger.Printf("cannot use docker for containers: %v", err)
+		return false
+	}
+	defer cli.Close()
+
+	_, err = cli.Ping(context.Background())
+	if err != nil {
+		dk.logger.Printf("cannot use docker for containers: %v", err)
+		return false
+	}
+
+	return true
+}
+
+// OCIImageLoader create a loader to load an OCI image into the docker daemon.
+func (dk *docker) OCIImageLoader() Loader {
+	return &dockerLoader{}
+}
+
+// TempDir returns the base for temporary directory. For docker
+// this is whatever the system provides.
+func (dk *docker) TempDir() string {
+	return ""
+}
+
+// waitForCommand waits for a command to complete in the pod.
+func (dk *docker) waitForCommand(cfg *Config, ctx context.Context, attachResp types.HijackedResponse, taskIDResp types.IDResponse) error {
+	stdoutPipeR, stdoutPipeW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	stderrPipeR, stderrPipeW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+
+	finishStdout := make(chan struct{})
+	finishStderr := make(chan struct{})
+
+	go monitorPipe(cfg.Logger, log.InfoLevel, stdoutPipeR, finishStdout)
+	go monitorPipe(cfg.Logger, log.WarnLevel, stderrPipeR, finishStderr)
+	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
+
+	stdoutPipeW.Close()
+	stderrPipeW.Close()
+
+	<-finishStdout
+	<-finishStderr
+
+	return err
+}
+
 // Run runs a Docker task given a Config and command string.
-func (dk *DKRunner) Run(cfg *Config, args ...string) error {
+// The resultant filesystem can be read from the io.ReadCloser
+func (dk *docker) Run(cfg *Config, args ...string) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -129,7 +208,7 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 	taskIDResp, err := cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
 		User:         "build",
 		Cmd:          args,
-		WorkingDir:   "/home/build",
+		WorkingDir:   runnerWorkdir,
 		Env:          environ,
 		Tty:          false,
 		AttachStderr: true,
@@ -163,55 +242,38 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 	}
 }
 
-// TestUsability determines if the Docker runner can be used
-// as a container runner.
-func (dk *DKRunner) TestUsability(logger log.Logger) bool {
+func (d *docker) WorkspaceTar(cfg *Config) (io.ReadCloser, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		logger.Debugf("cannot use docker for containers: %v", err)
-		return false
+		return nil, err
 	}
 	defer cli.Close()
 
-	_, err = cli.Ping(context.Background())
+	ctx := context.Background()
+	fullContainer, err := cli.ContainerExport(ctx, cfg.PodID)
 	if err != nil {
-		logger.Debugf("cannot use docker for containers: %v", err)
-		return false
+		return nil, err
 	}
-
-	return true
+	// need to wrap the io.ReadCloser to skip anything that is not in /home/build
+	return util.NewTarFilter(fullContainer, runnerWorkdir, true), nil
 }
 
-// NeedsImage determines whether an image is needed for the
-// given runner method.  For Docker, this is true.
-func (dk *DKRunner) NeedsImage() bool {
-	return true
-}
+type dockerLoader struct{}
 
-// waitForCommand waits for a command to complete in the pod.
-func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp types.HijackedResponse, taskIDResp types.IDResponse) error {
-	stdoutPipeR, stdoutPipeW, err := os.Pipe()
+func (d dockerLoader) LoadImage(layerTarGZ string, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+	cctx := context.Background()
+	dig, _, err := apko_oci.PublishImageFromLayer(cctx,
+		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, arch,
+		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, true, "melange:latest")
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	stderrPipeR, stderrPipeW, err := os.Pipe()
+	// unfortunately, the hash in docker is not the actual image hash, but rather the hash of the config,
+	// so using the @sha256: breaks it. we have to stick with just the tag.
+	inTag := strings.TrimSuffix(dig.String(), fmt.Sprintf("@%s", dig.Identifier()))
+	tag, err := name.NewTag(inTag, name.WeakValidation)
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	finishStdout := make(chan struct{})
-	finishStderr := make(chan struct{})
-
-	go monitorPipe(cfg.Logger, log.InfoLevel, stdoutPipeR, finishStdout)
-	go monitorPipe(cfg.Logger, log.WarnLevel, stderrPipeR, finishStderr)
-	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
-
-	stdoutPipeW.Close()
-	stderrPipeW.Close()
-
-	<-finishStdout
-	<-finishStderr
-
-	return err
+	return tag.String(), nil
 }

@@ -843,6 +843,7 @@ func (ctx *Context) PopulateCache() error {
 		if err != nil {
 			return err
 		}
+		defer os.RemoveAll(tmp)
 		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
 
 		client, err := storage.NewClient(cctx)

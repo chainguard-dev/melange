@@ -1010,6 +1010,11 @@ func (ctx *Context) BuildPackage() error {
 	if err := ctx.PopulateCache(); err != nil {
 		return fmt.Errorf("unable to populate cache: %w", err)
 	}
+
+	// At this point, the CacheDir we actually care about is in /var/cache/melange.
+	// TODO(kaniini): Fix this hardcoded path.  Should be ctx.FilteredCacheDir.
+	ctx.CacheDir = "/var/cache/melange"
+
 	if err := ctx.PopulateWorkspace(); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)
 	}

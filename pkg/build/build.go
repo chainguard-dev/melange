@@ -831,7 +831,7 @@ func (ctx *Context) OverlayBinSh() error {
 	return nil
 }
 
-func (ctx *Context) fetchBucket() (string, error) {
+func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
 	cctx := context.TODO()
 
 	tmp, err := os.MkdirTemp("", "melange-cache")
@@ -860,6 +860,9 @@ func (ctx *Context) fetchBucket() (string, error) {
 			return tmp, fmt.Errorf("failed to get next remote cache object: %w", err)
 		}
 		on := attrs.Name
+		if !cmm[on] {
+			continue
+		}
 		rc, err := b.Object(on).NewReader(cctx)
 		if err != nil {
 			return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
@@ -881,12 +884,17 @@ func (ctx *Context) fetchBucket() (string, error) {
 }
 
 func (ctx *Context) PopulateCache() error {
+	cmm, err := cacheItemsForBuild(ctx.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("while determining which objects to fetch: %w", err)
+	}
+
 	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
 	if strings.HasPrefix(ctx.CacheDir, "gs://") {
-		tmp, err := ctx.fetchBucket()
+		tmp, err := ctx.fetchBucket(cmm)
 		if err != nil {
 			return err
 		}

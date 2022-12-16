@@ -831,104 +831,122 @@ func (ctx *Context) OverlayBinSh() error {
 	return nil
 }
 
+func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
+	cctx := context.TODO()
+
+	tmp, err := os.MkdirTemp("", "melange-cache")
+	if err != nil {
+		return "", err
+	}
+	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
+
+	client, err := storage.NewClient(cctx)
+	if err != nil {
+		ctx.Logger.Printf("downgrading to anonymous mode: %s", err)
+
+		client, err = storage.NewClient(cctx, option.WithoutAuthentication())
+		if err != nil {
+			return "", fmt.Errorf("failed to get storage client: %w", err)
+		}
+	}
+
+	b := client.Bucket(bucket)
+	it := b.Objects(cctx, &storage.Query{Prefix: prefix})
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			return tmp, fmt.Errorf("failed to get next remote cache object: %w", err)
+		}
+		on := attrs.Name
+		if !cmm[on] {
+			continue
+		}
+		rc, err := b.Object(on).NewReader(cctx)
+		if err != nil {
+			return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
+		}
+		w, err := os.Create(filepath.Join(tmp, on))
+		if err != nil {
+			return tmp, err
+		}
+		if _, err := io.Copy(w, rc); err != nil {
+			return tmp, fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
+		}
+		if err := rc.Close(); err != nil {
+			return tmp, fmt.Errorf("failed to close remote cache object %s: %w", on, err)
+		}
+		ctx.Logger.Printf("cached gs://%s/%s -> %s", bucket, on, w.Name())
+	}
+
+	return tmp, nil
+}
+
 func (ctx *Context) PopulateCache() error {
+	cmm, err := cacheItemsForBuild(ctx.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("while determining which objects to fetch: %w", err)
+	}
+
 	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
 	if strings.HasPrefix(ctx.CacheDir, "gs://") {
-		cctx := context.TODO()
-
-		tmp, err := os.MkdirTemp("", "melange-cache")
+		tmp, err := ctx.fetchBucket(cmm)
 		if err != nil {
 			return err
 		}
 		defer os.RemoveAll(tmp)
-		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
+		ctx.Logger.Printf("cache bucket copied to %s", tmp)
 
-		client, err := storage.NewClient(cctx)
-		if err != nil {
-			ctx.Logger.Printf("downgrading to anonymous mode: %s", err)
+		fsys := apkofs.DirFS(tmp)
 
-			client, err = storage.NewClient(cctx, option.WithoutAuthentication())
-			if err != nil {
-				return fmt.Errorf("failed to get storage client: %w", err)
-			}
+		// mkdir /var/cache/melange
+		if err := os.MkdirAll(ctx.CacheDir, 0o755); err != nil {
+			return err
 		}
-		b := client.Bucket(bucket)
-		it := b.Objects(cctx, &storage.Query{Prefix: prefix})
-		for {
-			attrs, err := it.Next()
-			if err == iterator.Done {
-				break
-			} else if err != nil {
-				return fmt.Errorf("failed to get next remote cache object: %w", err)
-			}
-			on := attrs.Name
-			rc, err := b.Object(on).NewReader(cctx)
-			if err != nil {
-				return fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
-			}
-			w, err := os.Create(filepath.Join(tmp, on))
+
+		// --cache-dir doesn't exist, nothing to do.
+		if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+
+		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(w, rc); err != nil {
-				return fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
+
+			fi, err := d.Info()
+			if err != nil {
+				return err
 			}
-			if err := rc.Close(); err != nil {
-				return fmt.Errorf("failed to close remote cache object %s: %w", on, err)
+
+			mode := fi.Mode()
+			if !mode.IsRegular() {
+				return nil
 			}
-			ctx.Logger.Printf("cached gs://%s/%s -> %s", bucket, on, w.Name())
-		}
 
-		ctx.Logger.Printf("local cache dir populated at %s", tmp)
-		ctx.CacheDir = tmp
-	}
+			// Skip files in the cache that aren't named like sha256:... or sha512:...
+			// This is likely a bug, and won't be matched by any fetch.
+			base := filepath.Base(fi.Name())
+			if !strings.HasPrefix(base, "sha256:") &&
+				!strings.HasPrefix(base, "sha512:") {
+				return nil
+			}
 
-	fsys := apkofs.DirFS(ctx.CacheDir)
+			ctx.Logger.Printf("  -> %s", path)
 
-	// mkdir /var/cache/melange
-	if err := os.MkdirAll("/var/cache/melange", 0o755); err != nil {
-		return err
-	}
+			if err := copyFile(tmp, path, ctx.CacheDir, mode.Perm()); err != nil {
+				return err
+			}
 
-	// --cache-dir doesn't exist, nothing to do.
-	if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		fi, err := d.Info()
-		if err != nil {
-			return err
-		}
-
-		mode := fi.Mode()
-		if !mode.IsRegular() {
 			return nil
-		}
+		})
+	}
 
-		// Skip files in the cache that aren't named like sha256:... or sha512:...
-		// This is likely a bug, and won't be matched by any fetch.
-		base := filepath.Base(fi.Name())
-		if !strings.HasPrefix(base, "sha256:") &&
-			!strings.HasPrefix(base, "sha512:") {
-			return nil
-		}
-
-		ctx.Logger.Printf("  -> %s", path)
-
-		if err := copyFile(ctx.CacheDir, path, "/var/cache/melange", mode.Perm()); err != nil {
-			return err
-		}
-
-		return nil
-	})
+	return nil
 }
 
 func (ctx *Context) PopulateWorkspace() error {
@@ -1010,10 +1028,6 @@ func (ctx *Context) BuildPackage() error {
 	if err := ctx.PopulateCache(); err != nil {
 		return fmt.Errorf("unable to populate cache: %w", err)
 	}
-
-	// At this point, the CacheDir we actually care about is in /var/cache/melange.
-	// TODO(kaniini): Fix this hardcoded path.  Should be ctx.FilteredCacheDir.
-	ctx.CacheDir = "/var/cache/melange"
 
 	if err := ctx.PopulateWorkspace(); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)

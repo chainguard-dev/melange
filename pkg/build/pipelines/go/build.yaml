@@ -47,7 +47,7 @@ pipeline:
       fi
 
       if [ ! "${{inputs.ldflags}}" == "" ]; then
-        LDFLAGS="{{inputs.ldflags}}"
+        LDFLAGS="${{inputs.ldflags}}"
       fi
 
       DEST_PATH="-o ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"

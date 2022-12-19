@@ -34,7 +34,7 @@ jobs:
         _EOF_
         apk upgrade -Ua
         apk add go build-base bubblewrap
-    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
     - run: |
         make melange
         ./melange keygen && mv melange.rsa.pub /etc/apk/keys
@@ -59,7 +59,7 @@ jobs:
 
         apk upgrade -Ua
         apk add go cosign build-base git bubblewrap
-    - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
     - name: Mark workspace as a safe repository
       run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
     - name: Build bootstrap melange tool (stage1)

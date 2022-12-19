@@ -1086,7 +1086,7 @@ func (ctx *Context) BuildPackage() error {
 	if err := generator.GenerateSBOM(&sbom.Spec{
 		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
 		PackageName:    ctx.Configuration.Package.Name,
-		PackageVersion: ctx.Configuration.Package.Version,
+		PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
 		Languages:      langs,
 		License:        ctx.Configuration.Package.LicenseExpression(),
 		Copyright:      ctx.Configuration.Package.FullCopyright(),

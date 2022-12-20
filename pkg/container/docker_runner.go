@@ -171,6 +171,12 @@ func (dk *DKRunner) TestUsability() bool {
 	}
 	defer cli.Close()
 
+	_, err = cli.Ping(context.Background())
+	if err != nil {
+		log.Printf("cannot use docker for containers: %v", err)
+		return false
+	}
+
 	return true
 }
 

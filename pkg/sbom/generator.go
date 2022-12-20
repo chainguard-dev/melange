@@ -49,6 +49,16 @@ type Generator struct {
 
 // GenerateSBOM runs the main SBOM generation process
 func (g *Generator) GenerateSBOM(spec *Spec) error {
+	shouldRun, err := g.impl.CheckEnvironment(spec)
+	if err != nil {
+		return fmt.Errorf("checking SBOM environment: %w", err)
+	}
+
+	if !shouldRun {
+		// log "Not generating SBOM"
+		return nil
+	}
+
 	sbomDoc, err := g.impl.GenerateDocument(spec)
 	if err != nil {
 		return fmt.Errorf("initializing new SBOM: %w", err)

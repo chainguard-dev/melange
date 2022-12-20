@@ -38,6 +38,7 @@ import (
 )
 
 type generatorImplementation interface {
+	CheckEnvironment(*Spec) (bool, error)
 	GenerateDocument(*Spec) (*bom, error)
 	GenerateAPKPackage(*Spec) (pkg, error)
 	ScanFiles(*Spec, *pkg) error
@@ -47,6 +48,24 @@ type generatorImplementation interface {
 }
 
 type defaultGeneratorImplementation struct{}
+
+func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, error) {
+	dirPath, err := filepath.Abs(spec.Path)
+	if err != nil {
+		return false, fmt.Errorf("getting absolute directory path: %w", err)
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(dirPath); err != nil {
+		if os.IsNotExist(err) {
+			// log "Working directory not found, probably apk is empty"
+			return false, nil
+		}
+		return false, fmt.Errorf("checking if workind directory exists: %w", err)
+	}
+
+	return true, nil
+}
 
 func (di *defaultGeneratorImplementation) GenerateDocument(spec *Spec) (*bom, error) {
 	return &bom{

@@ -392,6 +392,12 @@ func (p *Pipeline) ApplyNeeds(ctx *PipelineContext) error {
 
 	ic.Contents.Packages = dedup(ic.Contents.Packages)
 
+	for _, sp := range p.Pipeline {
+		if err := sp.ApplyNeeds(ctx); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

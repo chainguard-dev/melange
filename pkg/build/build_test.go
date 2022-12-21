@@ -15,6 +15,7 @@
 package build
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,7 +59,10 @@ package:
 		t.Fatal(err)
 	}
 
-	ctx := Context{ConfigFile: f}
+	ctx := Context{
+		ConfigFile: f,
+		Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+	}
 	cfg := &Configuration{}
 	if err := cfg.Load(ctx); err != nil {
 		t.Fatal(err)
@@ -144,7 +148,10 @@ subpackages:
 		t.Fatal(err)
 	}
 
-	ctx := Context{ConfigFile: f}
+	ctx := Context{
+		ConfigFile: f,
+		Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+	}
 	cfg := &Configuration{}
 	if err := cfg.Load(ctx); err != nil {
 		t.Fatal(err)

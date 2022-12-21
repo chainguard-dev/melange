@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -34,6 +35,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
 	"cloud.google.com/go/storage"
+	"github.com/go-git/go-git/v5"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/zealic/xignore"
@@ -71,6 +73,8 @@ type Package struct {
 	Version            string        `yaml:"version"`
 	Epoch              uint64        `yaml:"epoch"`
 	Description        string        `yaml:"description,omitempty"`
+	URL                string        `yaml:"url,omitempty"`
+	Commit             string        `yaml:"commit,omitempty"`
 	TargetArchitecture []string      `yaml:"target-architecture"`
 	Copyright          []Copyright   `yaml:"copyright,omitempty"`
 	Dependencies       Dependencies  `yaml:"dependencies,omitempty"`
@@ -142,6 +146,8 @@ type Subpackage struct {
 	Options      PackageOption `yaml:"options,omitempty"`
 	Scriptlets   Scriptlets    `yaml:"scriptlets,omitempty"`
 	Description  string        `yaml:"description,omitempty"`
+	URL          string        `yaml:"url,omitempty"`
+	Commit       string        `yaml:"commit,omitempty"`
 }
 
 type SBOM struct {
@@ -559,12 +565,33 @@ func (cfg *Configuration) Load(ctx Context) error {
 		return fmt.Errorf("unable to parse configuration file: %w", err)
 	}
 
+	// Best-effort detection of current commit, to be used when not specified in the config file
+	detectedCommit := ""
+	repo, err := git.PlainOpen(path.Dir(ctx.ConfigFile))
+	if err != nil {
+		ctx.Logger.Printf("unable to detect git commit for build configuration: %v", err)
+	} else {
+		head, err := repo.Head()
+		if err == nil {
+			detectedCommit = head.Hash().String()
+			ctx.Logger.Printf("detected git commit for build configuration: %s", detectedCommit)
+		}
+	}
+
+	if cfg.Package.Commit == "" {
+		cfg.Package.Commit = detectedCommit
+	}
+
 	datas := map[string][]DataItem{}
 	for _, d := range cfg.Data {
 		datas[d.Name] = d.Items
 	}
 	subpackages := []Subpackage{}
 	for _, sp := range cfg.Subpackages {
+		if sp.Commit == "" {
+			sp.Commit = detectedCommit
+		}
+
 		if sp.Range == "" {
 			subpackages = append(subpackages, sp)
 			continue

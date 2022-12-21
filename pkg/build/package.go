@@ -52,6 +52,8 @@ type PackageContext struct {
 	Options       PackageOption
 	Scriptlets    Scriptlets
 	Description   string
+	URL           string
+	Commit        string
 }
 
 func (pkg *Package) Emit(ctx *PipelineContext) error {
@@ -61,6 +63,8 @@ func (pkg *Package) Emit(ctx *PipelineContext) error {
 		Options:      pkg.Options,
 		Scriptlets:   pkg.Scriptlets,
 		Description:  pkg.Description,
+		URL:          pkg.URL,
+		Commit:       pkg.Commit,
 	}
 	return fakesp.Emit(ctx)
 }
@@ -68,9 +72,9 @@ func (pkg *Package) Emit(ctx *PipelineContext) error {
 func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 	pc := PackageContext{
 		Context:      ctx.Context,
+		Origin:       &ctx.Context.Configuration.Package,
 		PackageName:  spkg.Name,
 		OriginName:   spkg.Name,
-		Origin:       &ctx.Context.Configuration.Package,
 		OutDir:       filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
 		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
 		Dependencies: spkg.Dependencies,
@@ -78,6 +82,8 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		Options:      spkg.Options,
 		Scriptlets:   spkg.Scriptlets,
 		Description:  spkg.Description,
+		URL:          spkg.URL,
+		Commit:       spkg.Commit,
 	}
 
 	if !ctx.Context.StripOriginName {
@@ -106,6 +112,8 @@ arch = {{.Arch}}
 size = {{.InstalledSize}}
 origin = {{.OriginName}}
 pkgdesc = {{.Description}}
+url = {{.URL}}
+commit = {{.Commit}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}

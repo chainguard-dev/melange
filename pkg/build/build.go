@@ -181,8 +181,7 @@ func (spkg Subpackage) PackageURL(distro, packageVersionWithRelease string) stri
 }
 
 type SBOM struct {
-	Language  string `yaml:"language"`
-	Namespace string `yaml:"namespace"`
+	Language string `yaml:"language"`
 }
 
 type Input struct {

@@ -33,6 +33,10 @@ import (
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
+	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/index"
+	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/vex/pkg/vex"
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -41,10 +45,6 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
-
-	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/index"
-	"chainguard.dev/melange/pkg/sbom"
 )
 
 type Scriptlets struct {
@@ -79,6 +79,22 @@ type Package struct {
 	Dependencies       Dependencies  `yaml:"dependencies,omitempty"`
 	Options            PackageOption `yaml:"options,omitempty"`
 	Scriptlets         Scriptlets    `yaml:"scriptlets,omitempty"`
+}
+
+// PackageURL returns the package URL ("purl") for the package. For more
+// information, see https://github.com/package-url/purl-spec#purl.
+func (p Package) PackageURL(distro string) string {
+	const typ = "apk"
+	version := fmt.Sprintf("%s-r%d", p.Version, p.Epoch)
+	namespace := distro
+
+	return fmt.Sprintf("pkg:%s/%s/%s@%s?distro=%s",
+		typ,
+		namespace,
+		p.Name,
+		version,
+		distro,
+	)
 }
 
 type Copyright struct {
@@ -149,6 +165,21 @@ type Subpackage struct {
 	Commit       string        `yaml:"commit,omitempty"`
 }
 
+// PackageURL returns the package URL ("purl") for the subpackage. For more
+// information, see https://github.com/package-url/purl-spec#purl.
+func (spkg Subpackage) PackageURL(distro, packageVersionWithRelease string) string {
+	const typ = "apk"
+	namespace := distro
+
+	return fmt.Sprintf("pkg:%s/%s/%s@%s?distro=%s",
+		typ,
+		namespace,
+		spkg.Name,
+		packageVersionWithRelease,
+		distro,
+	)
+}
+
 type SBOM struct {
 	Language string `yaml:"language"`
 }
@@ -165,6 +196,37 @@ type Configuration struct {
 	Pipeline    []Pipeline   `yaml:"pipeline,omitempty"`
 	Subpackages []Subpackage `yaml:"subpackages,omitempty"`
 	Data        []RangeData  `yaml:"data,omitempty"`
+	Secfixes    Secfixes     `yaml:"secfixes,omitempty"`
+	Advisories  Advisories   `yaml:"advisories,omitempty"`
+}
+
+// TODO: ensure that there's no net effect to secdb!
+
+type Secfixes map[string][]string
+
+type Advisories map[string][]AdvisoryContent
+
+type AdvisoryContent struct {
+	Timestamp       time.Time         `yaml:"timestamp"`
+	Status          vex.Status        `yaml:"status"`
+	Justification   vex.Justification `yaml:"justification,omitempty"`
+	ImpactStatement string            `yaml:"impact,omitempty"`
+	ActionStatement string            `yaml:"action,omitempty"`
+	FixedVersion    string            `yaml:"fixed-version,omitempty"`
+}
+
+func (ac AdvisoryContent) Validate() error {
+	// We'll lean on the vex module's validation as proxy for validating our advisory data.
+
+	mockStmt := vex.Statement{
+		Timestamp:       ac.Timestamp,
+		Status:          ac.Status,
+		Justification:   ac.Justification,
+		ImpactStatement: ac.ImpactStatement,
+		ActionStatement: ac.ActionStatement,
+	}
+
+	return mockStmt.Validate()
 }
 
 type RangeData struct {
@@ -640,6 +702,15 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		return nil, fmt.Errorf("unable to decode configuration file: %w", err)
 	}
 
+	for vulnerability, entries := range cfg.Advisories {
+		for i, entry := range entries {
+			err := entry.Validate()
+			if err != nil {
+				return nil, fmt.Errorf("invalid advisory entry for vulnerability %q at index %d: %w", vulnerability, i, err)
+			}
+		}
+	}
+
 	detectedCommit := detectCommit(configurationDirPath, options.logger)
 	if cfg.Package.Commit == "" {
 		cfg.Package.Commit = detectedCommit
@@ -661,7 +732,7 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		}
 		items, ok := datas[sp.Range]
 		if !ok {
-			return nil, fmt.Errorf("subpackage specified undefined range: %q", sp.Range)
+			return nil, fmt.Errorf("unable to parse configuration file %q: subpackage %q specified undefined range: %q", configurationFilePath, sp.Name, sp.Range)
 		}
 
 		for _, it := range items {
@@ -748,6 +819,24 @@ func (cfg *Configuration) Load(ctx Context) error {
 
 	*cfg = *parsedCfg
 	return nil
+}
+
+// PackageURLs returns a list of package URLs ("purls") for the given
+// configuration. The first PURL is always the origin package, and any subsequent
+// items are the PURLs for the Configuration's subpackages. For more information
+// on PURLs, see https://github.com/package-url/purl-spec#purl.
+func (cfg Configuration) PackageURLs(distro string) []string {
+	var purls []string
+
+	p := cfg.Package
+	purls = append(purls, p.PackageURL(distro))
+
+	for _, subpackage := range cfg.Subpackages {
+		version := fmt.Sprintf("%s-r%d", p.Version, p.Epoch)
+		purls = append(purls, subpackage.PackageURL(distro, version))
+	}
+
+	return purls
 }
 
 // BuildGuest invokes apko to build the guest environment.

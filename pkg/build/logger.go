@@ -7,6 +7,6 @@ type Logger interface {
 
 type nopLogger struct{}
 
-func (n nopLogger) Printf(_ string, _ ...any) {}
+func (n nopLogger) Printf(string, ...any) {}
 
-func (n nopLogger) SetPrefix(_ string) {}
+func (n nopLogger) SetPrefix(string) {}

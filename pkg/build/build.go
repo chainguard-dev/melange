@@ -22,7 +22,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -557,46 +556,31 @@ func WithEnvFile(envFile string) Option {
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
-	abstractFS     fs.FS
-	configFilePath string
-	envFilePath    string
-	logger         Logger
+	filesystem  fs.FS
+	envFilePath string
+	logger      Logger
 }
 
 // include reconciles all given opts into the receiver variable, such that it is
 // ready to use for config parsing.
-func (options *configOptions) include(opts ...ConfigurationParsingOption) {
+func (options *configOptions) include(dirPath string, opts ...ConfigurationParsingOption) {
 	for _, fn := range opts {
 		fn(options)
 	}
 	if options.logger == nil {
 		options.logger = nopLogger{}
 	}
-}
-
-// open handles opening of a file with the given name, in such a way that
-// automatically chooses to use an abstract or concrete OS filesystem.
-func (options *configOptions) open(filepath string) (fs.File, error) {
-	if filesystem := options.abstractFS; filesystem != nil {
-		return filesystem.Open(filepath)
-	}
-
-	return os.Open(filepath)
-}
-
-// WithAbstractFS adjusts the behavior of configuration parsing to expect all
-// file paths to be relative to the abstract fs.FS. This approach isn't supported
-// yet except for when opening the config file.
-func WithAbstractFS(filesystem fs.FS) ConfigurationParsingOption {
-	return func(options *configOptions) {
-		options.abstractFS = filesystem
+	if options.filesystem == nil {
+		options.filesystem = os.DirFS(dirPath)
 	}
 }
 
-// WithConfigFile sets the path from which to read the configuration file.
-func WithConfigFile(path string) ConfigurationParsingOption {
+// WithFS sets the fs.FS implementation to use. So far this FS is used only for
+// reading the configuration file. If not provided, the default FS will be an
+// os.DirFS created from the configuration file's containing directory.
+func WithFS(filesystem fs.FS) ConfigurationParsingOption {
 	return func(options *configOptions) {
-		options.configFilePath = path
+		options.filesystem = filesystem
 	}
 }
 
@@ -615,13 +599,13 @@ func WithLogger(logger Logger) ConfigurationParsingOption {
 	}
 }
 
-func detectCommit(options *configOptions) string {
+func detectCommit(dirPath string, logger Logger) string {
 	// Best-effort detection of current commit, to be used when not specified in the config file
 
 	// TODO: figure out how to use an abstract FS
-	repo, err := git.PlainOpen(path.Dir(options.configFilePath))
+	repo, err := git.PlainOpen(dirPath)
 	if err != nil {
-		options.logger.Printf("unable to detect git commit for build configuration: %v", err)
+		logger.Printf("unable to detect git commit for build configuration: %v", err)
 		return ""
 	}
 
@@ -631,33 +615,32 @@ func detectCommit(options *configOptions) string {
 	}
 
 	commit := head.Hash().String()
-	options.logger.Printf("detected git commit for build configuration: %s", commit)
+	logger.Printf("detected git commit for build configuration: %s", commit)
 	return commit
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
-func ParseConfiguration(opts ...ConfigurationParsingOption) (*Configuration, error) {
+func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
-	options.include(opts...)
+	configurationDirPath := filepath.Dir(configurationFilePath)
+	options.include(configurationDirPath, opts...)
 
-	if options.configFilePath == "" {
+	if configurationFilePath == "" {
 		return nil, errors.New("no configuration file path provided")
 	}
 
-	f, err := options.open(options.configFilePath)
+	f, err := options.filesystem.Open(filepath.Base(configurationFilePath))
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := Configuration{}
-
 	err = yaml.NewDecoder(f).Decode(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file: %w", err)
 	}
 
-	detectedCommit := detectCommit(options)
-
+	detectedCommit := detectCommit(configurationDirPath, options.logger)
 	if cfg.Package.Commit == "" {
 		cfg.Package.Commit = detectedCommit
 	}
@@ -755,7 +738,7 @@ func ParseConfiguration(opts ...ConfigurationParsingOption) (*Configuration, err
 // Load the configuration data from the build context configuration file.
 func (cfg *Configuration) Load(ctx Context) error {
 	parsedCfg, err := ParseConfiguration(
-		WithConfigFile(ctx.ConfigFile),
+		ctx.ConfigFile,
 		WithEnvFileForParsing(ctx.EnvFile),
 		WithLogger(ctx.Logger),
 	)

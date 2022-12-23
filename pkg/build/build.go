@@ -22,7 +22,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -554,30 +553,94 @@ func WithEnvFile(envFile string) Option {
 	}
 }
 
-// Load the configuration data from the build context configuration file.
-func (cfg *Configuration) Load(ctx Context) error {
-	data, err := os.ReadFile(ctx.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("unable to load configuration file: %w", err)
-	}
+type ConfigurationParsingOption func(*configOptions)
 
-	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return fmt.Errorf("unable to parse configuration file: %w", err)
-	}
+type configOptions struct {
+	filesystem  fs.FS
+	envFilePath string
+	logger      Logger
+}
 
+// include reconciles all given opts into the receiver variable, such that it is
+// ready to use for config parsing.
+func (options *configOptions) include(dirPath string, opts ...ConfigurationParsingOption) {
+	for _, fn := range opts {
+		fn(options)
+	}
+	if options.logger == nil {
+		options.logger = nopLogger{}
+	}
+	if options.filesystem == nil {
+		options.filesystem = os.DirFS(dirPath)
+	}
+}
+
+// WithFS sets the fs.FS implementation to use. So far this FS is used only for
+// reading the configuration file. If not provided, the default FS will be an
+// os.DirFS created from the configuration file's containing directory.
+func WithFS(filesystem fs.FS) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.filesystem = filesystem
+	}
+}
+
+// WithEnvFileForParsing set the paths from whcih to read an environment file.
+func WithEnvFileForParsing(path string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.envFilePath = path
+	}
+}
+
+// WithLogger sets the logger to use during configuration parsing. This is
+// optional, and if not supplied, a no-op logger will be used.
+func WithLogger(logger Logger) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.logger = logger
+	}
+}
+
+func detectCommit(dirPath string, logger Logger) string {
 	// Best-effort detection of current commit, to be used when not specified in the config file
-	detectedCommit := ""
-	repo, err := git.PlainOpen(path.Dir(ctx.ConfigFile))
+
+	// TODO: figure out how to use an abstract FS
+	repo, err := git.PlainOpen(dirPath)
 	if err != nil {
-		ctx.Logger.Printf("unable to detect git commit for build configuration: %v", err)
-	} else {
-		head, err := repo.Head()
-		if err == nil {
-			detectedCommit = head.Hash().String()
-			ctx.Logger.Printf("detected git commit for build configuration: %s", detectedCommit)
-		}
+		logger.Printf("unable to detect git commit for build configuration: %v", err)
+		return ""
 	}
 
+	head, err := repo.Head()
+	if err != nil {
+		return ""
+	}
+
+	commit := head.Hash().String()
+	logger.Printf("detected git commit for build configuration: %s", commit)
+	return commit
+}
+
+// ParseConfiguration returns a decoded build Configuration using the parsing options provided.
+func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
+	options := &configOptions{}
+	configurationDirPath := filepath.Dir(configurationFilePath)
+	options.include(configurationDirPath, opts...)
+
+	if configurationFilePath == "" {
+		return nil, errors.New("no configuration file path provided")
+	}
+
+	f, err := options.filesystem.Open(filepath.Base(configurationFilePath))
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := Configuration{}
+	err = yaml.NewDecoder(f).Decode(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode configuration file: %w", err)
+	}
+
+	detectedCommit := detectCommit(configurationDirPath, options.logger)
 	if cfg.Package.Commit == "" {
 		cfg.Package.Commit = detectedCommit
 	}
@@ -598,7 +661,7 @@ func (cfg *Configuration) Load(ctx Context) error {
 		}
 		items, ok := datas[sp.Range]
 		if !ok {
-			return fmt.Errorf("subpackage specified undefined range: %q", sp.Range)
+			return nil, fmt.Errorf("subpackage specified undefined range: %q", sp.Range)
 		}
 
 		for _, it := range items {
@@ -646,10 +709,10 @@ func (cfg *Configuration) Load(ctx Context) error {
 	cfg.Environment.Accounts.Users = []apko_types.User{usr}
 
 	// Merge environment file if needed.
-	if ctx.EnvFile != "" {
-		envMap, err := godotenv.Read(ctx.EnvFile)
+	if envFile := options.envFilePath; envFile != "" {
+		envMap, err := godotenv.Read(envFile)
 		if err != nil {
-			return fmt.Errorf("loading environment file: %w", err)
+			return nil, fmt.Errorf("loading environment file: %w", err)
 		}
 
 		curEnv := cfg.Environment.Environment
@@ -669,6 +732,21 @@ func (cfg *Configuration) Load(ctx Context) error {
 	cfg.Environment.Environment["HOME"] = "/home/build"
 	cfg.Environment.Environment["GOPATH"] = "/home/build/.cache/go"
 
+	return &cfg, nil
+}
+
+// Load the configuration data from the build context configuration file.
+func (cfg *Configuration) Load(ctx Context) error {
+	parsedCfg, err := ParseConfiguration(
+		ctx.ConfigFile,
+		WithEnvFileForParsing(ctx.EnvFile),
+		WithLogger(ctx.Logger),
+	)
+	if err != nil {
+		return err
+	}
+
+	*cfg = *parsedCfg
 	return nil
 }
 

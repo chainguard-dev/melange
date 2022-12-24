@@ -219,7 +219,7 @@ func (ac AdvisoryContent) Validate() error {
 	// We'll lean on the vex module's validation as proxy for validating our advisory data.
 
 	mockStmt := vex.Statement{
-		Timestamp:       ac.Timestamp,
+		Timestamp:       &ac.Timestamp,
 		Status:          ac.Status,
 		Justification:   ac.Justification,
 		ImpactStatement: ac.ImpactStatement,

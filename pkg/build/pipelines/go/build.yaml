@@ -10,7 +10,8 @@ inputs:
   packages:
     description: |
       List of space-separated packages to compile. Files con also be specified.
-      This value is passed as an argument to go build.
+      This value is passed as an argument to go build. All paths are relative
+      to inputs.modroot.
     required: true
 
   tags:
@@ -22,6 +23,13 @@ inputs:
       Filename to use when writing the binary. The final install location inside 
       the apk will be in prefix / install-dir / output
     required: true
+
+  modroot:
+    default: "."
+    required: false
+    description: |
+      Top directory of the go module, this is where go.mod lives. Before buiding
+      the go pipeline wil cd into this directory.
 
   prefix:
     description: |
@@ -51,6 +59,6 @@ pipeline:
       fi
 
       DEST_PATH="-o ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
-      
+      cd "${{inputs.modroot}}"
       go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.packages}}
       

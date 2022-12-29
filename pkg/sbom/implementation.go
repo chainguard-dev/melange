@@ -31,10 +31,12 @@ import (
 	"sync"
 	"time"
 
-	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/korovkin/limiter"
+	purl "github.com/package-url/packageurl-go"
 	"sigs.k8s.io/release-utils/hash"
 	"sigs.k8s.io/release-utils/version"
+
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 )
 
 type generatorImplementation interface {
@@ -87,6 +89,8 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 		LicenseDeclared:  spdx.NOASSERTION,
 		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
 		Copyright:        spec.Copyright,
+		Namespace:        spec.Namespace,
+		Arch:             spec.Arch,
 	}
 
 	if spec.License != "" {
@@ -256,6 +260,23 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		if len(excluded) > 0 {
 			spdxPkg.VerificationCode.ExcludedFiles = excluded
 		}
+	}
+
+	// Add the purl to the package
+	if p.Namespace != "" {
+		var q purl.Qualifiers
+		if p.Arch != "" {
+			q = purl.QualifiersFromMap(
+				map[string]string{"arch": p.Arch},
+			)
+		}
+		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
+			Category: "PACKAGE_MANAGER",
+			Locator: purl.NewPackageURL(
+				"apk", p.Namespace, p.Name, p.Version, q, "",
+			).ToString(),
+			Type: "purl",
+		})
 	}
 
 	doc.Packages = append(doc.Packages, spdxPkg)

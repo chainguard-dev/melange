@@ -39,6 +39,8 @@ type Spec struct {
 	PackageVersion string
 	License        string // Full SPDX license expression
 	Copyright      string
+	Namespace      string
+	Arch           string
 	Languages      []string
 }
 

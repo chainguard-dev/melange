@@ -37,6 +37,8 @@ type pkg struct {
 	Copyright        string
 	LicenseDeclared  string
 	LicenseConcluded string
+	Namespace        string
+	Arch             string
 	Checksums        map[string]string
 	Relationships    []relationship
 }

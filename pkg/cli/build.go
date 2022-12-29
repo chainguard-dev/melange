@@ -50,6 +50,7 @@ func Build() *cobra.Command {
 	var breakpointLabel string
 	var continueLabel string
 	var envFile string
+	var purlNamespace string
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -78,6 +79,7 @@ func Build() *cobra.Command {
 				build.WithContinueLabel(continueLabel),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
+				build.WithNamespace(purlNamespace),
 			}
 
 			if len(args) > 0 {
@@ -118,7 +120,8 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&breakpointLabel, "breakpoint-label", "", "stop build execution at the specified label")
 	cmd.Flags().StringVar(&continueLabel, "continue-label", "", "continue build execution at the specified label")
-	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config.")
+	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
+	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 

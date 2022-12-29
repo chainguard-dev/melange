@@ -276,6 +276,7 @@ type Context struct {
 	GuestDir           string
 	SigningKey         string
 	SigningPassphrase  string
+	Namespace          string
 	GenerateIndex      bool
 	UseProot           bool
 	EmptyWorkspace     bool
@@ -607,6 +608,16 @@ func WithStripOriginName(stripOriginName bool) Option {
 func WithEnvFile(envFile string) Option {
 	return func(ctx *Context) error {
 		ctx.EnvFile = envFile
+		return nil
+	}
+}
+
+// WithNamespace takes a string to be used as the namespace in PackageURLs
+// identifying the built apk in the generated SBOM. If no namespace is provided
+// "unknown" will be listed as namespace.
+func WithNamespace(namespace string) Option {
+	return func(ctx *Context) error {
+		ctx.Namespace = namespace
 		return nil
 	}
 }
@@ -1244,6 +1255,10 @@ func (ctx *Context) BuildPackage() error {
 
 	// Capture languages declared in pipelines
 	langs := []string{}
+	namespace := ctx.Namespace
+	if namespace == "" {
+		namespace = "unknown"
+	}
 
 	// run any pipelines for subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
@@ -1265,6 +1280,8 @@ func (ctx *Context) BuildPackage() error {
 			Languages:      langs,
 			License:        ctx.Configuration.Package.LicenseExpression(),
 			Copyright:      ctx.Configuration.Package.FullCopyright(),
+			Namespace:      namespace,
+			Arch:           ctx.Arch.ToAPK(),
 		}); err != nil {
 			return fmt.Errorf("writing SBOMs: %w", err)
 		}
@@ -1280,6 +1297,8 @@ func (ctx *Context) BuildPackage() error {
 		Languages:      langs,
 		License:        ctx.Configuration.Package.LicenseExpression(),
 		Copyright:      ctx.Configuration.Package.FullCopyright(),
+		Namespace:      namespace,
+		Arch:           ctx.Arch.ToAPK(),
 	}); err != nil {
 		return fmt.Errorf("writing SBOMs: %w", err)
 	}

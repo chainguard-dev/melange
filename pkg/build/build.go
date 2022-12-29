@@ -86,14 +86,12 @@ type Package struct {
 func (p Package) PackageURL(distro string) string {
 	const typ = "apk"
 	version := fmt.Sprintf("%s-r%d", p.Version, p.Epoch)
-	namespace := distro
 
-	return fmt.Sprintf("pkg:%s/%s/%s@%s?distro=%s",
+	return fmt.Sprintf("pkg:%s/%s/%s@%s",
 		typ,
-		namespace,
+		distro,
 		p.Name,
 		version,
-		distro,
 	)
 }
 
@@ -169,14 +167,12 @@ type Subpackage struct {
 // information, see https://github.com/package-url/purl-spec#purl.
 func (spkg Subpackage) PackageURL(distro, packageVersionWithRelease string) string {
 	const typ = "apk"
-	namespace := distro
 
-	return fmt.Sprintf("pkg:%s/%s/%s@%s?distro=%s",
+	return fmt.Sprintf("pkg:%s/%s/%s@%s",
 		typ,
-		namespace,
+		distro,
 		spkg.Name,
 		packageVersionWithRelease,
-		distro,
 	)
 }
 

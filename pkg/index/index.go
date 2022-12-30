@@ -24,6 +24,7 @@ import (
 
 	"chainguard.dev/melange/internal/sign"
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
+	"golang.org/x/sync/errgroup"
 )
 
 type Context struct {
@@ -91,19 +92,30 @@ func New(opts ...Option) (*Context, error) {
 }
 
 func (ctx *Context) GenerateIndex() error {
-	packages := []*apkrepo.Package{}
-	for _, apkFile := range ctx.PackageFiles {
-		ctx.Logger.Printf("processing package %s", apkFile)
-		f, err := os.Open(apkFile)
-		if err != nil {
-			return fmt.Errorf("failed to open package %s: %w", apkFile, err)
-		}
-		pkg, err := apkrepo.ParsePackage(f)
-		if err != nil {
-			return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
-		}
-		packages = append(packages, pkg)
+	packages := make([]*apkrepo.Package, len(ctx.PackageFiles))
+
+	var errg errgroup.Group
+
+	for i, apkFile := range ctx.PackageFiles {
+		i, apkFile := i, apkFile // capture the loop variables
+		errg.Go(func() error {
+			ctx.Logger.Printf("processing package %s", apkFile)
+			f, err := os.Open(apkFile)
+			if err != nil {
+				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
+			}
+			pkg, err := apkrepo.ParsePackage(f)
+			if err != nil {
+				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
+			}
+			packages[i] = pkg
+			return nil
+		})
 	}
+	if err := errg.Wait(); err != nil {
+		return err
+	}
+
 	index := &apkrepo.ApkIndex{
 		Packages: packages,
 	}

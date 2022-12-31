@@ -222,7 +222,16 @@ func (ac AdvisoryContent) Validate() error {
 		ActionStatement: ac.ActionStatement,
 	}
 
-	return mockStmt.Validate()
+	err := mockStmt.Validate()
+	if err != nil {
+		return err
+	}
+
+	if ac.Status == vex.StatusFixed && ac.FixedVersion == "" {
+		return fmt.Errorf("must specify fixed version when using status %q", ac.Status)
+	}
+
+	return nil
 }
 
 type RangeData struct {

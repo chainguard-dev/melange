@@ -1,0 +1,98 @@
+# apko lima configuration file
+#
+#   To start environment:
+#     limactl start --tty=false melange-playground.yaml
+#
+#   To obtain root shell (needed for apko build):
+#     limactl shell melange-playground sudo su -c "HOME=\"${HOME}\" ash"
+#
+#   Build an example image:
+#     melange build -r https://packages.wolfi.dev/os -k /usr/lib/wolfi-signing.rsa.pub --arch x86_64 examples/go-hello.yaml
+#
+#   To delete environment:
+#     limactl delete -f melange-playground
+#
+# This example requires Lima v0.7.0 or later.
+images:
+- location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.26/alpine-lima-std-3.17.0-x86_64.iso"
+  arch: "x86_64"
+  digest: "sha512:93bf8d52ad2b3a6ef401a1a565f67e4f06f8022ec8963cad36cac4a25253f056ac0b755d1ed56b8993b0261440e0d5d38bad15b271864ed33cd3b02272738672"
+- location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.26/alpine-lima-std-3.17.0-aarch64.iso"
+  arch: "aarch64"
+  digest: "sha512:aacd3a9e7a3231553bcee879c6770b379afbfad3dcfac7f274a80d6c490faf33f3c23b6130efa881f57c0c5235ced2877e2f45e3cdf4fefff11531d6023ae214"
+cpus: 2
+memory: 8GiB
+disk: 20GiB
+firmware:
+  legacyBIOS: true
+containerd:
+  system: false
+  user: false
+mounts:
+- location: "~"
+  writable: true
+- location: "/tmp/lima"
+  writable: true
+provision:
+- mode: system
+  script: |
+    #!/bin/sh
+    set -eux -o pipefail
+    apk update
+    apk add --update --no-cache vim git bubblewrap curl tar
+    cat <<EOF >> /etc/apk/repositories
+    https://packages.wolfi.dev/os
+    EOF
+    apk update --allow-untrusted
+    wget https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    mv wolfi-signing.rsa.pub /usr/lib
+- mode: user
+  script: |
+    #!/bin/sh
+    set -eux -o pipefail
+    kernel=$(uname -s)
+    case "${kernel}" in
+      Linux)
+        platform="linux"
+        ;;
+      *)
+        echo "Unknown, unsupported platform: ${kernel}." >&2
+        echo "Supported platforms: Linux" >&2
+        echo "Bailing out." >&2
+        exit 2
+    esac
+
+    machine=$(uname -m)
+    case "${machine}" in
+      x86_64*|i?86_64*|amd64*)
+        arch="amd64"
+        ;;
+      aarch64*|arm64*)
+        arch="arm64"
+        ;;
+      arm*)
+        arch="arm"
+        ;;
+      i?86*)
+        arch="386"
+        ;;
+      *)
+        echo "Unknown, unsupported architecture (${machine})." >&2
+        echo "Supported architectures x86_64, i686, arm, arm64." >&2
+        echo "Bailing out." >&2
+        exit 3
+        ;;
+    esac
+    wget https://github.com/chainguard-dev/melange/releases/download/v0.2.0/melange_0.2.0_${platform}_${arch}.tar.gz
+    tar -xzf melange_0.2.0_${platform}_${arch}.tar.gz
+    chmod +x melange_0.2.0_${platform}_${arch}/melange
+    sudo mv melange_0.2.0_${platform}_${arch}/melange /usr/local/bin/melange
+    rm -rf melange_0.2.0_${platform}_${arch}
+    rm melange_0.2.0_${platform}_${arch}.tar.gz
+message: |-
+  ---
+  Run the following to get a root shell (needed to run apko build):
+    limactl shell melange-playground sudo su -c "HOME=\"${HOME}\" ash"
+  Try building an APK:
+     melange build -r https://packages.wolfi.dev/os -k /usr/lib/wolfi-signing.rsa.pub --arch x86_64 examples/go-hello.yaml
+  ---

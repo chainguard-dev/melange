@@ -5,6 +5,7 @@ needs:
     - go
     - busybox
     - ca-certificates-bundle
+    - git
 
 inputs:
   package:

@@ -916,7 +916,7 @@ func (ctx *Context) BuildAndPushLocalImage(bc *apko_build.Context) error {
 
 	imgDigest, _, err := apko_oci.PublishImageFromLayer(
 		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, ctx.Arch,
-		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, "melange:latest")
+		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, true, "melange:latest")
 	if err != nil {
 		return err
 	}

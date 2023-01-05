@@ -255,7 +255,9 @@ func addPackage(doc *spdx.Document, p *pkg) {
 
 	verificationCode := computeVerificationCode(hashList)
 	if verificationCode != "" {
-		spdxPkg.VerificationCode.Value = verificationCode
+		spdxPkg.VerificationCode = &spdx.PackageVerificationCode{
+			Value: verificationCode,
+		}
 		spdxPkg.FilesAnalyzed = true
 		if len(excluded) > 0 {
 			spdxPkg.VerificationCode.ExcludedFiles = excluded

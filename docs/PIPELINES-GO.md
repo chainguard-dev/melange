@@ -100,7 +100,7 @@ you can define the following values:
 ```
 
 For the most up to date supported features check the
-[buid](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/build.yaml)
+[build](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/build.yaml)
 and
 [install](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/install.yaml)
 pipeline definitions. Feel free to request more features in

@@ -104,6 +104,7 @@ func (ctx *Context) GenerateIndex() error {
 			if err != nil {
 				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
 			}
+			defer f.Close()
 			pkg, err := apkrepo.ParsePackage(f)
 			if err != nil {
 				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)

@@ -21,10 +21,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+
+	"github.com/korovkin/limiter"
+	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
 
 	"chainguard.dev/melange/internal/sign"
-	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
-	"golang.org/x/sync/errgroup"
 )
 
 type Context struct {
@@ -93,27 +95,39 @@ func New(opts ...Option) (*Context, error) {
 
 func (ctx *Context) GenerateIndex() error {
 	packages := make([]*apkrepo.Package, len(ctx.PackageFiles))
+	var mtx sync.Mutex
 
-	var errg errgroup.Group
+	g := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
 
 	for i, apkFile := range ctx.PackageFiles {
 		i, apkFile := i, apkFile // capture the loop variables
-		errg.Go(func() error {
+		if _, err := g.Execute(func() {
 			ctx.Logger.Printf("processing package %s", apkFile)
 			f, err := os.Open(apkFile)
 			if err != nil {
-				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
+				// nolint:errcheck
+				g.FirstErrorStore(fmt.Errorf("failed to open package %s: %w", apkFile, err))
+				return
 			}
 			defer f.Close()
 			pkg, err := apkrepo.ParsePackage(f)
 			if err != nil {
-				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
+				// nolint:errcheck
+				g.FirstErrorStore(fmt.Errorf("failed to parse package %s: %w", apkFile, err))
+				return
 			}
+			mtx.Lock()
 			packages[i] = pkg
-			return nil
-		})
+			mtx.Unlock()
+		}); err != nil {
+			return fmt.Errorf("executing processor function: %w", err)
+		}
 	}
-	if err := errg.Wait(); err != nil {
+	if err := g.WaitAndClose(); err != nil {
+		return err
+	}
+
+	if err := g.FirstErrorGet(); err != nil {
 		return err
 	}
 

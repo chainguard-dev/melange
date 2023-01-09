@@ -8,7 +8,7 @@ require (
 	cloud.google.com/go/storage v1.28.1
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
-	github.com/go-git/go-git/v5 v5.5.1
+	github.com/go-git/go-git/v5 v5.5.2
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.12.1
 	github.com/joho/godotenv v1.4.0
@@ -78,7 +78,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
-	github.com/go-git/go-billy/v5 v5.3.1 // indirect
+	github.com/go-git/go-billy/v5 v5.4.0 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect

@@ -11,6 +11,7 @@ pipeline:
       cd ${{inputs.dir}}
       ./configure \
         --prefix=/usr \
+        --sysconfdir=/etc \
         --libdir=/usr/lib \
         --mandir=/usr/share/man \
         --infodir=/usr/share/info \

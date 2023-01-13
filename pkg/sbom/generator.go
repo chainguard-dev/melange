@@ -41,12 +41,35 @@ type Spec struct {
 	Copyright      string
 	Namespace      string
 	Arch           string
+	GuestPath      string // Path to the apko build environment fs
 	Languages      []string
 }
 
 type Generator struct {
 	Options Options
 	impl    generatorImplementation
+}
+
+// GenerateBuildEnvSBOM creates the SBOM that describes the
+// guest environment where melange ran its build
+func (g *Generator) GenerateBuildEnvSBOM(spec *Spec) error {
+	pkgs, err := g.impl.ReadPackageIndex(spec)
+	if err != nil {
+		return fmt.Errorf("while reading apk index: %w", err)
+	}
+
+	pkg, err := g.impl.GenerateBuildPackage(spec, pkgs)
+	if err != nil {
+		return fmt.Errorf("generating build environment package: %w", err)
+	}
+
+	doc, err := g.impl.GenerateDocument(spec)
+	if err != nil {
+		return fmt.Errorf("generating bom document: %w", err)
+	}
+
+	doc.Packages = append(doc.Packages, pkg)
+	return nil
 }
 
 // GenerateSBOM runs the main SBOM generation process

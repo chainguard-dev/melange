@@ -18,6 +18,7 @@
 package sbom
 
 import (
+	"bufio"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/korovkin/limiter"
 	purl "github.com/package-url/packageurl-go"
+	"gitlab.alpinelinux.org/alpine/go/repository"
 	"sigs.k8s.io/release-utils/hash"
 	"sigs.k8s.io/release-utils/version"
 
@@ -47,6 +49,9 @@ type generatorImplementation interface {
 	ScanLicenses(*Spec, *bom) error
 	ReadDependencyData(*Spec, *bom, string) error
 	WriteSBOM(*Spec, *bom) error
+	ReadPackageIndex(spec *Spec) ([]*pkg, error)
+	ReadDistroID(spec *Spec) (string, error)
+	GenerateBuildPackage(spec *Spec, packages []*pkg) (pkg, error)
 }
 
 type defaultGeneratorImplementation struct{}
@@ -458,4 +463,68 @@ func getDirectoryTree(dirPath string) ([]string, error) {
 	}
 	sort.Strings(fileList)
 	return fileList, nil
+}
+
+func (di *defaultGeneratorImplementation) ReadDistroID(spec *Spec) (string, error) {
+	f, err := os.Open(filepath.Join(spec.GuestPath, "/etc/os-release"))
+	if err != nil {
+		return "", fmt.Errorf("opening os-release file: %w", err)
+	}
+	fileScanner := bufio.NewScanner(f)
+
+	fileScanner.Split(bufio.ScanLines)
+	for fileScanner.Scan() {
+		l := strings.TrimSpace(fileScanner.Text())
+		if strings.HasPrefix(l, "ID=") {
+			return strings.TrimPrefix("ID=", l), nil
+		}
+	}
+	return "unknown", nil
+}
+
+// ReadPackageIndex reads the apk index and returns the installed packages
+func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, error) {
+	distroid, err := di.ReadDistroID(spec)
+	if err != nil {
+		return nil, fmt.Errorf("getting distro id")
+	}
+
+	installedDB, err := os.Open(spec.GuestPath)
+	if err != nil {
+		return nil, fmt.Errorf("opening APK installed db: %w", err)
+	}
+	defer installedDB.Close()
+
+	// repository.ParsePackageIndex closes the file itself
+	packages, err := repository.ParsePackageIndex(installedDB)
+	if err != nil {
+		return nil, fmt.Errorf("parsing apk index: %w", err)
+	}
+	ret := []*pkg{}
+	for _, p := range packages {
+		ret = append(ret, &pkg{
+			FilesAnalyzed: false,
+			id:            "",
+			Name:          p.Name,
+			Version:       p.Version,
+			HomePage:      p.URL,
+			Supplier:      p.Maintainer,
+			// Originator:    "",
+			// Copyright:        p.Cop,
+			LicenseDeclared: p.License,
+			//LicenseConcluded: "",
+			Namespace: distroid,
+			Arch:      p.Arch,
+			Checksums: map[string]string{
+				"SHA1": p.ChecksumString(),
+			},
+			Relationships: []relationship{},
+		})
+	}
+	return ret, nil
+}
+
+// GenerateBuildPackage generates the package representing the build environment
+func (di *defaultGeneratorImplementation) GenerateBuildPackage(spec *Spec, packages []*pkg) (pkg, error) {
+	return pkg{}, nil
 }

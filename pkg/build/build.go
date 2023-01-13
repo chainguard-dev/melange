@@ -1274,6 +1274,7 @@ func (ctx *Context) BuildPackage() error {
 		License:        ctx.Configuration.Package.LicenseExpression(),
 		Copyright:      ctx.Configuration.Package.FullCopyright(),
 		Namespace:      namespace,
+		GuestPath:      ctx.GuestDir,
 		Arch:           ctx.Arch.ToAPK(),
 	}
 

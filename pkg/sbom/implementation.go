@@ -25,11 +25,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/korovkin/limiter"
 	purl "github.com/package-url/packageurl-go"
@@ -50,6 +52,21 @@ type generatorImplementation interface {
 }
 
 type defaultGeneratorImplementation struct{}
+
+var validIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
+
+func stringToIdentifier(in string) (out string) {
+	in = strings.ReplaceAll(in, ":", "-")
+	in = strings.ReplaceAll(in, "/", "-")
+	return validIDCharsRe.ReplaceAllStringFunc(in, func(s string) string {
+		r := ""
+		for i := 0; i < len(s); i++ {
+			uc, _ := utf8.DecodeRuneInString(string(s[i]))
+			r = fmt.Sprintf("%sC%d", r, uc)
+		}
+		return r
+	})
+}
 
 func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, error) {
 	dirPath, err := filepath.Abs(spec.Path)
@@ -82,6 +99,7 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 	newPackage := pkg{
+		id:               stringToIdentifier(fmt.Sprintf("%s-%s", spec.PackageName, spec.PackageVersion)),
 		FilesAnalyzed:    false,
 		Name:             spec.PackageName,
 		Version:          spec.PackageVersion,
@@ -124,6 +142,7 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 		// nolint:errcheck
 		g.Execute(func() {
 			f := file{
+				id:            stringToIdentifier(path),
 				Name:          path,
 				Checksums:     map[string]string{},
 				Relationships: []relationship{},
@@ -387,12 +406,12 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 	}
 
 	for _, p := range doc.Packages {
-		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, p.ID())
+		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, stringToIdentifier(p.ID()))
 		addPackage(&spdxDoc, &p)
 	}
 
 	for _, f := range doc.Files {
-		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, f.ID())
+		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, stringToIdentifier(f.ID()))
 		addFile(&spdxDoc, &f)
 	}
 	return &spdxDoc, nil

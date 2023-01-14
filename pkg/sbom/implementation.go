@@ -91,14 +91,24 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 	if spec.PackageName == "" {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
+
+	dl := ""
+	if spec.Namespace == "wolfi" {
+		dl = fmt.Sprintf(
+			"https://packages.wolfi.dev/os/%s/%s-%s.apk",
+			spec.Arch, spec.PackageName, spec.PackageVersion,
+		)
+	}
+
 	newPackage := pkg{
-		FilesAnalyzed: false,
-		Name:          spec.PackageName,
-		Version:       spec.PackageVersion,
-		Relationships: []relationship{},
-		Copyright:     spec.Copyright,
-		Namespace:     spec.Namespace,
-		Arch:          spec.Arch,
+		FilesAnalyzed:    false,
+		Name:             spec.PackageName,
+		Version:          spec.PackageVersion,
+		DownloadLocation: dl,
+		Relationships:    []relationship{},
+		Copyright:        spec.Copyright,
+		Namespace:        spec.Namespace,
+		Arch:             spec.Arch,
 	}
 
 	if spec.License != "" {
@@ -217,6 +227,10 @@ func computeVerificationCode(hashList []string) string {
 
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
+	dl := spdx.NOASSERTION
+	if p.DownloadLocation != "" {
+		dl = p.DownloadLocation
+	}
 	spdxPkg := spdx.Package{
 		ID:                   p.ID(),
 		Name:                 p.Name,
@@ -225,7 +239,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		HasFiles:             []string{},
 		LicenseConcluded:     p.LicenseConcluded,
 		LicenseDeclared:      p.LicenseDeclared,
-		DownloadLocation:     spdx.NOASSERTION,
+		DownloadLocation:     dl,
 		LicenseInfoFromFiles: []string{},
 		CopyrightText:        p.Copyright,
 		Checksums:            []spdx.Checksum{},
@@ -273,7 +287,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 
 	// Add the purl to the package
-	if p.Namespace != "" {
+	if p.Namespace != "" && p.Purl == "" {
 		var q purl.Qualifiers
 		if p.Arch != "" {
 			q = purl.QualifiersFromMap(
@@ -286,6 +300,14 @@ func addPackage(doc *spdx.Document, p *pkg) {
 				"apk", p.Namespace, p.Name, p.Version, q, "",
 			).ToString(),
 			Type: "purl",
+		})
+	}
+
+	if p.Purl != "" {
+		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
+			Category: "PACKAGE_MANAGER",
+			Locator:  p.Purl,
+			Type:     "purl",
 		})
 	}
 
@@ -515,7 +537,7 @@ func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, 
 			Namespace: distroid,
 			Arch:      p.Arch,
 			Checksums: map[string]string{
-				"SHA1": p.ChecksumString(),
+				"SHA1": fmt.Sprintf("%x", p.Checksum),
 			},
 			Relationships: []relationship{},
 		})
@@ -530,14 +552,12 @@ func (di *defaultGeneratorImplementation) GenerateBuildPackage(spec *Spec, packa
 		id:            "",
 		Name:          fmt.Sprintf("%s-build", spec.PackageName),
 		Version:       spec.PackageVersion,
-		//Supplier:         "",
-		//Originator:       "",
-		//Copyright:        "",
-		//LicenseDeclared:  "",
-		//LicenseConcluded: "",
-		Namespace:     spec.Namespace,
 		Arch:          spec.Arch,
 		Checksums:     map[string]string{},
+		Purl: purl.NewPackageURL(
+			"generic", "", fmt.Sprintf("%s-build", spec.PackageName), spec.PackageVersion,
+			purl.QualifiersFromMap(map[string]string{"arch": spec.Arch}), "",
+		).String(),
 		Relationships: []relationship{},
 	}
 
@@ -546,6 +566,43 @@ func (di *defaultGeneratorImplementation) GenerateBuildPackage(spec *Spec, packa
 			Source: &p,
 			Target: sp,
 			Type:   "DEPENDS_ON",
+		})
+	}
+
+	ns := spec.Namespace
+	if ns == "" {
+		ns = "unknown"
+	}
+
+	// Create the relationships to the emitted packages
+	for _, n := range append([]string{spec.PackageName}, spec.Subpackages...) {
+		downloadURL := ""
+		if spec.Namespace == "wolfi" {
+			downloadURL = fmt.Sprintf(
+				"https://packages.wolfi.dev/os/%s/%s-%s.apk",
+				spec.Arch, n, spec.PackageVersion,
+			)
+		}
+		p.Relationships = append(p.Relationships, relationship{
+			Source: &p,
+			Target: &pkg{
+				FilesAnalyzed:    false,
+				id:               "",
+				Name:             n,
+				DownloadLocation: downloadURL,
+				Version:          spec.PackageName,
+				Originator:       "",
+				Copyright:        spec.Copyright,
+				LicenseDeclared:  spec.License,
+				Arch:             spec.Arch,
+				Purl: purl.NewPackageURL(
+					"apk", ns, n, spec.PackageVersion,
+					purl.QualifiersFromMap(map[string]string{"arch": spec.Arch}), "",
+				).String(),
+				Checksums:     map[string]string{}, // Not known as apk is not built
+				Relationships: []relationship{},
+			},
+			Type: "BUILD_TOOL_OF",
 		})
 	}
 

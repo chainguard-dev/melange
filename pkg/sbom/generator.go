@@ -14,11 +14,15 @@
 
 package sbom
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 func NewGenerator() (*Generator, error) {
 	return &Generator{
 		impl:    &defaultGeneratorImplementation{},
+		logger:  log.New(log.Writer(), "melange-sbom: ", log.LstdFlags|log.Lmsgprefix),
 		Options: defaultOptions,
 	}, nil
 }
@@ -41,16 +45,19 @@ type Spec struct {
 	Copyright      string
 	Namespace      string
 	Arch           string
+	logger         *log.Logger
 	Languages      []string
 }
 
 type Generator struct {
 	Options Options
+	logger  *log.Logger
 	impl    generatorImplementation
 }
 
 // GenerateSBOM runs the main SBOM generation process
 func (g *Generator) GenerateSBOM(spec *Spec) error {
+	spec.logger = g.logger
 	shouldRun, err := g.impl.CheckEnvironment(spec)
 	if err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)

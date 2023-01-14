@@ -78,7 +78,9 @@ func (g *Generator) GenerateBuildEnvSBOM(spec *Spec) error {
 	doc.Packages = append(doc.Packages, pkg)
 
 	for _, name := range append([]string{spec.PackageName}, spec.Subpackages...) {
-		if err := g.impl.WriteSBOM(spec, doc, name, "%s-build-%s.spdx.json"); err != nil {
+		if err := g.impl.WriteSBOM(
+			spec, doc, name, fmt.Sprintf("%s-build-%s.spdx.json", spec.PackageName, spec.PackageVersion),
+		); err != nil {
 			return fmt.Errorf("writing sbom to disk: %w", err)
 		}
 	}
@@ -132,7 +134,8 @@ func (g *Generator) GenerateSBOM(spec *Spec) error {
 
 	// Finally, write the SBOM data to disk
 	if err := g.impl.WriteSBOM(
-		spec, sbomDoc, spec.PackageName, "%s-%s.spdx.json",
+		spec, sbomDoc, spec.PackageName,
+		fmt.Sprintf("%s-%s.spdx.json", spec.PackageName, spec.PackageVersion),
 	); err != nil {
 		return fmt.Errorf("writing sbom to disk: %w", err)
 	}

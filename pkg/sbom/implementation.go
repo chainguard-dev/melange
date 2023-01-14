@@ -446,8 +446,7 @@ func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom, packag
 		return fmt.Errorf("creating SBOM directory in apk filesystem: %w", err)
 	}
 
-	apkSBOMpath := filepath.Join(dirPath, apkSBOMdir, fmt.Sprintf(fileName, packageName, spec.PackageVersion))
-	f, err := os.Create(apkSBOMpath)
+	f, err := os.Create(filepath.Join(dirPath, apkSBOMdir, fileName))
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}
@@ -593,7 +592,7 @@ func (di *defaultGeneratorImplementation) GenerateBuildPackage(spec *Spec, packa
 				id:               "",
 				Name:             n,
 				DownloadLocation: downloadURL,
-				Version:          spec.PackageName,
+				Version:          spec.PackageVersion,
 				Originator:       "",
 				Copyright:        spec.Copyright,
 				LicenseDeclared:  spec.License,

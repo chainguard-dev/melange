@@ -41,6 +41,8 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 )
 
+const apkSBOMdir = "/var/lib/db/sbom"
+
 type generatorImplementation interface {
 	CheckEnvironment(*Spec) (bool, error)
 	GenerateDocument(*Spec) (*bom, error)
@@ -48,7 +50,7 @@ type generatorImplementation interface {
 	ScanFiles(*Spec, *pkg) error
 	ScanLicenses(*Spec, *bom) error
 	ReadDependencyData(*Spec, *bom, string) error
-	WriteSBOM(*Spec, *bom) error
+	WriteSBOM(*Spec, *bom, string, string) error
 	ReadPackageIndex(spec *Spec) ([]*pkg, error)
 	ReadDistroID(spec *Spec) (string, error)
 	GenerateBuildPackage(spec *Spec, packages []*pkg) (pkg, error)
@@ -404,26 +406,22 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 }
 
 // WriteSBOM writes the SBOM to the apk filesystem
-func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom, packageName, fileName string) error {
 	spdxDoc, err := buildDocumentSPDX(spec, doc)
 	if err != nil {
 		return fmt.Errorf("building SPDX document: %w", err)
 	}
 
-	dirPath, err := filepath.Abs(spec.Path)
+	dirPath, err := filepath.Abs(filepath.Join(spec.WorkspaceDir, "melange-out", packageName))
 	if err != nil {
 		return fmt.Errorf("getting absolute directory path: %w", err)
 	}
 
-	apkSBOMdir := "/var/lib/db/sbom"
 	if err := os.MkdirAll(filepath.Join(dirPath, apkSBOMdir), os.FileMode(0755)); err != nil {
 		return fmt.Errorf("creating SBOM directory in apk filesystem: %w", err)
 	}
 
-	apkSBOMpath := filepath.Join(
-		dirPath, apkSBOMdir,
-		fmt.Sprintf("%s-%s.spdx.json", spec.PackageName, spec.PackageVersion),
-	)
+	apkSBOMpath := filepath.Join(dirPath, apkSBOMdir, fmt.Sprintf(fileName, packageName, spec.PackageVersion))
 	f, err := os.Create(apkSBOMpath)
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
@@ -466,7 +464,7 @@ func getDirectoryTree(dirPath string) ([]string, error) {
 }
 
 func (di *defaultGeneratorImplementation) ReadDistroID(spec *Spec) (string, error) {
-	f, err := os.Open(filepath.Join(spec.GuestPath, "/etc/os-release"))
+	f, err := os.Open(filepath.Join(spec.GuestDir, "/etc/os-release"))
 	if err != nil {
 		return "", fmt.Errorf("opening os-release file: %w", err)
 	}
@@ -489,7 +487,7 @@ func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, 
 		return nil, fmt.Errorf("getting distro id")
 	}
 
-	installedDB, err := os.Open(spec.GuestPath)
+	installedDB, err := os.Open(spec.GuestDir)
 	if err != nil {
 		return nil, fmt.Errorf("opening APK installed db: %w", err)
 	}
@@ -510,7 +508,7 @@ func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, 
 			HomePage:      p.URL,
 			Supplier:      p.Maintainer,
 			// Originator:    "",
-			// Copyright:        p.Cop,
+			// Copyright:       p.,
 			LicenseDeclared: p.License,
 			//LicenseConcluded: "",
 			Namespace: distroid,

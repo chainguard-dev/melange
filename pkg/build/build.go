@@ -1274,7 +1274,8 @@ func (ctx *Context) BuildPackage() error {
 		License:        ctx.Configuration.Package.LicenseExpression(),
 		Copyright:      ctx.Configuration.Package.FullCopyright(),
 		Namespace:      namespace,
-		GuestPath:      ctx.GuestDir,
+		GuestDir:       ctx.GuestDir,
+		WorkspaceDir:   ctx.WorkspaceDir,
 		Arch:           ctx.Arch.ToAPK(),
 	}
 
@@ -1294,9 +1295,10 @@ func (ctx *Context) BuildPackage() error {
 		sbomSpec.Path = filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name)
 		sbomSpec.PackageName = sp.Name
 		sbomSpec.Languages = langs
+		sbomSpec.Subpackages = append(sbomSpec.Subpackages, sp.Name) // Only used for env sbom
 
 		if err := generator.GenerateSBOM(sbomSpec); err != nil {
-			return fmt.Errorf("writing SBOMs: %w", err)
+			return fmt.Errorf("generating subpackage SBOM: %w", err)
 		}
 	}
 
@@ -1309,7 +1311,11 @@ func (ctx *Context) BuildPackage() error {
 	sbomSpec.Languages = langs
 
 	if err := generator.GenerateSBOM(sbomSpec); err != nil {
-		return fmt.Errorf("writing SBOMs: %w", err)
+		return fmt.Errorf("generating apk SBOM: %w", err)
+	}
+
+	if err := generator.GenerateBuildEnvSBOM(sbomSpec); err != nil {
+		return fmt.Errorf("generating build environment sbom: %w", err)
 	}
 
 	// emit main package

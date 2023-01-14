@@ -41,7 +41,9 @@ type Spec struct {
 	Copyright      string
 	Namespace      string
 	Arch           string
-	GuestPath      string // Path to the apko build environment fs
+	GuestDir       string // Path to the apko build environment fs
+	WorkspaceDir   string
+	Subpackages    []string
 	Languages      []string
 }
 
@@ -69,6 +71,12 @@ func (g *Generator) GenerateBuildEnvSBOM(spec *Spec) error {
 	}
 
 	doc.Packages = append(doc.Packages, pkg)
+
+	for _, name := range append([]string{spec.PackageName}, spec.Subpackages...) {
+		if err := g.impl.WriteSBOM(spec, doc, name, "%s-%s-build.spdx.json"); err != nil {
+			return fmt.Errorf("writing sbom to disk: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -118,7 +126,9 @@ func (g *Generator) GenerateSBOM(spec *Spec) error {
 	}
 
 	// Finally, write the SBOM data to disk
-	if err := g.impl.WriteSBOM(spec, sbomDoc); err != nil {
+	if err := g.impl.WriteSBOM(
+		spec, sbomDoc, spec.PackageName, "%s-%s.spdx.json",
+	); err != nil {
 		return fmt.Errorf("writing sbom to disk: %w", err)
 	}
 

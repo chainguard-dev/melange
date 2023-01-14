@@ -216,6 +216,9 @@ func (di *defaultGeneratorImplementation) ReadDependencyData(spec *Spec, doc *bo
 }
 
 func computeVerificationCode(hashList []string) string {
+	if len(hashList) == 0 {
+		return ""
+	}
 	// Sort the strings:
 	sort.Strings(hashList)
 	h := sha1.New()

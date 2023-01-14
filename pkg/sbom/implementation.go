@@ -41,7 +41,10 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 )
 
-const apkSBOMdir = "/var/lib/db/sbom"
+const (
+	apkSBOMdir = "/var/lib/db/sbom"
+	apkDBdir   = "/lib/apk/db/installed"
+)
 
 type generatorImplementation interface {
 	CheckEnvironment(*Spec) (bool, error)
@@ -89,15 +92,13 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 	newPackage := pkg{
-		FilesAnalyzed:    false,
-		Name:             spec.PackageName,
-		Version:          spec.PackageVersion,
-		Relationships:    []relationship{},
-		LicenseDeclared:  spdx.NOASSERTION,
-		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
-		Copyright:        spec.Copyright,
-		Namespace:        spec.Namespace,
-		Arch:             spec.Arch,
+		FilesAnalyzed: false,
+		Name:          spec.PackageName,
+		Version:       spec.PackageVersion,
+		Relationships: []relationship{},
+		Copyright:     spec.Copyright,
+		Namespace:     spec.Namespace,
+		Arch:          spec.Arch,
 	}
 
 	if spec.License != "" {
@@ -313,7 +314,6 @@ func addFile(doc *spdx.Document, f *file) {
 	spdxFile := spdx.File{
 		ID:                f.ID(),
 		Name:              f.Name,
-		LicenseConcluded:  spdx.NOASSERTION,
 		FileTypes:         []string{},
 		LicenseInfoInFile: []string{},
 		Checksums:         []spdx.Checksum{},
@@ -468,13 +468,14 @@ func (di *defaultGeneratorImplementation) ReadDistroID(spec *Spec) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("opening os-release file: %w", err)
 	}
-	fileScanner := bufio.NewScanner(f)
 
+	fileScanner := bufio.NewScanner(f)
 	fileScanner.Split(bufio.ScanLines)
+
 	for fileScanner.Scan() {
 		l := strings.TrimSpace(fileScanner.Text())
 		if strings.HasPrefix(l, "ID=") {
-			return strings.TrimPrefix("ID=", l), nil
+			return strings.TrimPrefix(l, "ID="), nil
 		}
 	}
 	return "unknown", nil
@@ -487,7 +488,7 @@ func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, 
 		return nil, fmt.Errorf("getting distro id")
 	}
 
-	installedDB, err := os.Open(spec.GuestDir)
+	installedDB, err := os.Open(filepath.Join(spec.GuestDir, apkDBdir))
 	if err != nil {
 		return nil, fmt.Errorf("opening APK installed db: %w", err)
 	}
@@ -524,5 +525,29 @@ func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, 
 
 // GenerateBuildPackage generates the package representing the build environment
 func (di *defaultGeneratorImplementation) GenerateBuildPackage(spec *Spec, packages []*pkg) (pkg, error) {
-	return pkg{}, nil
+	p := pkg{
+		FilesAnalyzed: false,
+		id:            "",
+		Name:          fmt.Sprintf("%s-build", spec.PackageName),
+		Version:       spec.PackageVersion,
+		//Supplier:         "",
+		//Originator:       "",
+		//Copyright:        "",
+		//LicenseDeclared:  "",
+		//LicenseConcluded: "",
+		Namespace:     spec.Namespace,
+		Arch:          spec.Arch,
+		Checksums:     map[string]string{},
+		Relationships: []relationship{},
+	}
+
+	for _, sp := range packages {
+		p.Relationships = append(p.Relationships, relationship{
+			Source: &p,
+			Target: sp,
+			Type:   "DEPENDS_ON",
+		})
+	}
+
+	return p, nil
 }

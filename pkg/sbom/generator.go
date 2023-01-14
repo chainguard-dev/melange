@@ -14,7 +14,10 @@
 
 package sbom
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 func NewGenerator() (*Generator, error) {
 	return &Generator{
@@ -60,6 +63,8 @@ func (g *Generator) GenerateBuildEnvSBOM(spec *Spec) error {
 		return fmt.Errorf("while reading apk index: %w", err)
 	}
 
+	fmt.Fprintf(os.Stderr, "There are %d packages in the build SBOM", len(pkgs))
+
 	pkg, err := g.impl.GenerateBuildPackage(spec, pkgs)
 	if err != nil {
 		return fmt.Errorf("generating build environment package: %w", err)
@@ -73,7 +78,7 @@ func (g *Generator) GenerateBuildEnvSBOM(spec *Spec) error {
 	doc.Packages = append(doc.Packages, pkg)
 
 	for _, name := range append([]string{spec.PackageName}, spec.Subpackages...) {
-		if err := g.impl.WriteSBOM(spec, doc, name, "%s-%s-build.spdx.json"); err != nil {
+		if err := g.impl.WriteSBOM(spec, doc, name, "%s-build-%s.spdx.json"); err != nil {
 			return fmt.Errorf("writing sbom to disk: %w", err)
 		}
 	}

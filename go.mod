@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	chainguard.dev/apko v0.6.1-0.20230112190132-a65677fe7e84
-	chainguard.dev/vex v0.0.3-0.20221224011205-1d4b8701e0dd
 	cloud.google.com/go/storage v1.28.1
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -14,6 +13,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/oec/goparsify v0.2.1
+	github.com/openvex/go-vex v0.1.1-0.20230117203711-211394f7f8dd
 	github.com/package-url/packageurl-go v0.1.1-0.20220203205134-d70459300c8a
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.6.1

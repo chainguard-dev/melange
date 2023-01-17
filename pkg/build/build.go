@@ -33,18 +33,20 @@ import (
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apkofs "chainguard.dev/apko/pkg/fs"
-	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/index"
-	"chainguard.dev/melange/pkg/sbom"
-	"chainguard.dev/vex/pkg/vex"
+
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
+	"github.com/openvex/go-vex/pkg/vex"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/index"
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 type Scriptlets struct {

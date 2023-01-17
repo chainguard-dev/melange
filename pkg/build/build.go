@@ -311,6 +311,8 @@ type Context struct {
 type Dependencies struct {
 	Runtime  []string `yaml:"runtime,omitempty"`
 	Provides []string `yaml:"provides,omitempty"`
+
+	ProviderPriority int `yaml:"provider-priority,omitempty"`
 }
 
 func New(opts ...Option) (*Context, error) {

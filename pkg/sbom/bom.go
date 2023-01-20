@@ -17,6 +17,8 @@
 // data) designed to be transcoded to specific formats.
 package sbom
 
+import "fmt"
+
 type bom struct {
 	Packages []pkg
 	Files    []file
@@ -33,19 +35,21 @@ type pkg struct {
 	Version          string
 	HomePage         string
 	Supplier         string
+	DownloadLocation string
 	Originator       string
 	Copyright        string
 	LicenseDeclared  string
 	LicenseConcluded string
 	Namespace        string
 	Arch             string
+	Purl             string
 	Checksums        map[string]string
 	Relationships    []relationship
 }
 
 func (p *pkg) ID() string {
 	if p.id != "" {
-		return p.id
+		return fmt.Sprintf("SPDXRef-Package-%s", p.id)
 	}
 	return "SPDXRef-Package-" + p.Name
 }
@@ -60,7 +64,7 @@ type file struct {
 
 func (f *file) ID() string {
 	if f.id != "" {
-		return f.id
+		return fmt.Sprintf("SPDXRef-File-%s", f.id)
 	}
 	return "SPDXRef-File-" + f.Name
 }

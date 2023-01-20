@@ -57,7 +57,7 @@ docker run --privileged -v "$PWD":/work cgr.dev/chainguard/melange build example
 
 These examples require [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
 
-Alternatively, if you're on a Mac, you can use the [apko instructions for Lima](https://github.com/chainguard-dev/apko/blob/main/mac/README.md#Lima) to run an Alpine Linux VM.
+Alternatively, if you're on a Mac, you can use the [melange instructions for Lima](https://github.com/chainguard-dev/melange/blob/main/mac/README.md#Lima) to run an Alpine Linux VM.
 
 ## Quickstart
 

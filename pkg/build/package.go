@@ -123,6 +123,9 @@ depend = {{ $dep }}
 {{- range $dep := .Dependencies.Provides }}
 provides = {{ $dep }}
 {{- end }}
+{{- if .Dependencies.ProviderPriority }}
+provider_priority = {{ .Dependencies.ProviderPriority }}
+{{- end }}
 {{- if .Scriptlets.Trigger.Paths }}
 triggers = {{ range $item := .Scriptlets.Trigger.Paths }}{{ $item }} {{ end }}
 {{- end }}

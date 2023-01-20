@@ -18,6 +18,7 @@
 package sbom
 
 import (
+	"bufio"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -25,18 +26,26 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/korovkin/limiter"
 	purl "github.com/package-url/packageurl-go"
+	"gitlab.alpinelinux.org/alpine/go/repository"
 	"sigs.k8s.io/release-utils/hash"
 	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+)
+
+const (
+	apkSBOMdir = "/var/lib/db/sbom"
+	apkDBdir   = "/lib/apk/db/installed"
 )
 
 type generatorImplementation interface {
@@ -46,10 +55,28 @@ type generatorImplementation interface {
 	ScanFiles(*Spec, *pkg) error
 	ScanLicenses(*Spec, *bom) error
 	ReadDependencyData(*Spec, *bom, string) error
-	WriteSBOM(*Spec, *bom) error
+	WriteSBOM(*Spec, *bom, string, string) error
+	ReadPackageIndex(spec *Spec) ([]*pkg, error)
+	ReadDistroID(spec *Spec) (string, error)
+	GenerateBuildPackage(spec *Spec, packages []*pkg) (pkg, error)
 }
 
 type defaultGeneratorImplementation struct{}
+
+var validIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
+
+func stringToIdentifier(in string) (out string) {
+	in = strings.ReplaceAll(in, ":", "-")
+	in = strings.ReplaceAll(in, "/", "-")
+	return validIDCharsRe.ReplaceAllStringFunc(in, func(s string) string {
+		r := ""
+		for i := 0; i < len(s); i++ {
+			uc, _ := utf8.DecodeRuneInString(string(s[i]))
+			r = fmt.Sprintf("%sC%d", r, uc)
+		}
+		return r
+	})
+}
 
 func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, error) {
 	dirPath, err := filepath.Abs(spec.Path)
@@ -81,13 +108,22 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 	if spec.PackageName == "" {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
+
+	dl := ""
+	if spec.Namespace == "wolfi" {
+		dl = fmt.Sprintf(
+			"https://packages.wolfi.dev/os/%s/%s-%s.apk",
+			spec.Arch, spec.PackageName, spec.PackageVersion,
+		)
+	}
+
 	newPackage := pkg{
+		id:               stringToIdentifier(fmt.Sprintf("%s-%s", spec.PackageName, spec.PackageVersion)),
 		FilesAnalyzed:    false,
 		Name:             spec.PackageName,
 		Version:          spec.PackageVersion,
+		DownloadLocation: dl,
 		Relationships:    []relationship{},
-		LicenseDeclared:  spdx.NOASSERTION,
-		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
@@ -122,6 +158,7 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 		// nolint:errcheck
 		g.Execute(func() {
 			f := file{
+				id:            stringToIdentifier(path),
 				Name:          path,
 				Checksums:     map[string]string{},
 				Relationships: []relationship{},
@@ -196,6 +233,9 @@ func (di *defaultGeneratorImplementation) ReadDependencyData(spec *Spec, doc *bo
 }
 
 func computeVerificationCode(hashList []string) string {
+	if len(hashList) == 0 {
+		return ""
+	}
 	// Sort the strings:
 	sort.Strings(hashList)
 	h := sha1.New()
@@ -207,6 +247,10 @@ func computeVerificationCode(hashList []string) string {
 
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
+	dl := spdx.NOASSERTION
+	if p.DownloadLocation != "" {
+		dl = p.DownloadLocation
+	}
 	spdxPkg := spdx.Package{
 		ID:                   p.ID(),
 		Name:                 p.Name,
@@ -215,7 +259,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		HasFiles:             []string{},
 		LicenseConcluded:     p.LicenseConcluded,
 		LicenseDeclared:      p.LicenseDeclared,
-		DownloadLocation:     spdx.NOASSERTION,
+		DownloadLocation:     dl,
 		LicenseInfoFromFiles: []string{},
 		CopyrightText:        p.Copyright,
 		Checksums:            []spdx.Checksum{},
@@ -263,7 +307,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 
 	// Add the purl to the package
-	if p.Namespace != "" {
+	if p.Namespace != "" && p.Purl == "" {
 		var q purl.Qualifiers
 		if p.Arch != "" {
 			q = purl.QualifiersFromMap(
@@ -276,6 +320,14 @@ func addPackage(doc *spdx.Document, p *pkg) {
 				"apk", p.Namespace, p.Name, p.Version, q, "",
 			).ToString(),
 			Type: "purl",
+		})
+	}
+
+	if p.Purl != "" {
+		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
+			Category: "PACKAGE_MANAGER",
+			Locator:  p.Purl,
+			Type:     "purl",
 		})
 	}
 
@@ -304,7 +356,6 @@ func addFile(doc *spdx.Document, f *file) {
 	spdxFile := spdx.File{
 		ID:                f.ID(),
 		Name:              f.Name,
-		LicenseConcluded:  spdx.NOASSERTION,
 		FileTypes:         []string{},
 		LicenseInfoInFile: []string{},
 		Checksums:         []spdx.Checksum{},
@@ -385,39 +436,34 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 	}
 
 	for _, p := range doc.Packages {
-		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, p.ID())
+		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, stringToIdentifier(p.ID()))
 		addPackage(&spdxDoc, &p)
 	}
 
 	for _, f := range doc.Files {
-		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, f.ID())
+		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, stringToIdentifier(f.ID()))
 		addFile(&spdxDoc, &f)
 	}
 	return &spdxDoc, nil
 }
 
 // WriteSBOM writes the SBOM to the apk filesystem
-func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom, packageName, fileName string) error {
 	spdxDoc, err := buildDocumentSPDX(spec, doc)
 	if err != nil {
 		return fmt.Errorf("building SPDX document: %w", err)
 	}
 
-	dirPath, err := filepath.Abs(spec.Path)
+	dirPath, err := filepath.Abs(filepath.Join(spec.WorkspaceDir, "melange-out", packageName))
 	if err != nil {
 		return fmt.Errorf("getting absolute directory path: %w", err)
 	}
 
-	apkSBOMdir := "/var/lib/db/sbom"
 	if err := os.MkdirAll(filepath.Join(dirPath, apkSBOMdir), os.FileMode(0755)); err != nil {
 		return fmt.Errorf("creating SBOM directory in apk filesystem: %w", err)
 	}
 
-	apkSBOMpath := filepath.Join(
-		dirPath, apkSBOMdir,
-		fmt.Sprintf("%s-%s.spdx.json", spec.PackageName, spec.PackageVersion),
-	)
-	f, err := os.Create(apkSBOMpath)
+	f, err := os.Create(filepath.Join(dirPath, apkSBOMdir, fileName))
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}
@@ -456,4 +502,128 @@ func getDirectoryTree(dirPath string) ([]string, error) {
 	}
 	sort.Strings(fileList)
 	return fileList, nil
+}
+
+func (di *defaultGeneratorImplementation) ReadDistroID(spec *Spec) (string, error) {
+	f, err := os.Open(filepath.Join(spec.GuestDir, "/etc/os-release"))
+	if err != nil {
+		return "", fmt.Errorf("opening os-release file: %w", err)
+	}
+
+	fileScanner := bufio.NewScanner(f)
+	fileScanner.Split(bufio.ScanLines)
+
+	for fileScanner.Scan() {
+		l := strings.TrimSpace(fileScanner.Text())
+		if strings.HasPrefix(l, "ID=") {
+			return strings.TrimPrefix(l, "ID="), nil
+		}
+	}
+	return "unknown", nil
+}
+
+// ReadPackageIndex reads the apk index and returns the installed packages
+func (di *defaultGeneratorImplementation) ReadPackageIndex(spec *Spec) ([]*pkg, error) {
+	distroid, err := di.ReadDistroID(spec)
+	if err != nil {
+		return nil, fmt.Errorf("getting distro id")
+	}
+
+	installedDB, err := os.Open(filepath.Join(spec.GuestDir, apkDBdir))
+	if err != nil {
+		return nil, fmt.Errorf("opening APK installed db: %w", err)
+	}
+	defer installedDB.Close()
+
+	// repository.ParsePackageIndex closes the file itself
+	packages, err := repository.ParsePackageIndex(installedDB)
+	if err != nil {
+		return nil, fmt.Errorf("parsing apk index: %w", err)
+	}
+	ret := []*pkg{}
+	for _, p := range packages {
+		ret = append(ret, &pkg{
+			FilesAnalyzed: false,
+			id:            "",
+			Name:          p.Name,
+			Version:       p.Version,
+			HomePage:      p.URL,
+			Supplier:      p.Maintainer,
+			// Originator:    "",
+			// Copyright:       p.,
+			LicenseDeclared: p.License,
+			//LicenseConcluded: "",
+			Namespace: distroid,
+			Arch:      p.Arch,
+			Checksums: map[string]string{
+				"SHA1": fmt.Sprintf("%x", p.Checksum),
+			},
+			Relationships: []relationship{},
+		})
+	}
+	return ret, nil
+}
+
+// GenerateBuildPackage generates the package representing the build environment
+func (di *defaultGeneratorImplementation) GenerateBuildPackage(spec *Spec, packages []*pkg) (pkg, error) {
+	p := pkg{
+		FilesAnalyzed: false,
+		id:            "",
+		Name:          fmt.Sprintf("%s-build", spec.PackageName),
+		Version:       spec.PackageVersion,
+		Arch:          spec.Arch,
+		Checksums:     map[string]string{},
+		Purl: purl.NewPackageURL(
+			"generic", "", fmt.Sprintf("%s-build", spec.PackageName), spec.PackageVersion,
+			purl.QualifiersFromMap(map[string]string{"arch": spec.Arch}), "",
+		).String(),
+		Relationships: []relationship{},
+	}
+
+	for _, sp := range packages {
+		p.Relationships = append(p.Relationships, relationship{
+			Source: &p,
+			Target: sp,
+			Type:   "DEPENDS_ON",
+		})
+	}
+
+	ns := spec.Namespace
+	if ns == "" {
+		ns = "unknown"
+	}
+
+	// Create the relationships to the emitted packages
+	for _, n := range append([]string{spec.PackageName}, spec.Subpackages...) {
+		downloadURL := ""
+		if spec.Namespace == "wolfi" {
+			downloadURL = fmt.Sprintf(
+				"https://packages.wolfi.dev/os/%s/%s-%s.apk",
+				spec.Arch, n, spec.PackageVersion,
+			)
+		}
+		p.Relationships = append(p.Relationships, relationship{
+			Source: &p,
+			Target: &pkg{
+				FilesAnalyzed:    false,
+				id:               "",
+				Name:             n,
+				DownloadLocation: downloadURL,
+				Version:          spec.PackageVersion,
+				Originator:       "",
+				Copyright:        spec.Copyright,
+				LicenseDeclared:  spec.License,
+				Arch:             spec.Arch,
+				Purl: purl.NewPackageURL(
+					"apk", ns, n, spec.PackageVersion,
+					purl.QualifiersFromMap(map[string]string{"arch": spec.Arch}), "",
+				).String(),
+				Checksums:     map[string]string{}, // Not known as apk is not built
+				Relationships: []relationship{},
+			},
+			Type: "BUILD_TOOL_OF",
+		})
+	}
+
+	return p, nil
 }

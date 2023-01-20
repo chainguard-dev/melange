@@ -1273,6 +1273,16 @@ func (ctx *Context) BuildPackage() error {
 		namespace = "unknown"
 	}
 
+	sbomSpec := &sbom.Spec{
+		PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
+		License:        ctx.Configuration.Package.LicenseExpression(),
+		Copyright:      ctx.Configuration.Package.FullCopyright(),
+		Namespace:      namespace,
+		GuestDir:       ctx.GuestDir,
+		WorkspaceDir:   ctx.WorkspaceDir,
+		Arch:           ctx.Arch.ToAPK(),
+	}
+
 	// run any pipelines for subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
 		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
@@ -1286,34 +1296,30 @@ func (ctx *Context) BuildPackage() error {
 			langs = append(langs, p.SBOM.Language)
 		}
 
-		if err := generator.GenerateSBOM(&sbom.Spec{
-			Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name),
-			PackageName:    sp.Name,
-			PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
-			Languages:      langs,
-			License:        ctx.Configuration.Package.LicenseExpression(),
-			Copyright:      ctx.Configuration.Package.FullCopyright(),
-			Namespace:      namespace,
-			Arch:           ctx.Arch.ToAPK(),
-		}); err != nil {
-			return fmt.Errorf("writing SBOMs: %w", err)
+		sbomSpec.Path = filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name)
+		sbomSpec.PackageName = sp.Name
+		sbomSpec.Languages = langs
+		sbomSpec.Subpackages = append(sbomSpec.Subpackages, sp.Name) // Only used for env sbom
+
+		if err := generator.GenerateSBOM(sbomSpec); err != nil {
+			return fmt.Errorf("generating subpackage SBOM: %w", err)
 		}
 	}
 
 	for i := range ctx.Configuration.Pipeline {
 		langs = append(langs, ctx.Configuration.Pipeline[i].SBOM.Language)
 	}
-	if err := generator.GenerateSBOM(&sbom.Spec{
-		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
-		PackageName:    ctx.Configuration.Package.Name,
-		PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
-		Languages:      langs,
-		License:        ctx.Configuration.Package.LicenseExpression(),
-		Copyright:      ctx.Configuration.Package.FullCopyright(),
-		Namespace:      namespace,
-		Arch:           ctx.Arch.ToAPK(),
-	}); err != nil {
-		return fmt.Errorf("writing SBOMs: %w", err)
+
+	sbomSpec.Path = filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name)
+	sbomSpec.PackageName = ctx.Configuration.Package.Name
+	sbomSpec.Languages = langs
+
+	if err := generator.GenerateSBOM(sbomSpec); err != nil {
+		return fmt.Errorf("generating apk SBOM: %w", err)
+	}
+
+	if err := generator.GenerateBuildEnvSBOM(sbomSpec); err != nil {
+		return fmt.Errorf("generating build environment sbom: %w", err)
 	}
 
 	// emit main package

@@ -35,12 +35,14 @@ type pkg struct {
 	Version          string
 	HomePage         string
 	Supplier         string
+	DownloadLocation string
 	Originator       string
 	Copyright        string
 	LicenseDeclared  string
 	LicenseConcluded string
 	Namespace        string
 	Arch             string
+	Purl             string
 	Checksums        map[string]string
 	Relationships    []relationship
 }

@@ -16,12 +16,14 @@ package sbom
 
 import (
 	"fmt"
+	"log"
 	"os"
 )
 
 func NewGenerator() (*Generator, error) {
 	return &Generator{
 		impl:    &defaultGeneratorImplementation{},
+		logger:  log.New(log.Writer(), "melange-sbom: ", log.LstdFlags|log.Lmsgprefix),
 		Options: defaultOptions,
 	}, nil
 }
@@ -44,6 +46,7 @@ type Spec struct {
 	Copyright      string
 	Namespace      string
 	Arch           string
+	logger         *log.Logger
 	GuestDir       string // Path to the apko build environment fs
 	WorkspaceDir   string
 	Subpackages    []string
@@ -52,6 +55,7 @@ type Spec struct {
 
 type Generator struct {
 	Options Options
+	logger  *log.Logger
 	impl    generatorImplementation
 }
 
@@ -89,6 +93,7 @@ func (g *Generator) GenerateBuildEnvSBOM(spec *Spec) error {
 
 // GenerateSBOM runs the main SBOM generation process
 func (g *Generator) GenerateSBOM(spec *Spec) error {
+	spec.logger = g.logger
 	shouldRun, err := g.impl.CheckEnvironment(spec)
 	if err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)

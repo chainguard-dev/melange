@@ -87,7 +87,7 @@ func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, er
 	// Check if directory exists
 	if _, err := os.Stat(dirPath); err != nil {
 		if os.IsNotExist(err) {
-			// log "Working directory not found, probably apk is empty"
+			spec.logger.Print("Warning: Working directory not found, probably apk is empty")
 			return false, nil
 		}
 		return false, fmt.Errorf("checking if workind directory exists: %w", err)
@@ -147,8 +147,6 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 	if err != nil {
 		return fmt.Errorf("building directory tree: %w", err)
 	}
-
-	// logrus.Debugf("Scanning %d files and adding them to the SPDX package", len(fileList))
 
 	dirPackage.FilesAnalyzed = true
 

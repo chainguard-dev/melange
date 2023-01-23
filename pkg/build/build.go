@@ -148,6 +148,7 @@ type Pipeline struct {
 	Label      string             `yaml:"label,omitempty"`
 	If         string             `yaml:"if,omitempty"`
 	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
+	WorkDir    string             `yaml:"working-directory,omitempty"`
 	logger     *log.Logger
 	steps      int
 	SBOM       SBOM `yaml:"sbom,omitempty"`

@@ -203,6 +203,7 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	if err != nil {
 		return err
 	}
+	sp.WorkDir = p.WorkDir
 
 	if err := sp.loadUse(ctx, p.Uses, p.With); err != nil {
 		return err
@@ -227,9 +228,14 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	p.With = mutateWith(ctx, p.With)
 	p.dumpWith()
 
+	workdir := "/home/build"
+	if p.WorkDir != "" {
+		workdir = mutateStringFromMap(p.With, p.WorkDir)
+	}
+
 	fragment := mutateStringFromMap(p.With, p.Runs)
 	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\n%s\nexit 0\n", sys_path, fragment)
+	script := fmt.Sprintf("#!/bin/sh\nset -e\nexport PATH=%s\nmkdir -p '%s'\ncd '%s'\n%s\nexit 0\n", sys_path, workdir, workdir, fragment)
 	command := []string{"/bin/sh", "-c", script}
 	config := ctx.Context.WorkspaceConfig()
 
@@ -327,6 +333,10 @@ func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 	}
 
 	for _, sp := range p.Pipeline {
+		if sp.WorkDir == "" {
+			sp.WorkDir = p.WorkDir
+		}
+
 		ran, err := sp.Run(ctx)
 
 		if err != nil {

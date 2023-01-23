@@ -203,6 +203,7 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	if err != nil {
 		return err
 	}
+	sp.WorkDir = p.WorkDir
 
 	if err := sp.loadUse(ctx, p.Uses, p.With); err != nil {
 		return err
@@ -332,6 +333,10 @@ func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 	}
 
 	for _, sp := range p.Pipeline {
+		if sp.WorkDir == "" {
+			sp.WorkDir = p.WorkDir
+		}
+
 		ran, err := sp.Run(ctx)
 
 		if err != nil {

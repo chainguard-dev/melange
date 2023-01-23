@@ -5,7 +5,7 @@ go 1.18
 require (
 	chainguard.dev/apko v0.6.1-0.20230112190132-a65677fe7e84
 	cloud.google.com/go/storage v1.28.1
-	github.com/docker/docker v20.10.22+incompatible
+	github.com/docker/docker v20.10.23+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/google/go-cmp v0.5.9

@@ -197,6 +197,8 @@ type Configuration struct {
 	Data        []RangeData  `yaml:"data,omitempty"`
 	Secfixes    Secfixes     `yaml:"secfixes,omitempty"`
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
+
+	Vars map[string]string `yaml:"vars,omitempty"`
 }
 
 // TODO: ensure that there's no net effect to secdb!
@@ -306,6 +308,7 @@ type Context struct {
 	foundContinuation  bool
 	StripOriginName    bool
 	EnvFile            string
+	VarsFile           string
 	Runner             container.Runner
 	imgDigest          name.Digest
 	containerConfig    *container.Config
@@ -626,6 +629,15 @@ func WithEnvFile(envFile string) Option {
 	}
 }
 
+// WithVarsFile specifies a variables file to use to populate the build
+// configuration variables block.
+func WithVarsFile(varsFile string) Option {
+	return func(ctx *Context) error {
+		ctx.VarsFile = varsFile
+		return nil
+	}
+}
+
 // WithNamespace takes a string to be used as the namespace in PackageURLs
 // identifying the built apk in the generated SBOM. If no namespace is provided
 // "unknown" will be listed as namespace.
@@ -642,6 +654,8 @@ type configOptions struct {
 	filesystem  fs.FS
 	envFilePath string
 	logger      Logger
+
+	varsFilePath string
 }
 
 // include reconciles all given opts into the receiver variable, such that it is
@@ -679,6 +693,14 @@ func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 func WithLogger(logger Logger) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.logger = logger
+	}
+}
+
+// WithVarsFileForParsing sets the path to the vars file to use if the user wishes to
+// populate the variables block from an external file.
+func WithVarsFileForParsing(path string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.varsFilePath = path
 	}
 }
 
@@ -824,6 +846,25 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	cfg.Environment.Environment["HOME"] = "/home/build"
 	cfg.Environment.Environment["GOPATH"] = "/home/build/.cache/go"
 
+	// If a variables file was defined, merge it into the variables block.
+	if varsFile := options.varsFilePath; varsFile != "" {
+		f, err := os.Open(varsFile)
+		if err != nil {
+			return nil, fmt.Errorf("loading variables file: %w", err)
+		}
+		defer f.Close()
+
+		vars := map[string]string{}
+		err = yaml.NewDecoder(f).Decode(&vars)
+		if err != nil {
+			return nil, fmt.Errorf("loading variables file: %w", err)
+		}
+
+		for k, v := range vars {
+			cfg.Vars[k] = v
+		}
+	}
+
 	return &cfg, nil
 }
 
@@ -833,6 +874,7 @@ func (cfg *Configuration) Load(ctx Context) error {
 		ctx.ConfigFile,
 		WithEnvFileForParsing(ctx.EnvFile),
 		WithLogger(ctx.Logger),
+		WithVarsFileForParsing(ctx.VarsFile),
 	)
 	if err != nil {
 		return err

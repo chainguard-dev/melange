@@ -104,6 +104,11 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", ctx.Subpackage.Name)
 	}
 
+	for k, v := range ctx.Context.Configuration.Vars {
+		nk := fmt.Sprintf("${{vars.%s}}", k)
+		nw[nk] = mutateStringFromMap(nw, v)
+	}
+
 	return nw
 }
 

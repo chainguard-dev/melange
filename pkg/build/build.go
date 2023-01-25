@@ -197,6 +197,8 @@ type Configuration struct {
 	Data        []RangeData  `yaml:"data,omitempty"`
 	Secfixes    Secfixes     `yaml:"secfixes,omitempty"`
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
+
+	Vars map[string]string `yaml:"vars,omitempty"`
 }
 
 // TODO: ensure that there's no net effect to secdb!

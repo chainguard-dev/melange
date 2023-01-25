@@ -861,50 +861,8 @@ func (cfg Configuration) PackageURLs(distro string) []string {
 
 // BuildGuest invokes apko to build the guest environment.
 func (ctx *Context) BuildGuest() error {
-	// Prepare workspace directory
-	if err := os.MkdirAll(ctx.WorkspaceDir, 0755); err != nil {
-		return fmt.Errorf("mkdir -p %s: %w", ctx.WorkspaceDir, err)
-	}
-
-	// Prepare guest directory
-	if err := os.MkdirAll(ctx.GuestDir, 0755); err != nil {
-		return fmt.Errorf("mkdir -p %s: %w", ctx.GuestDir, err)
-	}
-
-	ctx.Logger.Printf("building workspace in '%s' with apko", ctx.GuestDir)
-
-	bc, err := apko_build.New(ctx.GuestDir,
-		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
-		apko_build.WithProot(ctx.UseProot),
-		apko_build.WithArch(ctx.Arch),
-		apko_build.WithExtraKeys(ctx.ExtraKeys),
-		apko_build.WithExtraRepos(ctx.ExtraRepos),
-		apko_build.WithDebugLogging(true),
-		apko_build.WithLocal(true),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to create build context: %w", err)
-	}
-
-	if err := bc.Refresh(); err != nil {
-		return fmt.Errorf("unable to refresh build context: %w", err)
-	}
-
-	bc.Summarize()
-
-	if !ctx.Runner.NeedsImage() {
-		if err := bc.BuildImage(); err != nil {
-			return fmt.Errorf("unable to generate image: %w", err)
-		}
-	} else {
-		if err := ctx.BuildAndPushLocalImage(bc); err != nil {
-			return fmt.Errorf("unable to generate image: %w", err)
-		}
-	}
-
-	ctx.Logger.Printf("successfully built workspace with apko")
-
-	return nil
+	guest := ctx.Runner.Guest()
+	return guest.Build(ctx)
 }
 
 // BuildAndPushLocalImage uses apko to build and push the image to the local

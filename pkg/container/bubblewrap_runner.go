@@ -74,6 +74,12 @@ func (bw *BWRunner) NeedsImage() bool {
 	return false
 }
 
+// Guest returns a Guest implementation for this runner.
+// For Bubblewrap, this is ApkoGuest.
+func (bw *BWRunner) Guest() Guest {
+	return ApkoGuest()
+}
+
 // StartPod starts a pod if necessary.  Not implemented for
 // Bubblewrap runners.
 func (bw *BWRunner) StartPod(cfg *Config) error {

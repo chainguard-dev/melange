@@ -186,6 +186,12 @@ func (dk *DKRunner) NeedsImage() bool {
 	return true
 }
 
+// Guest returns a Guest implementation for this runner.
+// For Docker, this is ApkoGuest.
+func (dk *DKRunner) Guest() Guest {
+	return ApkoGuest()
+}
+
 // waitForCommand waits for a command to complete in the pod.
 func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp types.HijackedResponse, taskIDResp types.IDResponse) error {
 	stdoutPipeR, stdoutPipeW, err := os.Pipe()

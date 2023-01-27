@@ -2,7 +2,8 @@
 
 Build apk packages using declarative pipelines.
 
-Commonly used to provide custom packages for container images built with [apko][apko].
+Commonly used to provide custom packages for container images built with [apko][apko]. The majority
+of apks are built for use with either the [Wolfi](https://github.com/wolfi-dev) or [Alpine Linux](https://www.alpinelinux.org/) ecosystems.
 
 Key features:
 
@@ -120,7 +121,7 @@ docker run --privileged --rm -v "${PWD}":/work \
 
 This will create a `packages` folder, with an entry for each architecture supported by the package. If you only want to build for the current architecture, you can add `--arch $(uname -m)` to the build command. Inside the architecture directory you should find apk files for each package built in the pipeline.
 
-If you want to sign your APKs, create a signing key with the `melange keygen` command:
+If you want to sign your apks, create a signing key with the `melange keygen` command:
 
 ```shell
 melange keygen
@@ -169,7 +170,7 @@ pipeline:
 
 ## Usage with apko
 
-To use a melange built APK in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage.
+To use a melange built apk in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage.
 An example of this approach can be seen in the [nginx-image-demo repo](https://github.com/chainguard-dev/nginx-image-demo/).
 
 ### Coming soon: Keyless signatures

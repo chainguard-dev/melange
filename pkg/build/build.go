@@ -291,6 +291,7 @@ type Context struct {
 	SigningKey         string
 	SigningPassphrase  string
 	Namespace          string
+	BuildEnvSBOM       bool
 	GenerateIndex      bool
 	UseProot           bool
 	EmptyWorkspace     bool
@@ -644,6 +645,14 @@ func WithVarsFile(varsFile string) Option {
 func WithNamespace(namespace string) Option {
 	return func(ctx *Context) error {
 		ctx.Namespace = namespace
+		return nil
+	}
+}
+
+// WithBuildEnvSBOM sets whether or not pa build env SBOM should be generated.
+func WithBuildEnvSBOM(buildEnvSBOM bool) Option {
+	return func(ctx *Context) error {
+		ctx.BuildEnvSBOM = buildEnvSBOM
 		return nil
 	}
 }
@@ -1361,8 +1370,10 @@ func (ctx *Context) BuildPackage() error {
 		return fmt.Errorf("generating apk SBOM: %w", err)
 	}
 
-	if err := generator.GenerateBuildEnvSBOM(sbomSpec); err != nil {
-		return fmt.Errorf("generating build environment sbom: %w", err)
+	if ctx.BuildEnvSBOM {
+		if err := generator.GenerateBuildEnvSBOM(sbomSpec); err != nil {
+			return fmt.Errorf("generating build environment sbom: %w", err)
+		}
 	}
 
 	// emit main package

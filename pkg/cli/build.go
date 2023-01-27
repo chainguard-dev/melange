@@ -52,6 +52,7 @@ func Build() *cobra.Command {
 	var envFile string
 	var varsFile string
 	var purlNamespace string
+	var buildEnvSBOM bool
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -82,6 +83,7 @@ func Build() *cobra.Command {
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
+				build.WithBuildEnvSBOM(false),
 			}
 
 			if len(args) > 0 {
@@ -127,6 +129,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
+	cmd.Flags().BoolVar(&buildEnvSBOM, "build-env-sbom", false, "whether to generate a build env SBOM")
 
 	return cmd
 }

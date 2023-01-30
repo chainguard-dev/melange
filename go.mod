@@ -9,7 +9,7 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-containerregistry v0.12.1
+	github.com/google/go-containerregistry v0.13.0
 	github.com/joho/godotenv v1.4.0
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/oec/goparsify v0.2.1

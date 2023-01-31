@@ -1388,9 +1388,19 @@ func (ctx *Context) BuildPackage() error {
 		packageDir := filepath.Join(pctx.Context.OutDir, pctx.Context.Arch.ToAPK())
 		ctx.Logger.Printf("generating apk index from packages in %s", packageDir)
 
+		var apkFiles []string
+		pkgFileName := fmt.Sprintf("%s-%s-r%d.apk", ctx.Configuration.Package.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch)
+		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
+
+		for _, subpkg := range ctx.Configuration.Subpackages {
+			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch)
+			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
+		}
+
 		opts := []index.Option{
-			index.WithPackageDir(packageDir),
+			index.WithPackageFiles(apkFiles),
 			index.WithSigningKey(ctx.SigningKey),
+			index.WithMergeIndexFileFlag(true),
 			index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),
 		}
 

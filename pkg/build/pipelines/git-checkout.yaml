@@ -27,7 +27,7 @@ inputs:
   tag:
     description: |
       The tag to check out.
-  
+
   expected-commit:
     description: |
       The expected commit hash
@@ -39,7 +39,7 @@ pipeline:
       fi
 
       [ -n '${{inputs.branch}}' ] && clone_target='--branch ${{inputs.branch}}'
-      [ -n '${{inputs.tag}}' ] && clone_target='tags/${{inputs.tag}}'
+      [ -n '${{inputs.tag}}' ] && clone_target='--branch ${{inputs.tag}}'
 
       git clone $clone_target --depth ${{inputs.depth}} ${{inputs.repository}} ${{inputs.destination}}
 
@@ -55,5 +55,4 @@ pipeline:
           echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got $remote_commit"
           exit 1
         fi
-
       fi

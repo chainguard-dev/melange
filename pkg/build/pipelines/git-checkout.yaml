@@ -24,7 +24,36 @@ inputs:
     description: |
       The branch to check out, otherwise HEAD is checked out.
 
+  tag:
+    description: |
+      The tag to check out.
+  
+  expected-commit:
+    description: |
+      The expected commit hash
+
 pipeline:
   - runs: |
-      [ -n '${{inputs.branch}}' ] && branch='--branch ${{inputs.branch}}'
-      git clone $branch --depth ${{inputs.depth}} ${{inputs.repository}} ${{inputs.destination}}
+      if [ -z "${{inputs.branch}}" ] && [ -z "${{inputs.tag}}" ]; then
+        echo "Warning (git-checkout): you have not specified a branch or tag."
+      fi
+
+      [ -n '${{inputs.branch}}' ] && clone_target='--branch ${{inputs.branch}}'
+      [ -n '${{inputs.tag}}' ] && clone_target='tags/${{inputs.tag}}'
+
+      git clone $clone_target --depth ${{inputs.depth}} ${{inputs.repository}} ${{inputs.destination}}
+
+      cd ${{inputs.destination}}
+
+      if [ -z "${{inputs.expected-commit}}" ]; then
+        echo "Warning (git-checkout): no expected-commit"
+      else
+        [ -n '${{inputs.branch}}' ] && remote_commit=$(git rev-list -1 origin/"${{inputs.branch}}")
+        [ -n '${{inputs.tag}}' ] && remote_commit=$(git rev-list -1 "${{inputs.tag}}")
+
+        if [[ '${{inputs.expected-commit}}' != "$remote_commit" ]]; then
+          echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got $remote_commit"
+          exit 1
+        fi
+
+      fi

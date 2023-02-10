@@ -10,7 +10,7 @@ require (
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.13.0
-	github.com/joho/godotenv v1.4.0
+	github.com/joho/godotenv v1.5.1
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/oec/goparsify v0.2.1
 	github.com/openvex/go-vex v0.1.1-0.20230117203711-211394f7f8dd

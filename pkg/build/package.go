@@ -295,6 +295,26 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 	return nil
 }
 
+// findInterpreter looks for the PT_INTERP header and extracts the interpreter so that it
+// may be used as a dependency.
+func findInterpreter(bin *elf.File) (string, error) {
+	for _, prog := range bin.Progs {
+		if prog.Type != elf.PT_INTERP {
+			continue
+		}
+
+		reader := prog.Open()
+		interpBuf, err := io.ReadAll(reader)
+		if err != nil {
+			return "", err
+		}
+
+		return string(interpBuf), nil
+	}
+
+	return "", nil
+}
+
 func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
@@ -327,6 +347,15 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				return nil
 			}
 			defer ef.Close()
+
+			interp, err := findInterpreter(ef)
+			if err != nil {
+				return err
+			}
+			if interp != "" {
+				pc.Logger.Printf("interpreter for %s => %s", basename, interp)
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", filepath.Base(interp)))
+			}
 
 			libs, err := ef.ImportedLibraries()
 			if err != nil {

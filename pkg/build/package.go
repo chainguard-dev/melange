@@ -354,7 +354,12 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 			}
 			if interp != "" {
 				pc.Logger.Printf("interpreter for %s => %s", basename, interp)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", filepath.Base(interp)))
+
+				// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
+				// the dependency.
+				interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
+				interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
+				generated.Runtime = append(generated.Runtime, interpName)
 			}
 
 			libs, err := ef.ImportedLibraries()

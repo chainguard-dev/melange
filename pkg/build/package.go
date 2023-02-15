@@ -309,6 +309,7 @@ func findInterpreter(bin *elf.File) (string, error) {
 			return "", err
 		}
 
+		interpBuf = bytes.Trim(interpBuf, "\x00")
 		return string(interpBuf), nil
 	}
 

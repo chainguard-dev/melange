@@ -1,0 +1,22 @@
+name: Build a ruby gem
+
+needs:
+  packages:
+    - busybox
+    - ca-certificates-bundle
+
+inputs:
+  gem:
+    description: |
+      Gem name
+    required: true
+
+pipeline:
+  - runs: |
+      if ! [ -x "$(command -v ruby)" ]; then
+        echo 'Error: Ruby is not installed.'
+        exit 1
+      fi
+  - runs: |
+      
+      gem build ${{inputs.gem}}.gemspec

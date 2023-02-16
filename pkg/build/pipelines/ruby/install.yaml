@@ -1,0 +1,40 @@
+name: Install a ruby gem
+
+needs:
+  packages:
+    - busybox
+    - ca-certificates-bundle
+
+inputs:
+  gem:
+    description: |
+      Gem name
+    required: true
+
+  version:
+    description: |
+      Gem version to install. This can be a version tag (v1.0.0)
+    required: true
+
+pipeline:
+  - runs: |
+      if ! [ -x "$(command -v ruby)" ]; then
+        echo 'Error: Ruby is not installed.'
+        exit 1
+      fi
+  - runs: |
+      TARGET_DIR_BIN="${{targets.destdir}}/usr/bin"
+      TARGET_DIR_INSTALL="${{targets.destdir}}$(ruby -e 'puts Gem.default_dir')/"
+
+      mkdir -p "${TARGET_DIR_BIN}"
+      mkdir -p "${TARGET_DIR_INSTALL}"
+      
+      gem install \
+      --install-dir ${TARGET_DIR_INSTALL}  \
+      --bindir ${TARGET_DIR_BIN} \
+      --no-document \
+      --ignore-dependencies \
+      --local \
+      --verbose \
+      -v ${{inputs.version}} \
+      ${{inputs.gem}}-${{inputs.version}}.gem

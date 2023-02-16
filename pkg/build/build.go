@@ -317,6 +317,7 @@ type Context struct {
 type Dependencies struct {
 	Runtime  []string `yaml:"runtime,omitempty"`
 	Provides []string `yaml:"provides,omitempty"`
+	Replaces []string `yaml:"replaces,omitempty"`
 
 	ProviderPriority int `yaml:"provider-priority,omitempty"`
 }

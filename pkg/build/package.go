@@ -123,6 +123,9 @@ depend = {{ $dep }}
 {{- range $dep := .Dependencies.Provides }}
 provides = {{ $dep }}
 {{- end }}
+{{- range $dep := .Dependencies.Replaces }}
+replaces = {{ $dep }}
+{{- end }}
 {{- if .Dependencies.ProviderPriority }}
 provider_priority = {{ .Dependencies.ProviderPriority }}
 {{- end }}

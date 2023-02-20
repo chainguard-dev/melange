@@ -1,0 +1,32 @@
+package:
+  name: aws-sdk-core
+  version: 3.168.4
+  epoch: 0
+  description: "Provides API clients for AWS. This gem is part of the official AWS SDK for Ruby."
+  target-architecture:
+    - all
+  copyright:
+    - paths:
+        - "*"
+      license: Apache-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - wolfi-base
+      - build-base
+      - ruby-3.2
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://rubygems.org/downloads/${{package.name}}-${{package.version}}.gem
+      expected-sha256: 2c9bf6cb0c19f9d23fe2a9d5eca15381b0b904d19f2dd7801d094528f8632a8c
+  - uses: ruby/install
+    with:
+      gem: ${{package.name}}
+      version: ${{package.version}}

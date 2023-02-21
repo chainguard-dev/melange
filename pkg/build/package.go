@@ -336,6 +336,44 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 		}
 
 		mode := fi.Mode()
+
+		// If it is a symlink, lets check and see if it is a library SONAME.
+		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			if !strings.Contains(path, ".so") {
+				return nil
+			}
+
+			realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
+			if err != nil {
+				return nil
+			}
+
+			parts := strings.Split(realPath, ".so.")
+			if len(parts) < 2 {
+				return nil
+			}
+
+			verParts := strings.Split(parts[1], ".")
+			switch len(verParts) {
+			// Either a GNU-style symlink which is pointing at the SONAME rather than
+			// the target, or a Solaris-style symlink.  In either case, the symlink
+			// name is the SONAME.
+			case 1, 2:
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", realPath))
+
+			// A GNU-style symlink, most likely created by GNU libtool.  The SONAME
+			// uses the first version token only.
+			case 3:
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s.so.%s", parts[0], verParts[0]))
+
+			default:
+				pc.Logger.Printf("WARNING: unhandled symlink case for %s", realPath)
+			}
+
+			return nil
+		}
+
+		// If it is not a regular file, we are finished processing it.
 		if !mode.IsRegular() {
 			return nil
 		}

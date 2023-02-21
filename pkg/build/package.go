@@ -348,6 +348,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				return nil
 			}
 
+			realPath = filepath.Base(realPath)
 			parts := strings.Split(realPath, ".so.")
 			if len(parts) < 2 {
 				return nil

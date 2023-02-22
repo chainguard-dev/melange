@@ -199,6 +199,8 @@ type Configuration struct {
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
 
 	Vars map[string]string `yaml:"vars,omitempty"`
+
+	Options map[string]BuildOption `yaml:"options,omitempty"`
 }
 
 // TODO: ensure that there's no net effect to secdb!

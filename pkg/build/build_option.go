@@ -37,3 +37,8 @@ type BuildOption struct {
 	Vars        map[string]string `yaml:"vars,omitempty"`
 	Environment EnvironmentOption `yaml:"environment,omitempty"`
 }
+
+// Apply applies a patch described by a BuildOption to a package build.
+func (bo BuildOption) Apply(ctx *Context) error {
+	return nil
+}

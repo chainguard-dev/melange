@@ -421,6 +421,17 @@ func New(opts ...Option) (*Context, error) {
 	}
 	ctx.Runner = runner
 
+	// Apply build options to the context.
+	for _, optName := range ctx.EnabledBuildOptions {
+		ctx.Logger.Printf("applying configuration patches for build option %s", optName)
+
+		if opt, ok := ctx.Configuration.Options[optName]; ok {
+			if err := opt.Apply(&ctx); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return &ctx, nil
 }
 

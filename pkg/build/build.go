@@ -314,6 +314,8 @@ type Context struct {
 	Runner             container.Runner
 	imgDigest          name.Digest
 	containerConfig    *container.Config
+
+	EnabledBuildOptions []string
 }
 
 type Dependencies struct {
@@ -647,6 +649,17 @@ func WithVarsFile(varsFile string) Option {
 func WithNamespace(namespace string) Option {
 	return func(ctx *Context) error {
 		ctx.Namespace = namespace
+		return nil
+	}
+}
+
+// WithEnabledBuildOptions takes an array of strings representing enabled build
+// options.  These options are referenced in the options block of the Configuration,
+// and represent patches to the configured build process which are optionally
+// applied.
+func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
+	return func(ctx *Context) error {
+		ctx.EnabledBuildOptions = enabledBuildOptions
 		return nil
 	}
 }

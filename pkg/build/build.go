@@ -1460,6 +1460,16 @@ func (ctx *Context) BuildPackage() error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range ctx.Configuration.Subpackages {
+			pctx.Subpackage = &subpkg
+
+			result, err := subpkg.ShouldRun(&pctx)
+			if err != nil {
+				return err
+			}
+			if !result {
+				continue
+			}
+
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
 		}

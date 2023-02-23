@@ -753,6 +753,22 @@ func detectCommit(dirPath string, logger Logger) string {
 	return commit
 }
 
+// buildConfigMap builds a map used to prepare a replacer for variable substitution.
+func buildConfigMap(cfg *Configuration) map[string]string {
+	out := map[string]string{
+		"${{package.name}}":        cfg.Package.Name,
+		"${{package.version}}":     cfg.Package.Version,
+		"${{package.description}}": cfg.Package.Description,
+	}
+
+	for k, v := range cfg.Vars {
+		nk := fmt.Sprintf("${{vars.%s}}", k)
+		out[nk] = v
+	}
+
+	return out
+}
+
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
 func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
@@ -893,6 +909,25 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 			cfg.Vars[k] = v
 		}
 	}
+
+	// Mutate config properties with substitutions.
+	configMap := buildConfigMap(&cfg)
+	replacer := replacerFromMap(configMap)
+
+	cfg.Package.Name = replacer.Replace(cfg.Package.Name)
+	cfg.Package.Version = replacer.Replace(cfg.Package.Version)
+	cfg.Package.Description = replacer.Replace(cfg.Package.Description)
+
+	subpackages = []Subpackage{}
+
+	for _, sp := range cfg.Subpackages {
+		sp.Name = replacer.Replace(sp.Name)
+		sp.Description = replacer.Replace(sp.Description)
+
+		subpackages = append(subpackages, sp)
+	}
+
+	cfg.Subpackages = subpackages
 
 	return &cfg, nil
 }
@@ -1283,7 +1318,7 @@ func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
 		return true, nil
 	}
 
-	lookupWith := func (key string) (string, error) {
+	lookupWith := func(key string) (string, error) {
 		mutated := mutateWith(pctx, map[string]string{})
 		nk := fmt.Sprintf("${{%s}}", key)
 		return mutated[nk], nil

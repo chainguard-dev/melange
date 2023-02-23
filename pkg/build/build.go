@@ -1278,6 +1278,25 @@ func (ctx *Context) PopulateWorkspace() error {
 	})
 }
 
+func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
+	if sp.If == "" {
+		return true, nil
+	}
+
+	lookupWith := func (key string) (string, error) {
+		mutated := mutateWith(pctx, map[string]string{})
+		nk := fmt.Sprintf("${{%s}}", key)
+		return mutated[nk], nil
+	}
+
+	result, err := cond.Evaluate(sp.If, lookupWith)
+	if err != nil {
+		return false, fmt.Errorf("evaluating subpackage if-conditional: %w", err)
+	}
+
+	return result, nil
+}
+
 func (ctx *Context) BuildPackage() error {
 	ctx.Summarize()
 
@@ -1350,21 +1369,12 @@ func (ctx *Context) BuildPackage() error {
 		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 		pctx.Subpackage = &sp
 
-		if sp.If != "" {
-			lookupWith := func (key string) (string, error) {
-				mutated := mutateWith(&pctx, map[string]string{})
-				nk := fmt.Sprintf("${{%s}}", key)
-				return mutated[nk], nil
-			}
-
-			result, err := cond.Evaluate(sp.If, lookupWith)
-			if err != nil {
-				return fmt.Errorf("evaluating subpackage if-conditional: %w", err)
-			}
-
-			if !result {
-				continue
-			}
+		result, err := sp.ShouldRun(&pctx)
+		if err != nil {
+			return err
+		}
+		if !result {
+			continue
 		}
 
 		langs := []string{}
@@ -1410,6 +1420,16 @@ func (ctx *Context) BuildPackage() error {
 
 	// emit subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
+		pctx.Subpackage = &sp
+
+		result, err := sp.ShouldRun(&pctx)
+		if err != nil {
+			return err
+		}
+		if !result {
+			continue
+		}
+
 		if err := sp.Emit(&pctx); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}

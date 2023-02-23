@@ -44,6 +44,7 @@ import (
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/sbom"
@@ -155,6 +156,7 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
+	If           string        `yaml:"if,omitempty"`
 	Range        string        `yaml:"range,omitempty"`
 	Name         string        `yaml:"name"`
 	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
@@ -199,6 +201,8 @@ type Configuration struct {
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
 
 	Vars map[string]string `yaml:"vars,omitempty"`
+
+	Options map[string]BuildOption `yaml:"options,omitempty"`
 }
 
 // TODO: ensure that there's no net effect to secdb!
@@ -312,6 +316,8 @@ type Context struct {
 	Runner             container.Runner
 	imgDigest          name.Digest
 	containerConfig    *container.Config
+
+	EnabledBuildOptions []string
 }
 
 type Dependencies struct {
@@ -416,6 +422,17 @@ func New(opts ...Option) (*Context, error) {
 		return nil, err
 	}
 	ctx.Runner = runner
+
+	// Apply build options to the context.
+	for _, optName := range ctx.EnabledBuildOptions {
+		ctx.Logger.Printf("applying configuration patches for build option %s", optName)
+
+		if opt, ok := ctx.Configuration.Options[optName]; ok {
+			if err := opt.Apply(&ctx); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	return &ctx, nil
 }
@@ -645,6 +662,17 @@ func WithVarsFile(varsFile string) Option {
 func WithNamespace(namespace string) Option {
 	return func(ctx *Context) error {
 		ctx.Namespace = namespace
+		return nil
+	}
+}
+
+// WithEnabledBuildOptions takes an array of strings representing enabled build
+// options.  These options are referenced in the options block of the Configuration,
+// and represent patches to the configured build process which are optionally
+// applied.
+func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
+	return func(ctx *Context) error {
+		ctx.EnabledBuildOptions = enabledBuildOptions
 		return nil
 	}
 }
@@ -1250,6 +1278,25 @@ func (ctx *Context) PopulateWorkspace() error {
 	})
 }
 
+func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
+	if sp.If == "" {
+		return true, nil
+	}
+
+	lookupWith := func (key string) (string, error) {
+		mutated := mutateWith(pctx, map[string]string{})
+		nk := fmt.Sprintf("${{%s}}", key)
+		return mutated[nk], nil
+	}
+
+	result, err := cond.Evaluate(sp.If, lookupWith)
+	if err != nil {
+		return false, fmt.Errorf("evaluating subpackage if-conditional: %w", err)
+	}
+
+	return result, nil
+}
+
 func (ctx *Context) BuildPackage() error {
 	ctx.Summarize()
 
@@ -1321,6 +1368,15 @@ func (ctx *Context) BuildPackage() error {
 	for _, sp := range ctx.Configuration.Subpackages {
 		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 		pctx.Subpackage = &sp
+
+		result, err := sp.ShouldRun(&pctx)
+		if err != nil {
+			return err
+		}
+		if !result {
+			continue
+		}
+
 		langs := []string{}
 
 		for _, p := range sp.Pipeline {
@@ -1364,6 +1420,16 @@ func (ctx *Context) BuildPackage() error {
 
 	// emit subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
+		pctx.Subpackage = &sp
+
+		result, err := sp.ShouldRun(&pctx)
+		if err != nil {
+			return err
+		}
+		if !result {
+			continue
+		}
+
 		if err := sp.Emit(&pctx); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
@@ -1394,6 +1460,16 @@ func (ctx *Context) BuildPackage() error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range ctx.Configuration.Subpackages {
+			pctx.Subpackage = &subpkg
+
+			result, err := subpkg.ShouldRun(&pctx)
+			if err != nil {
+				return err
+			}
+			if !result {
+				continue
+			}
+
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
 		}

@@ -44,6 +44,7 @@ import (
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/sbom"
@@ -155,6 +156,7 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
+	If           string        `yaml:"if,omitempty"`
 	Range        string        `yaml:"range,omitempty"`
 	Name         string        `yaml:"name"`
 	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
@@ -1347,6 +1349,24 @@ func (ctx *Context) BuildPackage() error {
 	for _, sp := range ctx.Configuration.Subpackages {
 		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 		pctx.Subpackage = &sp
+
+		if sp.If != "" {
+			lookupWith := func (key string) (string, error) {
+				mutated := mutateWith(&pctx, map[string]string{})
+				nk := fmt.Sprintf("${{%s}}", key)
+				return mutated[nk], nil
+			}
+
+			result, err := cond.Evaluate(sp.If, lookupWith)
+			if err != nil {
+				return fmt.Errorf("evaluating subpackage if-conditional: %w", err)
+			}
+
+			if !result {
+				continue
+			}
+		}
+
 		langs := []string{}
 
 		for _, p := range sp.Pipeline {

@@ -109,6 +109,16 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 		nw[nk] = mutateStringFromMap(nw, v)
 	}
 
+	for k, _ := range ctx.Context.Configuration.Options {
+		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
+		nw[nk] = "false"
+	}
+
+	for _, opt := range ctx.Context.EnabledBuildOptions {
+		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
+		nw[nk] = "true"
+	}
+
 	return nw
 }
 

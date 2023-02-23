@@ -51,9 +51,7 @@ func (bo BuildOption) Apply(ctx *Context) error {
 
 	// Patch the build environment configuration.
 	lo := bo.Environment.Contents.Packages
-	for _, pkg := range lo.Add {
-		ctx.Configuration.Environment.Contents.Packages = append(ctx.Configuration.Environment.Contents.Packages, pkg)
-	}
+	ctx.Configuration.Environment.Contents.Packages = append(ctx.Configuration.Environment.Contents.Packages, lo.Add...)
 
 	for _, pkg := range lo.Remove {
 		pkgList := ctx.Configuration.Environment.Contents.Packages

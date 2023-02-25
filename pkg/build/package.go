@@ -319,6 +319,37 @@ func findInterpreter(bin *elf.File) (string, error) {
 	return "", nil
 }
 
+// dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
+// directories.
+func (pc *PackageContext) dereferenceCrossPackageSymlink(path string) (string, error) {
+	libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+	targetPackageNames := []string{pc.PackageName, pc.Context.Configuration.Package.Name}
+	realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
+	if err != nil {
+		return "", err
+	}
+
+	realPath = filepath.Base(realPath)
+
+	for _, subPkg := range pc.Context.Configuration.Subpackages {
+		targetPackageNames = append(targetPackageNames, subPkg.Name)
+	}
+
+	for _, pkgName := range targetPackageNames {
+		basePath := filepath.Join(pc.Context.WorkspaceDir, "melange-out", pkgName)
+
+		for _, libDir := range libDirs {
+			testPath := filepath.Join(basePath, libDir, realPath)
+
+			if _, err := os.Stat(testPath); err == nil {
+				return testPath, nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
 func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
@@ -343,32 +374,37 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				return nil
 			}
 
-			realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
+			realPath, err := pc.dereferenceCrossPackageSymlink(path)
 			if err != nil {
 				return nil
 			}
 
-			realPath = filepath.Base(realPath)
-			parts := strings.Split(realPath, ".so.")
-			if len(parts) < 2 {
-				return nil
-			}
+			if realPath != "" {
+				ef, err := elf.Open(realPath)
+				if err != nil {
+					return nil
+				}
+				defer ef.Close()
 
-			verParts := strings.Split(parts[1], ".")
-			switch len(verParts) {
-			// Either a GNU-style symlink which is pointing at the SONAME rather than
-			// the target, or a Solaris-style symlink.  In either case, the symlink
-			// name is the SONAME.
-			case 1, 2:
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", realPath))
+				sonames, err := ef.DynString(elf.DT_SONAME)
+				// most likely SONAME is not set on this object
+				if err != nil {
+					pc.Logger.Printf("WARNING: library %s lacks SONAME", path)
+					return nil
+				}
 
-			// A GNU-style symlink, most likely created by GNU libtool.  The SONAME
-			// uses the first version token only.
-			case 3:
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s.so.%s", parts[0], verParts[0]))
+				for _, soname := range sonames {
+					parts := strings.Split(soname, ".so.")
 
-			default:
-				pc.Logger.Printf("WARNING: unhandled symlink case for %s", realPath)
+					var libver string
+					if len(parts) > 1 {
+						libver = parts[1]
+					} else {
+						libver = "0"
+					}
+
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s=%s", soname, libver))
+				}
 			}
 
 			return nil

@@ -165,6 +165,13 @@ sign-image: ko ## Sign images built using ko
 	cosign sign $(DIGEST)
 
 ##################
+# docs
+##################
+.PHONY: docs
+docs:
+	go run docs/main.go --out docs/md
+
+##################
 # help
 ##################
 

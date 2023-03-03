@@ -32,7 +32,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apkofs "chainguard.dev/apko/pkg/fs"
+	apkofs "chainguard.dev/apko/pkg/vfs"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
@@ -982,7 +982,7 @@ func (ctx *Context) BuildGuest() error {
 
 	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
-		apko_build.WithProot(ctx.UseProot),
+		//apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
@@ -1000,7 +1000,7 @@ func (ctx *Context) BuildGuest() error {
 	bc.Summarize()
 
 	if !ctx.Runner.NeedsImage() {
-		if err := bc.BuildImage(); err != nil {
+		if _, err := bc.BuildImage(); err != nil {
 			return fmt.Errorf("unable to generate image: %w", err)
 		}
 	} else {
@@ -1222,7 +1222,10 @@ func (ctx *Context) PopulateCache() error {
 		defer os.RemoveAll(tmp)
 		ctx.Logger.Printf("cache bucket copied to %s", tmp)
 
-		fsys := apkofs.DirFS(tmp)
+		fsys, err := apkofs.DirFS(tmp)
+		if err != nil {
+			return err
+		}
 
 		// mkdir /var/cache/melange
 		if err := os.MkdirAll(ctx.CacheDir, 0o755); err != nil {
@@ -1282,7 +1285,10 @@ func (ctx *Context) PopulateWorkspace() error {
 
 	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
 
-	fsys := apkofs.DirFS(ctx.SourceDir)
+	fsys, err := apkofs.DirFS(ctx.SourceDir)
+	if err != nil {
+		return err
+	}
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

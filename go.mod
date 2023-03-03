@@ -3,13 +3,13 @@ module chainguard.dev/melange
 go 1.18
 
 require (
-	chainguard.dev/apko v0.6.1-0.20230112190132-a65677fe7e84
+	chainguard.dev/apko v0.7.1
 	cloud.google.com/go/storage v1.29.0
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-containerregistry v0.13.0
+	github.com/google/go-containerregistry v0.13.1-0.20230203223142-b3c23b4c3f28
 	github.com/joho/godotenv v1.5.1
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/oec/goparsify v0.2.1
@@ -31,11 +31,11 @@ require (
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.8.0 // indirect
-	github.com/Azure/azure-sdk-for-go v67.2.0+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.28 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.21 // indirect
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11 // indirect
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.6 // indirect
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
@@ -48,8 +48,8 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/aws/aws-sdk-go-v2 v1.17.3 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.18.7 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.7 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.18.8 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.8 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.21 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.27 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.21 // indirect
@@ -57,11 +57,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.17.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.13.22 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.21 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.11.28 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.12.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.18.0 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221221165957-55f4180e6214 // indirect
+	github.com/blang/vfs v1.0.0 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396 // indirect
 	github.com/cloudflare/circl v1.2.0 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
@@ -75,7 +76,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dominodatalab/os-release v0.0.0-20190522011736-bcdb4a3e3c2f // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
@@ -118,18 +118,15 @@ require (
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
-	github.com/prometheus/common v0.39.0 // indirect
-	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/sigstore/cosign v1.13.1 // indirect
+	github.com/sigstore/cosign/v2 v2.0.0 // indirect
 	github.com/sigstore/rekor v1.0.1 // indirect
-	github.com/sigstore/sigstore v1.5.0 // indirect
+	github.com/sigstore/sigstore v1.5.1 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/theupdateframework/go-tuf v0.5.2-0.20220930112810-3890c1e7ace4 // indirect
+	github.com/theupdateframework/go-tuf v0.5.2 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
@@ -137,15 +134,14 @@ require (
 	go.mongodb.org/mongo-driver v1.11.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/build v0.0.0-20220928220451-9294235e16f5 // indirect
-	golang.org/x/crypto v0.4.0 // indirect
+	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.5.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.4.0 // indirect
+	golang.org/x/tools v0.5.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230209215440-0dfe4f8abfcc // indirect

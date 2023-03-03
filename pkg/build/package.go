@@ -32,8 +32,8 @@ import (
 	"strings"
 	"text/template"
 
-	apkofs "chainguard.dev/apko/pkg/fs"
 	"chainguard.dev/apko/pkg/tarball"
+	apkofs "chainguard.dev/apko/pkg/vfs"
 	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
 )
@@ -267,7 +267,10 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 
 	pc.Logger.Printf("scanning for commands...")
 
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	fsys, err := apkofs.DirFS(pc.WorkspaceSubdir())
+	if err != nil {
+		return err
+	}
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -355,7 +358,10 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 
 	depends := map[string][]string{}
 
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	fsys, err := apkofs.DirFS(pc.WorkspaceSubdir())
+	if err != nil {
+		return err
+	}
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -644,7 +650,10 @@ func (pc *PackageContext) EmitPackage() error {
 	pc.Logger.Printf("generating package %s", pc.Identity())
 
 	// filesystem for the data package
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	fsys, err := apkofs.DirFS(pc.WorkspaceSubdir())
+	if err != nil {
+		return err
+	}
 
 	// generate so:/cmd: virtuals for the filesystem
 	if err := pc.GenerateDependencies(); err != nil {

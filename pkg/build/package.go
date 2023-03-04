@@ -520,6 +520,28 @@ func (dep *Dependencies) Summarize(logger *log.Logger) {
 	}
 }
 
+// removeSelfProvidedDeps removes dependencies which are provided by the package itself.
+func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
+	providedDepsMap := map[string]bool{}
+
+	for _, versionedDep := range providedDeps {
+		dep := strings.Split(versionedDep, "=")[0]
+		providedDepsMap[dep] = true
+	}
+
+	newRuntimeDeps := []string{}
+	for _, dep := range runtimeDeps {
+		_, ok := providedDepsMap[dep]
+		if ok {
+			continue
+		}
+
+		newRuntimeDeps = append(newRuntimeDeps, dep)
+	}
+
+	return newRuntimeDeps
+}
+
 func (pc *PackageContext) GenerateDependencies() error {
 	generated := Dependencies{}
 	generators := []DependencyGenerator{
@@ -538,6 +560,8 @@ func (pc *PackageContext) GenerateDependencies() error {
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
 	pc.Dependencies.Provides = dedup(newprovides)
+
+	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 
 	pc.Dependencies.Summarize(pc.Logger)
 

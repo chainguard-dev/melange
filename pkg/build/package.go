@@ -394,16 +394,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				}
 
 				for _, soname := range sonames {
-					parts := strings.Split(soname, ".so.")
-
-					var libver string
-					if len(parts) > 1 {
-						libver = parts[1]
-					} else {
-						libver = "0"
-					}
-
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
 				}
 			}
 

@@ -77,7 +77,7 @@ type Package struct {
 	Description        string        `yaml:"description,omitempty"`
 	URL                string        `yaml:"url,omitempty"`
 	Commit             string        `yaml:"commit,omitempty"`
-	TargetArchitecture []string      `yaml:"target-architecture"`
+	TargetArchitecture []string      `yaml:"target-architecture,omitempty"`
 	Copyright          []Copyright   `yaml:"copyright,omitempty"`
 	Dependencies       Dependencies  `yaml:"dependencies,omitempty"`
 	Options            PackageOption `yaml:"options,omitempty"`
@@ -99,8 +99,8 @@ func (p Package) PackageURL(distro string) string {
 }
 
 type Copyright struct {
-	Paths       []string `yaml:"paths"`
-	Attestation string   `yaml:"attestation"`
+	Paths       []string `yaml:"paths,omitempty"`
+	Attestation string   `yaml:"attestation,omitempty"`
 	License     string   `yaml:"license"`
 }
 

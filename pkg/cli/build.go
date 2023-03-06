@@ -38,7 +38,6 @@ func Build() *cobra.Command {
 	var guestDir string
 	var signingKey string
 	var generateIndex bool
-	var useProot bool
 	var emptyWorkspace bool
 	var stripOriginName bool
 	var outDir string
@@ -70,7 +69,6 @@ func Build() *cobra.Command {
 				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
-				build.WithUseProot(useProot),
 				build.WithEmptyWorkspace(emptyWorkspace),
 				build.WithOutDir(outDir),
 				build.WithExtraKeys(extraKeys),
@@ -117,7 +115,6 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
-	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")

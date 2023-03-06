@@ -296,7 +296,6 @@ type Context struct {
 	SigningPassphrase  string
 	Namespace          string
 	GenerateIndex      bool
-	UseProot           bool
 	EmptyWorkspace     bool
 	OutDir             string
 	Logger             *log.Logger
@@ -545,14 +544,6 @@ func WithSigningKey(signingKey string) Option {
 func WithGenerateIndex(generateIndex bool) Option {
 	return func(ctx *Context) error {
 		ctx.GenerateIndex = generateIndex
-		return nil
-	}
-}
-
-// WithUseProot sets whether or not proot should be used.
-func WithUseProot(useProot bool) Option {
-	return func(ctx *Context) error {
-		ctx.UseProot = useProot
 		return nil
 	}
 }
@@ -982,7 +973,6 @@ func (ctx *Context) BuildGuest() error {
 
 	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
-		//apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),

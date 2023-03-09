@@ -22,14 +22,12 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"chainguard.dev/melange/pkg/cli"
 	"github.com/spf13/cobra/doc"
 )
 
 const fmTemplate = `---
-date: %s
 title: "%s"
 slug: %s
 url: %s
@@ -50,11 +48,10 @@ func main() {
 	flag.Parse()
 
 	filePrepender := func(filename string) string {
-		now := time.Now().Format(time.RFC3339)
 		name := filepath.Base(filename)
 		base := strings.Split(strings.TrimSuffix(name, path.Ext(name)), "/")[:1][0]
 		url := baseURL + strings.ToLower(base) + "/"
-		return fmt.Sprintf(fmTemplate, now, strings.ReplaceAll(base, "_", " "), base, url)
+		return fmt.Sprintf(fmTemplate, strings.ReplaceAll(base, "_", " "), base, url)
 	}
 
 	linkHandler := func(name string) string {

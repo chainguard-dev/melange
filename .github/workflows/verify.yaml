@@ -23,6 +23,7 @@ jobs:
         timeout-minutes: 5
         with:
           version: v1.46.2
+      - run: make docs
       - run: |
           go mod tidy
           git diff --exit-code

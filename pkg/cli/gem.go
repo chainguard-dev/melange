@@ -15,9 +15,10 @@
 package cli
 
 import (
-	"chainguard.dev/melange/pkg/gem"
 	"context"
 	"fmt"
+
+	"chainguard.dev/melange/pkg/gem"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"

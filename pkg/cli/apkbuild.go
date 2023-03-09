@@ -15,9 +15,10 @@
 package cli
 
 import (
-	"chainguard.dev/melange/pkg/convert"
 	"context"
 	"fmt"
+
+	"chainguard.dev/melange/pkg/convert"
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"

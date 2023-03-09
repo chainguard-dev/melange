@@ -15,7 +15,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"chainguard.dev/melange/pkg/gem"
@@ -25,17 +24,14 @@ import (
 )
 
 type gemOptions struct {
-	rubyVersion            string
-	outDir                 string
-	baseURIFormat          string
-	additionalRepositories []string
-	additionalKeyrings     []string
+	rubyVersion   string
+	baseURIFormat string
 }
 
 // GemBuild is the top-level `convert gem` cobra command
 //
 // TODO: add a --version flag to switch the version of the gem
-func GemBuild() *cobra.Command {
+func GemBuild(cOpt *convertOptions) *cobra.Command {
 	o := &gemOptions{}
 	cmd := &cobra.Command{
 		Use:   "gem",
@@ -51,7 +47,7 @@ convert gem fluentd`,
 				return errors.New("too many arguments, expected only 1")
 			}
 
-			return o.gemBuild(cmd.Context(), args[0])
+			return o.gemBuild(cOpt, args[0])
 		},
 	}
 
@@ -60,35 +56,24 @@ convert gem fluentd`,
 		"version of ruby to use throughout generated manifests",
 	)
 	cmd.Flags().StringVar(
-		&o.outDir, "out-dir", "./generated", "directory where convert config will be output",
-	)
-	cmd.Flags().StringVar(
 		&o.baseURIFormat, "base-uri-format", gem.DefaultBaseURIFormat,
 		"URI to use for querying gems for provided package name",
-	)
-	cmd.Flags().StringArrayVar(
-		&o.additionalRepositories, "additional-repositories", []string{},
-		"additional repositories to be added to convert environment config",
-	)
-	cmd.Flags().StringArrayVar(
-		&o.additionalKeyrings, "additional-keyrings", []string{},
-		"additional repositories to be added to convert environment config",
 	)
 	return cmd
 }
 
 // gemBuild is the main cli function. It just sets up the GemBuild context and
 // then executes the manifest generation.
-func (o gemOptions) gemBuild(ctx context.Context, packageName string) error {
+func (o gemOptions) gemBuild(cOpt *convertOptions, packageName string) error {
 	context, err := gem.New()
 	if err != nil {
 		return errors.Wrap(err, "initialising gem command")
 	}
 
 	context.RubyVersion = o.rubyVersion
-	context.AdditionalRepositories = o.additionalRepositories
-	context.AdditionalKeyrings = o.additionalKeyrings
-	context.OutDir = o.outDir
+	context.AdditionalRepositories = cOpt.additionalRepositories
+	context.AdditionalKeyrings = cOpt.additionalKeyrings
+	context.OutDir = cOpt.outDir
 	context.BaseURIFormat = o.baseURIFormat
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 

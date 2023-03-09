@@ -9,12 +9,15 @@ toc: true
 ---
 ## melange convert
 
-Attempts to converts files into melange configuration files
+EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 
 ### Options
 
 ```
-  -h, --help   help for convert
+      --additional-keyrings stringArray       additional repositories to be added to convert environment config
+      --additional-repositories stringArray   additional repositories to be added to convert environment config
+  -h, --help                                  help for convert
+      --out-dir string                        directory where convert config will be output (default "./generated")
 ```
 
 ### SEE ALSO
@@ -22,5 +25,5 @@ Attempts to converts files into melange configuration files
 * [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
 * [melange convert apkbuild](/chainguard/chainguard-enforce/melange-docs/melange_convert_apkbuild/)	 - Converts an APKBUILD package into a melange.yaml
 * [melange convert gem](/chainguard/chainguard-enforce/melange-docs/melange_convert_gem/)	 - Converts an gem into a melange.yaml
-* [melange convert python](/chainguard/chainguard-enforce/melange-docs/melange_convert_python/)	 - Converts a python package into a melange.yaml
+* [melange convert python](/chainguard/chainguard-enforce/melange-docs/melange_convert_python/)	 - Converts a pypi python package into a melange.yaml
 

@@ -30,15 +30,12 @@ convert gem fluentd
 ### Options
 
 ```
-      --additional-keyrings stringArray       additional repositories to be added to convert environment config
-      --additional-repositories stringArray   additional repositories to be added to convert environment config
-      --base-uri-format string                URI to use for querying gems for provided package name (default "https://rubygems.org/api/v1/gems/%s.json")
-  -h, --help                                  help for gem
-      --out-dir string                        directory where convert config will be output (default "./generated")
-      --ruby-version string                   version of ruby to use throughout generated manifests (default "3.2")
+      --base-uri-format string   URI to use for querying gems for provided package name (default "https://rubygems.org/api/v1/gems/%s.json")
+  -h, --help                     help for gem
+      --ruby-version string      version of ruby to use throughout generated manifests (default "3.2")
 ```
 
 ### SEE ALSO
 
-* [melange convert](/chainguard/chainguard-enforce/melange-docs/melange_convert/)	 - Attempts to converts files into melange configuration files
+* [melange convert](/chainguard/chainguard-enforce/melange-docs/melange_convert/)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 

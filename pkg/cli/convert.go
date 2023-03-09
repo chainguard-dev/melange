@@ -16,18 +16,29 @@ package cli
 
 import "github.com/spf13/cobra"
 
+type convertOptions struct {
+	outDir                 string
+	additionalRepositories []string
+	additionalKeyrings     []string
+}
+
 func Convert() *cobra.Command {
+	o := &convertOptions{}
 	cmd := &cobra.Command{
 		Use:               "convert",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
-		Short:             "Attempts to converts files into melange configuration files",
+		Short:             "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
 	}
 
+	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
+	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
+	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
+
 	cmd.AddCommand(
-		ApkBuild(),
-		GemBuild(),
-		PythonBuild(),
+		ApkBuild(o),
+		GemBuild(o),
+		PythonBuild(o),
 	)
 	return cmd
 }

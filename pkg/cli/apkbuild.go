@@ -15,7 +15,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"chainguard.dev/melange/pkg/convert"
@@ -25,14 +24,11 @@ import (
 )
 
 type apkbuildOptions struct {
-	outDir                 string
-	baseURIFormat          string
-	additionalRepositories []string
-	additionalKeyrings     []string
-	excludePackages        []string
+	baseURIFormat   string
+	excludePackages []string
 }
 
-func ApkBuild() *cobra.Command {
+func ApkBuild(cOpts *convertOptions) *cobra.Command {
 	o := &apkbuildOptions{}
 	cmd := &cobra.Command{
 		Use:     "apkbuild",
@@ -46,28 +42,22 @@ func ApkBuild() *cobra.Command {
 				return errors.New("too many arguments, expected only 1")
 			}
 
-			return o.ApkBuildCmd(cmd.Context(), args[0])
+			return o.ApkBuildCmd(cOpts, args[0])
 		},
 	}
-
-	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
-	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://git.alpinelinux.org/aports/plain/main/%s/APKBUILD", "URI to use for querying APKBUILD for provided package name")
-	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
-	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
-	cmd.Flags().StringArrayVar(&o.excludePackages, "exclude-packages", []string{}, "packages to exclude from auto generation of melange configs when detected in APKBUILD files")
 
 	return cmd
 }
 
-func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) error {
+func (o apkbuildOptions) ApkBuildCmd(cOpts *convertOptions, packageName string) error {
 	context, err := convert.New()
 	if err != nil {
 		return errors.Wrap(err, "initialising convert command")
 	}
 
-	context.AdditionalRepositories = o.additionalRepositories
-	context.AdditionalKeyrings = o.additionalKeyrings
-	context.OutDir = o.outDir
+	context.AdditionalRepositories = cOpts.additionalRepositories
+	context.AdditionalKeyrings = cOpts.additionalKeyrings
+	context.OutDir = cOpts.outDir
 	context.ExcludePackages = o.excludePackages
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 

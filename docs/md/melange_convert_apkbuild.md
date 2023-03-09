@@ -28,15 +28,10 @@ melange convert apkbuild [flags]
 ### Options
 
 ```
-      --additional-keyrings stringArray       additional repositories to be added to convert environment config
-      --additional-repositories stringArray   additional repositories to be added to convert environment config
-      --base-uri-format string                URI to use for querying APKBUILD for provided package name (default "https://git.alpinelinux.org/aports/plain/main/%s/APKBUILD")
-      --exclude-packages stringArray          packages to exclude from auto generation of melange configs when detected in APKBUILD files
-  -h, --help                                  help for apkbuild
-      --out-dir string                        directory where convert config will be output (default "./generated")
+  -h, --help   help for apkbuild
 ```
 
 ### SEE ALSO
 
-* [melange convert](/chainguard/chainguard-enforce/melange-docs/melange_convert/)	 - Attempts to converts files into melange configuration files
+* [melange convert](/chainguard/chainguard-enforce/melange-docs/melange_convert/)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 

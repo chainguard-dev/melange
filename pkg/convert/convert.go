@@ -19,7 +19,7 @@ import (
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/convert/wolfios"
+	"chainguard.dev/melange/pkg/wolfios"
 	"github.com/pkg/errors"
 	"gitlab.alpinelinux.org/alpine/go/apkbuild"
 	"golang.org/x/exp/slices"

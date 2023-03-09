@@ -262,6 +262,6 @@ func TestGenerateEnvironment(t *testing.T) {
 	gemctx.AdditionalRepositories = []string{"local /github/workspace/packages"}
 	gemctx.RubyVersion = DefaultRubyVersion
 
-	got := gemctx.generateEnvironment(GemMeta{})
+	got := gemctx.generateEnvironment()
 	assert.Equal(t, expected, got)
 }

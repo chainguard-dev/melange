@@ -21,6 +21,7 @@ toc: true
 
 * [melange build](/chainguard/chainguard-enforce/melange-docs/melange_build/)	 - Build a package from a YAML configuration file
 * [melange bump](/chainguard/chainguard-enforce/melange-docs/melange_bump/)	 - Update a Melange YAML file to reflect a new package version
+* [melange convert](/chainguard/chainguard-enforce/melange-docs/melange_convert/)	 - Attempts to converts files into melange configuration files
 * [melange index](/chainguard/chainguard-enforce/melange-docs/melange_index/)	 - Creates a repository index from a list of package files
 * [melange keygen](/chainguard/chainguard-enforce/melange-docs/melange_keygen/)	 - Generate a key for package signing
 * [melange sign-index](/chainguard/chainguard-enforce/melange-docs/melange_sign-index/)	 - Sign an APK index

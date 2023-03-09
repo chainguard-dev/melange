@@ -1,0 +1,807 @@
+{
+ "info": {
+  "author": "James Saryerwinnie",
+  "author_email": "js@jamesls.com",
+  "bugtrack_url": "",
+  "classifiers": [
+   "Development Status :: 5 - Production/Stable",
+   "Intended Audience :: Developers",
+   "License :: OSI Approved :: MIT License",
+   "Natural Language :: English",
+   "Programming Language :: Python",
+   "Programming Language :: Python :: 3",
+   "Programming Language :: Python :: 3.10",
+   "Programming Language :: Python :: 3.11",
+   "Programming Language :: Python :: 3.7",
+   "Programming Language :: Python :: 3.8",
+   "Programming Language :: Python :: 3.9",
+   "Programming Language :: Python :: Implementation :: CPython",
+   "Programming Language :: Python :: Implementation :: PyPy"
+  ],
+  "description": "JMESPath\n========\n\n\n.. image:: https://badges.gitter.im/Join Chat.svg\n   :target: https://gitter.im/jmespath/chat\n\n\nJMESPath (pronounced \"james path\") allows you to declaratively specify how to\nextract elements from a JSON document.\n\nFor example, given this document::\n\n    {\"foo\": {\"bar\": \"baz\"}}\n\nThe jmespath expression ``foo.bar`` will return \"baz\".\n\nJMESPath also supports:\n\nReferencing elements in a list.  Given the data::\n\n    {\"foo\": {\"bar\": [\"one\", \"two\"]}}\n\nThe expression: ``foo.bar[0]`` will return \"one\".\nYou can also reference all the items in a list using the ``*``\nsyntax::\n\n   {\"foo\": {\"bar\": [{\"name\": \"one\"}, {\"name\": \"two\"}]}}\n\nThe expression: ``foo.bar[*].name`` will return [\"one\", \"two\"].\nNegative indexing is also supported (-1 refers to the last element\nin the list).  Given the data above, the expression\n``foo.bar[-1].name`` will return \"two\".\n\nThe ``*`` can also be used for hash types::\n\n   {\"foo\": {\"bar\": {\"name\": \"one\"}, \"baz\": {\"name\": \"two\"}}}\n\nThe expression: ``foo.*.name`` will return [\"one\", \"two\"].\n\n\nInstallation\n============\n\nYou can install JMESPath from pypi with:\n\n.. code:: bash\n\n    pip install jmespath\n\n\nAPI\n===\n\nThe ``jmespath.py`` library has two functions\nthat operate on python data structures.  You can use ``search``\nand give it the jmespath expression and the data:\n\n.. code:: python\n\n    \u003e\u003e\u003e import jmespath\n    \u003e\u003e\u003e path = jmespath.search('foo.bar', {'foo': {'bar': 'baz'}})\n    'baz'\n\nSimilar to the ``re`` module, you can use the ``compile`` function\nto compile the JMESPath expression and use this parsed expression\nto perform repeated searches:\n\n.. code:: python\n\n    \u003e\u003e\u003e import jmespath\n    \u003e\u003e\u003e expression = jmespath.compile('foo.bar')\n    \u003e\u003e\u003e expression.search({'foo': {'bar': 'baz'}})\n    'baz'\n    \u003e\u003e\u003e expression.search({'foo': {'bar': 'other'}})\n    'other'\n\nThis is useful if you're going to use the same jmespath expression to\nsearch multiple documents.  This avoids having to reparse the\nJMESPath expression each time you search a new document.\n\nOptions\n-------\n\nYou can provide an instance of ``jmespath.Options`` to control how\na JMESPath expression is evaluated.  The most common scenario for\nusing an ``Options`` instance is if you want to have ordered output\nof your dict keys.  To do this you can use either of these options:\n\n.. code:: python\n\n    \u003e\u003e\u003e import jmespath\n    \u003e\u003e\u003e jmespath.search('{a: a, b: b}',\n    ...                 mydata,\n    ...                 jmespath.Options(dict_cls=collections.OrderedDict))\n\n\n    \u003e\u003e\u003e import jmespath\n    \u003e\u003e\u003e parsed = jmespath.compile('{a: a, b: b}')\n    \u003e\u003e\u003e parsed.search(mydata,\n    ...               jmespath.Options(dict_cls=collections.OrderedDict))\n\n\nCustom Functions\n~~~~~~~~~~~~~~~~\n\nThe JMESPath language has numerous\n`built-in functions\n\u003chttp://jmespath.org/specification.html#built-in-functions\u003e`__, but it is\nalso possible to add your own custom functions.  Keep in mind that\ncustom function support in jmespath.py is experimental and the API may\nchange based on feedback.\n\n**If you have a custom function that you've found useful, consider submitting\nit to jmespath.site and propose that it be added to the JMESPath language.**\nYou can submit proposals\n`here \u003chttps://github.com/jmespath/jmespath.site/issues\u003e`__.\n\nTo create custom functions:\n\n* Create a subclass of ``jmespath.functions.Functions``.\n* Create a method with the name ``_func_\u003cyour function name\u003e``.\n* Apply the ``jmespath.functions.signature`` decorator that indicates\n  the expected types of the function arguments.\n* Provide an instance of your subclass in a ``jmespath.Options`` object.\n\nBelow are a few examples:\n\n.. code:: python\n\n    import jmespath\n    from jmespath import functions\n\n    # 1. Create a subclass of functions.Functions.\n    #    The function.Functions base class has logic\n    #    that introspects all of its methods and automatically\n    #    registers your custom functions in its function table.\n    class CustomFunctions(functions.Functions):\n\n        # 2 and 3.  Create a function that starts with _func_\n        # and decorate it with @signature which indicates its\n        # expected types.\n        # In this example, we're creating a jmespath function\n        # called \"unique_letters\" that accepts a single argument\n        # with an expected type \"string\".\n        @functions.signature({'types': ['string']})\n        def _func_unique_letters(self, s):\n            # Given a string s, return a sorted\n            # string of unique letters: 'ccbbadd' -\u003e  'abcd'\n            return ''.join(sorted(set(s)))\n\n        # Here's another example.  This is creating\n        # a jmespath function called \"my_add\" that expects\n        # two arguments, both of which should be of type number.\n        @functions.signature({'types': ['number']}, {'types': ['number']})\n        def _func_my_add(self, x, y):\n            return x + y\n\n    # 4. Provide an instance of your subclass in a Options object.\n    options = jmespath.Options(custom_functions=CustomFunctions())\n\n    # Provide this value to jmespath.search:\n    # This will print 3\n    print(\n        jmespath.search(\n            'my_add(`1`, `2`)', {}, options=options)\n    )\n\n    # This will print \"abcd\"\n    print(\n        jmespath.search(\n            'foo.bar | unique_letters(@)',\n            {'foo': {'bar': 'ccbbadd'}},\n            options=options)\n    )\n\nAgain, if you come up with useful functions that you think make\nsense in the JMESPath language (and make sense to implement in all\nJMESPath libraries, not just python), please let us know at\n`jmespath.site \u003chttps://github.com/jmespath/jmespath.site/issues\u003e`__.\n\n\nSpecification\n=============\n\nIf you'd like to learn more about the JMESPath language, you can check out\nthe `JMESPath tutorial \u003chttp://jmespath.org/tutorial.html\u003e`__.  Also check\nout the `JMESPath examples page \u003chttp://jmespath.org/examples.html\u003e`__ for\nexamples of more complex jmespath queries.\n\nThe grammar is specified using ABNF, as described in\n`RFC4234 \u003chttp://www.ietf.org/rfc/rfc4234.txt\u003e`_.\nYou can find the most up to date\n`grammar for JMESPath here \u003chttp://jmespath.org/specification.html#grammar\u003e`__.\n\nYou can read the full\n`JMESPath specification here \u003chttp://jmespath.org/specification.html\u003e`__.\n\n\nTesting\n=======\n\nIn addition to the unit tests for the jmespath modules,\nthere is a ``tests/compliance`` directory that contains\n.json files with test cases.  This allows other implementations\nto verify they are producing the correct output.  Each json\nfile is grouped by feature.\n\n\nDiscuss\n=======\n\nJoin us on our `Gitter channel \u003chttps://gitter.im/jmespath/chat\u003e`__\nif you want to chat or if you have any questions.\n\n\n",
+  "description_content_type": "",
+  "docs_url": "",
+  "download_url": "",
+  "downloads": {
+   "last_day": -1,
+   "last_month": -1,
+   "last_week": -1
+  },
+  "home_page": "https://github.com/jmespath/jmespath.py",
+  "keywords": "",
+  "license": "MIT",
+  "maintainer": "",
+  "maintainer_email": "",
+  "name": "jmespath",
+  "package_url": "https://pypi.org/project/jmespath/",
+  "platform": "",
+  "project_url": "https://pypi.org/project/jmespath/",
+  "release_url": "https://pypi.org/project/jmespath/1.0.1/",
+  "requires_dist": null,
+  "requires_python": "\u003e=3.7",
+  "summary": "JSON Matching Expressions",
+  "version": "1.0.1",
+  "yanked": false,
+  "yanked_reason": ""
+ },
+ "last_serial": 14165714,
+ "releases": {
+  "0.0.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b592e7b6044c53493134e5229ae5c360",
+     "sha256": "00b4b8b6f3028cf61f1d6cc1ce429bf22920247eb50578b47ca18564ec1b5111"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.0.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b592e7b6044c53493134e5229ae5c360",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 6771,
+    "upload_time_iso_8601": "2013-02-27T16:25:11.416279Z",
+    "url": "https://files.pythonhosted.org/packages/c6/77/a557fe7483826488f2d40aa68e21abed7cfc1522775d410008f11eb52bfe/jmespath-0.0.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.0.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "766a603779f568c5b0b391e937c147c0",
+     "sha256": "3ce34292993eff87d66e160496c74520e0938c3fce01c55220b98cb5ab976b19"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.0.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "766a603779f568c5b0b391e937c147c0",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 7325,
+    "upload_time_iso_8601": "2013-03-22T19:03:47.665114Z",
+    "url": "https://files.pythonhosted.org/packages/b5/d5/56a45396b5d2f662c98c89ae276399d7b771294ff5082333ec1fd3850af9/jmespath-0.0.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.0.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a5708b065c0578166c1ae4e4025f2666",
+     "sha256": "d9a6ff1b7bec5f8f255eb0b0b33ec4824c9ca8fa0cb10ac8070527caf98659b4"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.0.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a5708b065c0578166c1ae4e4025f2666",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 8955,
+    "upload_time_iso_8601": "2013-10-09T22:19:30.096591Z",
+    "url": "https://files.pythonhosted.org/packages/a6/db/848779748451b0049d9daccd1f84219f49e6fcf2ac66e74817967ba5bbc2/jmespath-0.0.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "82e6cc85631e4a3b0f896de099249a1f",
+     "sha256": "8113f1f4188e95a54d3cb91f03e34f291e77b980f57d8bbaf5386ccbe80dae6d"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "82e6cc85631e4a3b0f896de099249a1f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 11548,
+    "upload_time_iso_8601": "2013-10-17T22:42:29.063334Z",
+    "url": "https://files.pythonhosted.org/packages/ec/bb/03f368b9aa1c2f19c87b296b8f072260cc09592e3618c3c33b062152877e/jmespath-0.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.10.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a066efd76c72debc36775316e34a70bc",
+     "sha256": "cdf6525904cc597730141d61b36f2e4b8ecc257c420fa2f4549bac2c2d0cb72f"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.10.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a066efd76c72debc36775316e34a70bc",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 24489,
+    "upload_time_iso_8601": "2020-05-12T22:03:45.643863Z",
+    "url": "https://files.pythonhosted.org/packages/07/cb/5f001272b6faeb23c1c9e0acc04d48eaaf5c862c17709d20e3469c6e0139/jmespath-0.10.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "65bdcb5fa5bcf1cc710ffa508e78e408",
+     "sha256": "b85d0567b8666149a93172712e68920734333c0ce7e89b78b3e987f71e5ed4f9"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.10.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "65bdcb5fa5bcf1cc710ffa508e78e408",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 21607,
+    "upload_time_iso_8601": "2020-05-12T22:03:47.267092Z",
+    "url": "https://files.pythonhosted.org/packages/3c/56/3f325b1eef9791759784aa5046a8f6a1aff8f7c898a2e34506771d3b99d8/jmespath-0.10.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "304d0dc541d2f20609523f4e24f5140f",
+     "sha256": "f2a2d56241ce57b447510b2a637838c4c80248275a5021c1e3eecb2138ed6c57"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "304d0dc541d2f20609523f4e24f5140f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 12251,
+    "upload_time_iso_8601": "2013-12-06T00:02:41.112524Z",
+    "url": "https://files.pythonhosted.org/packages/6a/55/e79b9422223c21c3bcf1bf82a49e1501ddbbfa8e8da058fb9c90b9459669/jmespath-0.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.2.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "7800775aa12c6303f9ad597b6a8fa03c",
+     "sha256": "227ac4d44459faa27d66723999594d10e3e2da76d1b85a93f87ace238f4cc704"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.2.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "7800775aa12c6303f9ad597b6a8fa03c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 11759,
+    "upload_time_iso_8601": "2013-12-19T23:14:08.707019Z",
+    "url": "https://files.pythonhosted.org/packages/09/19/b73404e1ecbc28a70d191e9f7eb12f7c61f1e1bb5c1c1ad336a5c3ef71ed/jmespath-0.2.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.3.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "17b068073f570bd6dac0826325a5be7a",
+     "sha256": "610cbb5361102ad03b51e6eb702cc355b65c5f7f01c75edaa676b353bae481fd"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.3.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "17b068073f570bd6dac0826325a5be7a",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 17217,
+    "upload_time_iso_8601": "2014-02-28T00:23:20.688426Z",
+    "url": "https://files.pythonhosted.org/packages/50/3b/cb443c979f7399e601889d85e1a26da854959ddd832b86a15eb78871c13f/jmespath-0.3.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.3.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "88b8a92ab663a40107cf8f26aa4c76dd",
+     "sha256": "92f8a5b50c80c7f9eb174aea8949cfe544e6901f6ba45ea636433bd979592074"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.3.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "88b8a92ab663a40107cf8f26aa4c76dd",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 21482,
+    "upload_time_iso_8601": "2014-03-06T19:46:05.629587Z",
+    "url": "https://files.pythonhosted.org/packages/11/03/0ccd84983e3fba71d7a53041dd3752ee6b2d9374c08d23ab4e5fa6966dfc/jmespath-0.3.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.4.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "ebd54fd91ed2e36b33076bce71ac0ea9",
+     "sha256": "18fe4184b0a2756657b5fc69e9748284678bd5fc4c539b24d1a5bdac7c990323"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.4.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ebd54fd91ed2e36b33076bce71ac0ea9",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 20089,
+    "upload_time_iso_8601": "2014-04-23T19:01:12.997502Z",
+    "url": "https://files.pythonhosted.org/packages/82/db/8e5a1124218d293475f74b69d36682e6f66f25984a640e26c975ba5704b3/jmespath-0.4.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.4.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a11ae39472672a650dfb55feab7d65eb",
+     "sha256": "891c49161f8216d1bda07104562dc7bac22aacd4c69ae149ddf1ccd59a4e3096"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.4.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a11ae39472672a650dfb55feab7d65eb",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 20135,
+    "upload_time_iso_8601": "2014-05-01T04:17:59.183172Z",
+    "url": "https://files.pythonhosted.org/packages/33/17/29c504d35346967bb4ff5d4316736cc7e4ea183cd04fcd8ec0f1b34c28da/jmespath-0.4.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.5.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "55da4a6944a337b95b42207b343e18de",
+     "sha256": "c3243fb93f914df1852cc3699115c87982009860290b60910c1b2715bec238c2"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.5.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "55da4a6944a337b95b42207b343e18de",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 18175,
+    "upload_time_iso_8601": "2014-11-06T00:48:12.001337Z",
+    "url": "https://files.pythonhosted.org/packages/ee/7c/f8e35867dd7309ecc10be8411c6a37ecb04a2db2007cc07223be2708e6db/jmespath-0.5.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.6.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b99d0c0148ce644ab9f6d22b494c45d1",
+     "sha256": "d993f92d07668dd16a1f55c2fa9887aec3dca446d725ded296fa22ffa85d3c3a"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.6.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b99d0c0148ce644ab9f6d22b494c45d1",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 19255,
+    "upload_time_iso_8601": "2015-01-31T21:19:07.462830Z",
+    "url": "https://files.pythonhosted.org/packages/e1/50/c1f0ab49df8c54e2ec485bf5ba5810c095ee3d3f7171e4357f9366d8a339/jmespath-0.6.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.6.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "59fa8c2bc3fbf3d5244a329093211562",
+     "sha256": "f9f1a745049092979fa4f0aa263ad2d4efce9f239c0c07f937d0452fccecf6b8"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.6.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "59fa8c2bc3fbf3d5244a329093211562",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 19284,
+    "upload_time_iso_8601": "2015-02-03T21:19:52.263046Z",
+    "url": "https://files.pythonhosted.org/packages/99/d0/7c1b3dc119f7d992c976728e7f783254212809fe38b221ec0ddc60cfcf7f/jmespath-0.6.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.6.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b7283fbb6972ab8eafd7b5d2b13f6138",
+     "sha256": "b10237fd30ab535367be6453aeb249299e1de0fb61567ff5efc22d1f88f2ae00"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.6.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b7283fbb6972ab8eafd7b5d2b13f6138",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 19856,
+    "upload_time_iso_8601": "2015-04-09T11:02:53.753242Z",
+    "url": "https://files.pythonhosted.org/packages/4a/01/3784d49ec4d004663ca861a000542adabadbaa632aa3b6b82943da07e359/jmespath-0.6.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.7.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "baa6aa02950cc35613a7eebbe267d496",
+     "sha256": "a3a2f1e9a86b265d420939c0bb263511009d7179d1886b2d18122d5603b43a9a"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.7.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "baa6aa02950cc35613a7eebbe267d496",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 16036,
+    "upload_time_iso_8601": "2015-04-21T06:35:29.889934Z",
+    "url": "https://files.pythonhosted.org/packages/12/0d/e7d23cbf46a8186c03781bd3961cb6b1903b645c97c364e64ba10a001e3e/jmespath-0.7.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.7.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1977b145d6923911ee1088d0b0221b8a",
+     "sha256": "cb99b58dcf853f791bec28aa016c121663b79ee6125c892297d773d7fd4dcecf"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.7.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1977b145d6923911ee1088d0b0221b8a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 19776,
+    "upload_time_iso_8601": "2015-04-27T17:31:18.975121Z",
+    "url": "https://files.pythonhosted.org/packages/1c/e7/c7381144a6c96d2641ab46c69384c02dcb491d8c8f7fc90cfb97cfdbe7cd/jmespath-0.7.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "ca76cb014165306c1eded212cfb78cf5",
+     "sha256": "cd5a12ee3dfa470283a020a35e69e83b0700d44fe413014fd35ad5584c5f5fd1"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.7.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ca76cb014165306c1eded212cfb78cf5",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 19696,
+    "upload_time_iso_8601": "2015-04-27T17:30:55.648795Z",
+    "url": "https://files.pythonhosted.org/packages/82/5c/8439a7719f598449120a63f9f2f23423577d7a49374f927e7b5be338524f/jmespath-0.7.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.8.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "2f9e8c37df2e979ce7fe15333374e296",
+     "sha256": "d23fc2c68790b11ba6141cec9548440d6ca53a80b4668834e8711b05c4343b8a"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.8.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2f9e8c37df2e979ce7fe15333374e296",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 20364,
+    "upload_time_iso_8601": "2015-09-23T05:11:15.095398Z",
+    "url": "https://files.pythonhosted.org/packages/93/f4/50dca6f24403c0567861129e7400dba9d2dce13c07da9cb8cfa83576dd09/jmespath-0.8.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "bfd2b7112c6b0b11d06bd235c593f838",
+     "sha256": "2c3d78a257e831b7d2855e2d00a24c2110f685ae31215d62cac5524d6108dc7a"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.8.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "bfd2b7112c6b0b11d06bd235c593f838",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 20484,
+    "upload_time_iso_8601": "2015-09-23T05:11:23.417816Z",
+    "url": "https://files.pythonhosted.org/packages/c7/b6/4f25dc12e08fef1493c5bb6254342e609961eb01cbbc6065ca10b4f63e1b/jmespath-0.8.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.9.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1befa189c91def5afa50606647535881",
+     "sha256": "ade5261b0d7d34b6f53accc91e6881b579b40161ed575e6ac465de5edad32815"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1befa189c91def5afa50606647535881",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 20633,
+    "upload_time_iso_8601": "2015-10-01T04:13:06.857267Z",
+    "url": "https://files.pythonhosted.org/packages/64/2b/73af55c93f91941bd0c8c6cb1a3028cfd4c8dc4fe8ffe761dc60192dd82c/jmespath-0.9.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "471b7d19bd153ac11a21d4fb7466800c",
+     "sha256": "08dfaa06d4397f283a01e57089f3360e3b52b5b9da91a70e1fd91e9f0cdd3d3d"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "471b7d19bd153ac11a21d4fb7466800c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 20855,
+    "upload_time_iso_8601": "2015-10-01T04:13:12.638606Z",
+    "url": "https://files.pythonhosted.org/packages/8f/d8/6e3e602a3e90c5e3961d3d159540df6b2ff32f5ab2ee8ee1d28235a425c1/jmespath-0.9.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.9.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e683294322f9b481a6f1c738effeebe3",
+     "sha256": "19942132a80f4bdeeb597f2027a48dc4dae3b99f407a8d5d7079d142c97c11b7"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e683294322f9b481a6f1c738effeebe3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 23221,
+    "upload_time_iso_8601": "2017-01-26T18:09:02.108907Z",
+    "url": "https://files.pythonhosted.org/packages/b3/42/2a0a1c6cfbf23717d3a92c50108049d4ed989a9acace0599623996bd682b/jmespath-0.9.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a602b76abb2c0001b47c1bff810cf44e",
+     "sha256": "e72d02de23c1814322f7c0dcffb46716271f9b52b129aace0ab6f5a0450d5f02"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a602b76abb2c0001b47c1bff810cf44e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 22701,
+    "upload_time_iso_8601": "2017-01-26T18:09:04.471547Z",
+    "url": "https://files.pythonhosted.org/packages/9d/1a/c8ab901753ad7581032f99f88c759a45b6c72b75615f0cd731dd7c9dd0de/jmespath-0.9.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.9.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "99f04b0d65e94438d34fbf7d8a8214f4",
+     "sha256": "3f03b90ac8e0f3ba472e8ebff083e460c89501d8d41979771535efe9a343177e"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "99f04b0d65e94438d34fbf7d8a8214f4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 23562,
+    "upload_time_iso_8601": "2017-03-10T23:53:31.537253Z",
+    "url": "https://files.pythonhosted.org/packages/10/3b/968949a364f7f9fb9ff5acec3b98df2d74c201ab5f0cd07fa6c48ea227c2/jmespath-0.9.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5ad9ac61b4a00bd5b9d02378b2381882",
+     "sha256": "54c441e2e08b23f12d7fa7d8e6761768c47c969e6aed10eead57505ba760aee9"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5ad9ac61b4a00bd5b9d02378b2381882",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 22773,
+    "upload_time_iso_8601": "2017-03-10T23:53:33.361105Z",
+    "url": "https://files.pythonhosted.org/packages/96/6e/0723cccec195a37de6a428ad8879fe063b6debe5c855444e9285b27d253e/jmespath-0.9.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.9.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "c0505bdf73fd01d708a58f297fa0d369",
+     "sha256": "f11b4461f425740a1d908e9a3f7365c3d2e569f6ca68a2ff8bc5bcd9676edd63"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.3-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "c0505bdf73fd01d708a58f297fa0d369",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 23497,
+    "upload_time_iso_8601": "2017-05-26T13:47:54.379384Z",
+    "url": "https://files.pythonhosted.org/packages/b7/31/05c8d001f7f87f0f07289a5fc0fc3832e9a57f2dbd4d3b0fee70e0d51365/jmespath-0.9.3-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "37a906c06de62bed25ec5cf99cee04a6",
+     "sha256": "6a81d4c9aa62caf061cb517b4d9ad1dd300374cd4706997aff9cd6aedd61fc64"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "37a906c06de62bed25ec5cf99cee04a6",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 22967,
+    "upload_time_iso_8601": "2017-05-26T13:47:58.709417Z",
+    "url": "https://files.pythonhosted.org/packages/e5/21/795b7549397735e911b032f255cff5fb0de58f96da794274660bca4f58ef/jmespath-0.9.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.9.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "730e8863a8c03bae9d93234c77b39aef",
+     "sha256": "3720a4b1bd659dd2eecad0666459b9788813e032b83e7ba58578e48254e0a0e6"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.4-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "730e8863a8c03bae9d93234c77b39aef",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 24161,
+    "upload_time_iso_8601": "2019-02-24T23:13:07.035880Z",
+    "url": "https://files.pythonhosted.org/packages/83/94/7179c3832a6d45b266ddb2aac329e101367fbdb11f425f13771d27f225bb/jmespath-0.9.4-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5c3380a84c565d7438e4766fd4b7a775",
+     "sha256": "bde2aef6f44302dfb30320115b17d030798de8c4110e28d5cf6cf91a7a31074c"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5c3380a84c565d7438e4766fd4b7a775",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 22940,
+    "upload_time_iso_8601": "2019-02-24T23:13:08.616205Z",
+    "url": "https://files.pythonhosted.org/packages/2c/30/f0162d3d83e398c7a3b70c91eef61d409dea205fb4dc2b47d335f429de32/jmespath-0.9.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.9.5": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "89667be900ce1af90746dd20223f4358",
+     "sha256": "695cb76fa78a10663425d5b73ddc5714eb711157e52704d69be03b1a02ba4fec"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.5-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "89667be900ce1af90746dd20223f4358",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 24149,
+    "upload_time_iso_8601": "2020-02-24T21:43:43.304100Z",
+    "url": "https://files.pythonhosted.org/packages/a3/43/1e939e1fcd87b827fe192d0c9fc25b48c5b3368902bfb913de7754b0dc03/jmespath-0.9.5-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b181788ea046205963b63e5b9289d3da",
+     "sha256": "cca55c8d153173e21baa59983015ad0daf603f9cb799904ff057bfb8ff8dc2d9"
+    },
+    "downloads": -1,
+    "filename": "jmespath-0.9.5.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b181788ea046205963b63e5b9289d3da",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 27084,
+    "upload_time_iso_8601": "2020-02-24T21:43:44.692137Z",
+    "url": "https://files.pythonhosted.org/packages/5c/40/3bed01fc17e2bb1b02633efc29878dfa25da479ad19a69cfb11d2b88ea8e/jmespath-0.9.5.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "eb9776346d72c2e0fb394f7b7d64dbe4",
+     "sha256": "e8dcd576ed616f14ec02eed0005c85973b5890083313860136657e24784e4c04"
+    },
+    "downloads": -1,
+    "filename": "jmespath-1.0.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "eb9776346d72c2e0fb394f7b7d64dbe4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "size": 23602,
+    "upload_time_iso_8601": "2022-03-15T18:23:07.219462Z",
+    "url": "https://files.pythonhosted.org/packages/ca/be/48152dbe2e16b1960fb7987639b2426a0609245041d63a2fa96d1ef88da3/jmespath-1.0.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "f005ab4c3128e62735df2908cf84dd1e",
+     "sha256": "a490e280edd1f57d6de88636992d05b71e97d69a26a19f058ecf7d304474bf5e"
+    },
+    "downloads": -1,
+    "filename": "jmespath-1.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "f005ab4c3128e62735df2908cf84dd1e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 20690,
+    "upload_time_iso_8601": "2022-03-15T18:23:08.639886Z",
+    "url": "https://files.pythonhosted.org/packages/06/7e/44686b986ef9ca6069db224651baaa8300b93af2a085a5b135997bf659b3/jmespath-1.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.0.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "10009c3f0c6e63a22bb3eab7b5843b45",
+     "sha256": "02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980"
+    },
+    "downloads": -1,
+    "filename": "jmespath-1.0.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "10009c3f0c6e63a22bb3eab7b5843b45",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "size": 20256,
+    "upload_time_iso_8601": "2022-06-17T18:00:10.251235Z",
+    "url": "https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "2dd28beb22d698f58fe2281bfe5fe3a3",
+     "sha256": "90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe"
+    },
+    "downloads": -1,
+    "filename": "jmespath-1.0.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "2dd28beb22d698f58fe2281bfe5fe3a3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 25843,
+    "upload_time_iso_8601": "2022-06-17T18:00:12.224390Z",
+    "url": "https://files.pythonhosted.org/packages/00/2a/e867e8531cf3e36b41201936b7fa7ba7b5702dbef42922193f05c8976cd6/jmespath-1.0.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ]
+ },
+ "urls": [
+  {
+   "comment_text": "",
+   "digests": {
+    "md5": "10009c3f0c6e63a22bb3eab7b5843b45",
+    "sha256": "02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980"
+   },
+   "downloads": -1,
+   "filename": "jmespath-1.0.1-py3-none-any.whl",
+   "has_sig": false,
+   "md5_digest": "10009c3f0c6e63a22bb3eab7b5843b45",
+   "packagetype": "bdist_wheel",
+   "python_version": "py3",
+   "size": 20256,
+   "upload_time_iso_8601": "2022-06-17T18:00:10.251235Z",
+   "url": "https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl",
+   "yanked": false,
+   "yanked_reason": ""
+  },
+  {
+   "comment_text": "",
+   "digests": {
+    "md5": "2dd28beb22d698f58fe2281bfe5fe3a3",
+    "sha256": "90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe"
+   },
+   "downloads": -1,
+   "filename": "jmespath-1.0.1.tar.gz",
+   "has_sig": false,
+   "md5_digest": "2dd28beb22d698f58fe2281bfe5fe3a3",
+   "packagetype": "sdist",
+   "python_version": "source",
+   "size": 25843,
+   "upload_time_iso_8601": "2022-06-17T18:00:12.224390Z",
+   "url": "https://files.pythonhosted.org/packages/00/2a/e867e8531cf3e36b41201936b7fa7ba7b5702dbef42922193f05c8976cd6/jmespath-1.0.1.tar.gz",
+   "yanked": false,
+   "yanked_reason": ""
+  }
+ ],
+ "dependencies": null
+}

@@ -1,14 +1,15 @@
 package bump
 
 import (
-	"chainguard.dev/melange/pkg/renovate"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"chainguard.dev/melange/pkg/renovate"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBump_versions(t *testing.T) {

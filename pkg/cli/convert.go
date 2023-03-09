@@ -1,4 +1,4 @@
-// Copyright 2022 Chainguard, Inc.
+// Copyright 2023 Chainguard, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,25 +14,20 @@
 
 package cli
 
-import (
-	"github.com/spf13/cobra"
-	"sigs.k8s.io/release-utils/version"
-)
+import "github.com/spf13/cobra"
 
-func New() *cobra.Command {
+func Convert() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "melange",
+		Use:               "convert",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
+		Short:             "Attempts to converts files into melange configuration files",
 	}
 
-	cmd.AddCommand(Build())
-	cmd.AddCommand(Bump())
-	cmd.AddCommand(Keygen())
-	cmd.AddCommand(Index())
-	cmd.AddCommand(SignIndex())
-	cmd.AddCommand(UpdateCache())
-	cmd.AddCommand(Convert())
-	cmd.AddCommand(version.Version())
+	cmd.AddCommand(
+		ApkBuild(),
+		GemBuild(),
+		PythonBuild(),
+	)
 	return cmd
 }

@@ -1,5 +1,4 @@
 ---
-date: 2023-03-02T13:44:15-05:00
 title: "melange build"
 slug: melange_build
 url: /chainguard/chainguard-enforce/melange-docs/melange_build/
@@ -43,7 +42,7 @@ melange build [flags]
   -h, --help                        help for build
   -k, --keyring-append strings      path to extra keys to include in the build environment keyring
       --namespace string            namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
-      --out-dir string              directory where packages will be output (default "/home/strongjz/Documents/code/go/src/github.com/chainguard-dev/melange/packages")
+      --out-dir string              directory where packages will be output (default "./packages/")
       --overlay-binsh string        use specified file as /bin/sh overlay in build environment
       --pipeline-dir string         directory used to extend defined built-in pipelines
   -r, --repository-append strings   path to extra repositories to include in the build environment

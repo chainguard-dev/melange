@@ -1,5 +1,4 @@
 ---
-date: 2023-03-02T13:44:15-05:00
 title: "melange update-cache"
 slug: melange_update-cache
 url: /chainguard/chainguard-enforce/melange-docs/melange_update-cache/

@@ -1,5 +1,4 @@
 ---
-date: 2023-03-02T13:44:15-05:00
 title: "melange bump"
 slug: melange_bump
 url: /chainguard/chainguard-enforce/melange-docs/melange_bump/

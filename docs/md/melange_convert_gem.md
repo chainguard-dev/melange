@@ -30,9 +30,12 @@ convert gem fluentd
 ### Options
 
 ```
-      --base-uri-format string   URI to use for querying gems for provided package name (default "https://rubygems.org/api/v1/gems/%s.json")
-  -h, --help                     help for gem
-      --ruby-version string      version of ruby to use throughout generated manifests (default "3.2")
+      --additional-keyrings stringArray       additional repositories to be added to convert environment config
+      --additional-repositories stringArray   additional repositories to be added to convert environment config
+      --base-uri-format string                URI to use for querying gems for provided package name (default "https://rubygems.org/api/v1/gems/%s.json")
+  -h, --help                                  help for gem
+      --out-dir string                        directory where convert config will be output (default "./generated")
+      --ruby-version string                   version of ruby to use throughout generated manifests (default "3.2")
 ```
 
 ### SEE ALSO

@@ -11,13 +11,17 @@ toc: true
 
 EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 
+### Synopsis
+
+Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
+								Check that the build executes and builds the apk as expected, using the wolfi-dev/sdk to test the install of built apk
+								Dependencies are recursively generated and a lot of assumptions are made for you, there be dragons here. 
+							
+
 ### Options
 
 ```
-      --additional-keyrings stringArray       additional repositories to be added to convert environment config
-      --additional-repositories stringArray   additional repositories to be added to convert environment config
-  -h, --help                                  help for convert
-      --out-dir string                        directory where convert config will be output (default "./generated")
+  -h, --help   help for convert
 ```
 
 ### SEE ALSO
@@ -25,5 +29,5 @@ EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into mel
 * [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
 * [melange convert apkbuild](/chainguard/chainguard-enforce/melange-docs/melange_convert_apkbuild/)	 - Converts an APKBUILD package into a melange.yaml
 * [melange convert gem](/chainguard/chainguard-enforce/melange-docs/melange_convert_gem/)	 - Converts an gem into a melange.yaml
-* [melange convert python](/chainguard/chainguard-enforce/melange-docs/melange_convert_python/)	 - Converts a pypi python package into a melange.yaml
+* [melange convert python](/chainguard/chainguard-enforce/melange-docs/melange_convert_python/)	 - Converts a python package into a melange.yaml
 

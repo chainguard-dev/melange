@@ -24,10 +24,10 @@ import (
 )
 
 type pythonOptions struct {
-	baseURIFormat          string
+	outDir                 string
 	additionalRepositories []string
 	additionalKeyrings     []string
-	outDir                 string
+	baseURIFormat          string
 	pythonVersion          string
 	packageVersion         string
 }
@@ -37,8 +37,8 @@ func PythonBuild() *cobra.Command {
 	o := &pythonOptions{}
 	cmd := &cobra.Command{
 		Use:   "python",
-		Short: "Converts a pypi python package into a melange.yaml",
-		Long:  `Converts pypi python package into a melange.yaml.`,
+		Short: "Converts a python package into a melange.yaml",
+		Long:  `Converts an python package into a melange.yaml.`,
 		Example: `
 # Convert the latest botocore python package
 convert python botocore`,
@@ -53,23 +53,13 @@ convert python botocore`,
 		},
 	}
 
+	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
 	cmd.Flags().StringVar(&o.packageVersion, "package-version", "", "version of the python package to convert")
-	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org", "URI to use for querying gems for provided package name")
+	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org",
+		"URI to use for querying gems for provided package name")
 	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3.11", "version of the python to build the package")
-
-	var err error
-	o.additionalKeyrings, err = convertRoot.Flags().GetStringArray("additional-keyrings")
-	if err != nil {
-		return nil
-	}
-	o.additionalRepositories, err = convertRoot.Flags().GetStringArray("additional-repositories")
-	if err != nil {
-		return nil
-	}
-	o.outDir, err = convertRoot.Flags().GetString("out-dir")
-	if err != nil {
-		return nil
-	}
+	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
+	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
 
 	return cmd
 }
@@ -84,7 +74,7 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	}
 
 	pythonContext.AdditionalRepositories = o.additionalRepositories
-	pythonContext.AdditionalKeyrings = o.additionalRepositories
+	pythonContext.AdditionalKeyrings = o.additionalKeyrings
 	pythonContext.OutDir = o.outDir
 	pythonContext.BaseURIFormat = o.baseURIFormat
 	pythonContext.PackageVersion = o.packageVersion

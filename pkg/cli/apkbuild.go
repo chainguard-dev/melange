@@ -50,41 +50,30 @@ func ApkBuild() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://git.alpinelinux.org/aports/plain/main/%s/APKBUILD", "URI to use for querying APKBUILD for provided package name")
+	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
+	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
 	cmd.Flags().StringArrayVar(&o.excludePackages, "exclude-packages", []string{}, "packages to exclude from auto generation of melange configs when detected in APKBUILD files")
-
-	var err error
-	o.additionalKeyrings, err = convertRoot.Flags().GetStringArray("additional-keyrings")
-	if err != nil {
-		return nil
-	}
-	o.additionalRepositories, err = convertRoot.Flags().GetStringArray("additional-repositories")
-	if err != nil {
-		return nil
-	}
-	o.outDir, err = convertRoot.Flags().GetString("out-dir")
-	if err != nil {
-		return nil
-	}
 
 	return cmd
 }
 
 func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) error {
-	apkContext, err := convert.New()
+	context, err := convert.New()
 	if err != nil {
 		return errors.Wrap(err, "initialising convert command")
 	}
 
-	apkContext.AdditionalRepositories = o.additionalRepositories
-	apkContext.AdditionalKeyrings = o.additionalKeyrings
-	apkContext.OutDir = o.outDir
-	apkContext.ExcludePackages = o.excludePackages
+	context.AdditionalRepositories = o.additionalRepositories
+	context.AdditionalKeyrings = o.additionalKeyrings
+	context.OutDir = o.outDir
+	context.ExcludePackages = o.excludePackages
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 
-	apkContext.Logger.Printf("generating convert config files for APKBUILD %s", configFilename)
+	context.Logger.Printf("generating convert config files for APKBUILD %s", configFilename)
 
-	err = apkContext.Generate(configFilename, packageName)
+	err = context.Generate(configFilename, packageName)
 	if err != nil {
 		return errors.Wrap(err, "generating convert configuration")
 	}

@@ -14,40 +14,23 @@
 
 package cli
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-)
-
-type convertOptions struct {
-	outDir                 string
-	additionalRepositories []string
-	additionalKeyrings     []string
-}
-
-var convertRoot = &cobra.Command{
-	Use:               "convert",
-	DisableAutoGenTag: false,
-	SilenceUsage:      true,
-	Short:             "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		fmt.Println("This command is EXPERIMENTAL. Verify and test melange configuration output before submitting a PR")
-	},
-}
+import "github.com/spf13/cobra"
 
 func Convert() *cobra.Command {
-	o := &convertOptions{}
-
-	convertRoot.PersistentFlags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
-	convertRoot.PersistentFlags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
-	convertRoot.PersistentFlags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
-
-	convertRoot.AddCommand(
-		GemBuild(),
+	cmd := &cobra.Command{
+		Use:               "convert",
+		DisableAutoGenTag: true,
+		SilenceUsage:      true,
+		Short:             "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
+		Long: `Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
+								Check that the build executes and builds the apk as expected, using the wolfi-dev/sdk to test the install of built apk
+								Dependencies are recursively generated and a lot of assumptions are made for you, there be dragons here. 
+							`,
+	}
+	cmd.AddCommand(
 		ApkBuild(),
+		GemBuild(),
 		PythonBuild(),
 	)
-
-	return convertRoot
+	return cmd
 }

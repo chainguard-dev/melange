@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"chainguard.dev/melange/pkg/gem"
@@ -24,14 +25,17 @@ import (
 )
 
 type gemOptions struct {
-	rubyVersion   string
-	baseURIFormat string
+	rubyVersion            string
+	baseURIFormat          string
+	additionalRepositories []string
+	additionalKeyrings     []string
+	outDir                 string
 }
 
 // GemBuild is the top-level `convert gem` cobra command
 //
 // TODO: add a --version flag to switch the version of the gem
-func GemBuild(cOpt *convertOptions) *cobra.Command {
+func GemBuild() *cobra.Command {
 	o := &gemOptions{}
 	cmd := &cobra.Command{
 		Use:   "gem",
@@ -47,7 +51,7 @@ convert gem fluentd`,
 				return errors.New("too many arguments, expected only 1")
 			}
 
-			return o.gemBuild(cOpt, args[0])
+			return o.gemBuild(cmd.Context(), args[0])
 		},
 	}
 
@@ -59,25 +63,40 @@ convert gem fluentd`,
 		&o.baseURIFormat, "base-uri-format", gem.DefaultBaseURIFormat,
 		"URI to use for querying gems for provided package name",
 	)
+	var err error
+
+	o.additionalKeyrings, err = convertRoot.Flags().GetStringArray("additional-keyrings")
+	if err != nil {
+		return nil
+	}
+	o.additionalRepositories, err = convertRoot.Flags().GetStringArray("additional-repositories")
+	if err != nil {
+		return nil
+	}
+	o.outDir, err = convertRoot.Flags().GetString("out-dir")
+	if err != nil {
+		return nil
+	}
+
 	return cmd
 }
 
 // gemBuild is the main cli function. It just sets up the GemBuild context and
 // then executes the manifest generation.
-func (o gemOptions) gemBuild(cOpt *convertOptions, packageName string) error {
-	context, err := gem.New()
+func (o gemOptions) gemBuild(ctx context.Context, packageName string) error {
+	gemContext, err := gem.New()
 	if err != nil {
 		return errors.Wrap(err, "initialising gem command")
 	}
 
-	context.RubyVersion = o.rubyVersion
-	context.AdditionalRepositories = cOpt.additionalRepositories
-	context.AdditionalKeyrings = cOpt.additionalKeyrings
-	context.OutDir = cOpt.outDir
-	context.BaseURIFormat = o.baseURIFormat
+	gemContext.RubyVersion = o.rubyVersion
+	gemContext.AdditionalRepositories = o.additionalRepositories
+	gemContext.AdditionalKeyrings = o.additionalKeyrings
+	gemContext.OutDir = o.outDir
+	gemContext.BaseURIFormat = o.baseURIFormat
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 
-	context.Logger.Printf("generating convert config files for gem %s", configFilename)
+	gemContext.Logger.Printf("generating convert config files for gem %s", configFilename)
 
-	return context.Generate(packageName)
+	return gemContext.Generate(packageName)
 }

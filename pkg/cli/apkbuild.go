@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"chainguard.dev/melange/pkg/convert"
@@ -24,11 +25,14 @@ import (
 )
 
 type apkbuildOptions struct {
-	baseURIFormat   string
-	excludePackages []string
+	outDir                 string
+	baseURIFormat          string
+	additionalRepositories []string
+	additionalKeyrings     []string
+	excludePackages        []string
 }
 
-func ApkBuild(cOpts *convertOptions) *cobra.Command {
+func ApkBuild() *cobra.Command {
 	o := &apkbuildOptions{}
 	cmd := &cobra.Command{
 		Use:     "apkbuild",
@@ -42,28 +46,45 @@ func ApkBuild(cOpts *convertOptions) *cobra.Command {
 				return errors.New("too many arguments, expected only 1")
 			}
 
-			return o.ApkBuildCmd(cOpts, args[0])
+			return o.ApkBuildCmd(cmd.Context(), args[0])
 		},
+	}
+
+	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://git.alpinelinux.org/aports/plain/main/%s/APKBUILD", "URI to use for querying APKBUILD for provided package name")
+	cmd.Flags().StringArrayVar(&o.excludePackages, "exclude-packages", []string{}, "packages to exclude from auto generation of melange configs when detected in APKBUILD files")
+
+	var err error
+	o.additionalKeyrings, err = convertRoot.Flags().GetStringArray("additional-keyrings")
+	if err != nil {
+		return nil
+	}
+	o.additionalRepositories, err = convertRoot.Flags().GetStringArray("additional-repositories")
+	if err != nil {
+		return nil
+	}
+	o.outDir, err = convertRoot.Flags().GetString("out-dir")
+	if err != nil {
+		return nil
 	}
 
 	return cmd
 }
 
-func (o apkbuildOptions) ApkBuildCmd(cOpts *convertOptions, packageName string) error {
-	context, err := convert.New()
+func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) error {
+	apkContext, err := convert.New()
 	if err != nil {
 		return errors.Wrap(err, "initialising convert command")
 	}
 
-	context.AdditionalRepositories = cOpts.additionalRepositories
-	context.AdditionalKeyrings = cOpts.additionalKeyrings
-	context.OutDir = cOpts.outDir
-	context.ExcludePackages = o.excludePackages
+	apkContext.AdditionalRepositories = o.additionalRepositories
+	apkContext.AdditionalKeyrings = o.additionalKeyrings
+	apkContext.OutDir = o.outDir
+	apkContext.ExcludePackages = o.excludePackages
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 
-	context.Logger.Printf("generating convert config files for APKBUILD %s", configFilename)
+	apkContext.Logger.Printf("generating convert config files for APKBUILD %s", configFilename)
 
-	err = context.Generate(configFilename, packageName)
+	err = apkContext.Generate(configFilename, packageName)
 	if err != nil {
 		return errors.Wrap(err, "generating convert configuration")
 	}

@@ -14,7 +14,11 @@
 
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
 
 type convertOptions struct {
 	outDir                 string
@@ -22,23 +26,28 @@ type convertOptions struct {
 	additionalKeyrings     []string
 }
 
+var convertRoot = &cobra.Command{
+	Use:               "convert",
+	DisableAutoGenTag: false,
+	SilenceUsage:      true,
+	Short:             "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		fmt.Println("This command is EXPERIMENTAL. Verify and test melange configuration output before submitting a PR")
+	},
+}
+
 func Convert() *cobra.Command {
 	o := &convertOptions{}
-	cmd := &cobra.Command{
-		Use:               "convert",
-		DisableAutoGenTag: true,
-		SilenceUsage:      true,
-		Short:             "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
-	}
 
-	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
-	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
-	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
+	convertRoot.PersistentFlags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
+	convertRoot.PersistentFlags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
+	convertRoot.PersistentFlags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
 
-	cmd.AddCommand(
-		ApkBuild(o),
-		GemBuild(o),
-		PythonBuild(o),
+	convertRoot.AddCommand(
+		GemBuild(),
+		ApkBuild(),
+		PythonBuild(),
 	)
-	return cmd
+
+	return convertRoot
 }

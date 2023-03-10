@@ -15,6 +15,8 @@
 package cli
 
 import (
+	"context"
+
 	"chainguard.dev/melange/pkg/python"
 
 	"github.com/pkg/errors"
@@ -22,13 +24,16 @@ import (
 )
 
 type pythonOptions struct {
-	baseURIFormat  string
-	pythonVersion  string
-	packageVersion string
+	baseURIFormat          string
+	additionalRepositories []string
+	additionalKeyrings     []string
+	outDir                 string
+	pythonVersion          string
+	packageVersion         string
 }
 
 // PythonBuild is the top-level `convert python` cobra command
-func PythonBuild(cOptions *convertOptions) *cobra.Command {
+func PythonBuild() *cobra.Command {
 	o := &pythonOptions{}
 	cmd := &cobra.Command{
 		Use:   "python",
@@ -44,7 +49,7 @@ convert python botocore`,
 				return errors.New("too many arguments, expected only 1")
 			}
 
-			return o.pythonBuild(cOptions, args[0])
+			return o.pythonBuild(cmd.Context(), args[0])
 		},
 	}
 
@@ -52,21 +57,35 @@ convert python botocore`,
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org", "URI to use for querying gems for provided package name")
 	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3.11", "version of the python to build the package")
 
+	var err error
+	o.additionalKeyrings, err = convertRoot.Flags().GetStringArray("additional-keyrings")
+	if err != nil {
+		return nil
+	}
+	o.additionalRepositories, err = convertRoot.Flags().GetStringArray("additional-repositories")
+	if err != nil {
+		return nil
+	}
+	o.outDir, err = convertRoot.Flags().GetString("out-dir")
+	if err != nil {
+		return nil
+	}
+
 	return cmd
 }
 
 // pythonBuild is the main cli function. It just sets up the PythonBuild context and
 // then executes the manifest generation.
-func (o pythonOptions) pythonBuild(cOpts *convertOptions, packageName string) error {
+func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) error {
 
 	pythonContext, err := python.New(packageName)
 	if err != nil {
 		return errors.Wrap(err, "initialising python command")
 	}
 
-	pythonContext.AdditionalRepositories = cOpts.additionalRepositories
-	pythonContext.AdditionalKeyrings = cOpts.additionalRepositories
-	pythonContext.OutDir = cOpts.outDir
+	pythonContext.AdditionalRepositories = o.additionalRepositories
+	pythonContext.AdditionalKeyrings = o.additionalRepositories
+	pythonContext.OutDir = o.outDir
 	pythonContext.BaseURIFormat = o.baseURIFormat
 	pythonContext.PackageVersion = o.packageVersion
 	pythonContext.PythonVersion = o.pythonVersion

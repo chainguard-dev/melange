@@ -26,6 +26,7 @@ func New() *cobra.Command {
 		SilenceUsage:      true,
 	}
 
+	cmd.AddCommand(Completion())
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())
 	cmd.AddCommand(Keygen())

@@ -21,6 +21,7 @@ import (
 
 type Runner interface {
 	TestUsability() bool
+	Guest() Guest
 	NeedsImage() bool
 	StartPod(cfg *Config) error
 	Run(cfg *Config, cmd ...string) error

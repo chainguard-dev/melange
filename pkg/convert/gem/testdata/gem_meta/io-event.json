@@ -1,0 +1,47 @@
+{
+  "name": "io-event",
+  "downloads": 4751556,
+  "version": "1.1.6",
+  "version_created_at": "2023-01-10T01:44:53.396Z",
+  "version_downloads": 47148,
+  "platform": "ruby",
+  "authors": "Samuel Williams, Bruno Sutic, Benoit Daloze, Delton Ding, machty",
+  "info": "An event loop.",
+  "licenses": [
+    "MIT"
+  ],
+  "metadata": {},
+  "yanked": false,
+  "sha": "d2cdde1ce1e6cbdfb12fa0f0da9c6fb22090272d984c9605006764f9049066ee",
+  "project_uri": "https://rubygems.org/gems/io-event",
+  "gem_uri": "https://rubygems.org/gems/io-event-1.1.6.gem",
+  "homepage_uri": "https://github.com/socketry/io-event",
+  "wiki_uri": null,
+  "documentation_uri": "https://www.rubydoc.info/gems/io-event/1.1.6",
+  "mailing_list_uri": null,
+  "source_code_uri": null,
+  "bug_tracker_uri": null,
+  "changelog_uri": null,
+  "funding_uri": null,
+  "dependencies": {
+    "development": [
+      {
+        "name": "bake",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "bundler",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "covered",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "sus",
+        "requirements": "~> 0.6"
+      }
+    ],
+    "runtime": []
+  }
+}

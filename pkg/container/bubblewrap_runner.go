@@ -40,7 +40,8 @@ func (bw *BWRunner) Run(cfg *Config, args ...string) error {
 		"--dev", "/dev",
 		"--proc", "/proc",
 		"--chdir", "/home/build",
-		"--clearenv")
+		"--clearenv",
+		"--new-session")
 
 	if !cfg.Capabilities.Networking {
 		baseargs = append(baseargs, "--unshare-net")

@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 // DownloadFile downloads a file and returns a path to it in temporary storage.
@@ -75,4 +76,19 @@ func HashFile(downloadedFile string, digest hash.Hash) (string, error) {
 	}
 
 	return hex.EncodeToString(digest.Sum(nil)), nil
+}
+
+func ReverseSlice[T comparable](s []T) {
+	sort.SliceStable(s, func(i, j int) bool {
+		return i > j
+	})
+}
+
+func Contains[T comparable](s []T, e T) bool {
+	for _, v := range s {
+		if v == e {
+			return true
+		}
+	}
+	return false
 }

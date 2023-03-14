@@ -17,7 +17,7 @@ package cli
 import (
 	"context"
 
-	"chainguard.dev/melange/pkg/python"
+	"chainguard.dev/melange/pkg/convert/python"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"

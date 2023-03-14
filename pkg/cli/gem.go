@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"chainguard.dev/melange/pkg/gem"
+	"chainguard.dev/melange/pkg/convert/gem"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"

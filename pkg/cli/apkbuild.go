@@ -18,9 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	"chainguard.dev/melange/pkg/convert"
 	"github.com/pkg/errors"
 
+	"chainguard.dev/melange/pkg/convert/apkbuild"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +60,7 @@ func ApkBuild() *cobra.Command {
 }
 
 func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) error {
-	context, err := convert.New()
+	context, err := apkbuild.New()
 	if err != nil {
 		return errors.Wrap(err, "initialising convert command")
 	}

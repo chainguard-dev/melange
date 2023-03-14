@@ -108,7 +108,7 @@ type ImageContents struct {
 // New initialises a new GemContext.
 //
 //	TODO: Add a check for ruby-* packages in wolfios once the name has been \
-//		standardised. Otherwise we risk skipping ruby packages if the apk \
+//		standardised. Otherwise, we risk skipping ruby packages if the apk \
 //		exists but is not actually a ruby gem.
 func New() (GemContext, error) {
 	context := GemContext{

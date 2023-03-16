@@ -241,7 +241,7 @@ func TestGeneratePackage(t *testing.T) {
 // repository entries
 func TestGenerateEnvironment(t *testing.T) {
 	expected := apkotypes.ImageConfiguration{
-		Contents: ImageContents{
+		Contents: apkotypes.ImageContents{
 			Repositories: []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"},
 			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"},
 			Packages: []string{

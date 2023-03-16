@@ -49,7 +49,6 @@ melange build [flags]
       --signing-key string          key to use for signing
       --source-dir string           directory used for included sources
       --strip-origin-name           whether origin names should be stripped (for bootstrap)
-      --use-proot                   whether to use proot for fakeroot
       --vars-file string            file to use for preloaded build configuration variables
       --workspace-dir string        directory used for the workspace at /home/build
 ```

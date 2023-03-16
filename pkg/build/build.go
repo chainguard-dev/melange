@@ -32,7 +32,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apkofs "chainguard.dev/apko/pkg/fs"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
@@ -990,7 +989,7 @@ func (ctx *Context) BuildGuest() error {
 	bc.Summarize()
 
 	if !ctx.Runner.NeedsImage() {
-		if err := bc.BuildImage(); err != nil {
+		if _, err := bc.BuildImage(); err != nil {
 			return fmt.Errorf("unable to generate image: %w", err)
 		}
 	} else {
@@ -1212,7 +1211,7 @@ func (ctx *Context) PopulateCache() error {
 		defer os.RemoveAll(tmp)
 		ctx.Logger.Printf("cache bucket copied to %s", tmp)
 
-		fsys := apkofs.DirFS(tmp)
+		fsys := os.DirFS(tmp)
 
 		// mkdir /var/cache/melange
 		if err := os.MkdirAll(ctx.CacheDir, 0o755); err != nil {
@@ -1272,7 +1271,7 @@ func (ctx *Context) PopulateWorkspace() error {
 
 	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
 
-	fsys := apkofs.DirFS(ctx.SourceDir)
+	fsys := os.DirFS(ctx.SourceDir)
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

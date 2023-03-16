@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.18
 
 require (
-	chainguard.dev/apko v0.7.2-0.20230316190834-ec0e2ccbee65
+	chainguard.dev/apko v0.7.2-0.20230316204525-6d862e6302bc
 	cloud.google.com/go/storage v1.29.0
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -80,7 +80,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dominodatalab/os-release v0.0.0-20190522011736-bcdb4a3e3c2f // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
@@ -122,12 +121,8 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
-	github.com/prometheus/common v0.39.0 // indirect
-	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/sigstore/cosign v1.13.1 // indirect
 	github.com/sigstore/cosign/v2 v2.0.0 // indirect
 	github.com/sigstore/rekor v1.0.1 // indirect
 	github.com/sigstore/sigstore v1.5.1 // indirect

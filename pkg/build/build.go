@@ -32,7 +32,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apkofs "chainguard.dev/apko/pkg/fs"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
@@ -296,7 +295,6 @@ type Context struct {
 	SigningPassphrase  string
 	Namespace          string
 	GenerateIndex      bool
-	UseProot           bool
 	EmptyWorkspace     bool
 	OutDir             string
 	Logger             *log.Logger
@@ -545,14 +543,6 @@ func WithSigningKey(signingKey string) Option {
 func WithGenerateIndex(generateIndex bool) Option {
 	return func(ctx *Context) error {
 		ctx.GenerateIndex = generateIndex
-		return nil
-	}
-}
-
-// WithUseProot sets whether or not proot should be used.
-func WithUseProot(useProot bool) Option {
-	return func(ctx *Context) error {
-		ctx.UseProot = useProot
 		return nil
 	}
 }
@@ -982,7 +972,6 @@ func (ctx *Context) BuildGuest() error {
 
 	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
-		apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
@@ -1000,7 +989,7 @@ func (ctx *Context) BuildGuest() error {
 	bc.Summarize()
 
 	if !ctx.Runner.NeedsImage() {
-		if err := bc.BuildImage(); err != nil {
+		if _, err := bc.BuildImage(); err != nil {
 			return fmt.Errorf("unable to generate image: %w", err)
 		}
 	} else {
@@ -1222,7 +1211,7 @@ func (ctx *Context) PopulateCache() error {
 		defer os.RemoveAll(tmp)
 		ctx.Logger.Printf("cache bucket copied to %s", tmp)
 
-		fsys := apkofs.DirFS(tmp)
+		fsys := os.DirFS(tmp)
 
 		// mkdir /var/cache/melange
 		if err := os.MkdirAll(ctx.CacheDir, 0o755); err != nil {
@@ -1282,7 +1271,7 @@ func (ctx *Context) PopulateWorkspace() error {
 
 	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
 
-	fsys := apkofs.DirFS(ctx.SourceDir)
+	fsys := os.DirFS(ctx.SourceDir)
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

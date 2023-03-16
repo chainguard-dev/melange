@@ -262,7 +262,7 @@ func TestGenerateEnvironment(t *testing.T) {
 	got310 := pythonctx.generateEnvironment(pythonctx.Package)
 
 	expected310 := apkotypes.ImageConfiguration{
-		Contents: ImageContents{
+		Contents: apkotypes.ImageContents{
 			Repositories: []string{"https://packages.wolfi.dev/os"},
 			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages: []string{
@@ -283,7 +283,7 @@ func TestGenerateEnvironment(t *testing.T) {
 	got311 := pythonctx.generateEnvironment(pythonctx.Package)
 
 	expected311 := apkotypes.ImageConfiguration{
-		Contents: ImageContents{
+		Contents: apkotypes.ImageContents{
 			Repositories: []string{"https://packages.wolfi.dev/os"},
 			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages: []string{

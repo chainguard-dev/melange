@@ -71,13 +71,6 @@ type PythonContext struct {
 	ToCheck []string
 }
 
-// TODO: Why isn't this pulled in from melange/build?
-type ImageContents struct {
-	Repositories []string `yaml:"repositories,omitempty"`
-	Keyring      []string `yaml:"keyring,omitempty"`
-	Packages     []string `yaml:"packages,omitempty"`
-}
-
 // TODO: This should be a pipeline
 const pythonBuildPipeline = `python setup.py build`
 const pythonInstallPipeline = `python setup.py install --prefix=/usr --root="${{targets.destdir}}"`
@@ -271,7 +264,7 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 	}
 
 	env := apkotypes.ImageConfiguration{
-		Contents: ImageContents{
+		Contents: apkotypes.ImageContents{
 			Repositories: []string{"https://packages.wolfi.dev/os"},
 			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages:     pythonStandard,

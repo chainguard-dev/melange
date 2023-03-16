@@ -98,13 +98,6 @@ type GemMetaDependency struct {
 	Requirements string `json:"requirements"`
 }
 
-// TODO: Why isn't this pulled in from melange/build?
-type ImageContents struct {
-	Repositories []string `yaml:"repositories,omitempty"`
-	Keyring      []string `yaml:"keyring,omitempty"`
-	Packages     []string `yaml:"packages,omitempty"`
-}
-
 // New initialises a new GemContext.
 //
 //	TODO: Add a check for ruby-* packages in wolfios once the name has been \
@@ -289,7 +282,7 @@ func (c *GemContext) generatePackage(g GemMeta) build.Package {
 // It will handle adding any extra repositories and keyrings to the manifest.
 func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 	env := apkotypes.ImageConfiguration{
-		Contents: ImageContents{
+		Contents: apkotypes.ImageContents{
 			Repositories: []string{"https://packages.wolfi.dev/os"},
 			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages: []string{

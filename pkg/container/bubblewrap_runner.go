@@ -75,10 +75,11 @@ func (bw *BWRunner) NeedsImage() bool {
 	return false
 }
 
-// StartPod starts a pod if necessary.  Not implemented for
-// Bubblewrap runners.
+// StartPod starts a pod if necessary.  On Bubblewrap, we just run
+// ldconfig to prime ld.so.cache for glibc < 2.37 builds.
 func (bw *BWRunner) StartPod(cfg *Config) error {
-	return nil
+	script := "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true"
+	return bw.Run(cfg, "/bin/sh", "-c", script)
 }
 
 // TerminatePod terminates a pod if necessary.  Not implemented

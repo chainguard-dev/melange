@@ -62,7 +62,7 @@ func (dk *DKRunner) StartPod(cfg *Config) error {
 	ctx := context.Background()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.ImgDigest,
-		Cmd:   []string{"/bin/sh", "-c", "ldconfig /lib; while true; do sleep 5; done"},
+		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
 		Tty:   false,
 	}, hostConfig, nil, nil, "")
 	if err != nil {

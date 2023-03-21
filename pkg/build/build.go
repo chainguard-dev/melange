@@ -303,6 +303,7 @@ type Context struct {
 	ExtraRepos         []string
 	DependencyLog      string
 	BinShOverlay       string
+	CreateBuildLog     bool
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
 	BreakpointLabel    string
@@ -663,6 +664,16 @@ func WithNamespace(namespace string) Option {
 func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
 	return func(ctx *Context) error {
 		ctx.EnabledBuildOptions = enabledBuildOptions
+		return nil
+	}
+}
+
+// WithCreateBuildLog indicates whether to generate a package.log file containing the
+// list of packages that were built.  Some packages may have been skipped
+// during the build if , so it can be hard to know exactly which packages were built
+func WithCreateBuildLog(createBuildLog bool) Option {
+	return func(ctx *Context) error {
+		ctx.CreateBuildLog = createBuildLog
 		return nil
 	}
 }
@@ -1514,6 +1525,11 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
+	// if required generate a log of packages that have been built
+	if err := ctx.GenerateBuildLog(""); err != nil {
+		return fmt.Errorf("unable to generate build log: %w", err)
+	}
+
 	return nil
 }
 
@@ -1610,4 +1626,22 @@ func (ctx *Context) WorkspaceConfig() *container.Config {
 
 	ctx.containerConfig = ctx.buildWorkspaceConfig()
 	return ctx.containerConfig
+}
+
+// GenerateBuildLog will create or append a list of packages that were built by melange build
+func (ctx *Context) GenerateBuildLog(dir string) error {
+	if !ctx.CreateBuildLog {
+		return nil
+	}
+
+	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// separate with pipe so it is easy to parse
+	_, err = f.WriteString(fmt.Sprintf("%s|%s|%s-r%d\n", ctx.Arch.ToAPK(), ctx.Configuration.Package.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch))
+	return err
 }

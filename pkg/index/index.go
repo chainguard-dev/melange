@@ -152,7 +152,7 @@ func (ctx *Context) GenerateIndex() error {
 			for _, pkg := range packages {
 				found := false
 				for _, p := range index.Packages {
-					if pkg.Name == p.Name {
+					if pkg.Name == p.Name && pkg.Version == p.Version {
 						found = true
 						p = pkg
 					}
@@ -173,7 +173,7 @@ func (ctx *Context) GenerateIndex() error {
 		}
 	}
 
-	ctx.Logger.Printf("generating index at %s", ctx.IndexFile)
+	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, packages)
 	archive, err := apkrepo.ArchiveFromIndex(index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)

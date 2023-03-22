@@ -16,6 +16,7 @@ package build
 
 import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
@@ -212,4 +213,56 @@ func TestContext_GenerateBuildLog(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, string(expected), string(got))
+}
+
+func TestBuild_update(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected Configuration
+	}{
+		{
+			name: "github",
+			expected: Configuration{
+				Package: Package{Name: "cosign", Version: "2.0.0"},
+				Update: Update{
+					Enabled: true,
+					Shared:  false,
+					GitHubMonitor: &GitHubMonitor{
+						Identifier:  "sigstore/cosign",
+						StripPrefix: "v",
+						UseTags:     true,
+					},
+				},
+			},
+		},
+		{
+			name: "release-monitor",
+			expected: Configuration{
+				Package: Package{Name: "bison", Version: "3.8.2"},
+				Update: Update{
+					Enabled: true,
+					Shared:  false,
+					ReleaseMonitor: &ReleaseMonitor{
+						Identifier: 193,
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			ctx := Context{
+				ConfigFile: filepath.Join("testdata", "update", fmt.Sprintf("%s.melange.yaml", test.name)),
+				Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+			}
+			cfg := &Configuration{}
+			if err := cfg.Load(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if d := cmp.Diff(test.expected.Update, cfg.Update); d != "" {
+				t.Fatalf("actual didn't match expected: %s", d)
+			}
+		})
+	}
 }

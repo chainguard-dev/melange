@@ -11,12 +11,28 @@ inputs:
       Gem name
     required: true
 
+  output:
+    description: |
+      Gem output filename
+    required: false
+
+  opts:
+    description: |
+      Options to pass to gem build
+    required: false
+
 pipeline:
   - runs: |
       if ! [ -x "$(command -v ruby)" ]; then
         echo 'Error: Ruby is not installed.'
         exit 1
       fi
+
   - runs: |
-      
-      gem build ${{inputs.gem}}.gemspec
+      output_flag=''
+      [ -n '${{inputs.output}}' ] && output_flag='--output ${{inputs.output}}'
+
+      gem build \
+        ${{inputs.gem}}.gemspec \
+        ${output_flag} \
+        ${{inputs.opts}}

@@ -12,5 +12,8 @@ pipeline:
         exit 1
       fi
   - runs: |
-      cd ${{targets.destdir}}
-      rm -rf build_info cache extensions plugins
+      INSTALL_DIR=${{targets.destdir}}/$(ruby -e 'puts Gem.default_dir')
+      rm -rf ${INSTALL_DIR}/build_info \
+             ${INSTALL_DIR}/cache \
+             ${INSTALL_DIR}/extensions \
+             ${INSTALL_DIR}/plugins

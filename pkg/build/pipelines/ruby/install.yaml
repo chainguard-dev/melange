@@ -9,32 +9,53 @@ inputs:
   gem:
     description: |
       Gem name
-    required: true
+    required: false
+
+  gem-file:
+    description: |
+      The full filename of the gem to build
+    required: false
 
   version:
     description: |
-      Gem version to install. This can be a version tag (v1.0.0)
+      Gem version to install. This can be a version tag (1.0.0)
     required: true
 
+  opts:
+    description: |
+      Options to pass to the gem install command
+    default: ''
+    required: false
+
 pipeline:
-  - runs: |
+  - name: Check ruby
+    runs: |
       if ! [ -x "$(command -v ruby)" ]; then
-        echo 'Error: Ruby is not installed.'
+        echo 'ERROR: Ruby is not installed.'
         exit 1
       fi
-  - runs: |
+  - name: Ruby install
+    runs: |
+      if [ -z "${{inputs.gem}}" ] && [ -z "${{inputs.gem-file}}" ]; then
+        echo "ERROR: You need to specify gem or gem-file"
+        exit 1
+      fi
+
+      [ -n '${{inputs.gem-file}}' ] && GEM=${{inputs.gem-file}}
+      [ -n '${{inputs.gem}}' ] && GEM=${{inputs.gem}}-${{inputs.version}}.gem
+
       TARGET_DIR_BIN="${{targets.destdir}}/usr/bin"
       TARGET_DIR_INSTALL="${{targets.destdir}}$(ruby -e 'puts Gem.default_dir')/"
 
       mkdir -p "${TARGET_DIR_BIN}"
       mkdir -p "${TARGET_DIR_INSTALL}"
-      
-      gem install \
-      --install-dir ${TARGET_DIR_INSTALL}  \
-      --bindir ${TARGET_DIR_BIN} \
-      --no-document \
-      --ignore-dependencies \
-      --local \
-      --verbose \
-      -v ${{inputs.version}} \
-      ${{inputs.gem}}-${{inputs.version}}.gem
+
+      gem install ${GEM} \
+        --install-dir ${TARGET_DIR_INSTALL}  \
+        --bindir ${TARGET_DIR_BIN} \
+        --version ${{inputs.version}} \
+        --ignore-dependencies \
+        --no-document \
+        --verbose \
+        --local \
+        ${{inputs.opts}}

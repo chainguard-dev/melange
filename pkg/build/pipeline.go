@@ -17,6 +17,7 @@ package build
 import (
 	"embed"
 	"fmt"
+	"github.com/pkg/errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -66,8 +67,11 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 	return strings.NewReplacer(replacements...)
 }
 
-func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string {
-	nw := substitutionMap(ctx)
+func mutateWith(ctx *PipelineContext, with map[string]string) (map[string]string, error) {
+	nw, err := substitutionMap(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	for k, v := range with {
 		// already mutated?
@@ -84,10 +88,10 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 		nw[k] = mutateStringFromMap(nw, v)
 	}
 
-	return nw
+	return nw, nil
 }
 
-func substitutionMap(ctx *PipelineContext) map[string]string {
+func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 	nw := map[string]string{
 		substitutionPackageName:          ctx.Package.Name,
 		substitutionPackageVersion:       ctx.Package.Version,
@@ -119,7 +123,20 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 		nw[nk] = "true"
 	}
 
-	return nw
+	for _, v := range ctx.Context.Configuration.VarTransforms {
+		nk := fmt.Sprintf("${{vars.%s}}", v.To)
+		from := mutateStringFromMap(nw, v.From)
+
+		re, err := regexp.Compile(v.Match)
+		if err != nil {
+			return nil, errors.Wrapf(err, "match value: %s string does not compile into a regex", v.Match)
+		}
+
+		output := re.ReplaceAllString(from, v.Replace)
+		nw[nk] = output
+	}
+
+	return nw, nil
 }
 
 func mutateStringFromMap(with map[string]string, input string) string {
@@ -198,7 +215,10 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 	if err != nil {
 		return fmt.Errorf("unable to construct pipeline: %w", err)
 	}
-	p.With = mutateWith(ctx, validated)
+	p.With, err = mutateWith(ctx, validated)
+	if err != nil {
+		return err
+	}
 
 	for k := range p.Pipeline {
 		p.Pipeline[k].With = rightJoinMap(p.With, p.Pipeline[k].With)
@@ -240,7 +260,11 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 }
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
-	p.With = mutateWith(ctx, p.With)
+	var err error
+	p.With, err = mutateWith(ctx, p.With)
+	if err != nil {
+		return err
+	}
 	p.dumpWith()
 
 	workdir := "/home/build"
@@ -273,7 +297,10 @@ func (p *Pipeline) evaluateBranchConditional(pctx *PipelineContext) bool {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated := mutateWith(pctx, p.With)
+		mutated, err := mutateWith(pctx, p.With)
+		if err != nil {
+			return "", err
+		}
 		nk := fmt.Sprintf("${{%s}}", key)
 		return mutated[nk], nil
 	}

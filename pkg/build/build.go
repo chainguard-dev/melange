@@ -201,7 +201,16 @@ type Configuration struct {
 
 	Vars map[string]string `yaml:"vars,omitempty"`
 
+	VarTransforms []VarTransforms `yaml:"var-transforms,omitempty"`
+
 	Options map[string]BuildOption `yaml:"options,omitempty"`
+}
+
+type VarTransforms struct {
+	From    string `yaml:"from"`
+	Match   string `yaml:"match"`
+	Replace string `yaml:"replace"`
+	To      string `yaml:"to"`
 }
 
 // TODO: ensure that there's no net effect to secdb!
@@ -1319,7 +1328,10 @@ func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated := mutateWith(pctx, map[string]string{})
+		mutated, err := mutateWith(pctx, map[string]string{})
+		if err != nil {
+			return "", err
+		}
 		nk := fmt.Sprintf("${{%s}}", key)
 		return mutated[nk], nil
 	}

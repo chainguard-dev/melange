@@ -41,9 +41,13 @@ pipeline:
       [ -n '${{inputs.branch}}' ] && clone_target='--branch ${{inputs.branch}}'
       [ -n '${{inputs.tag}}' ] && clone_target='--branch ${{inputs.tag}}'
 
-      git clone $clone_target --depth ${{inputs.depth}} ${{inputs.repository}} ${{inputs.destination}}
+      mkdir -p ${{inputs.destination}}
+      clone_fullpath=$(realpath ${{inputs.destination}})
 
-      cd ${{inputs.destination}}
+      git config --global --add safe.directory $clone_fullpath
+      git clone $clone_target --depth ${{inputs.depth}} ${{inputs.repository}} $clone_fullpath
+
+      cd $clone_fullpath
 
       if [ -z "${{inputs.expected-commit}}" ]; then
         echo "Warning (git-checkout): no expected-commit"

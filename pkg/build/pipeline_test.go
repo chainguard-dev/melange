@@ -31,3 +31,37 @@ func Test_mutateStringFromMap(t *testing.T) {
 
 	require.Equal(t, output1, "foo ", "bogus variable substitution not deleted")
 }
+
+func Test_substitutionMap(t *testing.T) {
+
+	tests := []struct {
+		initialVersion string
+		match          string
+		replace        string
+		expected       string
+	}{
+		{initialVersion: "1.2.3.9", match: `\.(\d+)$`, replace: "+$1", expected: "1.2.3+9"},
+	}
+	for _, tt := range tests {
+		t.Run("sub", func(t *testing.T) {
+			ctx := &PipelineContext{
+				Package: &Package{Name: "foo", Version: tt.initialVersion},
+				Context: &Context{
+					Configuration: Configuration{
+						VarTransforms: []VarTransforms{
+							{
+								From:    "${{package.version}}",
+								Match:   tt.match,
+								Replace: tt.replace,
+								To:      "mangled-package-version",
+							},
+						},
+					},
+				},
+			}
+			m, err := substitutionMap(ctx)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, m["${{vars.mangled-package-version}}"])
+		})
+	}
+}

@@ -198,6 +198,7 @@ type Configuration struct {
 	Data        []RangeData  `yaml:"data,omitempty"`
 	Secfixes    Secfixes     `yaml:"secfixes,omitempty"`
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
+	Update      Update       `yaml:"update,omitempty"`
 
 	Vars map[string]string `yaml:"vars,omitempty"`
 
@@ -226,6 +227,28 @@ type AdvisoryContent struct {
 	ImpactStatement string            `yaml:"impact,omitempty"`
 	ActionStatement string            `yaml:"action,omitempty"`
 	FixedVersion    string            `yaml:"fixed-version,omitempty"`
+}
+
+// Update provides information used to describe how to keep the package up to date
+type Update struct {
+	Enabled          bool            `yaml:"enabled"`                     // toggle if updates should occur
+	Shared           bool            `yaml:"shared,omitempty"`            // indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+	VersionSeparator string          `yaml:"version-separator,omitempty"` // override the version separator if it is nonstandard
+	ReleaseMonitor   *ReleaseMonitor `yaml:"release-monitor,omitempty"`
+	GitHubMonitor    *GitHubMonitor  `yaml:"github,omitempty"`
+}
+
+// ReleaseMonitor indicates using the API for https://release-monitoring.org/
+type ReleaseMonitor struct {
+	Identifier int `yaml:"identifier"` // ID number for release monitor
+}
+
+// GitHubMonitor indicates using the GitHub API
+type GitHubMonitor struct {
+	Identifier  string `yaml:"identifier"`             // org/repo for GitHub
+	StripPrefix string `yaml:"strip-prefix,omitempty"` // if the version in GitHub contains a prefix which needs to be stripped when updating the melange package
+	TagFilter   string `yaml:"tag-filter,omitempty"`   // filter to apply when searching tags on a GitHub repository
+	UseTags     bool   `yaml:"use-tag,omitempty"`      // override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
 }
 
 func (ac AdvisoryContent) Validate() error {

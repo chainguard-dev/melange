@@ -1,0 +1,12 @@
+package:
+  name: cosign
+  version: 2.0.0
+  epoch: 0
+
+update:
+  enabled: true
+  shared: false
+  github:
+    identifier: sigstore/cosign
+    strip-prefix: v
+    use-tag: true

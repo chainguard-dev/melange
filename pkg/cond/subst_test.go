@@ -62,6 +62,10 @@ baz
 	require.Equal(t, expected, result, "result does not match expected result")
 }
 
+func fakeLookup(key string) (string, error) {
+	return "a", nil
+}
+
 func TestSubstVarWhitespaceExactWhitespace(t *testing.T) {
 	doc := `Hello
   ${{ foo.bar }}
@@ -75,4 +79,14 @@ func TestSubstVarWhitespaceExactWhitespace(t *testing.T) {
 
 	require.NoErrorf(t, err, "got error: %v", err)
 	require.Equal(t, expected, result, "result does not match expected result")
+}
+
+func TestSubstVarShellFragment(t *testing.T) {
+	doc := `if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ]; then
+  printf "One of expected-sha256 or expected-sha512 is required"
+  exit 1
+fi`
+	_, err := Subst(doc, fakeLookup)
+
+	require.NoErrorf(t, err, "got error: %v", err)
 }

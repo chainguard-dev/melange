@@ -71,3 +71,13 @@ func TestVariableLookup(t *testing.T) {
 	require.NoErrorf(t, err, "got error: %v", err)
 	require.Equal(t, true, result, "${{foo.bar}} definitely equals baz")
 }
+
+func TestVariableLookupWhitespace(t *testing.T) {
+	result, err := Evaluate("${{ foo.bar }} == 'baz'", placeholderLookup)
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, true, result, "${{ foo.bar }} definitely equals baz")
+
+	result, err = Evaluate("'baz' == ${{ foo.bar }}", placeholderLookup)
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, true, result, "${{ foo.bar }} definitely equals baz")
+}

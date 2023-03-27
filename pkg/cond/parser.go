@@ -17,7 +17,7 @@ package cond
 import (
 	"fmt"
 
-	"github.com/oec/goparsify"
+	"github.com/ijt/goparsify"
 )
 
 func combineOp(n *goparsify.Result) {
@@ -106,7 +106,7 @@ func Evaluate(inputExpr string, lookupFns ...VariableLookupFunction) (bool, erro
 
 	groupChain := goparsify.Some(goparsify.Any(combinedGroup, groupOrExpr), chain).Map(collapseOp)
 
-	result, err := goparsify.Run(groupChain, inputExpr, goparsify.UnicodeWhitespace)
+	result, _, err := goparsify.Run(groupChain, inputExpr, goparsify.UnicodeWhitespace)
 	if err != nil {
 		return false, err
 	}

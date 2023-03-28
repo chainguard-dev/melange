@@ -908,14 +908,14 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		GID:       1000,
 		Members:   []string{"build"},
 	}
-	cfg.Environment.Accounts.Groups = []apko_types.Group{grp}
+	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 
 	usr := apko_types.User{
 		UserName: "build",
 		UID:      1000,
 		GID:      1000,
 	}
-	cfg.Environment.Accounts.Users = []apko_types.User{usr}
+	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
 
 	// Merge environment file if needed.
 	if envFile := options.envFilePath; envFile != "" {

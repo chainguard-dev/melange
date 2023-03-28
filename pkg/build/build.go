@@ -198,10 +198,20 @@ type Configuration struct {
 	Data        []RangeData  `yaml:"data,omitempty"`
 	Secfixes    Secfixes     `yaml:"secfixes,omitempty"`
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
+	Update      Update       `yaml:"update,omitempty"`
 
 	Vars map[string]string `yaml:"vars,omitempty"`
 
+	VarTransforms []VarTransforms `yaml:"var-transforms,omitempty"`
+
 	Options map[string]BuildOption `yaml:"options,omitempty"`
+}
+
+type VarTransforms struct {
+	From    string `yaml:"from"`
+	Match   string `yaml:"match"`
+	Replace string `yaml:"replace"`
+	To      string `yaml:"to"`
 }
 
 // TODO: ensure that there's no net effect to secdb!
@@ -217,6 +227,28 @@ type AdvisoryContent struct {
 	ImpactStatement string            `yaml:"impact,omitempty"`
 	ActionStatement string            `yaml:"action,omitempty"`
 	FixedVersion    string            `yaml:"fixed-version,omitempty"`
+}
+
+// Update provides information used to describe how to keep the package up to date
+type Update struct {
+	Enabled          bool            `yaml:"enabled"`                     // toggle if updates should occur
+	Shared           bool            `yaml:"shared,omitempty"`            // indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+	VersionSeparator string          `yaml:"version-separator,omitempty"` // override the version separator if it is nonstandard
+	ReleaseMonitor   *ReleaseMonitor `yaml:"release-monitor,omitempty"`
+	GitHubMonitor    *GitHubMonitor  `yaml:"github,omitempty"`
+}
+
+// ReleaseMonitor indicates using the API for https://release-monitoring.org/
+type ReleaseMonitor struct {
+	Identifier int `yaml:"identifier"` // ID number for release monitor
+}
+
+// GitHubMonitor indicates using the GitHub API
+type GitHubMonitor struct {
+	Identifier  string `yaml:"identifier"`             // org/repo for GitHub
+	StripPrefix string `yaml:"strip-prefix,omitempty"` // if the version in GitHub contains a prefix which needs to be stripped when updating the melange package
+	TagFilter   string `yaml:"tag-filter,omitempty"`   // filter to apply when searching tags on a GitHub repository
+	UseTags     bool   `yaml:"use-tag,omitempty"`      // override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
 }
 
 func (ac AdvisoryContent) Validate() error {
@@ -303,6 +335,7 @@ type Context struct {
 	ExtraRepos         []string
 	DependencyLog      string
 	BinShOverlay       string
+	CreateBuildLog     bool
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
 	BreakpointLabel    string
@@ -667,6 +700,16 @@ func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
 	}
 }
 
+// WithCreateBuildLog indicates whether to generate a package.log file containing the
+// list of packages that were built.  Some packages may have been skipped
+// during the build if , so it can be hard to know exactly which packages were built
+func WithCreateBuildLog(createBuildLog bool) Option {
+	return func(ctx *Context) error {
+		ctx.CreateBuildLog = createBuildLog
+		return nil
+	}
+}
+
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
@@ -757,6 +800,14 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 	}
 
 	return out
+}
+
+func replacerFromMap(with map[string]string) *strings.Replacer {
+	replacements := []string{}
+	for k, v := range with {
+		replacements = append(replacements, k, v)
+	}
+	return strings.NewReplacer(replacements...)
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
@@ -1308,7 +1359,10 @@ func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated := mutateWith(pctx, map[string]string{})
+		mutated, err := mutateWith(pctx, map[string]string{})
+		if err != nil {
+			return "", err
+		}
 		nk := fmt.Sprintf("${{%s}}", key)
 		return mutated[nk], nil
 	}
@@ -1514,6 +1568,11 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
+	// if required generate a log of packages that have been built
+	if err := ctx.GenerateBuildLog(""); err != nil {
+		return fmt.Errorf("unable to generate build log: %w", err)
+	}
+
 	return nil
 }
 
@@ -1610,4 +1669,22 @@ func (ctx *Context) WorkspaceConfig() *container.Config {
 
 	ctx.containerConfig = ctx.buildWorkspaceConfig()
 	return ctx.containerConfig
+}
+
+// GenerateBuildLog will create or append a list of packages that were built by melange build
+func (ctx *Context) GenerateBuildLog(dir string) error {
+	if !ctx.CreateBuildLog {
+		return nil
+	}
+
+	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// separate with pipe so it is easy to parse
+	_, err = f.WriteString(fmt.Sprintf("%s|%s|%s-r%d\n", ctx.Arch.ToAPK(), ctx.Configuration.Package.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch))
+	return err
 }

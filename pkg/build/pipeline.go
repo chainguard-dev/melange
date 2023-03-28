@@ -17,6 +17,7 @@ package build
 import (
 	"embed"
 	"fmt"
+	"github.com/pkg/errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -58,16 +59,11 @@ func (p *Pipeline) Identity() string {
 	return "???"
 }
 
-func replacerFromMap(with map[string]string) *strings.Replacer {
-	replacements := []string{}
-	for k, v := range with {
-		replacements = append(replacements, k, v)
+func mutateWith(ctx *PipelineContext, with map[string]string) (map[string]string, error) {
+	nw, err := substitutionMap(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return strings.NewReplacer(replacements...)
-}
-
-func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string {
-	nw := substitutionMap(ctx)
 
 	for k, v := range with {
 		// already mutated?
@@ -81,13 +77,17 @@ func mutateWith(ctx *PipelineContext, with map[string]string) map[string]string 
 
 	// do the actual mutations
 	for k, v := range nw {
-		nw[k] = mutateStringFromMap(nw, v)
+		nval, err := mutateStringFromMap(nw, v)
+		if err != nil {
+			return nil, err
+		}
+		nw[k] = nval
 	}
 
-	return nw
+	return nw, nil
 }
 
-func substitutionMap(ctx *PipelineContext) map[string]string {
+func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 	nw := map[string]string{
 		substitutionPackageName:          ctx.Package.Name,
 		substitutionPackageVersion:       ctx.Package.Version,
@@ -106,7 +106,13 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 
 	for k, v := range ctx.Context.Configuration.Vars {
 		nk := fmt.Sprintf("${{vars.%s}}", k)
-		nw[nk] = mutateStringFromMap(nw, v)
+
+		nv, err := mutateStringFromMap(nw, v)
+		if err != nil {
+			return nil, err
+		}
+
+		nw[nk] = nv
 	}
 
 	for k := range ctx.Context.Configuration.Options {
@@ -119,14 +125,40 @@ func substitutionMap(ctx *PipelineContext) map[string]string {
 		nw[nk] = "true"
 	}
 
-	return nw
+	for _, v := range ctx.Context.Configuration.VarTransforms {
+		nk := fmt.Sprintf("${{vars.%s}}", v.To)
+		from, err := mutateStringFromMap(nw, v.From)
+		if err != nil {
+			return nil, err
+		}
+
+		re, err := regexp.Compile(v.Match)
+		if err != nil {
+			return nil, errors.Wrapf(err, "match value: %s string does not compile into a regex", v.Match)
+		}
+
+		output := re.ReplaceAllString(from, v.Replace)
+		nw[nk] = output
+	}
+
+	return nw, nil
 }
 
-func mutateStringFromMap(with map[string]string, input string) string {
-	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.-]*}}`)
-	replacer := replacerFromMap(with)
-	output := replacer.Replace(input)
-	return re.ReplaceAllString(output, "")
+func mutateStringFromMap(with map[string]string, input string) (string, error) {
+	lookupWith := func(key string) (string, error) {
+		if val, ok := with[key]; ok {
+			return val, nil
+		}
+
+		nk := fmt.Sprintf("${{%s}}", key)
+		if val, ok := with[nk]; ok {
+			return val, nil
+		}
+
+		return "", fmt.Errorf("variable %s not defined", key)
+	}
+
+	return cond.Subst(input, lookupWith)
 }
 
 func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
@@ -198,7 +230,10 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 	if err != nil {
 		return fmt.Errorf("unable to construct pipeline: %w", err)
 	}
-	p.With = mutateWith(ctx, validated)
+	p.With, err = mutateWith(ctx, validated)
+	if err != nil {
+		return err
+	}
 
 	for k := range p.Pipeline {
 		p.Pipeline[k].With = rightJoinMap(p.With, p.Pipeline[k].With)
@@ -240,15 +275,26 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 }
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
-	p.With = mutateWith(ctx, p.With)
+	var err error
+	p.With, err = mutateWith(ctx, p.With)
+	if err != nil {
+		return err
+	}
 	p.dumpWith()
 
 	workdir := "/home/build"
 	if p.WorkDir != "" {
-		workdir = mutateStringFromMap(p.With, p.WorkDir)
+		workdir, err = mutateStringFromMap(p.With, p.WorkDir)
+		if err != nil {
+			return err
+		}
 	}
 
-	fragment := mutateStringFromMap(p.With, p.Runs)
+	fragment, err := mutateStringFromMap(p.With, p.Runs)
+	if err != nil {
+		return err
+	}
+
 	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	script := fmt.Sprintf(`#!/bin/sh
 set -e
@@ -273,7 +319,10 @@ func (p *Pipeline) evaluateBranchConditional(pctx *PipelineContext) bool {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated := mutateWith(pctx, p.With)
+		mutated, err := mutateWith(pctx, p.With)
+		if err != nil {
+			return "", err
+		}
 		nk := fmt.Sprintf("${{%s}}", key)
 		return mutated[nk], nil
 	}

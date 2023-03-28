@@ -10,9 +10,9 @@ require (
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.14.0
+	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/joho/godotenv v1.5.1
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
-	github.com/oec/goparsify v0.2.1
 	github.com/openvex/go-vex v0.2.0
 	github.com/package-url/packageurl-go v0.1.1-0.20220203205134-d70459300c8a
 	github.com/pkg/errors v0.9.1

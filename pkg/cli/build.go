@@ -52,6 +52,7 @@ func Build() *cobra.Command {
 	var purlNamespace string
 	var buildOption []string
 	var createBuildLog bool
+	var debug bool
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -83,6 +84,7 @@ func Build() *cobra.Command {
 				build.WithNamespace(purlNamespace),
 				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
+				build.WithDebug(debug),
 			}
 
 			if len(args) > 0 {
@@ -124,6 +126,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 
 	return cmd
 }

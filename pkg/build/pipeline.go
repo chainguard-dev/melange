@@ -295,14 +295,18 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 		return err
 	}
 
-	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	script := fmt.Sprintf(`#!/bin/sh
-set -e
+	debugOption := ' '
+	if ctx.Context.Debug {
+		debugOption = 'x'
+	}
+
+	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	script := fmt.Sprintf(`set -e%c
 export PATH='%s'
 [ -d '%s' ] || mkdir -p '%s'
 cd '%s'
 %s
-exit 0`, sys_path, workdir, workdir, workdir, fragment)
+exit 0`, debugOption, sysPath, workdir, workdir, workdir, fragment)
 	command := []string{"/bin/sh", "-c", script}
 	config := ctx.Context.WorkspaceConfig()
 

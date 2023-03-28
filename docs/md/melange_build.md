@@ -35,6 +35,7 @@ melange build [flags]
       --cache-dir string            directory used for cached inputs (default "/var/cache/melange")
       --continue-label string       continue build execution at the specified label
       --create-build-log            creates a package.log file containing a list of packages that were built by the command
+      --debug                       enables debug logging of build pipelines
       --dependency-log string       log dependencies to a specified file
       --empty-workspace             whether the build workspace should be empty
       --env-file string             file to use for preloaded environment variables

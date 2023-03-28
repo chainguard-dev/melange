@@ -347,6 +347,7 @@ type Context struct {
 	Runner             container.Runner
 	imgDigest          name.Digest
 	containerConfig    *container.Config
+	Debug              bool
 
 	EnabledBuildOptions []string
 }
@@ -706,6 +707,14 @@ func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
 func WithCreateBuildLog(createBuildLog bool) Option {
 	return func(ctx *Context) error {
 		ctx.CreateBuildLog = createBuildLog
+		return nil
+	}
+}
+
+// WithDebug indicates whether debug logging of pipelines should be enabled.
+func WithDebug(debug bool) Option {
+	return func(ctx *Context) error {
+		ctx.Debug = debug
 		return nil
 	}
 }

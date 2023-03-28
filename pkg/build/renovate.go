@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package renovate
+package build
 
 import (
 	"os"
@@ -20,23 +20,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Context contains the default settings for renovations.
-type Context struct {
+// RenovateContext contains the default settings for renovations.
+type RenovateContext struct {
 	ConfigFile string
 }
 
-type Option func(ctx *Context) error
+type RenovateOption func(ctx *Context) error
 
-// WithConfig sets the config file to do renovations on.
-func WithConfig(configFile string) Option {
+// WithRenovateConfig sets the config file to do renovations on.
+func WithRenovateConfig(configFile string) Option {
 	return func(ctx *Context) error {
 		ctx.ConfigFile = configFile
 		return nil
 	}
 }
 
-// New creates a new renovation context.
-func New(opts ...Option) (*Context, error) {
+// NewRenovate creates a new renovation context.
+func NewRenovate(opts ...Option) (*Context, error) {
 	c := Context{}
 
 	for _, opt := range opts {

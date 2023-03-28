@@ -15,13 +15,12 @@
 package cli
 
 import (
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/build/bump"
 	_ "context"
 	_ "fmt"
 
 	"github.com/spf13/cobra"
-
-	"chainguard.dev/melange/pkg/renovate"
-	"chainguard.dev/melange/pkg/renovate/bump"
 )
 
 func Bump() *cobra.Command {
@@ -32,7 +31,7 @@ func Bump() *cobra.Command {
 		Example: `  melange bump <config.yaml> <1.2.3.4>`,
 		Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := renovate.New(renovate.WithConfig(args[0]))
+			ctx, err := build.NewRenovate(build.WithRenovateConfig(args[0]))
 			if err != nil {
 				return err
 			}

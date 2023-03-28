@@ -1,6 +1,7 @@
 package bump
 
 import (
+	"chainguard.dev/melange/pkg/build"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/melange/pkg/renovate"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,7 +41,7 @@ func TestBump_versions(t *testing.T) {
 			err = os.WriteFile(filepath.Join(dir, tt.name), []byte(melangConfig), 0755)
 			assert.NoError(t, err)
 
-			ctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			ctx, err := build.New(build.WithConfig(filepath.Join(dir, tt.name)))
 			assert.NoError(t, err)
 
 			bumpRenovator := New(

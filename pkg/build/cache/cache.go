@@ -15,6 +15,7 @@
 package cache
 
 import (
+	"chainguard.dev/melange/pkg/build"
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -29,7 +30,6 @@ import (
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
-	"chainguard.dev/melange/pkg/renovate"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -54,37 +54,37 @@ func WithCacheDir(cacheDir string) Option {
 }
 
 // New returns a renovator which fetches cache dependencies.
-func New(opts ...Option) renovate.Renovator {
+func New(opts ...Option) build.Renovator {
 	cfg := CacheConfig{}
 
 	for _, opt := range opts {
 		if err := opt(&cfg); err != nil {
-			return func(rc *renovate.RenovationContext) error {
+			return func(rc *build.RenovationContext) error {
 				return fmt.Errorf("while constructing: %w", err)
 			}
 		}
 	}
 
 	if cfg.CacheDir == "" {
-		return func(rc *renovate.RenovationContext) error {
+		return func(rc *build.RenovationContext) error {
 			return fmt.Errorf("cache directory is not set")
 		}
 	}
 
-	return func(rc *renovate.RenovationContext) error {
+	return func(rc *build.RenovationContext) error {
 		// Find the package.name and package.version nodes.
-		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
+		packageNode, err := build.NodeFromMapping(rc.Root.Content[0], "package")
 		if err != nil {
 			return err
 		}
 
-		nameNode, err := renovate.NodeFromMapping(packageNode, "name")
+		nameNode, err := build.NodeFromMapping(packageNode, "name")
 		if err != nil {
 			return err
 		}
 		cfg.packageName = nameNode.Value
 
-		versionNode, err := renovate.NodeFromMapping(packageNode, "version")
+		versionNode, err := build.NodeFromMapping(packageNode, "version")
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func New(opts ...Option) renovate.Renovator {
 		log.Printf("fetching artifacts relating to %s-%s", cfg.packageName, cfg.packageVersion)
 
 		// Find our main pipeline YAML node.
-		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
+		pipelineNode, err := build.NodeFromMapping(rc.Root.Content[0], "pipeline")
 		if err != nil {
 			return err
 		}
@@ -115,12 +115,12 @@ func New(opts ...Option) renovate.Renovator {
 
 // visitFetch takes a "fetch" pipeline node
 func visitFetch(node *yaml.Node, cfg CacheConfig) error {
-	withNode, err := renovate.NodeFromMapping(node, "with")
+	withNode, err := build.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
 	}
 
-	uriNode, err := renovate.NodeFromMapping(withNode, "uri")
+	uriNode, err := build.NodeFromMapping(withNode, "uri")
 	if err != nil {
 		return err
 	}
@@ -154,14 +154,14 @@ func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 	log.Printf("  actual-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.
-	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
+	nodeSHA256, err := build.NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
 		if err := addFileToCache(cfg, downloadedFile, fileSHA256, nodeSHA256.Value, "sha256"); err != nil {
 			return err
 		}
 	}
 
-	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
+	nodeSHA512, err := build.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
 		if err := addFileToCache(cfg, downloadedFile, fileSHA512, nodeSHA512.Value, "sha512"); err != nil {
 			return err

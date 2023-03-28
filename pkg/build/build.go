@@ -1368,7 +1368,7 @@ func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated, err := mutateWith(pctx, map[string]string{})
+		mutated, err := MutateWith(pctx, map[string]string{})
 		if err != nil {
 			return "", err
 		}

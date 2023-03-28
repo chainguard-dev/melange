@@ -15,13 +15,13 @@
 package cli
 
 import (
+	"chainguard.dev/melange/pkg/build"
 	_ "context"
 	_ "fmt"
 
 	"github.com/spf13/cobra"
 
-	"chainguard.dev/melange/pkg/renovate"
-	"chainguard.dev/melange/pkg/renovate/cache"
+	"chainguard.dev/melange/pkg/build/cache"
 )
 
 func UpdateCache() *cobra.Command {
@@ -34,12 +34,12 @@ func UpdateCache() *cobra.Command {
 		Example: `  melange update-cache --cache-dir <cache-dir> <config.yaml>`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := renovate.New(renovate.WithConfig(args[0]))
+			ctx, err := build.NewRenovate(build.WithRenovateConfig(args[0]))
 			if err != nil {
 				return err
 			}
 
-			rc := renovate.RenovationContext{Context: ctx}
+			rc := build.RenovationContext{Context: ctx}
 
 			cacheRenovator := cache.New(
 				cache.WithCacheDir(cacheDir),

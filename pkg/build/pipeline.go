@@ -17,13 +17,14 @@ package build
 import (
 	"embed"
 	"fmt"
-	"github.com/pkg/errors"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"gopkg.in/yaml.v3"
 
@@ -59,7 +60,7 @@ func (p *Pipeline) Identity() string {
 	return "???"
 }
 
-func mutateWith(ctx *PipelineContext, with map[string]string) (map[string]string, error) {
+func MutateWith(ctx *PipelineContext, with map[string]string) (map[string]string, error) {
 	nw, err := substitutionMap(ctx)
 	if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func mutateWith(ctx *PipelineContext, with map[string]string) (map[string]string
 
 	// do the actual mutations
 	for k, v := range nw {
-		nval, err := mutateStringFromMap(nw, v)
+		nval, err := MutateStringFromMap(nw, v)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +108,7 @@ func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 	for k, v := range ctx.Context.Configuration.Vars {
 		nk := fmt.Sprintf("${{vars.%s}}", k)
 
-		nv, err := mutateStringFromMap(nw, v)
+		nv, err := MutateStringFromMap(nw, v)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +128,7 @@ func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 
 	for _, v := range ctx.Context.Configuration.VarTransforms {
 		nk := fmt.Sprintf("${{vars.%s}}", v.To)
-		from, err := mutateStringFromMap(nw, v.From)
+		from, err := MutateStringFromMap(nw, v.From)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +145,7 @@ func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 	return nw, nil
 }
 
-func mutateStringFromMap(with map[string]string, input string) (string, error) {
+func MutateStringFromMap(with map[string]string, input string) (string, error) {
 	lookupWith := func(key string) (string, error) {
 		if val, ok := with[key]; ok {
 			return val, nil
@@ -230,7 +231,7 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 	if err != nil {
 		return fmt.Errorf("unable to construct pipeline: %w", err)
 	}
-	p.With, err = mutateWith(ctx, validated)
+	p.With, err = MutateWith(ctx, validated)
 	if err != nil {
 		return err
 	}
@@ -276,7 +277,7 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 
 func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 	var err error
-	p.With, err = mutateWith(ctx, p.With)
+	p.With, err = MutateWith(ctx, p.With)
 	if err != nil {
 		return err
 	}
@@ -284,13 +285,13 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 
 	workdir := "/home/build"
 	if p.WorkDir != "" {
-		workdir, err = mutateStringFromMap(p.With, p.WorkDir)
+		workdir, err = MutateStringFromMap(p.With, p.WorkDir)
 		if err != nil {
 			return err
 		}
 	}
 
-	fragment, err := mutateStringFromMap(p.With, p.Runs)
+	fragment, err := MutateStringFromMap(p.With, p.Runs)
 	if err != nil {
 		return err
 	}
@@ -323,7 +324,7 @@ func (p *Pipeline) evaluateBranchConditional(pctx *PipelineContext) bool {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated, err := mutateWith(pctx, p.With)
+		mutated, err := MutateWith(pctx, p.With)
 		if err != nil {
 			return "", err
 		}

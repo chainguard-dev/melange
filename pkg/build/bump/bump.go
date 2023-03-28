@@ -15,17 +15,15 @@
 package bump
 
 import (
+	"chainguard.dev/melange/pkg/build"
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
-	"log"
-	"os"
-	"strings"
-
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
+	"log"
+	"os"
 
-	"chainguard.dev/melange/pkg/renovate"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -48,27 +46,27 @@ func WithTargetVersion(targetVersion string) Option {
 }
 
 // New returns a renovator which performs a version bump.
-func New(opts ...Option) renovate.Renovator {
+func New(opts ...Option) build.Renovator {
 	bcfg := BumpConfig{}
 
 	for _, opt := range opts {
 		if err := opt(&bcfg); err != nil {
-			return func(rc *renovate.RenovationContext) error {
+			return func(rc *build.RenovationContext) error {
 				return fmt.Errorf("while constructing: %w", err)
 			}
 		}
 	}
 
-	return func(rc *renovate.RenovationContext) error {
+	return func(rc *build.RenovationContext) error {
 		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
 
 		// Find the package.version node first and change it.
-		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
+		packageNode, err := build.NodeFromMapping(rc.Root.Content[0], "package")
 		if err != nil {
 			return err
 		}
 
-		versionNode, err := renovate.NodeFromMapping(packageNode, "version")
+		versionNode, err := build.NodeFromMapping(packageNode, "version")
 		if err != nil {
 			return err
 		}
@@ -76,14 +74,14 @@ func New(opts ...Option) renovate.Renovator {
 		versionNode.Style = yaml.FlowStyle
 		versionNode.Tag = "!!str"
 
-		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
+		epochNode, err := build.NodeFromMapping(packageNode, "epoch")
 		if err != nil {
 			return err
 		}
 		epochNode.Value = "0"
 
 		// Find our main pipeline YAML node.
-		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
+		pipelineNode, err := build.NodeFromMapping(rc.Root.Content[0], "pipeline")
 		if err != nil {
 			return err
 		}
@@ -93,32 +91,53 @@ func New(opts ...Option) renovate.Renovator {
 			RecurseNodes().
 			Filter(yit.WithMapValue("fetch"))
 
+		c, err := build.ParseConfiguration(rc.Context.ConfigFile)
+		if err != nil {
+			return err
+		}
+
+		pctx := &build.PipelineContext{
+			Package: &build.Package{Version: bcfg.TargetVersion},
+			Context: &build.Context{
+				Configuration: *c,
+			},
+		}
+
+		mutations, err := build.MutateWith(pctx, map[string]string{})
+		if err != nil {
+			return err
+		}
+
 		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := updateFetch(fetchNode, bcfg.TargetVersion); err != nil {
+			if err := updateFetch(mutations, fetchNode, bcfg.TargetVersion); err != nil {
 				return err
 			}
 		}
-
 		return nil
 	}
 }
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
-func updateFetch(node *yaml.Node, targetVersion string) error {
-	withNode, err := renovate.NodeFromMapping(node, "with")
+func updateFetch(m map[string]string, node *yaml.Node, targetVersion string) error {
+	withNode, err := build.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
 	}
 
-	uriNode, err := renovate.NodeFromMapping(withNode, "uri")
+	uriNode, err := build.NodeFromMapping(withNode, "uri")
 	if err != nil {
 		return err
 	}
 
 	log.Printf("processing fetch node:")
 
+	// evaluate var substitutions
+	evaluatedUri, err := build.MutateStringFromMap(m, uriNode.Value)
+	if err != nil {
+		return err
+	}
+
 	// Fetch the new sources.
-	evaluatedUri := strings.ReplaceAll(uriNode.Value, "${{package.version}}", targetVersion)
 	log.Printf("  uri: %s", uriNode.Value)
 	log.Printf("  evaluated: %s", evaluatedUri)
 
@@ -143,12 +162,12 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	log.Printf("  expected-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.
-	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
+	nodeSHA256, err := build.NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
 		nodeSHA256.Value = fileSHA256
 	}
 
-	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
+	nodeSHA512, err := build.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
 		nodeSHA512.Value = fileSHA512
 	}

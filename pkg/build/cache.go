@@ -20,8 +20,6 @@ import (
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
-
-	"chainguard.dev/melange/pkg/renovate"
 )
 
 // CacheMembershipMap describes a mapping where keys map to 'true'
@@ -44,18 +42,18 @@ func loadConfig(configFile string, rootNode *yaml.Node) error {
 
 // visitFetch processes a fetch node, updating the cache membership map.
 func visitFetch(fetchNode *yaml.Node, cmm *CacheMembershipMap) error {
-	withNode, err := renovate.NodeFromMapping(fetchNode, "with")
+	withNode, err := NodeFromMapping(fetchNode, "with")
 	if err != nil {
 		return err
 	}
 
-	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
+	nodeSHA256, err := NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
 		key := fmt.Sprintf("sha256:%s", nodeSHA256.Value)
 		(*cmm)[key] = true
 	}
 
-	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
+	nodeSHA512, err := NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
 		key := fmt.Sprintf("sha512:%s", nodeSHA512.Value)
 		(*cmm)[key] = true
@@ -75,7 +73,7 @@ func cacheItemsForBuild(configFile string) (CacheMembershipMap, error) {
 	}
 
 	// Find our main pipeline YAML node.
-	pipelineNode, err := renovate.NodeFromMapping(rootNode.Content[0], "pipeline")
+	pipelineNode, err := NodeFromMapping(rootNode.Content[0], "pipeline")
 	if err != nil {
 		return cmm, err
 	}

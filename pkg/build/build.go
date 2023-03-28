@@ -802,6 +802,14 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 	return out
 }
 
+func replacerFromMap(with map[string]string) *strings.Replacer {
+	replacements := []string{}
+	for k, v := range with {
+		replacements = append(replacements, k, v)
+	}
+	return strings.NewReplacer(replacements...)
+}
+
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
 func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}

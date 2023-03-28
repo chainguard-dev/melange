@@ -59,14 +59,6 @@ func (p *Pipeline) Identity() string {
 	return "???"
 }
 
-func replacerFromMap(with map[string]string) *strings.Replacer {
-	replacements := []string{}
-	for k, v := range with {
-		replacements = append(replacements, k, v)
-	}
-	return strings.NewReplacer(replacements...)
-}
-
 func mutateWith(ctx *PipelineContext, with map[string]string) (map[string]string, error) {
 	nw, err := substitutionMap(ctx)
 	if err != nil {
@@ -85,7 +77,11 @@ func mutateWith(ctx *PipelineContext, with map[string]string) (map[string]string
 
 	// do the actual mutations
 	for k, v := range nw {
-		nw[k] = mutateStringFromMap(nw, v)
+		nval, err := mutateStringFromMap(nw, v)
+		if err != nil {
+			return nil, err
+		}
+		nw[k] = nval
 	}
 
 	return nw, nil
@@ -110,7 +106,13 @@ func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 
 	for k, v := range ctx.Context.Configuration.Vars {
 		nk := fmt.Sprintf("${{vars.%s}}", k)
-		nw[nk] = mutateStringFromMap(nw, v)
+
+		nv, err := mutateStringFromMap(nw, v)
+		if err != nil {
+			return nil, err
+		}
+
+		nw[nk] = nv
 	}
 
 	for k := range ctx.Context.Configuration.Options {
@@ -125,7 +127,10 @@ func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 
 	for _, v := range ctx.Context.Configuration.VarTransforms {
 		nk := fmt.Sprintf("${{vars.%s}}", v.To)
-		from := mutateStringFromMap(nw, v.From)
+		from, err := mutateStringFromMap(nw, v.From)
+		if err != nil {
+			return nil, err
+		}
 
 		re, err := regexp.Compile(v.Match)
 		if err != nil {
@@ -139,11 +144,21 @@ func substitutionMap(ctx *PipelineContext) (map[string]string, error) {
 	return nw, nil
 }
 
-func mutateStringFromMap(with map[string]string, input string) string {
-	re := regexp.MustCompile(`\${{[a-zA-Z0-9\.-]*}}`)
-	replacer := replacerFromMap(with)
-	output := replacer.Replace(input)
-	return re.ReplaceAllString(output, "")
+func mutateStringFromMap(with map[string]string, input string) (string, error) {
+	lookupWith := func(key string) (string, error) {
+		if val, ok := with[key]; ok {
+			return val, nil
+		}
+
+		nk := fmt.Sprintf("${{%s}}", key)
+		if val, ok := with[nk]; ok {
+			return val, nil
+		}
+
+		return "", fmt.Errorf("variable %s not defined", key)
+	}
+
+	return cond.Subst(input, lookupWith)
 }
 
 func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
@@ -269,10 +284,17 @@ func (p *Pipeline) evalRun(ctx *PipelineContext) error {
 
 	workdir := "/home/build"
 	if p.WorkDir != "" {
-		workdir = mutateStringFromMap(p.With, p.WorkDir)
+		workdir, err = mutateStringFromMap(p.With, p.WorkDir)
+		if err != nil {
+			return err
+		}
 	}
 
-	fragment := mutateStringFromMap(p.With, p.Runs)
+	fragment, err := mutateStringFromMap(p.With, p.Runs)
+	if err != nil {
+		return err
+	}
+
 	sys_path := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	script := fmt.Sprintf(`#!/bin/sh
 set -e

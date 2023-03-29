@@ -1,3 +1,62 @@
+# Major changes from 0.2.0 to 0.3.0
+
+* The embedded apko component has been updated to 0.7.3.
+
+* Add support for running on non-Linux hosts which provide a Docker
+  daemon, such as Macs running Docker Desktop.
+
+* Add generic support for parsing a Melange configuration without needing
+  an explicit build context.
+
+* Added support for tracking advisories (e.g. with OpenVEX) in Melange
+  configuration files.
+
+* Several new pipelines relating to the Go and Ruby ecosystems.
+
+* The `provider_priority` setting can now be configured for packages and
+  subpackages.
+
+* Add support for user-defined build variables and user-defined variable
+  transforms.
+
+* Add the `working-directory` modifier for pipeline elements.
+
+* Track ELF interpreters as explicit dependencies.
+
+* Add if-conditionals for subpackages to allow them to be skipped when
+  appropriate.
+
+* Self-provided dependencies are now filtered out of the dependency set
+  for packages.
+
+* An experimental conversion tool (for APKBUILDs, Gemfiles and PyPI
+  packages) is now provided.
+
+* Dependencies on shared libraries are now automatically calculated for
+  `-dev` packages.  For example, if a `-dev` package has the symlink:
+
+      /usr/lib/libfoo.so
+
+  A dependency will then be generated for `so:libfoo.so.X` by checking
+  the other packages for the symlink target and reading the SONAME.
+
+* The parser used for if-conditionals is now also used for variable
+  substitutions in `runs` blocks and related.  This provides consistency
+  between how variables are handled in conditionals and at substitution
+  time.
+
+* The Bubblewrap runner is now invoked with the under-documented
+  `--new-session` flag to protect against CVE-2017-5226.  We do not
+  believe Melange itself to be vulnerable to CVE-2017-5226 however,
+  this is just done as a precaution.
+
+* The `--debug` option has been added to `melange build`, which
+  automatically enables tracing for shell fragments in the build
+  pipeline.
+
+* The `melange query` and `melange package-version` commands have been
+  added to help extract useful information from package definitions.
+
 # Major changes from 0.1.0 to 0.2.0
 
 * Added experimental support for running containers using Docker,

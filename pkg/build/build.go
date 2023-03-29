@@ -1265,6 +1265,13 @@ func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
 	return tmp, nil
 }
 
+// IsBuildLess returns true if the build context does not actually do any building.
+// TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
+// in the pipeline.
+func (ctx *Context) IsBuildLess() bool {
+	return len(ctx.Configuration.Pipeline) == 0
+}
+
 func (ctx *Context) PopulateCache() error {
 	cmm, err := cacheItemsForBuild(ctx.ConfigFile)
 	if err != nil {
@@ -1419,18 +1426,20 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
-	if err := ctx.BuildGuest(); err != nil {
-		return fmt.Errorf("unable to build guest: %w", err)
-	}
+	if !ctx.IsBuildLess() {
+		if err := ctx.BuildGuest(); err != nil {
+			return fmt.Errorf("unable to build guest: %w", err)
+		}
 
-	// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-	// Probably needs help from apko.
-	if err := ctx.OverlayBinSh(); err != nil {
-		return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-	}
+		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
+		// Probably needs help from apko.
+		if err := ctx.OverlayBinSh(); err != nil {
+			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
+		}
 
-	if err := ctx.PopulateCache(); err != nil {
-		return fmt.Errorf("unable to populate cache: %w", err)
+		if err := ctx.PopulateCache(); err != nil {
+			return fmt.Errorf("unable to populate cache: %w", err)
+		}
 	}
 
 	if err := ctx.PopulateWorkspace(); err != nil {
@@ -1438,15 +1447,17 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	cfg := ctx.WorkspaceConfig()
-	if err := ctx.Runner.StartPod(cfg); err != nil {
-		return fmt.Errorf("unable to start pod: %w", err)
-	}
+	if !ctx.IsBuildLess() {
+		if err := ctx.Runner.StartPod(cfg); err != nil {
+			return fmt.Errorf("unable to start pod: %w", err)
+		}
 
-	// run the main pipeline
-	ctx.Logger.Printf("running the main pipeline")
-	for _, p := range ctx.Configuration.Pipeline {
-		if _, err := p.Run(&pctx); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
+		// run the main pipeline
+		ctx.Logger.Printf("running the main pipeline")
+		for _, p := range ctx.Configuration.Pipeline {
+			if _, err := p.Run(&pctx); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
 		}
 	}
 
@@ -1464,40 +1475,43 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	// run any pipelines for subpackages
-	for _, sp := range ctx.Configuration.Subpackages {
-		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
-		pctx.Subpackage = &sp
+	if !ctx.IsBuildLess() {
+		for _, sp := range ctx.Configuration.Subpackages {
+			ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
+			pctx.Subpackage = &sp
 
-		result, err := sp.ShouldRun(&pctx)
-		if err != nil {
-			return err
-		}
-		if !result {
-			continue
-		}
-
-		langs := []string{}
-
-		for _, p := range sp.Pipeline {
-			if _, err := p.Run(&pctx); err != nil {
-				return fmt.Errorf("unable to run pipeline: %w", err)
+			result, err := sp.ShouldRun(&pctx)
+			if err != nil {
+				return err
 			}
-			langs = append(langs, p.SBOM.Language)
-		}
+			if !result {
+				continue
+			}
 
-		if err := generator.GenerateSBOM(&sbom.Spec{
-			Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name),
-			PackageName:    sp.Name,
-			PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
-			Languages:      langs,
-			License:        ctx.Configuration.Package.LicenseExpression(),
-			Copyright:      ctx.Configuration.Package.FullCopyright(),
-			Namespace:      namespace,
-			Arch:           ctx.Arch.ToAPK(),
-		}); err != nil {
-			return fmt.Errorf("writing SBOMs: %w", err)
+			langs := []string{}
+
+			for _, p := range sp.Pipeline {
+				if _, err := p.Run(&pctx); err != nil {
+					return fmt.Errorf("unable to run pipeline: %w", err)
+				}
+				langs = append(langs, p.SBOM.Language)
+			}
+
+			if err := generator.GenerateSBOM(&sbom.Spec{
+				Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name),
+				PackageName:    sp.Name,
+				PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
+				Languages:      langs,
+				License:        ctx.Configuration.Package.LicenseExpression(),
+				Copyright:      ctx.Configuration.Package.FullCopyright(),
+				Namespace:      namespace,
+				Arch:           ctx.Arch.ToAPK(),
+			}); err != nil {
+				return fmt.Errorf("writing SBOMs: %w", err)
+			}
 		}
 	}
+
 	if err := generator.GenerateSBOM(&sbom.Spec{
 		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
 		PackageName:    ctx.Configuration.Package.Name,
@@ -1534,14 +1548,16 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
-	// terminate pod
-	if err := ctx.Runner.TerminatePod(cfg); err != nil {
-		ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
-	}
+	if !ctx.IsBuildLess() {
+		// terminate pod
+		if err := ctx.Runner.TerminatePod(cfg); err != nil {
+			ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
+		}
 
-	// clean build guest container
-	if err := os.RemoveAll(ctx.GuestDir); err != nil {
-		ctx.Logger.Printf("WARNING: unable to clean guest container: %s", err)
+		// clean build guest container
+		if err := os.RemoveAll(ctx.GuestDir); err != nil {
+			ctx.Logger.Printf("WARNING: unable to clean guest container: %s", err)
+		}
 	}
 
 	// clean build environment
@@ -1635,6 +1651,10 @@ func (ctx *Context) BuildTripletRust() string {
 }
 
 func (ctx *Context) buildWorkspaceConfig() *container.Config {
+	if ctx.IsBuildLess() {
+		return &container.Config{}
+	}
+
 	mounts := []container.BindMount{}
 
 	if !ctx.Runner.NeedsImage() {

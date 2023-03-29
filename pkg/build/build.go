@@ -38,6 +38,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/openvex/go-vex/pkg/vex"
+	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -1648,7 +1649,12 @@ func (ctx *Context) buildWorkspaceConfig() *container.Config {
 
 	if ctx.CacheDir != "" {
 		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
-			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
+			mountSource, err := realpath.Realpath(ctx.CacheDir)
+			if err != nil {
+				ctx.Logger.Printf("could not resolve path for --cache-dir: %s", err)
+			}
+
+			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: "/var/cache/melange"})
 		} else {
 			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
 		}

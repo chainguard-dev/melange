@@ -19,6 +19,7 @@ require (
 	github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.2
+	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
 	gitlab.alpinelinux.org/alpine/go v0.6.0
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91

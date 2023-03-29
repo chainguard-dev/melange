@@ -1218,7 +1218,7 @@ func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
+	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheSource, "gs://"), "/")
 
 	client, err := storage.NewClient(cctx)
 	if err != nil {
@@ -1269,11 +1269,11 @@ func (ctx *Context) PopulateCache() error {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
 
-	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
+	ctx.Logger.Printf("populating cache from %s", ctx.CacheSource)
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(ctx.CacheDir, "gs://") {
+	if strings.HasPrefix(ctx.CacheSource, "gs://") {
 		tmp, err := ctx.fetchBucket(cmm)
 		if err != nil {
 			return err

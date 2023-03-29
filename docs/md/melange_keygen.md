@@ -1,7 +1,7 @@
 ---
 title: "melange keygen"
 slug: melange_keygen
-url: /chainguard/chainguard-enforce/melange-docs/melange_keygen/
+url: /open-source/melange/reference/melange_keygen/
 draft: false
 images: []
 type: "article"
@@ -34,5 +34,5 @@ melange keygen [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

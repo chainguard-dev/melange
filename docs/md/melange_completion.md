@@ -1,7 +1,7 @@
 ---
 title: "melange completion"
 slug: melange_completion
-url: /chainguard/chainguard-enforce/melange-docs/melange_completion/
+url: /open-source/melange/reference/melange_completion/
 draft: false
 images: []
 type: "article"
@@ -56,5 +56,5 @@ melange completion [bash|zsh|fish|powershell]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

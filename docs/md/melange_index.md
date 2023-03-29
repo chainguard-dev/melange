@@ -1,7 +1,7 @@
 ---
 title: "melange index"
 slug: melange_index
-url: /chainguard/chainguard-enforce/melange-docs/melange_index/
+url: /open-source/melange/reference/melange_index/
 draft: false
 images: []
 type: "article"
@@ -34,5 +34,5 @@ melange index [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

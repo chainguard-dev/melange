@@ -1,7 +1,7 @@
 ---
 title: "melange version"
 slug: melange_version
-url: /chainguard/chainguard-enforce/melange-docs/melange_version/
+url: /open-source/melange/reference/melange_version/
 draft: false
 images: []
 type: "article"
@@ -24,5 +24,5 @@ melange version [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

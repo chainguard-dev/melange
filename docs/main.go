@@ -44,7 +44,7 @@ func main() {
 	var pathout string
 	var baseURL string
 	flag.StringVar(&pathout, "out", "./md", "Path to the output directory.")
-	flag.StringVar(&baseURL, "baseurl", "/chainguard/chainguard-enforce/melange-docs/", "Base URL for melange-docs on Academy site.")
+	flag.StringVar(&baseURL, "baseurl", "/open-source/melange/reference/", "Base URL for melange-docs on Academy site.")
 	flag.Parse()
 
 	filePrepender := func(filename string) string {

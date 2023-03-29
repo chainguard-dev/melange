@@ -32,7 +32,8 @@ melange build [flags]
       --breakpoint-label string     stop build execution at the specified label
       --build-date string           date used for the timestamps of the files inside the image
       --build-option strings        build options to enable
-      --cache-dir string            directory used for cached inputs (default "/var/cache/melange")
+      --cache-dir string            directory used for cached inputs (default "./melange-cache/")
+      --cache-source string         directory or bucket used for preloading the cache
       --continue-label string       continue build execution at the specified label
       --create-build-log            creates a package.log file containing a list of packages that were built by the command
       --debug                       enables debug logging of build pipelines

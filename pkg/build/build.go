@@ -38,6 +38,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/openvex/go-vex/pkg/vex"
+	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -338,6 +339,7 @@ type Context struct {
 	CreateBuildLog     bool
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
+	CacheSource        string
 	BreakpointLabel    string
 	ContinueLabel      string
 	foundContinuation  bool
@@ -365,7 +367,7 @@ func New(opts ...Option) (*Context, error) {
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
 		OutDir:          ".",
-		CacheDir:        "/var/cache/melange",
+		CacheDir:        "./melange-cache/",
 		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
@@ -561,6 +563,15 @@ func WithSourceDir(sourceDir string) Option {
 func WithCacheDir(cacheDir string) Option {
 	return func(ctx *Context) error {
 		ctx.CacheDir = cacheDir
+		return nil
+	}
+}
+
+// WithCacheSource sets the cache source directory to use.  The cache will be
+// pre-populated from this source directory.
+func WithCacheSource(sourceDir string) Option {
+	return func(ctx *Context) error {
+		ctx.CacheSource = sourceDir
 		return nil
 	}
 }
@@ -1208,7 +1219,7 @@ func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
+	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheSource, "gs://"), "/")
 
 	client, err := storage.NewClient(cctx)
 	if err != nil {
@@ -1259,11 +1270,11 @@ func (ctx *Context) PopulateCache() error {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
 
-	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
+	ctx.Logger.Printf("populating cache from %s", ctx.CacheSource)
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(ctx.CacheDir, "gs://") {
+	if strings.HasPrefix(ctx.CacheSource, "gs://") {
 		tmp, err := ctx.fetchBucket(cmm)
 		if err != nil {
 			return err
@@ -1638,7 +1649,12 @@ func (ctx *Context) buildWorkspaceConfig() *container.Config {
 
 	if ctx.CacheDir != "" {
 		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
-			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
+			mountSource, err := realpath.Realpath(ctx.CacheDir)
+			if err != nil {
+				ctx.Logger.Printf("could not resolve path for --cache-dir: %s", err)
+			}
+
+			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: "/var/cache/melange"})
 		} else {
 			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
 		}

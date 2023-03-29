@@ -34,6 +34,7 @@ func Build() *cobra.Command {
 	var pipelineDir string
 	var sourceDir string
 	var cacheDir string
+	var cacheSource string
 	var guestDir string
 	var signingKey string
 	var generateIndex bool
@@ -67,6 +68,7 @@ func Build() *cobra.Command {
 				build.WithWorkspaceDir(workspaceDir),
 				build.WithPipelineDir(pipelineDir),
 				build.WithCacheDir(cacheDir),
+				build.WithCacheSource(cacheSource),
 				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
@@ -107,7 +109,8 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
-	cmd.Flags().StringVar(&cacheDir, "cache-dir", "/var/cache/melange", "directory used for cached inputs")
+	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
+	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")

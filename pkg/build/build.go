@@ -338,6 +338,7 @@ type Context struct {
 	CreateBuildLog     bool
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
+	CacheSource        string
 	BreakpointLabel    string
 	ContinueLabel      string
 	foundContinuation  bool
@@ -561,6 +562,15 @@ func WithSourceDir(sourceDir string) Option {
 func WithCacheDir(cacheDir string) Option {
 	return func(ctx *Context) error {
 		ctx.CacheDir = cacheDir
+		return nil
+	}
+}
+
+// WithCacheSource sets the cache source directory to use.  The cache will be
+// pre-populated from this source directory.
+func WithCacheSource(sourceDir string) Option {
+	return func(ctx *Context) error {
+		ctx.CacheSource = sourceDir
 		return nil
 	}
 }

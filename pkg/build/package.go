@@ -421,7 +421,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 			if err != nil {
 				return err
 			}
-			if interp != "" {
+			if interp != "" && !pc.Options.NoDepends {
 				pc.Logger.Printf("interpreter for %s => %s", basename, interp)
 
 				// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as

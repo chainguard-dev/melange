@@ -15,7 +15,6 @@
 package cli
 
 import (
-	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +30,7 @@ func PackageVersion() *cobra.Command {
 		Example: `  melange package-version [config.yaml]`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return QueryCmd(cmd.Context(), "{{ .Package.Name }}-{{ .Package.Version }}-r{{ .Package.Epoch }}", build.WithConfig(args[0]))
+			return QueryCmd(cmd.Context(), args[0], "{{ .Package.Name }}-{{ .Package.Version }}-r{{ .Package.Epoch }}")
 		},
 	}
 

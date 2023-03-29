@@ -33,16 +33,15 @@ func Query() *cobra.Command {
 		Example: `  melange query config.yaml "{{ .Package.Name }}-{{ .Package.Version }}-{{ .Package.Epoch }}"`,
 		Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return QueryCmd(cmd.Context(), args[1], build.WithConfig(args[0]))
+			return QueryCmd(cmd.Context(), args[0], args[1])
 		},
 	}
 
 	return cmd
 }
 
-func QueryCmd(ctx context.Context, pattern string, opts ...build.Option) error {
-
-	bc, err := build.New(opts...)
+func QueryCmd(ctx context.Context, configFile, pattern string) error {
+	config, err := build.ParseConfiguration(configFile)
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,7 @@ func QueryCmd(ctx context.Context, pattern string, opts ...build.Option) error {
 	if err != nil {
 		return fmt.Errorf("invalid template: %w", err)
 	}
-	err = tmpl.Execute(os.Stdout, bc.Configuration)
+	err = tmpl.Execute(os.Stdout, config)
 	if err != nil {
 		return fmt.Errorf("error executing template: %w", err)
 	}

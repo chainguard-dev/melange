@@ -107,7 +107,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
-	cmd.Flags().StringVar(&cacheDir, "cache-dir", "/var/cache/melange", "directory used for cached inputs")
+	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")

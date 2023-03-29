@@ -366,7 +366,7 @@ func New(opts ...Option) (*Context, error) {
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
 		OutDir:          ".",
-		CacheDir:        "/var/cache/melange",
+		CacheDir:        "./melange-cache/",
 		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}

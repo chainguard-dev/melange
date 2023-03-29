@@ -1,7 +1,7 @@
 ---
 title: "melange update-cache"
 slug: melange_update-cache
-url: /chainguard/chainguard-enforce/melange-docs/melange_update-cache/
+url: /open-source/melange/reference/melange_update-cache/
 draft: false
 images: []
 type: "article"
@@ -34,5 +34,5 @@ melange update-cache [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

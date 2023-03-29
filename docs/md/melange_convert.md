@@ -1,7 +1,7 @@
 ---
 title: "melange convert"
 slug: melange_convert
-url: /chainguard/chainguard-enforce/melange-docs/melange_convert/
+url: /open-source/melange/reference/melange_convert/
 draft: false
 images: []
 type: "article"
@@ -26,8 +26,8 @@ Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild 
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
-* [melange convert apkbuild](/chainguard/chainguard-enforce/melange-docs/melange_convert_apkbuild/)	 - Converts an APKBUILD package into a melange.yaml
-* [melange convert gem](/chainguard/chainguard-enforce/melange-docs/melange_convert_gem/)	 - Converts an gem into a melange.yaml
-* [melange convert python](/chainguard/chainguard-enforce/melange-docs/melange_convert_python/)	 - Converts a python package into a melange.yaml
+* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange convert apkbuild](/open-source/melange/reference/melange_convert_apkbuild/)	 - Converts an APKBUILD package into a melange.yaml
+* [melange convert gem](/open-source/melange/reference/melange_convert_gem/)	 - Converts an gem into a melange.yaml
+* [melange convert python](/open-source/melange/reference/melange_convert_python/)	 - Converts a python package into a melange.yaml
 

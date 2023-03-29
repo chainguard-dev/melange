@@ -1,7 +1,7 @@
 ---
 title: "melange bump"
 slug: melange_bump
-url: /chainguard/chainguard-enforce/melange-docs/melange_bump/
+url: /open-source/melange/reference/melange_bump/
 draft: false
 images: []
 type: "article"
@@ -33,5 +33,5 @@ melange bump [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

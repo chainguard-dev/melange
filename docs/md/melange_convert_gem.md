@@ -1,7 +1,7 @@
 ---
 title: "melange convert gem"
 slug: melange_convert_gem
-url: /chainguard/chainguard-enforce/melange-docs/melange_convert_gem/
+url: /open-source/melange/reference/melange_convert_gem/
 draft: false
 images: []
 type: "article"
@@ -40,5 +40,5 @@ convert gem fluentd
 
 ### SEE ALSO
 
-* [melange convert](/chainguard/chainguard-enforce/melange-docs/melange_convert/)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
+* [melange convert](/open-source/melange/reference/melange_convert/)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 

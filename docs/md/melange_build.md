@@ -1,7 +1,7 @@
 ---
 title: "melange build"
 slug: melange_build
-url: /chainguard/chainguard-enforce/melange-docs/melange_build/
+url: /open-source/melange/reference/melange_build/
 draft: false
 images: []
 type: "article"
@@ -58,5 +58,5 @@ melange build [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

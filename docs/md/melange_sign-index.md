@@ -1,7 +1,7 @@
 ---
 title: "melange sign-index"
 slug: melange_sign-index
-url: /chainguard/chainguard-enforce/melange-docs/melange_sign-index/
+url: /open-source/melange/reference/melange_sign-index/
 draft: false
 images: []
 type: "article"
@@ -34,5 +34,5 @@ melange sign-index [flags]
 
 ### SEE ALSO
 
-* [melange](/chainguard/chainguard-enforce/melange-docs/melange/)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

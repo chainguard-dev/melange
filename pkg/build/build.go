@@ -579,6 +579,12 @@ func WithCacheSource(sourceDir string) Option {
 // WithSigningKey sets the signing key path to use.
 func WithSigningKey(signingKey string) Option {
 	return func(ctx *Context) error {
+		if signingKey != "" {
+			if _, err := os.Stat(signingKey); err != nil {
+				return fmt.Errorf("could not open signing key: %w", err)
+			}
+		}
+
 		ctx.SigningKey = signingKey
 		return nil
 	}

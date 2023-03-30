@@ -5,9 +5,6 @@ on:
     tags:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
-env:
-  GO_VERSION: 1.18
-
 jobs:
   cli:
     name: Release the CLI
@@ -33,6 +30,8 @@ jobs:
       run: make release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          go-version: '1.20'
+          check-latest: true
 
   ko-build:
     name: Release melange image
@@ -53,6 +52,8 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
         check-latest: true
+          go-version: '1.20'
+          check-latest: true
 
     - uses: imjasonh/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.4
 

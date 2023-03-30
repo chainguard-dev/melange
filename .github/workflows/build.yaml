@@ -3,9 +3,8 @@ name: ci
 on:
   pull_request:
   push:
-
-env:
-  GO_VERSION: 1.18
+    branches:
+      - 'main'
 
 jobs:
   build:
@@ -13,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v2.4.0
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
 
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v3.0.0
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: '1.20'
           check-latest: true
 
       - name: build
@@ -25,12 +24,12 @@ jobs:
           make melange
           ./melange version
 
-      - uses: goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b # v2.8.1
+      - uses: goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b # v4.2.0
         with:
-          version: v1.5.0
+          version: latest
           install-only: true
 
       - name: snapshot
         run: |
           make snapshot
-          ./dist/melange-build_linux_amd64/melange version
+          ./dist/melange-build_linux_amd64_v1/melange version

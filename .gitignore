@@ -22,3 +22,6 @@ packages/
 .idea/
 bin/
 generated/
+melange.images
+/.DS_Store
+dist/

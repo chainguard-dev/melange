@@ -2,6 +2,8 @@ name: verify
 
 on:
   push:
+    branches:
+      - 'main'
   pull_request:
 
 
@@ -11,17 +13,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v2.4.0
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v3.0.0
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
+
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: '1.20'
           check-latest: true
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@08e2f20817b15149a52b5b3ebe7de50aff2ba8c5 # v3.1.0
-        timeout-minutes: 5
         with:
-          version: v1.46.2
+          version: v1.52
+          args: --timeout=5m
+
       - run: make docs
+
       - run: |
           go mod tidy
           git diff --exit-code

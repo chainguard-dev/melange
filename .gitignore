@@ -22,3 +22,4 @@ packages/
 .idea/
 bin/
 generated/
+melange.images

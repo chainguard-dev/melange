@@ -3,7 +3,7 @@ name: Create Release
 on:
   push:
     tags:
-    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
   cli:
@@ -16,22 +16,24 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v3.0.0
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        check-latest: true
-    - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v2.4.0
-    - uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # v2.4.1
-    - uses: goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b # v2.8.1
-      with:
-        version: latest
-        install-only: true
-    - name: Release
-      run: make release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        with:
           go-version: '1.20'
           check-latest: true
+
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
+
+      - uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # v3.0.1
+
+      - uses: goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b # # v4.2.0
+        with:
+          version: latest
+          install-only: true
+
+      - name: Release
+        run: make release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   ko-build:
     name: Release melange image
@@ -45,28 +47,26 @@ jobs:
 
     env:
       KO_DOCKER_REPO: ghcr.io/${{ github.repository }}
-      COSIGN_EXPERIMENTAL: "true"
+      COSIGN_YES: "true"
 
     steps:
-    - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v3.0.0
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        check-latest: true
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        with:
           go-version: '1.20'
           check-latest: true
 
-    - uses: imjasonh/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.4
+      - uses: ko-build/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.6
 
-    - uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # v2.4.1
+      - uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # v3.0.1
 
-    - uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # v1.13.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ github.token }}
+      - uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # v2.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
 
-    - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v2.4.0
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
 
-    - name: Publish/Sign melange image
-      run: |
-        make sign-image
+      - name: Publish/Sign melange image
+        run: |
+          make sign-image

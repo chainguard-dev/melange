@@ -17,10 +17,11 @@ baseImageOverrides:
   chainguard.dev/melange: docker.io/alpine:latest
 
 builds:
-- id: melange
-  env:
-  - CGO_ENABLED=0
-  flags:
-  - -trimpath
-  ldflags:
-  - -extldflags "-static"
+  - id: melange
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -extldflags "-static"
+      - "{{ .Env.LDFLAGS }}"

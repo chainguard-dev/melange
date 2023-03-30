@@ -9,24 +9,27 @@ env:
   - COSIGN_YES=true
 
 builds:
-  - id: melange-build
-    binary: melange
-    main: ./
-    env:
-      - CGO_ENABLED=0
-    goos:
-      # melange requires alpine, so only build linux binaries.
-      - linux
-    goarch:
-      - "386"
-      - amd64
-      - arm64
-    flags:
-      - -trimpath
-    mod_timestamp: '{{ .CommitTimestamp }}'
-    ldflags:
-      - -extldflags "-static"
-      - "{{ .Env.LDFLAGS }}"
+- id: melange-build
+  binary: melange
+  main: ./
+  env:
+  - CGO_ENABLED=0
+  goos:
+    - darwin
+    - linux
+  goarch:
+    - "386"
+    - amd64
+    - arm64
+  ignore:
+    - goos: darwin
+      goarch: "386"
+  flags:
+    - -trimpath
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  ldflags:
+    - -extldflags "-static"
+    - "{{ .Env.LDFLAGS }}"
 
 signs:
   - id: melange-cosign

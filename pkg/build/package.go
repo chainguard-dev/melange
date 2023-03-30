@@ -655,6 +655,11 @@ func (pc *PackageContext) wantSignature() bool {
 }
 
 func (pc *PackageContext) EmitPackage() error {
+	err := os.MkdirAll(pc.WorkspaceSubdir(), 0o755)
+	if err != nil {
+		return fmt.Errorf("unable to ensure workspace exists: %w", err)
+	}
+
 	pc.Logger.Printf("generating package %s", pc.Identity())
 
 	// filesystem for the data package

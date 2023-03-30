@@ -15,14 +15,15 @@
 package build
 
 import (
+	apko_types "chainguard.dev/apko/pkg/build/types"
+	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
-
-	apko_types "chainguard.dev/apko/pkg/build/types"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestLoadConfiguration(t *testing.T) {
@@ -158,5 +159,110 @@ subpackages:
 	}
 	if d := cmp.Diff(expected, cfg.Subpackages, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
 		t.Fatalf("actual didn't match expected: %s", d)
+	}
+}
+
+func TestContext_GenerateBuildLog(t *testing.T) {
+	dir := t.TempDir()
+
+	ctx := Context{
+		Arch:           apko_types.ParseArchitecture("amd64"),
+		CreateBuildLog: true,
+	}
+
+	config1 := Configuration{
+		Package: Package{
+			Name:    "foo",
+			Version: "1.2.3",
+			Epoch:   1,
+		},
+		Subpackages: []Subpackage{
+			{
+				Name: "cheese",
+			},
+		},
+	}
+
+	// log initial set of packages
+	ctx.Configuration = config1
+	err := ctx.GenerateBuildLog(dir)
+	assert.NoError(t, err)
+
+	config2 := Configuration{
+		Package: Package{
+			Name:    "bar",
+			Version: "2.3.4",
+			Epoch:   3,
+		},
+		Subpackages: []Subpackage{
+			{
+				Name: "crisps",
+			},
+		},
+	}
+
+	// append second set of packages to log
+	ctx.Configuration = config2
+	err = ctx.GenerateBuildLog(dir)
+	assert.NoError(t, err)
+
+	got, err := os.ReadFile(filepath.Join(dir, "packages.log"))
+	assert.NoError(t, err)
+
+	expected, err := os.ReadFile(filepath.Join("testdata", "build_log", "packages.log"))
+	assert.NoError(t, err)
+
+	assert.Equal(t, string(expected), string(got))
+}
+
+func TestBuild_update(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected Configuration
+	}{
+		{
+			name: "github",
+			expected: Configuration{
+				Package: Package{Name: "cosign", Version: "2.0.0"},
+				Update: Update{
+					Enabled: true,
+					Shared:  false,
+					GitHubMonitor: &GitHubMonitor{
+						Identifier:  "sigstore/cosign",
+						StripPrefix: "v",
+						UseTags:     true,
+					},
+				},
+			},
+		},
+		{
+			name: "release-monitor",
+			expected: Configuration{
+				Package: Package{Name: "bison", Version: "3.8.2"},
+				Update: Update{
+					Enabled: true,
+					Shared:  false,
+					ReleaseMonitor: &ReleaseMonitor{
+						Identifier: 193,
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			ctx := Context{
+				ConfigFile: filepath.Join("testdata", "update", fmt.Sprintf("%s.melange.yaml", test.name)),
+				Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+			}
+			cfg := &Configuration{}
+			if err := cfg.Load(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if d := cmp.Diff(test.expected.Update, cfg.Update); d != "" {
+				t.Fatalf("actual didn't match expected: %s", d)
+			}
+		})
 	}
 }

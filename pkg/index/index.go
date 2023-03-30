@@ -30,13 +30,21 @@ import (
 )
 
 type Context struct {
-	PackageFiles []string
-	IndexFile    string
-	SigningKey   string
-	Logger       *log.Logger
+	PackageFiles       []string
+	IndexFile          string
+	MergeIndexFileFlag bool
+	SigningKey         string
+	Logger             *log.Logger
 }
 
 type Option func(*Context) error
+
+func WithMergeIndexFileFlag(mergeFlag bool) Option {
+	return func(ctx *Context) error {
+		ctx.MergeIndexFileFlag = mergeFlag
+		return nil
+	}
+}
 
 func WithIndexFile(indexFile string) Option {
 	return func(ctx *Context) error {
@@ -131,10 +139,41 @@ func (ctx *Context) GenerateIndex() error {
 		return err
 	}
 
-	index := &apkrepo.ApkIndex{
-		Packages: packages,
+	var index *apkrepo.ApkIndex
+
+	if ctx.MergeIndexFileFlag {
+		originApkIndex, err := os.Open(ctx.IndexFile)
+		if err == nil {
+			index, err = apkrepo.IndexFromArchive(originApkIndex)
+			if err != nil {
+				return fmt.Errorf("failed to read apkindex from archive file: %w", err)
+			}
+
+			for _, pkg := range packages {
+				found := false
+				for _, p := range index.Packages {
+					if pkg.Name == p.Name && pkg.Version == p.Version {
+						found = true
+						p = pkg
+					}
+				}
+				if !found {
+					index.Packages = append(index.Packages, pkg)
+				}
+			}
+		} else {
+			// indexFile not exists, we just create a new one
+			index = &apkrepo.ApkIndex{
+				Packages: packages,
+			}
+		}
+	} else {
+		index = &apkrepo.ApkIndex{
+			Packages: packages,
+		}
 	}
-	ctx.Logger.Printf("generating index at %s", ctx.IndexFile)
+
+	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, packages)
 	archive, err := apkrepo.ArchiveFromIndex(index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)

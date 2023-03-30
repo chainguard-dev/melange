@@ -32,7 +32,6 @@ import (
 	"strings"
 	"text/template"
 
-	apkofs "chainguard.dev/apko/pkg/fs"
 	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
@@ -122,6 +121,9 @@ depend = {{ $dep }}
 {{- end }}
 {{- range $dep := .Dependencies.Provides }}
 provides = {{ $dep }}
+{{- end }}
+{{- range $dep := .Dependencies.Replaces }}
+replaces = {{ $dep }}
 {{- end }}
 {{- if .Dependencies.ProviderPriority }}
 provider_priority = {{ .Dependencies.ProviderPriority }}
@@ -264,7 +266,7 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 
 	pc.Logger.Printf("scanning for commands...")
 
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	fsys := readlinkFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -295,12 +297,64 @@ func generateCmdProviders(pc *PackageContext, generated *Dependencies) error {
 	return nil
 }
 
+// findInterpreter looks for the PT_INTERP header and extracts the interpreter so that it
+// may be used as a dependency.
+func findInterpreter(bin *elf.File) (string, error) {
+	for _, prog := range bin.Progs {
+		if prog.Type != elf.PT_INTERP {
+			continue
+		}
+
+		reader := prog.Open()
+		interpBuf, err := io.ReadAll(reader)
+		if err != nil {
+			return "", err
+		}
+
+		interpBuf = bytes.Trim(interpBuf, "\x00")
+		return string(interpBuf), nil
+	}
+
+	return "", nil
+}
+
+// dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
+// directories.
+func (pc *PackageContext) dereferenceCrossPackageSymlink(path string) (string, error) {
+	libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+	targetPackageNames := []string{pc.PackageName, pc.Context.Configuration.Package.Name}
+	realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
+	if err != nil {
+		return "", err
+	}
+
+	realPath = filepath.Base(realPath)
+
+	for _, subPkg := range pc.Context.Configuration.Subpackages {
+		targetPackageNames = append(targetPackageNames, subPkg.Name)
+	}
+
+	for _, pkgName := range targetPackageNames {
+		basePath := filepath.Join(pc.Context.WorkspaceDir, "melange-out", pkgName)
+
+		for _, libDir := range libDirs {
+			testPath := filepath.Join(basePath, libDir, realPath)
+
+			if _, err := os.Stat(testPath); err == nil {
+				return testPath, nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
 func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
 	depends := map[string][]string{}
 
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	fsys := readlinkFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -312,6 +366,41 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 		}
 
 		mode := fi.Mode()
+
+		// If it is a symlink, lets check and see if it is a library SONAME.
+		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			if !strings.Contains(path, ".so") {
+				return nil
+			}
+
+			realPath, err := pc.dereferenceCrossPackageSymlink(path)
+			if err != nil {
+				return nil
+			}
+
+			if realPath != "" {
+				ef, err := elf.Open(realPath)
+				if err != nil {
+					return nil
+				}
+				defer ef.Close()
+
+				sonames, err := ef.DynString(elf.DT_SONAME)
+				// most likely SONAME is not set on this object
+				if err != nil {
+					pc.Logger.Printf("WARNING: library %s lacks SONAME", path)
+					return nil
+				}
+
+				for _, soname := range sonames {
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+				}
+			}
+
+			return nil
+		}
+
+		// If it is not a regular file, we are finished processing it.
 		if !mode.IsRegular() {
 			return nil
 		}
@@ -327,6 +416,20 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				return nil
 			}
 			defer ef.Close()
+
+			interp, err := findInterpreter(ef)
+			if err != nil {
+				return err
+			}
+			if interp != "" && !pc.Options.NoDepends {
+				pc.Logger.Printf("interpreter for %s => %s", basename, interp)
+
+				// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
+				// the dependency.
+				interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
+				interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
+				generated.Runtime = append(generated.Runtime, interpName)
+			}
 
 			libs, err := ef.ImportedLibraries()
 			if err != nil {
@@ -407,6 +510,28 @@ func (dep *Dependencies) Summarize(logger *log.Logger) {
 	}
 }
 
+// removeSelfProvidedDeps removes dependencies which are provided by the package itself.
+func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
+	providedDepsMap := map[string]bool{}
+
+	for _, versionedDep := range providedDeps {
+		dep := strings.Split(versionedDep, "=")[0]
+		providedDepsMap[dep] = true
+	}
+
+	newRuntimeDeps := []string{}
+	for _, dep := range runtimeDeps {
+		_, ok := providedDepsMap[dep]
+		if ok {
+			continue
+		}
+
+		newRuntimeDeps = append(newRuntimeDeps, dep)
+	}
+
+	return newRuntimeDeps
+}
+
 func (pc *PackageContext) GenerateDependencies() error {
 	generated := Dependencies{}
 	generators := []DependencyGenerator{
@@ -425,6 +550,8 @@ func (pc *PackageContext) GenerateDependencies() error {
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
 	pc.Dependencies.Provides = dedup(newprovides)
+
+	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 
 	pc.Dependencies.Summarize(pc.Logger)
 
@@ -531,7 +658,7 @@ func (pc *PackageContext) EmitPackage() error {
 	pc.Logger.Printf("generating package %s", pc.Identity())
 
 	// filesystem for the data package
-	fsys := apkofs.DirFS(pc.WorkspaceSubdir())
+	fsys := readlinkFS(pc.WorkspaceSubdir())
 
 	// generate so:/cmd: virtuals for the filesystem
 	if err := pc.GenerateDependencies(); err != nil {

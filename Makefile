@@ -102,11 +102,11 @@ install: $(SRCS) ## Installs melange into BINDIR (default /usr/bin)
 GOLANGCI_LINT_DIR = $(shell pwd)/bin
 GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 
-.PHONY: golangci-lint
-golangci-lint:
+.PHONY: setup-golangci-lint
+setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
-	set -e ;\
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2 ;\
+	set -e ;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2;
 
 .PHONY: fmt
 fmt: ## Format all go files
@@ -131,8 +131,8 @@ log-%:
 			}'
 
 .PHONY: lint
-lint: checkfmt golangci-lint ## Run linters and checks like golangci-lint
-	$(GOLANGCI_LINT_BIN) run -n
+lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
+	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --deadline 3m0s  --skip-dirs .modcache ./...
 
 .PHONY: test
 test: ## Run go test
@@ -163,6 +163,13 @@ release: ## Run Goreleaser in release mode
 .PHONY: sign-image
 sign-image: ko ## Sign images built using ko
 	cosign sign $(DIGEST)
+
+##################
+# docs
+##################
+.PHONY: docs
+docs:
+	go run docs/main.go --out docs/md
 
 ##################
 # help

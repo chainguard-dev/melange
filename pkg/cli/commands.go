@@ -26,12 +26,16 @@ func New() *cobra.Command {
 		SilenceUsage:      true,
 	}
 
+	cmd.AddCommand(Completion())
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())
 	cmd.AddCommand(Keygen())
 	cmd.AddCommand(Index())
 	cmd.AddCommand(SignIndex())
 	cmd.AddCommand(UpdateCache())
+	cmd.AddCommand(Convert())
+	cmd.AddCommand(PackageVersion())
+	cmd.AddCommand(Query())
 	cmd.AddCommand(version.Version())
 	return cmd
 }

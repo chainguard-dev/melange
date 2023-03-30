@@ -20,3 +20,5 @@ melange.rsa
 melange.rsa.pub
 packages/
 .idea/
+bin/
+generated/

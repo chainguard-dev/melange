@@ -1475,8 +1475,8 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	// run any pipelines for subpackages
-	if !ctx.IsBuildLess() {
-		for _, sp := range ctx.Configuration.Subpackages {
+	for _, sp := range ctx.Configuration.Subpackages {
+		if !ctx.IsBuildLess() {
 			ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 			pctx.Subpackage = &sp
 
@@ -1496,20 +1496,28 @@ func (ctx *Context) BuildPackage() error {
 				}
 				langs = append(langs, p.SBOM.Language)
 			}
-
-			if err := generator.GenerateSBOM(&sbom.Spec{
-				Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name),
-				PackageName:    sp.Name,
-				PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
-				Languages:      langs,
-				License:        ctx.Configuration.Package.LicenseExpression(),
-				Copyright:      ctx.Configuration.Package.FullCopyright(),
-				Namespace:      namespace,
-				Arch:           ctx.Arch.ToAPK(),
-			}); err != nil {
-				return fmt.Errorf("writing SBOMs: %w", err)
-			}
 		}
+
+		if err := os.MkdirAll(filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
+			return err
+		}
+
+		if err := generator.GenerateSBOM(&sbom.Spec{
+			Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name),
+			PackageName:    sp.Name,
+			PackageVersion: fmt.Sprintf("%s-r%d", ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch),
+			Languages:      langs,
+			License:        ctx.Configuration.Package.LicenseExpression(),
+			Copyright:      ctx.Configuration.Package.FullCopyright(),
+			Namespace:      namespace,
+			Arch:           ctx.Arch.ToAPK(),
+		}); err != nil {
+			return fmt.Errorf("writing SBOMs: %w", err)
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name), 0o755); err != nil {
+		return err
 	}
 
 	if err := generator.GenerateSBOM(&sbom.Spec{

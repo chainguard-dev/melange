@@ -1476,6 +1476,8 @@ func (ctx *Context) BuildPackage() error {
 
 	// run any pipelines for subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
+		langs := []string{}
+
 		if !ctx.IsBuildLess() {
 			ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 			pctx.Subpackage = &sp
@@ -1487,8 +1489,6 @@ func (ctx *Context) BuildPackage() error {
 			if !result {
 				continue
 			}
-
-			langs := []string{}
 
 			for _, p := range sp.Pipeline {
 				if _, err := p.Run(&pctx); err != nil {

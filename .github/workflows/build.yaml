@@ -32,4 +32,4 @@ jobs:
       - name: snapshot
         run: |
           make snapshot
-          ./dist/melange-build_linux_amd64/melange version
+          ./dist/melange-build_linux_amd64_v1/melange version

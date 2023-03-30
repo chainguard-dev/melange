@@ -39,6 +39,7 @@ archives:
   - files:
       - LICENSE
     wrap_in_directory: true
+    rlcp: true
 
 checksum:
   name_template: 'checksums.txt'

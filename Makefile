@@ -11,9 +11,7 @@ endif
 
 GOFILES ?= $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
-RUNTIME_IMAGE ?= gcr.io/distroless/static
 # Set version variables for LDFLAGS
-GIT_TAG ?= dirty-tag
 GIT_VERSION ?= $(shell git describe --tags --always --dirty)
 GIT_HASH ?= $(shell git rev-parse HEAD)
 DATE_FMT = +'%Y-%m-%dT%H:%M:%SZ'
@@ -38,11 +36,9 @@ LDFLAGS=-buildid= -X $(PKG).gitVersion=$(GIT_VERSION) \
         -X $(PKG).buildDate=$(BUILD_DATE)
 
 KO_DOCKER_REPO ?= ghcr.io/chainguard-dev/melange
-DIGEST ?=
-
+export KO_DOCKER_REPO
 
 KOCACHE_PATH=/tmp/ko
-
 define create_kocache_path
   mkdir -p $(KOCACHE_PATH)
 endef
@@ -60,18 +56,17 @@ default: help
 .PHONY: ko
 ko: ## Build images using ko
 	$(create_kocache_path)
-	$(eval DIGEST := $(shell LDFLAGS="$(LDFLAGS)" GIT_HASH=$(GIT_HASH) GIT_VERSION=$(GIT_VERSION) \
-	KOCACHE=$(KOCACHE_PATH) ko build --bare \
+	LDFLAGS="$(LDFLAGS)" GIT_HASH=$(GIT_HASH) GIT_VERSION=$(GIT_VERSION) \
+	KOCACHE=$(KOCACHE_PATH) ko build --bare --image-refs=melange.images \
 		--platform=all --tags $(GIT_VERSION) --tags $(GIT_HASH) \
-		chainguard.dev/melange))
-	@echo Image Digest $(DIGEST)
+		chainguard.dev/melange
 
 .PHONY: ko-local
 ko-local:  ## Build images locally using ko
 	$(create_kocache_path)
-	LDFLAGS="$(LDFLAGS)" GIT_HASH=$(GIT_HASH) GIT_VERSION=$(GIT_VERSION) \
+	KO_DOCKER_REPO=ko.local LDFLAGS="$(LDFLAGS)" GIT_HASH=$(GIT_HASH) GIT_VERSION=$(GIT_VERSION) \
 	KOCACHE=$(KOCACHE_PATH) ko build --bare \
-		--tags $(GIT_VERSION) --tags $(GIT_HASH) --local \
+		--tags $(GIT_VERSION) --tags $(GIT_HASH) \
 		chainguard.dev/melange
 
 .PHONY: ko-apply
@@ -106,7 +101,7 @@ GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
 	set -e ;
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2;
 
 .PHONY: fmt
 fmt: ## Format all go files
@@ -150,11 +145,11 @@ clean: ## Clean the workspace
 
 .PHONY: snapshot
 snapshot: ## Run Goreleaser in snapshot mode
-	LDFLAGS="$(LDFLAGS)" goreleaser release --rm-dist --snapshot --skip-sign --skip-publish
+	LDFLAGS="$(LDFLAGS)" goreleaser release --clean --snapshot --skip-sign --skip-publish
 
 .PHONY: release
 release: ## Run Goreleaser in release mode
-	LDFLAGS="$(LDFLAGS)" goreleaser release --rm-dist
+	LDFLAGS="$(LDFLAGS)" goreleaser release --clean
 
 
 #######################
@@ -162,7 +157,7 @@ release: ## Run Goreleaser in release mode
 #######################
 .PHONY: sign-image
 sign-image: ko ## Sign images built using ko
-	cosign sign $(DIGEST)
+	./hack/sign-images.sh
 
 ##################
 # docs

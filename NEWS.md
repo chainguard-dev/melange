@@ -1,3 +1,8 @@
+# Changes from 0.3.1 to 0.3.2
+
+* Fix cosign flags in goreleaser which was preventing release
+  artifacts from being uploaded to GitHub.
+
 # Changes from 0.3.0 to 0.3.1
 
 * Libraries which do not fit the normal UNIX SONAME pattern will now be

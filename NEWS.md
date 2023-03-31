@@ -1,3 +1,10 @@
+# Changes from 0.3.0 to 0.3.1
+
+* Libraries which do not fit the normal UNIX SONAME pattern will now be
+  considered as possible dependency providers.
+
+* Darwin binaries are now built at release time.
+
 # Major changes from 0.2.0 to 0.3.0
 
 * The embedded apko component has been updated to 0.7.3.

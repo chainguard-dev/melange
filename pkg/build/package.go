@@ -446,7 +446,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				}
 			}
 
-			if !pc.Options.NoProvides && strings.Contains(basename, ".so.") {
+			if !pc.Options.NoProvides {
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {

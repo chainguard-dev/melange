@@ -35,6 +35,7 @@ type Context struct {
 	MergeIndexFileFlag bool
 	SigningKey         string
 	Logger             *log.Logger
+	ExpectedArch       string
 }
 
 type Option func(*Context) error
@@ -82,6 +83,15 @@ func WithPackageDir(packageDir string) Option {
 func WithSigningKey(signingKey string) Option {
 	return func(ctx *Context) error {
 		ctx.SigningKey = signingKey
+		return nil
+	}
+}
+
+// WithExpectedArch sets the expected package architecture.  Any packages with
+// an unexpected architecture will not be indexed.
+func WithExpectedArch(expectedArch string) Option {
+	return func(ctx *Context) error {
+		ctx.ExpectedArch = expectedArch
 		return nil
 	}
 }

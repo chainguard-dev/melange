@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -139,10 +140,6 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 		archs = apko_types.AllArchs
 	}
 
-	log.Printf("building for %v", archs)
-
-	var errg errgroup.Group
-
 	// Set up the build contexts before running them.  This avoids various
 	// race conditions and the possibility that a context may be garbage
 	// collected before it is actually run.
@@ -150,17 +147,29 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 	// Yes, this happens.  Really.
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Context{}
+	actualArchs := make([]string, 0, len(archs))
 	for _, arch := range archs {
 		opts := append(base_opts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
 
 		bc, err := build.New(opts...)
-		if err != nil {
+		if errors.Is(err, build.ErrSkipThisArch) {
+			log.Printf("skipping arch %s", arch)
+			continue
+		} else if err != nil {
 			return err
 		}
 
+		actualArchs = append(actualArchs, arch.ToAPK())
 		bcs = append(bcs, bc)
 	}
 
+	if len(bcs) == 0 {
+		return errors.New("target-architecture and --arch do not overlap, nothing to build")
+	}
+
+	log.Printf("building for %v", actualArchs)
+
+	var errg errgroup.Group
 	for _, bc := range bcs {
 		bc := bc
 

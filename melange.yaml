@@ -3,8 +3,6 @@ package:
   version: 0.0.1
   epoch: 0
   description: "a cloud-native packaging build system"
-  target-architecture:
-    - all
   copyright:
     - paths:
       - "*"

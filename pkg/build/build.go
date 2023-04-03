@@ -432,7 +432,10 @@ func New(opts ...Option) (*Context, error) {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	if len(ctx.Configuration.Package.TargetArchitecture) != 0 &&
+	if len(ctx.Configuration.Package.TargetArchitecture) == 1 &&
+		ctx.Configuration.Package.TargetArchitecture[0] == "all" {
+		log.Println("WARNING: target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
+	} else if len(ctx.Configuration.Package.TargetArchitecture) != 0 &&
 		!sets.NewString(ctx.Configuration.Package.TargetArchitecture...).Has(ctx.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
 	}

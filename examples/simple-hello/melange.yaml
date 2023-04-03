@@ -3,8 +3,6 @@ package:
   version: 0
   epoch: 0
   description: "a hello world program"
-  target-architecture:
-    - all
   copyright:
     - paths:
       - "*"

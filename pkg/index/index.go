@@ -134,6 +134,13 @@ func (ctx *Context) GenerateIndex() error {
 				g.FirstErrorStore(fmt.Errorf("failed to parse package %s: %w", apkFile, err))
 				return
 			}
+
+			if ctx.ExpectedArch != "" && pkg.Arch != ctx.ExpectedArch {
+				ctx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+					pkg.Name, pkg.Version, pkg.Arch, ctx.ExpectedArch)
+				return
+			}
+
 			mtx.Lock()
 			packages[i] = pkg
 			mtx.Unlock()
@@ -162,12 +169,6 @@ func (ctx *Context) GenerateIndex() error {
 			for _, pkg := range packages {
 				found := false
 
-				if ctx.ExpectedArch != "" && pkg.Arch != ctx.ExpectedArch {
-					ctx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
-						pkg.Name, pkg.Version, pkg.Arch, ctx.ExpectedArch)
-					continue
-				}
-
 				for _, p := range index.Packages {
 					if pkg.Name == p.Name && pkg.Version == p.Version {
 						found = true
@@ -180,19 +181,29 @@ func (ctx *Context) GenerateIndex() error {
 			}
 		} else {
 			// indexFile not exists, we just create a new one
-			index = &apkrepo.ApkIndex{
-				Packages: packages,
+			index = &apkrepo.ApkIndex{}
+
+			for _, pkg := range packages {
+				if pkg != nil {
+					index.Packages = append(index.Packages, pkg)
+				}
 			}
 		}
 	} else {
-		index = &apkrepo.ApkIndex{
-			Packages: packages,
+		index = &apkrepo.ApkIndex{}
+
+		for _, pkg := range packages {
+			if pkg != nil {
+				index.Packages = append(index.Packages, pkg)
+			}
 		}
 	}
 
 	pkgNames := make([]string, 0, len(packages))
 	for _, p := range packages {
-		pkgNames = append(pkgNames, fmt.Sprintf("%s-%s", p.Name, p.Version))
+		if p != nil {
+			pkgNames = append(pkgNames, fmt.Sprintf("%s-%s", p.Name, p.Version))
+		}
 	}
 
 	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, pkgNames)

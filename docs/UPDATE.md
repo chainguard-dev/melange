@@ -23,6 +23,7 @@ package:
 
 update:
   enabled: true # provide a flag to easily prevent a package from receiving auto update PRs
+  manual: true # indicates that this package should be manually updated, usually taking care over special version numbers which can be hard to automate
   shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
   release-monitor:
     identifier: 38 # Mandatory, ID number for release monitor
@@ -42,6 +43,7 @@ package:
 
 update:
   enabled: true # provide a flag to easily toggle a package from receiving auto update PRs
+  manual: true # indicates that this package should be manually updated, usually taking care over special version numbers which can be hard to automate
   shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
   github: # alternative today is `release_monitor:`
     identifier: sigstore/cosign # Mandatory, org/repo for github
@@ -49,4 +51,3 @@ update:
     use-tag: true # Optional, override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
     tag-filter: foo # Optional, filter to apply when searching tags on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
 ```
-

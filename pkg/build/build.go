@@ -233,6 +233,7 @@ type AdvisoryContent struct {
 // Update provides information used to describe how to keep the package up to date
 type Update struct {
 	Enabled          bool            `yaml:"enabled"`                     // toggle if updates should occur
+	Manual           bool            `yaml:"manual"`                      // indicates that this package should be manually updated, usually taking care over special version numbers
 	Shared           bool            `yaml:"shared,omitempty"`            // indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
 	VersionSeparator string          `yaml:"version-separator,omitempty"` // override the version separator if it is nonstandard
 	ReleaseMonitor   *ReleaseMonitor `yaml:"release-monitor,omitempty"`

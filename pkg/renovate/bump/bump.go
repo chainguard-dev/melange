@@ -32,7 +32,8 @@ import (
 // BumpConfig contains the configuration data for a bump
 // renovator.
 type BumpConfig struct {
-	TargetVersion string
+	TargetVersion  string
+	ExpectedCommit string
 }
 
 // Option sets a config option on a BumpConfig.
@@ -43,6 +44,15 @@ type Option func(cfg *BumpConfig) error
 func WithTargetVersion(targetVersion string) Option {
 	return func(cfg *BumpConfig) error {
 		cfg.TargetVersion = targetVersion
+		return nil
+	}
+}
+
+// WithExpectedCommit sets the desired target expected commit for the
+// bump renovator.
+func WithExpectedCommit(expectedCommit string) Option {
+	return func(cfg *BumpConfig) error {
+		cfg.ExpectedCommit = expectedCommit
 		return nil
 	}
 }
@@ -99,6 +109,16 @@ func New(opts ...Option) renovate.Renovator {
 			}
 		}
 
+		// Look for git-checkout nodes.
+		it = yit.FromNode(pipelineNode).
+			RecurseNodes().
+			Filter(yit.WithMapValue("git-checkout"))
+
+		for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
+			if err := updateGitCheckout(gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
@@ -151,6 +171,27 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
 		nodeSHA512.Value = fileSHA512
+	}
+
+	return nil
+}
+
+// updateGitCheckout takes a "git-checkout" pipeline node and updates the parameters of it.
+func updateGitCheckout(node *yaml.Node, expectedGitSha string) error {
+	withNode, err := renovate.NodeFromMapping(node, "with")
+	if err != nil {
+		return err
+	}
+
+	log.Printf("processing git-checkout node")
+
+	if expectedGitSha != "" {
+		// Update expected hash nodes.
+		nodeCommit, err := renovate.NodeFromMapping(withNode, "expected-commit")
+		if err == nil {
+			nodeCommit.Value = expectedGitSha
+			log.Printf("  expected-commit: %s", expectedGitSha)
+		}
 	}
 
 	return nil

@@ -25,6 +25,7 @@ import (
 )
 
 func Bump() *cobra.Command {
+	var expectedCommit string
 	cmd := &cobra.Command{
 		Use:     "bump",
 		Short:   "Update a Melange YAML file to reflect a new package version",
@@ -39,6 +40,7 @@ func Bump() *cobra.Command {
 
 			bumpRenovator := bump.New(
 				bump.WithTargetVersion(args[1]),
+				bump.WithExpectedCommit(expectedCommit),
 			)
 
 			if err := ctx.Renovate(bumpRenovator); err != nil {
@@ -48,6 +50,6 @@ func Bump() *cobra.Command {
 			return nil
 		},
 	}
-
+	cmd.Flags().StringVar(&expectedCommit, "expected-commit", "", "optional flag to update the expected-commit value of a git-checkout pipeline")
 	return cmd
 }

@@ -1,6 +1,7 @@
 package bump
 
 import (
+	"chainguard.dev/melange/pkg/build"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -61,6 +62,47 @@ func TestBump_versions(t *testing.T) {
 
 }
 
+func TestBump_withExpectedCommit(t *testing.T) {
+
+	dir := t.TempDir()
+
+	tests := []struct {
+		name           string
+		newVersion     string
+		expectedCommit string
+	}{
+		{name: "expected_commit.yaml", newVersion: "7.0.1", expectedCommit: "dbd7bc96fd6cd383b8e895dc4a928d808541bb17"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
+			assert.NoError(t, err)
+
+			// write the modified melange config to our working temp folder
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
+			assert.NoError(t, err)
+
+			ctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			assert.NoError(t, err)
+
+			bumpRenovator := New(
+				WithTargetVersion(tt.newVersion),
+				WithExpectedCommit(tt.expectedCommit),
+			)
+
+			err = ctx.Renovate(bumpRenovator)
+			assert.NoError(t, err)
+
+			rs, err := build.ParseConfiguration(filepath.Join(dir, tt.name))
+			assert.NoError(t, err)
+			assert.Contains(t, rs.Package.Version, tt.newVersion)
+			assert.Contains(t, rs.Pipeline[0].With["expected-commit"], tt.expectedCommit)
+
+		})
+	}
+
+}
 func setupTestServer(t *testing.T) (error, *httptest.Server) {
 	packageData, err := os.ReadFile(filepath.Join("testdata", "cheese-7.0.1.tar.gz"))
 	assert.NoError(t, err)

@@ -32,6 +32,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
@@ -363,6 +364,8 @@ type Dependencies struct {
 	ProviderPriority int `yaml:"provider-priority,omitempty"`
 }
 
+var ErrSkipThisArch = errors.New("error: skip this arch")
+
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
 		WorkspaceIgnore: ".melangeignore",
@@ -427,6 +430,14 @@ func New(opts ...Option) (*Context, error) {
 
 	if err := ctx.Configuration.Load(ctx); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	if len(ctx.Configuration.Package.TargetArchitecture) == 1 &&
+		ctx.Configuration.Package.TargetArchitecture[0] == "all" {
+		log.Println("WARNING: target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
+	} else if len(ctx.Configuration.Package.TargetArchitecture) != 0 &&
+		!sets.NewString(ctx.Configuration.Package.TargetArchitecture...).Has(ctx.Arch.ToAPK()) {
+		return nil, ErrSkipThisArch
 	}
 
 	// SOURCE_DATE_EPOCH will always overwrite the build flag

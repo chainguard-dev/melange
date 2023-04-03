@@ -7,7 +7,7 @@ This document describes the Melange build process.
 The melange yaml file consists of the following components that are key to the build process. Note that this is not
 the official or a comprehensive `melange.yaml` reference.
 
-* `package.target-architectures`: describes which architectures to build for.
+* `package.target-architectures`: describes which architectures to build for (if empty, build for all available archs).
 * `package.dependences.runtime`: list of apk packages that need to be available in the final apk package, hence `runtime`.
 * `environment.contents`: list of apk packages and their source repositories that need to be available during the build, but not in the final apk package.
 * `pipeline`: list of steps to execute during the build.

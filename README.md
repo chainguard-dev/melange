@@ -70,8 +70,6 @@ package:
   version: 2.12
   epoch: 0
   description: "the GNU hello world program"
-  target-architecture:
-    - all
   copyright:
     - paths:
       - "*"

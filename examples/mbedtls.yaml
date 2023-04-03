@@ -3,8 +3,6 @@ package:
   version: 2.16.12
   epoch: 0
   description: "ARM mbed TLS library"
-  target-architecture:
-    - all
   copyright:
     - paths:
       - "*"

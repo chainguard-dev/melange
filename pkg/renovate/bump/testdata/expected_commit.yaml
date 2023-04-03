@@ -8,4 +8,4 @@ pipeline:
   - uses: git-checkout
     with:
       repository: cheese/crisps
-      expected-commit: dbd7bc96fd6cd383b8e895dc4a928d808541bb17
+      expected-commit: foo

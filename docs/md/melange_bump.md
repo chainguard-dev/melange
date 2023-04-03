@@ -28,7 +28,8 @@ melange bump [flags]
 ### Options
 
 ```
-  -h, --help   help for bump
+      --expected-commit string   optional flag to update the expected-commit value of a git-checkout pipeline
+  -h, --help                     help for bump
 ```
 
 ### SEE ALSO

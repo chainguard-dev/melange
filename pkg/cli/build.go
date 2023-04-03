@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -35,10 +34,10 @@ func Build() *cobra.Command {
 	var pipelineDir string
 	var sourceDir string
 	var cacheDir string
+	var cacheSource string
 	var guestDir string
 	var signingKey string
 	var generateIndex bool
-	var useProot bool
 	var emptyWorkspace bool
 	var stripOriginName bool
 	var outDir string
@@ -52,6 +51,9 @@ func Build() *cobra.Command {
 	var envFile string
 	var varsFile string
 	var purlNamespace string
+	var buildOption []string
+	var createBuildLog bool
+	var debug bool
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -66,10 +68,10 @@ func Build() *cobra.Command {
 				build.WithWorkspaceDir(workspaceDir),
 				build.WithPipelineDir(pipelineDir),
 				build.WithCacheDir(cacheDir),
+				build.WithCacheSource(cacheSource),
 				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
-				build.WithUseProot(useProot),
 				build.WithEmptyWorkspace(emptyWorkspace),
 				build.WithOutDir(outDir),
 				build.WithExtraKeys(extraKeys),
@@ -82,6 +84,9 @@ func Build() *cobra.Command {
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
+				build.WithEnabledBuildOptions(buildOption),
+				build.WithCreateBuildLog(createBuildLog),
+				build.WithDebug(debug),
 			}
 
 			if len(args) > 0 {
@@ -100,33 +105,31 @@ func Build() *cobra.Command {
 		},
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
-
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
-	cmd.Flags().StringVar(&cacheDir, "cache-dir", "/var/cache/melange", "directory used for cached inputs")
+	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
+	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
-	cmd.Flags().BoolVar(&useProot, "use-proot", false, "whether to use proot for fakeroot")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
-	cmd.Flags().StringVar(&outDir, "out-dir", filepath.Join(cwd, "packages"), "directory where packages will be output")
+	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&breakpointLabel, "breakpoint-label", "", "stop build execution at the specified label")
 	cmd.Flags().StringVar(&continueLabel, "continue-label", "", "continue build execution at the specified label")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
+	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
+	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 
 	return cmd
 }

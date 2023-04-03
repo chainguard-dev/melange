@@ -1,0 +1,60 @@
+{
+  "name": "console",
+  "downloads": 10555047,
+  "version": "1.16.2",
+  "version_created_at": "2022-10-12T07:00:25.181Z",
+  "version_downloads": 1172263,
+  "platform": "ruby",
+  "authors": "Samuel Williams, Robert Schulze, Bryan Powell, Michael Adams, Cyril Roelandt, Cédric Boutillier, Olle Jonsson",
+  "info": "Beautiful logging for Ruby.",
+  "licenses": [
+    "MIT"
+  ],
+  "metadata": {},
+  "yanked": false,
+  "sha": "02cfd3d77a6dd7149378e23febef0801b3dcbadcdbaa61cb0437d1d0e6d82b78",
+  "project_uri": "https://rubygems.org/gems/console",
+  "gem_uri": "https://rubygems.org/gems/console-1.16.2.gem",
+  "homepage_uri": "https://github.com/socketry/console",
+  "wiki_uri": null,
+  "documentation_uri": "https://www.rubydoc.info/gems/console/1.16.2",
+  "mailing_list_uri": null,
+  "source_code_uri": null,
+  "bug_tracker_uri": null,
+  "changelog_uri": null,
+  "funding_uri": null,
+  "dependencies": {
+    "development": [
+      {
+        "name": "bake",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "bake-test",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "bake-test-external",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "bundler",
+        "requirements": ">= 0"
+      },
+      {
+        "name": "covered",
+        "requirements": "~> 0.18.1"
+      },
+      {
+        "name": "sus",
+        "requirements": "~> 0.14"
+      }
+    ],
+    "runtime": [
+      {
+        "name": "fiber-local",
+        "requirements": ">= 0"
+      }
+    ]
+  }
+}

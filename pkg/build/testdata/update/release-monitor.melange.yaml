@@ -1,0 +1,10 @@
+package:
+  name: bison
+  version: 3.8.2
+  epoch: 0
+
+update:
+  enabled: true
+  shared: false
+  release-monitor:
+    identifier: 193

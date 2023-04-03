@@ -32,18 +32,19 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apkofs "chainguard.dev/apko/pkg/fs"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/openvex/go-vex/pkg/vex"
+	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/sbom"
@@ -76,7 +77,7 @@ type Package struct {
 	Description        string        `yaml:"description,omitempty"`
 	URL                string        `yaml:"url,omitempty"`
 	Commit             string        `yaml:"commit,omitempty"`
-	TargetArchitecture []string      `yaml:"target-architecture"`
+	TargetArchitecture []string      `yaml:"target-architecture,omitempty"`
 	Copyright          []Copyright   `yaml:"copyright,omitempty"`
 	Dependencies       Dependencies  `yaml:"dependencies,omitempty"`
 	Options            PackageOption `yaml:"options,omitempty"`
@@ -98,8 +99,8 @@ func (p Package) PackageURL(distro string) string {
 }
 
 type Copyright struct {
-	Paths       []string `yaml:"paths"`
-	Attestation string   `yaml:"attestation"`
+	Paths       []string `yaml:"paths,omitempty"`
+	Attestation string   `yaml:"attestation,omitempty"`
 	License     string   `yaml:"license"`
 }
 
@@ -155,6 +156,7 @@ type Pipeline struct {
 }
 
 type Subpackage struct {
+	If           string        `yaml:"if,omitempty"`
 	Range        string        `yaml:"range,omitempty"`
 	Name         string        `yaml:"name"`
 	Pipeline     []Pipeline    `yaml:"pipeline,omitempty"`
@@ -197,8 +199,20 @@ type Configuration struct {
 	Data        []RangeData  `yaml:"data,omitempty"`
 	Secfixes    Secfixes     `yaml:"secfixes,omitempty"`
 	Advisories  Advisories   `yaml:"advisories,omitempty"`
+	Update      Update       `yaml:"update,omitempty"`
 
 	Vars map[string]string `yaml:"vars,omitempty"`
+
+	VarTransforms []VarTransforms `yaml:"var-transforms,omitempty"`
+
+	Options map[string]BuildOption `yaml:"options,omitempty"`
+}
+
+type VarTransforms struct {
+	From    string `yaml:"from"`
+	Match   string `yaml:"match"`
+	Replace string `yaml:"replace"`
+	To      string `yaml:"to"`
 }
 
 // TODO: ensure that there's no net effect to secdb!
@@ -214,6 +228,29 @@ type AdvisoryContent struct {
 	ImpactStatement string            `yaml:"impact,omitempty"`
 	ActionStatement string            `yaml:"action,omitempty"`
 	FixedVersion    string            `yaml:"fixed-version,omitempty"`
+}
+
+// Update provides information used to describe how to keep the package up to date
+type Update struct {
+	Enabled          bool            `yaml:"enabled"`                     // toggle if updates should occur
+	Manual           bool            `yaml:"manual"`                      // indicates that this package should be manually updated, usually taking care over special version numbers
+	Shared           bool            `yaml:"shared,omitempty"`            // indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+	VersionSeparator string          `yaml:"version-separator,omitempty"` // override the version separator if it is nonstandard
+	ReleaseMonitor   *ReleaseMonitor `yaml:"release-monitor,omitempty"`
+	GitHubMonitor    *GitHubMonitor  `yaml:"github,omitempty"`
+}
+
+// ReleaseMonitor indicates using the API for https://release-monitoring.org/
+type ReleaseMonitor struct {
+	Identifier int `yaml:"identifier"` // ID number for release monitor
+}
+
+// GitHubMonitor indicates using the GitHub API
+type GitHubMonitor struct {
+	Identifier  string `yaml:"identifier"`             // org/repo for GitHub
+	StripPrefix string `yaml:"strip-prefix,omitempty"` // if the version in GitHub contains a prefix which needs to be stripped when updating the melange package
+	TagFilter   string `yaml:"tag-filter,omitempty"`   // filter to apply when searching tags on a GitHub repository
+	UseTags     bool   `yaml:"use-tag,omitempty"`      // override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
 }
 
 func (ac AdvisoryContent) Validate() error {
@@ -292,7 +329,6 @@ type Context struct {
 	SigningPassphrase  string
 	Namespace          string
 	GenerateIndex      bool
-	UseProot           bool
 	EmptyWorkspace     bool
 	OutDir             string
 	Logger             *log.Logger
@@ -301,8 +337,10 @@ type Context struct {
 	ExtraRepos         []string
 	DependencyLog      string
 	BinShOverlay       string
+	CreateBuildLog     bool
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
+	CacheSource        string
 	BreakpointLabel    string
 	ContinueLabel      string
 	foundContinuation  bool
@@ -312,11 +350,15 @@ type Context struct {
 	Runner             container.Runner
 	imgDigest          name.Digest
 	containerConfig    *container.Config
+	Debug              bool
+
+	EnabledBuildOptions []string
 }
 
 type Dependencies struct {
 	Runtime  []string `yaml:"runtime,omitempty"`
 	Provides []string `yaml:"provides,omitempty"`
+	Replaces []string `yaml:"replaces,omitempty"`
 
 	ProviderPriority int `yaml:"provider-priority,omitempty"`
 }
@@ -326,7 +368,7 @@ func New(opts ...Option) (*Context, error) {
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
 		OutDir:          ".",
-		CacheDir:        "/var/cache/melange",
+		CacheDir:        "./melange-cache/",
 		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
@@ -404,17 +446,23 @@ func New(opts ...Option) (*Context, error) {
 
 	ctx.Logger.SetPrefix(fmt.Sprintf("melange (%s/%s): ", ctx.Configuration.Package.Name, ctx.Arch.ToAPK()))
 
-	// Make sure there is actually a pipeline to run.
-	if len(ctx.Configuration.Pipeline) == 0 {
-		return nil, fmt.Errorf("no pipeline has been configured, check your config for indentation errors")
-	}
-
 	// Check that we actually can run things in containers.
 	runner, err := container.GetRunner()
 	if err != nil {
 		return nil, err
 	}
 	ctx.Runner = runner
+
+	// Apply build options to the context.
+	for _, optName := range ctx.EnabledBuildOptions {
+		ctx.Logger.Printf("applying configuration patches for build option %s", optName)
+
+		if opt, ok := ctx.Configuration.Options[optName]; ok {
+			if err := opt.Apply(&ctx); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	return &ctx, nil
 }
@@ -515,9 +563,24 @@ func WithCacheDir(cacheDir string) Option {
 	}
 }
 
+// WithCacheSource sets the cache source directory to use.  The cache will be
+// pre-populated from this source directory.
+func WithCacheSource(sourceDir string) Option {
+	return func(ctx *Context) error {
+		ctx.CacheSource = sourceDir
+		return nil
+	}
+}
+
 // WithSigningKey sets the signing key path to use.
 func WithSigningKey(signingKey string) Option {
 	return func(ctx *Context) error {
+		if signingKey != "" {
+			if _, err := os.Stat(signingKey); err != nil {
+				return fmt.Errorf("could not open signing key: %w", err)
+			}
+		}
+
 		ctx.SigningKey = signingKey
 		return nil
 	}
@@ -527,14 +590,6 @@ func WithSigningKey(signingKey string) Option {
 func WithGenerateIndex(generateIndex bool) Option {
 	return func(ctx *Context) error {
 		ctx.GenerateIndex = generateIndex
-		return nil
-	}
-}
-
-// WithUseProot sets whether or not proot should be used.
-func WithUseProot(useProot bool) Option {
-	return func(ctx *Context) error {
-		ctx.UseProot = useProot
 		return nil
 	}
 }
@@ -648,6 +703,35 @@ func WithNamespace(namespace string) Option {
 	}
 }
 
+// WithEnabledBuildOptions takes an array of strings representing enabled build
+// options.  These options are referenced in the options block of the Configuration,
+// and represent patches to the configured build process which are optionally
+// applied.
+func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
+	return func(ctx *Context) error {
+		ctx.EnabledBuildOptions = enabledBuildOptions
+		return nil
+	}
+}
+
+// WithCreateBuildLog indicates whether to generate a package.log file containing the
+// list of packages that were built.  Some packages may have been skipped
+// during the build if , so it can be hard to know exactly which packages were built
+func WithCreateBuildLog(createBuildLog bool) Option {
+	return func(ctx *Context) error {
+		ctx.CreateBuildLog = createBuildLog
+		return nil
+	}
+}
+
+// WithDebug indicates whether debug logging of pipelines should be enabled.
+func WithDebug(debug bool) Option {
+	return func(ctx *Context) error {
+		ctx.Debug = debug
+		return nil
+	}
+}
+
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
@@ -722,6 +806,30 @@ func detectCommit(dirPath string, logger Logger) string {
 	commit := head.Hash().String()
 	logger.Printf("detected git commit for build configuration: %s", commit)
 	return commit
+}
+
+// buildConfigMap builds a map used to prepare a replacer for variable substitution.
+func buildConfigMap(cfg *Configuration) map[string]string {
+	out := map[string]string{
+		"${{package.name}}":        cfg.Package.Name,
+		"${{package.version}}":     cfg.Package.Version,
+		"${{package.description}}": cfg.Package.Description,
+	}
+
+	for k, v := range cfg.Vars {
+		nk := fmt.Sprintf("${{vars.%s}}", k)
+		out[nk] = v
+	}
+
+	return out
+}
+
+func replacerFromMap(with map[string]string) *strings.Replacer {
+	replacements := []string{}
+	for k, v := range with {
+		replacements = append(replacements, k, v)
+	}
+	return strings.NewReplacer(replacements...)
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
@@ -813,14 +921,14 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		GID:       1000,
 		Members:   []string{"build"},
 	}
-	cfg.Environment.Accounts.Groups = []apko_types.Group{grp}
+	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 
 	usr := apko_types.User{
 		UserName: "build",
 		UID:      1000,
 		GID:      1000,
 	}
-	cfg.Environment.Accounts.Users = []apko_types.User{usr}
+	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
 
 	// Merge environment file if needed.
 	if envFile := options.envFilePath; envFile != "" {
@@ -864,6 +972,25 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 			cfg.Vars[k] = v
 		}
 	}
+
+	// Mutate config properties with substitutions.
+	configMap := buildConfigMap(&cfg)
+	replacer := replacerFromMap(configMap)
+
+	cfg.Package.Name = replacer.Replace(cfg.Package.Name)
+	cfg.Package.Version = replacer.Replace(cfg.Package.Version)
+	cfg.Package.Description = replacer.Replace(cfg.Package.Description)
+
+	subpackages = []Subpackage{}
+
+	for _, sp := range cfg.Subpackages {
+		sp.Name = replacer.Replace(sp.Name)
+		sp.Description = replacer.Replace(sp.Description)
+
+		subpackages = append(subpackages, sp)
+	}
+
+	cfg.Subpackages = subpackages
 
 	return &cfg, nil
 }
@@ -918,7 +1045,6 @@ func (ctx *Context) BuildGuest() error {
 
 	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
-		apko_build.WithProot(ctx.UseProot),
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
@@ -936,7 +1062,7 @@ func (ctx *Context) BuildGuest() error {
 	bc.Summarize()
 
 	if !ctx.Runner.NeedsImage() {
-		if err := bc.BuildImage(); err != nil {
+		if _, err := bc.BuildImage(); err != nil {
 			return fmt.Errorf("unable to generate image: %w", err)
 		}
 	} else {
@@ -1095,7 +1221,7 @@ func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheDir, "gs://"), "/")
+	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(ctx.CacheSource, "gs://"), "/")
 
 	client, err := storage.NewClient(cctx)
 	if err != nil {
@@ -1140,17 +1266,24 @@ func (ctx *Context) fetchBucket(cmm CacheMembershipMap) (string, error) {
 	return tmp, nil
 }
 
+// IsBuildLess returns true if the build context does not actually do any building.
+// TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
+// in the pipeline.
+func (ctx *Context) IsBuildLess() bool {
+	return len(ctx.Configuration.Pipeline) == 0
+}
+
 func (ctx *Context) PopulateCache() error {
 	cmm, err := cacheItemsForBuild(ctx.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
 
-	ctx.Logger.Printf("populating cache from %s", ctx.CacheDir)
+	ctx.Logger.Printf("populating cache from %s", ctx.CacheSource)
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(ctx.CacheDir, "gs://") {
+	if strings.HasPrefix(ctx.CacheSource, "gs://") {
 		tmp, err := ctx.fetchBucket(cmm)
 		if err != nil {
 			return err
@@ -1158,7 +1291,7 @@ func (ctx *Context) PopulateCache() error {
 		defer os.RemoveAll(tmp)
 		ctx.Logger.Printf("cache bucket copied to %s", tmp)
 
-		fsys := apkofs.DirFS(tmp)
+		fsys := os.DirFS(tmp)
 
 		// mkdir /var/cache/melange
 		if err := os.MkdirAll(ctx.CacheDir, 0o755); err != nil {
@@ -1218,7 +1351,7 @@ func (ctx *Context) PopulateWorkspace() error {
 
 	ctx.Logger.Printf("populating workspace %s from %s", ctx.WorkspaceDir, ctx.SourceDir)
 
-	fsys := apkofs.DirFS(ctx.SourceDir)
+	fsys := os.DirFS(ctx.SourceDir)
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -1249,6 +1382,28 @@ func (ctx *Context) PopulateWorkspace() error {
 	})
 }
 
+func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
+	if sp.If == "" {
+		return true, nil
+	}
+
+	lookupWith := func(key string) (string, error) {
+		mutated, err := mutateWith(pctx, map[string]string{})
+		if err != nil {
+			return "", err
+		}
+		nk := fmt.Sprintf("${{%s}}", key)
+		return mutated[nk], nil
+	}
+
+	result, err := cond.Evaluate(sp.If, lookupWith)
+	if err != nil {
+		return false, fmt.Errorf("evaluating subpackage if-conditional: %w", err)
+	}
+
+	return result, nil
+}
+
 func (ctx *Context) BuildPackage() error {
 	ctx.Summarize()
 
@@ -1272,18 +1427,20 @@ func (ctx *Context) BuildPackage() error {
 		}
 	}
 
-	if err := ctx.BuildGuest(); err != nil {
-		return fmt.Errorf("unable to build guest: %w", err)
-	}
+	if !ctx.IsBuildLess() {
+		if err := ctx.BuildGuest(); err != nil {
+			return fmt.Errorf("unable to build guest: %w", err)
+		}
 
-	// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-	// Probably needs help from apko.
-	if err := ctx.OverlayBinSh(); err != nil {
-		return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-	}
+		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
+		// Probably needs help from apko.
+		if err := ctx.OverlayBinSh(); err != nil {
+			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
+		}
 
-	if err := ctx.PopulateCache(); err != nil {
-		return fmt.Errorf("unable to populate cache: %w", err)
+		if err := ctx.PopulateCache(); err != nil {
+			return fmt.Errorf("unable to populate cache: %w", err)
+		}
 	}
 
 	if err := ctx.PopulateWorkspace(); err != nil {
@@ -1291,15 +1448,17 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	cfg := ctx.WorkspaceConfig()
-	if err := ctx.Runner.StartPod(cfg); err != nil {
-		return fmt.Errorf("unable to start pod: %w", err)
-	}
+	if !ctx.IsBuildLess() {
+		if err := ctx.Runner.StartPod(cfg); err != nil {
+			return fmt.Errorf("unable to start pod: %w", err)
+		}
 
-	// run the main pipeline
-	ctx.Logger.Printf("running the main pipeline")
-	for _, p := range ctx.Configuration.Pipeline {
-		if _, err := p.Run(&pctx); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
+		// run the main pipeline
+		ctx.Logger.Printf("running the main pipeline")
+		for _, p := range ctx.Configuration.Pipeline {
+			if _, err := p.Run(&pctx); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
 		}
 	}
 
@@ -1318,15 +1477,30 @@ func (ctx *Context) BuildPackage() error {
 
 	// run any pipelines for subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
-		ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
-		pctx.Subpackage = &sp
 		langs := []string{}
 
-		for _, p := range sp.Pipeline {
-			if _, err := p.Run(&pctx); err != nil {
-				return fmt.Errorf("unable to run pipeline: %w", err)
+		if !ctx.IsBuildLess() {
+			ctx.Logger.Printf("running pipeline for subpackage %s", sp.Name)
+			pctx.Subpackage = &sp
+
+			result, err := sp.ShouldRun(&pctx)
+			if err != nil {
+				return err
 			}
-			langs = append(langs, p.SBOM.Language)
+			if !result {
+				continue
+			}
+
+			for _, p := range sp.Pipeline {
+				if _, err := p.Run(&pctx); err != nil {
+					return fmt.Errorf("unable to run pipeline: %w", err)
+				}
+				langs = append(langs, p.SBOM.Language)
+			}
+		}
+
+		if err := os.MkdirAll(filepath.Join(ctx.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
+			return err
 		}
 
 		if err := generator.GenerateSBOM(&sbom.Spec{
@@ -1342,6 +1516,11 @@ func (ctx *Context) BuildPackage() error {
 			return fmt.Errorf("writing SBOMs: %w", err)
 		}
 	}
+
+	if err := os.MkdirAll(filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name), 0o755); err != nil {
+		return err
+	}
+
 	if err := generator.GenerateSBOM(&sbom.Spec{
 		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
 		PackageName:    ctx.Configuration.Package.Name,
@@ -1363,19 +1542,31 @@ func (ctx *Context) BuildPackage() error {
 
 	// emit subpackages
 	for _, sp := range ctx.Configuration.Subpackages {
+		pctx.Subpackage = &sp
+
+		result, err := sp.ShouldRun(&pctx)
+		if err != nil {
+			return err
+		}
+		if !result {
+			continue
+		}
+
 		if err := sp.Emit(&pctx); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
 	}
 
-	// terminate pod
-	if err := ctx.Runner.TerminatePod(cfg); err != nil {
-		ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
-	}
+	if !ctx.IsBuildLess() {
+		// terminate pod
+		if err := ctx.Runner.TerminatePod(cfg); err != nil {
+			ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
+		}
 
-	// clean build guest container
-	if err := os.RemoveAll(ctx.GuestDir); err != nil {
-		ctx.Logger.Printf("WARNING: unable to clean guest container: %s", err)
+		// clean build guest container
+		if err := os.RemoveAll(ctx.GuestDir); err != nil {
+			ctx.Logger.Printf("WARNING: unable to clean guest container: %s", err)
+		}
 	}
 
 	// clean build environment
@@ -1393,6 +1584,16 @@ func (ctx *Context) BuildPackage() error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range ctx.Configuration.Subpackages {
+			pctx.Subpackage = &subpkg
+
+			result, err := subpkg.ShouldRun(&pctx)
+			if err != nil {
+				return err
+			}
+			if !result {
+				continue
+			}
+
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
 		}
@@ -1411,6 +1612,11 @@ func (ctx *Context) BuildPackage() error {
 				return fmt.Errorf("unable to generate index: %w", err)
 			}
 		}
+	}
+
+	// if required generate a log of packages that have been built
+	if err := ctx.GenerateBuildLog(""); err != nil {
+		return fmt.Errorf("unable to generate build log: %w", err)
 	}
 
 	return nil
@@ -1454,6 +1660,10 @@ func (ctx *Context) BuildTripletRust() string {
 }
 
 func (ctx *Context) buildWorkspaceConfig() *container.Config {
+	if ctx.IsBuildLess() {
+		return &container.Config{}
+	}
+
 	mounts := []container.BindMount{}
 
 	if !ctx.Runner.NeedsImage() {
@@ -1469,7 +1679,12 @@ func (ctx *Context) buildWorkspaceConfig() *container.Config {
 
 	if ctx.CacheDir != "" {
 		if fi, err := os.Stat(ctx.CacheDir); err == nil && fi.IsDir() {
-			mounts = append(mounts, container.BindMount{Source: ctx.CacheDir, Destination: "/var/cache/melange"})
+			mountSource, err := realpath.Realpath(ctx.CacheDir)
+			if err != nil {
+				ctx.Logger.Printf("could not resolve path for --cache-dir: %s", err)
+			}
+
+			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: "/var/cache/melange"})
 		} else {
 			ctx.Logger.Printf("--cache-dir %s not a dir; skipping", ctx.CacheDir)
 		}
@@ -1509,4 +1724,22 @@ func (ctx *Context) WorkspaceConfig() *container.Config {
 
 	ctx.containerConfig = ctx.buildWorkspaceConfig()
 	return ctx.containerConfig
+}
+
+// GenerateBuildLog will create or append a list of packages that were built by melange build
+func (ctx *Context) GenerateBuildLog(dir string) error {
+	if !ctx.CreateBuildLog {
+		return nil
+	}
+
+	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// separate with pipe so it is easy to parse
+	_, err = f.WriteString(fmt.Sprintf("%s|%s|%s-r%d\n", ctx.Arch.ToAPK(), ctx.Configuration.Package.Name, ctx.Configuration.Package.Version, ctx.Configuration.Package.Epoch))
+	return err
 }

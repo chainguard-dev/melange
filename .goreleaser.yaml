@@ -3,9 +3,10 @@ project_name: melange
 before:
   hooks:
     - go mod download
+    - /bin/bash -c 'if [ -n "$(git --no-pager diff --exit-code go.mod go.sum)" ]; then exit 1; fi'
 
 env:
-  - COSIGN_EXPERIMENTAL=true
+  - COSIGN_YES=true
 
 builds:
 - id: melange-build
@@ -14,12 +15,15 @@ builds:
   env:
   - CGO_ENABLED=0
   goos:
-    # melange requires alpine, so only build linux binaries.
+    - darwin
     - linux
   goarch:
     - "386"
     - amd64
     - arm64
+  ignore:
+    - goos: darwin
+      goarch: "386"
   flags:
     - -trimpath
   mod_timestamp: '{{ .CommitTimestamp }}'
@@ -31,13 +35,14 @@ signs:
   - id: melange-cosign
     cmd: cosign
     certificate: "${artifact}.crt"
-    args: ["sign-blob", "--output-signature", "${signature}", "--output-certificate", "${certificate}", "${artifact}"]
+    args: ["sign-blob", "--output-signature", "${signature}", "--output-certificate", "${certificate}", "${artifact}", "--yes"]
     artifacts: all
 
 archives:
-- files:
-    - LICENSE
-  wrap_in_directory: true
+  - files:
+      - LICENSE
+    wrap_in_directory: true
+    rlcp: true
 
 checksum:
   name_template: 'checksums.txt'
@@ -46,11 +51,12 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 
 changelog:
+  use: github-native
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - '^docs:'
+      - '^test:'
 
 release:
   draft: false

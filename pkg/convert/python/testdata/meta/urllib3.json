@@ -1,0 +1,2673 @@
+{
+ "info": {
+  "author": "Andrey Petrov",
+  "author_email": "andrey.petrov@shazow.net",
+  "bugtrack_url": "",
+  "classifiers": [
+   "Environment :: Web Environment",
+   "Intended Audience :: Developers",
+   "License :: OSI Approved :: MIT License",
+   "Operating System :: OS Independent",
+   "Programming Language :: Python",
+   "Programming Language :: Python :: 2",
+   "Programming Language :: Python :: 2.7",
+   "Programming Language :: Python :: 3",
+   "Programming Language :: Python :: 3.10",
+   "Programming Language :: Python :: 3.11",
+   "Programming Language :: Python :: 3.6",
+   "Programming Language :: Python :: 3.7",
+   "Programming Language :: Python :: 3.8",
+   "Programming Language :: Python :: 3.9",
+   "Programming Language :: Python :: Implementation :: CPython",
+   "Programming Language :: Python :: Implementation :: PyPy",
+   "Topic :: Internet :: WWW/HTTP",
+   "Topic :: Software Development :: Libraries"
+  ],
+  "description": "\nurllib3 is a powerful, *user-friendly* HTTP client for Python. Much of the\nPython ecosystem already uses urllib3 and you should too.\nurllib3 brings many critical features that are missing from the Python\nstandard libraries:\n\n- Thread safety.\n- Connection pooling.\n- Client-side SSL/TLS verification.\n- File uploads with multipart encoding.\n- Helpers for retrying requests and dealing with HTTP redirects.\n- Support for gzip, deflate, and brotli encoding.\n- Proxy support for HTTP and SOCKS.\n- 100% test coverage.\n\nurllib3 is powerful and easy to use:\n\n.. code-block:: python\n\n    \u003e\u003e\u003e import urllib3\n    \u003e\u003e\u003e http = urllib3.PoolManager()\n    \u003e\u003e\u003e r = http.request('GET', 'http://httpbin.org/robots.txt')\n    \u003e\u003e\u003e r.status\n    200\n    \u003e\u003e\u003e r.data\n    'User-agent: *\\nDisallow: /deny\\n'\n\n\nInstalling\n----------\n\nurllib3 can be installed with `pip \u003chttps://pip.pypa.io\u003e`_::\n\n    $ python -m pip install urllib3\n\nAlternatively, you can grab the latest source code from `GitHub \u003chttps://github.com/urllib3/urllib3\u003e`_::\n\n    $ git clone https://github.com/urllib3/urllib3.git\n    $ cd urllib3\n    $ git checkout 1.26.x\n    $ pip install .\n\n\nDocumentation\n-------------\n\nurllib3 has usage and reference documentation at `urllib3.readthedocs.io \u003chttps://urllib3.readthedocs.io\u003e`_.\n\n\nContributing\n------------\n\nurllib3 happily accepts contributions. Please see our\n`contributing documentation \u003chttps://urllib3.readthedocs.io/en/latest/contributing.html\u003e`_\nfor some tips on getting started.\n\n\nSecurity Disclosures\n--------------------\n\nTo report a security vulnerability, please use the\n`Tidelift security contact \u003chttps://tidelift.com/security\u003e`_.\nTidelift will coordinate the fix and disclosure with maintainers.\n\n\nMaintainers\n-----------\n\n- `@sethmlarson \u003chttps://github.com/sethmlarson\u003e`__ (Seth M. Larson)\n- `@pquentin \u003chttps://github.com/pquentin\u003e`__ (Quentin Pradet)\n- `@theacodes \u003chttps://github.com/theacodes\u003e`__ (Thea Flowers)\n- `@haikuginger \u003chttps://github.com/haikuginger\u003e`__ (Jess Shapiro)\n- `@lukasa \u003chttps://github.com/lukasa\u003e`__ (Cory Benfield)\n- `@sigmavirus24 \u003chttps://github.com/sigmavirus24\u003e`__ (Ian Stapleton Cordasco)\n- `@shazow \u003chttps://github.com/shazow\u003e`__ (Andrey Petrov)\n\n👋\n\n\nSponsorship\n-----------\n\nIf your company benefits from this library, please consider `sponsoring its\ndevelopment \u003chttps://urllib3.readthedocs.io/en/latest/sponsors.html\u003e`_.\n\n\nFor Enterprise\n--------------\n\n.. |tideliftlogo| image:: https://nedbatchelder.com/pix/Tidelift_Logos_RGB_Tidelift_Shorthand_On-White_small.png\n   :width: 75\n   :alt: Tidelift\n\n.. list-table::\n   :widths: 10 100\n\n   * - |tideliftlogo|\n     - Professional support for urllib3 is available as part of the `Tidelift\n       Subscription`_.  Tidelift gives software development teams a single source for\n       purchasing and maintaining their software, with professional grade assurances\n       from the experts who know it best, while seamlessly integrating with existing\n       tools.\n\n.. _Tidelift Subscription: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3\u0026utm_medium=referral\u0026utm_campaign=readme\n\n\nChanges\n=======\n\n1.26.14 (2023-01-11)\n--------------------\n\n* Fixed parsing of port 0 (zero) returning None, instead of 0. (`#2850 \u003chttps://github.com/urllib3/urllib3/issues/2850\u003e`__)\n* Removed deprecated getheaders() calls in contrib module.\n\n1.26.13 (2022-11-23)\n--------------------\n\n* Deprecated the ``HTTPResponse.getheaders()`` and ``HTTPResponse.getheader()`` methods.\n* Fixed an issue where parsing a URL with leading zeroes in the port would be rejected\n  even when the port number after removing the zeroes was valid.\n* Fixed a deprecation warning when using cryptography v39.0.0.\n* Removed the ``\u003c4`` in the ``Requires-Python`` packaging metadata field.\n\n\n1.26.12 (2022-08-22)\n--------------------\n\n* Deprecated the `urllib3[secure]` extra and the `urllib3.contrib.pyopenssl` module.\n  Both will be removed in v2.x. See this `GitHub issue \u003chttps://github.com/urllib3/urllib3/issues/2680\u003e`_\n  for justification and info on how to migrate.\n\n\n1.26.11 (2022-07-25)\n--------------------\n\n* Fixed an issue where reading more than 2 GiB in a call to ``HTTPResponse.read`` would\n  raise an ``OverflowError`` on Python 3.9 and earlier.\n\n\n1.26.10 (2022-07-07)\n--------------------\n\n* Removed support for Python 3.5\n* Fixed an issue where a ``ProxyError`` recommending configuring the proxy as HTTP\n  instead of HTTPS could appear even when an HTTPS proxy wasn't configured.\n\n\n1.26.9 (2022-03-16)\n-------------------\n\n* Changed ``urllib3[brotli]`` extra to favor installing Brotli libraries that are still\n  receiving updates like ``brotli`` and ``brotlicffi`` instead of ``brotlipy``.\n  This change does not impact behavior of urllib3, only which dependencies are installed.\n* Fixed a socket leaking when ``HTTPSConnection.connect()`` raises an exception.\n* Fixed ``server_hostname`` being forwarded from ``PoolManager`` to ``HTTPConnectionPool``\n  when requesting an HTTP URL. Should only be forwarded when requesting an HTTPS URL.\n\n\n1.26.8 (2022-01-07)\n-------------------\n\n* Added extra message to ``urllib3.exceptions.ProxyError`` when urllib3 detects that\n  a proxy is configured to use HTTPS but the proxy itself appears to only use HTTP.\n* Added a mention of the size of the connection pool when discarding a connection due to the pool being full.\n* Added explicit support for Python 3.11.\n* Deprecated the ``Retry.MAX_BACKOFF`` class property in favor of ``Retry.DEFAULT_MAX_BACKOFF``\n  to better match the rest of the default parameter names. ``Retry.MAX_BACKOFF`` is removed in v2.0.\n* Changed location of the vendored ``ssl.match_hostname`` function from ``urllib3.packages.ssl_match_hostname``\n  to ``urllib3.util.ssl_match_hostname`` to ensure Python 3.10+ compatibility after being repackaged\n  by downstream distributors.\n* Fixed absolute imports, all imports are now relative.\n\n\n1.26.7 (2021-09-22)\n-------------------\n\n* Fixed a bug with HTTPS hostname verification involving IP addresses and lack\n  of SNI. (Issue #2400)\n* Fixed a bug where IPv6 braces weren't stripped during certificate hostname\n  matching. (Issue #2240)\n\n\n1.26.6 (2021-06-25)\n-------------------\n\n* Deprecated the ``urllib3.contrib.ntlmpool`` module. urllib3 is not able to support\n  it properly due to `reasons listed in this issue \u003chttps://github.com/urllib3/urllib3/issues/2282\u003e`_.\n  If you are a user of this module please leave a comment.\n* Changed ``HTTPConnection.request_chunked()`` to not erroneously emit multiple\n  ``Transfer-Encoding`` headers in the case that one is already specified.\n* Fixed typo in deprecation message to recommend ``Retry.DEFAULT_ALLOWED_METHODS``.\n\n\n1.26.5 (2021-05-26)\n-------------------\n\n* Fixed deprecation warnings emitted in Python 3.10.\n* Updated vendored ``six`` library to 1.16.0.\n* Improved performance of URL parser when splitting\n  the authority component.\n\n\n1.26.4 (2021-03-15)\n-------------------\n\n* Changed behavior of the default ``SSLContext`` when connecting to HTTPS proxy\n  during HTTPS requests. The default ``SSLContext`` now sets ``check_hostname=True``.\n\n\n1.26.3 (2021-01-26)\n-------------------\n\n* Fixed bytes and string comparison issue with headers (Pull #2141)\n\n* Changed ``ProxySchemeUnknown`` error message to be\n  more actionable if the user supplies a proxy URL without\n  a scheme. (Pull #2107)\n\n\n1.26.2 (2020-11-12)\n-------------------\n\n* Fixed an issue where ``wrap_socket`` and ``CERT_REQUIRED`` wouldn't\n  be imported properly on Python 2.7.8 and earlier (Pull #2052)\n\n\n1.26.1 (2020-11-11)\n-------------------\n\n* Fixed an issue where two ``User-Agent`` headers would be sent if a\n  ``User-Agent`` header key is passed as ``bytes`` (Pull #2047)\n\n\n1.26.0 (2020-11-10)\n-------------------\n\n* **NOTE: urllib3 v2.0 will drop support for Python 2**.\n  `Read more in the v2.0 Roadmap \u003chttps://urllib3.readthedocs.io/en/latest/v2-roadmap.html\u003e`_.\n\n* Added support for HTTPS proxies contacting HTTPS servers (Pull #1923, Pull #1806)\n\n* Deprecated negotiating TLSv1 and TLSv1.1 by default. Users that\n  still wish to use TLS earlier than 1.2 without a deprecation warning\n  should opt-in explicitly by setting ``ssl_version=ssl.PROTOCOL_TLSv1_1`` (Pull #2002)\n  **Starting in urllib3 v2.0: Connections that receive a ``DeprecationWarning`` will fail**\n\n* Deprecated ``Retry`` options ``Retry.DEFAULT_METHOD_WHITELIST``, ``Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST``\n  and ``Retry(method_whitelist=...)`` in favor of ``Retry.DEFAULT_ALLOWED_METHODS``,\n  ``Retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT``, and ``Retry(allowed_methods=...)``\n  (Pull #2000) **Starting in urllib3 v2.0: Deprecated options will be removed**\n\n* Added default ``User-Agent`` header to every request (Pull #1750)\n\n* Added ``urllib3.util.SKIP_HEADER`` for skipping ``User-Agent``, ``Accept-Encoding``, \n  and ``Host`` headers from being automatically emitted with requests (Pull #2018)\n\n* Collapse ``transfer-encoding: chunked`` request data and framing into\n  the same ``socket.send()`` call (Pull #1906)\n\n* Send ``http/1.1`` ALPN identifier with every TLS handshake by default (Pull #1894)\n\n* Properly terminate SecureTransport connections when CA verification fails (Pull #1977)\n\n* Don't emit an ``SNIMissingWarning`` when passing ``server_hostname=None``\n  to SecureTransport (Pull #1903)\n\n* Disabled requesting TLSv1.2 session tickets as they weren't being used by urllib3 (Pull #1970)\n\n* Suppress ``BrokenPipeError`` when writing request body after the server\n  has closed the socket (Pull #1524)\n\n* Wrap ``ssl.SSLError`` that can be raised from reading a socket (e.g. \"bad MAC\")\n  into an ``urllib3.exceptions.SSLError`` (Pull #1939)\n\n\n1.25.11 (2020-10-19)\n--------------------\n\n* Fix retry backoff time parsed from ``Retry-After`` header when given\n  in the HTTP date format. The HTTP date was parsed as the local timezone\n  rather than accounting for the timezone in the HTTP date (typically\n  UTC) (Pull #1932, Pull #1935, Pull #1938, Pull #1949)\n\n* Fix issue where an error would be raised when the ``SSLKEYLOGFILE``\n  environment variable was set to the empty string. Now ``SSLContext.keylog_file``\n  is not set in this situation (Pull #2016)\n\n\n1.25.10 (2020-07-22)\n--------------------\n\n* Added support for ``SSLKEYLOGFILE`` environment variable for\n  logging TLS session keys with use with programs like\n  Wireshark for decrypting captured web traffic (Pull #1867)\n\n* Fixed loading of SecureTransport libraries on macOS Big Sur\n  due to the new dynamic linker cache (Pull #1905)\n\n* Collapse chunked request bodies data and framing into one\n  call to ``send()`` to reduce the number of TCP packets by 2-4x (Pull #1906)\n\n* Don't insert ``None`` into ``ConnectionPool`` if the pool\n  was empty when requesting a connection (Pull #1866)\n\n* Avoid ``hasattr`` call in ``BrotliDecoder.decompress()`` (Pull #1858)\n\n\n1.25.9 (2020-04-16)\n-------------------\n\n* Added ``InvalidProxyConfigurationWarning`` which is raised when\n  erroneously specifying an HTTPS proxy URL. urllib3 doesn't currently\n  support connecting to HTTPS proxies but will soon be able to\n  and we would like users to migrate properly without much breakage.\n\n  See `this GitHub issue \u003chttps://github.com/urllib3/urllib3/issues/1850\u003e`_\n  for more information on how to fix your proxy config. (Pull #1851)\n\n* Drain connection after ``PoolManager`` redirect (Pull #1817)\n\n* Ensure ``load_verify_locations`` raises ``SSLError`` for all backends (Pull #1812)\n\n* Rename ``VerifiedHTTPSConnection`` to ``HTTPSConnection`` (Pull #1805)\n\n* Allow the CA certificate data to be passed as a string (Pull #1804)\n\n* Raise ``ValueError`` if method contains control characters (Pull #1800)\n\n* Add ``__repr__`` to ``Timeout`` (Pull #1795)\n\n\n1.25.8 (2020-01-20)\n-------------------\n\n* Drop support for EOL Python 3.4 (Pull #1774)\n\n* Optimize _encode_invalid_chars (Pull #1787)\n\n\n1.25.7 (2019-11-11)\n-------------------\n\n* Preserve ``chunked`` parameter on retries (Pull #1715, Pull #1734)\n\n* Allow unset ``SERVER_SOFTWARE`` in App Engine (Pull #1704, Issue #1470)\n\n* Fix issue where URL fragment was sent within the request target. (Pull #1732)\n\n* Fix issue where an empty query section in a URL would fail to parse. (Pull #1732)\n\n* Remove TLS 1.3 support in SecureTransport due to Apple removing support (Pull #1703)\n\n\n1.25.6 (2019-09-24)\n-------------------\n\n* Fix issue where tilde (``~``) characters were incorrectly\n  percent-encoded in the path. (Pull #1692)\n\n\n1.25.5 (2019-09-19)\n-------------------\n\n* Add mitigation for BPO-37428 affecting Python \u003c3.7.4 and OpenSSL 1.1.1+ which\n  caused certificate verification to be enabled when using ``cert_reqs=CERT_NONE``.\n  (Issue #1682)\n\n\n1.25.4 (2019-09-19)\n-------------------\n\n* Propagate Retry-After header settings to subsequent retries. (Pull #1607)\n\n* Fix edge case where Retry-After header was still respected even when\n  explicitly opted out of. (Pull #1607)\n\n* Remove dependency on ``rfc3986`` for URL parsing.\n\n* Fix issue where URLs containing invalid characters within ``Url.auth`` would\n  raise an exception instead of percent-encoding those characters.\n\n* Add support for ``HTTPResponse.auto_close = False`` which makes HTTP responses\n  work well with BufferedReaders and other ``io`` module features. (Pull #1652)\n\n* Percent-encode invalid characters in URL for ``HTTPConnectionPool.request()`` (Pull #1673)\n\n\n1.25.3 (2019-05-23)\n-------------------\n\n* Change ``HTTPSConnection`` to load system CA certificates\n  when ``ca_certs``, ``ca_cert_dir``, and ``ssl_context`` are\n  unspecified. (Pull #1608, Issue #1603)\n\n* Upgrade bundled rfc3986 to v1.3.2. (Pull #1609, Issue #1605)\n\n\n1.25.2 (2019-04-28)\n-------------------\n\n* Change ``is_ipaddress`` to not detect IPvFuture addresses. (Pull #1583)\n\n* Change ``parse_url`` to percent-encode invalid characters within the\n  path, query, and target components. (Pull #1586)\n\n\n1.25.1 (2019-04-24)\n-------------------\n\n* Add support for Google's ``Brotli`` package. (Pull #1572, Pull #1579)\n\n* Upgrade bundled rfc3986 to v1.3.1 (Pull #1578)\n\n\n1.25 (2019-04-22)\n-----------------\n\n* Require and validate certificates by default when using HTTPS (Pull #1507)\n\n* Upgraded ``urllib3.utils.parse_url()`` to be RFC 3986 compliant. (Pull #1487)\n\n* Added support for ``key_password`` for ``HTTPSConnectionPool`` to use\n  encrypted ``key_file`` without creating your own ``SSLContext`` object. (Pull #1489)\n\n* Add TLSv1.3 support to CPython, pyOpenSSL, and SecureTransport ``SSLContext``\n  implementations. (Pull #1496)\n\n* Switched the default multipart header encoder from RFC 2231 to HTML 5 working draft. (Issue #303, Pull #1492)\n\n* Fixed issue where OpenSSL would block if an encrypted client private key was\n  given and no password was given. Instead an ``SSLError`` is raised. (Pull #1489)\n\n* Added support for Brotli content encoding. It is enabled automatically if\n  ``brotlipy`` package is installed which can be requested with\n  ``urllib3[brotli]`` extra. (Pull #1532)\n\n* Drop ciphers using DSS key exchange from default TLS cipher suites.\n  Improve default ciphers when using SecureTransport. (Pull #1496)\n\n* Implemented a more efficient ``HTTPResponse.__iter__()`` method. (Issue #1483)\n\n1.24.3 (2019-05-01)\n-------------------\n\n* Apply fix for CVE-2019-9740. (Pull #1591)\n\n1.24.2 (2019-04-17)\n-------------------\n\n* Don't load system certificates by default when any other ``ca_certs``, ``ca_certs_dir`` or\n  ``ssl_context`` parameters are specified.\n\n* Remove Authorization header regardless of case when redirecting to cross-site. (Issue #1510)\n\n* Add support for IPv6 addresses in subjectAltName section of certificates. (Issue #1269)\n\n\n1.24.1 (2018-11-02)\n-------------------\n\n* Remove quadratic behavior within ``GzipDecoder.decompress()`` (Issue #1467)\n\n* Restored functionality of ``ciphers`` parameter for ``create_urllib3_context()``. (Issue #1462)\n\n\n1.24 (2018-10-16)\n-----------------\n\n* Allow key_server_hostname to be specified when initializing a PoolManager to allow custom SNI to be overridden. (Pull #1449)\n\n* Test against Python 3.7 on AppVeyor. (Pull #1453)\n\n* Early-out ipv6 checks when running on App Engine. (Pull #1450)\n\n* Change ambiguous description of backoff_factor (Pull #1436)\n\n* Add ability to handle multiple Content-Encodings (Issue #1441 and Pull #1442)\n\n* Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).\n\n* Add a server_hostname parameter to HTTPSConnection which allows for\n  overriding the SNI hostname sent in the handshake. (Pull #1397)\n\n* Drop support for EOL Python 2.6 (Pull #1429 and Pull #1430)\n\n* Fixed bug where responses with header Content-Type: message/* erroneously\n  raised HeaderParsingError, resulting in a warning being logged. (Pull #1439)\n\n* Move urllib3 to src/urllib3 (Pull #1409)\n\n\n1.23 (2018-06-04)\n-----------------\n\n* Allow providing a list of headers to strip from requests when redirecting\n  to a different host. Defaults to the ``Authorization`` header. Different\n  headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)\n\n* Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).\n\n* Dropped Python 3.3 support. (Pull #1242)\n\n* Put the connection back in the pool when calling stream() or read_chunked() on\n  a chunked HEAD response. (Issue #1234)\n\n* Fixed pyOpenSSL-specific ssl client authentication issue when clients\n  attempted to auth via certificate + chain (Issue #1060)\n\n* Add the port to the connectionpool connect print (Pull #1251)\n\n* Don't use the ``uuid`` module to create multipart data boundaries. (Pull #1380)\n\n* ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)\n\n* Add Python 2.6 support to ``contrib.securetransport`` (Pull #1359)\n\n* Added support for auth info in url for SOCKS proxy (Pull #1363)\n\n\n1.22 (2017-07-20)\n-----------------\n\n* Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via\n  IPv6 proxy. (Issue #1222)\n\n* Made the connection pool retry on ``SSLError``.  The original ``SSLError``\n  is available on ``MaxRetryError.reason``. (Issue #1112)\n\n* Drain and release connection before recursing on retry/redirect.  Fixes\n  deadlocks with a blocking connectionpool. (Issue #1167)\n\n* Fixed compatibility for cookiejar. (Issue #1229)\n\n* pyopenssl: Use vendored version of ``six``. (Issue #1231)\n\n\n1.21.1 (2017-05-02)\n-------------------\n\n* Fixed SecureTransport issue that would cause long delays in response body\n  delivery. (Pull #1154)\n\n* Fixed regression in 1.21 that threw exceptions when users passed the\n  ``socket_options`` flag to the ``PoolManager``.  (Issue #1165)\n\n* Fixed regression in 1.21 that threw exceptions when users passed the\n  ``assert_hostname`` or ``assert_fingerprint`` flag to the ``PoolManager``.\n  (Pull #1157)\n\n\n1.21 (2017-04-25)\n-----------------\n\n* Improved performance of certain selector system calls on Python 3.5 and\n  later. (Pull #1095)\n\n* Resolved issue where the PyOpenSSL backend would not wrap SysCallError\n  exceptions appropriately when sending data. (Pull #1125)\n\n* Selectors now detects a monkey-patched select module after import for modules\n  that patch the select module like eventlet, greenlet. (Pull #1128)\n\n* Reduced memory consumption when streaming zlib-compressed responses\n  (as opposed to raw deflate streams). (Pull #1129)\n\n* Connection pools now use the entire request context when constructing the\n  pool key. (Pull #1016)\n\n* ``PoolManager.connection_from_*`` methods now accept a new keyword argument,\n  ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.\n  (Pull #1016)\n\n* Add retry counter for ``status_forcelist``. (Issue #1147)\n\n* Added ``contrib`` module for using SecureTransport on macOS:\n  ``urllib3.contrib.securetransport``.  (Pull #1122)\n\n* urllib3 now only normalizes the case of ``http://`` and ``https://`` schemes:\n  for schemes it does not recognise, it assumes they are case-sensitive and\n  leaves them unchanged.\n  (Issue #1080)\n\n\n1.20 (2017-01-19)\n-----------------\n\n* Added support for waiting for I/O using selectors other than select,\n  improving urllib3's behaviour with large numbers of concurrent connections.\n  (Pull #1001)\n\n* Updated the date for the system clock check. (Issue #1005)\n\n* ConnectionPools now correctly consider hostnames to be case-insensitive.\n  (Issue #1032)\n\n* Outdated versions of PyOpenSSL now cause the PyOpenSSL contrib module\n  to fail when it is injected, rather than at first use. (Pull #1063)\n\n* Outdated versions of cryptography now cause the PyOpenSSL contrib module\n  to fail when it is injected, rather than at first use. (Issue #1044)\n\n* Automatically attempt to rewind a file-like body object when a request is\n  retried or redirected. (Pull #1039)\n\n* Fix some bugs that occur when modules incautiously patch the queue module.\n  (Pull #1061)\n\n* Prevent retries from occurring on read timeouts for which the request method\n  was not in the method whitelist. (Issue #1059)\n\n* Changed the PyOpenSSL contrib module to lazily load idna to avoid\n  unnecessarily bloating the memory of programs that don't need it. (Pull\n  #1076)\n\n* Add support for IPv6 literals with zone identifiers. (Pull #1013)\n\n* Added support for socks5h:// and socks4a:// schemes when working with SOCKS\n  proxies, and controlled remote DNS appropriately. (Issue #1035)\n\n\n1.19.1 (2016-11-16)\n-------------------\n\n* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)\n\n\n1.19 (2016-11-03)\n-----------------\n\n* urllib3 now respects Retry-After headers on 413, 429, and 503 responses when\n  using the default retry logic. (Pull #955)\n\n* Remove markers from setup.py to assist ancient setuptools versions. (Issue\n  #986)\n\n* Disallow superscripts and other integerish things in URL ports. (Issue #989)\n\n* Allow urllib3's HTTPResponse.stream() method to continue to work with\n  non-httplib underlying FPs. (Pull #990)\n\n* Empty filenames in multipart headers are now emitted as such, rather than\n  being suppressed. (Issue #1015)\n\n* Prefer user-supplied Host headers on chunked uploads. (Issue #1009)\n\n\n1.18.1 (2016-10-27)\n-------------------\n\n* CVE-2016-9015. Users who are using urllib3 version 1.17 or 1.18 along with\n  PyOpenSSL injection and OpenSSL 1.1.0 *must* upgrade to this version. This\n  release fixes a vulnerability whereby urllib3 in the above configuration\n  would silently fail to validate TLS certificates due to erroneously setting\n  invalid flags in OpenSSL's ``SSL_CTX_set_verify`` function. These erroneous\n  flags do not cause a problem in OpenSSL versions before 1.1.0, which\n  interprets the presence of any flag as requesting certificate validation.\n\n  There is no PR for this patch, as it was prepared for simultaneous disclosure\n  and release. The master branch received the same fix in Pull #1010.\n\n\n1.18 (2016-09-26)\n-----------------\n\n* Fixed incorrect message for IncompleteRead exception. (Pull #973)\n\n* Accept ``iPAddress`` subject alternative name fields in TLS certificates.\n  (Issue #258)\n\n* Fixed consistency of ``HTTPResponse.closed`` between Python 2 and 3.\n  (Issue #977)\n\n* Fixed handling of wildcard certificates when using PyOpenSSL. (Issue #979)\n\n\n1.17 (2016-09-06)\n-----------------\n\n* Accept ``SSLContext`` objects for use in SSL/TLS negotiation. (Issue #835)\n\n* ConnectionPool debug log now includes scheme, host, and port. (Issue #897)\n\n* Substantially refactored documentation. (Issue #887)\n\n* Used URLFetch default timeout on AppEngine, rather than hardcoding our own.\n  (Issue #858)\n\n* Normalize the scheme and host in the URL parser (Issue #833)\n\n* ``HTTPResponse`` contains the last ``Retry`` object, which now also\n  contains retries history. (Issue #848)\n\n* Timeout can no longer be set as boolean, and must be greater than zero.\n  (Pull #924)\n\n* Removed pyasn1 and ndg-httpsclient from dependencies used for PyOpenSSL. We\n  now use cryptography and idna, both of which are already dependencies of\n  PyOpenSSL. (Pull #930)\n\n* Fixed infinite loop in ``stream`` when amt=None. (Issue #928)\n\n* Try to use the operating system's certificates when we are using an\n  ``SSLContext``. (Pull #941)\n\n* Updated cipher suite list to allow ChaCha20+Poly1305. AES-GCM is preferred to\n  ChaCha20, but ChaCha20 is then preferred to everything else. (Pull #947)\n\n* Updated cipher suite list to remove 3DES-based cipher suites. (Pull #958)\n\n* Removed the cipher suite fallback to allow HIGH ciphers. (Pull #958)\n\n* Implemented ``length_remaining`` to determine remaining content\n  to be read. (Pull #949)\n\n* Implemented ``enforce_content_length`` to enable exceptions when\n  incomplete data chunks are received. (Pull #949)\n\n* Dropped connection start, dropped connection reset, redirect, forced retry,\n  and new HTTPS connection log levels to DEBUG, from INFO. (Pull #967)\n\n\n1.16 (2016-06-11)\n-----------------\n\n* Disable IPv6 DNS when IPv6 connections are not possible. (Issue #840)\n\n* Provide ``key_fn_by_scheme`` pool keying mechanism that can be\n  overridden. (Issue #830)\n\n* Normalize scheme and host to lowercase for pool keys, and include\n  ``source_address``. (Issue #830)\n\n* Cleaner exception chain in Python 3 for ``_make_request``.\n  (Issue #861)\n\n* Fixed installing ``urllib3[socks]`` extra. (Issue #864)\n\n* Fixed signature of ``ConnectionPool.close`` so it can actually safely be\n  called by subclasses. (Issue #873)\n\n* Retain ``release_conn`` state across retries. (Issues #651, #866)\n\n* Add customizable ``HTTPConnectionPool.ResponseCls``, which defaults to\n  ``HTTPResponse`` but can be replaced with a subclass. (Issue #879)\n\n\n1.15.1 (2016-04-11)\n-------------------\n\n* Fix packaging to include backports module. (Issue #841)\n\n\n1.15 (2016-04-06)\n-----------------\n\n* Added Retry(raise_on_status=False). (Issue #720)\n\n* Always use setuptools, no more distutils fallback. (Issue #785)\n\n* Dropped support for Python 3.2. (Issue #786)\n\n* Chunked transfer encoding when requesting with ``chunked=True``.\n  (Issue #790)\n\n* Fixed regression with IPv6 port parsing. (Issue #801)\n\n* Append SNIMissingWarning messages to allow users to specify it in\n  the PYTHONWARNINGS environment variable. (Issue #816)\n\n* Handle unicode headers in Py2. (Issue #818)\n\n* Log certificate when there is a hostname mismatch. (Issue #820)\n\n* Preserve order of request/response headers. (Issue #821)\n\n\n1.14 (2015-12-29)\n-----------------\n\n* contrib: SOCKS proxy support! (Issue #762)\n\n* Fixed AppEngine handling of transfer-encoding header and bug\n  in Timeout defaults checking. (Issue #763)\n\n\n1.13.1 (2015-12-18)\n-------------------\n\n* Fixed regression in IPv6 + SSL for match_hostname. (Issue #761)\n\n\n1.13 (2015-12-14)\n-----------------\n\n* Fixed ``pip install urllib3[secure]`` on modern pip. (Issue #706)\n\n* pyopenssl: Fixed SSL3_WRITE_PENDING error. (Issue #717)\n\n* pyopenssl: Support for TLSv1.1 and TLSv1.2. (Issue #696)\n\n* Close connections more defensively on exception. (Issue #734)\n\n* Adjusted ``read_chunked`` to handle gzipped, chunk-encoded bodies without\n  repeatedly flushing the decoder, to function better on Jython. (Issue #743)\n\n* Accept ``ca_cert_dir`` for SSL-related PoolManager configuration. (Issue #758)\n\n\n1.12 (2015-09-03)\n-----------------\n\n* Rely on ``six`` for importing ``httplib`` to work around\n  conflicts with other Python 3 shims. (Issue #688)\n\n* Add support for directories of certificate authorities, as supported by\n  OpenSSL. (Issue #701)\n\n* New exception: ``NewConnectionError``, raised when we fail to establish\n  a new connection, usually ``ECONNREFUSED`` socket error.\n\n\n1.11 (2015-07-21)\n-----------------\n\n* When ``ca_certs`` is given, ``cert_reqs`` defaults to\n  ``'CERT_REQUIRED'``. (Issue #650)\n\n* ``pip install urllib3[secure]`` will install Certifi and\n  PyOpenSSL as dependencies. (Issue #678)\n\n* Made ``HTTPHeaderDict`` usable as a ``headers`` input value\n  (Issues #632, #679)\n\n* Added `urllib3.contrib.appengine \u003chttps://urllib3.readthedocs.io/en/latest/contrib.html#google-app-engine\u003e`_\n  which has an ``AppEngineManager`` for using ``URLFetch`` in a\n  Google AppEngine environment. (Issue #664)\n\n* Dev: Added test suite for AppEngine. (Issue #631)\n\n* Fix performance regression when using PyOpenSSL. (Issue #626)\n\n* Passing incorrect scheme (e.g. ``foo://``) will raise\n  ``ValueError`` instead of ``AssertionError`` (backwards\n  compatible for now, but please migrate). (Issue #640)\n\n* Fix pools not getting replenished when an error occurs during a\n  request using ``release_conn=False``. (Issue #644)\n\n* Fix pool-default headers not applying for url-encoded requests\n  like GET. (Issue #657)\n\n* log.warning in Python 3 when headers are skipped due to parsing\n  errors. (Issue #642)\n\n* Close and discard connections if an error occurs during read.\n  (Issue #660)\n\n* Fix host parsing for IPv6 proxies. (Issue #668)\n\n* Separate warning type SubjectAltNameWarning, now issued once\n  per host. (Issue #671)\n\n* Fix ``httplib.IncompleteRead`` not getting converted to\n  ``ProtocolError`` when using ``HTTPResponse.stream()``\n  (Issue #674)\n\n1.10.4 (2015-05-03)\n-------------------\n\n* Migrate tests to Tornado 4. (Issue #594)\n\n* Append default warning configuration rather than overwrite.\n  (Issue #603)\n\n* Fix streaming decoding regression. (Issue #595)\n\n* Fix chunked requests losing state across keep-alive connections.\n  (Issue #599)\n\n* Fix hanging when chunked HEAD response has no body. (Issue #605)\n\n\n1.10.3 (2015-04-21)\n-------------------\n\n* Emit ``InsecurePlatformWarning`` when SSLContext object is missing.\n  (Issue #558)\n\n* Fix regression of duplicate header keys being discarded.\n  (Issue #563)\n\n* ``Response.stream()`` returns a generator for chunked responses.\n  (Issue #560)\n\n* Set upper-bound timeout when waiting for a socket in PyOpenSSL.\n  (Issue #585)\n\n* Work on platforms without `ssl` module for plain HTTP requests.\n  (Issue #587)\n\n* Stop relying on the stdlib's default cipher list. (Issue #588)\n\n\n1.10.2 (2015-02-25)\n-------------------\n\n* Fix file descriptor leakage on retries. (Issue #548)\n\n* Removed RC4 from default cipher list. (Issue #551)\n\n* Header performance improvements. (Issue #544)\n\n* Fix PoolManager not obeying redirect retry settings. (Issue #553)\n\n\n1.10.1 (2015-02-10)\n-------------------\n\n* Pools can be used as context managers. (Issue #545)\n\n* Don't re-use connections which experienced an SSLError. (Issue #529)\n\n* Don't fail when gzip decoding an empty stream. (Issue #535)\n\n* Add sha256 support for fingerprint verification. (Issue #540)\n\n* Fixed handling of header values containing commas. (Issue #533)\n\n\n1.10 (2014-12-14)\n-----------------\n\n* Disabled SSLv3. (Issue #473)\n\n* Add ``Url.url`` property to return the composed url string. (Issue #394)\n\n* Fixed PyOpenSSL + gevent ``WantWriteError``. (Issue #412)\n\n* ``MaxRetryError.reason`` will always be an exception, not string.\n  (Issue #481)\n\n* Fixed SSL-related timeouts not being detected as timeouts. (Issue #492)\n\n* Py3: Use ``ssl.create_default_context()`` when available. (Issue #473)\n\n* Emit ``InsecureRequestWarning`` for *every* insecure HTTPS request.\n  (Issue #496)\n\n* Emit ``SecurityWarning`` when certificate has no ``subjectAltName``.\n  (Issue #499)\n\n* Close and discard sockets which experienced SSL-related errors.\n  (Issue #501)\n\n* Handle ``body`` param in ``.request(...)``. (Issue #513)\n\n* Respect timeout with HTTPS proxy. (Issue #505)\n\n* PyOpenSSL: Handle ZeroReturnError exception. (Issue #520)\n\n\n1.9.1 (2014-09-13)\n------------------\n\n* Apply socket arguments before binding. (Issue #427)\n\n* More careful checks if fp-like object is closed. (Issue #435)\n\n* Fixed packaging issues of some development-related files not\n  getting included. (Issue #440)\n\n* Allow performing *only* fingerprint verification. (Issue #444)\n\n* Emit ``SecurityWarning`` if system clock is waaay off. (Issue #445)\n\n* Fixed PyOpenSSL compatibility with PyPy. (Issue #450)\n\n* Fixed ``BrokenPipeError`` and ``ConnectionError`` handling in Py3.\n  (Issue #443)\n\n\n\n1.9 (2014-07-04)\n----------------\n\n* Shuffled around development-related files. If you're maintaining a distro\n  package of urllib3, you may need to tweak things. (Issue #415)\n\n* Unverified HTTPS requests will trigger a warning on the first request. See\n  our new `security documentation\n  \u003chttps://urllib3.readthedocs.io/en/latest/security.html\u003e`_ for details.\n  (Issue #426)\n\n* New retry logic and ``urllib3.util.retry.Retry`` configuration object.\n  (Issue #326)\n\n* All raised exceptions should now wrapped in a\n  ``urllib3.exceptions.HTTPException``-extending exception. (Issue #326)\n\n* All errors during a retry-enabled request should be wrapped in\n  ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions\n  which were previously exempt. Underlying error is accessible from the\n  ``.reason`` property. (Issue #326)\n\n* ``urllib3.exceptions.ConnectionError`` renamed to\n  ``urllib3.exceptions.ProtocolError``. (Issue #326)\n\n* Errors during response read (such as IncompleteRead) are now wrapped in\n  ``urllib3.exceptions.ProtocolError``. (Issue #418)\n\n* Requesting an empty host will raise ``urllib3.exceptions.LocationValueError``.\n  (Issue #417)\n\n* Catch read timeouts over SSL connections as\n  ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)\n\n* Apply socket arguments before connecting. (Issue #427)\n\n\n1.8.3 (2014-06-23)\n------------------\n\n* Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)\n\n* Add ``disable_cache`` option to ``urllib3.util.make_headers``. (Issue #393)\n\n* Wrap ``socket.timeout`` exception with\n  ``urllib3.exceptions.ReadTimeoutError``. (Issue #399)\n\n* Fixed proxy-related bug where connections were being reused incorrectly.\n  (Issues #366, #369)\n\n* Added ``socket_options`` keyword parameter which allows to define\n  ``setsockopt`` configuration of new sockets. (Issue #397)\n\n* Removed ``HTTPConnection.tcp_nodelay`` in favor of\n  ``HTTPConnection.default_socket_options``. (Issue #397)\n\n* Fixed ``TypeError`` bug in Python 2.6.4. (Issue #411)\n\n\n1.8.2 (2014-04-17)\n------------------\n\n* Fix ``urllib3.util`` not being included in the package.\n\n\n1.8.1 (2014-04-17)\n------------------\n\n* Fix AppEngine bug of HTTPS requests going out as HTTP. (Issue #356)\n\n* Don't install ``dummyserver`` into ``site-packages`` as it's only needed\n  for the test suite. (Issue #362)\n\n* Added support for specifying ``source_address``. (Issue #352)\n\n\n1.8 (2014-03-04)\n----------------\n\n* Improved url parsing in ``urllib3.util.parse_url`` (properly parse '@' in\n  username, and blank ports like 'hostname:').\n\n* New ``urllib3.connection`` module which contains all the HTTPConnection\n  objects.\n\n* Several ``urllib3.util.Timeout``-related fixes. Also changed constructor\n  signature to a more sensible order. [Backwards incompatible]\n  (Issues #252, #262, #263)\n\n* Use ``backports.ssl_match_hostname`` if it's installed. (Issue #274)\n\n* Added ``.tell()`` method to ``urllib3.response.HTTPResponse`` which\n  returns the number of bytes read so far. (Issue #277)\n\n* Support for platforms without threading. (Issue #289)\n\n* Expand default-port comparison in ``HTTPConnectionPool.is_same_host``\n  to allow a pool with no specified port to be considered equal to to an\n  HTTP/HTTPS url with port 80/443 explicitly provided. (Issue #305)\n\n* Improved default SSL/TLS settings to avoid vulnerabilities.\n  (Issue #309)\n\n* Fixed ``urllib3.poolmanager.ProxyManager`` not retrying on connect errors.\n  (Issue #310)\n\n* Disable Nagle's Algorithm on the socket for non-proxies. A subset of requests\n  will send the entire HTTP request ~200 milliseconds faster; however, some of\n  the resulting TCP packets will be smaller. (Issue #254)\n\n* Increased maximum number of SubjectAltNames in ``urllib3.contrib.pyopenssl``\n  from the default 64 to 1024 in a single certificate. (Issue #318)\n\n* Headers are now passed and stored as a custom\n  ``urllib3.collections_.HTTPHeaderDict`` object rather than a plain ``dict``.\n  (Issue #329, #333)\n\n* Headers no longer lose their case on Python 3. (Issue #236)\n\n* ``urllib3.contrib.pyopenssl`` now uses the operating system's default CA\n  certificates on inject. (Issue #332)\n\n* Requests with ``retries=False`` will immediately raise any exceptions without\n  wrapping them in ``MaxRetryError``. (Issue #348)\n\n* Fixed open socket leak with SSL-related failures. (Issue #344, #348)\n\n\n1.7.1 (2013-09-25)\n------------------\n\n* Added granular timeout support with new ``urllib3.util.Timeout`` class.\n  (Issue #231)\n\n* Fixed Python 3.4 support. (Issue #238)\n\n\n1.7 (2013-08-14)\n----------------\n\n* More exceptions are now pickle-able, with tests. (Issue #174)\n\n* Fixed redirecting with relative URLs in Location header. (Issue #178)\n\n* Support for relative urls in ``Location: ...`` header. (Issue #179)\n\n* ``urllib3.response.HTTPResponse`` now inherits from ``io.IOBase`` for bonus\n  file-like functionality. (Issue #187)\n\n* Passing ``assert_hostname=False`` when creating a HTTPSConnectionPool will\n  skip hostname verification for SSL connections. (Issue #194)\n\n* New method ``urllib3.response.HTTPResponse.stream(...)`` which acts as a\n  generator wrapped around ``.read(...)``. (Issue #198)\n\n* IPv6 url parsing enforces brackets around the hostname. (Issue #199)\n\n* Fixed thread race condition in\n  ``urllib3.poolmanager.PoolManager.connection_from_host(...)`` (Issue #204)\n\n* ``ProxyManager`` requests now include non-default port in ``Host: ...``\n  header. (Issue #217)\n\n* Added HTTPS proxy support in ``ProxyManager``. (Issue #170 #139)\n\n* New ``RequestField`` object can be passed to the ``fields=...`` param which\n  can specify headers. (Issue #220)\n\n* Raise ``urllib3.exceptions.ProxyError`` when connecting to proxy fails.\n  (Issue #221)\n\n* Use international headers when posting file names. (Issue #119)\n\n* Improved IPv6 support. (Issue #203)\n\n\n1.6 (2013-04-25)\n----------------\n\n* Contrib: Optional SNI support for Py2 using PyOpenSSL. (Issue #156)\n\n* ``ProxyManager`` automatically adds ``Host: ...`` header if not given.\n\n* Improved SSL-related code. ``cert_req`` now optionally takes a string like\n  \"REQUIRED\" or \"NONE\". Same with ``ssl_version`` takes strings like \"SSLv23\"\n  The string values reflect the suffix of the respective constant variable.\n  (Issue #130)\n\n* Vendored ``socksipy`` now based on Anorov's fork which handles unexpectedly\n  closed proxy connections and larger read buffers. (Issue #135)\n\n* Ensure the connection is closed if no data is received, fixes connection leak\n  on some platforms. (Issue #133)\n\n* Added SNI support for SSL/TLS connections on Py32+. (Issue #89)\n\n* Tests fixed to be compatible with Py26 again. (Issue #125)\n\n* Added ability to choose SSL version by passing an ``ssl.PROTOCOL_*`` constant\n  to the ``ssl_version`` parameter of ``HTTPSConnectionPool``. (Issue #109)\n\n* Allow an explicit content type to be specified when encoding file fields.\n  (Issue #126)\n\n* Exceptions are now pickleable, with tests. (Issue #101)\n\n* Fixed default headers not getting passed in some cases. (Issue #99)\n\n* Treat \"content-encoding\" header value as case-insensitive, per RFC 2616\n  Section 3.5. (Issue #110)\n\n* \"Connection Refused\" SocketErrors will get retried rather than raised.\n  (Issue #92)\n\n* Updated vendored ``six``, no longer overrides the global ``six`` module\n  namespace. (Issue #113)\n\n* ``urllib3.exceptions.MaxRetryError`` contains a ``reason`` property holding\n  the exception that prompted the final retry. If ``reason is None`` then it\n  was due to a redirect. (Issue #92, #114)\n\n* Fixed ``PoolManager.urlopen()`` from not redirecting more than once.\n  (Issue #149)\n\n* Don't assume ``Content-Type: text/plain`` for multi-part encoding parameters\n  that are not files. (Issue #111)\n\n* Pass `strict` param down to ``httplib.HTTPConnection``. (Issue #122)\n\n* Added mechanism to verify SSL certificates by fingerprint (md5, sha1) or\n  against an arbitrary hostname (when connecting by IP or for misconfigured\n  servers). (Issue #140)\n\n* Streaming decompression support. (Issue #159)\n\n\n1.5 (2012-08-02)\n----------------\n\n* Added ``urllib3.add_stderr_logger()`` for quickly enabling STDERR debug\n  logging in urllib3.\n\n* Native full URL parsing (including auth, path, query, fragment) available in\n  ``urllib3.util.parse_url(url)``.\n\n* Built-in redirect will switch method to 'GET' if status code is 303.\n  (Issue #11)\n\n* ``urllib3.PoolManager`` strips the scheme and host before sending the request\n  uri. (Issue #8)\n\n* New ``urllib3.exceptions.DecodeError`` exception for when automatic decoding,\n  based on the Content-Type header, fails.\n\n* Fixed bug with pool depletion and leaking connections (Issue #76). Added\n  explicit connection closing on pool eviction. Added\n  ``urllib3.PoolManager.clear()``.\n\n* 99% -\u003e 100% unit test coverage.\n\n\n1.4 (2012-06-16)\n----------------\n\n* Minor AppEngine-related fixes.\n\n* Switched from ``mimetools.choose_boundary`` to ``uuid.uuid4()``.\n\n* Improved url parsing. (Issue #73)\n\n* IPv6 url support. (Issue #72)\n\n\n1.3 (2012-03-25)\n----------------\n\n* Removed pre-1.0 deprecated API.\n\n* Refactored helpers into a ``urllib3.util`` submodule.\n\n* Fixed multipart encoding to support list-of-tuples for keys with multiple\n  values. (Issue #48)\n\n* Fixed multiple Set-Cookie headers in response not getting merged properly in\n  Python 3. (Issue #53)\n\n* AppEngine support with Py27. (Issue #61)\n\n* Minor ``encode_multipart_formdata`` fixes related to Python 3 strings vs\n  bytes.\n\n\n1.2.2 (2012-02-06)\n------------------\n\n* Fixed packaging bug of not shipping ``test-requirements.txt``. (Issue #47)\n\n\n1.2.1 (2012-02-05)\n------------------\n\n* Fixed another bug related to when ``ssl`` module is not available. (Issue #41)\n\n* Location parsing errors now raise ``urllib3.exceptions.LocationParseError``\n  which inherits from ``ValueError``.\n\n\n1.2 (2012-01-29)\n----------------\n\n* Added Python 3 support (tested on 3.2.2)\n\n* Dropped Python 2.5 support (tested on 2.6.7, 2.7.2)\n\n* Use ``select.poll`` instead of ``select.select`` for platforms that support\n  it.\n\n* Use ``Queue.LifoQueue`` instead of ``Queue.Queue`` for more aggressive\n  connection reusing. Configurable by overriding ``ConnectionPool.QueueCls``.\n\n* Fixed ``ImportError`` during install when ``ssl`` module is not available.\n  (Issue #41)\n\n* Fixed ``PoolManager`` redirects between schemes (such as HTTP -\u003e HTTPS) not\n  completing properly. (Issue #28, uncovered by Issue #10 in v1.1)\n\n* Ported ``dummyserver`` to use ``tornado`` instead of ``webob`` +\n  ``eventlet``. Removed extraneous unsupported dummyserver testing backends.\n  Added socket-level tests.\n\n* More tests. Achievement Unlocked: 99% Coverage.\n\n\n1.1 (2012-01-07)\n----------------\n\n* Refactored ``dummyserver`` to its own root namespace module (used for\n  testing).\n\n* Added hostname verification for ``VerifiedHTTPSConnection`` by vendoring in\n  Py32's ``ssl_match_hostname``. (Issue #25)\n\n* Fixed cross-host HTTP redirects when using ``PoolManager``. (Issue #10)\n\n* Fixed ``decode_content`` being ignored when set through ``urlopen``. (Issue\n  #27)\n\n* Fixed timeout-related bugs. (Issues #17, #23)\n\n\n1.0.2 (2011-11-04)\n------------------\n\n* Fixed typo in ``VerifiedHTTPSConnection`` which would only present as a bug if\n  you're using the object manually. (Thanks pyos)\n\n* Made RecentlyUsedContainer (and consequently PoolManager) more thread-safe by\n  wrapping the access log in a mutex. (Thanks @christer)\n\n* Made RecentlyUsedContainer more dict-like (corrected ``__delitem__`` and\n  ``__getitem__`` behaviour), with tests. Shouldn't affect core urllib3 code.\n\n\n1.0.1 (2011-10-10)\n------------------\n\n* Fixed a bug where the same connection would get returned into the pool twice,\n  causing extraneous \"HttpConnectionPool is full\" log warnings.\n\n\n1.0 (2011-10-08)\n----------------\n\n* Added ``PoolManager`` with LRU expiration of connections (tested and\n  documented).\n* Added ``ProxyManager`` (needs tests, docs, and confirmation that it works\n  with HTTPS proxies).\n* Added optional partial-read support for responses when\n  ``preload_content=False``. You can now make requests and just read the headers\n  without loading the content.\n* Made response decoding optional (default on, same as before).\n* Added optional explicit boundary string for ``encode_multipart_formdata``.\n* Convenience request methods are now inherited from ``RequestMethods``. Old\n  helpers like ``get_url`` and ``post_url`` should be abandoned in favour of\n  the new ``request(method, url, ...)``.\n* Refactored code to be even more decoupled, reusable, and extendable.\n* License header added to ``.py`` files.\n* Embiggened the documentation: Lots of Sphinx-friendly docstrings in the code\n  and docs in ``docs/`` and on https://urllib3.readthedocs.io/.\n* Embettered all the things!\n* Started writing this file.\n\n\n0.4.1 (2011-07-17)\n------------------\n\n* Minor bug fixes, code cleanup.\n\n\n0.4 (2011-03-01)\n----------------\n\n* Better unicode support.\n* Added ``VerifiedHTTPSConnection``.\n* Added ``NTLMConnectionPool`` in contrib.\n* Minor improvements.\n\n\n0.3.1 (2010-07-13)\n------------------\n\n* Added ``assert_host_name`` optional parameter. Now compatible with proxies.\n\n\n0.3 (2009-12-10)\n----------------\n\n* Added HTTPS support.\n* Minor bug fixes.\n* Refactored, broken backwards compatibility with 0.2.\n* API to be treated as stable from this version forward.\n\n\n0.2 (2008-11-17)\n----------------\n\n* Added unit tests.\n* Bug fixes.\n\n\n0.1 (2008-11-16)\n----------------\n\n* First release.\n",
+  "description_content_type": "text/x-rst",
+  "docs_url": "",
+  "download_url": "",
+  "downloads": {
+   "last_day": -1,
+   "last_month": -1,
+   "last_week": -1
+  },
+  "home_page": "https://urllib3.readthedocs.io/",
+  "keywords": "urllib httplib threadsafe filepost http https ssl pooling",
+  "license": "MIT",
+  "maintainer": "",
+  "maintainer_email": "",
+  "name": "urllib3",
+  "package_url": "https://pypi.org/project/urllib3/",
+  "platform": "",
+  "project_url": "https://pypi.org/project/urllib3/",
+  "release_url": "https://pypi.org/project/urllib3/1.26.14/",
+  "requires_dist": [
+   "brotlicffi (\u003e=0.8.0) ; ((os_name != \"nt\" or python_version \u003e= \"3\") and platform_python_implementation != \"CPython\") and extra == 'brotli'",
+   "brotli (\u003e=1.0.9) ; ((os_name != \"nt\" or python_version \u003e= \"3\") and platform_python_implementation == \"CPython\") and extra == 'brotli'",
+   "brotlipy (\u003e=0.6.0) ; (os_name == \"nt\" and python_version \u003c \"3\") and extra == 'brotli'",
+   "pyOpenSSL (\u003e=0.14) ; extra == 'secure'",
+   "cryptography (\u003e=1.3.4) ; extra == 'secure'",
+   "idna (\u003e=2.0.0) ; extra == 'secure'",
+   "certifi ; extra == 'secure'",
+   "urllib3-secure-extra ; extra == 'secure'",
+   "ipaddress ; (python_version == \"2.7\") and extra == 'secure'",
+   "PySocks (!=1.5.7,\u003c2.0,\u003e=1.5.6) ; extra == 'socks'"
+  ],
+  "requires_python": "\u003e=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*",
+  "summary": "HTTP library with thread-safe connection pooling, file post, and more.",
+  "version": "1.26.14",
+  "yanked": false,
+  "yanked_reason": ""
+ },
+ "last_serial": 16389534,
+ "releases": {
+  "0.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a6b2a75cef95b29c20a5f87a41f47296",
+     "sha256": "b9b944d1f1ffb580488c1adee8683c6b887ee1a1912b43ba19de4039d17510d5"
+    },
+    "downloads": -1,
+    "filename": "urllib3-0.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a6b2a75cef95b29c20a5f87a41f47296",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 10056,
+    "upload_time_iso_8601": "2009-12-11T08:47:22.568398Z",
+    "url": "https://files.pythonhosted.org/packages/9c/ed/c5fd0a26ba4c013a9320149edad93cf3440c6148fa6cc541d9b624ee398e/urllib3-0.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "0.3": [],
+  "0.3.1": [],
+  "0.4.0": [],
+  "0.4.1": [],
+  "1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "f81b07c858ce6860480812724fabae12",
+     "sha256": "ca6b37da0353a907bd3b93a15400c0826bf9ec4088b60911b3e8fe0fdec6865b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "f81b07c858ce6860480812724fabae12",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 22775,
+    "upload_time_iso_8601": "2011-10-09T23:46:31.199700Z",
+    "url": "https://files.pythonhosted.org/packages/d3/22/4cbcf82178d038efe03fc33093df8d0792c7e143748fc5bc3f43be4b83fe/urllib3-1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.0.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "0cb196de48d13654c37a70a4cd73fc11",
+     "sha256": "f4a997c3c5a45415fc20c19a3b03200445c3a3e74280c4d7e0a6612f8a8e084c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.0.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0cb196de48d13654c37a70a4cd73fc11",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 22981,
+    "upload_time_iso_8601": "2011-10-11T03:58:44.524926Z",
+    "url": "https://files.pythonhosted.org/packages/90/37/437e3d89fa2314d69e0aef2e97b959b2b3431d616361d3ca4c06b271fdef/urllib3-1.0.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.0.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "75f129b9c8923d85d9b2e02e59522843",
+     "sha256": "d7e9767f07368a019b544e893198bade4d753fbe79fc2ecb99800ccc82975c7f"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.0.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "75f129b9c8923d85d9b2e02e59522843",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 23384,
+    "upload_time_iso_8601": "2011-11-04T19:22:58.280641Z",
+    "url": "https://files.pythonhosted.org/packages/c8/f6/992ef6a35c792b2bc04d7cc0a27a8f6e00e56f5581e77b3fe9c53e1d6491/urllib3-1.0.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "389fd9d231e613b571a91b459f50041f",
+     "sha256": "726fe8018e6eb3749a9587fc117180807a1fafb1cb0ac2044fa414c28fdf5aa6"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "389fd9d231e613b571a91b459f50041f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 27578,
+    "upload_time_iso_8601": "2012-01-07T23:43:51.070702Z",
+    "url": "https://files.pythonhosted.org/packages/57/65/9ad7a929e3d9b39709ac0c253dafbe2e2ddf66c6f49584f43e8b32f37252/urllib3-1.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.10": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "09a6469f5029f9e37812ebf86579fa21",
+     "sha256": "834c02a1e7a489c09b99404518a8404726674c75a98a3a8bc5fe57238bf63101"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10-py2-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "09a6469f5029f9e37812ebf86579fa21",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2",
+    "size": 75510,
+    "upload_time_iso_8601": "2014-12-14T21:26:11.100386Z",
+    "url": "https://files.pythonhosted.org/packages/74/60/6c4f6e5de3394f25f6c87a521fd78a8f84260d88dbcb2a669f6a82133ac6/urllib3-1.10-py2-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "9badc8f09ea2d3c36cbb5071bfe52ebd",
+     "sha256": "25b4a7fbbd9112e0190f31f8877aa0523caeab8630872ad1bbddaba01cdd6599"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.tar.gz",
+    "has_sig": false,
+    "md5_digest": "9badc8f09ea2d3c36cbb5071bfe52ebd",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 128200,
+    "upload_time_iso_8601": "2014-12-14T21:26:13.396621Z",
+    "url": "https://files.pythonhosted.org/packages/83/36/605e5ed6f7a117ffce6541cbe94e07495500f7713708783bedb1c98df2bd/urllib3-1.10.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.10.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "ac10657400063b1c6286d1df26f3ccab",
+     "sha256": "b1e39534c0790aee0f1b6439f41f708d20480bdb8a7e315bb28d7b614359e1ef"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.1-py2-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "ac10657400063b1c6286d1df26f3ccab",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2",
+    "size": 76177,
+    "upload_time_iso_8601": "2015-02-11T02:48:59.009260Z",
+    "url": "https://files.pythonhosted.org/packages/dd/f4/4b4f988ce627121c3a7695324bb314fed5fec02f202aac239c0f54ea42ba/urllib3-1.10.1-py2-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "820cae9eb984edc41dea504a56ec0267",
+     "sha256": "631c6c52e8db04530e5b248ba4c1ce1aac100e2722bfbfdd35f212cf2783acb2"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "820cae9eb984edc41dea504a56ec0267",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 129860,
+    "upload_time_iso_8601": "2015-02-11T02:49:01.324139Z",
+    "url": "https://files.pythonhosted.org/packages/2b/33/9d90a753026d1869a7925372f0ac310f58b46a661b7cb4c54eb5c22cf6eb/urllib3-1.10.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.10.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b889ff17dee521845f2c6446b975662e",
+     "sha256": "360d176c9d04dd34850df7dd5557b923a4dd1da0793a5c2366fda42758536807"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.2-py2-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b889ff17dee521845f2c6446b975662e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2",
+    "size": 77473,
+    "upload_time_iso_8601": "2015-02-25T23:19:45.146810Z",
+    "url": "https://files.pythonhosted.org/packages/7e/db/e8f53e97768ced06c5d2841250a4abb2726611b3c06efe71227fcf264cc9/urllib3-1.10.2-py2-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e5b04971d8e6a77b591284d407e810fb",
+     "sha256": "5bfd0ee2bd559fc22e8f1273934aca77050de19ba0e77f2447cbb0dd44f06a16"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e5b04971d8e6a77b591284d407e810fb",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 132217,
+    "upload_time_iso_8601": "2015-02-25T23:19:48.193873Z",
+    "url": "https://files.pythonhosted.org/packages/10/c7/8ed1d80ca1901a9ddbcbe2323a5c73049c4f957eecdb80d85577aa49dfa4/urllib3-1.10.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.10.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "ae709e55fadd40ada64330ec4dad9d9e",
+     "sha256": "e6c9d84847028ee82c83d901f82b1ced9c05d051c4bd5a0849f8335d0a875c55"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.3-py2-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "ae709e55fadd40ada64330ec4dad9d9e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2",
+    "size": 78752,
+    "upload_time_iso_8601": "2015-04-21T20:06:21.348338Z",
+    "url": "https://files.pythonhosted.org/packages/69/91/3a34efceef1b8d7d4a509c49343a6dcce6b9d53fd40c69515d7655f9d572/urllib3-1.10.3-py2-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "82fd4811f6164fcac0f8e959843c4a63",
+     "sha256": "ce1bb9a3f103610a062ace3ae6e56ebf2fa0fbeb5c395d601c64d8a7e6df180b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "82fd4811f6164fcac0f8e959843c4a63",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 136894,
+    "upload_time_iso_8601": "2015-04-21T20:06:25.506331Z",
+    "url": "https://files.pythonhosted.org/packages/d6/19/7c20b00695f6f0c967edb5d63d73d5fc20803db739ed7b939a8ef2bbeb78/urllib3-1.10.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.10.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "4910c50d33f6657ef051a2df3cd2f613",
+     "sha256": "641a40c0c7d144f03584cc11bfa3702b537b1036f3dc39a1905cf2e741d945d6"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.4-py2-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4910c50d33f6657ef051a2df3cd2f613",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2",
+    "size": 79340,
+    "upload_time_iso_8601": "2015-05-03T14:14:22.508478Z",
+    "url": "https://files.pythonhosted.org/packages/92/b7/37eabe93db6e719a69f9515c911ada4399afb88ea08b2cbfa864d846e5b7/urllib3-1.10.4-py2-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "517e6c293e1d144ff3e67486d69249c6",
+     "sha256": "52131e6a561466f1206e1a648d9a73dda2a804d0f70e83782bd88494542ded09"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.10.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "517e6c293e1d144ff3e67486d69249c6",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 138538,
+    "upload_time_iso_8601": "2015-05-03T14:14:24.922681Z",
+    "url": "https://files.pythonhosted.org/packages/8a/a5/f39d0c3333065807b2905d863fc46108a8d044db247d793c7fcffec1f6bc/urllib3-1.10.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.11": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "bfe41df0dbc47880ba15960be721a08b",
+     "sha256": "53e65fa6025a59f64ece714759c1f06c4e4fb9ab6b272561a2e26f286a55d42e"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.11-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bfe41df0dbc47880ba15960be721a08b",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 84465,
+    "upload_time_iso_8601": "2015-07-21T13:43:35.993648Z",
+    "url": "https://files.pythonhosted.org/packages/3f/0c/7c4e8c634a6285ace89516629ff33cd452218587b8082e7f08080e25c9a4/urllib3-1.11-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "4cdfe9b51c181700f9c7beb84bb42770",
+     "sha256": "0da48343bdc6c01cfe45bd23726dd2e7ea0c1fce24959a84a4682513a0fd2b12"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.11.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4cdfe9b51c181700f9c7beb84bb42770",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 149671,
+    "upload_time_iso_8601": "2015-07-21T13:43:42.589468Z",
+    "url": "https://files.pythonhosted.org/packages/41/06/c72e782e156dd722419915baeced8f3bdd0ae12aa58818b8e9497bc1d2d3/urllib3-1.11.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.12": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "f2d5530128e8935d22da26d9fc4e2b8c",
+     "sha256": "8a5cbc44c172dbbd9f4dee62b1e7197c92b456bafe52279042509cab5b89c83e"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.12-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "f2d5530128e8935d22da26d9fc4e2b8c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 85246,
+    "upload_time_iso_8601": "2015-09-06T18:41:26.812162Z",
+    "url": "https://files.pythonhosted.org/packages/78/7c/4fdfe533e595854ab15b31a1116b2f9734796dfd7c5d3234d4927f88cc60/urllib3-1.12-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "befd9dbb2c373681bd88710ba96abbdb",
+     "sha256": "0ea512776971fe4e76192600fe41e4e7ee96b4b9a5b15aefc1ac31d2a63872c6"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.12.tar.gz",
+    "has_sig": false,
+    "md5_digest": "befd9dbb2c373681bd88710ba96abbdb",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 151072,
+    "upload_time_iso_8601": "2015-09-06T18:41:30.612548Z",
+    "url": "https://files.pythonhosted.org/packages/41/a7/5bda0eaea36dda6be079650f399d7713693d556ce71f0011d3881c6957c5/urllib3-1.12.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.13": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "da9f2cf0cec5767d4aca10ce9d7c4b6a",
+     "sha256": "f9b5ff677bd6c1d038870317ae687ccc02eca2e8bb5bf572b502b94be1c2872a"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.13-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "da9f2cf0cec5767d4aca10ce9d7c4b6a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 86829,
+    "upload_time_iso_8601": "2015-12-14T21:11:21.239752Z",
+    "url": "https://files.pythonhosted.org/packages/be/90/3479e16866a61f973d37296d27dd56f923b3259950ff57ab865d3caf1ef1/urllib3-1.13-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "80a5b59dfb9860857250a96b3cf564f2",
+     "sha256": "8d5d4e7544c77e3a009d0cfd59175b27d57fb875d3c742b441c3eb79e0d3957c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.13.tar.gz",
+    "has_sig": false,
+    "md5_digest": "80a5b59dfb9860857250a96b3cf564f2",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 153743,
+    "upload_time_iso_8601": "2015-12-14T21:11:26.678631Z",
+    "url": "https://files.pythonhosted.org/packages/5b/5a/bd0b868a3412429b10be936087a9e260f3a7373e18e2330118a58e98004d/urllib3-1.13.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.13.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "2927c42022bfe337c0ab422cefb2e15d",
+     "sha256": "e2a681be15eac24db1aa907eb89132b66a3078cf919071d57cb2ab2ae8893453"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.13.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2927c42022bfe337c0ab422cefb2e15d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 87126,
+    "upload_time_iso_8601": "2015-12-18T22:48:34.394175Z",
+    "url": "https://files.pythonhosted.org/packages/b1/54/5b2f3d215a47f1a7fabb9f24d58135db9f4e9478a301ebf2b34f620518b2/urllib3-1.13.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "380bde6575f53196119ddacfb5b8a6fd",
+     "sha256": "6eba1d713f8552e37ac4081c6bdf7be9f5a79f58447aed762bf24cc34c5e3983"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.13.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "380bde6575f53196119ddacfb5b8a6fd",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 156259,
+    "upload_time_iso_8601": "2015-12-18T22:48:40.386438Z",
+    "url": "https://files.pythonhosted.org/packages/ee/16/7eeb3da799c044c7394158cbfaaaf8ac1cb3bb716bf251ee9a6ca09614c5/urllib3-1.13.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.14": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "8aaefe43e837daf2eff1d4a654917cf6",
+     "sha256": "ffe8859ca4fdfb021c2e8e0d3033f6c5eb372f8d4c3fd5455523055a2806a437"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.14-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "8aaefe43e837daf2eff1d4a654917cf6",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 89323,
+    "upload_time_iso_8601": "2015-12-29T20:28:31.702905Z",
+    "url": "https://files.pythonhosted.org/packages/73/55/63deba73d82dfa39974ca3903110c3e3557ff8758a3a79482810915b385d/urllib3-1.14-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5e1407428ac33b521c71a7ac273b3847",
+     "sha256": "dd4fb13a4ce50b18338c7e4d665b21fd38632c5d4b1d9f1a1379276bd3c08d37"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.14.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5e1407428ac33b521c71a7ac273b3847",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 161497,
+    "upload_time_iso_8601": "2015-12-29T20:28:40.455552Z",
+    "url": "https://files.pythonhosted.org/packages/6c/11/68602df8fb13daeb2b61e2dc3209c6d8a599af7943691dfa7d48f32ef69b/urllib3-1.14.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.15": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "321a17dd16178c4a9efd6755c4b8e872",
+     "sha256": "0bfbc91a6726517de44317e1219ede08c0be213cca06626c56b18e1f4b0377d8"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.15-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "321a17dd16178c4a9efd6755c4b8e872",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 77449,
+    "upload_time_iso_8601": "2016-04-06T19:17:18.644224Z",
+    "url": "https://files.pythonhosted.org/packages/e4/97/716fb40e72ceea3944e7a2ec908f3d72c232e8dc1a4030569742bee08884/urllib3-1.15-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "19c136027dfae028f664b9e45ee55a92",
+     "sha256": "607c22f1b593e0e95c2eecb01138c58de9c574ec4c7a0e560c1e15031f941b3d"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.15.tar.gz",
+    "has_sig": false,
+    "md5_digest": "19c136027dfae028f664b9e45ee55a92",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 153398,
+    "upload_time_iso_8601": "2016-04-06T19:17:31.326716Z",
+    "url": "https://files.pythonhosted.org/packages/39/00/cb4ffa715096532f6cd6055083f980a113739f7cf50486aae584e24ca195/urllib3-1.15.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.15.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "00a5541c03971b9a3a2b6517e8da4869",
+     "sha256": "105b33577a379c1c881821d43b97d1a870f37a8f4904151f56ddeb95b38830ca"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.15.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "00a5541c03971b9a3a2b6517e8da4869",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 92690,
+    "upload_time_iso_8601": "2016-04-11T17:26:25.079831Z",
+    "url": "https://files.pythonhosted.org/packages/ea/11/0c858701745b76148b292406fcee31fa7f39c28aae18ac7d75792ac6d433/urllib3-1.15.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5be254b0dbb55d1307ede99e1895c8dd",
+     "sha256": "d0a1dc60433f7e9b90b4f085f1d45753174b4594558b29eda0009abe0b82da4c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.15.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5be254b0dbb55d1307ede99e1895c8dd",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 169242,
+    "upload_time_iso_8601": "2016-04-11T17:26:40.369525Z",
+    "url": "https://files.pythonhosted.org/packages/49/26/a7d12ea00cb4b9fa1e13b5980e5a04a1fe7c477eb8f657ce0b757a7a497d/urllib3-1.15.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.16": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "3dfc4a65f15bb8fd42f236275168eeb4",
+     "sha256": "8a46ee9b6b4487ba994e97f9e5eab48513c9b3ebdddc630ee9a899e041147695"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.16-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "3dfc4a65f15bb8fd42f236275168eeb4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 98955,
+    "upload_time_iso_8601": "2016-06-11T20:34:52.194000Z",
+    "url": "https://files.pythonhosted.org/packages/61/54/3f6149b3b9027f3386ad56816a3be83c201fe7bed1ba67a0ca249f1a8cb1/urllib3-1.16-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "fcaab1c5385c57deeb7053d3d7d81d59",
+     "sha256": "63d479478ddfc83bbc11577dc16d47835c5179ac13e550118ca143b62c4bf9ab"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.16.tar.gz",
+    "has_sig": false,
+    "md5_digest": "fcaab1c5385c57deeb7053d3d7d81d59",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 179763,
+    "upload_time_iso_8601": "2016-06-11T20:34:59.039643Z",
+    "url": "https://files.pythonhosted.org/packages/3b/f0/e763169124e3f5db0926bc3dbfcd580a105f9ca44cf5d8e6c7a803c9f6b5/urllib3-1.16.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.17": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "d59d42c6811c730649d66fbd4d4e22ca",
+     "sha256": "ace38809bda77300b7155c2cd202a648cce95ccfd81f9582aabe23f8deaf1a98"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.17-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "d59d42c6811c730649d66fbd4d4e22ca",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 101170,
+    "upload_time_iso_8601": "2016-09-06T14:41:20.111888Z",
+    "url": "https://files.pythonhosted.org/packages/40/4e/54411cb5f7c69782304a7ab27ba9d7d9a3908cd68b67f6502137342d0d9c/urllib3-1.17-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "12d5520f0fffed0e65cb66b5bdc6ddec",
+     "sha256": "fe57c15f1973d55c948619efcbd1d1150bb4256214aabab3322b395d023a2603"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.17.tar.gz",
+    "has_sig": true,
+    "md5_digest": "12d5520f0fffed0e65cb66b5bdc6ddec",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 181176,
+    "upload_time_iso_8601": "2016-09-06T14:41:23.436850Z",
+    "url": "https://files.pythonhosted.org/packages/c2/79/8851583070bac203561d21b9478340535893f587759608156aaca60a615a/urllib3-1.17.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.18": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "9c68b010f3262fa96ca373f4a4832da3",
+     "sha256": "ed69856d262a6da3f201b1afed6d61b0c5a364fcc1d20d3f9ff461960c6626bf"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.18-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "9c68b010f3262fa96ca373f4a4832da3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 102363,
+    "upload_time_iso_8601": "2016-09-26T08:50:34.527893Z",
+    "url": "https://files.pythonhosted.org/packages/9d/24/d9896ea827cdd3783f6bb4339ccca614411ee1ef4a0e11566ba81f190e66/urllib3-1.18-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1eadd93bd5e58d3528d977111f2997ea",
+     "sha256": "d30dd4d1cbbc36ebab6e4a2076820cfe0c60f10adf087fecbc5a3edae79fdc81"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.18.tar.gz",
+    "has_sig": true,
+    "md5_digest": "1eadd93bd5e58d3528d977111f2997ea",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 183660,
+    "upload_time_iso_8601": "2016-09-26T08:50:39.699498Z",
+    "url": "https://files.pythonhosted.org/packages/8f/45/7434a6a44d42744b74fb969a39720f0c3d4f31f921737e51a69d8b15c859/urllib3-1.18.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.18.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e136266e9f26683abbd63df238945d9c",
+     "sha256": "e18d07b5387d7e8ba586357209d9e38b71b787ca832f375f5dd42ed3f5d44aa8"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.18.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e136266e9f26683abbd63df238945d9c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 103060,
+    "upload_time_iso_8601": "2016-10-27T11:25:19.068958Z",
+    "url": "https://files.pythonhosted.org/packages/ac/2a/fc9ac93901bdab0c4b48f86f2cc5ac9c249bbc030debb3fe9e5c0191833d/urllib3-1.18.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "30b6f366a691b7b5d2eb67d20932b77f",
+     "sha256": "5555ecc5254681618d1706037f82e8cec0e18c6113ed5c95807f8f822d5668f1"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.18.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "30b6f366a691b7b5d2eb67d20932b77f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 184995,
+    "upload_time_iso_8601": "2016-10-27T11:25:22.654313Z",
+    "url": "https://files.pythonhosted.org/packages/d8/1f/7e5e7e7d36fa82c179085ef06c32abe2a1f8a25067e1724921f7e871da1a/urllib3-1.18.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.19": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1687d0862ee048f42ca577dbeea47224",
+     "sha256": "81dd7c7f4e1f74c0dd5bf56f7e7d5818e3d6b3595018e3b10a86e7527fcf2345"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.19-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "1687d0862ee048f42ca577dbeea47224",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 104270,
+    "upload_time_iso_8601": "2016-11-03T15:19:26.452868Z",
+    "url": "https://files.pythonhosted.org/packages/34/02/f043d2c9e2360dd6f6f1f7e44c71733ede2478e8b084de43375b316105c5/urllib3-1.19-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "4aa7c6c310cd938683e9b1831e110bac",
+     "sha256": "87f362d061184191d07ced0b947d8526f3e1884f21b0fe97fab313dedcb895be"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.19.tar.gz",
+    "has_sig": true,
+    "md5_digest": "4aa7c6c310cd938683e9b1831e110bac",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 187217,
+    "upload_time_iso_8601": "2016-11-03T15:19:30.072184Z",
+    "url": "https://files.pythonhosted.org/packages/08/37/48b443a36af9eda6274f673b70a9140c13e2409edb2ef20b2d8a620efef5/urllib3-1.19.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.19.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "c1c9adaec813c5d1ce62ce6fb2c5ad02",
+     "sha256": "6410d56c88d9e8ae4fbc0f35122328ad5bd456ec6f0763ae5648c83ff8bd747b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.19.1-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "c1c9adaec813c5d1ce62ce6fb2c5ad02",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 104368,
+    "upload_time_iso_8601": "2016-11-16T10:13:26.129970Z",
+    "url": "https://files.pythonhosted.org/packages/ff/45/7b5d82c483634b6b4cd94392a07c94d36255402286098b7fb10b6cb88e6a/urllib3-1.19.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "7c4edfc86680c8467cfab204ed4ab2dc",
+     "sha256": "53bc34c8ee268c3bd83ecf5e9c80fa783f3148484579bd4e20f4a7c1bb2dd6a0"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.19.1.tar.gz",
+    "has_sig": true,
+    "md5_digest": "7c4edfc86680c8467cfab204ed4ab2dc",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 187416,
+    "upload_time_iso_8601": "2016-11-16T10:13:29.235152Z",
+    "url": "https://files.pythonhosted.org/packages/b4/cb/0f195aa96fd63a4ef8b3578c67f56eb0804e394d9789080a8862c06c2f68/urllib3-1.19.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e62d42006807308fea9556c17af8e250",
+     "sha256": "cc49b66adcb45e19c6944cff35eedb60ee2228f0afba51f4da29c47e7a398f15"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e62d42006807308fea9556c17af8e250",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 34569,
+    "upload_time_iso_8601": "2012-01-30T00:57:13.964196Z",
+    "url": "https://files.pythonhosted.org/packages/75/57/76c41db00e0a257ae7a648c2d74715eabf510a72298a0b969c574e163799/urllib3-1.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.2.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "c6266e26ce8851862a7273bca850bee1",
+     "sha256": "bdf8d06c46dd9b4cc58596c36ec09ed03c3f98656e715837de881d13df4cd59a"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.2.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c6266e26ce8851862a7273bca850bee1",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 35111,
+    "upload_time_iso_8601": "2012-02-05T21:13:40.482888Z",
+    "url": "https://files.pythonhosted.org/packages/fd/33/620c8778d72eb919f5d5518dc28ae634253bc0ecfdf342b5d76a291b1ddc/urllib3-1.2.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.2.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "76619fab345d8e66411e2fffe336be63",
+     "sha256": "b7cda49f21ba823f97075ef9db034de969180b7965c77b25bd5d6d46dc1d0312"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.2.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "76619fab345d8e66411e2fffe336be63",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 35251,
+    "upload_time_iso_8601": "2012-02-06T17:01:47.094955Z",
+    "url": "https://files.pythonhosted.org/packages/e3/3d/b1702870ac6959af840f2249eb4bf64acb11279612b4da90079a4044db11/urllib3-1.2.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.20": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "43fdf206d03cf3c20981b0f860452ea3",
+     "sha256": "b64c0faa183e9e9e76193146c4147e82a734982c6b6719dca851d6cc4ec90c01"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.20-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "43fdf206d03cf3c20981b0f860452ea3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 111946,
+    "upload_time_iso_8601": "2017-01-19T09:53:40.055432Z",
+    "url": "https://files.pythonhosted.org/packages/67/87/67be08389f8df83c9ba4c12e618a4ad93546e234a1e9530618735cd9b73d/urllib3-1.20-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "34691d4e7e20a8e9cdb452ea24fc38e7",
+     "sha256": "97ef2b6e2878d84c0126b9f4e608e37a951ca7848e4855a7f7f4437d5c34a72f"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.20.tar.gz",
+    "has_sig": true,
+    "md5_digest": "34691d4e7e20a8e9cdb452ea24fc38e7",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 201873,
+    "upload_time_iso_8601": "2017-01-19T09:53:41.904200Z",
+    "url": "https://files.pythonhosted.org/packages/20/56/a6aa403b0998f857b474a538343ee483f5c02491bd1aebf61d42a3f60f77/urllib3-1.20.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.21": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "8fdb0120f36264625dbf7896a24a8b47",
+     "sha256": "5589dbd20bae1447a62b55e687e5b5b6024f710ce49b24975b261a3ee4d52276"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.21-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "8fdb0120f36264625dbf7896a24a8b47",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 131347,
+    "upload_time_iso_8601": "2017-04-25T11:12:26.297307Z",
+    "url": "https://files.pythonhosted.org/packages/bd/c5/d95aba2c7d87fa135df89f603c1ec2248c6f134d51395f3b4cf6d7774d40/urllib3-1.21-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1ee27ce604215b36e61bced0b88abce7",
+     "sha256": "d0f08f1472754890c8b228106eb831a7a68c93565bd0818936c30bb839913647"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.21.tar.gz",
+    "has_sig": true,
+    "md5_digest": "1ee27ce604215b36e61bced0b88abce7",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 223387,
+    "upload_time_iso_8601": "2017-04-25T11:12:28.442838Z",
+    "url": "https://files.pythonhosted.org/packages/34/95/7b28259d0006ed681c424cd71a668363265eac92b67dddd018eb9a22bff8/urllib3-1.21.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.21.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b83ea4ad4905f6f0ca432b0db829a80b",
+     "sha256": "8ed6d5c1ff9d6ba84677310060d6a3a78ca3072ce0684cb3c645023009c114b1"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.21.1-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "b83ea4ad4905f6f0ca432b0db829a80b",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 131717,
+    "upload_time_iso_8601": "2017-05-02T10:58:32.257089Z",
+    "url": "https://files.pythonhosted.org/packages/24/53/f397db567de0aa0e81b211d81c13c41a779f14893e42189cf5bdb97611b2/urllib3-1.21.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "ef6c72c79b9c6bcd68c204f9b92abc86",
+     "sha256": "b14486978518ca0901a76ba973d7821047409d7f726f22156b24e83fd71382a5"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.21.1.tar.gz",
+    "has_sig": true,
+    "md5_digest": "ef6c72c79b9c6bcd68c204f9b92abc86",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 224266,
+    "upload_time_iso_8601": "2017-05-02T10:58:34.160525Z",
+    "url": "https://files.pythonhosted.org/packages/96/d9/40e4e515d3e17ed0adbbde1078e8518f8c4e3628496b56eb8f026a02b9e4/urllib3-1.21.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.22": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1c11e1c80371cc4e89911071010a98d1",
+     "sha256": "06330f386d6e4b195fbfc736b297f58c5a892e4440e54d294d7004e3a9bbea1b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.22-py2.py3-none-any.whl",
+    "has_sig": true,
+    "md5_digest": "1c11e1c80371cc4e89911071010a98d1",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 132332,
+    "upload_time_iso_8601": "2017-07-20T09:05:46.173764Z",
+    "url": "https://files.pythonhosted.org/packages/63/cb/6965947c13a94236f6d4b8223e21beb4d576dc72e8130bd7880f600839b8/urllib3-1.22-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "0da7bed3fe94bf7dc59ae37885cc72f7",
+     "sha256": "cc44da8e1145637334317feebd728bd869a35285b93cbb4cca2577da7e62db4f"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.22.tar.gz",
+    "has_sig": true,
+    "md5_digest": "0da7bed3fe94bf7dc59ae37885cc72f7",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 226083,
+    "upload_time_iso_8601": "2017-07-20T09:05:48.756394Z",
+    "url": "https://files.pythonhosted.org/packages/ee/11/7c59620aceedcc1ef65e156cc5ce5a24ef87be4107c2b74458464e437a5d/urllib3-1.22.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.23": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "477572ad299bbda6e70b018e6c8cbe8f",
+     "sha256": "b5725a0bd4ba422ab0e66e89e030c806576753ea3ee08554382c14e685d117b5"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.23-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "477572ad299bbda6e70b018e6c8cbe8f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 133303,
+    "upload_time_iso_8601": "2018-06-05T03:25:49.484152Z",
+    "url": "https://files.pythonhosted.org/packages/bd/c9/6fdd990019071a4a32a5e7cb78a1d92c53851ef4f56f62a3486e6a7d8ffb/urllib3-1.23-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1ad43e4b5ab7a0794c89dc057e1d7179",
+     "sha256": "a68ac5e15e76e7e5dd2b8f94007233e01effe3e50e8daddf69acfd81cb686baf"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.23.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1ad43e4b5ab7a0794c89dc057e1d7179",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 228314,
+    "upload_time_iso_8601": "2018-06-05T03:25:50.981384Z",
+    "url": "https://files.pythonhosted.org/packages/3c/d2/dc5471622bd200db1cd9319e02e71bc655e9ea27b8e0ce65fc69de0dac15/urllib3-1.23.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.24": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "f58d7aaf54621f886b4025948d660496",
+     "sha256": "8819bba37a02d143296a4d032373c4dd4aca11f6d4c9973335ca75f9c8475f59"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "f58d7aaf54621f886b4025948d660496",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 117959,
+    "upload_time_iso_8601": "2018-10-16T17:54:20.238264Z",
+    "url": "https://files.pythonhosted.org/packages/8c/4b/5cbc4cb46095f369117dcb751821e1bef9dd86a07c968d8757e9204c324c/urllib3-1.24-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "0dd4694f18e0ab684c5db7c79e14f66b",
+     "sha256": "41c3db2fc01e5b907288010dec72f9d0a74e37d6994e6eb56849f59fea2265ae"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0dd4694f18e0ab684c5db7c79e14f66b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 229200,
+    "upload_time_iso_8601": "2018-10-16T17:54:21.801481Z",
+    "url": "https://files.pythonhosted.org/packages/a5/74/05ffd00b4b5c08306939c485869f5dc40cbc27357195b0a98b18e4c48893/urllib3-1.24.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.24.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "60203e1d89eea27a4f8394f730ce1e07",
+     "sha256": "61bf29cada3fc2fbefad4fdf059ea4bd1b4a86d2b6d15e1c7c0b582b9752fe39"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "60203e1d89eea27a4f8394f730ce1e07",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 118086,
+    "upload_time_iso_8601": "2018-11-02T19:11:17.872837Z",
+    "url": "https://files.pythonhosted.org/packages/62/00/ee1d7de624db8ba7090d1226aebefab96a2c71cd5cfa7629d6ad3f61b79e/urllib3-1.24.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "f3d8b1841539200c949a33e87e551d8e",
+     "sha256": "de9529817c93f27c8ccbfead6985011db27bd0ddfcdb2d86f3f663385c6a9c22"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "f3d8b1841539200c949a33e87e551d8e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 229688,
+    "upload_time_iso_8601": "2018-11-02T19:11:20.091788Z",
+    "url": "https://files.pythonhosted.org/packages/b1/53/37d82ab391393565f2f831b8eedbffd57db5a718216f82f1a8b4d381a1c1/urllib3-1.24.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.24.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "30c002dea15750b0400bd7b0e3504f3b",
+     "sha256": "4c291ca23bbb55c76518905869ef34bdd5f0e46af7afe6861e8375643ffee1a0"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "30c002dea15750b0400bd7b0e3504f3b",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 131747,
+    "upload_time_iso_8601": "2019-04-17T17:49:45.870917Z",
+    "url": "https://files.pythonhosted.org/packages/df/1c/59cca3abf96f991f2ec3131a4ffe72ae3d9ea1f5894abe8a9c5e3c77cfee/urllib3-1.24.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "20bb5a170a534bd0acd98bfc007fcc22",
+     "sha256": "9a247273df709c4fedb38c711e44292304f73f39ab01beda9f6b9fc375669ac3"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "20bb5a170a534bd0acd98bfc007fcc22",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 230699,
+    "upload_time_iso_8601": "2019-04-17T17:49:47.786569Z",
+    "url": "https://files.pythonhosted.org/packages/fd/fa/b21f4f03176463a6cccdb612a5ff71b927e5224e83483012747c12fc5d62/urllib3-1.24.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.24.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "cc3c42f7be135658be6d026d42503bd1",
+     "sha256": "a637e5fae88995b256e3409dc4d52c2e2e0ba32c42a6365fee8bbd2238de3cfb"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.3-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "cc3c42f7be135658be6d026d42503bd1",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 118799,
+    "upload_time_iso_8601": "2019-05-02T15:37:44.733782Z",
+    "url": "https://files.pythonhosted.org/packages/01/11/525b02e4acc0c747de8b6ccdab376331597c569c42ea66ab0a1dbd36eca2/urllib3-1.24.3-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1efcddca675b80f3ac110439921fc66b",
+     "sha256": "2393a695cd12afedd0dcb26fe5d50d0cf248e5a66f75dbd89a3d4eb333a61af4"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.24.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1efcddca675b80f3ac110439921fc66b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 232237,
+    "upload_time_iso_8601": "2019-05-02T15:37:46.730807Z",
+    "url": "https://files.pythonhosted.org/packages/8a/3c/1bb7ef6c435dea026f06ed9f3ba16aa93f9f4f5d3857a51a35dfa00882f1/urllib3-1.24.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "8deb32b55ec8add625a01941ea78d7f3",
+     "sha256": "a08afe8b057ba35963364711a1f36d346375da0c118f611f35c0252375338c7c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "8deb32b55ec8add625a01941ea78d7f3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 149879,
+    "upload_time_iso_8601": "2019-04-22T14:06:44.695797Z",
+    "url": "https://files.pythonhosted.org/packages/81/9b/715e96377cc1f87e71d9d4259c6f88bf561a539622ba3042e73188e0bc2d/urllib3-1.25-py2.py3-none-any.whl",
+    "yanked": true,
+    "yanked_reason": "Broken release"
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "14359f3362b11b9c7e44514983cdba2b",
+     "sha256": "f03eeb431c77b88cf8747d47e94233a91d0e0fdae1cf09e0b21405a885700266"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.tar.gz",
+    "has_sig": false,
+    "md5_digest": "14359f3362b11b9c7e44514983cdba2b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 409895,
+    "upload_time_iso_8601": "2019-04-22T14:06:46.595819Z",
+    "url": "https://files.pythonhosted.org/packages/cb/34/db09a2f1e27c6ded5dd42afb0e3e2cf6f51ace7d75726385e8a3b1993b17/urllib3-1.25.tar.gz",
+    "yanked": true,
+    "yanked_reason": "Broken release"
+   }
+  ],
+  "1.25.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "49ccee356899cbcd7158b3b891648153",
+     "sha256": "a9645efd62b9fc1c7cad8ed93e162aad4c6bfd90e143966ddd4099b78cd244be"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "49ccee356899cbcd7158b3b891648153",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 150093,
+    "upload_time_iso_8601": "2019-04-24T17:05:21.930238Z",
+    "url": "https://files.pythonhosted.org/packages/c0/1f/516c14fd47ced1a2e2882edd776241c5b707ffc9051cd372843579829994/urllib3-1.25.1-py2.py3-none-any.whl",
+    "yanked": true,
+    "yanked_reason": "Broken release"
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "7206bba433ec4eb3683db19015552428",
+     "sha256": "904bd981d6371bb95a200c0ec9dba5ba7cc980f2d6b125bd793fefe3293be388"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "7206bba433ec4eb3683db19015552428",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 670490,
+    "upload_time_iso_8601": "2019-04-24T17:05:23.849422Z",
+    "url": "https://files.pythonhosted.org/packages/5f/cc/8601ad6c4d7e66072e7b735ba4fe218e9b384e15d2a0583e7caebac83664/urllib3-1.25.1.tar.gz",
+    "yanked": true,
+    "yanked_reason": "Broken release"
+   }
+  ],
+  "1.25.10": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "4b1c74025358273a94eed31250243b92",
+     "sha256": "e7983572181f5e1522d9c98453462384ee92a0be7fac5f1413a1e35c56cc0461"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.10-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4b1c74025358273a94eed31250243b92",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 127631,
+    "upload_time_iso_8601": "2020-07-22T15:47:32.468071Z",
+    "url": "https://files.pythonhosted.org/packages/9f/f0/a391d1463ebb1b233795cabfc0ef38d3db4442339de68f847026199e69d7/urllib3-1.25.10-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "94e3d4d472a14e788d4bd1a903fd102b",
+     "sha256": "91056c15fa70756691db97756772bb1eb9678fa585d9184f24534b100dc60f4a"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.10.tar.gz",
+    "has_sig": false,
+    "md5_digest": "94e3d4d472a14e788d4bd1a903fd102b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 256875,
+    "upload_time_iso_8601": "2020-07-22T15:47:34.482849Z",
+    "url": "https://files.pythonhosted.org/packages/81/f4/87467aeb3afc4a6056e1fe86626d259ab97e1213b1dfec14c7cb5f538bf0/urllib3-1.25.10.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.11": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "827e7cad22dadb93978c6731c20f6990",
+     "sha256": "f5321fbe4bf3fefa0efd0bfe7fb14e90909eb62a48ccda331726b4319897dd5e"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.11-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "827e7cad22dadb93978c6731c20f6990",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 127978,
+    "upload_time_iso_8601": "2020-10-19T14:17:20.705902Z",
+    "url": "https://files.pythonhosted.org/packages/56/aa/4ef5aa67a9a62505db124a5cb5262332d1d4153462eb8fd89c9fa41e5d92/urllib3-1.25.11-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "d47dd21a6e66a03c3633cac468ffd010",
+     "sha256": "8d7eaa5a82a1cac232164990f04874c594c9453ec55eef02eab885aa02fc17a2"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.11.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d47dd21a6e66a03c3633cac468ffd010",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 260300,
+    "upload_time_iso_8601": "2020-10-19T14:17:23.830781Z",
+    "url": "https://files.pythonhosted.org/packages/76/d9/bbbafc76b18da706451fa91bc2ebe21c0daf8868ef3c30b869ac7cb7f01d/urllib3-1.25.11.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "6b9abd70cf0ec189a30f3bb979fdb73d",
+     "sha256": "d363e3607d8de0c220d31950a8f38b18d5ba7c0830facd71a1c6b1036b7ce06c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "6b9abd70cf0ec189a30f3bb979fdb73d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 150799,
+    "upload_time_iso_8601": "2019-04-29T13:11:29.948679Z",
+    "url": "https://files.pythonhosted.org/packages/39/ec/d93dfc69617a028915df914339ef66936ea976ef24fa62940fd86ba0326e/urllib3-1.25.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1ebfbbec8bee21dbb686c009b37f4963",
+     "sha256": "a53063d8b9210a7bdec15e7b272776b9d42b2fd6816401a0d43006ad2f9902db"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1ebfbbec8bee21dbb686c009b37f4963",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 261479,
+    "upload_time_iso_8601": "2019-04-29T13:11:36.130435Z",
+    "url": "https://files.pythonhosted.org/packages/9a/8b/ea6d2beb2da6e331e9857d0a60b79ed4f72dcbc4e2c7f2d2521b0480fda2/urllib3-1.25.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e01c3465a7d687f1c164ac70a14ce002",
+     "sha256": "b246607a25ac80bedac05c6f282e3cdaf3afb65420fd024ac94435cabe6e18d1"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.3-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e01c3465a7d687f1c164ac70a14ce002",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 150942,
+    "upload_time_iso_8601": "2019-05-23T19:01:44.733909Z",
+    "url": "https://files.pythonhosted.org/packages/e6/60/247f23a7121ae632d62811ba7f273d0e58972d75e58a94d329d51550a47d/urllib3-1.25.3-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "f09e95a5c42a7cc7ff7cb6a14c55fb69",
+     "sha256": "dbe59173209418ae49d485b87d1681aefa36252ee85884c31346debd19463232"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "f09e95a5c42a7cc7ff7cb6a14c55fb69",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 262150,
+    "upload_time_iso_8601": "2019-05-23T19:01:47.801705Z",
+    "url": "https://files.pythonhosted.org/packages/4c/13/2386233f7ee40aa8444b47f7463338f3cbdf00c316627558784e3f542f07/urllib3-1.25.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "68e2493eabb34f0e8a03adea38d1f9d6",
+     "sha256": "8a8090dd02b145256534c205e624eb20161080428ffa14408f6f283c0d0c356e"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.4-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "68e2493eabb34f0e8a03adea38d1f9d6",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 125530,
+    "upload_time_iso_8601": "2019-09-19T14:49:01.357839Z",
+    "url": "https://files.pythonhosted.org/packages/91/0d/7777358f672a14b7ae0dfcd29f949f409f913e0578190d6bfa68eb55864b/urllib3-1.25.4-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b72e36255fcb1c4937039d8673f0b977",
+     "sha256": "319cef72311e511d94be1bb478d202fde499935d0347a9e8f0d232dc3bce47c6"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b72e36255fcb1c4937039d8673f0b977",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 247884,
+    "upload_time_iso_8601": "2019-09-19T14:49:05.166965Z",
+    "url": "https://files.pythonhosted.org/packages/88/31/c1037594d3d3639f23630eaca5215835b1c1665f10997325d97ac61c423c/urllib3-1.25.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.5": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "852b1dca59e5386e621661b50ba26dc3",
+     "sha256": "9c6c593cb28f52075016307fc26b0a0f8e82bc7d1ff19aaaa959b91710a56c47"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.5-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "852b1dca59e5386e621661b50ba26dc3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 125727,
+    "upload_time_iso_8601": "2019-09-20T01:35:54.545482Z",
+    "url": "https://files.pythonhosted.org/packages/81/b7/cef47224900ca67078ed6e2db51342796007433ad38329558f56a15255f5/urllib3-1.25.5-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "4dac6043f7603c5082ef6d629c6d81b3",
+     "sha256": "2f3eadfea5d92bc7899e75b5968410b749a054b492d5a6379c1344a1481bc2cb"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.5.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4dac6043f7603c5082ef6d629c6d81b3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 248169,
+    "upload_time_iso_8601": "2019-09-20T01:35:57.102124Z",
+    "url": "https://files.pythonhosted.org/packages/3c/31/aa26375d7028397ffa46765f91f5ccb087d37a99437b78259eb46f275f5b/urllib3-1.25.5.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.6": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b4669e5832a7474ce5acd8d33a0df73c",
+     "sha256": "3de946ffbed6e6746608990594d08faac602528ac7015ac28d33cee6a45b7398"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.6-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b4669e5832a7474ce5acd8d33a0df73c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 125768,
+    "upload_time_iso_8601": "2019-09-24T14:35:10.080723Z",
+    "url": "https://files.pythonhosted.org/packages/e0/da/55f51ea951e1b7c63a579c09dd7db825bb730ec1fe9c0180fc77bfb31448/urllib3-1.25.6-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a7504a9fcb7ed4ffa482fe098c80b6d4",
+     "sha256": "9a107b99a5393caf59c7aa3c1249c16e6879447533d0887f4336dde834c7be86"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.6.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a7504a9fcb7ed4ffa482fe098c80b6d4",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 248292,
+    "upload_time_iso_8601": "2019-09-24T14:35:13.667918Z",
+    "url": "https://files.pythonhosted.org/packages/ff/44/29655168da441dff66de03952880c6e2d17b252836ff1aa4421fba556424/urllib3-1.25.6.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.7": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "bec36a8811d1e1caddc045d642854d2f",
+     "sha256": "a8a318824cc77d1fd4b2bec2ded92646630d7fe8619497b142c84a9e6f5a7293"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.7-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bec36a8811d1e1caddc045d642854d2f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 125624,
+    "upload_time_iso_8601": "2019-11-11T15:10:09.598264Z",
+    "url": "https://files.pythonhosted.org/packages/b4/40/a9837291310ee1ccc242ceb6ebfd9eb21539649f193a7c8c86ba15b98539/urllib3-1.25.7-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "85e1e3925f8c1095172bff343f3312ed",
+     "sha256": "f3c5fd51747d450d4dcf6f923c81f78f811aab8205fda64b0aba34a4e48b0745"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.7.tar.gz",
+    "has_sig": false,
+    "md5_digest": "85e1e3925f8c1095172bff343f3312ed",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 264636,
+    "upload_time_iso_8601": "2019-11-11T15:10:12.487536Z",
+    "url": "https://files.pythonhosted.org/packages/ad/fc/54d62fa4fc6e675678f9519e677dfc29b8964278d75333cf142892caf015/urllib3-1.25.7.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.8": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5f6517ff625681ebb8e9e57a3b936fd7",
+     "sha256": "2f3db8b19923a873b3e5256dc9c2dedfa883e33d87c690d9c7913e1f40673cdc"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.8-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5f6517ff625681ebb8e9e57a3b936fd7",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 125642,
+    "upload_time_iso_8601": "2020-01-21T20:41:23.910305Z",
+    "url": "https://files.pythonhosted.org/packages/e8/74/6e4f91745020f967d09332bb2b8b9b10090957334692eb88ea4afe91b77f/urllib3-1.25.8-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "33e18919c14b2a61ba9f580a9a924116",
+     "sha256": "87716c2d2a7121198ebcb7ce7cccf6ce5e9ba539041cfbaeecfb641dc0bf6acc"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.8.tar.gz",
+    "has_sig": false,
+    "md5_digest": "33e18919c14b2a61ba9f580a9a924116",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 261077,
+    "upload_time_iso_8601": "2020-01-21T20:41:26.688970Z",
+    "url": "https://files.pythonhosted.org/packages/09/06/3bc5b100fe7e878d3dee8f807a4febff1a40c213d2783e3246edde1f3419/urllib3-1.25.8.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.25.9": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "8e5759dab496723c5da7db80e9a17632",
+     "sha256": "88206b0eb87e6d677d424843ac5209e3fb9d0190d0ee169599165ec25e9d9115"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.9-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "8e5759dab496723c5da7db80e9a17632",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 126746,
+    "upload_time_iso_8601": "2020-04-16T15:44:06.147024Z",
+    "url": "https://files.pythonhosted.org/packages/e1/e5/df302e8017440f111c11cc41a6b432838672f5a70aa29227bf58149dc72f/urllib3-1.25.9-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "dbf9b868b90880b24b1ac278094e912e",
+     "sha256": "3018294ebefce6572a474f0604c2021e33b3fd8006ecd11d62107a5d2a963527"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.25.9.tar.gz",
+    "has_sig": false,
+    "md5_digest": "dbf9b868b90880b24b1ac278094e912e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 254921,
+    "upload_time_iso_8601": "2020-04-16T15:44:08.049585Z",
+    "url": "https://files.pythonhosted.org/packages/05/8c/40cd6949373e23081b3ea20d5594ae523e681b6f472e600fbc95ed046a36/urllib3-1.25.9.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "dcce85e62089b7f8a42e02c3d1862310",
+     "sha256": "bad31cb622ceee0ab46c4c884cf61957def0ff2e644de0a7a093678844c9ccac"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "dcce85e62089b7f8a42e02c3d1862310",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 136659,
+    "upload_time_iso_8601": "2020-11-10T20:08:59.430953Z",
+    "url": "https://files.pythonhosted.org/packages/7e/a7/746338eb8addda2e7662ee5e10a9f85150aba013cd610c9569c17146b914/urllib3-1.26.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "42b0cd44ec7a3b697b85e7c6737630ed",
+     "sha256": "4849f132941d68144df0a3785ccc4fe423430ba5db0108d045c8cadbc90f517a"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "42b0cd44ec7a3b697b85e7c6737630ed",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 291709,
+    "upload_time_iso_8601": "2020-11-10T20:09:01.671792Z",
+    "url": "https://files.pythonhosted.org/packages/f6/0c/2add359fbc96307f081172e2033799eab7471026a5dcdd372803aefa19fa/urllib3-1.26.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1fc756c1fdfcf77ae1f2be57ca9ad46b",
+     "sha256": "61ad24434555a42c0439770462df38b47d05d9e8e353d93ec3742900975e3e65"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1fc756c1fdfcf77ae1f2be57ca9ad46b",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 136732,
+    "upload_time_iso_8601": "2020-11-11T20:29:26.721844Z",
+    "url": "https://files.pythonhosted.org/packages/cc/f0/e6ff89dddc1cb9f57b3e0f9dc06f444c884f1ad0c2ad17e2f1d5e7d0d1f7/urllib3-1.26.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1066bfdb085ab2da068c56e60b503b1b",
+     "sha256": "097116a6f16f13482d2a2e56792088b9b2920f4eb6b4f84a2c90555fb673db74"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1066bfdb085ab2da068c56e60b503b1b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 286708,
+    "upload_time_iso_8601": "2020-11-11T20:29:28.986151Z",
+    "url": "https://files.pythonhosted.org/packages/19/80/b2a19b372f16bc846fd156de8d9b3a9b1092aef1f1963d800b0f8c76a67a/urllib3-1.26.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.10": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1330b4d2bce5ebe7ebf3edc492d1907a",
+     "sha256": "8298d6d56d39be0e3bc13c1c97d133f9b45d797169a0e11cdd0e0489d786f7ec"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.10-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1330b4d2bce5ebe7ebf3edc492d1907a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 139185,
+    "upload_time_iso_8601": "2022-07-07T15:12:47.549599Z",
+    "url": "https://files.pythonhosted.org/packages/68/47/93d3d28e97c7577f563903907912f4b3804054e4877a5ba6651f7182c53b/urllib3-1.26.10-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "80f4985c3e636b10bafc65f3d64c3df6",
+     "sha256": "879ba4d1e89654d9769ce13121e0f94310ea32e8d2f8cf587b77c08bbcdb30d6"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.10.tar.gz",
+    "has_sig": false,
+    "md5_digest": "80f4985c3e636b10bafc65f3d64c3df6",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 297854,
+    "upload_time_iso_8601": "2022-07-07T15:12:50.060066Z",
+    "url": "https://files.pythonhosted.org/packages/25/36/f056e5f1389004cf886bb7a8514077f24224238a7534497c014a6b9ac770/urllib3-1.26.10.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.11": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "2a8a72ea7bd0c16a04acdf418657e06a",
+     "sha256": "c33ccba33c819596124764c23a97d25f32b28433ba0dedeb77d873a38722c9bc"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.11-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2a8a72ea7bd0c16a04acdf418657e06a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 139901,
+    "upload_time_iso_8601": "2022-07-25T13:02:21.294138Z",
+    "url": "https://files.pythonhosted.org/packages/d1/cb/4783c8f1a90f89e260dbf72ebbcf25931f3a28f8f80e2e90f8a589941b19/urllib3-1.26.11-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "0a37b04e936ad24f3c5bf6b6e952bc21",
+     "sha256": "ea6e8fb210b19d950fab93b60c9009226c63a28808bc8386e05301e25883ac0a"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.11.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0a37b04e936ad24f3c5bf6b6e952bc21",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 299255,
+    "upload_time_iso_8601": "2022-07-25T13:02:23.766403Z",
+    "url": "https://files.pythonhosted.org/packages/6d/d5/e8258b334c9eb8eb78e31be92ea0d5da83ddd9385dc967dd92737604d239/urllib3-1.26.11.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.12": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5b4ab9952aa599cd3baf5c20802b2ea9",
+     "sha256": "b930dd878d5a8afb066a637fbb35144fe7901e3b209d1cd4f524bd0e9deee997"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.12-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5b4ab9952aa599cd3baf5c20802b2ea9",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 140381,
+    "upload_time_iso_8601": "2022-08-22T13:27:19.719799Z",
+    "url": "https://files.pythonhosted.org/packages/6f/de/5be2e3eed8426f871b170663333a0f627fc2924cc386cd41be065e7ea870/urllib3-1.26.12-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "ba308b52b9092184cf4905bc59a88fc0",
+     "sha256": "3fa96cf423e6987997fc326ae8df396db2a8b7c667747d47ddd8ecba91f4a74e"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.12.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ba308b52b9092184cf4905bc59a88fc0",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 299806,
+    "upload_time_iso_8601": "2022-08-22T13:27:23.256890Z",
+    "url": "https://files.pythonhosted.org/packages/b2/56/d87d6d3c4121c0bcec116919350ca05dc3afd2eeb7dc88d07e8083f8ea94/urllib3-1.26.12.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.13": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "1441fe31ccabebbb768acaafbf7f4011",
+     "sha256": "47cc05d99aaa09c9e72ed5809b60e7ba354e64b59c9c173ac3018642d8bb41fc"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.13-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1441fe31ccabebbb768acaafbf7f4011",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 140572,
+    "upload_time_iso_8601": "2022-11-23T22:34:29.785874Z",
+    "url": "https://files.pythonhosted.org/packages/65/0c/cc6644eaa594585e5875f46f3c83ee8762b647b51fc5b0fb253a242df2dc/urllib3-1.26.13-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "38f7d1589aa9720101316d07fcbd05c8",
+     "sha256": "c083dd0dce68dbfbe1129d5271cb90f9447dea7d52097c6e0126120c521ddea8"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.13.tar.gz",
+    "has_sig": false,
+    "md5_digest": "38f7d1589aa9720101316d07fcbd05c8",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 300476,
+    "upload_time_iso_8601": "2022-11-23T22:34:32.145005Z",
+    "url": "https://files.pythonhosted.org/packages/c2/51/32da03cf19d17d46cce5c731967bf58de9bd71db3a379932f53b094deda4/urllib3-1.26.13.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.14": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "09034eaf9ef3e6c7ed4fcbb6018daf0f",
+     "sha256": "75edcdc2f7d85b137124a6c3c9fc3933cdeaa12ecb9a6a959f22797a0feca7e1"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.14-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "09034eaf9ef3e6c7ed4fcbb6018daf0f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 140642,
+    "upload_time_iso_8601": "2023-01-11T13:04:57.170894Z",
+    "url": "https://files.pythonhosted.org/packages/fe/ca/466766e20b767ddb9b951202542310cba37ea5f2d792dae7589f1741af58/urllib3-1.26.14-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "7e018ce0f7cddc0560fd4541b5febf06",
+     "sha256": "076907bf8fd355cde77728471316625a4d2f7e713c125f51953bb5b3eecf4f72"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.14.tar.gz",
+    "has_sig": false,
+    "md5_digest": "7e018ce0f7cddc0560fd4541b5febf06",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 300665,
+    "upload_time_iso_8601": "2023-01-11T13:04:59.366590Z",
+    "url": "https://files.pythonhosted.org/packages/c5/52/fe421fb7364aa738b3506a2d99e4f3a56e079c0a798e9f4fa5e14c60922f/urllib3-1.26.14.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "bc8ab29becd464382bacbb195c6bd368",
+     "sha256": "d8ff90d979214d7b4f8ce956e80f4028fc6860e4431f731ea4a8c08f23f99473"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bc8ab29becd464382bacbb195c6bd368",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 136770,
+    "upload_time_iso_8601": "2020-11-12T22:16:52.922247Z",
+    "url": "https://files.pythonhosted.org/packages/f5/71/45d36a8df68f3ebb098d6861b2c017f3d094538c0fb98fa61d4dc43e69b9/urllib3-1.26.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "2233256ccfe140a915f68703f8c2cc1f",
+     "sha256": "19188f96923873c92ccb987120ec4acaa12f0461fa9ce5d3d0772bc965a39e08"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "2233256ccfe140a915f68703f8c2cc1f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 286877,
+    "upload_time_iso_8601": "2020-11-12T22:16:55.083906Z",
+    "url": "https://files.pythonhosted.org/packages/29/e6/d1a1d78c439cad688757b70f26c50a53332167c364edb0134cadd280e234/urllib3-1.26.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "cc7896adc3f4f590c139745b4fa770e3",
+     "sha256": "1b465e494e3e0d8939b50680403e3aedaa2bc434b7d5af64dfd3c958d7f5ae80"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.3-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "cc7896adc3f4f590c139745b4fa770e3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 137023,
+    "upload_time_iso_8601": "2021-01-26T18:58:16.089040Z",
+    "url": "https://files.pythonhosted.org/packages/23/fc/8a49991f7905261f9ca9df5aa9b58363c3c821ce3e7f671895442b7100f2/urllib3-1.26.3-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "4181b82b66744045ee1ddbc1527f6401",
+     "sha256": "de3eedaad74a2683334e282005cd8d7f22f4d55fa690a2a1020a416cb0a47e73"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4181b82b66744045ee1ddbc1527f6401",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 292598,
+    "upload_time_iso_8601": "2021-01-26T18:58:18.493032Z",
+    "url": "https://files.pythonhosted.org/packages/d7/8d/7ee68c6b48e1ec8d41198f694ecdc15f7596356f2ff8e6b1420300cf5db3/urllib3-1.26.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "614921c9cf13a83124446ac86baf70f3",
+     "sha256": "2f4da4594db7e1e110a944bb1b551fdf4e6c136ad42e4234131391e21eb5b0df"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.4-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "614921c9cf13a83124446ac86baf70f3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 153320,
+    "upload_time_iso_8601": "2021-03-15T15:04:35.709960Z",
+    "url": "https://files.pythonhosted.org/packages/09/c6/d3e3abe5b4f4f16cf0dfc9240ab7ce10c2baa0e268989a4e3ec19e90c84e/urllib3-1.26.4-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e2a2039e22fc29b751e26b7042e8db2f",
+     "sha256": "e7b021f7241115872f92f43c6508082facffbd1c048e3c6e2bb9c2a157e28937"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e2a2039e22fc29b751e26b7042e8db2f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 293008,
+    "upload_time_iso_8601": "2021-03-15T15:04:37.697553Z",
+    "url": "https://files.pythonhosted.org/packages/cb/cf/871177f1fc795c6c10787bc0e1f27bb6cf7b81dbde399fd35860472cecbc/urllib3-1.26.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.5": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e715fd3a08ca2d6f372d996746856cf4",
+     "sha256": "753a0374df26658f99d826cfe40394a686d05985786d946fbe4165b5148f5a7c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.5-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e715fd3a08ca2d6f372d996746856cf4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 138144,
+    "upload_time_iso_8601": "2021-05-26T17:02:33.236908Z",
+    "url": "https://files.pythonhosted.org/packages/0c/cd/1e2ec680ec7b09846dc6e605f5a7709dfb9d7128e51a026e7154e18a234e/urllib3-1.26.5-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "33b8670413e684188b1340204bc8ad75",
+     "sha256": "a7acd0977125325f516bda9735fa7142b909a8d01e8b2e4c8108d0984e6e0098"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.5.tar.gz",
+    "has_sig": false,
+    "md5_digest": "33b8670413e684188b1340204bc8ad75",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 292865,
+    "upload_time_iso_8601": "2021-05-26T17:02:35.597930Z",
+    "url": "https://files.pythonhosted.org/packages/94/40/c396b5b212533716949a4d295f91a4c100d51ba95ea9e2d96b6b0517e5a5/urllib3-1.26.5.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.6": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5bec1a4347ac2466ef942eec50ef4335",
+     "sha256": "39fb8672126159acb139a7718dd10806104dec1e2f0f6c88aab05d17df10c8d4"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.6-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5bec1a4347ac2466ef942eec50ef4335",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 138494,
+    "upload_time_iso_8601": "2021-06-25T13:24:15.310981Z",
+    "url": "https://files.pythonhosted.org/packages/5f/64/43575537846896abac0b15c3e5ac678d787a4021e906703f1766bfb8ea11/urllib3-1.26.6-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "3a88ec3bcb761ca23df2c3583949be37",
+     "sha256": "f57b4c16c62fa2760b7e3d97c35b255512fb6b59a259730f36ba32ce9f8e342f"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.6.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3a88ec3bcb761ca23df2c3583949be37",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 289927,
+    "upload_time_iso_8601": "2021-06-25T13:24:17.834300Z",
+    "url": "https://files.pythonhosted.org/packages/4f/5a/597ef5911cb8919efe4d86206aa8b2658616d676a7088f0825ca08bd7cb8/urllib3-1.26.6.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.7": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "9c0e97a18e35e3acaa8698e68e12bca1",
+     "sha256": "c4fdf4019605b6e5423637e01bc9fe4daef873709a7973e195ceba0a62bbc844"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.7-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "9c0e97a18e35e3acaa8698e68e12bca1",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 138764,
+    "upload_time_iso_8601": "2021-09-22T18:01:15.930956Z",
+    "url": "https://files.pythonhosted.org/packages/af/f4/524415c0744552cce7d8bf3669af78e8a069514405ea4fcbd0cc44733744/urllib3-1.26.7-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e0051a87a956e618a6bb514a07fa7773",
+     "sha256": "4987c65554f7a2dbf30c18fd48778ef124af6fab771a377103da0585e2336ece"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.7.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e0051a87a956e618a6bb514a07fa7773",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 291350,
+    "upload_time_iso_8601": "2021-09-22T18:01:18.331115Z",
+    "url": "https://files.pythonhosted.org/packages/80/be/3ee43b6c5757cabea19e75b8f46eaf05a2f5144107d7db48c7cf3a864f73/urllib3-1.26.7.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.8": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "168b59e017a1f4380298455efdb5ce2a",
+     "sha256": "000ca7f471a233c2251c6c7023ee85305721bfdf18621ebff4fd17a8653427ed"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.8-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "168b59e017a1f4380298455efdb5ce2a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 138699,
+    "upload_time_iso_8601": "2022-01-07T15:56:31.276636Z",
+    "url": "https://files.pythonhosted.org/packages/4e/b8/f5a25b22e803f0578e668daa33ba3701bb37858ec80e08a150bd7d2cf1b1/urllib3-1.26.8-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "50831ca7b19bbe2781abb0a4c2d51760",
+     "sha256": "0e7c33d9a63e7ddfcb86780aac87befc2fbddf46c58dbb487e0855f7ceec283c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.8.tar.gz",
+    "has_sig": false,
+    "md5_digest": "50831ca7b19bbe2781abb0a4c2d51760",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 294280,
+    "upload_time_iso_8601": "2022-01-07T15:56:33.962493Z",
+    "url": "https://files.pythonhosted.org/packages/b0/b1/7bbf5181f8e3258efae31702f5eab87d8a74a72a0aa78bc8c08c1466e243/urllib3-1.26.8.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.26.9": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "21785c24a168462568f9a9a0661bcd5a",
+     "sha256": "44ece4d53fb1706f667c9bd1c648f5469a2ec925fcf3a776667042d645472c14"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.9-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "21785c24a168462568f9a9a0661bcd5a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "size": 138990,
+    "upload_time_iso_8601": "2022-03-16T13:28:16.026094Z",
+    "url": "https://files.pythonhosted.org/packages/ec/03/062e6444ce4baf1eac17a6a0ebfe36bb1ad05e1df0e20b110de59c278498/urllib3-1.26.9-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "d4b58522821a33c5e421191b83e0dbac",
+     "sha256": "aabaf16477806a5e1dd19aa41f8c2b7950dd3c746362d7e3223dbe6de6ac448e"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.26.9.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d4b58522821a33c5e421191b83e0dbac",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 295258,
+    "upload_time_iso_8601": "2022-03-16T13:28:19.197657Z",
+    "url": "https://files.pythonhosted.org/packages/1b/a5/4eab74853625505725cefdf168f48661b2cd04e7843ab836f3f63abf81da/urllib3-1.26.9.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "6ae9acdaee2628b1c8b1de25b7e6c9da",
+     "sha256": "cedd2b34adf6c6fba633308f0c5ac197fab88a246aed1f891c00ac7439f9f870"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "6ae9acdaee2628b1c8b1de25b7e6c9da",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 36660,
+    "upload_time_iso_8601": "2012-03-25T20:22:58.044500Z",
+    "url": "https://files.pythonhosted.org/packages/82/c9/34a965c0c1ca6f982ea2f6820437d31271b86c9fddbe7576b49daf8c193c/urllib3-1.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "fd844d20f5f58ad63cee308b2999d9c4",
+     "sha256": "3ee920fe0a5b8d1b3a507a9af6c5b6eb88110d37d2de406907ed7606ff24da9d"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "fd844d20f5f58ad63cee308b2999d9c4",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 31885,
+    "upload_time_iso_8601": "2012-06-16T22:51:41.530000Z",
+    "url": "https://files.pythonhosted.org/packages/7a/17/a23144c996748cc5136be27c9cdd0c1a16cdf93e81d948ef0e6140482bfb/urllib3-1.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.5": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "3ee4b375a095bb6098f1ed75f8058e48",
+     "sha256": "0fc8836c9f39091a07a612d9ee55fc6458d0309d8efebf835215936fc7ffc76c"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.5.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3ee4b375a095bb6098f1ed75f8058e48",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 36783,
+    "upload_time_iso_8601": "2012-08-02T19:16:31.279742Z",
+    "url": "https://files.pythonhosted.org/packages/56/94/54bb6d49c05dca737102a15f0cef247f3b763e840172cbddedad5b6f64d7/urllib3-1.5.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.6": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "8ee95b963e151aba80de90ad1cc55487",
+     "sha256": "df54bfde115c7358b0e30d892e23340502fe8f014dc43e05f1d240a75dab3be7"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.6.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8ee95b963e151aba80de90ad1cc55487",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 44619,
+    "upload_time_iso_8601": "2013-04-25T18:49:52.781288Z",
+    "url": "https://files.pythonhosted.org/packages/4f/34/afb7336d1fdaaae1a93a172ebe12aa530ef2637e67ce6767d09c7bcc04b1/urllib3-1.6.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.7": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "a055b7f51b0c9ffadd7172c21b2885a3",
+     "sha256": "c31f4ee4c76c56794cec5b23af042515abb93d667f1a3fbfe3e452056c6c4be0"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.7.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a055b7f51b0c9ffadd7172c21b2885a3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 61123,
+    "upload_time_iso_8601": "2013-08-14T21:45:48.951595Z",
+    "url": "https://files.pythonhosted.org/packages/50/77/bfbf9cd637d50eb29d28211688d300b867b71eb614d11327dfb1cce073c8/urllib3-1.7.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.7.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "8b05bb2081379fe3c332542aa7c172f3",
+     "sha256": "20fb9e6c7127a6f7a758919f6de7ef352bb955084006f29e838045caca00cb1b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.7.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8b05bb2081379fe3c332542aa7c172f3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 67329,
+    "upload_time_iso_8601": "2013-09-25T16:06:42.410128Z",
+    "url": "https://files.pythonhosted.org/packages/3b/aa/fdf493811c0357588c99f47fb36b99853d70bd26fcac11d51a329976c864/urllib3-1.7.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.8": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "d664781c08f98a83f28df087b6edfdca",
+     "sha256": "1a89fa1b43d277cfadf228cc90b9c75f254818ea3a1aab7bffb0223cbb7bb15d"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.8.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d664781c08f98a83f28df087b6edfdca",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 76503,
+    "upload_time_iso_8601": "2014-03-06T00:25:58.959231Z",
+    "url": "https://files.pythonhosted.org/packages/a5/53/23aeac09ea963189abf72f38a6d1b951251178db5d9950b353492779d43e/urllib3-1.8.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.8.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "52f7513335dfd0943082cbb7400d693e",
+     "sha256": "6cb6a57764b6b80b3de327bb2ea3082de8663815cab2149b612dc0b2ba70ac05"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.8.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "52f7513335dfd0943082cbb7400d693e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 102441,
+    "upload_time_iso_8601": "2014-04-18T06:40:18.697627Z",
+    "url": "https://files.pythonhosted.org/packages/37/ff/2c224b19aa21da51b85b2f5f5be5e8ed47a0a2ab9bb1c09c271f9351786b/urllib3-1.8.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.8.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e94b812ff841fe4d3fda4536c82b1846",
+     "sha256": "4b162cffb6c7dde47b47ecee741f8a00953512541241e61d0f8292107a865426"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.8.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e94b812ff841fe4d3fda4536c82b1846",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 85466,
+    "upload_time_iso_8601": "2014-06-24T18:22:57.275523Z",
+    "url": "https://files.pythonhosted.org/packages/0c/ef/936532f5f3b49a095f67cbece0f6d286c2175723c33de8c6d24e14d0b070/urllib3-1.8.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.9": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "e035f0ccbf37ac0e7c0ebbc190e666a1",
+     "sha256": "4e400b2e2f53652dd0d8062ca5ecc425b6af6e96989b8d31f5dd875186aa247b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.9.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e035f0ccbf37ac0e7c0ebbc190e666a1",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 91865,
+    "upload_time_iso_8601": "2014-07-07T20:57:43.349467Z",
+    "url": "https://files.pythonhosted.org/packages/dd/91/bc4deb900f263147fa8d600025ea938fe9c43c9fda43e3dc22e5008e6983/urllib3-1.9.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "1.9.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "5b92e86b6482f1df664a42b7208ae918",
+     "sha256": "410bea96df2479fa33986c40c3eefa9c1e7ba95a7f70711c315860bbe2d66c7f"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.9.1-py2-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5b92e86b6482f1df664a42b7208ae918",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2",
+    "size": 75529,
+    "upload_time_iso_8601": "2014-12-14T21:23:45.751049Z",
+    "url": "https://files.pythonhosted.org/packages/1b/db/660cb4590ddea7c56d3a1698d6983b5e9cfe010d6b54cd202c4b36e625fc/urllib3-1.9.1-py2-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "c9358c5a85dd6aa3942f5121efed064d",
+     "sha256": "d858379ef5988d4534bb8909432d697422100aaff272299d661339836b6dae9b"
+    },
+    "downloads": -1,
+    "filename": "urllib3-1.9.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c9358c5a85dd6aa3942f5121efed064d",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 171086,
+    "upload_time_iso_8601": "2014-09-13T18:24:32.828661Z",
+    "url": "https://files.pythonhosted.org/packages/28/55/7b1177b9eeea37ef4a0b2a68d0843f9f4c33d0b21a7287e6a6b31f7955c0/urllib3-1.9.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "2.0.0a1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "84ea3b643d1b4496fb31e88b498ce9e3",
+     "sha256": "3b8890a2ba9fc21372c873d1d71b891ccda4af7e6f6f2e9086bb2b5c4b53e98d"
+    },
+    "downloads": -1,
+    "filename": "urllib3-2.0.0a1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "84ea3b643d1b4496fb31e88b498ce9e3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "size": 123463,
+    "upload_time_iso_8601": "2022-11-15T15:43:16.231069Z",
+    "url": "https://files.pythonhosted.org/packages/ca/c7/43ae26e98bfa13a7080f44403771a4435424a6dca11f63fc04764bd05b99/urllib3-2.0.0a1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "d383aa812f2b9bd3dfe0a76e9b779a0e",
+     "sha256": "9e678d1a0aa9d0587e90416000869197e7ee2e339f12f21dff9a70b3f3ebeb4a"
+    },
+    "downloads": -1,
+    "filename": "urllib3-2.0.0a1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d383aa812f2b9bd3dfe0a76e9b779a0e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 275177,
+    "upload_time_iso_8601": "2022-11-15T15:43:18.289578Z",
+    "url": "https://files.pythonhosted.org/packages/3b/43/07856ca0d221f7f19d4d900637a8ea7eb7b81efd14b3d0e4c65502e6cebc/urllib3-2.0.0a1.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "2.0.0a2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "b9012c46c42c69fe036da2d72c878a3f",
+     "sha256": "70c27a9a3463830c0d3a6ac4975527636464a786e1b2e065d5feb284d13ec8ba"
+    },
+    "downloads": -1,
+    "filename": "urllib3-2.0.0a2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b9012c46c42c69fe036da2d72c878a3f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "size": 123114,
+    "upload_time_iso_8601": "2022-11-23T22:50:07.947024Z",
+    "url": "https://files.pythonhosted.org/packages/2b/b3/e630b0a9d75e64ab0ac9bb3d8c8a13001011cabad099e3035133eb3788bb/urllib3-2.0.0a2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "bd1faf6b00b4b428229d718c0b59ebce",
+     "sha256": "29348156a1294ab31c4990f11e6546489cdfe6872b8409afaab5566bfe1b7585"
+    },
+    "downloads": -1,
+    "filename": "urllib3-2.0.0a2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "bd1faf6b00b4b428229d718c0b59ebce",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 274811,
+    "upload_time_iso_8601": "2022-11-23T22:50:09.342416Z",
+    "url": "https://files.pythonhosted.org/packages/39/e5/600e5bb2dee2d090ae65b022b3afe114aefcf2c21bd82f76728d51ea5424/urllib3-2.0.0a2.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ],
+  "2.0.0a3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "05a38019fa1d13c254e27ea3280cdfe9",
+     "sha256": "db93f543bdff5ca96a0f1133028b7f50dc998a0c78df75dd08dfc37fafcaa520"
+    },
+    "downloads": -1,
+    "filename": "urllib3-2.0.0a3-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "05a38019fa1d13c254e27ea3280cdfe9",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "size": 123124,
+    "upload_time_iso_8601": "2023-01-11T13:04:31.223908Z",
+    "url": "https://files.pythonhosted.org/packages/a2/e6/439fae33e93f8aa172d339928f7a7766bd3a5c6c1e1ef2f786d73ca9b52c/urllib3-2.0.0a3-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": ""
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "md5": "cf1e460f848192f311accccc80ad9425",
+     "sha256": "e9a0f2b78aacde2bfa9146c01558685c3fdc0d73e8846884e95360bd6a67b151"
+    },
+    "downloads": -1,
+    "filename": "urllib3-2.0.0a3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "cf1e460f848192f311accccc80ad9425",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "size": 275786,
+    "upload_time_iso_8601": "2023-01-11T13:04:32.885499Z",
+    "url": "https://files.pythonhosted.org/packages/ea/0c/9b70bab4c49227e6d3fc8e95bdf6d39c3f78ce0ecde188ffec6de864d1b2/urllib3-2.0.0a3.tar.gz",
+    "yanked": false,
+    "yanked_reason": ""
+   }
+  ]
+ },
+ "urls": [
+  {
+   "comment_text": "",
+   "digests": {
+    "md5": "09034eaf9ef3e6c7ed4fcbb6018daf0f",
+    "sha256": "75edcdc2f7d85b137124a6c3c9fc3933cdeaa12ecb9a6a959f22797a0feca7e1"
+   },
+   "downloads": -1,
+   "filename": "urllib3-1.26.14-py2.py3-none-any.whl",
+   "has_sig": false,
+   "md5_digest": "09034eaf9ef3e6c7ed4fcbb6018daf0f",
+   "packagetype": "bdist_wheel",
+   "python_version": "py2.py3",
+   "size": 140642,
+   "upload_time_iso_8601": "2023-01-11T13:04:57.170894Z",
+   "url": "https://files.pythonhosted.org/packages/fe/ca/466766e20b767ddb9b951202542310cba37ea5f2d792dae7589f1741af58/urllib3-1.26.14-py2.py3-none-any.whl",
+   "yanked": false,
+   "yanked_reason": ""
+  },
+  {
+   "comment_text": "",
+   "digests": {
+    "md5": "7e018ce0f7cddc0560fd4541b5febf06",
+    "sha256": "076907bf8fd355cde77728471316625a4d2f7e713c125f51953bb5b3eecf4f72"
+   },
+   "downloads": -1,
+   "filename": "urllib3-1.26.14.tar.gz",
+   "has_sig": false,
+   "md5_digest": "7e018ce0f7cddc0560fd4541b5febf06",
+   "packagetype": "sdist",
+   "python_version": "source",
+   "size": 300665,
+   "upload_time_iso_8601": "2023-01-11T13:04:59.366590Z",
+   "url": "https://files.pythonhosted.org/packages/c5/52/fe421fb7364aa738b3506a2d99e4f3a56e079c0a798e9f4fa5e14c60922f/urllib3-1.26.14.tar.gz",
+   "yanked": false,
+   "yanked_reason": ""
+  }
+ ],
+ "dependencies": null
+}

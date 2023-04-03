@@ -1,0 +1,33 @@
+# Maintainer: Natanael Copa <ncopa@alpinelinux.org>
+  pkgname=libxext
+    pkgver=1.3.4
+    pkgrel=1
+    pkgdesc="X11 miscellaneous extensions library"
+    url="rate_limitted_http://xorg.freedesktop.org/"
+    arch="all"
+    license="MIT"
+    depends_dev="libxau-dev"
+    makedepends="$depends_dev libx11-dev xorgproto util-macros xmlto"
+    subpackages="$pkgname-dev $pkgname-doc"
+    options="!check"
+    source="https://www.x.org/releases/individual/lib/libXext-$pkgver.tar.bz2
+    "
+    
+    builddir="$srcdir"/libXext-$pkgver
+    
+    build() {
+    ./configure \
+    --build=$CBUILD \
+    --host=$CHOST \
+    --prefix=/usr \
+    --sysconfdir=/etc \
+    --with-xmlto \
+    --without-fop
+    make
+}
+
+    package() {
+    make DESTDIR="$pkgdir" install
+}
+
+    sha512sums="09146397d95f80c04701be1cc0a9c580ab5a085842ac31d17dfb6d4c2e42b4253b89cba695e54444e520be359883a76ffd02f42484c9e2ba2c33a5a40c29df4a  libXext-1.3.4.tar.bz2"

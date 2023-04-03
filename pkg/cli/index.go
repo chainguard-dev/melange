@@ -23,6 +23,7 @@ import (
 
 func Index() *cobra.Command {
 	var apkIndexFilename string
+	var expectedArch string
 	cmd := &cobra.Command{
 		Use:     "index",
 		Short:   "Creates a repository index from a list of package files",
@@ -32,6 +33,7 @@ func Index() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := []index.Option{
 				index.WithIndexFile(apkIndexFilename),
+				index.WithExpectedArch(expectedArch),
 				index.WithPackageFiles(args),
 			}
 
@@ -39,6 +41,7 @@ func Index() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&apkIndexFilename, "output", "o", "APKINDEX.tar.gz", "Output generated index to FILE")
+	cmd.Flags().StringVarP(&expectedArch, "arch", "a", "", "Index only packages which match the expected architecture")
 	return cmd
 }
 

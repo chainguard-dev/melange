@@ -35,6 +35,7 @@ type Context struct {
 	MergeIndexFileFlag bool
 	SigningKey         string
 	Logger             *log.Logger
+	ExpectedArch       string
 }
 
 type Option func(*Context) error
@@ -82,6 +83,15 @@ func WithPackageDir(packageDir string) Option {
 func WithSigningKey(signingKey string) Option {
 	return func(ctx *Context) error {
 		ctx.SigningKey = signingKey
+		return nil
+	}
+}
+
+// WithExpectedArch sets the expected package architecture.  Any packages with
+// an unexpected architecture will not be indexed.
+func WithExpectedArch(expectedArch string) Option {
+	return func(ctx *Context) error {
+		ctx.ExpectedArch = expectedArch
 		return nil
 	}
 }
@@ -151,8 +161,15 @@ func (ctx *Context) GenerateIndex() error {
 
 			for _, pkg := range packages {
 				found := false
+
+				if ctx.ExpectedArch != "" && pkg.Arch != ctx.ExpectedArch {
+					ctx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+						pkg.Name, pkg.Version, pkg.Arch, ctx.ExpectedArch)
+					continue
+				}
+
 				for _, p := range index.Packages {
-					if pkg.Name == p.Name {
+					if pkg.Name == p.Name && pkg.Version == p.Version {
 						found = true
 						p = pkg
 					}
@@ -173,7 +190,12 @@ func (ctx *Context) GenerateIndex() error {
 		}
 	}
 
-	ctx.Logger.Printf("generating index at %s", ctx.IndexFile)
+	pkgNames := make([]string, 0, len(packages))
+	for _, p := range packages {
+		pkgNames = append(pkgNames, fmt.Sprintf("%s-%s", p.Name, p.Version))
+	}
+
+	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
 	archive, err := apkrepo.ArchiveFromIndex(index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)

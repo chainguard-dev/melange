@@ -1,0 +1,3 @@
+pkgname=cheese
+depends_dev="beer wine"
+makedepends="$depends_dev foo bar"

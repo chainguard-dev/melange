@@ -161,6 +161,13 @@ func (ctx *Context) GenerateIndex() error {
 
 			for _, pkg := range packages {
 				found := false
+
+				if ctx.ExpectedArch != "" && pkg.Arch != ctx.ExpectedArch {
+					ctx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+						pkg.Name, pkg.Version, pkg.Arch, ctx.ExpectedArch)
+					continue
+				}
+
 				for _, p := range index.Packages {
 					if pkg.Name == p.Name && pkg.Version == p.Version {
 						found = true

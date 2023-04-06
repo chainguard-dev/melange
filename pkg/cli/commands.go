@@ -15,6 +15,10 @@
 package cli
 
 import (
+	"os"
+
+	apko_log "chainguard.dev/apko/pkg/log"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/release-utils/version"
 )
@@ -38,4 +42,13 @@ func New() *cobra.Command {
 	cmd.AddCommand(Query())
 	cmd.AddCommand(version.Version())
 	return cmd
+}
+
+func LogDefault() *logrus.Logger {
+	return &logrus.Logger{
+		Out:       os.Stderr,
+		Formatter: &apko_log.Formatter{},
+		Hooks:     make(logrus.LevelHooks),
+		Level:     logrus.InfoLevel,
+	}
 }

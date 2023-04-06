@@ -17,13 +17,14 @@ package index
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	apko_log "chainguard.dev/apko/pkg/log"
 	"github.com/korovkin/limiter"
+	"github.com/sirupsen/logrus"
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
 
 	"chainguard.dev/melange/internal/sign"
@@ -34,7 +35,7 @@ type Context struct {
 	IndexFile          string
 	MergeIndexFileFlag bool
 	SigningKey         string
-	Logger             *log.Logger
+	Logger             *logrus.Logger
 	ExpectedArch       string
 }
 
@@ -99,7 +100,12 @@ func WithExpectedArch(expectedArch string) Option {
 func New(opts ...Option) (*Context, error) {
 	ctx := Context{
 		PackageFiles: []string{},
-		Logger:       log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+		Logger: &logrus.Logger{
+			Out:       os.Stderr,
+			Formatter: &apko_log.Formatter{},
+			Hooks:     make(logrus.LevelHooks),
+			Level:     logrus.InfoLevel,
+		},
 	}
 
 	for _, opt := range opts {

@@ -18,7 +18,6 @@ import (
 	"embed"
 	"fmt"
 	"github.com/pkg/errors"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -244,7 +243,7 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 
 func (p *Pipeline) dumpWith() {
 	for k, v := range p.With {
-		p.logger.Printf("    %s: %s", k, v)
+		p.logger.Debugf("    %s: %s", k, v)
 	}
 }
 
@@ -430,11 +429,7 @@ func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 }
 
 func (p *Pipeline) initializeFromContext(ctx *PipelineContext) error {
-	name := ctx.Package.Name
-	if ctx.Subpackage != nil {
-		name = ctx.Subpackage.Name
-	}
-	p.logger = log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix)
+	p.logger = ctx.Context.Logger
 
 	return nil
 }

@@ -15,8 +15,9 @@
 package container
 
 import (
-	"log"
 	"os/exec"
+
+	"github.com/sirupsen/logrus"
 )
 
 type BWRunner struct {
@@ -59,10 +60,10 @@ func (bw *BWRunner) Run(cfg *Config, args ...string) error {
 
 // TestUsability determines if the Bubblewrap runner can be used
 // as a container runner.
-func (bw *BWRunner) TestUsability() bool {
+func (bw *BWRunner) TestUsability(logger *logrus.Entry) bool {
 	_, err := exec.LookPath("bwrap")
 	if err != nil {
-		log.Printf("cannot use bubblewrap for containers: bwrap not found on $PATH")
+		logger.Debugf("cannot use bubblewrap for containers: bwrap not found on $PATH")
 		return false
 	}
 

@@ -29,9 +29,9 @@ import (
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
-	apko_log "chainguard.dev/apko/pkg/log"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	apko_log "chainguard.dev/apko/pkg/log"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
@@ -368,19 +368,19 @@ type Dependencies struct {
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 func New(opts ...Option) (*Context, error) {
-	logger :=  &logrus.Logger{
-			Out:       os.Stderr,
-			Formatter: &apko_log.Formatter{},
-			Hooks:     make(logrus.LevelHooks),
-			Level:     logrus.InfoLevel,
-		}
+	logger := &logrus.Logger{
+		Out:       os.Stderr,
+		Formatter: &apko_log.Formatter{},
+		Hooks:     make(logrus.LevelHooks),
+		Level:     logrus.InfoLevel,
+	}
 
 	ctx := Context{
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
-		Arch: apko_types.ParseArchitecture(runtime.GOARCH),
+		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
 
 	for _, opt := range opts {

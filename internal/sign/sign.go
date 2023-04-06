@@ -21,25 +21,25 @@ import (
 	"crypto/sha1" // nolint:gosec
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"chainguard.dev/apko/pkg/tarball"
 	"github.com/psanford/memfs"
+	"github.com/sirupsen/logrus"
 )
 
 // TODO: solidify this API and move into pkg/
-func SignIndex(logger *log.Logger, signingKey string, indexFile string) error {
-	if indexIsAlreadySigned(indexFile) {
+func SignIndex(logger *logrus.Logger, signingKey string, indexFile string) error {
+	if indexIsAlreadySigned(logger, indexFile) {
 		logger.Printf("index %s is already signed, doing nothing", indexFile)
 		return nil
 	}
 
 	logger.Printf("signing index %s with key %s", indexFile, signingKey)
 
-	indexData, indexDigest, err := readAndHashIndex(indexFile)
+	indexData, indexDigest, err := readAndHashIndex(logger, indexFile)
 	if err != nil {
 		return err
 	}
@@ -93,16 +93,16 @@ func SignIndex(logger *log.Logger, signingKey string, indexFile string) error {
 	return nil
 }
 
-func indexIsAlreadySigned(indexFile string) bool {
+func indexIsAlreadySigned(logger *logrus.Logger, indexFile string) bool {
 	index, err := os.Open(indexFile)
 	if err != nil {
-		log.Fatalf("cannot open index %s: %v", indexFile, err)
+		logger.Fatalf("cannot open index %s: %v", indexFile, err)
 	}
 	defer index.Close()
 
 	gzi, err := gzip.NewReader(index)
 	if err != nil {
-		log.Fatalf("cannot open index %s: %v", indexFile, err)
+		logger.Fatalf("cannot open index %s: %v", indexFile, err)
 	}
 	defer gzi.Close()
 
@@ -113,7 +113,7 @@ func indexIsAlreadySigned(indexFile string) bool {
 			break
 		}
 		if err != nil {
-			log.Fatalf("cannot read index %s: %v", indexFile, err)
+			logger.Fatalf("cannot read index %s: %v", indexFile, err)
 		}
 
 		if strings.HasPrefix(hdr.Name, ".SIGN.RSA") {
@@ -124,7 +124,7 @@ func indexIsAlreadySigned(indexFile string) bool {
 	return false
 }
 
-func readAndHashIndex(indexFile string) ([]byte, []byte, error) {
+func readAndHashIndex(logger *logrus.Logger, indexFile string) ([]byte, []byte, error) {
 	index, err := os.Open(indexFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to open index for signing: %w", err)

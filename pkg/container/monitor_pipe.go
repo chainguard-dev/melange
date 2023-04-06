@@ -17,15 +17,16 @@ package container
 import (
 	"bufio"
 	"io"
-	"log"
+
+	"github.com/sirupsen/logrus"
 )
 
-func monitorPipe(logger *log.Logger, pipe io.ReadCloser, finish chan struct{}) {
+func monitorPipe(logger *logrus.Entry, pipe io.ReadCloser, finish chan struct{}) {
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
-		logger.Printf("%s", scanner.Text())
+		logger.Logf(logrus.InfoLevel, "%s", scanner.Text())
 	}
 
 	finish <- struct{}{}

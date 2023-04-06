@@ -167,8 +167,6 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 		return errors.New("target-architecture and --arch do not overlap, nothing to build")
 	}
 
-	log.Printf("building for %v", actualArchs)
-
 	var errg errgroup.Group
 	for _, bc := range bcs {
 		bc := bc

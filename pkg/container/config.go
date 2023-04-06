@@ -15,7 +15,7 @@
 package container
 
 import (
-	"log"
+	"github.com/sirupsen/logrus"
 )
 
 type BindMount struct {
@@ -30,7 +30,7 @@ type Capabilities struct {
 type Config struct {
 	Mounts       []BindMount
 	Capabilities Capabilities
-	Logger       *log.Logger
+	Logger       *logrus.Entry
 	Environment  map[string]string
 	ImgDigest    string
 	PodID        string

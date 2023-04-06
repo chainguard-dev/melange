@@ -243,7 +243,7 @@ func (p *Pipeline) loadUse(ctx *PipelineContext, uses string, with map[string]st
 
 func (p *Pipeline) dumpWith() {
 	for k, v := range p.With {
-		p.logger.Printf("    %s: %s", k, v)
+		p.logger.Debugf("    %s: %s", k, v)
 	}
 }
 

@@ -202,8 +202,8 @@ func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp 
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
-	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
+	go monitorPipe(cfg.Logger, logrus.InfoLevel, stdoutPipeR, finishStdout)
+	go monitorPipe(cfg.Logger, logrus.WarnLevel, stderrPipeR, finishStderr)
 	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
 
 	stdoutPipeW.Close()

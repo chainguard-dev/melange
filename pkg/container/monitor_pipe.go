@@ -21,12 +21,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func monitorPipe(logger *logrus.Entry, pipe io.ReadCloser, finish chan struct{}) {
+func monitorPipe(logger *logrus.Entry, level logrus.Level, pipe io.ReadCloser, finish chan struct{}) {
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
-		logger.Logf(logrus.InfoLevel, "%s", scanner.Text())
+		logger.Logf(level, "%s", scanner.Text())
 	}
 
 	finish <- struct{}{}

@@ -16,7 +16,6 @@ package cli
 
 import (
 	"context"
-	"log"
 
 	"chainguard.dev/melange/internal/sign"
 	"github.com/spf13/cobra"
@@ -42,5 +41,5 @@ func SignIndex() *cobra.Command {
 }
 
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
-	return sign.SignIndex(log.Default(), signingKey, indexFile)
+	return sign.SignIndex(LogDefault(), signingKey, indexFile)
 }

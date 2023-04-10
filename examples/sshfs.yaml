@@ -3,8 +3,6 @@ package:
   version: 3.7.2
   epoch: 0
   description: "FUSE client based on the SSH File Transfer Protocol"
-  target-architecture:
-    - all
   copyright:
     - paths:
       - "*"

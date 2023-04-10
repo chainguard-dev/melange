@@ -17,7 +17,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/docker/docker/api/types"
@@ -25,6 +24,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/sirupsen/logrus"
 )
 
 type DKRunner struct {
@@ -164,17 +164,17 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 
 // TestUsability determines if the Docker runner can be used
 // as a container runner.
-func (dk *DKRunner) TestUsability() bool {
+func (dk *DKRunner) TestUsability(logger *logrus.Entry) bool {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		log.Printf("cannot use docker for containers: %v", err)
+		logger.Debugf("cannot use docker for containers: %v", err)
 		return false
 	}
 	defer cli.Close()
 
 	_, err = cli.Ping(context.Background())
 	if err != nil {
-		log.Printf("cannot use docker for containers: %v", err)
+		logger.Debugf("cannot use docker for containers: %v", err)
 		return false
 	}
 
@@ -202,8 +202,8 @@ func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp 
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, stdoutPipeR, finishStdout)
-	go monitorPipe(cfg.Logger, stderrPipeR, finishStderr)
+	go monitorPipe(cfg.Logger, logrus.InfoLevel, stdoutPipeR, finishStdout)
+	go monitorPipe(cfg.Logger, logrus.WarnLevel, stderrPipeR, finishStderr)
 	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
 
 	stdoutPipeW.Close()

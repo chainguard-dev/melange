@@ -17,10 +17,12 @@ package container
 import (
 	"fmt"
 	"os/exec"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Runner interface {
-	TestUsability() bool
+	TestUsability(logger *logrus.Entry) bool
 	NeedsImage() bool
 	StartPod(cfg *Config) error
 	Run(cfg *Config, cmd ...string) error
@@ -29,14 +31,14 @@ type Runner interface {
 
 // GetRunner returns the preferred runner implementation for the
 // given environment.
-func GetRunner() (Runner, error) {
+func GetRunner(logger *logrus.Entry) (Runner, error) {
 	runners := []Runner{
 		BubblewrapRunner(),
 		DockerRunner(),
 	}
 
 	for _, runner := range runners {
-		if runner.TestUsability() {
+		if runner.TestUsability(logger) {
 			return runner, nil
 		}
 	}
@@ -64,8 +66,8 @@ func monitorCmd(cfg *Config, cmd *exec.Cmd) error {
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, stdout, finishStdout)
-	go monitorPipe(cfg.Logger, stderr, finishStderr)
+	go monitorPipe(cfg.Logger, logrus.InfoLevel, stdout, finishStdout)
+	go monitorPipe(cfg.Logger, logrus.WarnLevel, stderr, finishStderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err

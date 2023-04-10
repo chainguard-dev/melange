@@ -25,7 +25,6 @@ import (
 	"hash"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -35,6 +34,7 @@ import (
 	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
+	"github.com/sirupsen/logrus"
 )
 
 type PackageContext struct {
@@ -45,7 +45,7 @@ type PackageContext struct {
 	InstalledSize int64
 	DataHash      string
 	OutDir        string
-	Logger        *log.Logger
+	Logger        *logrus.Entry
 	Dependencies  Dependencies
 	Arch          string
 	Options       PackageOption
@@ -75,7 +75,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		PackageName:  spkg.Name,
 		OriginName:   spkg.Name,
 		OutDir:       filepath.Join(ctx.Context.OutDir, ctx.Context.Arch.ToAPK()),
-		Logger:       log.New(log.Writer(), fmt.Sprintf("melange (%s/%s): ", spkg.Name, ctx.Context.Arch.ToAPK()), log.LstdFlags|log.Lmsgprefix),
+		Logger:       ctx.Context.Logger,
 		Dependencies: spkg.Dependencies,
 		Arch:         ctx.Context.Arch.ToAPK(),
 		Options:      spkg.Options,
@@ -492,7 +492,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 	return nil
 }
 
-func (dep *Dependencies) Summarize(logger *log.Logger) {
+func (dep *Dependencies) Summarize(logger *logrus.Entry) {
 	if len(dep.Runtime) > 0 {
 		logger.Printf("  runtime:")
 

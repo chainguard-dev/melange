@@ -15,6 +15,8 @@
 package cli
 
 import (
+	"fmt"
+	"net/http"
 	"os"
 
 	apko_log "chainguard.dev/apko/pkg/log"
@@ -28,6 +30,9 @@ func New() *cobra.Command {
 		Use:               "melange",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			http.DefaultTransport = userAgentTransport{http.DefaultTransport}
+		},
 	}
 
 	cmd.AddCommand(Completion())
@@ -42,6 +47,13 @@ func New() *cobra.Command {
 	cmd.AddCommand(Query())
 	cmd.AddCommand(version.Version())
 	return cmd
+}
+
+type userAgentTransport struct{ t http.RoundTripper }
+
+func (u userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("User-Agent", fmt.Sprintf("melange/%s", version.GetVersionInfo().GitVersion))
+	return u.t.RoundTrip(req)
 }
 
 func LogDefault() *logrus.Logger {

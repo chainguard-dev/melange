@@ -3,8 +3,6 @@ package:
   version: 7.87.0
   epoch: 3
   description: "URL retrieval utility and library"
-  target-architecture:
-    - all
   copyright:
     - paths:
         - "*"

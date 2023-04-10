@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,9 +60,10 @@ package:
 		t.Fatal(err)
 	}
 
+	log := &logrus.Logger{}
 	ctx := Context{
 		ConfigFile: f,
-		Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+		Logger:     log.WithFields(logrus.Fields{}),
 	}
 	cfg := &Configuration{}
 	if err := cfg.Load(ctx); err != nil {
@@ -149,9 +150,10 @@ subpackages:
 		t.Fatal(err)
 	}
 
+	log := &logrus.Logger{}
 	ctx := Context{
 		ConfigFile: f,
-		Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+		Logger:     log.WithFields(logrus.Fields{}),
 	}
 	cfg := &Configuration{}
 	if err := cfg.Load(ctx); err != nil {
@@ -252,9 +254,10 @@ func TestBuild_update(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
+			log := &logrus.Logger{}
 			ctx := Context{
 				ConfigFile: filepath.Join("testdata", "update", fmt.Sprintf("%s.melange.yaml", test.name)),
-				Logger:     log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
+				Logger:     log.WithFields(logrus.Fields{}),
 			}
 			cfg := &Configuration{}
 			if err := cfg.Load(ctx); err != nil {

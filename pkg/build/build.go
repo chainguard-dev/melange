@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -32,12 +31,15 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	apko_log "chainguard.dev/apko/pkg/log"
+	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/openvex/go-vex/pkg/vex"
+	"github.com/sirupsen/logrus"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
@@ -150,7 +152,7 @@ type Pipeline struct {
 	If         string             `yaml:"if,omitempty"`
 	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
 	WorkDir    string             `yaml:"working-directory,omitempty"`
-	logger     *log.Logger
+	logger     *logrus.Entry
 	steps      int
 	SBOM       SBOM `yaml:"sbom,omitempty"`
 }
@@ -331,7 +333,7 @@ type Context struct {
 	GenerateIndex      bool
 	EmptyWorkspace     bool
 	OutDir             string
-	Logger             *log.Logger
+	Logger             *logrus.Entry
 	Arch               apko_types.Architecture
 	ExtraKeys          []string
 	ExtraRepos         []string
@@ -363,13 +365,21 @@ type Dependencies struct {
 	ProviderPriority int `yaml:"provider-priority,omitempty"`
 }
 
+var ErrSkipThisArch = errors.New("error: skip this arch")
+
 func New(opts ...Option) (*Context, error) {
+	logger := &logrus.Logger{
+		Out:       os.Stderr,
+		Formatter: &apko_log.Formatter{},
+		Hooks:     make(logrus.LevelHooks),
+		Level:     logrus.InfoLevel,
+	}
+
 	ctx := Context{
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
-		Logger:          log.New(log.Writer(), "melange: ", log.LstdFlags|log.Lmsgprefix),
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 	}
 
@@ -378,6 +388,11 @@ func New(opts ...Option) (*Context, error) {
 			return nil, err
 		}
 	}
+
+	fields := logrus.Fields{
+		"arch": ctx.Arch.ToAPK(),
+	}
+	ctx.Logger = logger.WithFields(fields)
 
 	// If no workspace directory is explicitly requested, create a
 	// temporary directory for it.  Otherwise, ensure we are in a
@@ -429,6 +444,14 @@ func New(opts ...Option) (*Context, error) {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
+	if len(ctx.Configuration.Package.TargetArchitecture) == 1 &&
+		ctx.Configuration.Package.TargetArchitecture[0] == "all" {
+		ctx.Logger.Println("WARNING: target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
+	} else if len(ctx.Configuration.Package.TargetArchitecture) != 0 &&
+		!sets.NewString(ctx.Configuration.Package.TargetArchitecture...).Has(ctx.Arch.ToAPK()) {
+		return nil, ErrSkipThisArch
+	}
+
 	// SOURCE_DATE_EPOCH will always overwrite the build flag
 	if v, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
 		// The value MUST be an ASCII representation of an integer
@@ -444,10 +467,8 @@ func New(opts ...Option) (*Context, error) {
 		ctx.SourceDateEpoch = time.Unix(sec, 0)
 	}
 
-	ctx.Logger.SetPrefix(fmt.Sprintf("melange (%s/%s): ", ctx.Configuration.Package.Name, ctx.Arch.ToAPK()))
-
 	// Check that we actually can run things in containers.
-	runner, err := container.GetRunner()
+	runner, err := container.GetRunner(ctx.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -1388,7 +1409,7 @@ func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated, err := mutateWith(pctx, map[string]string{})
+		mutated, err := MutateWith(pctx, map[string]string{})
 		if err != nil {
 			return "", err
 		}

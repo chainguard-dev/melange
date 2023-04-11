@@ -27,12 +27,12 @@ type rlfs struct {
 	f    fs.FS
 }
 
-func (f *rlfs) Readlink(name string) (string, bool, error) {
+func (f *rlfs) Readlink(name string) (string, error) {
 	target, err := os.Readlink(filepath.Join(f.base, name))
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
-	return target, true, nil
+	return target, nil
 }
 
 func (f *rlfs) Open(name string) (fs.File, error) {

@@ -142,6 +142,8 @@ github.com/bwesterb/go-ristretto v1.2.0/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/bwesterb/go-ristretto v1.2.1/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
+github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e h1:TlpfdSUjQkrq2yh+bySzoOmPKspeaxmOr1fmsNCfNXM=
+github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e/go.mod h1:sfV9rXdvBVe0PDTLWzPh4IpapowZ9CDROjMUN2etRrk=
 github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396 h1:ZUOndrE3hI7kIqsIAxtMLEmgakCLWodkiBxqoAN1QSQ=
 github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396/go.mod h1:1UmFRnmMnVsHwD+ZntmLkoVBB1ZLa6V+XXEbF6hZCxU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=

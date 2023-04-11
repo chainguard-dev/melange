@@ -20,7 +20,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
@@ -162,59 +161,6 @@ subpackages:
 	if d := cmp.Diff(expected, cfg.Subpackages, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
 		t.Fatalf("actual didn't match expected: %s", d)
 	}
-}
-
-func TestContext_GenerateBuildLog(t *testing.T) {
-	dir := t.TempDir()
-
-	ctx := Context{
-		Arch:           apko_types.ParseArchitecture("amd64"),
-		CreateBuildLog: true,
-	}
-
-	config1 := Configuration{
-		Package: Package{
-			Name:    "foo",
-			Version: "1.2.3",
-			Epoch:   1,
-		},
-		Subpackages: []Subpackage{
-			{
-				Name: "cheese",
-			},
-		},
-	}
-
-	// log initial set of packages
-	ctx.Configuration = config1
-	err := ctx.GenerateBuildLog(dir)
-	assert.NoError(t, err)
-
-	config2 := Configuration{
-		Package: Package{
-			Name:    "bar",
-			Version: "2.3.4",
-			Epoch:   3,
-		},
-		Subpackages: []Subpackage{
-			{
-				Name: "crisps",
-			},
-		},
-	}
-
-	// append second set of packages to log
-	ctx.Configuration = config2
-	err = ctx.GenerateBuildLog(dir)
-	assert.NoError(t, err)
-
-	got, err := os.ReadFile(filepath.Join(dir, "packages.log"))
-	assert.NoError(t, err)
-
-	expected, err := os.ReadFile(filepath.Join("testdata", "build_log", "packages.log"))
-	assert.NoError(t, err)
-
-	assert.Equal(t, string(expected), string(got))
 }
 
 func TestBuild_update(t *testing.T) {

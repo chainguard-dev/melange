@@ -17,6 +17,7 @@ package renovate
 import (
 	"os"
 
+	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 	"gopkg.in/yaml.v3"
 )
 
@@ -103,9 +104,7 @@ func (rc *RenovationContext) WriteConfig() error {
 	}
 	defer configFile.Close()
 
-	enc := yaml.NewEncoder(configFile)
-	defer enc.Close()
-	enc.SetIndent(2)
+	enc := formatted.NewEncoder(configFile).AutomaticConfig()
 
 	if err := enc.Encode(rc.Root.Content[0]); err != nil {
 		return err

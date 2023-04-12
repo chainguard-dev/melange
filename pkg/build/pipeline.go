@@ -17,12 +17,13 @@ package build
 import (
 	"embed"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"gopkg.in/yaml.v3"
 
@@ -429,7 +430,11 @@ func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 }
 
 func (p *Pipeline) initializeFromContext(ctx *PipelineContext) error {
-	p.logger = ctx.Context.Logger
+	if l := ctx.Context.Logger; l != nil {
+		p.logger = ctx.Context.Logger
+	} else {
+		p.logger = nopLogger{}
+	}
 
 	return nil
 }

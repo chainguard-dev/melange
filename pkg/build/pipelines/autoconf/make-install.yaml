@@ -13,3 +13,9 @@ needs:
 pipeline:
   - runs: |
       make -C "${{inputs.dir}}" install DESTDIR="${{targets.destdir}}" V=1
+
+  # Delete all GNU libtool metadata files.  These things are the bane of a
+  # packager's existence: they contain useless metadata, cause overlinking and
+  # provide no real-world value in a modern UNIX environment.
+  - runs: |
+      find ${{targets.destdir}} -name '*.la' -print -exec rm \{} \;

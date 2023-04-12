@@ -152,7 +152,7 @@ type Pipeline struct {
 	If         string             `yaml:"if,omitempty"`
 	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
 	WorkDir    string             `yaml:"working-directory,omitempty"`
-	logger     *logrus.Entry
+	logger     Logger
 	steps      int
 	SBOM       SBOM `yaml:"sbom,omitempty"`
 }
@@ -1741,4 +1741,3 @@ func (ctx *Context) WorkspaceConfig() *container.Config {
 	ctx.containerConfig = ctx.buildWorkspaceConfig()
 	return ctx.containerConfig
 }
-

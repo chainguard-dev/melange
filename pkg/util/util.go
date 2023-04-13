@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 )
 
@@ -53,7 +52,7 @@ func DownloadFile(uri string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("got %s when fetching %s", resp.Status, filepath.Base(uri))
+		return "", fmt.Errorf("got %s when fetching %s", resp.Status, uri)
 	}
 
 	if _, err := io.Copy(targetFile, resp.Body); err != nil {

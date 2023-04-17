@@ -44,6 +44,10 @@ func DownloadFile(uri string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Set accept header to match the expected MIME types and avoid 403's for some servers like https://www.netfilter.org
+	req.Header.Set("Accept", "text/html")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

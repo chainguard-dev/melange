@@ -1,5 +1,7 @@
 # melange
 
+# Do not merge — testing a meaningless change!
+
 Build apk packages using declarative pipelines.
 
 Commonly used to provide custom packages for container images built with [apko][apko]. The majority

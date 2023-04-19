@@ -2,6 +2,8 @@ package bump
 
 import (
 	"chainguard.dev/melange/pkg/build"
+	"github.com/stretchr/testify/require"
+
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -95,7 +97,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 			assert.NoError(t, err)
 
 			rs, err := build.ParseConfiguration(filepath.Join(dir, tt.name))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Contains(t, rs.Package.Version, tt.newVersion)
 			assert.Contains(t, rs.Pipeline[0].With["expected-commit"], tt.expectedCommit)
 

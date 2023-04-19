@@ -765,15 +765,13 @@ type configOptions struct {
 
 // include reconciles all given opts into the receiver variable, such that it is
 // ready to use for config parsing.
-func (options *configOptions) include(dirPath string, opts ...ConfigurationParsingOption) {
+func (options *configOptions) include(opts ...ConfigurationParsingOption) {
 	for _, fn := range opts {
 		fn(options)
 	}
+
 	if options.logger == nil {
 		options.logger = nopLogger{}
-	}
-	if options.filesystem == nil {
-		options.filesystem = os.DirFS(dirPath)
 	}
 }
 
@@ -857,13 +855,21 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
 	configurationDirPath := filepath.Dir(configurationFilePath)
-	options.include(configurationDirPath, opts...)
+	options.include(opts...)
+
+	if options.filesystem == nil {
+		// TODO: this is an abstraction leak, and we can remove this `if statement` once
+		// ParseConfiguration relies solely on an abstract fs.FS.
+
+		options.filesystem = os.DirFS(configurationDirPath)
+		configurationFilePath = filepath.Base(configurationFilePath)
+	}
 
 	if configurationFilePath == "" {
 		return nil, errors.New("no configuration file path provided")
 	}
 
-	f, err := options.filesystem.Open(filepath.Base(configurationFilePath))
+	f, err := options.filesystem.Open(configurationFilePath)
 	if err != nil {
 		return nil, err
 	}

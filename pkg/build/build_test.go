@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"testing"
@@ -59,10 +58,10 @@ package:
 		t.Fatal(err)
 	}
 
-	log := &logrus.Logger{}
+	log := nopLogger{}
 	ctx := Context{
 		ConfigFile: f,
-		Logger:     log.WithFields(logrus.Fields{}),
+		Logger:     log,
 	}
 	cfg := &Configuration{}
 	if err := cfg.Load(ctx); err != nil {
@@ -149,10 +148,10 @@ subpackages:
 		t.Fatal(err)
 	}
 
-	log := &logrus.Logger{}
+	log := nopLogger{}
 	ctx := Context{
 		ConfigFile: f,
-		Logger:     log.WithFields(logrus.Fields{}),
+		Logger:     log,
 	}
 	cfg := &Configuration{}
 	if err := cfg.Load(ctx); err != nil {
@@ -200,10 +199,10 @@ func TestBuild_update(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			log := &logrus.Logger{}
+			log := nopLogger{}
 			ctx := Context{
 				ConfigFile: filepath.Join("testdata", "update", fmt.Sprintf("%s.melange.yaml", test.name)),
-				Logger:     log.WithFields(logrus.Fields{}),
+				Logger:     log,
 			}
 			cfg := &Configuration{}
 			if err := cfg.Load(ctx); err != nil {

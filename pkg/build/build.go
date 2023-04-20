@@ -151,7 +151,7 @@ type Pipeline struct {
 	If         string             `yaml:"if,omitempty"`
 	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
 	WorkDir    string             `yaml:"working-directory,omitempty"`
-	logger     Logger
+	logger     apko_log.Logger
 	steps      int
 	SBOM       SBOM `yaml:"sbom,omitempty"`
 }
@@ -755,7 +755,7 @@ type ConfigurationParsingOption func(*configOptions)
 type configOptions struct {
 	filesystem  fs.FS
 	envFilePath string
-	logger      Logger
+	logger      apko_log.Logger
 
 	varsFilePath string
 }
@@ -790,7 +790,7 @@ func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 
 // WithLogger sets the logger to use during configuration parsing. This is
 // optional, and if not supplied, a no-op logger will be used.
-func WithLogger(logger Logger) ConfigurationParsingOption {
+func WithLogger(logger apko_log.Logger) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.logger = logger
 	}
@@ -804,7 +804,7 @@ func WithVarsFileForParsing(path string) ConfigurationParsingOption {
 	}
 }
 
-func detectCommit(dirPath string, logger Logger) string {
+func detectCommit(dirPath string, logger apko_log.Logger) string {
 	// Best-effort detection of current commit, to be used when not specified in the config file
 
 	// TODO: figure out how to use an abstract FS

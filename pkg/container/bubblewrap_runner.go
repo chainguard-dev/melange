@@ -17,7 +17,7 @@ package container
 import (
 	"os/exec"
 
-	"github.com/sirupsen/logrus"
+	"chainguard.dev/apko/pkg/log"
 )
 
 type BWRunner struct {
@@ -60,7 +60,7 @@ func (bw *BWRunner) Run(cfg *Config, args ...string) error {
 
 // TestUsability determines if the Bubblewrap runner can be used
 // as a container runner.
-func (bw *BWRunner) TestUsability(logger *logrus.Entry) bool {
+func (bw *BWRunner) TestUsability(logger log.Logger) bool {
 	_, err := exec.LookPath("bwrap")
 	if err != nil {
 		logger.Debugf("cannot use bubblewrap for containers: bwrap not found on $PATH")

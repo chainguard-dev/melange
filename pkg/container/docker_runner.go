@@ -19,12 +19,13 @@ import (
 	"fmt"
 	"os"
 
+	"chainguard.dev/apko/pkg/log"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/sirupsen/logrus"
 )
 
 type DKRunner struct {
@@ -164,7 +165,7 @@ func (dk *DKRunner) Run(cfg *Config, args ...string) error {
 
 // TestUsability determines if the Docker runner can be used
 // as a container runner.
-func (dk *DKRunner) TestUsability(logger *logrus.Entry) bool {
+func (dk *DKRunner) TestUsability(logger log.Logger) bool {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logger.Debugf("cannot use docker for containers: %v", err)
@@ -202,8 +203,8 @@ func (dk *DKRunner) waitForCommand(cfg *Config, ctx context.Context, attachResp 
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, logrus.InfoLevel, stdoutPipeR, finishStdout)
-	go monitorPipe(cfg.Logger, logrus.WarnLevel, stderrPipeR, finishStderr)
+	go monitorPipe(cfg.Logger, log.InfoLevel, stdoutPipeR, finishStdout)
+	go monitorPipe(cfg.Logger, log.WarnLevel, stderrPipeR, finishStderr)
 	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
 
 	stdoutPipeW.Close()

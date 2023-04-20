@@ -31,10 +31,10 @@ import (
 	"strings"
 	"text/template"
 
+	"chainguard.dev/apko/pkg/log"
 	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
 	"github.com/psanford/memfs"
-	"github.com/sirupsen/logrus"
 )
 
 type PackageContext struct {
@@ -45,7 +45,7 @@ type PackageContext struct {
 	InstalledSize int64
 	DataHash      string
 	OutDir        string
-	Logger        *logrus.Entry
+	Logger        log.Logger
 	Dependencies  Dependencies
 	Arch          string
 	Options       PackageOption
@@ -510,7 +510,7 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 	return nil
 }
 
-func (dep *Dependencies) Summarize(logger *logrus.Entry) {
+func (dep *Dependencies) Summarize(logger log.Logger) {
 	if len(dep.Runtime) > 0 {
 		logger.Printf("  runtime:")
 

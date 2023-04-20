@@ -39,7 +39,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/joho/godotenv"
 	"github.com/openvex/go-vex/pkg/vex"
-	"github.com/sirupsen/logrus"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
@@ -333,7 +332,7 @@ type Context struct {
 	GenerateIndex      bool
 	EmptyWorkspace     bool
 	OutDir             string
-	Logger             *logrus.Entry
+	Logger             apko_log.Logger
 	Arch               apko_types.Architecture
 	ExtraKeys          []string
 	ExtraRepos         []string
@@ -368,11 +367,9 @@ type Dependencies struct {
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 func New(opts ...Option) (*Context, error) {
-	logger := &logrus.Logger{
+	logger := &apko_log.Adapter{
 		Out:       os.Stderr,
-		Formatter: &apko_log.Formatter{},
-		Hooks:     make(logrus.LevelHooks),
-		Level:     logrus.InfoLevel,
+		Level:     apko_log.InfoLevel,
 	}
 
 	ctx := Context{
@@ -389,7 +386,7 @@ func New(opts ...Option) (*Context, error) {
 		}
 	}
 
-	fields := logrus.Fields{
+	fields := apko_log.Fields{
 		"arch": ctx.Arch.ToAPK(),
 	}
 	ctx.Logger = logger.WithFields(fields)
@@ -446,7 +443,7 @@ func New(opts ...Option) (*Context, error) {
 
 	if len(ctx.Configuration.Package.TargetArchitecture) == 1 &&
 		ctx.Configuration.Package.TargetArchitecture[0] == "all" {
-		ctx.Logger.Println("WARNING: target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
+		ctx.Logger.Printf("WARNING: target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
 	} else if len(ctx.Configuration.Package.TargetArchitecture) != 0 &&
 		!sets.NewString(ctx.Configuration.Package.TargetArchitecture...).Has(ctx.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
@@ -1075,6 +1072,7 @@ func (ctx *Context) BuildGuest() error {
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
+		apko_build.WithLogger(ctx.Logger),
 		apko_build.WithDebugLogging(true),
 		apko_build.WithLocal(true),
 	)

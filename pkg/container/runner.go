@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/sirupsen/logrus"
+	"chainguard.dev/apko/pkg/log"
 )
 
 type Runner interface {
-	TestUsability(logger *logrus.Entry) bool
+	TestUsability(logger log.Logger) bool
 	NeedsImage() bool
 	StartPod(cfg *Config) error
 	Run(cfg *Config, cmd ...string) error
@@ -31,7 +31,7 @@ type Runner interface {
 
 // GetRunner returns the preferred runner implementation for the
 // given environment.
-func GetRunner(logger *logrus.Entry) (Runner, error) {
+func GetRunner(logger log.Logger) (Runner, error) {
 	runners := []Runner{
 		BubblewrapRunner(),
 		DockerRunner(),
@@ -66,8 +66,8 @@ func monitorCmd(cfg *Config, cmd *exec.Cmd) error {
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, logrus.InfoLevel, stdout, finishStdout)
-	go monitorPipe(cfg.Logger, logrus.WarnLevel, stderr, finishStderr)
+	go monitorPipe(cfg.Logger, log.InfoLevel, stdout, finishStdout)
+	go monitorPipe(cfg.Logger, log.WarnLevel, stderr, finishStderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err

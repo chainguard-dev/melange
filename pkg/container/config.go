@@ -15,7 +15,7 @@
 package container
 
 import (
-	"github.com/sirupsen/logrus"
+	"chainguard.dev/apko/pkg/log"
 )
 
 type BindMount struct {
@@ -30,7 +30,7 @@ type Capabilities struct {
 type Config struct {
 	Mounts       []BindMount
 	Capabilities Capabilities
-	Logger       *logrus.Entry
+	Logger       log.Logger
 	Environment  map[string]string
 	ImgDigest    string
 	PodID        string

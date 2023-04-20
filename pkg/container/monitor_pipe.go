@@ -18,15 +18,22 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/sirupsen/logrus"
+	"chainguard.dev/apko/pkg/log"
 )
 
-func monitorPipe(logger *logrus.Entry, level logrus.Level, pipe io.ReadCloser, finish chan struct{}) {
+func monitorPipe(logger log.Logger, level log.Level, pipe io.ReadCloser, finish chan struct{}) {
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
-		logger.Logf(level, "%s", scanner.Text())
+		// TODO(kaniini): Add Logf to log.Logger.
+		switch level {
+		case log.InfoLevel:
+			logger.Infof("%s", scanner.Text())
+		case log.WarnLevel:
+			logger.Warnf("%s", scanner.Text())
+		default:
+		}
 	}
 
 	finish <- struct{}{}

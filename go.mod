@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.20
 
 require (
-	chainguard.dev/apko v0.7.4-0.20230420220735-1385cde8932d
+	chainguard.dev/apko v0.7.4-0.20230421200506-66070a941bd0
 	cloud.google.com/go/storage v1.30.1
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
 	github.com/docker/docker v23.0.3+incompatible

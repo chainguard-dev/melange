@@ -368,8 +368,8 @@ var ErrSkipThisArch = errors.New("error: skip this arch")
 
 func New(opts ...Option) (*Context, error) {
 	logger := &apko_log.Adapter{
-		Out:       os.Stderr,
-		Level:     apko_log.InfoLevel,
+		Out:   os.Stderr,
+		Level: apko_log.InfoLevel,
 	}
 
 	ctx := Context{
@@ -1111,8 +1111,8 @@ func (ctx *Context) BuildAndPushLocalImage(bc *apko_build.Context) error {
 	defer os.Remove(layerTarGZ)
 
 	ctx.Logger.Printf("using %s for image layer", layerTarGZ)
-
-	imgDigest, _, err := apko_oci.PublishImageFromLayer(
+	cctx := context.TODO()
+	imgDigest, _, err := apko_oci.PublishImageFromLayer(cctx,
 		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, ctx.Arch,
 		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, true, "melange:latest")
 	if err != nil {

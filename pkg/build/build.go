@@ -249,7 +249,8 @@ type ReleaseMonitor struct {
 // GitHubMonitor indicates using the GitHub API
 type GitHubMonitor struct {
 	Identifier  string `yaml:"identifier"`             // org/repo for GitHub
-	StripPrefix string `yaml:"strip-prefix,omitempty"` // if the version in GitHub contains a prefix which needs to be stripped when updating the melange package
+	StripPrefix string `yaml:"strip-prefix,omitempty"` // if the version in GitHub contains a prefix which should be ignored
+	StripSuffix string `yaml:"strip-suffix,omitempty"` // if the version in GitHub contains a suffix which should be ignored
 	TagFilter   string `yaml:"tag-filter,omitempty"`   // filter to apply when searching tags on a GitHub repository
 	UseTags     bool   `yaml:"use-tag,omitempty"`      // override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
 }

@@ -47,7 +47,8 @@ update:
   shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
   github: # alternative today is `release_monitor:`
     identifier: sigstore/cosign # Mandatory, org/repo for github
-    strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which needs to be stripped when updating the melange package
+    strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
+    strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
     use-tag: true # Optional, override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
     tag-filter: foo # Optional, filter to apply when searching tags on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
 ```

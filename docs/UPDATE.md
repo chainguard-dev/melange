@@ -52,3 +52,17 @@ update:
     use-tag: true # Optional, override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
     tag-filter: foo # Optional, filter to apply when searching tags on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
 ```
+
+## Ignore versions
+
+Some upstream projects create tags that can interfere with version comparisons, you may find the need to ignore these.
+
+To achieve this you can specify a list of regex patterns to identify versions that you want to ignore:
+
+```yaml
+update:
+  enabled: true
+  ignore-regex-patterns:
+    - "ignore_me*"
+    - "*ignore_me"
+```

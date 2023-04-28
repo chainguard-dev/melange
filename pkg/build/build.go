@@ -280,43 +280,11 @@ func (ac AdvisoryContent) Validate() error {
 }
 
 type RangeData struct {
-	Name  string       `yaml:"name"`
-	Items DataItemList `yaml:"items"`
+	Name  string    `yaml:"name"`
+	Items DataItems `yaml:"items"`
 }
 
-type DataItemList []DataItem
-
-func (d *DataItemList) UnmarshalYAML(n *yaml.Node) error {
-	if d == nil {
-		return nil
-	}
-	var m map[string]string
-	if err := n.Decode(&m); err != nil {
-		return err
-	}
-	out := make([]DataItem, 0, len(*d))
-	for k, v := range m {
-		out = append(out, DataItem{Key: k, Value: v})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
-	*d = out
-	return nil
-}
-
-func (d *DataItemList) MarshalYAML() (interface{}, error) {
-	if d == nil {
-		return nil, nil
-	}
-	m := map[string]string{}
-	for _, i := range *d {
-		m[i.Key] = m[i.Value]
-	}
-	return m, nil
-}
-
-type DataItem struct {
-	Key, Value string
-}
+type DataItems map[string]string
 
 type Context struct {
 	Configuration      Configuration
@@ -893,7 +861,7 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		cfg.Package.Commit = detectedCommit
 	}
 
-	datas := map[string][]DataItem{}
+	datas := make(map[string]DataItems)
 	for _, d := range cfg.Data {
 		datas[d.Name] = d.Items
 	}
@@ -912,8 +880,15 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 			return nil, fmt.Errorf("unable to parse configuration file %q: subpackage %q specified undefined range: %q", configurationFilePath, sp.Name, sp.Range)
 		}
 
-		for _, it := range items {
-			k, v := it.Key, it.Value
+		// Ensure iterating over items is deterministic by sorting keys alphabetically
+		keys := make([]string, 0, len(items))
+		for k := range items {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			v := items[k]
 			replacer := replacerFromMap(map[string]string{
 				"${{range.key}}":   k,
 				"${{range.value}}": v,

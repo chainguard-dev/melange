@@ -23,11 +23,10 @@ import (
 	"sync"
 
 	apko_log "chainguard.dev/apko/pkg/log"
+	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/korovkin/limiter"
 	"github.com/sirupsen/logrus"
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
-
-	"chainguard.dev/melange/internal/sign"
 )
 
 type Context struct {

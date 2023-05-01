@@ -32,7 +32,7 @@ import (
 	"text/template"
 
 	"chainguard.dev/apko/pkg/log"
-	"chainguard.dev/melange/internal/sign"
+	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	"github.com/psanford/memfs"
 )

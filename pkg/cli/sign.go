@@ -17,7 +17,7 @@ package cli
 import (
 	"context"
 
-	"chainguard.dev/melange/internal/sign"
+	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/spf13/cobra"
 )
 

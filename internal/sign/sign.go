@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chainguard.dev/apko/pkg/tarball"
+	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	"github.com/psanford/memfs"
 	"github.com/sirupsen/logrus"
 )

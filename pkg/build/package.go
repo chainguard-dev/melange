@@ -32,8 +32,8 @@ import (
 	"text/template"
 
 	"chainguard.dev/apko/pkg/log"
-	"chainguard.dev/apko/pkg/tarball"
 	"chainguard.dev/melange/internal/sign"
+	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	"github.com/psanford/memfs"
 )
 

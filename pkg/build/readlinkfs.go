@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	apkofs "chainguard.dev/apko/pkg/apk/impl/fs"
+	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 )
 
 type rlfs struct {

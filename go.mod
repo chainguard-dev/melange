@@ -28,7 +28,7 @@ require (
 	golang.org/x/exp v0.0.0-20230124195608-d38c7dcee874
 	golang.org/x/sync v0.1.0
 	golang.org/x/time v0.3.0
-	google.golang.org/api v0.119.0
+	google.golang.org/api v0.120.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
 	sigs.k8s.io/release-utils v0.7.3

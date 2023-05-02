@@ -31,6 +31,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
@@ -327,6 +328,7 @@ type Context struct {
 	imgDigest          name.Digest
 	containerConfig    *container.Config
 	Debug              bool
+	LogPolicy          []string
 
 	EnabledBuildOptions []string
 }
@@ -342,23 +344,29 @@ type Dependencies struct {
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 func New(opts ...Option) (*Context, error) {
-	logger := &apko_log.Adapter{
-		Out:   os.Stderr,
-		Level: apko_log.InfoLevel,
-	}
-
 	ctx := Context{
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
+		LogPolicy:       []string{"builtin:stderr"},
 	}
 
 	for _, opt := range opts {
 		if err := opt(&ctx); err != nil {
 			return nil, err
 		}
+	}
+
+	writer, err := apko_iocomb.Combine(ctx.LogPolicy)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := &apko_log.Adapter{
+		Out:   writer,
+		Level: apko_log.InfoLevel,
 	}
 
 	fields := apko_log.Fields{
@@ -721,6 +729,14 @@ func WithCreateBuildLog(createBuildLog bool) Option {
 func WithDebug(debug bool) Option {
 	return func(ctx *Context) error {
 		ctx.Debug = debug
+		return nil
+	}
+}
+
+// WithLogPolicy sets the logging policy to use during builds.
+func WithLogPolicy(policy []string) Option {
+	return func(ctx *Context) error {
+		ctx.LogPolicy = policy
 		return nil
 	}
 }

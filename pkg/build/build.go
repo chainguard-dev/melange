@@ -209,6 +209,11 @@ type Configuration struct {
 	Options map[string]BuildOption `yaml:"options,omitempty"`
 }
 
+// Name returns a name for the configuration, using the package name.
+func (cfg Configuration) Name() string {
+	return cfg.Package.Name
+}
+
 type VarTransforms struct {
 	From    string `yaml:"from"`
 	Match   string `yaml:"match"`

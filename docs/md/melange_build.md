@@ -44,6 +44,7 @@ melange build [flags]
       --guest-dir string            directory used for the build environment guest
   -h, --help                        help for build
   -k, --keyring-append strings      path to extra keys to include in the build environment keyring
+      --log-policy strings          logging policy to use (default [builtin:stderr])
       --namespace string            namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string              directory where packages will be output (default "./packages/")
       --overlay-binsh string        use specified file as /bin/sh overlay in build environment

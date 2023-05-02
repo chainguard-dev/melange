@@ -53,6 +53,7 @@ func Build() *cobra.Command {
 	var varsFile string
 	var purlNamespace string
 	var buildOption []string
+	var logPolicy []string
 	var createBuildLog bool
 	var debug bool
 
@@ -89,6 +90,7 @@ func Build() *cobra.Command {
 				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
+				build.WithLogPolicy(logPolicy),
 			}
 
 			if len(args) > 0 {
@@ -128,6 +130,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
+	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")

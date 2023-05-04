@@ -60,5 +60,5 @@ pipeline:
 
       DEST_PATH="-o ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
       cd "${{inputs.modroot}}"
-      go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.packages}}
+      go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
       

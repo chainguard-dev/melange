@@ -464,7 +464,10 @@ func generateSharedObjectNameDeps(pc *PackageContext, generated *Dependencies) e
 				}
 			}
 
-			if !pc.Options.NoProvides {
+			// An executable program should never have a SONAME, but apparently binaries built
+			// with some versions of jlink do.  Thus, if an interpreter is set (meaning it is an
+			// executable program), we do not scan the object for SONAMEs.
+			if !pc.Options.NoProvides && interp == "" {
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {

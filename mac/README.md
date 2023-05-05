@@ -35,10 +35,17 @@ helpers work properly with `apko publish`.
 The commands below assume to be run in this
 directory of the repository, and require `limactl`.
 
+### Clone the repository
+
+```
+git clone https://github.com/chainguard-dev/melange.git
+cd melange
+```
+
 ### Start environment
 
 ```
-limactl start --tty=false lima/melange-playground.yaml
+limactl start --tty=false mac/lima/melange-playground.yaml
 ```
 
 ### Obtain a shell
@@ -50,6 +57,6 @@ limactl shell melange-playground sudo su -c "HOME=\"${HOME}\" ash"
 ### Build an example apk
 
 ```
-melange build --keyring-append /usr/lib/wolfi-signing.rsa.pub --arch amd64 /examples/go-hello.yaml
+melange build --keyring-append /usr/lib/wolfi-signing.rsa.pub --arch amd64 examples/gnu-hello.yaml
 ```
 

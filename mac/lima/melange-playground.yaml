@@ -94,5 +94,5 @@ message: |-
   Run the following to get a root shell (needed to run apko build):
     limactl shell melange-playground sudo su -c "HOME=\"${HOME}\" ash"
   Try building an APK:
-     melange build -r https://packages.wolfi.dev/os -k /usr/lib/wolfi-signing.rsa.pub --arch x86_64 examples/go-hello.yaml
+     melange build -r https://packages.wolfi.dev/os -k /usr/lib/wolfi-signing.rsa.pub --arch x86_64 examples/gnu-hello.yaml
   ---

@@ -45,6 +45,10 @@ inputs:
       Directory where binaries will be installed
     default: bin
 
+  deps:
+    description: |
+      space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
+
 pipeline:
   - runs: |
       TAGS=""
@@ -60,5 +64,13 @@ pipeline:
 
       DEST_PATH="-o ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
       cd "${{inputs.modroot}}"
+
+      # Install any specified dependencies
+      if [ ! "${{inputs.deps}}" == "" ]; then
+        for dep in ${{inputs.deps}}; do
+          go get $dep
+        done
+        go mod tidy
+      fi
       go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
       

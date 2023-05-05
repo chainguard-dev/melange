@@ -7,7 +7,7 @@
 #     limactl shell melange-playground sudo su -c "HOME=\"${HOME}\" ash"
 #
 #   Build an example image:
-#     melange build -r https://packages.wolfi.dev/os -k /usr/lib/wolfi-signing.rsa.pub --arch x86_64 examples/go-hello.yaml
+#     melange build -r https://packages.wolfi.dev/os -k /usr/lib/wolfi-signing.rsa.pub --arch x86_64 examples/go-build.yaml
 #
 #   To delete environment:
 #     limactl delete -f melange-playground

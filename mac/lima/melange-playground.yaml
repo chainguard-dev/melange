@@ -1,7 +1,7 @@
 # apko lima configuration file
 #
 #   To start environment:
-#     limactl start --tty=false melange-playground.yaml
+#     limactl start --tty=false mac/lima/melange-playground.yaml
 #
 #   To obtain root shell (needed for apko build):
 #     limactl shell melange-playground sudo su -c "HOME=\"${HOME}\" ash"

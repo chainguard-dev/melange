@@ -97,6 +97,10 @@ you can define the following values:
   ldflags:
     description:
       List of [pattern=]arg to pass to the go compiler with -ldflags
+
+  deps:
+    description: |
+      space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
 ```
 
 For the most up to date supported features check the

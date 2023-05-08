@@ -13,10 +13,24 @@ inputs:
   patches:
     description: |
       A list of patches to apply, as a whitespace delimited string.
-    required: true
+
+  series:
+    description: |
+      A quilt-style patch series file to apply.
 
 pipeline:
   - runs: |
-      for i in ${{inputs.patches}}; do
-        patch -p${{inputs.strip-components}} < $i
-      done
+      if [ -n "${{inputs.patches}}" ]; then
+        for i in ${{inputs.patches}}; do
+          patch -p${{inputs.strip-components}} < $i
+        done
+      else
+        if [ -n "${{inputs.series}}" ]; then
+          grep -v -E '^(#|$)' ${{inputs.series}} | (while read patchfile; do
+            patch -p${{inputs.strip-components}} < $patchfile
+          done)
+        else
+          echo "ERROR: Neither patches or series was set."
+          exit 1
+        fi
+      fi

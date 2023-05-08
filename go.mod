@@ -28,7 +28,7 @@ require (
 	golang.org/x/exp v0.0.0-20230124195608-d38c7dcee874
 	golang.org/x/sync v0.2.0
 	golang.org/x/time v0.3.0
-	google.golang.org/api v0.119.0
+	google.golang.org/api v0.121.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
 	sigs.k8s.io/release-utils v0.7.3
@@ -99,7 +99,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/s2a-go v0.1.2 // indirect
+	github.com/google/s2a-go v0.1.3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect

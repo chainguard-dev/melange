@@ -83,12 +83,13 @@ provision:
         exit 3
         ;;
     esac
-    wget https://github.com/chainguard-dev/melange/releases/download/v0.2.0/melange_0.2.0_${platform}_${arch}.tar.gz
-    tar -xzf melange_0.2.0_${platform}_${arch}.tar.gz
-    chmod +x melange_0.2.0_${platform}_${arch}/melange
-    sudo mv melange_0.2.0_${platform}_${arch}/melange /usr/local/bin/melange
-    rm -rf melange_0.2.0_${platform}_${arch}
-    rm melange_0.2.0_${platform}_${arch}.tar.gz
+    VERSION=0.3.2
+    wget https://github.com/chainguard-dev/melange/releases/download/v${VERSION}/melange_${VERSION}_${platform}_${arch}.tar.gz
+    tar -xzf melange_${VERSION}_${platform}_${arch}.tar.gz
+    chmod +x melange_${VERSION}_${platform}_${arch}/melange
+    sudo mv melange_${VERSION}_${platform}_${arch}/melange /usr/local/bin/melange
+    rm -rf melange_${VERSION}_${platform}_${arch}
+    rm melange_${VERSION}_${platform}_${arch}.tar.gz
 message: |-
   ---
   Run the following to get a root shell (needed to run apko build):

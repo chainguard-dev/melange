@@ -131,6 +131,9 @@ origin = {{.OriginName}}
 pkgdesc = {{.Description}}
 url = {{.URL}}
 commit = {{.Commit}}
+{{- if ne .Context.SourceDateEpoch.Unix 0 }}
+builddate = {{ .Context.SourceDateEpoch.Unix }}
+{{- end}}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}

@@ -103,7 +103,7 @@ type Package struct {
 	Description string `yaml:"description,omitempty"`
 	// The URL to the package's homepage
 	URL string `yaml:"url,omitempty"`
-	// Optional: The git commit of the package
+	// Optional: The git commit of the package build configuration
 	Commit string `yaml:"commit,omitempty"`
 	// List of target architectures for which this package should be build for
 	TargetArchitecture []string `yaml:"target-architecture,omitempty"`
@@ -237,7 +237,7 @@ type Subpackage struct {
 	Description string `yaml:"description,omitempty"`
 	// Optional: The URL to the package's homepage
 	URL string `yaml:"url,omitempty"`
-	// Optional: The git commit of the subpackage
+	// Optional: The git commit of the subpackage build configuration
 	Commit string `yaml:"commit,omitempty"`
 }
 
@@ -464,7 +464,8 @@ type Dependencies struct {
 	Provides []string `yaml:"provides,omitempty"`
 	// Optional: List of replace objectives
 	Replaces []string `yaml:"replaces,omitempty"`
-	// TODO:
+	// Optional: An integer compared against other equal package provides used to
+	// determine priority
 	ProviderPriority int `yaml:"provider-priority,omitempty"`
 }
 

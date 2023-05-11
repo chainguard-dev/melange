@@ -56,6 +56,7 @@ func Build() *cobra.Command {
 	var logPolicy []string
 	var createBuildLog bool
 	var debug bool
+	var runner string
 
 	cmd := &cobra.Command{
 		Use:           "build",
@@ -91,6 +92,7 @@ func Build() *cobra.Command {
 				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
 				build.WithLogPolicy(logPolicy),
+				build.WithRunner(runner),
 			}
 
 			if len(args) > 0 {
@@ -131,6 +133,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
+	cmd.Flags().StringVar(&runner, "runner", string(build.GetDefaultRunner()), fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")

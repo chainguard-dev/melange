@@ -24,6 +24,11 @@ inputs:
       the apk will be in prefix / install-dir / output
     required: true
 
+  vendor:
+    description: |
+      If true, the go mod command will also update the vendor directory
+    default: "false"
+
   modroot:
     default: "."
     required: false
@@ -71,6 +76,8 @@ pipeline:
           go get $dep
         done
         go mod tidy
+        # If vendor is specified, update the vendor directory
+        "${{inputs.vendor}}" && go mod vendor
       fi
       go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
       

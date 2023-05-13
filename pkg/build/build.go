@@ -583,7 +583,7 @@ func New(opts ...Option) (*Context, error) {
 
 	// Check that we actually can run things in containers.
 	if !runner.TestUsability() {
-		return nil, fmt.Errorf("unable to run containers")
+		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", runner.Name(), GetAllRunners())
 	}
 
 	// Apply build options to the context.

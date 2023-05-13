@@ -85,7 +85,7 @@ func (bw *bubblewrap) Run(cfg *Config, args ...string) error {
 func (bw *bubblewrap) TestUsability() bool {
 	_, err := exec.LookPath("bwrap")
 	if err != nil {
-		bw.logger.Debugf("cannot use bubblewrap for containers: bwrap not found on $PATH")
+		bw.logger.Warnf("cannot use bubblewrap for containers: bwrap not found on $PATH")
 		return false
 	}
 

@@ -1,5 +1,7 @@
 package build
 
+import "runtime"
+
 type runner string
 
 const (
@@ -12,7 +14,17 @@ const (
 // GetDefaultRunner returns the default runner to use.
 // Currently, this is bubblewrap, but will be replaced with determining by platform.
 func GetDefaultRunner() runner {
-	return runnerBubblewrap
+	var r runner
+	switch runtime.GOOS {
+	case "linux":
+		r = runnerBubblewrap
+	case "darwin":
+		// darwin is the same as default, but we want to keep it explicit
+		r = runnerDocker
+	default:
+		r = runnerDocker
+	}
+	return r
 }
 
 // GetAllrunners returns a list of all valid runners.

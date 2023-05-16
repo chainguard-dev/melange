@@ -1,6 +1,13 @@
 # Some nice defines for the "make install" target
-PREFIX ?= /usr
+
+OS := $(shell uname -s)
+ifeq ($(OS), Darwin)
+    PREFIX ?= /usr/local
+else
+    PREFIX ?= /usr
+endif
 BINDIR ?= ${PREFIX}/bin
+
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -86,9 +93,10 @@ melange: $(SRCS) ## Builds melange
 
 .PHONY: install
 install: $(SRCS) ## Installs melange into BINDIR (default /usr/bin)
-	install -Dm755 melange ${DESTDIR}${BINDIR}/melange
-	install -dm755 ${DESTDIR}/usr/share/melange/pipelines
-	tar c -C pkg/build/pipelines . | tar x -C "${DESTDIR}/usr/share/melange/pipelines"
+	mkdir -p ${DESTDIR}${BINDIR}
+	cp melange ${DESTDIR}${BINDIR}/melange
+	chmod 755 ${DESTDIR}${BINDIR}/melange
+
 
 #####################
 # lint / test section

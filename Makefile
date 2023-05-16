@@ -92,7 +92,7 @@ melange: $(SRCS) ## Builds melange
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $@ ./
 
 .PHONY: install
-install: $(SRCS) ## Installs melange into BINDIR (default /usr/bin)
+install: melange ## Installs melange into BINDIR (default /usr/bin)
 	mkdir -p ${DESTDIR}${BINDIR}
 	cp melange ${DESTDIR}${BINDIR}/melange
 	chmod 755 ${DESTDIR}${BINDIR}/melange

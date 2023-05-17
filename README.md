@@ -28,10 +28,10 @@ the form of OCI container images with [apko][apko].
 
 ## Installation
 
-Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools). If you're not on Alpine Linux or another apk-based distribution, the quickest way to get melange running is to use the [OCI Container (Docker) image](https://github.com/distroless/melange):
+Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools). If you're not on Alpine Linux or another apk-based distribution, the quickest way to get melange running is to use the [OCI Container (Docker) image](https://github.com/chainguard-dev/melange):
 
 ```shell
-docker run distroless.dev/melange version
+docker run cgr.dev/chainguard/melange version
 ```
 ```
   __  __   _____   _          _      _   _    ____   _____

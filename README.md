@@ -28,35 +28,31 @@ the form of OCI container images with [apko][apko].
 
 ## Installation
 
-Melange has a dependency on [apk-tools](https://gitlab.alpinelinux.org/alpine/apk-tools). If you're not on Alpine Linux or another apk-based distribution, the quickest way to get melange running is to use the [OCI Container (Docker) image](https://github.com/chainguard-dev/melange):
+You can install Melange from Homebrew:
+
+```shell
+brew install melange
+```
+
+You can also install Melange from source:
+
+```shell
+go install chainguard.dev/melange@latest
+```
+
+You can also use the Melange container image:
 
 ```shell
 docker run cgr.dev/chainguard/melange version
 ```
-```
-  __  __   _____   _          _      _   _    ____   _____
- |  \/  | | ____| | |        / \    | \ | |  / ___| | ____|
- | |\/| | |  _|   | |       / _ \   |  \| | | |  _  |  _|
- | |  | | | |___  | |___   / ___ \  | |\  | | |_| | | |___
- |_|  |_| |_____| |_____| /_/   \_\ |_| \_|  \____| |_____|
-melange
 
-GitVersion:    v0.1.0-67-g108fd6a
-GitCommit:     108fd6a5e400bd100ef6db813380de44516de6e6
-GitTreeState:  clean
-BuildDate:     2022-08-01T13:36:41
-GoVersion:     go1.18.5
-Compiler:      gc
-Platform:      linux/amd64
-```
-
-To use the examples, you'll generally want to mount your current directory into the container and provide elevated privileges e.g:
+To use the examples, you'll generally want to mount your current directory into the container and provide elevated privileges, e.g.:
 
 ```shell
 docker run --privileged -v "$PWD":/work cgr.dev/chainguard/melange build examples/gnu-hello.yaml
 ```
 
-These examples require [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
+Running outside of a container requires [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
 
 Alternatively, if you're on a Mac, you can use the [melange instructions for Lima](https://github.com/chainguard-dev/melange/blob/main/mac/README.md#Lima) to run an Alpine Linux VM.
 

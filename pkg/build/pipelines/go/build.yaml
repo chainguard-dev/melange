@@ -29,6 +29,11 @@ inputs:
       If true, the go mod command will also update the vendor directory
     default: "false"
 
+  subpackage:
+    description: |
+      Indicates that the build will write to a subpackage target folder
+    default: "false"
+
   modroot:
     default: "."
     required: false
@@ -67,7 +72,13 @@ pipeline:
         LDFLAGS="${{inputs.ldflags}}"
       fi
 
-      DEST_PATH="-o ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
+      BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
+      if [ "${{inputs.subpackage}}" == "true" ]; then
+        DEST_PATH="-o ${{targets.subpkgdir}}/${BASE_PATH}"
+      else
+        DEST_PATH="-o ${{targets.destdir}}/${BASE_PATH}"
+      fi
+
       cd "${{inputs.modroot}}"
 
       # Install any specified dependencies
@@ -80,4 +91,3 @@ pipeline:
         "${{inputs.vendor}}" && go mod vendor
       fi
       go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
-      

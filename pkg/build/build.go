@@ -1061,10 +1061,22 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 				Description: replacer.Replace(sp.Description),
 			}
 			for _, p := range sp.Pipeline {
+
+				// take a copy of the with map, so we can replace the values
+				replacedWith := make(map[string]string)
+				for key, value := range p.With {
+					replacedWith[key] = replacer.Replace(value)
+				}
+
+				// if the map is empty, set it to nil to avoid serializing an empty map
+				if len(replacedWith) == 0 {
+					replacedWith = nil
+				}
+
 				thingToAdd.Pipeline = append(thingToAdd.Pipeline, Pipeline{
 					Name:   p.Name,
 					Uses:   p.Uses,
-					With:   p.With,
+					With:   replacedWith,
 					Inputs: p.Inputs,
 					Needs:  p.Needs,
 					Label:  p.Label,

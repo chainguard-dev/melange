@@ -104,6 +104,9 @@ subpackages:
     name: ${{range.key}}
     pipeline:
       - runs: ${{range.key}}'s color is ${{range.value}}
+      - uses: go/build
+        with:
+          packages: ${{range.value}}
 `
 
 	expected := []Subpackage{{
@@ -123,24 +126,48 @@ subpackages:
 		}},
 	}, {
 		Name: "Donatello",
-		Pipeline: []Pipeline{{
-			Runs: "Donatello's color is purple",
-		}},
+		Pipeline: []Pipeline{
+			{
+				Runs: "Donatello's color is purple",
+			},
+			{
+				Uses: "go/build",
+				With: map[string]string{"packages": "purple"},
+			},
+		},
 	}, {
 		Name: "Leonardo",
-		Pipeline: []Pipeline{{
-			Runs: "Leonardo's color is blue",
-		}},
+		Pipeline: []Pipeline{
+			{
+				Runs: "Leonardo's color is blue",
+			},
+			{
+				Uses: "go/build",
+				With: map[string]string{"packages": "blue"},
+			},
+		},
 	}, {
 		Name: "Michelangelo",
-		Pipeline: []Pipeline{{
-			Runs: "Michelangelo's color is orange",
-		}},
+		Pipeline: []Pipeline{
+			{
+				Runs: "Michelangelo's color is orange",
+			},
+			{
+				Uses: "go/build",
+				With: map[string]string{"packages": "orange"},
+			},
+		},
 	}, {
 		Name: "Raphael",
-		Pipeline: []Pipeline{{
-			Runs: "Raphael's color is red",
-		}},
+		Pipeline: []Pipeline{
+			{
+				Runs: "Raphael's color is red",
+			},
+			{
+				Uses: "go/build",
+				With: map[string]string{"packages": "red"},
+			},
+		},
 	}}
 
 	f := filepath.Join(t.TempDir(), "config")

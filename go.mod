@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/storage v1.30.1
 	github.com/chainguard-dev/go-apk v0.0.0-20230501082831-d4a4a3b48750
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
-	github.com/docker/docker v23.0.4+incompatible
+	github.com/docker/docker v24.0.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/google/go-cmp v0.5.9

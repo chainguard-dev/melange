@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
-	gitlab.alpinelinux.org/alpine/go v0.7.0
+	gitlab.alpinelinux.org/alpine/go v0.7.1-0.20230522152417-bbb20ba03a25
 	golang.org/x/exp v0.0.0-20230124195608-d38c7dcee874
 	golang.org/x/sync v0.2.0
 	golang.org/x/time v0.3.0

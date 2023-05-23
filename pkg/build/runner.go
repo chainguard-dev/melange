@@ -8,6 +8,7 @@ const (
 	runnerBubblewrap runner = "bubblewrap"
 	runnerDocker     runner = "docker"
 	runnerLima       runner = "lima"
+	runnerKubernetes runner = "kubernetes"
 	// more to come
 )
 
@@ -33,5 +34,6 @@ func GetAllRunners() []runner {
 		runnerBubblewrap,
 		runnerDocker,
 		runnerLima,
+		runnerKubernetes,
 	}
 }

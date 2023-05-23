@@ -42,6 +42,38 @@ jobs:
         ./melange keygen && mv melange.rsa.pub /etc/apk/keys
         ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
 
+  runner-kubernetes:
+    name: build example on kubernetes
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+
+    - name: Setup melange
+      run: |
+        make melange
+        ./melange keygen local-melange.rsa
+
+    - name: Setup Cluster
+      uses: chainguard-dev/actions/setup-kind@main
+      with:
+        k8s-version: v1.26.x
+        registry-authority: registry.local:5000
+
+    - name: Configure
+      run: |
+        cat > .melange.k8s.yaml <<EOF
+        provider: generic
+        # Need something small enough for CI to handle
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        EOF
+
+    - name: Build
+      run: |
+        ./melange build --signing-key local-melange.rsa --pipeline-dir=pipelines examples/gnu-hello.yaml --arch=x86_64 --empty-workspace --runner kubernetes
+
   bootstrap:
     name: bootstrap package
     runs-on: ubuntu-latest

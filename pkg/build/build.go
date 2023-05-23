@@ -15,6 +15,7 @@
 package build
 
 import (
+	"archive/tar"
 	"context"
 	"errors"
 	"fmt"
@@ -1679,6 +1680,12 @@ func (ctx *Context) BuildPackage(sigh context.Context) error {
 		return err
 	}
 
+	// Retrieve the post build workspace from the runner
+	if err := ctx.RetrieveWorkspace(sigh, cfg); err != nil {
+		return fmt.Errorf("retrieving workspace: %v", err)
+	}
+	ctx.Logger.Printf("retrieved and wrote post-build workspace to: %s", ctx.WorkspaceDir)
+
 	if err := generator.GenerateSBOM(&sbom.Spec{
 		Path:           filepath.Join(ctx.WorkspaceDir, "melange-out", ctx.Configuration.Package.Name),
 		PackageName:    ctx.Configuration.Package.Name,
@@ -1846,6 +1853,7 @@ func (ctx *Context) buildWorkspaceConfig() *container.Config {
 	}
 
 	cfg := container.Config{
+		PackageName:  ctx.Configuration.Package.Name,
 		Mounts:       mounts,
 		Capabilities: caps,
 		Logger:       ctx.Logger,
@@ -1871,4 +1879,49 @@ func (ctx *Context) WorkspaceConfig() *container.Config {
 
 	ctx.containerConfig = ctx.buildWorkspaceConfig()
 	return ctx.containerConfig
+}
+
+// RetrieveWorkspace retrieves the workspace from the container and unpacks it
+// to the workspace directory. The workspace retrieved from the runner is in a
+// tar stream containing the workspace contents rooted at ./melange-out
+func (ctx *Context) RetrieveWorkspace(sigh context.Context, cfg *container.Config) error {
+	r, err := ctx.Runner.WorkspaceTar(sigh, ctx.containerConfig)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	tr := tar.NewReader(r)
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		target := filepath.Join(ctx.WorkspaceDir, hdr.Name)
+
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			if _, err := os.Stat(target); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil {
+					return err
+				}
+			}
+		case tar.TypeReg:
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
+			if err != nil {
+				return err
+			}
+
+			if _, err := io.Copy(f, tr); err != nil {
+				return err
+			}
+			f.Close()
+		}
+	}
+
+	return nil
 }

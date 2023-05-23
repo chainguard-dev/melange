@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -27,7 +28,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
-	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
@@ -116,22 +116,14 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
+// WorkspaceTar implements Runner
+// This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
 func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	tctx, err := tarball.NewContext()
-	if err != nil {
-		return nil, err
-	}
-	pr, pw := io.Pipe()
-	// TODO: should capture errors here, without making it synchronous
-	// Maybe it should return an fs.FS? How would that work with tar?
-	go func() {
-		pw.CloseWithError(tctx.WriteTargz(ctx, pw, os.DirFS(cfg.ImgRef)))
-	}()
-	return pr, nil
+	var buffer bytes.Buffer
+	return io.NopCloser(&buffer), nil
 }
 
-type bubblewrapOCILoader struct {
-}
+type bubblewrapOCILoader struct{}
 
 func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	// bubblewrap does not have the idea of container images or layers or such, just

@@ -15,21 +15,183 @@
 package build
 
 import (
-	apko_types "chainguard.dev/apko/pkg/build/types"
 	"fmt"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"os"
 	"path/filepath"
 	"testing"
+
+	apko_types "chainguard.dev/apko/pkg/build/types"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
 )
 
-func TestLoadConfiguration(t *testing.T) {
+// TestConfiguration_Load is the main set of tests for loading a configuration
+// file. When in doubt, add your test here.
+func TestConfiguration_Load(t *testing.T) {
+	tests := []struct {
+		name       string
+		requireErr require.ErrorAssertionFunc
+		expected   Configuration
+	}{
+		{
+			name:       "range-subpackages",
+			requireErr: require.NoError,
+			expected: Configuration{
+				Package: Package{
+					Name:    "hello",
+					Version: "world",
+				},
+				Pipeline: []Pipeline{
+					{
+						Name: "hello",
+						Runs: "world",
+					},
+				},
+				Subpackages: []Subpackage{{
+					Name: "cats",
+					Pipeline: []Pipeline{{
+						Runs: "cats are angry",
+					}},
+				}, {
+					Name: "dogs",
+					Pipeline: []Pipeline{{
+						Runs: "dogs are loyal",
+					}},
+				}, {
+					Name: "turtles",
+					Pipeline: []Pipeline{{
+						Runs: "turtles are slow",
+					}},
+				}, {
+					Name: "Donatello",
+					Pipeline: []Pipeline{
+						{
+							Runs: "Donatello's color is purple",
+						},
+						{
+							Uses: "go/build",
+							With: map[string]string{"packages": "purple"},
+						},
+					},
+				}, {
+					Name: "Leonardo",
+					Pipeline: []Pipeline{
+						{
+							Runs: "Leonardo's color is blue",
+						},
+						{
+							Uses: "go/build",
+							With: map[string]string{"packages": "blue"},
+						},
+					},
+				}, {
+					Name: "Michelangelo",
+					Pipeline: []Pipeline{
+						{
+							Runs: "Michelangelo's color is orange",
+						},
+						{
+							Uses: "go/build",
+							With: map[string]string{"packages": "orange"},
+						},
+					},
+				}, {
+					Name: "Raphael",
+					Pipeline: []Pipeline{
+						{
+							Runs: "Raphael's color is red",
+						},
+						{
+							Uses: "go/build",
+							With: map[string]string{"packages": "red"},
+						},
+					},
+				}},
+			},
+		},
+		{
+			name:       "github",
+			requireErr: require.NoError,
+			expected: Configuration{
+				Package: Package{
+					Name:    "cosign",
+					Version: "2.0.0",
+				},
+				Update: Update{
+					Enabled: true,
+					Shared:  false,
+					GitHubMonitor: &GitHubMonitor{
+						Identifier:  "sigstore/cosign",
+						StripPrefix: "v",
+						UseTags:     true,
+					},
+				},
+			},
+		},
+		{
+			name:       "release-monitor",
+			requireErr: require.NoError,
+			expected: Configuration{
+				Package: Package{Name: "bison", Version: "3.8.2"},
+				Update: Update{
+					Enabled: true,
+					Shared:  false,
+					ReleaseMonitor: &ReleaseMonitor{
+						Identifier: 193,
+					},
+				},
+			},
+		},
+		{
+			name:       "unknown-fields",
+			requireErr: require.Error,
+			expected:   Configuration{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log := nopLogger{}
+			ctx := Context{
+				ConfigFile: filepath.Join("testdata", "configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
+				Logger:     log,
+			}
+
+			cfg := &Configuration{}
+			err := cfg.Load(ctx)
+			tt.requireErr(t, err)
+
+			cleanTestConfig(cfg)
+
+			if d := cmp.Diff(tt.expected, *cfg, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
+				t.Fatalf("actual didn't match expected (-want, +got): %s", d)
+			}
+		})
+	}
+}
+
+func cleanTestConfig(cfg *Configuration) {
+	if cfg == nil {
+		return
+	}
+
+	cfg.Environment.Accounts.Users = nil
+	cfg.Environment.Accounts.Groups = nil
+	cfg.Environment.Environment = nil
+
+	if len(cfg.Subpackages) == 0 {
+		cfg.Subpackages = nil
+	}
+}
+
+// TestConfiguration_Load_Raw tests loading a configuration file with raw
+// resolved values for fields not specified by the input YAML file.
+func TestConfiguration_Load_Raw(t *testing.T) {
 	contents := `
 package:
   name: nginx
   version: 100
-  test: ${{package.name}}
 `
 	expected := &Configuration{
 		Package: Package{
@@ -69,175 +231,5 @@ package:
 	}
 	if d := cmp.Diff(expected, cfg); d != "" {
 		t.Fatalf("actual didn't match expected: %s", d)
-	}
-}
-
-func TestLoadConfiguration_RangeSubpackages(t *testing.T) {
-	contents := `
-package:
-  name: hello
-  version: world
-
-pipeline:
-- name: hello
-  runs: world
-
-data:
-  - name: ninja-turtles
-    items:
-      Michelangelo: orange
-      Raphael: red
-      Leonardo: blue
-      Donatello: purple
-  - name: animals
-    items:
-      dogs: loyal
-      cats: angry
-      turtles: slow
-
-subpackages:
-  - range: animals
-    name: ${{range.key}}
-    pipeline:
-      - runs: ${{range.key}} are ${{range.value}}
-  - range: ninja-turtles
-    name: ${{range.key}}
-    pipeline:
-      - runs: ${{range.key}}'s color is ${{range.value}}
-      - uses: go/build
-        with:
-          packages: ${{range.value}}
-`
-
-	expected := []Subpackage{{
-		Name: "cats",
-		Pipeline: []Pipeline{{
-			Runs: "cats are angry",
-		}},
-	}, {
-		Name: "dogs",
-		Pipeline: []Pipeline{{
-			Runs: "dogs are loyal",
-		}},
-	}, {
-		Name: "turtles",
-		Pipeline: []Pipeline{{
-			Runs: "turtles are slow",
-		}},
-	}, {
-		Name: "Donatello",
-		Pipeline: []Pipeline{
-			{
-				Runs: "Donatello's color is purple",
-			},
-			{
-				Uses: "go/build",
-				With: map[string]string{"packages": "purple"},
-			},
-		},
-	}, {
-		Name: "Leonardo",
-		Pipeline: []Pipeline{
-			{
-				Runs: "Leonardo's color is blue",
-			},
-			{
-				Uses: "go/build",
-				With: map[string]string{"packages": "blue"},
-			},
-		},
-	}, {
-		Name: "Michelangelo",
-		Pipeline: []Pipeline{
-			{
-				Runs: "Michelangelo's color is orange",
-			},
-			{
-				Uses: "go/build",
-				With: map[string]string{"packages": "orange"},
-			},
-		},
-	}, {
-		Name: "Raphael",
-		Pipeline: []Pipeline{
-			{
-				Runs: "Raphael's color is red",
-			},
-			{
-				Uses: "go/build",
-				With: map[string]string{"packages": "red"},
-			},
-		},
-	}}
-
-	f := filepath.Join(t.TempDir(), "config")
-	if err := os.WriteFile(f, []byte(contents), 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	log := nopLogger{}
-	ctx := Context{
-		ConfigFile: f,
-		Logger:     log,
-	}
-	cfg := &Configuration{}
-	if err := cfg.Load(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if d := cmp.Diff(expected, cfg.Subpackages, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
-		t.Fatalf("actual didn't match expected: %s", d)
-	}
-}
-
-func TestBuild_update(t *testing.T) {
-	tests := []struct {
-		name     string
-		expected Configuration
-	}{
-		{
-			name: "github",
-			expected: Configuration{
-				Package: Package{Name: "cosign", Version: "2.0.0"},
-				Update: Update{
-					Enabled: true,
-					Shared:  false,
-					GitHubMonitor: &GitHubMonitor{
-						Identifier:  "sigstore/cosign",
-						StripPrefix: "v",
-						UseTags:     true,
-					},
-				},
-			},
-		},
-		{
-			name: "release-monitor",
-			expected: Configuration{
-				Package: Package{Name: "bison", Version: "3.8.2"},
-				Update: Update{
-					Enabled: true,
-					Shared:  false,
-					ReleaseMonitor: &ReleaseMonitor{
-						Identifier: 193,
-					},
-				},
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			log := nopLogger{}
-			ctx := Context{
-				ConfigFile: filepath.Join("testdata", "update", fmt.Sprintf("%s.melange.yaml", test.name)),
-				Logger:     log,
-			}
-			cfg := &Configuration{}
-			if err := cfg.Load(ctx); err != nil {
-				t.Fatal(err)
-			}
-			if d := cmp.Diff(test.expected.Update, cfg.Update); d != "" {
-				t.Fatalf("actual didn't match expected: %s", d)
-			}
-		})
 	}
 }

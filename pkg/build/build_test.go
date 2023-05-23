@@ -23,17 +23,20 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
 )
 
 // TestConfiguration_Load is the main set of tests for loading a configuration
 // file. When in doubt, add your test here.
 func TestConfiguration_Load(t *testing.T) {
 	tests := []struct {
-		name     string
-		expected Configuration
+		name       string
+		requireErr require.ErrorAssertionFunc
+		expected   Configuration
 	}{
 		{
-			name: "range-subpackages",
+			name:       "range-subpackages",
+			requireErr: require.NoError,
 			expected: Configuration{
 				Package: Package{
 					Name:    "hello",
@@ -108,7 +111,8 @@ func TestConfiguration_Load(t *testing.T) {
 			},
 		},
 		{
-			name: "github",
+			name:       "github",
+			requireErr: require.NoError,
 			expected: Configuration{
 				Package: Package{
 					Name:    "cosign",
@@ -126,7 +130,8 @@ func TestConfiguration_Load(t *testing.T) {
 			},
 		},
 		{
-			name: "release-monitor",
+			name:       "release-monitor",
+			requireErr: require.NoError,
 			expected: Configuration{
 				Package: Package{Name: "bison", Version: "3.8.2"},
 				Update: Update{
@@ -137,6 +142,11 @@ func TestConfiguration_Load(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name:       "unknown-fields",
+			requireErr: require.Error,
+			expected:   Configuration{},
 		},
 	}
 
@@ -149,9 +159,8 @@ func TestConfiguration_Load(t *testing.T) {
 			}
 
 			cfg := &Configuration{}
-			if err := cfg.Load(ctx); err != nil {
-				t.Fatal(err)
-			}
+			err := cfg.Load(ctx)
+			tt.requireErr(t, err)
 
 			cleanTestConfig(cfg)
 
@@ -163,6 +172,10 @@ func TestConfiguration_Load(t *testing.T) {
 }
 
 func cleanTestConfig(cfg *Configuration) {
+	if cfg == nil {
+		return
+	}
+
 	cfg.Environment.Accounts.Users = nil
 	cfg.Environment.Accounts.Groups = nil
 	cfg.Environment.Environment = nil
@@ -179,7 +192,6 @@ func TestConfiguration_Load_Raw(t *testing.T) {
 package:
   name: nginx
   version: 100
-  test: ${{package.name}}
 `
 	expected := &Configuration{
 		Package: Package{

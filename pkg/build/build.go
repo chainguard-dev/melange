@@ -988,7 +988,7 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 
 	if options.filesystem == nil {
 		// TODO: this is an abstraction leak, and we can remove this `if statement` once
-		// ParseConfiguration relies solely on an abstract fs.FS.
+		//  ParseConfiguration relies solely on an abstract fs.FS.
 
 		options.filesystem = os.DirFS(configurationDirPath)
 		configurationFilePath = filepath.Base(configurationFilePath)
@@ -1005,7 +1005,9 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 
 	cfg := Configuration{}
 
-	err = yaml.NewDecoder(f).Decode(&cfg)
+	decoder := yaml.NewDecoder(f)
+	decoder.KnownFields(true)
+	err = decoder.Decode(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file: %w", err)
 	}

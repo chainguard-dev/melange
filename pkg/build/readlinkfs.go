@@ -20,9 +20,12 @@ import (
 	"path/filepath"
 
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+	"golang.org/x/sys/unix"
 )
 
 type rlfs struct {
+	apkofs.XattrFS
+
 	base string
 	f    fs.FS
 }
@@ -41,6 +44,79 @@ func (f *rlfs) Open(name string) (fs.File, error) {
 
 func (f *rlfs) Stat(name string) (fs.FileInfo, error) {
 	return os.Stat(filepath.Join(f.base, name))
+}
+
+func (f *rlfs) SetXattr(path string, attr string, data []byte) error {
+	return unix.Setxattr(filepath.Join(f.base, path), attr, data, 0)
+}
+
+func (f *rlfs) GetXattr(path string, attr string) ([]byte, error) {
+	realPath := filepath.Join(f.base, path)
+
+	size, err := unix.Getxattr(realPath, attr, nil)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	buf := make([]byte, size)
+	_, err = unix.Getxattr(realPath, attr, buf)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return buf, nil
+}
+
+func (f *rlfs) RemoveXattr(path string, attr string) error {
+	return unix.Removexattr(filepath.Join(f.base, path), attr)
+}
+
+// stringsFromByteSlice converts a sequence of attributes to a []string.
+// On Linux, each entry is a NULL-terminated string.
+// Taken from golang.org/x/sys/unix/syscall_linux_test.go.
+func stringsFromByteSlice(buf []byte) []string {
+	var result []string
+	off := 0
+	for i, b := range buf {
+		if b == 0 {
+			result = append(result, string(buf[off:i]))
+			off = i + 1
+		}
+	}
+	return result
+}
+
+func (f *rlfs) ListXattrs(path string) (map[string][]byte, error) {
+	realPath := filepath.Join(f.base, path)
+
+	size, err := unix.Listxattr(realPath, nil)
+	if err != nil {
+		return map[string][]byte{}, err
+	}
+
+	// If the xattr list is empty, the size will be 0.
+	if size <= 0 {
+		return map[string][]byte{}, nil
+	}
+
+	buf := make([]byte, size)
+	read, err := unix.Listxattr(realPath, buf)
+	if err != nil {
+		return map[string][]byte{}, err
+	}
+
+	xattrMap := map[string][]byte{}
+	xattrNames := stringsFromByteSlice(buf[:read])
+	for _, xattrName := range xattrNames {
+		result, err := f.GetXattr(path, xattrName)
+		if err != nil {
+			return map[string][]byte{}, err
+		}
+
+		xattrMap[xattrName] = result
+	}
+
+	return xattrMap, nil
 }
 
 func readlinkFS(dir string) apkofs.ReadLinkFS {

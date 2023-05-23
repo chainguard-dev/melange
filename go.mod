@@ -5,7 +5,7 @@ go 1.20
 require (
 	chainguard.dev/apko v0.7.4-0.20230427160853-4082ea6e082e
 	cloud.google.com/go/storage v1.30.1
-	github.com/chainguard-dev/go-apk v0.0.0-20230501082831-d4a4a3b48750
+	github.com/chainguard-dev/go-apk v0.0.0-20230517200002-2ac639294fed
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
 	github.com/docker/docker v24.0.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -159,7 +159,7 @@ require (
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect

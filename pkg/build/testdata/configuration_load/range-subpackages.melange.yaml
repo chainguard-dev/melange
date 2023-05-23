@@ -1,0 +1,33 @@
+package:
+  name: hello
+  version: world
+
+pipeline:
+  - name: hello
+    runs: world
+
+data:
+  - name: ninja-turtles
+    items:
+      Michelangelo: orange
+      Raphael: red
+      Leonardo: blue
+      Donatello: purple
+  - name: animals
+    items:
+      dogs: loyal
+      cats: angry
+      turtles: slow
+
+subpackages:
+  - range: animals
+    name: ${{range.key}}
+    pipeline:
+      - runs: ${{range.key}} are ${{range.value}}
+  - range: ninja-turtles
+    name: ${{range.key}}
+    pipeline:
+      - runs: ${{range.key}}'s color is ${{range.value}}
+      - uses: go/build
+        with:
+          packages: ${{range.value}}

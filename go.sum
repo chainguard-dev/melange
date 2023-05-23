@@ -147,8 +147,8 @@ github.com/bwesterb/go-ristretto v1.2.0/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
-github.com/chainguard-dev/go-apk v0.0.0-20230501082831-d4a4a3b48750 h1:l0s4EA2eGjn1VFK4k7yxZywPCr7yGXkRtxS3jwMWlO4=
-github.com/chainguard-dev/go-apk v0.0.0-20230501082831-d4a4a3b48750/go.mod h1:AAWHP+cZSBRe1AjQbfio64C66XxlOXAS08orCjF0zj8=
+github.com/chainguard-dev/go-apk v0.0.0-20230517200002-2ac639294fed h1:1sfR9iiT6t0ZczTL/jJyDs8+Wbw0Oms8zh5+MAq//IA=
+github.com/chainguard-dev/go-apk v0.0.0-20230517200002-2ac639294fed/go.mod h1:BM0gO+KLpyVLuJSFiYYZP52DS+S4GjQoPaEljWo6uWw=
 github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e h1:TlpfdSUjQkrq2yh+bySzoOmPKspeaxmOr1fmsNCfNXM=
 github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e/go.mod h1:sfV9rXdvBVe0PDTLWzPh4IpapowZ9CDROjMUN2etRrk=
 github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396 h1:ZUOndrE3hI7kIqsIAxtMLEmgakCLWodkiBxqoAN1QSQ=
@@ -876,8 +876,8 @@ golang.org/x/sys v0.0.0-20220906165534-d0df966e6959/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.3.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.5.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.7.0 h1:3jlCCIQZPdOYu1h8BkNvLz8Kgwtae2cagcG/VamtZRU=
-golang.org/x/sys v0.7.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.8.0 h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=
+golang.org/x/sys v0.8.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/term v0.0.0-20210927222741-03fcf44c2211/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
 golang.org/x/term v0.0.0-20220722155259-a9ba230a4035/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=

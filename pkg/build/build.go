@@ -1187,7 +1187,7 @@ func (e ErrInvalidConfiguration) Error() string {
 	return fmt.Sprintf("build configuration is invalid: %v", e.Problem)
 }
 
-var packageNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_.-]*$`)
+var packageNameRegex = regexp.MustCompile(`^[a-zA-Z\d][a-zA-Z\d+_.-]*$`)
 
 func (cfg Configuration) validate() error {
 	if !packageNameRegex.MatchString(cfg.Package.Name) {

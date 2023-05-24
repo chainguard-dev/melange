@@ -26,6 +26,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...interface{}) {
+	require.ErrorAs(t, err, &ErrInvalidConfiguration{})
+}
+
 // TestConfiguration_Load is the main set of tests for loading a configuration
 // file. When in doubt, add your test here.
 func TestConfiguration_Load(t *testing.T) {
@@ -64,10 +68,10 @@ func TestConfiguration_Load(t *testing.T) {
 						Runs: "turtles are slow",
 					}},
 				}, {
-					Name: "Donatello",
+					Name: "donatello",
 					Pipeline: []Pipeline{
 						{
-							Runs: "Donatello's color is purple",
+							Runs: "donatello's color is purple",
 						},
 						{
 							Uses: "go/build",
@@ -75,10 +79,10 @@ func TestConfiguration_Load(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "Leonardo",
+					Name: "leonardo",
 					Pipeline: []Pipeline{
 						{
-							Runs: "Leonardo's color is blue",
+							Runs: "leonardo's color is blue",
 						},
 						{
 							Uses: "go/build",
@@ -86,10 +90,10 @@ func TestConfiguration_Load(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "Michelangelo",
+					Name: "michelangelo",
 					Pipeline: []Pipeline{
 						{
-							Runs: "Michelangelo's color is orange",
+							Runs: "michelangelo's color is orange",
 						},
 						{
 							Uses: "go/build",
@@ -97,10 +101,10 @@ func TestConfiguration_Load(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "Raphael",
+					Name: "raphael",
 					Pipeline: []Pipeline{
 						{
-							Runs: "Raphael's color is red",
+							Runs: "raphael's color is red",
 						},
 						{
 							Uses: "go/build",
@@ -146,6 +150,21 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name:       "unknown-fields",
 			requireErr: require.Error,
+			expected:   Configuration{},
+		},
+		{
+			name:       "missing-package-name",
+			requireErr: requireErrInvalidConfiguration,
+			expected:   Configuration{},
+		},
+		{
+			name:       "invalid-package-name",
+			requireErr: requireErrInvalidConfiguration,
+			expected:   Configuration{},
+		},
+		{
+			name:       "invalid-range-subpackage-name",
+			requireErr: requireErrInvalidConfiguration,
 			expected:   Configuration{},
 		},
 	}

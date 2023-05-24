@@ -13,19 +13,10 @@ data:
       raphael: red
       leonardo: blue
       donatello: purple
-  - name: animals
-    items:
-      dogs: loyal
-      cats: angry
-      turtles: slow
 
 subpackages:
-  - range: animals
-    name: ${{range.key}}
-    pipeline:
-      - runs: ${{range.key}} are ${{range.value}}
   - range: ninja-turtles
-    name: ${{range.key}}
+    name: turtle-"${{range.key}}"
     pipeline:
       - runs: ${{range.key}}'s color is ${{range.value}}
       - uses: go/build

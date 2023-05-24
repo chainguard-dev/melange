@@ -37,7 +37,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/go-git/go-git/v5"
 	"github.com/joho/godotenv"
-	"github.com/openvex/go-vex/pkg/vex"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
@@ -279,11 +278,6 @@ type Configuration struct {
 	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline
 	Data []RangeData `yaml:"data,omitempty"`
-	// Optional: The map of security fixes for this package keyed by the version
-	// found
-	Secfixes Secfixes `yaml:"secfixes,omitempty"`
-	// Optional: The map of advisories for this package
-	Advisories Advisories `yaml:"advisories,omitempty"`
 	// Optional: The update block determining how this package is auto updated
 	Update Update `yaml:"update"`
 	// Optional: A map of arbitrary variables that can be used via templating in
@@ -314,33 +308,6 @@ type VarTransforms struct {
 	//
 	// Example: mangeled-package-version
 	To string `yaml:"to"`
-}
-
-// TODO: ensure that there's no net effect to secdb!
-
-type Secfixes map[string][]string
-
-type Advisories map[string][]AdvisoryContent
-
-type AdvisoryContent struct {
-	// Timestamp is the time at which the information expressed in the Statement
-	// was known to be true.
-	Timestamp time.Time `yaml:"timestamp"`
-	// A VEX statement MUST provide Status of the vulnerabilities with respect to the
-	// products and components listed in the statement. Status MUST be one of the
-	// Status const values, some of which have further options and requirements.
-	Status vex.Status `yaml:"status"`
-	// For ”not_affected” status, a VEX statement MUST include a status Justification
-	// that further explains the status.
-	Justification vex.Justification `yaml:"justification,omitempty"`
-	// For ”not_affected” status, a VEX statement MAY include an ImpactStatement
-	// that contains a description why the vulnerability cannot be exploited.
-	ImpactStatement string `yaml:"impact,omitempty"`
-	// For "affected" status, a VEX statement MUST include an ActionStatement that
-	// SHOULD describe actions to remediate or mitigate [vul_id].
-	ActionStatement string `yaml:"action,omitempty"`
-	// The fixed version at which the advisory pertains to
-	FixedVersion string `yaml:"fixed-version,omitempty"`
 }
 
 // Update provides information used to describe how to keep the package up to date
@@ -382,29 +349,6 @@ type GitHubMonitor struct {
 	// Override the default of using a GitHub release to identify related tag to
 	// fetch.  Not all projects use GitHub releases but just use tags
 	UseTags bool `yaml:"use-tag,omitempty"`
-}
-
-func (ac AdvisoryContent) Validate() error {
-	// We'll lean on the vex module's validation as proxy for validating our advisory data.
-
-	mockStmt := vex.Statement{
-		Timestamp:       &ac.Timestamp,
-		Status:          ac.Status,
-		Justification:   ac.Justification,
-		ImpactStatement: ac.ImpactStatement,
-		ActionStatement: ac.ActionStatement,
-	}
-
-	err := mockStmt.Validate()
-	if err != nil {
-		return err
-	}
-
-	if ac.Status == vex.StatusFixed && ac.FixedVersion == "" {
-		return fmt.Errorf("must specify fixed version when using status %q", ac.Status)
-	}
-
-	return nil
 }
 
 type RangeData struct {
@@ -1010,15 +954,6 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	err = decoder.Decode(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
-	}
-
-	for vulnerability, entries := range cfg.Advisories {
-		for i, entry := range entries {
-			err := entry.Validate()
-			if err != nil {
-				return nil, fmt.Errorf("invalid advisory entry for vulnerability %q at index %d: %w", vulnerability, i, err)
-			}
-		}
 	}
 
 	detectedCommit := detectCommit(configurationDirPath, options.logger)

@@ -97,7 +97,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
 	github.com/go-openapi/runtime v0.26.0 // indirect
-	github.com/go-openapi/spec v0.20.8 // indirect
+	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/strfmt v0.21.7 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
@@ -140,7 +140,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/sigstore/cosign/v2 v2.0.3-0.20230425232139-17cc13812d8a // indirect
-	github.com/sigstore/rekor v1.1.0 // indirect
+	github.com/sigstore/rekor v1.1.1 // indirect
 	github.com/sigstore/sigstore v1.6.3 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect

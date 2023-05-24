@@ -1009,7 +1009,7 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	decoder.KnownFields(true)
 	err = decoder.Decode(&cfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode configuration file: %w", err)
+		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
 
 	for vulnerability, entries := range cfg.Advisories {

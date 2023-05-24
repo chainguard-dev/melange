@@ -33,7 +33,7 @@ require (
 	google.golang.org/api v0.123.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
-	sigs.k8s.io/release-utils v0.7.3
+	sigs.k8s.io/release-utils v0.7.4
 )
 
 require (

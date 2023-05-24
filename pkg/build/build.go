@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1105,7 +1106,42 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 
 	cfg.Subpackages = subpackages
 
+	// Finally, validate the configuration we ended up with before returning it for use downstream.
+	if err = cfg.validate(); err != nil {
+		return nil, fmt.Errorf("validating configuration: %w", err)
+	}
+
 	return &cfg, nil
+}
+
+type ErrInvalidConfiguration struct {
+	Problem error
+}
+
+func (e ErrInvalidConfiguration) Error() string {
+	return fmt.Sprintf("build configuration is invalid: %v", e.Problem)
+}
+
+var packageNameRegex = regexp.MustCompile(`^[a-zA-Z\d][a-zA-Z\d+_.-]*$`)
+
+func (cfg Configuration) validate() error {
+	if !packageNameRegex.MatchString(cfg.Package.Name) {
+		return ErrInvalidConfiguration{Problem: fmt.Errorf("package name must match regex %q", packageNameRegex)}
+	}
+
+	if cfg.Package.Version == "" {
+		return ErrInvalidConfiguration{Problem: errors.New("package version must not be empty")}
+	}
+
+	// TODO: try to validate value of .package.version
+
+	for i, sp := range cfg.Subpackages {
+		if !packageNameRegex.MatchString(sp.Name) {
+			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
+		}
+	}
+
+	return nil
 }
 
 // Load the configuration data from the build context configuration file.

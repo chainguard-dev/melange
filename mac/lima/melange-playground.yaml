@@ -39,13 +39,15 @@ provision:
     #!/bin/sh
     set -eux -o pipefail
     apk update
-    apk add --update --no-cache vim git bubblewrap curl tar
+    apk add --update --no-cache vim git make bubblewrap curl tar
     cat <<EOF >> /etc/apk/repositories
     https://packages.wolfi.dev/os
     EOF
     apk update --allow-untrusted
     wget https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     mv wolfi-signing.rsa.pub /usr/lib
+    apk add go --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+    export PATH=$PATH:$(go env GOPATH)/bin
 - mode: user
   script: |
     #!/bin/sh
@@ -90,6 +92,8 @@ provision:
     sudo mv melange_${VERSION}_${platform}_${arch}/melange /usr/local/bin/melange
     rm -rf melange_${VERSION}_${platform}_${arch}
     rm melange_${VERSION}_${platform}_${arch}.tar.gz
+    git clone https://github.com/wolfi-dev/wolfictl.git
+    (cd wolfictl && sudo make install)
 message: |-
   ---
   Run the following to get a root shell (needed to run apko build):

@@ -1755,6 +1755,10 @@ func (ctx *Context) BuildPackage(sigh context.Context) error {
 			if err := ctx.GenerateIndex(); err != nil {
 				return fmt.Errorf("unable to generate index: %w", err)
 			}
+
+			if err := ctx.WriteJSONIndex(filepath.Join(packageDir, "APKINDEX.json")); err != nil {
+				return fmt.Errorf("unable to generate JSON index: %w", err)
+			}
 		}
 	}
 

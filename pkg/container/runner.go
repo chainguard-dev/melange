@@ -15,6 +15,7 @@
 package container
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -22,39 +23,40 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 type Runner interface {
 	Name() string
-	TestUsability() bool
+	TestUsability(ctx context.Context) bool
 	// OCIImageLoader returns a Loader that will load an OCI image from a stream.
 	// It should return the Loader, which will be used to load the provided image
 	// as a tar stream into the Loader. That image will be used as the root when StartPod() the container.
 	OCIImageLoader() Loader
-	StartPod(cfg *Config) error
-	Run(cfg *Config, cmd ...string) error
-	TerminatePod(cfg *Config) error
+	StartPod(ctx context.Context, cfg *Config) error
+	Run(ctx context.Context, cfg *Config, cmd ...string) error
+	TerminatePod(ctx context.Context, cfg *Config) error
 	// TempDir returns the base for temporary directory, or "" if whatever is provided by the system is fine
 	TempDir() string
 	// WorkspaceTar returns an io.ReadCloser that can be used to read the status of the workspace.
 	// The io.ReadCloser itself is a tar stream, which can be written to an io.Writer as is,
 	// or passed to an fs.FS processor
-	WorkspaceTar(cfg *Config) (io.ReadCloser, error)
+	WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error)
 }
 
 type Loader interface {
-	LoadImage(layerTarGZ string, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
+	LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
 }
 
 // GetRunner returns the requested runner implementation.
-func GetRunner(s string, log log.Logger) (Runner, error) {
+func GetRunner(ctx context.Context, s string, log log.Logger) (Runner, error) {
 	switch s {
 	case BubblewrapName:
 		return BubblewrapRunner(log), nil
 	case DockerName:
 		return DockerRunner(log), nil
 	case LimaName:
-		return LimaRunner(log)
+		return LimaRunner(ctx, log)
 	}
 	return nil, fmt.Errorf("unknown virtualizer %q", s)
 }

@@ -157,7 +157,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 	for _, arch := range archs {
 		opts := append(base_opts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
 
-		bc, err := build.New(opts...)
+		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
 			log.Printf("skipping arch %s", arch)
 			continue
@@ -178,7 +178,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 		bc := bc
 
 		errg.Go(func() error {
-			if err := bc.BuildPackage(); err != nil {
+			if err := bc.BuildPackage(ctx); err != nil {
 				log.Printf("ERROR: failed to build package. the build environment has been preserved:")
 				bc.SummarizePaths()
 

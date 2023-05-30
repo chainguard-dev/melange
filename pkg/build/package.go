@@ -16,6 +16,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"debug/elf"
@@ -55,7 +56,7 @@ type PackageContext struct {
 	Commit        string
 }
 
-func (pkg *Package) Emit(ctx *PipelineContext) error {
+func (pkg *Package) Emit(sigh context.Context, ctx *PipelineContext) error {
 	fakesp := Subpackage{
 		Name:         pkg.Name,
 		Dependencies: pkg.Dependencies,
@@ -65,10 +66,10 @@ func (pkg *Package) Emit(ctx *PipelineContext) error {
 		URL:          pkg.URL,
 		Commit:       pkg.Commit,
 	}
-	return fakesp.Emit(ctx)
+	return fakesp.Emit(sigh, ctx)
 }
 
-func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
+func (spkg *Subpackage) Emit(sigh context.Context, ctx *PipelineContext) error {
 	pc := PackageContext{
 		Context:      ctx.Context,
 		Origin:       &ctx.Context.Configuration.Package,
@@ -89,7 +90,7 @@ func (spkg *Subpackage) Emit(ctx *PipelineContext) error {
 		pc.OriginName = pc.Origin.Name
 	}
 
-	return pc.EmitPackage()
+	return pc.EmitPackage(sigh)
 }
 
 // AppendBuildLog will create or append a list of packages that were built by melange build
@@ -160,7 +161,7 @@ func (pc *PackageContext) GenerateControlData(w io.Writer) error {
 	return template.Must(tmpl.Parse(controlTemplate)).Execute(w, pc)
 }
 
-func (pc *PackageContext) generateControlSection(digest hash.Hash, w io.WriteSeeker) (hash.Hash, error) {
+func (pc *PackageContext) generateControlSection(ctx context.Context, digest hash.Hash, w io.WriteSeeker) (hash.Hash, error) {
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
 		tarball.WithOverrideUIDGID(0, 0),
@@ -232,7 +233,7 @@ func (pc *PackageContext) generateControlSection(digest hash.Hash, w io.WriteSee
 	}
 
 	mw := io.MultiWriter(digest, w)
-	if err := tarctx.WriteArchive(mw, fsys); err != nil {
+	if err := tarctx.WriteTargz(ctx, mw, fsys); err != nil {
 		return digest, fmt.Errorf("unable to write control tarball: %w", err)
 	}
 
@@ -613,7 +614,7 @@ func (pc *PackageContext) calculateInstalledSize(fsys fs.FS) error {
 	return nil
 }
 
-func (pc *PackageContext) emitDataSection(fsys fs.FS, w io.WriteSeeker) error {
+func (pc *PackageContext) emitDataSection(ctx context.Context, fsys fs.FS, w io.WriteSeeker) error {
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
 		tarball.WithOverrideUIDGID(0, 0),
@@ -627,7 +628,7 @@ func (pc *PackageContext) emitDataSection(fsys fs.FS, w io.WriteSeeker) error {
 
 	digest := sha256.New()
 	mw := io.MultiWriter(digest, w)
-	if err := tarctx.WriteArchive(mw, fsys); err != nil {
+	if err := tarctx.WriteTargz(ctx, mw, fsys); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)
 	}
 
@@ -641,7 +642,7 @@ func (pc *PackageContext) emitDataSection(fsys fs.FS, w io.WriteSeeker) error {
 	return nil
 }
 
-func (pc *PackageContext) emitNormalSignatureSection(h hash.Hash, w io.WriteSeeker) error {
+func (pc *PackageContext) emitNormalSignatureSection(ctx context.Context, h hash.Hash, w io.WriteSeeker) error {
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Context.SourceDateEpoch),
 		tarball.WithOverrideUIDGID(0, 0),
@@ -663,7 +664,7 @@ func (pc *PackageContext) emitNormalSignatureSection(h hash.Hash, w io.WriteSeek
 		return fmt.Errorf("unable to build signature FS: %w", err)
 	}
 
-	if err := tarctx.WriteArchive(w, fsys); err != nil {
+	if err := tarctx.WriteTargz(ctx, w, fsys); err != nil {
 		return fmt.Errorf("unable to write signature tarball: %w", err)
 	}
 
@@ -678,7 +679,7 @@ func (pc *PackageContext) wantSignature() bool {
 	return pc.Context.SigningKey != ""
 }
 
-func (pc *PackageContext) EmitPackage() error {
+func (pc *PackageContext) EmitPackage(ctx context.Context) error {
 	err := os.MkdirAll(pc.WorkspaceSubdir(), 0o755)
 	if err != nil {
 		return fmt.Errorf("unable to ensure workspace exists: %w", err)
@@ -709,7 +710,7 @@ func (pc *PackageContext) EmitPackage() error {
 	defer dataTarGz.Close()
 	defer os.Remove(dataTarGz.Name())
 
-	if err := pc.emitDataSection(fsys, dataTarGz); err != nil {
+	if err := pc.emitDataSection(ctx, fsys, dataTarGz); err != nil {
 		return err
 	}
 
@@ -733,7 +734,7 @@ func (pc *PackageContext) EmitPackage() error {
 		controlDigest = sha1.New()
 	}
 
-	finalDigest, err := pc.generateControlSection(controlDigest, controlTarGz)
+	finalDigest, err := pc.generateControlSection(ctx, controlDigest, controlTarGz)
 	if err != nil {
 		return err
 	}
@@ -749,7 +750,7 @@ func (pc *PackageContext) EmitPackage() error {
 		defer os.Remove(signatureTarGz.Name())
 
 		// TODO(kaniini): Emit fulcio signature if signing key not configured.
-		if err := pc.emitNormalSignatureSection(finalDigest, signatureTarGz); err != nil {
+		if err := pc.emitNormalSignatureSection(ctx, finalDigest, signatureTarGz); err != nil {
 			return err
 		}
 

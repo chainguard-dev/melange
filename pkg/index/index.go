@@ -212,6 +212,14 @@ func (ctx *Context) GenerateIndex() error {
 	}
 
 	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
+	if err := ctx.WriteArchiveIndex(index); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctx *Context) WriteArchiveIndex(index *apkrepo.ApkIndex) error {
 	archive, err := apkrepo.ArchiveFromIndex(index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)

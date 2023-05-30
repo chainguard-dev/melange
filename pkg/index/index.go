@@ -33,6 +33,7 @@ import (
 type Context struct {
 	PackageFiles       []string
 	IndexFile          string
+	SourceIndexFile    string
 	MergeIndexFileFlag bool
 	SigningKey         string
 	Logger             *logrus.Logger
@@ -52,6 +53,14 @@ func WithMergeIndexFileFlag(mergeFlag bool) Option {
 func WithIndexFile(indexFile string) Option {
 	return func(ctx *Context) error {
 		ctx.IndexFile = indexFile
+		ctx.SourceIndexFile = indexFile
+		return nil
+	}
+}
+
+func WithSourceIndexFile(indexFile string) Option {
+	return func(ctx *Context) error {
+		ctx.SourceIndexFile = indexFile
 		return nil
 	}
 }
@@ -187,7 +196,7 @@ func (ctx *Context) GenerateIndex() error {
 	}
 
 	if ctx.MergeIndexFileFlag {
-		if err := ctx.LoadIndex(ctx.IndexFile); err != nil {
+		if err := ctx.LoadIndex(ctx.SourceIndexFile); err != nil {
 			return err
 		}
 	}

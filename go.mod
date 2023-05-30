@@ -75,7 +75,7 @@ require (
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
-	github.com/containerd/containerd v1.6.15 // indirect
+	github.com/containerd/containerd v1.6.18 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/containers/gvisor-tap-vsock v0.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect

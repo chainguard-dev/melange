@@ -130,8 +130,6 @@ func New(opts ...Option) (*Context, error) {
 
 func (ctx *Context) LoadIndex(sourceFile string) error {
 	f, err := os.Open(sourceFile)
-	defer f.Close()
-
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -139,6 +137,7 @@ func (ctx *Context) LoadIndex(sourceFile string) error {
 
 		return err
 	}
+	defer f.Close()
 
 	index, err := apkrepo.IndexFromArchive(f)
 	if err != nil {

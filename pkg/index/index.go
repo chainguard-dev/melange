@@ -150,7 +150,7 @@ func (ctx *Context) LoadIndex(sourceFile string) error {
 	return nil
 }
 
-func (ctx *Context) GenerateIndex() error {
+func (ctx *Context) UpdateIndex() error {
 	packages := make([]*apkrepo.Package, len(ctx.PackageFiles))
 	var mtx sync.Mutex
 
@@ -223,10 +223,19 @@ func (ctx *Context) GenerateIndex() error {
 		}
 	}
 
-	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
+	ctx.Logger.Printf("updating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
+
+	return nil
+}
+
+func (ctx *Context) GenerateIndex() error {
+	if err := ctx.UpdateIndex(); err != nil {
+		return fmt.Errorf("updating index: %w", err)
+	}
+
 	indexWriter := ctx.WriteArchiveIndex
 	if err := indexWriter(ctx.IndexFile); err != nil {
-		return err
+		return fmt.Errorf("writing index: %w", err)
 	}
 
 	return nil

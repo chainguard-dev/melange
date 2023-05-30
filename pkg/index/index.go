@@ -15,6 +15,7 @@
 package index
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -36,6 +37,7 @@ type Context struct {
 	SigningKey         string
 	Logger             *logrus.Logger
 	ExpectedArch       string
+	Index              apkrepo.ApkIndex
 }
 
 type Option func(*Context) error
@@ -116,6 +118,29 @@ func New(opts ...Option) (*Context, error) {
 	return &ctx, nil
 }
 
+func (ctx *Context) LoadIndex(sourceFile string) error {
+	f, err := os.Open(sourceFile)
+	defer f.Close()
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+
+		return err
+	}
+
+	index, err := apkrepo.IndexFromArchive(f)
+	if err != nil {
+		return fmt.Errorf("failed to read apkindex from archive file: %w", err)
+	}
+
+	copy(ctx.Index.Packages, index.Packages)
+	ctx.Index.Description = index.Description
+
+	return nil
+}
+
 func (ctx *Context) GenerateIndex() error {
 	packages := make([]*apkrepo.Package, len(ctx.PackageFiles))
 	var mtx sync.Mutex
@@ -161,46 +186,24 @@ func (ctx *Context) GenerateIndex() error {
 		return err
 	}
 
-	var index *apkrepo.ApkIndex
-
 	if ctx.MergeIndexFileFlag {
-		originApkIndex, err := os.Open(ctx.IndexFile)
-		if err == nil {
-			index, err = apkrepo.IndexFromArchive(originApkIndex)
-			if err != nil {
-				return fmt.Errorf("failed to read apkindex from archive file: %w", err)
-			}
+		if err := ctx.LoadIndex(ctx.IndexFile); err != nil {
+			return err
+		}
+	}
 
-			for _, pkg := range packages {
-				found := false
+	for _, pkg := range packages {
+		found := false
 
-				for _, p := range index.Packages {
-					if pkg.Name == p.Name && pkg.Version == p.Version {
-						found = true
-						p = pkg
-					}
-				}
-				if !found {
-					index.Packages = append(index.Packages, pkg)
-				}
-			}
-		} else {
-			// indexFile not exists, we just create a new one
-			index = &apkrepo.ApkIndex{}
-
-			for _, pkg := range packages {
-				if pkg != nil {
-					index.Packages = append(index.Packages, pkg)
-				}
+		for _, p := range ctx.Index.Packages {
+			if pkg.Name == p.Name && pkg.Version == p.Version {
+				found = true
+				p = pkg
 			}
 		}
-	} else {
-		index = &apkrepo.ApkIndex{}
 
-		for _, pkg := range packages {
-			if pkg != nil {
-				index.Packages = append(index.Packages, pkg)
-			}
+		if !found {
+			ctx.Index.Packages = append(ctx.Index.Packages, pkg)
 		}
 	}
 
@@ -212,7 +215,8 @@ func (ctx *Context) GenerateIndex() error {
 	}
 
 	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
-	if err := ctx.WriteArchiveIndex(index); err != nil {
+	indexWriter := ctx.WriteArchiveIndex
+	if err := indexWriter(&ctx.Index); err != nil {
 		return err
 	}
 

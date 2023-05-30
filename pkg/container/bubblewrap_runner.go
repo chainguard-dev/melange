@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -26,8 +27,8 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
-	apko_tarball "chainguard.dev/apko/pkg/tarball"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/chainguard-dev/go-apk/pkg/tarball"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 const BubblewrapName = "bubblewrap"
@@ -47,7 +48,7 @@ func (bw *bubblewrap) Name() string {
 }
 
 // Run runs a Bubblewrap task given a Config and command string.
-func (bw *bubblewrap) Run(cfg *Config, args ...string) error {
+func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) error {
 	baseargs := []string{}
 
 	// always be sure to mount the / first!
@@ -74,7 +75,7 @@ func (bw *bubblewrap) Run(cfg *Config, args ...string) error {
 	}
 
 	args = append(baseargs, args...)
-	execCmd := exec.Command("bwrap", args...)
+	execCmd := exec.CommandContext(ctx, "bwrap", args...)
 	bw.logger.Printf("executing: %s", strings.Join(execCmd.Args, " "))
 
 	return monitorCmd(cfg, execCmd)
@@ -82,7 +83,7 @@ func (bw *bubblewrap) Run(cfg *Config, args ...string) error {
 
 // TestUsability determines if the Bubblewrap runner can be used
 // as a container runner.
-func (bw *bubblewrap) TestUsability() bool {
+func (bw *bubblewrap) TestUsability(ctx context.Context) bool {
 	_, err := exec.LookPath("bwrap")
 	if err != nil {
 		bw.logger.Warnf("cannot use bubblewrap for containers: bwrap not found on $PATH")
@@ -104,19 +105,19 @@ func (bw *bubblewrap) TempDir() string {
 
 // StartPod starts a pod if necessary.  On Bubblewrap, we just run
 // ldconfig to prime ld.so.cache for glibc < 2.37 builds.
-func (bw *bubblewrap) StartPod(cfg *Config) error {
+func (bw *bubblewrap) StartPod(ctx context.Context, cfg *Config) error {
 	script := "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true"
-	return bw.Run(cfg, "/bin/sh", "-c", script)
+	return bw.Run(ctx, cfg, "/bin/sh", "-c", script)
 }
 
 // TerminatePod terminates a pod if necessary.  Not implemented
 // for Bubblewrap runners.
-func (bw *bubblewrap) TerminatePod(cfg *Config) error {
+func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
-func (bw *bubblewrap) WorkspaceTar(cfg *Config) (io.ReadCloser, error) {
-	tctx, err := apko_tarball.NewContext()
+func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+	tctx, err := tarball.NewContext()
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +125,7 @@ func (bw *bubblewrap) WorkspaceTar(cfg *Config) (io.ReadCloser, error) {
 	// TODO: should capture errors here, without making it synchronous
 	// Maybe it should return an fs.FS? How would that work with tar?
 	go func() {
-		_ = tctx.WriteArchive(pw, os.DirFS(cfg.ImgRef))
+		pw.CloseWithError(tctx.WriteTargz(ctx, pw, os.DirFS(cfg.ImgRef)))
 	}()
 	return pr, nil
 }
@@ -132,20 +133,16 @@ func (bw *bubblewrap) WorkspaceTar(cfg *Config) (io.ReadCloser, error) {
 type bubblewrapOCILoader struct {
 }
 
-func (b bubblewrapOCILoader) LoadImage(layerTarGZ string, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
 	guestDir, err := os.MkdirTemp("", "melange-guest-*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
-	layer, err := tarball.LayerFromFile(layerTarGZ)
-	if err != nil {
-		return ref, fmt.Errorf("failed to open layer tarball %s: %w", layerTarGZ, err)
-	}
 	rc, err := layer.Uncompressed()
 	if err != nil {
-		return ref, fmt.Errorf("failed to read layer tarball %s: %w", layerTarGZ, err)
+		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
 	}
 	defer rc.Close()
 	tr := tar.NewReader(rc)

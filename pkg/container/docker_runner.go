@@ -33,6 +33,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -54,7 +55,7 @@ func (dk *docker) Name() string {
 
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.
-func (dk *docker) StartPod(cfg *Config) error {
+func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
@@ -80,7 +81,6 @@ func (dk *docker) StartPod(cfg *Config) error {
 	}
 
 	// ldconfig is run to prime ld.so.cache for glibc packages which require it.
-	ctx := context.Background()
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.ImgRef,
 		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
@@ -102,7 +102,7 @@ func (dk *docker) StartPod(cfg *Config) error {
 
 // TerminatePod terminates a pod for supporting a Docker task,
 // if necessary.
-func (dk *docker) TerminatePod(cfg *Config) error {
+func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -113,7 +113,6 @@ func (dk *docker) TerminatePod(cfg *Config) error {
 	}
 	defer cli.Close()
 
-	ctx := context.Background()
 	if err := cli.ContainerRemove(ctx, cfg.PodID, types.ContainerRemoveOptions{
 		Force: true,
 	}); err != nil {
@@ -127,7 +126,7 @@ func (dk *docker) TerminatePod(cfg *Config) error {
 
 // TestUsability determines if the Docker runner can be used
 // as a container runner.
-func (dk *docker) TestUsability() bool {
+func (dk *docker) TestUsability(ctx context.Context) bool {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		dk.logger.Printf("cannot use docker for containers: %v", err)
@@ -135,7 +134,7 @@ func (dk *docker) TestUsability() bool {
 	}
 	defer cli.Close()
 
-	_, err = cli.Ping(context.Background())
+	_, err = cli.Ping(ctx)
 	if err != nil {
 		dk.logger.Printf("cannot use docker for containers: %v", err)
 		return false
@@ -185,7 +184,7 @@ func (dk *docker) waitForCommand(cfg *Config, ctx context.Context, attachResp ty
 
 // Run runs a Docker task given a Config and command string.
 // The resultant filesystem can be read from the io.ReadCloser
-func (dk *docker) Run(cfg *Config, args ...string) error {
+func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -200,8 +199,6 @@ func (dk *docker) Run(cfg *Config, args ...string) error {
 		return err
 	}
 	defer cli.Close()
-
-	ctx := context.Background()
 
 	// TODO(kaniini): We want to use the build user here, but for now lets keep
 	// it simple.
@@ -242,14 +239,13 @@ func (dk *docker) Run(cfg *Config, args ...string) error {
 	}
 }
 
-func (d *docker) WorkspaceTar(cfg *Config) (io.ReadCloser, error) {
+func (d *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
 	defer cli.Close()
 
-	ctx := context.Background()
 	fullContainer, err := cli.ContainerExport(ctx, cfg.PodID)
 	if err != nil {
 		return nil, err
@@ -260,10 +256,9 @@ func (d *docker) WorkspaceTar(cfg *Config) (io.ReadCloser, error) {
 
 type dockerLoader struct{}
 
-func (d dockerLoader) LoadImage(layerTarGZ string, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
-	cctx := context.Background()
-	dig, _, err := apko_oci.PublishImageFromLayer(cctx,
-		layerTarGZ, bc.ImageConfiguration, bc.Options.SourceDateEpoch, arch,
+func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+	dig, _, err := apko_oci.PublishImageFromLayer(ctx,
+		layer, bc.ImageConfiguration, bc.Options.SourceDateEpoch, arch,
 		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, true, "melange:latest")
 	if err != nil {
 		return "", err

@@ -33,6 +33,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
+	apkfs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
@@ -415,7 +416,7 @@ type Dependencies struct {
 
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
-func New(opts ...Option) (*Context, error) {
+func New(sigh context.Context, opts ...Option) (*Context, error) {
 	ctx := Context{
 		WorkspaceIgnore: ".melangeignore",
 		SourceDir:       ".",
@@ -447,7 +448,7 @@ func New(opts ...Option) (*Context, error) {
 	ctx.Logger = logger.WithFields(fields)
 
 	// try to get the runner
-	runner, err := container.GetRunner(ctx.RunnerName, ctx.Logger)
+	runner, err := container.GetRunner(sigh, ctx.RunnerName, ctx.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get runner %s: %w", ctx.RunnerName, err)
 	}
@@ -527,7 +528,7 @@ func New(opts ...Option) (*Context, error) {
 	}
 
 	// Check that we actually can run things in containers.
-	if !runner.TestUsability() {
+	if !runner.TestUsability(sigh) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", runner.Name(), GetAllRunners())
 	}
 
@@ -1179,7 +1180,7 @@ func (cfg Configuration) PackageURLs(distro string) []string {
 }
 
 // BuildGuest invokes apko to build the guest environment.
-func (ctx *Context) BuildGuest() error {
+func (ctx *Context) BuildGuest(sigh context.Context) error {
 	// Prepare workspace directory
 	if err := os.MkdirAll(ctx.WorkspaceDir, 0755); err != nil {
 		return fmt.Errorf("mkdir -p %s: %w", ctx.WorkspaceDir, err)
@@ -1192,7 +1193,8 @@ func (ctx *Context) BuildGuest() error {
 
 	ctx.Logger.Printf("building workspace in '%s' with apko", ctx.GuestDir)
 
-	bc, err := apko_build.New(ctx.GuestDir,
+	fsys := apkfs.DirFS(ctx.GuestDir)
+	bc, err := apko_build.New(fsys,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
@@ -1220,7 +1222,7 @@ func (ctx *Context) BuildGuest() error {
 	if loader == nil {
 		return fmt.Errorf("runner %s does not support OCI image loading", ctx.Runner.Name())
 	}
-	layerTarGZ, err := bc.ImageLayoutToLayer()
+	layerTarGZ, layer, err := bc.ImageLayoutToLayer()
 	if err != nil {
 		return err
 	}
@@ -1228,7 +1230,7 @@ func (ctx *Context) BuildGuest() error {
 
 	ctx.Logger.Printf("using %s for image layer", layerTarGZ)
 
-	ref, err := loader.LoadImage(layerTarGZ, ctx.Arch, bc)
+	ref, err := loader.LoadImage(sigh, layer, ctx.Arch, bc)
 	if err != nil {
 		return err
 	}
@@ -1545,7 +1547,7 @@ func (sp Subpackage) ShouldRun(pctx *PipelineContext) (bool, error) {
 	return result, nil
 }
 
-func (ctx *Context) BuildPackage() error {
+func (ctx *Context) BuildPackage(sigh context.Context) error {
 	ctx.Summarize()
 
 	pctx := PipelineContext{
@@ -1569,7 +1571,7 @@ func (ctx *Context) BuildPackage() error {
 	}
 
 	if !ctx.IsBuildLess() {
-		if err := ctx.BuildGuest(); err != nil {
+		if err := ctx.BuildGuest(sigh); err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
 
@@ -1591,14 +1593,14 @@ func (ctx *Context) BuildPackage() error {
 	cfg := ctx.WorkspaceConfig()
 	if !ctx.IsBuildLess() {
 		cfg.Arch = ctx.Arch
-		if err := ctx.Runner.StartPod(cfg); err != nil {
+		if err := ctx.Runner.StartPod(sigh, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
 		}
 
 		// run the main pipeline
 		ctx.Logger.Printf("running the main pipeline")
 		for _, p := range ctx.Configuration.Pipeline {
-			if _, err := p.Run(&pctx); err != nil {
+			if _, err := p.Run(sigh, &pctx); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
 		}
@@ -1634,7 +1636,7 @@ func (ctx *Context) BuildPackage() error {
 			}
 
 			for _, p := range sp.Pipeline {
-				if _, err := p.Run(&pctx); err != nil {
+				if _, err := p.Run(sigh, &pctx); err != nil {
 					return fmt.Errorf("unable to run pipeline: %w", err)
 				}
 				langs = append(langs, p.SBOM.Language)
@@ -1678,7 +1680,7 @@ func (ctx *Context) BuildPackage() error {
 
 	// emit main package
 	pkg := pctx.Package
-	if err := pkg.Emit(&pctx); err != nil {
+	if err := pkg.Emit(sigh, &pctx); err != nil {
 		return fmt.Errorf("unable to emit package: %w", err)
 	}
 
@@ -1694,14 +1696,14 @@ func (ctx *Context) BuildPackage() error {
 			continue
 		}
 
-		if err := sp.Emit(&pctx); err != nil {
+		if err := sp.Emit(sigh, &pctx); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
 	}
 
 	if !ctx.IsBuildLess() {
 		// terminate pod
-		if err := ctx.Runner.TerminatePod(cfg); err != nil {
+		if err := ctx.Runner.TerminatePod(sigh, cfg); err != nil {
 			ctx.Logger.Printf("WARNING: unable to terminate pod: %s", err)
 		}
 

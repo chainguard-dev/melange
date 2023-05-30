@@ -15,6 +15,7 @@
 package build
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"os"
@@ -248,7 +249,7 @@ func (p *Pipeline) dumpWith() {
 	}
 }
 
-func (p *Pipeline) evalUse(ctx *PipelineContext) error {
+func (p *Pipeline) evalUse(sigh context.Context, ctx *PipelineContext) error {
 	sp, err := NewPipeline(ctx)
 	if err != nil {
 		return err
@@ -262,7 +263,7 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	p.logger.Printf("  using %s", p.Uses)
 	sp.dumpWith()
 
-	ran, err := sp.Run(ctx)
+	ran, err := sp.Run(sigh, ctx)
 	if err != nil {
 		return err
 	}
@@ -274,7 +275,7 @@ func (p *Pipeline) evalUse(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) evalRun(ctx *PipelineContext) error {
+func (p *Pipeline) evalRun(sigh context.Context, ctx *PipelineContext) error {
 	var err error
 	p.With, err = MutateWith(ctx, p.With)
 	if err != nil {
@@ -310,7 +311,7 @@ exit 0`, debugOption, sysPath, workdir, workdir, workdir, fragment)
 	command := []string{"/bin/sh", "-c", script}
 	config := ctx.Context.WorkspaceConfig()
 
-	if err := ctx.Context.Runner.Run(config, command...); err != nil {
+	if err := ctx.Context.Runner.Run(sigh, config, command...); err != nil {
 		return err
 	}
 
@@ -363,17 +364,17 @@ func (p *Pipeline) shouldEvaluateBranch(pctx *PipelineContext) bool {
 	return p.evaluateBranchConditional(pctx)
 }
 
-func (p *Pipeline) evaluateBranch(ctx *PipelineContext) error {
+func (p *Pipeline) evaluateBranch(sigh context.Context, ctx *PipelineContext) error {
 	if p.Identity() != "???" {
 		p.logger.Printf("running step %s", p.Identity())
 	}
 
 	if p.Uses != "" {
-		return p.evalUse(ctx)
+		return p.evalUse(sigh, ctx)
 	}
 
 	if p.Runs != "" {
-		return p.evalRun(ctx)
+		return p.evalRun(sigh, ctx)
 	}
 
 	return nil
@@ -387,7 +388,7 @@ func (p *Pipeline) checkAssertions(ctx *PipelineContext) error {
 	return nil
 }
 
-func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
+func (p *Pipeline) Run(sigh context.Context, ctx *PipelineContext) (bool, error) {
 	if p.Label != "" && p.Label == ctx.Context.BreakpointLabel {
 		return false, fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
 	}
@@ -399,7 +400,7 @@ func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 	}
 
 	if p.shouldEvaluateBranch(ctx) {
-		if err := p.evaluateBranch(ctx); err != nil {
+		if err := p.evaluateBranch(sigh, ctx); err != nil {
 			return false, err
 		}
 	} else {
@@ -411,7 +412,7 @@ func (p *Pipeline) Run(ctx *PipelineContext) (bool, error) {
 			sp.WorkDir = p.WorkDir
 		}
 
-		ran, err := sp.Run(ctx)
+		ran, err := sp.Run(sigh, ctx)
 
 		if err != nil {
 			return false, err

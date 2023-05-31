@@ -514,6 +514,10 @@ func New(sigh context.Context, opts ...Option) (*Context, error) {
 
 	// SOURCE_DATE_EPOCH will always overwrite the build flag
 	if v, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
+		if v == "" {
+			ctx.Logger.Warnf("SOURCE_DATE_EPOCH is specified but empty, setting it to 0")
+			v = "0"
+		}
 		// The value MUST be an ASCII representation of an integer
 		// with no fractional component, identical to the output
 		// format of date +%s.

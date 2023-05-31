@@ -144,8 +144,10 @@ func (ctx *Context) LoadIndex(sourceFile string) error {
 		return fmt.Errorf("failed to read apkindex from archive file: %w", err)
 	}
 
-	copy(ctx.Index.Packages, index.Packages)
 	ctx.Index.Description = index.Description
+	ctx.Index.Packages = append(ctx.Index.Packages, index.Packages...)
+
+	ctx.Logger.Printf("loaded %d/%d packages from index %s", len(ctx.Index.Packages), len(index.Packages), sourceFile)
 
 	return nil
 }

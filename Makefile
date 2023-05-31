@@ -139,7 +139,7 @@ lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
 
 .PHONY: test
 test: ## Run go test
-	go test ./...
+	go test ./... -race
 
 .PHONY: clean
 clean: ## Clean the workspace

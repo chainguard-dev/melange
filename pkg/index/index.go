@@ -15,6 +15,8 @@
 package index
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,10 +34,12 @@ import (
 type Context struct {
 	PackageFiles       []string
 	IndexFile          string
+	SourceIndexFile    string
 	MergeIndexFileFlag bool
 	SigningKey         string
 	Logger             *logrus.Logger
 	ExpectedArch       string
+	Index              apkrepo.ApkIndex
 }
 
 type Option func(*Context) error
@@ -50,6 +54,14 @@ func WithMergeIndexFileFlag(mergeFlag bool) Option {
 func WithIndexFile(indexFile string) Option {
 	return func(ctx *Context) error {
 		ctx.IndexFile = indexFile
+		ctx.SourceIndexFile = indexFile
+		return nil
+	}
+}
+
+func WithSourceIndexFile(indexFile string) Option {
+	return func(ctx *Context) error {
+		ctx.SourceIndexFile = indexFile
 		return nil
 	}
 }
@@ -116,7 +128,31 @@ func New(opts ...Option) (*Context, error) {
 	return &ctx, nil
 }
 
-func (ctx *Context) GenerateIndex() error {
+func (ctx *Context) LoadIndex(sourceFile string) error {
+	f, err := os.Open(sourceFile)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+
+		return err
+	}
+	defer f.Close()
+
+	index, err := apkrepo.IndexFromArchive(f)
+	if err != nil {
+		return fmt.Errorf("failed to read apkindex from archive file: %w", err)
+	}
+
+	ctx.Index.Description = index.Description
+	ctx.Index.Packages = append(ctx.Index.Packages, index.Packages...)
+
+	ctx.Logger.Printf("loaded %d/%d packages from index %s", len(ctx.Index.Packages), len(index.Packages), sourceFile)
+
+	return nil
+}
+
+func (ctx *Context) UpdateIndex() error {
 	packages := make([]*apkrepo.Package, len(ctx.PackageFiles))
 	var mtx sync.Mutex
 
@@ -161,46 +197,24 @@ func (ctx *Context) GenerateIndex() error {
 		return err
 	}
 
-	var index *apkrepo.ApkIndex
-
 	if ctx.MergeIndexFileFlag {
-		originApkIndex, err := os.Open(ctx.IndexFile)
-		if err == nil {
-			index, err = apkrepo.IndexFromArchive(originApkIndex)
-			if err != nil {
-				return fmt.Errorf("failed to read apkindex from archive file: %w", err)
-			}
+		if err := ctx.LoadIndex(ctx.SourceIndexFile); err != nil {
+			return err
+		}
+	}
 
-			for _, pkg := range packages {
-				found := false
+	for _, pkg := range packages {
+		found := false
 
-				for _, p := range index.Packages {
-					if pkg.Name == p.Name && pkg.Version == p.Version {
-						found = true
-						p = pkg
-					}
-				}
-				if !found {
-					index.Packages = append(index.Packages, pkg)
-				}
-			}
-		} else {
-			// indexFile not exists, we just create a new one
-			index = &apkrepo.ApkIndex{}
-
-			for _, pkg := range packages {
-				if pkg != nil {
-					index.Packages = append(index.Packages, pkg)
-				}
+		for _, p := range ctx.Index.Packages {
+			if pkg.Name == p.Name && pkg.Version == p.Version {
+				found = true
+				p = pkg
 			}
 		}
-	} else {
-		index = &apkrepo.ApkIndex{}
 
-		for _, pkg := range packages {
-			if pkg != nil {
-				index.Packages = append(index.Packages, pkg)
-			}
+		if !found {
+			ctx.Index.Packages = append(ctx.Index.Packages, pkg)
 		}
 	}
 
@@ -211,12 +225,30 @@ func (ctx *Context) GenerateIndex() error {
 		}
 	}
 
-	ctx.Logger.Printf("generating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
-	archive, err := apkrepo.ArchiveFromIndex(index)
+	ctx.Logger.Printf("updating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
+
+	return nil
+}
+
+func (ctx *Context) GenerateIndex() error {
+	if err := ctx.UpdateIndex(); err != nil {
+		return fmt.Errorf("updating index: %w", err)
+	}
+
+	indexWriter := ctx.WriteArchiveIndex
+	if err := indexWriter(ctx.IndexFile); err != nil {
+		return fmt.Errorf("writing index: %w", err)
+	}
+
+	return nil
+}
+
+func (ctx *Context) WriteArchiveIndex(destinationFile string) error {
+	archive, err := apkrepo.ArchiveFromIndex(&ctx.Index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
 	}
-	outFile, err := os.Create(ctx.IndexFile)
+	outFile, err := os.Create(destinationFile)
 	if err != nil {
 		return fmt.Errorf("failed to create archive file: %w", err)
 	}
@@ -230,6 +262,25 @@ func (ctx *Context) GenerateIndex() error {
 		if err := sign.SignIndex(ctx.Logger, ctx.SigningKey, ctx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
+	}
+
+	return nil
+}
+
+func (ctx *Context) WriteJSONIndex(destinationFile string) error {
+	outFile, err := os.Create(destinationFile)
+	if err != nil {
+		return fmt.Errorf("failed to create index JSON file: %w", err)
+	}
+	defer outFile.Close()
+
+	jsonData, err := json.MarshalIndent(ctx.Index, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to write index as JSON: %w", err)
+	}
+
+	if _, err := outFile.Write(jsonData); err != nil {
+		return fmt.Errorf("failed to write index as JSON: %w", err)
 	}
 
 	return nil

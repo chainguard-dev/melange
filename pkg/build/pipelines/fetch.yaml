@@ -45,6 +45,11 @@ inputs:
       The number of times to retry fetching before failing.
     default: 5
 
+  delete:
+    description: |
+      Whether to delete the fetched artifact after unpacking.
+    default: true
+
 pipeline:
   - runs: |
       if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ]; then
@@ -80,4 +85,8 @@ pipeline:
 
       if [ "${{inputs.extract}}" = "true" ]; then
         tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
+      fi
+
+      if [ "${{inputs.delete}}" = "true" ]; then
+        rm $bn
       fi

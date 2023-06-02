@@ -47,6 +47,15 @@ func TestSubstVarWhitespace(t *testing.T) {
 	require.Equal(t, expected, result, "result does not match expected result")
 }
 
+func TestSubstVarUnderscore(t *testing.T) {
+	doc := "Hello ${{foo.BAR_BAZ}}!"
+	expected := "Hello bar-baz!"
+	result, err := Subst(doc, placeholderLookup)
+
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, expected, result, "result does not match expected result")
+}
+
 func TestSubstVarWhitespaceNewline(t *testing.T) {
 	doc := `Hello
 ${{ foo.bar }}

@@ -29,7 +29,7 @@ func Subst(inputExpr string, lookupFns ...VariableLookupFunction) (string, error
 	}
 
 	whiteSpace := goparsify.Many(goparsify.Exact(" "))
-	variableName := goparsify.Chars("a-z0-9.\\-")
+	variableName := goparsify.Chars("a-zA-Z0-9.\\-_")
 	variable := goparsify.Seq("${{", whiteSpace, variableName, whiteSpace, "}}").Map(func(n *goparsify.Result) {
 		if resolved, err := lookupFn(n.Child[2].Token); err == nil {
 			n.Token = resolved

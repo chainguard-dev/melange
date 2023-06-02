@@ -55,6 +55,10 @@ func TextExprIncomplete(t *testing.T) {
 }
 
 func placeholderLookup(key string) (string, error) {
+	if key == "foo.BAR_BAZ" {
+		return "bar-baz", nil
+	}
+
 	if key == "foo.bar" {
 		return "baz", nil
 	}

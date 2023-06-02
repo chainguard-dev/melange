@@ -80,7 +80,7 @@ func Evaluate(inputExpr string, lookupFns ...VariableLookupFunction) (bool, erro
 	unequal := goparsify.Exact("!=")
 	comps := goparsify.Any(equal, unequal)
 
-	variableName := goparsify.Chars("a-z0-9.")
+	variableName := goparsify.Chars("a-zA-Z0-9.\\-_")
 	variable := goparsify.Seq("${{", variableName, "}}").Map(func(n *goparsify.Result) {
 		if resolved, err := lookupFn(n.Child[1].Token); err == nil {
 			n.Token = resolved

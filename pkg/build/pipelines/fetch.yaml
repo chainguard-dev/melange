@@ -48,7 +48,7 @@ inputs:
   delete:
     description: |
       Whether to delete the fetched artifact after unpacking.
-    default: true
+    default: false
 
 pipeline:
   - runs: |

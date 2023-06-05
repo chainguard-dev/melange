@@ -36,6 +36,7 @@ func Build() *cobra.Command {
 	var sourceDir string
 	var cacheDir string
 	var cacheSource string
+	var apkCacheDir string
 	var guestDir string
 	var signingKey string
 	var generateIndex bool
@@ -73,6 +74,7 @@ func Build() *cobra.Command {
 				build.WithPipelineDir(pipelineDir),
 				build.WithCacheDir(cacheDir),
 				build.WithCacheSource(cacheSource),
+				build.WithPackageCacheDir(apkCacheDir),
 				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
@@ -117,6 +119,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
+	cmd.Flags().StringVar(&cacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
 	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")

@@ -28,6 +28,7 @@ melange build [flags]
 ### Options
 
 ```
+      --apk-cache-dir string        directory used for cached apk packages (default is system-defined cache directory)
       --arch strings                architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
       --breakpoint-label string     stop build execution at the specified label
       --build-date string           date used for the timestamps of the files inside the image

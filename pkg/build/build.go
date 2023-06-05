@@ -33,7 +33,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
-	apkfs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
@@ -385,6 +384,7 @@ type Context struct {
 	CreateBuildLog     bool
 	ignorePatterns     []*xignore.Pattern
 	CacheDir           string
+	ApkCacheDir        string
 	CacheSource        string
 	BreakpointLabel    string
 	ContinueLabel      string
@@ -832,6 +832,13 @@ func WithRunner(runner string) Option {
 	}
 }
 
+func WithPackageCacheDir(apkCacheDir string) Option {
+	return func(ctx *Context) error {
+		ctx.ApkCacheDir = apkCacheDir
+		return nil
+	}
+}
+
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
@@ -1197,15 +1204,14 @@ func (ctx *Context) BuildGuest(sigh context.Context) error {
 
 	ctx.Logger.Printf("building workspace in '%s' with apko", ctx.GuestDir)
 
-	fsys := apkfs.DirFS(ctx.GuestDir)
-	bc, err := apko_build.New(fsys,
+	bc, err := apko_build.New(ctx.GuestDir,
 		apko_build.WithImageConfiguration(ctx.Configuration.Environment),
 		apko_build.WithArch(ctx.Arch),
 		apko_build.WithExtraKeys(ctx.ExtraKeys),
 		apko_build.WithExtraRepos(ctx.ExtraRepos),
 		apko_build.WithLogger(ctx.Logger),
 		apko_build.WithDebugLogging(true),
-		apko_build.WithLocal(true),
+		apko_build.WithCacheDir(ctx.ApkCacheDir),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)

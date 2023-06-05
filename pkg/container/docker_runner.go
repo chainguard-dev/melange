@@ -259,7 +259,7 @@ type dockerLoader struct{}
 func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	dig, _, err := apko_oci.PublishImageFromLayer(ctx,
 		layer, bc.ImageConfiguration, bc.Options.SourceDateEpoch, arch,
-		bc.Logger(), bc.Options.SBOMPath, bc.Options.SBOMFormats, true, true, "melange:latest")
+		bc.Logger(), true, true, []string{"melange:latest"})
 	if err != nil {
 		return "", err
 	}

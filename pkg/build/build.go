@@ -1427,6 +1427,10 @@ func (ctx *Context) IsBuildLess() bool {
 }
 
 func (ctx *Context) PopulateCache() error {
+	if ctx.CacheDir == "" {
+		return nil
+	}
+
 	cmm, err := cacheItemsForBuild(ctx.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)

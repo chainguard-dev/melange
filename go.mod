@@ -3,9 +3,9 @@ module chainguard.dev/melange
 go 1.20
 
 require (
-	chainguard.dev/apko v0.8.1-0.20230605165730-4e8c9dbf5dbc
+	chainguard.dev/apko v0.8.1-0.20230605181514-e6a8234eef62
 	cloud.google.com/go/storage v1.30.1
-	github.com/chainguard-dev/go-apk v0.0.0-20230605143238-6f0137042269
+	github.com/chainguard-dev/go-apk v0.0.0-20230605180416-2829525a7136
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
 	github.com/docker/docker v24.0.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -92,7 +92,7 @@ require (
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/letsencrypt/boulder v0.0.0-20230602183507-dc269a63d5a2 // indirect
+	github.com/letsencrypt/boulder v0.0.0-20230605171119-2041e8723b28 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect

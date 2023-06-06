@@ -1796,12 +1796,13 @@ func (ctx *Context) Summarize() {
 // BuildFlavor determines if a build context uses glibc or musl, it returns
 // "gnu" for GNU systems, and "musl" for musl systems.
 func (ctx *Context) BuildFlavor() string {
-	matches, err := filepath.Glob(filepath.Join(ctx.GuestDir, "lib*", "libc.so.6"))
-	if err != nil || len(matches) == 0 {
-		return "musl"
+	for _, dir := range []string{"lib", "lib64"} {
+		if _, err := os.Stat(filepath.Join(ctx.GuestDir, dir, "libc.so.6")); err == nil {
+			return "gnu"
+		}
 	}
 
-	return "gnu"
+	return "musl"
 }
 
 // BuildTripletGnu returns the GNU autoconf build triplet, for example

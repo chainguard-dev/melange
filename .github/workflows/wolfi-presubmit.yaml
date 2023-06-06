@@ -1,0 +1,78 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build-melange:
+    name: Build melange and add to artifact cache
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        with:
+          go-version: '1.20'
+          check-latest: true
+
+      - name: build
+        run: |
+          make melange
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: melange-${{github.run_id}}
+          path: ${{github.workspace}}/melange
+          retention-days: 1
+
+  build-packages:
+    name: Build packages
+    needs: [build-melange]
+    # TODO: Set up a larger runner for this.
+    runs-on: ubuntu-latest
+
+    # This is a list of packages which covers basic and exotic uses of
+    # the built-in pipelines.  Goal is to balance efficiency while also
+    # exercising Melange with real-world package builds.
+    # Feel free to add additional packages to this matrix which exercise
+    # Melange in new ways (e.g. new pipelines, etc.)
+    strategy:
+      matrix:
+        package:
+          - hello-wolfi
+          - glibc
+          - tini
+          - lzo
+          - bubblewrap
+          - gdk-pixbuf
+          - gitsign
+          - guac
+          - exa
+          - s3cmd
+          - perl-yaml-syck
+          - xmlto
+
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        with:
+          repository: wolfi-dev/os
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: melange-${{github.run_id}}
+          path: ${{github.workspace}}/.melange-dir
+
+      - run: |
+          sudo mv ${{github.workspace}}/.melange-dir/melange /usr/bin/melange
+          sudo chmod a+x /usr/bin/melange
+          melange version
+
+      - run: |
+          sudo apt-get -y install bubblewrap
+
+      - run: |
+          make MELANGE="sudo melange" BUILDWORLD="no" packages/${{matrix.package}}

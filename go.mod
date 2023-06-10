@@ -3,9 +3,9 @@ module chainguard.dev/melange
 go 1.20
 
 require (
-	chainguard.dev/apko v0.8.1-0.20230605181514-e6a8234eef62
+	chainguard.dev/apko v0.8.1-0.20230609082444-066c0429217e
 	cloud.google.com/go/storage v1.30.1
-	github.com/chainguard-dev/go-apk v0.0.0-20230605180416-2829525a7136
+	github.com/chainguard-dev/go-apk v0.0.0-20230609080244-d76cea684189
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
 	github.com/docker/docker v24.0.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -118,9 +118,9 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xorcare/pointer v1.2.2 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect
-	go.mongodb.org/mongo-driver v1.11.6 // indirect
+	go.mongodb.org/mongo-driver v1.11.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/build v0.0.0-20230605164246-ca817f61f80c // indirect
+	golang.org/x/build v0.0.0-20230607155738-8c598b726276 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect

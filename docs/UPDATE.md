@@ -27,6 +27,8 @@ update:
   shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
   release-monitor:
     identifier: 38 # Mandatory, ID number for release monitor
+    strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
+    strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
 ```
 
 ## GitHub

@@ -29,6 +29,7 @@ type Capabilities struct {
 }
 
 type Config struct {
+	PackageName  string
 	Mounts       []BindMount
 	Capabilities Capabilities
 	Logger       log.Logger

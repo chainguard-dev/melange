@@ -162,7 +162,6 @@ func (l *lima) TerminatePod(ctx context.Context, cfg *Config) error {
 		return nil
 	}
 	return l.removeContainer(ctx, name, true)
-
 }
 
 // TestUsability determines if the lima runner can be used
@@ -250,7 +249,7 @@ func (l *lima) terminateVM(ctx context.Context, cfg *Config) error {
 
 func (l *lima) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
 	pr, pw := io.Pipe()
-	err := l.nerdctl(ctx, melangeVMName, nil, pw, nil, "exec", "-i", "tar", "cf", "-", "-C", runnerWorkdir)
+	err := l.nerdctl(ctx, melangeVMName, nil, pw, nil, "exec", "-i", "tar", "cf", "-", "-C", runnerWorkdir, "melange-out")
 	return pr, err
 }
 
@@ -412,7 +411,6 @@ func (l *lima) listContainers(ctx context.Context, id string) ([]map[string]stri
 		containers = append(containers, container)
 	}
 	return containers, nil
-
 }
 
 type limaOCILoader struct {

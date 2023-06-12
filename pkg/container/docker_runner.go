@@ -15,6 +15,7 @@
 package container
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -26,7 +27,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/util"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -239,19 +239,11 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 	}
 }
 
+// WorkspaceTar implements Runner
+// This is a noop for Docker, which uses bind-mounts to manage the workspace
 func (d *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-	defer cli.Close()
-
-	fullContainer, err := cli.ContainerExport(ctx, cfg.PodID)
-	if err != nil {
-		return nil, err
-	}
-	// need to wrap the io.ReadCloser to skip anything that is not in /home/build
-	return util.NewTarFilter(fullContainer, runnerWorkdir, true), nil
+	var buffer bytes.Buffer
+	return io.NopCloser(&buffer), nil
 }
 
 type dockerLoader struct{}

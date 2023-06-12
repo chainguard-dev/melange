@@ -336,6 +336,10 @@ type Update struct {
 type ReleaseMonitor struct {
 	// Required: ID number for release monitor
 	Identifier int `yaml:"identifier"`
+	// If the version in release monitor contains a prefix which should be ignored
+	StripPrefix string `yaml:"strip-prefix,omitempty"`
+	// If the version in release monitor contains a suffix which should be ignored
+	StripSuffix string `yaml:"strip-suffix,omitempty"`
 }
 
 // GitHubMonitor indicates using the GitHub API

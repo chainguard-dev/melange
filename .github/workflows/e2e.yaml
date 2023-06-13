@@ -72,7 +72,8 @@ jobs:
 
     - name: Build
       run: |
-        ./melange build --signing-key local-melange.rsa --pipeline-dir=pipelines examples/gnu-hello.yaml --arch=x86_64 --empty-workspace --runner kubernetes
+        # Pick an example that requires mounting to flex kontext.Bundle()
+        ./melange build --signing-key local-melange.rsa examples/simple-hello/melange.yaml --source-dir="examples/simple-hello" --workspace-dir="examples/simple-hello" --arch=x86_64 --runner kubernetes
 
   bootstrap:
     name: bootstrap package

@@ -49,8 +49,9 @@ import (
 )
 
 const (
-	KubernetesName           = "kubernetes"
-	KubernetesConfigFileName = ".melange.k8s.yaml"
+	KubernetesName                             = "kubernetes"
+	KubernetesConfigFileName                   = ".melange.k8s.yaml"
+	kubernetesBuilderPodWorkspaceContainerName = "workspace"
 )
 
 // k8s is a Runner implementation that uses kubernetes pods.
@@ -103,6 +104,8 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 
 	pod, err := podclient.Create(ctx, builderPod, metav1.CreateOptions{})
 	if err != nil {
+		data, _ := yaml.Marshal(builderPod)
+		k.logger.Warnf("failed creating builder pod\n%v", string(data))
 		return fmt.Errorf("creating builder pod: %v", err)
 	}
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
@@ -251,9 +254,10 @@ func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts
 		Namespace(k.Config.Namespace).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Command: cmd,
-			Stdout:  true,
-			Stderr:  true,
+			Container: kubernetesBuilderPodWorkspaceContainerName,
+			Command:   cmd,
+			Stdout:    true,
+			Stderr:    true,
 		}, scheme.ParameterCodec)
 
 	k.logger.Infof("executing command %v", cmd)
@@ -284,7 +288,7 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 
 		mountName := fmt.Sprintf("mount-%d", i)
 		k.logger.Infof("creating mount '%s' from %s at %s", mountName, mount.Source, mount.Destination)
-		bundle, err := kontext.Bundle(ctx, mount.Source, repo.Tag(fmt.Sprintf("%s-%s", cfg.PackageName, mountName)))
+		bundle, err := k.bundle(ctx, mount.Source, repo.Tag(fmt.Sprintf("%s-%s", cfg.PackageName, mountName)))
 		if err != nil {
 			return nil, err
 		}
@@ -312,6 +316,26 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 	}
 
 	return pod, nil
+}
+
+// bundle is a thin wrapper around kontext.Bundle that ensures the bundle is rooted in the given path
+// TODO: This should be upstreamed in kontext.Bundle() when we change that to use go-apk.FullFS
+func (k *k8s) bundle(ctx context.Context, path string, tag name.Tag) (name.Digest, error) {
+	var ref name.Digest
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ref, err
+	}
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			k.logger.Warnf("error changing directory back to %s: %v", cwd, err)
+		}
+	}()
+
+	if err := os.Chdir(path); err != nil {
+		return ref, err
+	}
+	return kontext.Bundle(ctx, ".", tag)
 }
 
 // filterMounts filters mounts that are not supported by the k8s runner
@@ -356,11 +380,13 @@ type KubernetesRunnerConfig struct {
 }
 
 type KubernetesRunnerConfigPodTemplate struct {
-	NodeSelector     map[string]string `json:"nodeSelector,omitempty" yaml:"nodeSelector,omitempty"`
-	Env              []corev1.EnvVar   `json:"env,omitempty" yaml:"env,omitempty"`
-	Affinity         *corev1.Affinity  `json:"affinity,omitempty" yaml:"affinity,omitempty"`
-	RuntimeClassName *string           `json:"runtimeClassName,omitempty" yaml:"runtimeClassName,omitempty"`
-	Volumes          []corev1.Volume   `json:"volumes,omitempty" yaml:"volumes,omitempty"`
+	ServiceAccountName string               `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
+	NodeSelector       map[string]string    `json:"nodeSelector,omitempty" yaml:"nodeSelector,omitempty"`
+	Env                []corev1.EnvVar      `json:"env,omitempty" yaml:"env,omitempty"`
+	Affinity           *corev1.Affinity     `json:"affinity,omitempty" yaml:"affinity,omitempty"`
+	RuntimeClassName   *string              `json:"runtimeClassName,omitempty" yaml:"runtimeClassName,omitempty"`
+	Volumes            []corev1.Volume      `json:"volumes,omitempty" yaml:"volumes,omitempty"`
+	VolumeMounts       []corev1.VolumeMount `json:"volumeMounts,omitempty" yaml:"volumeMounts,omitempty"`
 }
 
 // NewKubernetesConfig returns a default Kubernetes runner config setup
@@ -407,7 +433,7 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
-				Name:  "workspace",
+				Name:  kubernetesBuilderPodWorkspaceContainerName,
 				Image: cfg.ImgRef,
 				// ldconfig is run to prime ld.so.cache for glibc packages which require it.
 				Command: []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
@@ -444,6 +470,11 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			pod.Spec.Volumes = append(pod.Spec.Volumes, pt.Volumes...)
 		}
 
+		if pt.VolumeMounts != nil {
+			// Only mount to the workspace container
+			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, pt.VolumeMounts...)
+		}
+
 		for k, v := range pt.NodeSelector {
 			pod.Spec.NodeSelector[k] = v
 		}
@@ -458,6 +489,10 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 
 		if pt.Env != nil {
 			pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, pt.Env...)
+		}
+
+		if pt.ServiceAccountName != "" {
+			pod.Spec.ServiceAccountName = pt.ServiceAccountName
 		}
 	}
 

@@ -1889,6 +1889,7 @@ func (ctx *Context) WorkspaceConfig() *container.Config {
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
 func (ctx *Context) RetrieveWorkspace(sigh context.Context, cfg *container.Config) error {
+	ctx.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	r, err := ctx.Runner.WorkspaceTar(sigh, ctx.containerConfig)
 	if err != nil {
 		return err

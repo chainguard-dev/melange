@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
+	"knative.dev/pkg/ptr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -94,7 +95,7 @@ func Test_k8s_StartPod(t *testing.T) {
 			},
 		},
 		{
-			name:   "should support custom volume mounts",
+			name:   "should support custom volumes",
 			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				PodTemplate: &KubernetesRunnerConfigPodTemplate{
@@ -102,10 +103,14 @@ func Test_k8s_StartPod(t *testing.T) {
 						Name:         "foo",
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 					}},
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "foo",
+						MountPath: "/foo",
+					}},
 				},
 			},
 			wanter: func(got corev1.Pod) bool {
-				return got.Spec.Volumes[0].Name == "foo"
+				return got.Spec.Volumes[0].Name == "foo" && got.Spec.Containers[0].VolumeMounts[0].Name == "foo"
 			},
 		},
 		{
@@ -131,6 +136,30 @@ func Test_k8s_StartPod(t *testing.T) {
 			},
 			wanter: func(got corev1.Pod) bool {
 				return got.Spec.NodeSelector["cloud.google.com/compute-class"] != ""
+			},
+		},
+		{
+			name:   "should support custom service account names",
+			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			k8sCfg: &KubernetesRunnerConfig{
+				PodTemplate: &KubernetesRunnerConfigPodTemplate{
+					ServiceAccountName: "foo",
+				},
+			},
+			wanter: func(got corev1.Pod) bool {
+				return got.Spec.ServiceAccountName == "foo"
+			},
+		},
+		{
+			name:   "should support custom runtime classes",
+			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			k8sCfg: &KubernetesRunnerConfig{
+				PodTemplate: &KubernetesRunnerConfigPodTemplate{
+					RuntimeClassName: ptr.String("foo"),
+				},
+			},
+			wanter: func(got corev1.Pod) bool {
+				return *got.Spec.RuntimeClassName == "foo"
 			},
 		},
 	}

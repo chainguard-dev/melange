@@ -1589,6 +1589,16 @@ func (ctx *Context) BuildPackage(sigh context.Context) error {
 		}
 	}
 
+	for _, spkg := range ctx.Configuration.Subpackages {
+		pctx.Subpackage = &spkg
+		for _, p := range spkg.Pipeline {
+			if err := p.ApplyNeeds(&pctx); err != nil {
+				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
+			}
+		}
+	}
+	pctx.Subpackage = nil
+
 	if !ctx.IsBuildLess() {
 		if err := ctx.BuildGuest(sigh); err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)

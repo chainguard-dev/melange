@@ -41,5 +41,5 @@ func SignIndex() *cobra.Command {
 }
 
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
-	return sign.SignIndex(LogDefault(), signingKey, indexFile)
+	return sign.SignIndex(ctx, LogDefault(), signingKey, indexFile)
 }

@@ -15,6 +15,7 @@
 package index
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -259,7 +260,7 @@ func (ctx *Context) WriteArchiveIndex(destinationFile string) error {
 
 	if ctx.SigningKey != "" {
 		ctx.Logger.Printf("signing apk index at %s", ctx.IndexFile)
-		if err := sign.SignIndex(ctx.Logger, ctx.SigningKey, ctx.IndexFile); err != nil {
+		if err := sign.SignIndex(context.Background(), ctx.Logger, ctx.SigningKey, ctx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
 	}

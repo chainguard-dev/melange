@@ -3,9 +3,9 @@ module chainguard.dev/melange
 go 1.20
 
 require (
-	chainguard.dev/apko v0.8.1-0.20230609082444-066c0429217e
+	chainguard.dev/apko v0.8.1-0.20230615175452-31923041f28a
 	cloud.google.com/go/storage v1.30.1
-	github.com/chainguard-dev/go-apk v0.0.0-20230609080244-d76cea684189
+	github.com/chainguard-dev/go-apk v0.0.0-20230615173409-89c81e982f86
 	github.com/chainguard-dev/kontext v0.1.0
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
 	github.com/docker/docker v24.0.2+incompatible
@@ -27,10 +27,10 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
-	gitlab.alpinelinux.org/alpine/go v0.7.1-0.20230522152417-bbb20ba03a25
+	gitlab.alpinelinux.org/alpine/go v0.7.1-0.20230613043312-f696350aabb4
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/sync v0.2.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/sync v0.3.0
+	golang.org/x/sys v0.9.0
 	golang.org/x/time v0.3.0
 	google.golang.org/api v0.125.0
 	gopkg.in/yaml.v3 v3.0.1

@@ -34,10 +34,10 @@ require (
 	golang.org/x/time v0.3.0
 	google.golang.org/api v0.127.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.26.5
-	k8s.io/apimachinery v0.26.5
-	k8s.io/client-go v0.26.5
-	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
+	k8s.io/api v0.27.3
+	k8s.io/apimachinery v0.27.3
+	k8s.io/client-go v0.27.3
+	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f
 	knative.dev/pkg v0.0.0-20230531073936-5671699f23d9
 	sigs.k8s.io/release-utils v0.7.5-0.20230601212346-3866fe05b204
 	sigs.k8s.io/yaml v1.3.0
@@ -116,8 +116,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
-	github.com/onsi/ginkgo/v2 v2.9.1 // indirect
-	github.com/onsi/gomega v1.27.4 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

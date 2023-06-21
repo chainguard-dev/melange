@@ -25,6 +25,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
 	"github.com/chainguard-dev/kontext"
+	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -111,24 +112,26 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
 
 	if err := wait.PollImmediate(10*time.Second, k.Config.StartTimeout, func() (done bool, err error) {
-		k.logger.Infof("waiting for pod [%s/%s] to be ready...", pod.Namespace, pod.Name)
 		p, err := podclient.Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
+		ready := false
+		k.logger.Infof("pod [%s/%s] status:", pod.Namespace, pod.Name)
 		for _, condition := range p.Status.Conditions {
 			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-				return true, nil
+				ready = true
 			}
+			k.logger.Infof("  - %s=%s (%s): %s", condition.Type, condition.Status, condition.Reason, condition.Message)
 		}
-		return false, nil
+		return ready, nil
 	}); err != nil {
 		p, perr := podclient.Get(ctx, pod.Name, metav1.GetOptions{})
 		if perr != nil {
 			p = pod
 		}
 		data, _ := yaml.Marshal(p)
-		// NOTE: We don't dump pod logs here since they're generally useless becauase
+		// NOTE: We don't dump pod logs here since they're generally useless because
 		// all commands are already captured by melange, however this could change in
 		// the future
 		k.logger.Errorf("builder pod [%s/%s] timed out waiting for ready status, dumping pod data\n\n%s", pod.Namespace, pod.Name, string(data))
@@ -539,7 +542,11 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 
 	d, err := img.Digest()
 	if err != nil {
-		return "", nil
+		return "", err
+	}
+	sz, err := layer.Size()
+	if err != nil {
+		return "", err
 	}
 
 	repo, err := name.NewRepository(k.repo)
@@ -547,7 +554,7 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 		return "", err
 	}
 	ref := repo.Digest(d.String())
-	k.logger.Infof("pushing build image to %s", ref.String())
+	k.logger.Infof("pushing build image (%s) to %s", humanize.Bytes(uint64(sz)), ref.String())
 	if err := remote.Write(ref, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
 		return "", err
 	}

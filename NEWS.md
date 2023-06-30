@@ -1,3 +1,42 @@
+# Major changes from 0.3.0 to 0.4.0
+
+* The embedded apko component has been updated to 0.9.0.
+
+* Add support for running builds on a Kubernetes cluster.
+
+* Add support for caching APK dependencies.
+
+* Use `-trimpath` in Go pipelines.
+
+* Add a `split/debug` pipeline.
+
+* Scan subpackage pipelines for additional dependencies when calculating
+  the final build dependency list.
+
+* Optionally delete fetched artifacts after unpacking them.  This will
+  still not be done by default for backwards compatibility.
+
+* Allow underscores and capitalization in variables, such as `${{vars.FOO-BAR}}`.
+
+* Handle `SOURCE_DATE_EPOCH=` without a valid integer, treating it as equivalent
+  to `SOURCE_DATE_EPOCH=0`.
+
+* Add support for JSON representation of an APK index.
+
+* Add support for extended attributes in generated APK packages.
+
+* Set the `builddate` property in generated `.PKGINFO` files.
+
+* Add support for quilt-style patch series files to the `patch` pipeline.
+
+* Add an optional `deps` property to the `go/build` pipeline.
+
+* Skip ELF soname analysis SCA phase for binaries which have an ELF interpreter
+  set.
+
+* Add support for configuring the logger behavior using the `--log-policy`
+  option.
+
 # Major changes from 0.2.0 to 0.3.0
 
 * The embedded apko component has been updated to 0.7.3.

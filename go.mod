@@ -20,7 +20,7 @@ require (
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/lima-vm/lima v0.16.0
 	github.com/opencontainers/image-spec v1.1.0-rc3
-	github.com/package-url/packageurl-go v0.1.1-0.20220203205134-d70459300c8a
+	github.com/package-url/packageurl-go v0.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20230130182539-4dbf7e3e865e
 	github.com/sirupsen/logrus v1.9.3

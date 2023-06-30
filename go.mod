@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	chainguard.dev/apko v0.9.0
-	cloud.google.com/go/storage v1.30.1
+	cloud.google.com/go/storage v1.31.0
 	github.com/chainguard-dev/go-apk v0.0.0-20230630173347-b8abc44cc8ca
 	github.com/chainguard-dev/kontext v0.1.0
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e

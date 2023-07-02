@@ -111,8 +111,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	}
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
 
-	//nolint:staticcheck
-	if err := wait.PollImmediate(10*time.Second, k.Config.StartTimeout, func() (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, 10*time.Second, k.Config.StartTimeout, true, func(ctx context.Context) (done bool, err error) {
 		p, err := podclient.Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err

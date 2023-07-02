@@ -21,8 +21,7 @@ type RLHTTPClient struct {
 // Do dispatches the HTTP request to the network
 func (c *RLHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	// Comment out the below 5 lines to turn off ratelimiting
-	ctx := context.Background()
-	err := c.Ratelimiter.Wait(ctx) // This is a blocking call. Honors the rate limit
+	err := c.Ratelimiter.Wait(req.Context()) // This is a blocking call. Honors the rate limit
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +45,8 @@ func NewClient(rl *rate.Limiter) *RLHTTPClient {
 // sha256 hash of it.
 //
 // On success, it will return the sha256 hash as a string.
-func (r *RLHTTPClient) GetArtifactSHA256(artifactURI string) (string, error) {
-	req, err := http.NewRequest("GET", artifactURI, nil)
+func (r *RLHTTPClient) GetArtifactSHA256(ctx context.Context, artifactURI string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", artifactURI, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating request for %s", artifactURI)
 	}

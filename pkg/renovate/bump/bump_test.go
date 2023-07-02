@@ -1,6 +1,8 @@
 package bump
 
 import (
+	"context"
+
 	"chainguard.dev/melange/pkg/build"
 	"github.com/stretchr/testify/require"
 
@@ -51,7 +53,7 @@ func TestBump_versions(t *testing.T) {
 				WithTargetVersion(tt.newVersion),
 			)
 
-			err = ctx.Renovate(bumpRenovator)
+			err = ctx.Renovate(context.Background(), bumpRenovator)
 			assert.NoError(t, err)
 
 			resultData, err := os.ReadFile(filepath.Join(dir, tt.name))
@@ -93,7 +95,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 				WithExpectedCommit(tt.expectedCommit),
 			)
 
-			err = ctx.Renovate(bumpRenovator)
+			err = ctx.Renovate(context.Background(), bumpRenovator)
 			assert.NoError(t, err)
 
 			rs, err := build.ParseConfiguration(filepath.Join(dir, tt.name))

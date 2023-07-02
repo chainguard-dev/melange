@@ -94,5 +94,5 @@ func (o gemOptions) gemBuild(ctx context.Context, packageName string) error {
 
 	context.Logger.Printf("generating convert config files for gem %s", configFilename)
 
-	return context.Generate(packageName)
+	return context.Generate(ctx, packageName)
 }

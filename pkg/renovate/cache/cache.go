@@ -59,19 +59,19 @@ func New(opts ...Option) renovate.Renovator {
 
 	for _, opt := range opts {
 		if err := opt(&cfg); err != nil {
-			return func(rc *renovate.RenovationContext) error {
+			return func(context.Context, *renovate.RenovationContext) error {
 				return fmt.Errorf("while constructing: %w", err)
 			}
 		}
 	}
 
 	if cfg.CacheDir == "" {
-		return func(rc *renovate.RenovationContext) error {
+		return func(context.Context, *renovate.RenovationContext) error {
 			return fmt.Errorf("cache directory is not set")
 		}
 	}
 
-	return func(rc *renovate.RenovationContext) error {
+	return func(ctx context.Context, rc *renovate.RenovationContext) error {
 		// Find the package.name and package.version nodes.
 		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
 		if err != nil {
@@ -104,7 +104,7 @@ func New(opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("fetch"))
 
 		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := visitFetch(fetchNode, cfg); err != nil {
+			if err := visitFetch(ctx, fetchNode, cfg); err != nil {
 				return err
 			}
 		}
@@ -114,7 +114,7 @@ func New(opts ...Option) renovate.Renovator {
 }
 
 // visitFetch takes a "fetch" pipeline node
-func visitFetch(node *yaml.Node, cfg CacheConfig) error {
+func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -133,7 +133,7 @@ func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 	log.Printf("  uri: %s", uriNode.Value)
 	log.Printf("  evaluated: %s", evaluatedUri)
 
-	downloadedFile, err := util.DownloadFile(evaluatedUri)
+	downloadedFile, err := util.DownloadFile(ctx, evaluatedUri)
 	if err != nil {
 		return err
 	}
@@ -156,14 +156,14 @@ func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 	// Update expected hash nodes.
 	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
 	if err == nil {
-		if err := addFileToCache(cfg, downloadedFile, fileSHA256, nodeSHA256.Value, "sha256"); err != nil {
+		if err := addFileToCache(ctx, cfg, downloadedFile, fileSHA256, nodeSHA256.Value, "sha256"); err != nil {
 			return err
 		}
 	}
 
 	nodeSHA512, err := renovate.NodeFromMapping(withNode, "expected-sha512")
 	if err == nil {
-		if err := addFileToCache(cfg, downloadedFile, fileSHA512, nodeSHA512.Value, "sha512"); err != nil {
+		if err := addFileToCache(ctx, cfg, downloadedFile, fileSHA512, nodeSHA512.Value, "sha512"); err != nil {
 			return err
 		}
 	}
@@ -172,7 +172,7 @@ func visitFetch(node *yaml.Node, cfg CacheConfig) error {
 }
 
 // addFileToCache adds a file to the CacheDir.
-func addFileToCache(cfg CacheConfig, downloadedFile string, compHash string, cfgHash string, hashFamily string) error {
+func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string, compHash string, cfgHash string, hashFamily string) error {
 	if compHash != cfgHash {
 		return fmt.Errorf("%s mismatch: %s != %s", hashFamily, compHash, cfgHash)
 	}
@@ -182,14 +182,12 @@ func addFileToCache(cfg CacheConfig, downloadedFile string, compHash string, cfg
 
 	var destinationFile io.WriteCloser
 	if strings.HasPrefix(cfg.CacheDir, "gs://") {
-		cctx := context.TODO()
-
 		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cfg.CacheDir, "gs://"), "/")
-		client, err := storage.NewClient(cctx)
+		client, err := storage.NewClient(ctx)
 		if err != nil {
 			return err
 		}
-		destinationFile = client.Bucket(bucket).Object(path.Join(prefix, filename)).NewWriter(cctx)
+		destinationFile = client.Bucket(bucket).Object(path.Join(prefix, filename)).NewWriter(ctx)
 	} else {
 		var err error
 		destinationFile, err = os.Create(destinationPath)

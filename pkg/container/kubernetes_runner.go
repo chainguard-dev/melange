@@ -213,9 +213,7 @@ func (k *k8s) TestUsability(ctx context.Context) bool {
 		},
 	}
 
-	response, err := k.clientset.AuthorizationV1().
-		SelfSubjectAccessReviews().
-		Create(context.TODO(), ssar, metav1.CreateOptions{})
+	response, err := k.clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, ssar, metav1.CreateOptions{})
 	if err != nil {
 		return false
 	}

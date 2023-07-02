@@ -14,6 +14,7 @@
 package python
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -80,7 +81,7 @@ func TestGetPythonMeta(t *testing.T) {
 		p := strings.Split(pack.Name(), ".")
 
 		// Ensure expected == got
-		got, err := pythonctx.PackageIndex.Get(p[0], pythonctx.PackageVersion)
+		got, err := pythonctx.PackageIndex.Get(context.Background(), p[0], pythonctx.PackageVersion)
 		fmt.Printf("Comparing GOT %s to Expected %s\n", got.Info.Name, expected.Info.Name)
 		assert.NoError(t, err)
 		assert.Equal(t, expected.Info.Name, got.Info.Name)
@@ -109,12 +110,12 @@ func TestFindDependencies(t *testing.T) {
 		pythonctx, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
-		p, err := pythonctx.PackageIndex.Get(pythonctx.PackageName, pythonctx.PackageVersion)
+		p, err := pythonctx.PackageIndex.Get(context.Background(), pythonctx.PackageName, pythonctx.PackageVersion)
 		assert.NoError(t, err)
 		pythonctx.ToCheck = append(pythonctx.ToCheck, p.Info.Name)
 
 		// Build list of dependencies
-		err = pythonctx.findDep()
+		err = pythonctx.findDep(context.Background())
 		assert.NoError(t, err)
 
 		log.Printf("[%s] Generating %v files", pythonctx.PackageName, len(pythonctx.ToGenerate))
@@ -132,12 +133,13 @@ func TestFindDependencies(t *testing.T) {
 }
 
 func TestGenerateManifest(t *testing.T) {
+	ctx := context.Background()
 
 	for i := range versions {
 		pythonctx, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
-		got, err := pythonctx.generateManifest(pythonctx.Package, pythonctx.PackageVersion)
+		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion)
 		assert.NoError(t, err)
 
 		// Check Package

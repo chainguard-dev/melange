@@ -15,6 +15,7 @@
 package renovate
 
 import (
+	"context"
 	"os"
 
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
@@ -57,11 +58,11 @@ type RenovationContext struct {
 }
 
 // Renovator performs a renovation.
-type Renovator func(rc *RenovationContext) error
+type Renovator func(ctx context.Context, rc *RenovationContext) error
 
 // Renovate loads a config file, applies a chain of Renovators
 // to perform a renovation, and writes the result back.
-func (c *Context) Renovate(renovators ...Renovator) error {
+func (c *Context) Renovate(ctx context.Context, renovators ...Renovator) error {
 	rc := RenovationContext{Context: c}
 
 	if err := rc.LoadConfig(); err != nil {
@@ -69,7 +70,7 @@ func (c *Context) Renovate(renovators ...Renovator) error {
 	}
 
 	for _, ren := range renovators {
-		if err := ren(&rc); err != nil {
+		if err := ren(ctx, &rc); err != nil {
 			return err
 		}
 	}

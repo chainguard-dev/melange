@@ -1,6 +1,7 @@
 package python
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -101,29 +102,29 @@ func (p *PackageIndex) CheckSourceDeps(projectName string) error {
 	return nil
 }
 
-func (p *PackageIndex) Get(projectName, version string) (*Package, error) {
+func (p *PackageIndex) Get(ctx context.Context, projectName, version string) (*Package, error) {
 	if version == "" {
-		return p.GetLatest(projectName)
+		return p.GetLatest(ctx, projectName)
 	} else {
-		return p.GetVersion(projectName, version)
+		return p.GetVersion(ctx, projectName, version)
 	}
 }
 
-func (p *PackageIndex) GetLatest(projectName string) (*Package, error) {
+func (p *PackageIndex) GetLatest(ctx context.Context, projectName string) (*Package, error) {
 	endpoint := fmt.Sprintf("pypi/%s/json", projectName)
-	return p.packageReq(endpoint)
+	return p.packageReq(ctx, endpoint)
 }
 
-func (p *PackageIndex) GetVersion(projectName, version string) (*Package, error) {
+func (p *PackageIndex) GetVersion(ctx context.Context, projectName, version string) (*Package, error) {
 	endpoint := fmt.Sprintf("pypi/%s/%s/json", projectName, version)
-	return p.packageReq(endpoint)
+	return p.packageReq(ctx, endpoint)
 }
 
-func (p *PackageIndex) packageReq(endpoint string) (*Package, error) {
+func (p *PackageIndex) packageReq(ctx context.Context, endpoint string) (*Package, error) {
 	var pkg *Package
 
 	url := fmt.Sprintf("%s/%s", p.url, endpoint)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}

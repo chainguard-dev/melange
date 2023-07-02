@@ -32,7 +32,7 @@ import (
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
 )
 
-type Context struct {
+type Index struct {
 	PackageFiles       []string
 	IndexFile          string
 	SourceIndexFile    string
@@ -43,39 +43,39 @@ type Context struct {
 	Index              apkrepo.ApkIndex
 }
 
-type Option func(*Context) error
+type Option func(*Index) error
 
 func WithMergeIndexFileFlag(mergeFlag bool) Option {
-	return func(ctx *Context) error {
-		ctx.MergeIndexFileFlag = mergeFlag
+	return func(idx *Index) error {
+		idx.MergeIndexFileFlag = mergeFlag
 		return nil
 	}
 }
 
 func WithIndexFile(indexFile string) Option {
-	return func(ctx *Context) error {
-		ctx.IndexFile = indexFile
-		ctx.SourceIndexFile = indexFile
+	return func(idx *Index) error {
+		idx.IndexFile = indexFile
+		idx.SourceIndexFile = indexFile
 		return nil
 	}
 }
 
 func WithSourceIndexFile(indexFile string) Option {
-	return func(ctx *Context) error {
-		ctx.SourceIndexFile = indexFile
+	return func(idx *Index) error {
+		idx.SourceIndexFile = indexFile
 		return nil
 	}
 }
 
 func WithPackageFiles(packageFiles []string) Option {
-	return func(ctx *Context) error {
-		ctx.PackageFiles = append(ctx.PackageFiles, packageFiles...)
+	return func(idx *Index) error {
+		idx.PackageFiles = append(idx.PackageFiles, packageFiles...)
 		return nil
 	}
 }
 
 func WithPackageDir(packageDir string) Option {
-	return func(ctx *Context) error {
+	return func(idx *Index) error {
 		files, err := os.ReadDir(packageDir)
 		if err != nil {
 			return fmt.Errorf("unable to list packages: %w", err)
@@ -88,14 +88,14 @@ func WithPackageDir(packageDir string) Option {
 			}
 		}
 
-		ctx.PackageFiles = append(ctx.PackageFiles, apkFiles...)
+		idx.PackageFiles = append(idx.PackageFiles, apkFiles...)
 		return nil
 	}
 }
 
 func WithSigningKey(signingKey string) Option {
-	return func(ctx *Context) error {
-		ctx.SigningKey = signingKey
+	return func(idx *Index) error {
+		idx.SigningKey = signingKey
 		return nil
 	}
 }
@@ -103,14 +103,14 @@ func WithSigningKey(signingKey string) Option {
 // WithExpectedArch sets the expected package architecture.  Any packages with
 // an unexpected architecture will not be indexed.
 func WithExpectedArch(expectedArch string) Option {
-	return func(ctx *Context) error {
-		ctx.ExpectedArch = expectedArch
+	return func(idx *Index) error {
+		idx.ExpectedArch = expectedArch
 		return nil
 	}
 }
 
-func New(opts ...Option) (*Context, error) {
-	ctx := Context{
+func New(opts ...Option) (*Index, error) {
+	idx := Index{
 		PackageFiles: []string{},
 		Logger: &logrus.Logger{
 			Out:       os.Stderr,
@@ -121,15 +121,15 @@ func New(opts ...Option) (*Context, error) {
 	}
 
 	for _, opt := range opts {
-		if err := opt(&ctx); err != nil {
+		if err := opt(&idx); err != nil {
 			return nil, err
 		}
 	}
 
-	return &ctx, nil
+	return &idx, nil
 }
 
-func (ctx *Context) LoadIndex(sourceFile string) error {
+func (idx *Index) LoadIndex(sourceFile string) error {
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -145,24 +145,24 @@ func (ctx *Context) LoadIndex(sourceFile string) error {
 		return fmt.Errorf("failed to read apkindex from archive file: %w", err)
 	}
 
-	ctx.Index.Description = index.Description
-	ctx.Index.Packages = append(ctx.Index.Packages, index.Packages...)
+	idx.Index.Description = index.Description
+	idx.Index.Packages = append(idx.Index.Packages, index.Packages...)
 
-	ctx.Logger.Printf("loaded %d/%d packages from index %s", len(ctx.Index.Packages), len(index.Packages), sourceFile)
+	idx.Logger.Printf("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), sourceFile)
 
 	return nil
 }
 
-func (ctx *Context) UpdateIndex() error {
-	packages := make([]*apkrepo.Package, len(ctx.PackageFiles))
+func (idx *Index) UpdateIndex() error {
+	packages := make([]*apkrepo.Package, len(idx.PackageFiles))
 	var mtx sync.Mutex
 
 	g := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
 
-	for i, apkFile := range ctx.PackageFiles {
+	for i, apkFile := range idx.PackageFiles {
 		i, apkFile := i, apkFile // capture the loop variables
 		if _, err := g.Execute(func() {
-			ctx.Logger.Printf("processing package %s", apkFile)
+			idx.Logger.Printf("processing package %s", apkFile)
 			f, err := os.Open(apkFile)
 			if err != nil {
 				// nolint:errcheck
@@ -177,9 +177,9 @@ func (ctx *Context) UpdateIndex() error {
 				return
 			}
 
-			if ctx.ExpectedArch != "" && pkg.Arch != ctx.ExpectedArch {
-				ctx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
-					pkg.Name, pkg.Version, pkg.Arch, ctx.ExpectedArch)
+			if idx.ExpectedArch != "" && pkg.Arch != idx.ExpectedArch {
+				idx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+					pkg.Name, pkg.Version, pkg.Arch, idx.ExpectedArch)
 				return
 			}
 
@@ -198,8 +198,8 @@ func (ctx *Context) UpdateIndex() error {
 		return err
 	}
 
-	if ctx.MergeIndexFileFlag {
-		if err := ctx.LoadIndex(ctx.SourceIndexFile); err != nil {
+	if idx.MergeIndexFileFlag {
+		if err := idx.LoadIndex(idx.SourceIndexFile); err != nil {
 			return err
 		}
 	}
@@ -207,7 +207,7 @@ func (ctx *Context) UpdateIndex() error {
 	for _, pkg := range packages {
 		found := false
 
-		for _, p := range ctx.Index.Packages {
+		for _, p := range idx.Index.Packages {
 			if pkg.Name == p.Name && pkg.Version == p.Version {
 				found = true
 				p = pkg
@@ -215,7 +215,7 @@ func (ctx *Context) UpdateIndex() error {
 		}
 
 		if !found {
-			ctx.Index.Packages = append(ctx.Index.Packages, pkg)
+			idx.Index.Packages = append(idx.Index.Packages, pkg)
 		}
 	}
 
@@ -226,26 +226,26 @@ func (ctx *Context) UpdateIndex() error {
 		}
 	}
 
-	ctx.Logger.Printf("updating index at %s with new packages: %v", ctx.IndexFile, pkgNames)
+	idx.Logger.Printf("updating index at %s with new packages: %v", idx.IndexFile, pkgNames)
 
 	return nil
 }
 
-func (ctx *Context) GenerateIndex() error {
-	if err := ctx.UpdateIndex(); err != nil {
+func (idx *Index) GenerateIndex() error {
+	if err := idx.UpdateIndex(); err != nil {
 		return fmt.Errorf("updating index: %w", err)
 	}
 
-	indexWriter := ctx.WriteArchiveIndex
-	if err := indexWriter(ctx.IndexFile); err != nil {
+	indexWriter := idx.WriteArchiveIndex
+	if err := indexWriter(idx.IndexFile); err != nil {
 		return fmt.Errorf("writing index: %w", err)
 	}
 
 	return nil
 }
 
-func (ctx *Context) WriteArchiveIndex(destinationFile string) error {
-	archive, err := apkrepo.ArchiveFromIndex(&ctx.Index)
+func (idx *Index) WriteArchiveIndex(destinationFile string) error {
+	archive, err := apkrepo.ArchiveFromIndex(&idx.Index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
 	}
@@ -258,9 +258,9 @@ func (ctx *Context) WriteArchiveIndex(destinationFile string) error {
 		return fmt.Errorf("failed to write contents to archive file: %w", err)
 	}
 
-	if ctx.SigningKey != "" {
-		ctx.Logger.Printf("signing apk index at %s", ctx.IndexFile)
-		if err := sign.SignIndex(context.Background(), ctx.Logger, ctx.SigningKey, ctx.IndexFile); err != nil {
+	if idx.SigningKey != "" {
+		idx.Logger.Printf("signing apk index at %s", idx.IndexFile)
+		if err := sign.SignIndex(context.Background(), idx.Logger, idx.SigningKey, idx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
 	}
@@ -268,14 +268,14 @@ func (ctx *Context) WriteArchiveIndex(destinationFile string) error {
 	return nil
 }
 
-func (ctx *Context) WriteJSONIndex(destinationFile string) error {
+func (idx *Index) WriteJSONIndex(destinationFile string) error {
 	outFile, err := os.Create(destinationFile)
 	if err != nil {
 		return fmt.Errorf("failed to create index JSON file: %w", err)
 	}
 	defer outFile.Close()
 
-	jsonData, err := json.MarshalIndent(ctx.Index, "", "  ")
+	jsonData, err := json.MarshalIndent(idx.Index, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to write index as JSON: %w", err)
 	}

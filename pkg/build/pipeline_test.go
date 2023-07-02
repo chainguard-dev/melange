@@ -45,9 +45,9 @@ func Test_substitutionMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run("sub", func(t *testing.T) {
-			ctx := &PipelineContext{
+			pb := &PipelineBuild{
 				Package: &Package{Name: "foo", Version: tt.initialVersion},
-				Context: &Context{
+				Build: &Build{
 					Configuration: Configuration{
 						VarTransforms: []VarTransforms{
 							{
@@ -60,7 +60,7 @@ func Test_substitutionMap(t *testing.T) {
 					},
 				},
 			}
-			m, err := substitutionMap(ctx)
+			m, err := substitutionMap(pb)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, m["${{vars.mangled-package-version}}"])
 		})

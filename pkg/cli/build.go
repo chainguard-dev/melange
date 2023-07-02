@@ -156,7 +156,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 	//
 	// Yes, this happens.  Really.
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
-	bcs := []*build.Context{}
+	bcs := []*build.Build{}
 	for _, arch := range archs {
 		opts := append(base_opts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
 

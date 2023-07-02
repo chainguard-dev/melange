@@ -39,22 +39,22 @@ type BuildOption struct {
 }
 
 // Apply applies a patch described by a BuildOption to a package build.
-func (bo BuildOption) Apply(ctx *Context) error {
+func (bo BuildOption) Apply(b *Build) error {
 	// Patch the variables block.
-	if ctx.Configuration.Vars == nil {
-		ctx.Configuration.Vars = make(map[string]string)
+	if b.Configuration.Vars == nil {
+		b.Configuration.Vars = make(map[string]string)
 	}
 
 	for k, v := range bo.Vars {
-		ctx.Configuration.Vars[k] = v
+		b.Configuration.Vars[k] = v
 	}
 
 	// Patch the build environment configuration.
 	lo := bo.Environment.Contents.Packages
-	ctx.Configuration.Environment.Contents.Packages = append(ctx.Configuration.Environment.Contents.Packages, lo.Add...)
+	b.Configuration.Environment.Contents.Packages = append(b.Configuration.Environment.Contents.Packages, lo.Add...)
 
 	for _, pkg := range lo.Remove {
-		pkgList := ctx.Configuration.Environment.Contents.Packages
+		pkgList := b.Configuration.Environment.Contents.Packages
 
 		for pos, ppkg := range pkgList {
 			if pkg == ppkg {
@@ -63,7 +63,7 @@ func (bo BuildOption) Apply(ctx *Context) error {
 			}
 		}
 
-		ctx.Configuration.Environment.Contents.Packages = pkgList
+		b.Configuration.Environment.Contents.Packages = pkgList
 	}
 
 	return nil

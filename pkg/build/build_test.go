@@ -172,7 +172,7 @@ func TestConfiguration_Load(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			log := nopLogger{}
-			ctx := Context{
+			ctx := Build{
 				ConfigFile: filepath.Join("testdata", "configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
 				Logger:     log,
 			}
@@ -240,7 +240,7 @@ package:
 	}
 
 	log := nopLogger{}
-	ctx := Context{
+	ctx := Build{
 		ConfigFile: f,
 		Logger:     log,
 	}

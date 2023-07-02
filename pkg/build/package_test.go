@@ -56,12 +56,12 @@ func Test_removeSelfProvidedDeps_WithEmptyProvides(t *testing.T) {
 func Test_GenerateControlData(t *testing.T) {
 	tests := []struct {
 		name string
-		pc   *PackageContext
+		pb   *PackageBuild
 		want string
 	}{{
 		name: "simple",
-		pc: &PackageContext{
-			Context: &Context{
+		pb: &PackageBuild{
+			Build: &Build{
 				SourceDateEpoch: time.Unix(0, 0),
 			},
 			Origin: &Package{
@@ -90,8 +90,8 @@ datahash = baadf00d
 `,
 	}, {
 		name: "source date epoch",
-		pc: &PackageContext{
-			Context: &Context{
+		pb: &PackageBuild{
+			Build: &Build{
 				SourceDateEpoch: time.Unix(12345678, 0),
 			},
 			Origin: &Package{
@@ -124,7 +124,7 @@ datahash = baadf00d
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			gotBuf := bytes.NewBuffer(nil)
-			err := test.pc.GenerateControlData(gotBuf)
+			err := test.pb.GenerateControlData(gotBuf)
 			if err != nil {
 				t.Fatalf("GenerateControlData() = %v", err)
 			}

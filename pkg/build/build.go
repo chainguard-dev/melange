@@ -34,6 +34,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
+	"go.opentelemetry.io/otel"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
@@ -1197,6 +1198,9 @@ func (cfg Configuration) PackageURLs(distro string) []string {
 
 // BuildGuest invokes apko to build the guest environment.
 func (b *Build) BuildGuest(ctx context.Context) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	defer span.End()
+
 	// Prepare workspace directory
 	if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
 		return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
@@ -1430,6 +1434,9 @@ func (b *Build) IsBuildLess() bool {
 }
 
 func (b *Build) PopulateCache(ctx context.Context) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
+	defer span.End()
+
 	if b.CacheDir == "" {
 		return nil
 	}
@@ -1499,7 +1506,10 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 	return nil
 }
 
-func (b *Build) PopulateWorkspace() error {
+func (b *Build) PopulateWorkspace(ctx context.Context) error {
+	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	defer span.End()
+
 	if b.EmptyWorkspace {
 		b.Logger.Printf("empty workspace requested")
 		return nil
@@ -1565,6 +1575,9 @@ func (sp Subpackage) ShouldRun(pb *PipelineBuild) (bool, error) {
 }
 
 func (b *Build) BuildPackage(ctx context.Context) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
+	defer span.End()
+
 	b.Summarize()
 
 	pb := PipelineBuild{
@@ -1613,7 +1626,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	if err := b.PopulateWorkspace(); err != nil {
+	if err := b.PopulateWorkspace(ctx); err != nil {
 		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
 
@@ -1674,7 +1687,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return err
 		}
 
-		if err := generator.GenerateSBOM(&sbom.Spec{
+		if err := generator.GenerateSBOM(ctx, &sbom.Spec{
 			Path:           filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
 			PackageName:    sp.Name,
 			PackageVersion: fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
@@ -1698,7 +1711,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
-	if err := generator.GenerateSBOM(&sbom.Spec{
+	if err := generator.GenerateSBOM(ctx, &sbom.Spec{
 		Path:           filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
 		PackageName:    b.Configuration.Package.Name,
 		PackageVersion: fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
@@ -1782,16 +1795,17 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),
 		}
 
-		if b, err := index.New(opts...); err != nil {
+		b, err := index.New(opts...)
+		if err != nil {
 			return fmt.Errorf("unable to create index b: %w", err)
-		} else {
-			if err := b.GenerateIndex(ctx); err != nil {
-				return fmt.Errorf("unable to generate index: %w", err)
-			}
+		}
 
-			if err := b.WriteJSONIndex(filepath.Join(packageDir, "APKINDEX.json")); err != nil {
-				return fmt.Errorf("unable to generate JSON index: %w", err)
-			}
+		if err := b.GenerateIndex(ctx); err != nil {
+			return fmt.Errorf("unable to generate index: %w", err)
+		}
+
+		if err := b.WriteJSONIndex(filepath.Join(packageDir, "APKINDEX.json")); err != nil {
+			return fmt.Errorf("unable to generate JSON index: %w", err)
 		}
 	}
 
@@ -1897,6 +1911,9 @@ func (b *Build) WorkspaceConfig() *container.Config {
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
 func (b *Build) RetrieveWorkspace(ctx context.Context, cfg *container.Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
+	defer span.End()
+
 	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
 	if err != nil {

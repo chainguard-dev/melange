@@ -30,6 +30,7 @@ import (
 	"github.com/korovkin/limiter"
 	"github.com/sirupsen/logrus"
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
+	"go.opentelemetry.io/otel"
 )
 
 type Index struct {
@@ -232,6 +233,9 @@ func (idx *Index) UpdateIndex() error {
 }
 
 func (idx *Index) GenerateIndex(ctx context.Context) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "GenerateIndex")
+	defer span.End()
+
 	if err := idx.UpdateIndex(); err != nil {
 		return fmt.Errorf("updating index: %w", err)
 	}

@@ -15,6 +15,7 @@
 package gem
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -120,17 +121,17 @@ func New() (GemContext, error) {
 // Generate is the entrypoint to generate a ruby gem melange file. It handles
 // recursively finding all dependencies for a gem and generating a melange file
 // for each.
-func (c *GemContext) Generate(packageName string) error {
+func (c *GemContext) Generate(ctx context.Context, packageName string) error {
 	c.ToCheck = []string{packageName}
 
-	err := c.findDependencies()
+	err := c.findDependencies(ctx)
 	if err != nil {
 		return err
 	}
 
 	for _, meta := range c.ToGenerate {
 		c.Logger.Printf("[%s] Create manifest", meta.Name)
-		generated, err := c.generateManifest(meta)
+		generated, err := c.generateManifest(ctx, meta)
 		if err != nil {
 			c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", meta.Name, err)
 		}
@@ -157,7 +158,7 @@ func (c *GemContext) Generate(packageName string) error {
 // of all transitive dependencies.
 //
 // TODO: Interpret the Version and use to query for gem
-func (c *GemContext) findDependencies() error {
+func (c *GemContext) findDependencies(ctx context.Context) error {
 	if len(c.ToCheck) < 1 {
 		return nil
 	}
@@ -166,7 +167,7 @@ func (c *GemContext) findDependencies() error {
 
 	c.Logger.Printf("[%s] Fetch metadata", c.ToCheck[0])
 	url := fmt.Sprintf(c.BaseURIFormat, c.ToCheck[0])
-	g, err := c.getGemMeta(url)
+	g, err := c.getGemMeta(ctx, url)
 	if err != nil {
 		return err
 	}
@@ -184,15 +185,15 @@ func (c *GemContext) findDependencies() error {
 	}
 
 	// recursive call
-	return c.findDependencies()
+	return c.findDependencies(ctx)
 }
 
 // getGemMeta handles talking to rubygems.org and pulling the ruby gem metadata
 //
 // It will handle converting the json into GemMeta struct which gets returned
 // to the caller.
-func (c *GemContext) getGemMeta(gemURI string) (GemMeta, error) {
-	req, err := http.NewRequest("GET", gemURI, nil)
+func (c *GemContext) getGemMeta(ctx context.Context, gemURI string) (GemMeta, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", gemURI, nil)
 	if err != nil {
 		return GemMeta{}, errors.Wrapf(err, "creating request for %s", gemURI)
 	}
@@ -235,8 +236,7 @@ func (c *GemContext) getGemMeta(gemURI string) (GemMeta, error) {
 // occurs should not stop the process, instead it should indicate in the logs
 // and generated melange manifest what happened. That way the generation process
 // can continue and discrepancies can be handled later.
-func (c *GemContext) generateManifest(g GemMeta) (manifest.GeneratedMelangeConfig, error) {
-
+func (c *GemContext) generateManifest(ctx context.Context, g GemMeta) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
 	generated := manifest.GeneratedMelangeConfig{}
 
@@ -245,7 +245,7 @@ func (c *GemContext) generateManifest(g GemMeta) (manifest.GeneratedMelangeConfi
 	generated.Package = c.generatePackage(g)
 	generated.Environment = c.generateEnvironment()
 	generated.Vars = c.generateVars(g)
-	generated.Pipeline = c.generatePipeline(g)
+	generated.Pipeline = c.generatePipeline(ctx, g)
 
 	return generated, nil
 }
@@ -317,10 +317,10 @@ func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 // The sha256 of the artifact should be generated automatically. If the
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
-func (c *GemContext) generatePipeline(g GemMeta) []build.Pipeline {
+func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []build.Pipeline {
 	artifactURI := fmt.Sprintf("%s/archive/refs/tags/%s", g.RepoURI, fmt.Sprintf("v%s.tar.gz", g.Version))
 
-	artifactSHA, err := c.getGemArtifactSHA(artifactURI)
+	artifactSHA, err := c.getGemArtifactSHA(ctx, artifactURI)
 	if err != nil {
 		c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", g.Name, err)
 		c.Logger.Printf("[%s]  Investigate by going to https://rubygems.org/gems/%s", g.Name, g.Name)
@@ -364,8 +364,8 @@ func (c *GemContext) generatePipeline(g GemMeta) []build.Pipeline {
 // sha256 hash of it.
 //
 // On success, it will return the sha256 hash as a string.
-func (c *GemContext) getGemArtifactSHA(artifactURI string) (string, error) {
-	req, err := http.NewRequest("GET", artifactURI, nil)
+func (c *GemContext) getGemArtifactSHA(ctx context.Context, artifactURI string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", artifactURI, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating request for %s", artifactURI)
 	}

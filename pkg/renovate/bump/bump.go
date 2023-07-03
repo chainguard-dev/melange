@@ -15,6 +15,7 @@
 package bump
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
@@ -63,13 +64,13 @@ func New(opts ...Option) renovate.Renovator {
 
 	for _, opt := range opts {
 		if err := opt(&bcfg); err != nil {
-			return func(rc *renovate.RenovationContext) error {
+			return func(context.Context, *renovate.RenovationContext) error {
 				return fmt.Errorf("while constructing: %w", err)
 			}
 		}
 	}
 
-	return func(rc *renovate.RenovationContext) error {
+	return func(ctx context.Context, rc *renovate.RenovationContext) error {
 		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
 
 		// Find the package.version node first and change it.
@@ -104,7 +105,7 @@ func New(opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("fetch"))
 
 		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := updateFetch(fetchNode, bcfg.TargetVersion); err != nil {
+			if err := updateFetch(ctx, fetchNode, bcfg.TargetVersion); err != nil {
 				return err
 			}
 		}
@@ -124,7 +125,7 @@ func New(opts ...Option) renovate.Renovator {
 }
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
-func updateFetch(node *yaml.Node, targetVersion string) error {
+func updateFetch(ctx context.Context, node *yaml.Node, targetVersion string) error {
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -142,7 +143,7 @@ func updateFetch(node *yaml.Node, targetVersion string) error {
 	log.Printf("  uri: %s", uriNode.Value)
 	log.Printf("  evaluated: %s", evaluatedUri)
 
-	downloadedFile, err := util.DownloadFile(evaluatedUri)
+	downloadedFile, err := util.DownloadFile(ctx, evaluatedUri)
 	if err != nil {
 		return err
 	}

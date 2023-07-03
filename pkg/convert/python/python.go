@@ -15,6 +15,7 @@
 package python
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"regexp"
@@ -89,7 +90,7 @@ func New(packageName string) (PythonContext, error) {
 // Generate is the entrypoint to generate a ruby gem melange file. It handles
 // recursively finding all dependencies for a pypi package and generating a melange file
 // for each.
-func (c *PythonContext) Generate() error {
+func (c *PythonContext) Generate(ctx context.Context) error {
 
 	c.Logger.Printf("[%s] Generating manifests", c.PackageName)
 
@@ -97,7 +98,7 @@ func (c *PythonContext) Generate() error {
 
 	c.Logger.Printf("[%s] Retrieving Package information from %s", c.PackageName, c.PackageIndex.url)
 
-	p, err := c.PackageIndex.Get(c.PackageName, c.PackageVersion)
+	p, err := c.PackageIndex.Get(ctx, c.PackageName, c.PackageVersion)
 	if err != nil {
 		c.Logger.Printf("error getting latest for package %s - %s ", c.PackageName, err)
 		return err
@@ -107,7 +108,7 @@ func (c *PythonContext) Generate() error {
 	c.ToCheck = append(c.ToCheck, p.Info.Name)
 
 	//download the package json metadata and find all it's deps
-	err = c.findDep()
+	err = c.findDep(ctx)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,7 @@ func (c *PythonContext) Generate() error {
 			version = c.PackageVersion
 		}
 
-		generated, err := c.generateManifest(pack, version)
+		generated, err := c.generateManifest(ctx, pack, version)
 		if err != nil {
 			c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", pack.Info.Name, err)
 			return err
@@ -152,7 +153,7 @@ func stripDep(dep string) (string, error) {
 }
 
 // FindDep - given a python package retrieve all its dependencies
-func (c *PythonContext) findDep() error {
+func (c *PythonContext) findDep(ctx context.Context) error {
 	if len(c.ToCheck) == 0 {
 		return nil
 	}
@@ -160,7 +161,7 @@ func (c *PythonContext) findDep() error {
 	c.Logger.Printf("[%s] Check Dependency list: %v", c.PackageName, c.ToCheck)
 	c.Logger.Printf("[%s] Fetch Package Data", c.ToCheck[0])
 
-	p, err := c.PackageIndex.GetLatest(c.ToCheck[0])
+	p, err := c.PackageIndex.GetLatest(ctx, c.ToCheck[0])
 	if err != nil {
 		return err
 	}
@@ -198,10 +199,10 @@ func (c *PythonContext) findDep() error {
 	c.Logger.Printf("[%s] %v Number of deps", p.Info.Name, len(p.Dependencies))
 	c.ToGenerate[p.Info.Name] = *p
 	// recursive call
-	return c.findDep()
+	return c.findDep(ctx)
 }
 
-func (c *PythonContext) generateManifest(pack Package, version string) (manifest.GeneratedMelangeConfig, error) {
+func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
 	generated := manifest.GeneratedMelangeConfig{}
 
@@ -210,7 +211,7 @@ func (c *PythonContext) generateManifest(pack Package, version string) (manifest
 	generated.Package = c.generatePackage(pack, version)
 	generated.Environment = c.generateEnvironment(pack)
 
-	pipelines, err := c.generatePipeline(pack, version)
+	pipelines, err := c.generatePipeline(ctx, pack, version)
 	if err != nil {
 		return manifest.GeneratedMelangeConfig{}, err
 	}
@@ -292,7 +293,7 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 // The sha256 of the artifact should be generated automatically. If the
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
-func (c *PythonContext) generatePipeline(pack Package, version string) ([]build.Pipeline, error) {
+func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, version string) ([]build.Pipeline, error) {
 
 	var pipeline []build.Pipeline
 
@@ -311,7 +312,7 @@ func (c *PythonContext) generatePipeline(pack Package, version string) ([]build.
 		}
 	}
 
-	artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(release.Url)
+	artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, release.Url)
 	if err != nil {
 		c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)
 		c.Logger.Printf("[%s]  Or try 'curl %s' to check out the API", pack.Info.Name, pack.Info.DownloadUrl)

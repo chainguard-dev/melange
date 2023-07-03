@@ -231,20 +231,19 @@ func (idx *Index) UpdateIndex() error {
 	return nil
 }
 
-func (idx *Index) GenerateIndex() error {
+func (idx *Index) GenerateIndex(ctx context.Context) error {
 	if err := idx.UpdateIndex(); err != nil {
 		return fmt.Errorf("updating index: %w", err)
 	}
 
-	indexWriter := idx.WriteArchiveIndex
-	if err := indexWriter(idx.IndexFile); err != nil {
+	if err := idx.WriteArchiveIndex(ctx, idx.IndexFile); err != nil {
 		return fmt.Errorf("writing index: %w", err)
 	}
 
 	return nil
 }
 
-func (idx *Index) WriteArchiveIndex(destinationFile string) error {
+func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string) error {
 	archive, err := apkrepo.ArchiveFromIndex(&idx.Index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
@@ -260,7 +259,7 @@ func (idx *Index) WriteArchiveIndex(destinationFile string) error {
 
 	if idx.SigningKey != "" {
 		idx.Logger.Printf("signing apk index at %s", idx.IndexFile)
-		if err := sign.SignIndex(context.Background(), idx.Logger, idx.SigningKey, idx.IndexFile); err != nil {
+		if err := sign.SignIndex(ctx, idx.Logger, idx.SigningKey, idx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
 	}

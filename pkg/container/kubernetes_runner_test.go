@@ -21,7 +21,7 @@ import (
 func Test_k8s_StartPod(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	tests := []struct {
 		name   string

@@ -49,7 +49,7 @@ func UpdateCache() *cobra.Command {
 				return err
 			}
 
-			if err := cacheRenovator(&rc); err != nil {
+			if err := cacheRenovator(cmd.Context(), &rc); err != nil {
 				return err
 			}
 

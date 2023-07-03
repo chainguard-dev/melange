@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,10 +29,10 @@ func New(client *http.Client, indexURL string) Context {
 	}
 }
 
-func (c Context) GetWolfiPackages() (map[string]bool, error) {
+func (c Context) GetWolfiPackages(ctx context.Context) (map[string]bool, error) {
 	wolfiPackages := make(map[string]bool)
 
-	req, _ := http.NewRequest("GET", c.indexURL, nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", c.indexURL, nil)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return wolfiPackages, errors.Wrapf(err, "failed getting URI %s", PackageIndex)

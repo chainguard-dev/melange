@@ -1,6 +1,7 @@
 package gem
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -64,7 +65,7 @@ func TestGetGemMeta(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Ensure expected == got
-		got, err := gemctx.getGemMeta(gemUrl)
+		got, err := gemctx.getGemMeta(context.Background(), gemUrl)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, got)
 	}
@@ -95,7 +96,7 @@ func TestFindDependencies(t *testing.T) {
 	gemctx.ToCheck = []string{"async"}
 
 	// Build list of dependencies
-	err = gemctx.findDependencies()
+	err = gemctx.findDependencies(context.Background())
 	assert.NoError(t, err)
 
 	for _, gem := range gems {
@@ -141,7 +142,7 @@ func TestGenerateManifest(t *testing.T) {
 
 	g.RepoURI = server.URL
 
-	got, err := gemctx.generateManifest(g)
+	got, err := gemctx.generateManifest(context.Background(), g)
 	assert.NoError(t, err)
 
 	// Check Package

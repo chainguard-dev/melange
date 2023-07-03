@@ -2,6 +2,7 @@ package apkbuild
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -51,28 +52,28 @@ func TestGetApkDependencies(t *testing.T) {
 	// Close the server when test finishes
 	defer server.Close()
 
-	context := getTestContext(t, server)
+	tctx := getTestContext(t, server)
 
 	// the top level APKBUILD is cheese
-	err = context.Generate(server.URL+"/"+"cheese", "cheese")
+	err = tctx.Generate(context.Background(), server.URL+"/"+"cheese", "cheese")
 	assert.NoError(t, err)
 
 	// assert all dependencies were found
-	_, exists := context.ApkConvertors["bar"]
+	_, exists := tctx.ApkConvertors["bar"]
 	assert.True(t, exists, "bar not found")
-	_, exists = context.ApkConvertors["beer"]
+	_, exists = tctx.ApkConvertors["beer"]
 	assert.True(t, exists, "beer not found")
-	_, exists = context.ApkConvertors["cheese"]
+	_, exists = tctx.ApkConvertors["cheese"]
 	assert.True(t, exists, "cheese not found")
-	_, exists = context.ApkConvertors["crisps"]
+	_, exists = tctx.ApkConvertors["crisps"]
 	assert.True(t, exists, "crisps not found")
-	_, exists = context.ApkConvertors["foo"]
+	_, exists = tctx.ApkConvertors["foo"]
 	assert.True(t, exists, "foo not found")
-	_, exists = context.ApkConvertors["wine"]
+	_, exists = tctx.ApkConvertors["wine"]
 	assert.True(t, exists, "wine not found")
 
 	// assert correct order
-	assert.Equal(t, []string{"bar", "foo", "crisps", "wine", "beer", "cheese"}, context.OrderedKeys)
+	assert.Equal(t, []string{"bar", "foo", "crisps", "wine", "beer", "cheese"}, tctx.OrderedKeys)
 
 }
 
@@ -95,15 +96,15 @@ func TestGetApkBuildFile(t *testing.T) {
 	// Close the server when test finishes
 	defer server.Close()
 
-	context := getTestContext(t, server)
+	tctx := getTestContext(t, server)
 
-	context.Client.Client = server.Client()
-	err = context.getApkBuildFile(server.URL+"/"+pkgName, pkgName)
+	tctx.Client.Client = server.Client()
+	err = tctx.getApkBuildFile(context.Background(), server.URL+"/"+pkgName, pkgName)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(context.ApkConvertors), "apk converter not found")
+	assert.Equal(t, 1, len(tctx.ApkConvertors), "apk converter not found")
 
-	parsedApkbuild := context.ApkConvertors[pkgName].Apkbuild
+	parsedApkbuild := tctx.ApkConvertors[pkgName].Apkbuild
 	assert.Equal(t, "libx11", parsedApkbuild.Pkgname)
 	assert.Equal(t, "1.8.1", parsedApkbuild.Pkgver)
 	assert.Equal(t, "1", parsedApkbuild.Pkgrel)
@@ -224,7 +225,7 @@ func TestContext_getSourceSha(t *testing.T) {
 			}
 			pipeline := build.Pipeline{Uses: "fetch", With: with}
 
-			assert.NoError(t, c.buildFetchStep(c.ApkConvertors[tt.name]))
+			assert.NoError(t, c.buildFetchStep(context.Background(), c.ApkConvertors[tt.name]))
 			assert.Equalf(t, pipeline, c.ApkConvertors[tt.name].GeneratedMelangeConfig.Pipeline[0], "expected sha incorrect")
 
 		})

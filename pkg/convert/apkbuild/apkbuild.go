@@ -1,6 +1,7 @@
 package apkbuild
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
@@ -53,7 +54,7 @@ type ApkConvertor struct {
 }
 
 // New initialise including a map of existing wolfios packages
-func New() (Context, error) {
+func New(ctx context.Context) (Context, error) {
 	context := Context{
 		NavigationMap: &NavigationMap{
 			ApkConvertors: map[string]ApkConvertor{},
@@ -71,7 +72,7 @@ func New() (Context, error) {
 
 	var err error
 	wolfi := wolfios.New(http.DefaultClient, wolfios.PackageIndex)
-	context.WolfiOSPackages, err = wolfi.GetWolfiPackages()
+	context.WolfiOSPackages, err = wolfi.GetWolfiPackages(ctx)
 	if err != nil {
 		return context, errors.Wrapf(err, "failed to get packages from wolfi index")
 	}
@@ -79,16 +80,15 @@ func New() (Context, error) {
 	return context, nil
 }
 
-func (c Context) Generate(apkBuildURI, pkgName string) error {
-
+func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) error {
 	// get the contents of the APKBUILD file
-	err := c.getApkBuildFile(apkBuildURI, pkgName)
+	err := c.getApkBuildFile(ctx, apkBuildURI, pkgName)
 	if err != nil {
 		return errors.Wrap(err, "getting apk build file")
 	}
 
 	// build map of dependencies
-	err = c.buildMapOfDependencies(apkBuildURI, pkgName)
+	err = c.buildMapOfDependencies(ctx, apkBuildURI, pkgName)
 	if err != nil {
 		return errors.Wrap(err, "building map of dependencies")
 	}
@@ -103,7 +103,7 @@ func (c Context) Generate(apkBuildURI, pkgName string) error {
 		apkConverter := c.ApkConvertors[key]
 
 		// automatically add a fetch step to the convert config to fetch the source
-		err = c.buildFetchStep(apkConverter)
+		err = c.buildFetchStep(ctx, apkConverter)
 		if err != nil {
 			// lets not error if we can't automatically add the fetch step
 			c.Logger.Printf("skipping fetch step for %s", err.Error())
@@ -123,9 +123,9 @@ func (c Context) Generate(apkBuildURI, pkgName string) error {
 
 	return nil
 }
-func (c Context) getApkBuildFile(apkbuildURL, packageName string) error {
 
-	req, _ := http.NewRequest("GET", apkbuildURL, nil)
+func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName string) error {
+	req, _ := http.NewRequestWithContext(ctx, "GET", apkbuildURL, nil)
 	resp, err := c.Client.Do(req)
 
 	if err != nil {
@@ -158,8 +158,7 @@ func (c Context) getApkBuildFile(apkbuildURL, packageName string) error {
 }
 
 // recursively add dependencies, and their dependencies to our map
-func (c Context) buildMapOfDependencies(apkBuildURI, pkgName string) error {
-
+func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgName string) error {
 	convertor, exists := c.ApkConvertors[pkgName]
 	if !exists {
 		return fmt.Errorf("no top level apk convertor found for URI %s", apkBuildURI)
@@ -212,14 +211,14 @@ func (c Context) buildMapOfDependencies(apkBuildURI, pkgName string) error {
 
 		} else {
 			// if the dependency doesn't already exist let's go and get it
-			err := c.getApkBuildFile(dependencyApkBuildURI, dep)
+			err := c.getApkBuildFile(ctx, dependencyApkBuildURI, dep)
 			if err != nil {
 				// log and skip this dependency if there's an issue getting the APKBUILD as we are guessing the location of the APKBUILD
 				c.Logger.Printf("failed to get APKBUILD %s", dependencyApkBuildURI)
 				continue
 			}
 
-			err = c.buildMapOfDependencies(dependencyApkBuildURI, dep)
+			err = c.buildMapOfDependencies(ctx, dependencyApkBuildURI, dep)
 			if err != nil {
 				return errors.Wrap(err, "building map of dependencies")
 			}
@@ -249,8 +248,7 @@ func (c Context) transitiveDependencyList(convertor ApkConvertor) []string {
 }
 
 // add pipeline fetch steps, validate checksums and generate mconvert expected sha
-func (c Context) buildFetchStep(converter ApkConvertor) error {
-
+func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) error {
 	apkBuild := converter.Apkbuild
 
 	if len(apkBuild.Source) == 0 {
@@ -271,7 +269,7 @@ func (c Context) buildFetchStep(converter ApkConvertor) error {
 			return errors.Wrapf(err, "parsing URI %s", location)
 		}
 
-		req, _ := http.NewRequest("GET", location, nil)
+		req, _ := http.NewRequestWithContext(ctx, "GET", location, nil)
 		resp, err := c.Client.Do(req)
 
 		if err != nil {

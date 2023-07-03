@@ -67,7 +67,6 @@ convert python botocore`,
 // pythonBuild is the main cli function. It just sets up the PythonBuild context and
 // then executes the manifest generation.
 func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) error {
-
 	pythonContext, err := python.New(packageName)
 	if err != nil {
 		return errors.Wrap(err, "initialising python command")
@@ -83,6 +82,6 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 
 	pythonContext.Logger.Printf("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
 
-	return pythonContext.Generate()
+	return pythonContext.Generate(ctx)
 
 }

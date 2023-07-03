@@ -1,0 +1,2686 @@
+{
+ "info": {
+  "author": "Barry Warsaw",
+  "author_email": "barry@python.org",
+  "bugtrack_url": null,
+  "classifiers": [
+   "Development Status :: 5 - Production/Stable",
+   "Intended Audience :: Developers",
+   "License :: OSI Approved :: Apache Software License",
+   "Programming Language :: Python :: 3",
+   "Programming Language :: Python :: 3 :: Only"
+  ],
+  "description": ".. image:: https://img.shields.io/pypi/v/importlib_resources.svg\n   :target: https://pypi.org/project/importlib_resources\n\n.. image:: https://img.shields.io/pypi/pyversions/importlib_resources.svg\n\n.. image:: https://github.com/python/importlib_resources/workflows/tests/badge.svg\n   :target: https://github.com/python/importlib_resources/actions?query=workflow%3A%22tests%22\n   :alt: tests\n\n.. image:: https://img.shields.io/badge/code%20style-black-000000.svg\n   :target: https://github.com/psf/black\n   :alt: Code style: Black\n\n.. image:: https://readthedocs.org/projects/importlib-resources/badge/?version=latest\n   :target: https://importlib-resources.readthedocs.io/en/latest/?badge=latest\n\n.. image:: https://img.shields.io/badge/skeleton-2023-informational\n   :target: https://blog.jaraco.com/skeleton\n\n.. image:: https://tidelift.com/badges/package/pypi/importlib-resources\n   :target: https://tidelift.com/subscription/pkg/pypi-importlib-resources?utm_source=pypi-importlib-resources&utm_medium=readme\n\n``importlib_resources`` is a backport of Python standard library\n`importlib.resources\n<https://docs.python.org/3/library/importlib.html#module-importlib.resources>`_\nmodule for older Pythons.\n\nThe key goal of this module is to replace parts of `pkg_resources\n<https://setuptools.readthedocs.io/en/latest/pkg_resources.html>`_ with a\nsolution in Python's stdlib that relies on well-defined APIs.  This makes\nreading resources included in packages easier, with more stable and consistent\nsemantics.\n\nCompatibility\n=============\n\nNew features are introduced in this third-party library and later merged\ninto CPython. The following table indicates which versions of this library\nwere contributed to different versions in the standard library:\n\n.. list-table::\n   :header-rows: 1\n\n   * - importlib_resources\n     - stdlib\n   * - 5.9\n     - 3.12\n   * - 5.7\n     - 3.11\n   * - 5.0\n     - 3.10\n   * - 1.3\n     - 3.9\n   * - 0.5 (?)\n     - 3.7\n\nFor Enterprise\n==============\n\nAvailable as part of the Tidelift Subscription.\n\nThis project and the maintainers of thousands of other packages are working with Tidelift to deliver one enterprise subscription that covers all of the open source you use.\n\n`Learn more <https://tidelift.com/subscription/pkg/pypi-importlib-resources?utm_source=pypi-importlib-resources&utm_medium=referral&utm_campaign=github>`_.\n\nSecurity Contact\n================\n\nTo report a security vulnerability, please use the\n`Tidelift security contact <https://tidelift.com/security>`_.\nTidelift will coordinate the fix and disclosure.\n",
+  "description_content_type": "",
+  "docs_url": null,
+  "download_url": "",
+  "downloads": {
+   "last_day": -1,
+   "last_month": -1,
+   "last_week": -1
+  },
+  "home_page": "https://github.com/python/importlib_resources",
+  "keywords": "",
+  "license": "",
+  "maintainer": "",
+  "maintainer_email": "",
+  "name": "importlib-resources",
+  "package_url": "https://pypi.org/project/importlib-resources/",
+  "platform": null,
+  "project_url": "https://pypi.org/project/importlib-resources/",
+  "project_urls": {
+   "Documentation": "https://importlib-resources.readthedocs.io/",
+   "Homepage": "https://github.com/python/importlib_resources"
+  },
+  "release_url": "https://pypi.org/project/importlib-resources/5.12.0/",
+  "requires_dist": [
+   "zipp (>=3.1.0) ; python_version < \"3.10\"",
+   "sphinx (>=3.5) ; extra == 'docs'",
+   "jaraco.packaging (>=9) ; extra == 'docs'",
+   "rst.linker (>=1.9) ; extra == 'docs'",
+   "furo ; extra == 'docs'",
+   "sphinx-lint ; extra == 'docs'",
+   "jaraco.tidelift (>=1.4) ; extra == 'docs'",
+   "pytest (>=6) ; extra == 'testing'",
+   "pytest-checkdocs (>=2.4) ; extra == 'testing'",
+   "flake8 (<5) ; extra == 'testing'",
+   "pytest-cov ; extra == 'testing'",
+   "pytest-enabler (>=1.3) ; extra == 'testing'",
+   "pytest-black (>=0.3.7) ; (platform_python_implementation != \"PyPy\") and extra == 'testing'",
+   "pytest-mypy (>=0.9.1) ; (platform_python_implementation != \"PyPy\") and extra == 'testing'",
+   "pytest-flake8 ; (python_version < \"3.12\") and extra == 'testing'"
+  ],
+  "requires_python": ">=3.7",
+  "summary": "Read resources from Python packages",
+  "version": "5.12.0",
+  "yanked": false,
+  "yanked_reason": null
+ },
+ "last_serial": 16908760,
+ "releases": {
+  "0.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "921380479c870ffc7887a57da13b0ce3e8c8388fba9c9dfa1052987f3077a11f",
+     "md5": "a48edf52ff87dae5bdbfdf523479c857",
+     "sha256": "73f9081ab6fb5596ecd960fd8b59264be4acb2850d602c31370e50b47cdfc2e5"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.1.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a48edf52ff87dae5bdbfdf523479c857",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.4",
+    "size": 74634,
+    "upload_time": "2017-12-07T02:25:58",
+    "upload_time_iso_8601": "2017-12-07T02:25:58.006763Z",
+    "url": "https://files.pythonhosted.org/packages/92/13/80479c870ffc7887a57da13b0ce3e8c8388fba9c9dfa1052987f3077a11f/importlib_resources-0.1.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "16ab69e1779b88334e8c5de5c3f4c070642df73545ae9155d02a51ed67894a64",
+     "md5": "8186a2071e6f95e313d292f332b50e28",
+     "sha256": "8b5f88e70a1c9b9ea785d8ae772b9d3f0f9af2572088f7f99ed00181d7526a39"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8186a2071e6f95e313d292f332b50e28",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.4",
+    "size": 22987,
+    "upload_time": "2017-12-07T02:25:58",
+    "upload_time_iso_8601": "2017-12-07T02:25:58.947987Z",
+    "url": "https://files.pythonhosted.org/packages/16/ab/69e1779b88334e8c5de5c3f4c070642df73545ae9155d02a51ed67894a64/importlib_resources-0.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "bef5fef9b5d09d855cd6fc40ad276fefbebabd2c53977e5f010700313461d16b",
+     "md5": "e604f3db9b6350357f01b414a0073b16",
+     "sha256": "7a21054ba89c509d297df4394a51938860d1cbc2a8812b48cb2e27a17b02612c"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e604f3db9b6350357f01b414a0073b16",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 88161,
+    "upload_time": "2017-12-14T21:03:37",
+    "upload_time_iso_8601": "2017-12-14T21:03:37.063011Z",
+    "url": "https://files.pythonhosted.org/packages/be/f5/fef9b5d09d855cd6fc40ad276fefbebabd2c53977e5f010700313461d16b/importlib_resources-0.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7a9f3e6e6abcba1942033bcebf6aa7a8af0b0d5213bf36f2cbc3f65593e24a74",
+     "md5": "2eb235e24c22d318095141e8af3a7685",
+     "sha256": "3da44cbc9a0b48636f896e5d5695285e5e95d3d594cbe2e6b037b89237aed733"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "2eb235e24c22d318095141e8af3a7685",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 25286,
+    "upload_time": "2017-12-14T21:03:42",
+    "upload_time_iso_8601": "2017-12-14T21:03:42.540782Z",
+    "url": "https://files.pythonhosted.org/packages/7a/9f/3e6e6abcba1942033bcebf6aa7a8af0b0d5213bf36f2cbc3f65593e24a74/importlib_resources-0.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2677e1bf50d3c7fe636e39db78935d14c9509a920d300e55a80a6d1822d7e656",
+     "md5": "4a8aa17d8b45905a032a2ffebc952aaf",
+     "sha256": "4fb62c0401cdbdc01f3f4fb816935f009aae054217b1237922243a2b7d1e3f1b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.3-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4a8aa17d8b45905a032a2ffebc952aaf",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 77722,
+    "upload_time": "2018-02-18T03:20:57",
+    "upload_time_iso_8601": "2018-02-18T03:20:57.465037Z",
+    "url": "https://files.pythonhosted.org/packages/26/77/e1bf50d3c7fe636e39db78935d14c9509a920d300e55a80a6d1822d7e656/importlib_resources-0.3-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a2e145e3fa765dc6fa7bfb8290e1b3172eb75c4fcd13ae91094f81b6cbc2063a",
+     "md5": "27cc147eb9311cf3a75d799051f7d171",
+     "sha256": "bf815f6f566df65189e165725f040fa2c29b0ba1b58d12b9b41b582fc8cad405"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "27cc147eb9311cf3a75d799051f7d171",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 23456,
+    "upload_time": "2018-02-18T03:20:59",
+    "upload_time_iso_8601": "2018-02-18T03:20:59.043074Z",
+    "url": "https://files.pythonhosted.org/packages/a2/e1/45e3fa765dc6fa7bfb8290e1b3172eb75c4fcd13ae91094f81b6cbc2063a/importlib_resources-0.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "cdd747a35e84a4f48aece34095f7c02da3100384fc6400a8139f88a18023f34f",
+     "md5": "1f91b9a4ba472944064b62bdc4d56300",
+     "sha256": "dcfa996d4f988c5a4244c5a62c3decfc01488a19afa459726eac47ed41ec0c1d"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1f91b9a4ba472944064b62bdc4d56300",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": null,
+    "size": 23713,
+    "upload_time": "2018-03-27T23:05:23",
+    "upload_time_iso_8601": "2018-03-27T23:05:23.837516Z",
+    "url": "https://files.pythonhosted.org/packages/cd/d7/47a35e84a4f48aece34095f7c02da3100384fc6400a8139f88a18023f34f/importlib_resources-0.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.5": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "cf6f94d4dd6323b1ecb35bfbb0fcc7ea6f093bc670c19fd34b9862730c2eedc7",
+     "md5": "970f418703c6cebc15ac5fa96318c6c5",
+     "sha256": "1a77a87b039c669a72f7953774e35e2c3ec3787ff05f3100a74703995bd3b2d5"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.5.tar.gz",
+    "has_sig": false,
+    "md5_digest": "970f418703c6cebc15ac5fa96318c6c5",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": null,
+    "size": 21077,
+    "upload_time": "2018-05-01T21:27:22",
+    "upload_time_iso_8601": "2018-05-01T21:27:22.265013Z",
+    "url": "https://files.pythonhosted.org/packages/cf/6f/94d4dd6323b1ecb35bfbb0fcc7ea6f093bc670c19fd34b9862730c2eedc7/importlib_resources-0.5.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.6": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "84d99864d4d36fe3b2efd3781f5e64e26276c8587646683da9494096ddd2f880",
+     "md5": "f839fe58fa0ae7abac70e967d2169215",
+     "sha256": "c80561171a818fd05836e95a18d42d4bb444fc827c3c8f5e68e54134b769c500"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.6.tar.gz",
+    "has_sig": false,
+    "md5_digest": "f839fe58fa0ae7abac70e967d2169215",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 22235,
+    "upload_time": "2018-05-15T16:30:52",
+    "upload_time_iso_8601": "2018-05-15T16:30:52.090062Z",
+    "url": "https://files.pythonhosted.org/packages/84/d9/9864d4d36fe3b2efd3781f5e64e26276c8587646683da9494096ddd2f880/importlib_resources-0.6.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.7": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7e6c7fc2b8ffb6c75af4cf4be3215b32cbdb370841629afff9b832f5d8c67f87",
+     "md5": "684e6701b0a418d1312423377c39b20a",
+     "sha256": "e7e8e8fc6a48f8c024b629174730aa6ce15e5a1f0dc7c7162b8226ab28cce9be"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.7.tar.gz",
+    "has_sig": false,
+    "md5_digest": "684e6701b0a418d1312423377c39b20a",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 22263,
+    "upload_time": "2018-05-15T19:48:32",
+    "upload_time_iso_8601": "2018-05-15T19:48:32.799384Z",
+    "url": "https://files.pythonhosted.org/packages/7e/6c/7fc2b8ffb6c75af4cf4be3215b32cbdb370841629afff9b832f5d8c67f87/importlib_resources-0.7.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.8": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a94191dafab685a23df2a5e49122b9207701f0320b6b0802b0685bf5bb4b9d6a",
+     "md5": "b09da3ac142a580f3d0f86d3085b972d",
+     "sha256": "ba9acf2c7c84f29ccce2de61a77b25592fe0357e249f92e3c1333a9f9cccb8d6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.8-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b09da3ac142a580f3d0f86d3085b972d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 30665,
+    "upload_time": "2018-05-17T19:26:23",
+    "upload_time_iso_8601": "2018-05-17T19:26:23.176548Z",
+    "url": "https://files.pythonhosted.org/packages/a9/41/91dafab685a23df2a5e49122b9207701f0320b6b0802b0685bf5bb4b9d6a/importlib_resources-0.8-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9c32e5b4a9dfe5468dd988ece73659f40ff24fabcd8c88e47d2858ed5f55c781",
+     "md5": "88bd18c272439655c7a0d22b189a874b",
+     "sha256": "6a01fd2d5b90bd422783719e49528365db6739a1ee762ed8442868fbff80b2b3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-0.8.tar.gz",
+    "has_sig": false,
+    "md5_digest": "88bd18c272439655c7a0d22b189a874b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 22601,
+    "upload_time": "2018-05-17T19:26:24",
+    "upload_time_iso_8601": "2018-05-17T19:26:24.563264Z",
+    "url": "https://files.pythonhosted.org/packages/9c/32/e5b4a9dfe5468dd988ece73659f40ff24fabcd8c88e47d2858ed5f55c781/importlib_resources-0.8.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4c80690fbca0db502b632a37a008c56cd3a7ca3e65b84d62835781da601b0c7b",
+     "md5": "d03d27d8ebe58c723056dcd7cf8ac23d",
+     "sha256": "bd15a50b5d14749c0f9fa56986fe45988a5e3a8604ca09ca67b1a3ccc499d028"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d03d27d8ebe58c723056dcd7cf8ac23d",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 23238,
+    "upload_time": "2018-06-28T17:23:03",
+    "upload_time_iso_8601": "2018-06-28T17:23:03.720593Z",
+    "url": "https://files.pythonhosted.org/packages/4c/80/690fbca0db502b632a37a008c56cd3a7ca3e65b84d62835781da601b0c7b/importlib_resources-1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.0.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "81a3466b268701207e00b4440803be132e892bd9fc74f1fe786d7e33146ad2c7",
+     "md5": "22837445e3cd91107e99d77108b3a3f7",
+     "sha256": "87684c76eca1c1b76012a6771be451b2aadc549dbe2725d17ab6398d39878a33"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.0.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "22837445e3cd91107e99d77108b3a3f7",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 31845,
+    "upload_time": "2018-11-01T17:42:19",
+    "upload_time_iso_8601": "2018-11-01T17:42:19.435709Z",
+    "url": "https://files.pythonhosted.org/packages/81/a3/466b268701207e00b4440803be132e892bd9fc74f1fe786d7e33146ad2c7/importlib_resources-1.0.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d2091f4148ee5ec0022d122bb9a94428a70f858863d47df573dd8c382fa8f1c2",
+     "md5": "4830c01b074678d29fbb7c4299798716",
+     "sha256": "73f454e062ac149bafd262b18c1f9ebc91f53bd6474e028d1bf1c59ebd152efb"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.0.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4830c01b074678d29fbb7c4299798716",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 23276,
+    "upload_time": "2018-06-29T18:24:44",
+    "upload_time_iso_8601": "2018-06-29T18:24:44.043606Z",
+    "url": "https://files.pythonhosted.org/packages/d2/09/1f4148ee5ec0022d122bb9a94428a70f858863d47df573dd8c382fa8f1c2/importlib_resources-1.0.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.0.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2ff7b4aa02cdd3ee7ebba375969d77c00826aa15c5db84247d23c89522dccbfa",
+     "md5": "82a51b11a739864be25c6cf01734714e",
+     "sha256": "6e2783b2538bd5a14678284a3962b0660c715e5a0f10243fd5e00a4b5974f50b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.0.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "82a51b11a739864be25c6cf01734714e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 32195,
+    "upload_time": "2018-11-01T18:40:22",
+    "upload_time_iso_8601": "2018-11-01T18:40:22.069474Z",
+    "url": "https://files.pythonhosted.org/packages/2f/f7/b4aa02cdd3ee7ebba375969d77c00826aa15c5db84247d23c89522dccbfa/importlib_resources-1.0.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "83a4ce09af12e1a91b5b77cefc893ef5054619553734c5b42f143d93ed581744",
+     "md5": "e0a4f004b3508c17143bf969b5414d79",
+     "sha256": "d3279fd0f6f847cced9f7acc19bd3e5df54d34f93a2e7bb5f238f81545787078"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.0.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e0a4f004b3508c17143bf969b5414d79",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3",
+    "size": 23602,
+    "upload_time": "2018-11-01T18:40:23",
+    "upload_time_iso_8601": "2018-11-01T18:40:23.486428Z",
+    "url": "https://files.pythonhosted.org/packages/83/a4/ce09af12e1a91b5b77cefc893ef5054619553734c5b42f143d93ed581744/importlib_resources-1.0.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a423ffca4a0003519a156b178b3edd98ac9c9de051af76a993d15ed19862ea4d",
+     "md5": "917775c4d5736b4ced96a9100021f5ea",
+     "sha256": "57919feb41464d207fd44cbb9359bd2d9ee7fb3ab327e1686662f3f5a973412f"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.1.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "917775c4d5736b4ced96a9100021f5ea",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 30805,
+    "upload_time": "2020-03-01T00:02:57",
+    "upload_time_iso_8601": "2020-03-01T00:02:57.257084Z",
+    "url": "https://files.pythonhosted.org/packages/a4/23/ffca4a0003519a156b178b3edd98ac9c9de051af76a993d15ed19862ea4d/importlib_resources-1.1.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6fe818c42761b00368fb2e0d228e64bd05a130eea2a621757caec12ecd8b7b3a",
+     "md5": "83adc670558175f0eceb4ad31c290dff",
+     "sha256": "44bbe129a4ff27fcc0bae81f10f411bb011015b9afb1f0dde6234724d96966ae"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "83adc670558175f0eceb4ad31c290dff",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 21823,
+    "upload_time": "2020-03-01T00:02:58",
+    "upload_time_iso_8601": "2020-03-01T00:02:58.159273Z",
+    "url": "https://files.pythonhosted.org/packages/6f/e8/18c42761b00368fb2e0d228e64bd05a130eea2a621757caec12ecd8b7b3a/importlib_resources-1.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "45515baae3dde223ff6b64aecaf4c191d2a2679f60abf1270b337823af668bf5",
+     "md5": "5bed07cba5bb75e46cbff6ea0f662422",
+     "sha256": "6aefffdf63634bd94600dd0691fd6430902272bace0572934fa23c81473a7ff7"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.2.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5bed07cba5bb75e46cbff6ea0f662422",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 31077,
+    "upload_time": "2020-03-02T23:21:29",
+    "upload_time_iso_8601": "2020-03-02T23:21:29.578010Z",
+    "url": "https://files.pythonhosted.org/packages/45/51/5baae3dde223ff6b64aecaf4c191d2a2679f60abf1270b337823af668bf5/importlib_resources-1.2.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f88b0d7dca8a9c5249a3a3105f6d7fbd64675e3338d09ad6ba891cd51eca0bfc",
+     "md5": "3c14e8c5c0ac8fb1ce0cf2bb95db625b",
+     "sha256": "ce84b1c9c05078e1797700505bd1bc386cee9561002a9bdcfcba634adc6333e5"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3c14e8c5c0ac8fb1ce0cf2bb95db625b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 23250,
+    "upload_time": "2020-03-02T23:21:30",
+    "upload_time_iso_8601": "2020-03-02T23:21:30.900324Z",
+    "url": "https://files.pythonhosted.org/packages/f8/8b/0d7dca8a9c5249a3a3105f6d7fbd64675e3338d09ad6ba891cd51eca0bfc/importlib_resources-1.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.3.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9d591dde0de342dc94f7713e824c511943a74a44dc9ef5721a31c47544b58ef9",
+     "md5": "8906935cc92b7f8b9c6bebc4eb0f5351",
+     "sha256": "53a3c28bf4d71e7bc685d8e5310acb09c8efeccb76812ff1818f7a9bf535cdf9"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.3.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "8906935cc92b7f8b9c6bebc4eb0f5351",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 31683,
+    "upload_time": "2020-03-06T18:38:09",
+    "upload_time_iso_8601": "2020-03-06T18:38:09.512043Z",
+    "url": "https://files.pythonhosted.org/packages/9d/59/1dde0de342dc94f7713e824c511943a74a44dc9ef5721a31c47544b58ef9/importlib_resources-1.3.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9e93002482cf50d222965140549dc8e7f96d9d5727f0bce43f30f5d101569e79",
+     "md5": "140319aaa4d61659c1cebe4c9aebca10",
+     "sha256": "4ac5df83a9e7648d7df13cde41bc0ec26090ce6fcb182c8ed7315ad4a45f82ae"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.3.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "140319aaa4d61659c1cebe4c9aebca10",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 23632,
+    "upload_time": "2020-03-06T18:38:10",
+    "upload_time_iso_8601": "2020-03-06T18:38:10.901126Z",
+    "url": "https://files.pythonhosted.org/packages/9e/93/002482cf50d222965140549dc8e7f96d9d5727f0bce43f30f5d101569e79/importlib_resources-1.3.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.3.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "42e85f65011c40a9281418179e297cb95e5a9a2c72c0d5ab99ee081acc8483ef",
+     "md5": "06e2e2aa48b8314d4e18cf7643fae319",
+     "sha256": "1dff36d42d94bd523eeb847c25c7dd327cb56686d74a26dfcc8d67c504922d59"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.3.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "06e2e2aa48b8314d4e18cf7643fae319",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 31742,
+    "upload_time": "2020-03-06T21:40:58",
+    "upload_time_iso_8601": "2020-03-06T21:40:58.299085Z",
+    "url": "https://files.pythonhosted.org/packages/42/e8/5f65011c40a9281418179e297cb95e5a9a2c72c0d5ab99ee081acc8483ef/importlib_resources-1.3.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3236b5d7d89387ccc1f838add501c2eb72d8fa9d2fc107fd838260cce82c19d1",
+     "md5": "794f380f14b4bf02be3f40db466c89ee",
+     "sha256": "7f0e1b2b5f3981e39c52da0f99b2955353c5a139c314994d1126c2551ace9bdf"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.3.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "794f380f14b4bf02be3f40db466c89ee",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 23683,
+    "upload_time": "2020-03-06T21:40:59",
+    "upload_time_iso_8601": "2020-03-06T21:40:59.722259Z",
+    "url": "https://files.pythonhosted.org/packages/32/36/b5d7d89387ccc1f838add501c2eb72d8fa9d2fc107fd838260cce82c19d1/importlib_resources-1.3.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.4.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "8f36e678bc02cad98e566fbd7e6711ab2f389fc9adfb1edbb9f553eae41f9f97",
+     "md5": "a28bb24f9b9b1c13cc602e18125c1385",
+     "sha256": "dd98ceeef3f5ad2ef4cc287b8586da4ebad15877f351e9688987ad663a0a29b8"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.4.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a28bb24f9b9b1c13cc602e18125c1385",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 20862,
+    "upload_time": "2020-03-19T01:31:19",
+    "upload_time_iso_8601": "2020-03-19T01:31:19.455030Z",
+    "url": "https://files.pythonhosted.org/packages/8f/36/e678bc02cad98e566fbd7e6711ab2f389fc9adfb1edbb9f553eae41f9f97/importlib_resources-1.4.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "50ba5130f094984227628a10162f6251f3fcec688dbc31035fec6d2462d8d286",
+     "md5": "001eedf799e360a6e82a78e3ccbdcc61",
+     "sha256": "4019b6a9082d8ada9def02bece4a76b131518866790d58fdda0b5f8c603b36c2"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.4.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "001eedf799e360a6e82a78e3ccbdcc61",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 23220,
+    "upload_time": "2020-03-19T01:31:20",
+    "upload_time_iso_8601": "2020-03-19T01:31:20.729742Z",
+    "url": "https://files.pythonhosted.org/packages/50/ba/5130f094984227628a10162f6251f3fcec688dbc31035fec6d2462d8d286/importlib_resources-1.4.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.5.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7f2d88f166bcaadc09d9fdbf1c336ad118e01b7fe1155e15675e125be2ff1899",
+     "md5": "36ba3ff7544f526baa14a079d5946e5f",
+     "sha256": "85dc0b9b325ff78c8bef2e4ff42616094e16b98ebd5e3b50fe7e2f0bbcdcde49"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.5.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "36ba3ff7544f526baa14a079d5946e5f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 21592,
+    "upload_time": "2020-04-26T21:41:41",
+    "upload_time_iso_8601": "2020-04-26T21:41:41.967145Z",
+    "url": "https://files.pythonhosted.org/packages/7f/2d/88f166bcaadc09d9fdbf1c336ad118e01b7fe1155e15675e125be2ff1899/importlib_resources-1.5.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "8c4ad9ef85507e794a415a45785e7474a709d52902fb22761e2a0741d6084864",
+     "md5": "42eb5902c32dfaae5de38cabbd121656",
+     "sha256": "6f87df66833e1942667108628ec48900e02a4ab4ad850e25fbf07cb17cf734ca"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-1.5.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "42eb5902c32dfaae5de38cabbd121656",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 23660,
+    "upload_time": "2020-04-26T21:41:43",
+    "upload_time_iso_8601": "2020-04-26T21:41:43.147619Z",
+    "url": "https://files.pythonhosted.org/packages/8c/4a/d9ef85507e794a415a45785e7474a709d52902fb22761e2a0741d6084864/importlib_resources-1.5.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b6031865fdd49ec9a938f9f84b255d3d37863df9fbd18b48c1c3f761040cbf13",
+     "md5": "73af729cf71e9659166db629347b482c",
+     "sha256": "a86462cf34a6d391d1d5d598a5e2f5aac9fc00b265d40542e1196328f015d1f6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-2.0.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "73af729cf71e9659166db629347b482c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 22206,
+    "upload_time": "2020-06-08T01:18:24",
+    "upload_time_iso_8601": "2020-06-08T01:18:24.382061Z",
+    "url": "https://files.pythonhosted.org/packages/b6/03/1865fdd49ec9a938f9f84b255d3d37863df9fbd18b48c1c3f761040cbf13/importlib_resources-2.0.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "5ccf31f1b1605f18ebe35f2a5b83488f593f5b288d6d9d02afa2d5e66a063e48",
+     "md5": "341bac450399700a3d1dc9a3b55b3d43",
+     "sha256": "7f6aae2ed252ba10f5d1af5676b0e35f3b3eb7d3cc103b8365cc92aec0c79258"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-2.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "341bac450399700a3d1dc9a3b55b3d43",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 25657,
+    "upload_time": "2020-06-08T01:18:25",
+    "upload_time_iso_8601": "2020-06-08T01:18:25.524235Z",
+    "url": "https://files.pythonhosted.org/packages/5c/cf/31f1b1605f18ebe35f2a5b83488f593f5b288d6d9d02afa2d5e66a063e48/importlib_resources-2.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.0.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ce0694cb4028cbcb834c3a6a0c239ab37e76e293c75bed51a9cee2cb8337b47e",
+     "md5": "a6e398ee799140a943578c0bc62afc45",
+     "sha256": "83985739b3a6679702f9ab33f0ad016ad564664d0568a31ac14d7c64789453e6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-2.0.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a6e398ee799140a943578c0bc62afc45",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 22490,
+    "upload_time": "2020-06-13T16:35:21",
+    "upload_time_iso_8601": "2020-06-13T16:35:21.662417Z",
+    "url": "https://files.pythonhosted.org/packages/ce/06/94cb4028cbcb834c3a6a0c239ab37e76e293c75bed51a9cee2cb8337b47e/importlib_resources-2.0.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ad5fc20f6891b4a4e25b0c60d7c2eaac36453e91ce0ff83ca72b7adcd6d446d1",
+     "md5": "0cdfaf039eb1a1321aa6558f5913ed20",
+     "sha256": "f5edfcece1cc9435d0979c19e08739521f4cf1aa1adaf6e571f732df6f568962"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-2.0.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0cdfaf039eb1a1321aa6558f5913ed20",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 26060,
+    "upload_time": "2020-06-13T16:35:22",
+    "upload_time_iso_8601": "2020-06-13T16:35:22.541798Z",
+    "url": "https://files.pythonhosted.org/packages/ad/5f/c20f6891b4a4e25b0c60d7c2eaac36453e91ce0ff83ca72b7adcd6d446d1/importlib_resources-2.0.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ba030f9595c0c2ef12590877f3c47e5f579759ce5caf817f8256d5dcbd8a1177",
+     "md5": "e21b9c8dd5934a91fa5c362ceaa51690",
+     "sha256": "d028f66b66c0d5732dae86ba4276999855e162a749c92620a38c1d779ed138a7"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.0.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e21b9c8dd5934a91fa5c362ceaa51690",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 23147,
+    "upload_time": "2020-06-30T22:52:48",
+    "upload_time_iso_8601": "2020-06-30T22:52:48.363549Z",
+    "url": "https://files.pythonhosted.org/packages/ba/03/0f9595c0c2ef12590877f3c47e5f579759ce5caf817f8256d5dcbd8a1177/importlib_resources-3.0.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "460b7973c432eae095b60db1a37d6bf2c693cb4290b4d38d92f1bafe503c853d",
+     "md5": "718ac80a01b066a42886664f7e6abfb1",
+     "sha256": "19f745a6eca188b490b1428c8d1d4a0d2368759f32370ea8fb89cad2ab1106c3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "718ac80a01b066a42886664f7e6abfb1",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 26725,
+    "upload_time": "2020-06-30T22:52:49",
+    "upload_time_iso_8601": "2020-06-30T22:52:49.446685Z",
+    "url": "https://files.pythonhosted.org/packages/46/0b/7973c432eae095b60db1a37d6bf2c693cb4290b4d38d92f1bafe503c853d/importlib_resources-3.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d0c5a934790953d9355e64bfa4419a9111772ecc9337afd44fee41af1de18c7b",
+     "md5": "7dc605ba2f5e2a6e7596cfbc8ac44ef2",
+     "sha256": "100a4c1183827c835a90769894e267843a75012e66c5754883537c39b3860e26"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.1.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "7dc605ba2f5e2a6e7596cfbc8ac44ef2",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 24434,
+    "upload_time": "2020-10-22T21:23:05",
+    "upload_time_iso_8601": "2020-10-22T21:23:05.520180Z",
+    "url": "https://files.pythonhosted.org/packages/d0/c5/a934790953d9355e64bfa4419a9111772ecc9337afd44fee41af1de18c7b/importlib_resources-3.1.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d08cd7fe877fe1ed2f2651026b11304f0293f4040ac72f695a098a0be2c17ad7",
+     "md5": "4c277615b71d8a3ce2f32d21d008fb97",
+     "sha256": "d41352f348f8deba3b4820ba5d432f46de787a456c0d713ab63deb5074c186c1"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4c277615b71d8a3ce2f32d21d008fb97",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 27630,
+    "upload_time": "2020-10-22T21:23:06",
+    "upload_time_iso_8601": "2020-10-22T21:23:06.437445Z",
+    "url": "https://files.pythonhosted.org/packages/d0/8c/d7fe877fe1ed2f2651026b11304f0293f4040ac72f695a098a0be2c17ad7/importlib_resources-3.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.1.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "095e142e38fd958c672e7950ee2720c6ec5db7705c57048050e2b4c42488abc8",
+     "md5": "3c259d78e469eb8f15c3d2f93deb4111",
+     "sha256": "b2e45e7518111611b811870531757bedf0888993c316df515e1de76142d34b94"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.1.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "3c259d78e469eb8f15c3d2f93deb4111",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 24515,
+    "upload_time": "2020-10-23T15:46:44",
+    "upload_time_iso_8601": "2020-10-23T15:46:44.337235Z",
+    "url": "https://files.pythonhosted.org/packages/09/5e/142e38fd958c672e7950ee2720c6ec5db7705c57048050e2b4c42488abc8/importlib_resources-3.1.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a8ecd8efa1bd816ee2a8cce21665691e4383ef1e0f897f9e02f4b2aeb44a6e50",
+     "md5": "96b91aa4647f7eafb2d6300f8716e3dc",
+     "sha256": "f7e3ed111a2195518ebf30e2e1e772f24fc588920e46f8ea99167a63aa78c2c9"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.1.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "96b91aa4647f7eafb2d6300f8716e3dc",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 27715,
+    "upload_time": "2020-10-23T15:46:45",
+    "upload_time_iso_8601": "2020-10-23T15:46:45.368348Z",
+    "url": "https://files.pythonhosted.org/packages/a8/ec/d8efa1bd816ee2a8cce21665691e4383ef1e0f897f9e02f4b2aeb44a6e50/importlib_resources-3.1.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2405d81725e24bf6028a5753d2eab67d4ee7d8a20a793125727bf87f85e8dffc",
+     "md5": "49b2ab9ed87198ede472148e87cdb657",
+     "sha256": "8edc04db69df82b68f6d63925b368ef4d45c3c101e2c3fc418945bab395016ea"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.2.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "49b2ab9ed87198ede472148e87cdb657",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 24972,
+    "upload_time": "2020-10-26T01:44:43",
+    "upload_time_iso_8601": "2020-10-26T01:44:43.401830Z",
+    "url": "https://files.pythonhosted.org/packages/24/05/d81725e24bf6028a5753d2eab67d4ee7d8a20a793125727bf87f85e8dffc/importlib_resources-3.2.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d4e895fce77d10f7345647811a4b67e6dd28c24c15e7dd6512b83776f4cc4c65",
+     "md5": "3fff6593ab7d8bb04bd077d7d309c6ac",
+     "sha256": "3a06ef514291bec1cc89c905380b17a59c0381bc536500f322b56404f7a86ef6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3fff6593ab7d8bb04bd077d7d309c6ac",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 28171,
+    "upload_time": "2020-10-26T01:44:44",
+    "upload_time_iso_8601": "2020-10-26T01:44:44.283065Z",
+    "url": "https://files.pythonhosted.org/packages/d4/e8/95fce77d10f7345647811a4b67e6dd28c24c15e7dd6512b83776f4cc4c65/importlib_resources-3.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.2.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e6b5ca7ff4e244ae51e70f603889fcd67ee142050b539b3e2f40fbbd8ca316b5",
+     "md5": "93261c29feb6b5fdc622a7ac5fdc6b07",
+     "sha256": "e2860cf0c4bc999947228d18be154fa3779c5dde0b882bd2d7b3f4d25e698bd6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.2.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "93261c29feb6b5fdc622a7ac5fdc6b07",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 26200,
+    "upload_time": "2020-10-28T02:33:06",
+    "upload_time_iso_8601": "2020-10-28T02:33:06.329862Z",
+    "url": "https://files.pythonhosted.org/packages/e6/b5/ca7ff4e244ae51e70f603889fcd67ee142050b539b3e2f40fbbd8ca316b5/importlib_resources-3.2.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6017d57aea7af251871e6651690daef77e729447127405c2ef65097d8100c41d",
+     "md5": "16aa141e3e81d7ad2984c19970b7a218",
+     "sha256": "a9fe213ab6452708ec1b3f4ec6f2881b8ab3645cb4e5efb7fea2bbf05a91db3b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.2.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "16aa141e3e81d7ad2984c19970b7a218",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7",
+    "size": 28884,
+    "upload_time": "2020-10-28T02:33:07",
+    "upload_time_iso_8601": "2020-10-28T02:33:07.454139Z",
+    "url": "https://files.pythonhosted.org/packages/60/17/d57aea7af251871e6651690daef77e729447127405c2ef65097d8100c41d/importlib_resources-3.2.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.3.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c51fec86d2a5c48ac6490d4471b297885603cf0e8da89d5ffbf0bce6e57f4d64",
+     "md5": "1b46df6bc1e6906f873591aaa14764b4",
+     "sha256": "a3d34a8464ce1d5d7c92b0ea4e921e696d86f2aa212e684451cb1482c8d84ed5"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.3.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1b46df6bc1e6906f873591aaa14764b4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7",
+    "size": 26152,
+    "upload_time": "2020-10-28T23:32:00",
+    "upload_time_iso_8601": "2020-10-28T23:32:00.783173Z",
+    "url": "https://files.pythonhosted.org/packages/c5/1f/ec86d2a5c48ac6490d4471b297885603cf0e8da89d5ffbf0bce6e57f4d64/importlib_resources-3.3.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d134f2aedc50b3a32eefd249159ea7497ece70022e35f6531bd4718fd9688cb1",
+     "md5": "8df17c6ae1115357211f1956982f4d82",
+     "sha256": "7b51f0106c8ec564b1bef3d9c588bc694ce2b92125bbb6278f4f2f5b54ec3592"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.3.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8df17c6ae1115357211f1956982f4d82",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7",
+    "size": 29000,
+    "upload_time": "2020-10-28T23:32:02",
+    "upload_time_iso_8601": "2020-10-28T23:32:02.008613Z",
+    "url": "https://files.pythonhosted.org/packages/d1/34/f2aedc50b3a32eefd249159ea7497ece70022e35f6531bd4718fd9688cb1/importlib_resources-3.3.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.3.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "8d942f6ceee0c4e63bff0177c07e68d27c937a19f6bc77c4739755b49f5adb04",
+     "md5": "2db8c21c8c7f60cc5373be8588da1474",
+     "sha256": "42068585cc5e8c2bf0a17449817401102a5125cbfbb26bb0f43cde1568f6f2df"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.3.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2db8c21c8c7f60cc5373be8588da1474",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7",
+    "size": 26152,
+    "upload_time": "2020-12-23T03:02:53",
+    "upload_time_iso_8601": "2020-12-23T03:02:53.370474Z",
+    "url": "https://files.pythonhosted.org/packages/8d/94/2f6ceee0c4e63bff0177c07e68d27c937a19f6bc77c4739755b49f5adb04/importlib_resources-3.3.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e1bfb40e6ecb611fa3be5b0ecae7b37ae1fa0d8df3146477ec0a554e8f62c976",
+     "md5": "8db307bae9ec6c3c84298d75230e8043",
+     "sha256": "0ed250dbd291947d1a298e89f39afcc477d5a6624770503034b72588601bcc05"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-3.3.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8db307bae9ec6c3c84298d75230e8043",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7",
+    "size": 29012,
+    "upload_time": "2020-12-23T03:02:54",
+    "upload_time_iso_8601": "2020-12-23T03:02:54.562200Z",
+    "url": "https://files.pythonhosted.org/packages/e1/bf/b40e6ecb611fa3be5b0ecae7b37ae1fa0d8df3146477ec0a554e8f62c976/importlib_resources-3.3.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "4.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f92fcac2957ed91f931cf3bdd0af2b9946d154ca9733bcf7a66d131ac674d1c7",
+     "md5": "3008892930a052243b66fd9cf841d6e6",
+     "sha256": "27402c31c21ae44522834f2c8e98865b4f9c6f282569ba294226aae7bb5435d1"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-4.0.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "3008892930a052243b66fd9cf841d6e6",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=3.6",
+    "size": 23201,
+    "upload_time": "2020-12-23T21:31:22",
+    "upload_time_iso_8601": "2020-12-23T21:31:22.278332Z",
+    "url": "https://files.pythonhosted.org/packages/f9/2f/cac2957ed91f931cf3bdd0af2b9946d154ca9733bcf7a66d131ac674d1c7/importlib_resources-4.0.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4b1a97ea132ba22d458b7cf6cad25e400b3e39abc9a83b7a9d6436a53a4a691f",
+     "md5": "3254f91dddf66c9c7aa4cb8caea3d532",
+     "sha256": "28f02529d9ed1e66e9aad076d6022f0781d4ee90da13d133cba96e678a67af5c"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-4.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3254f91dddf66c9c7aa4cb8caea3d532",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 27317,
+    "upload_time": "2020-12-23T21:31:23",
+    "upload_time_iso_8601": "2020-12-23T21:31:23.338284Z",
+    "url": "https://files.pythonhosted.org/packages/4b/1a/97ea132ba22d458b7cf6cad25e400b3e39abc9a83b7a9d6436a53a4a691f/importlib_resources-4.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "4.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "099682da534e32f2b3a8ede339b31e053a34a2cbd992d5eb41ccc967bc9b2611",
+     "md5": "53a20c932c01f622a6613d0fe5b54dd4",
+     "sha256": "1de368454cabd37265215f584eaefa92f7ea5dffd1c22c8de48d565431ecd9f1"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-4.1.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "53a20c932c01f622a6613d0fe5b54dd4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 22801,
+    "upload_time": "2020-12-25T03:48:12",
+    "upload_time_iso_8601": "2020-12-25T03:48:12.960644Z",
+    "url": "https://files.pythonhosted.org/packages/09/96/82da534e32f2b3a8ede339b31e053a34a2cbd992d5eb41ccc967bc9b2611/importlib_resources-4.1.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "1606a5f31c701ac15450a25fbc19a7b603267dc97ef622e94da01926a06212b4",
+     "md5": "52f14f0fea998cb97c11712256bad82b",
+     "sha256": "01fe9f1f2000677b2cdc7838473143341401d010eee276d2fcb64c219f624a25"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-4.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "52f14f0fea998cb97c11712256bad82b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 30814,
+    "upload_time": "2020-12-25T03:48:14",
+    "upload_time_iso_8601": "2020-12-25T03:48:14.071585Z",
+    "url": "https://files.pythonhosted.org/packages/16/06/a5f31c701ac15450a25fbc19a7b603267dc97ef622e94da01926a06212b4/importlib_resources-4.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "4.1.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e144a4d7387e5207e66e567c04f87b652a9a174335043838ee7f85ef05f28945",
+     "md5": "bd7c74e277d6036afa7764bb8e972132",
+     "sha256": "0a948d0c8c3f9344de62997e3f73444dbba233b1eaf24352933c2d264b9e4182"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-4.1.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bd7c74e277d6036afa7764bb8e972132",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 22783,
+    "upload_time": "2020-12-28T01:08:23",
+    "upload_time_iso_8601": "2020-12-28T01:08:23.043664Z",
+    "url": "https://files.pythonhosted.org/packages/e1/44/a4d7387e5207e66e567c04f87b652a9a174335043838ee7f85ef05f28945/importlib_resources-4.1.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d5a45bdb4e6bb53192ef580fa851be2e7c263d62f3a39ee2f964d5b832c022cf",
+     "md5": "9e6819c7f5c06d7fa7821321b7038af4",
+     "sha256": "6b45007a479c4ec21165ae3ffbe37faf35404e2041fac6ae1da684f38530ca73"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-4.1.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "9e6819c7f5c06d7fa7821321b7038af4",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 30821,
+    "upload_time": "2020-12-28T01:08:24",
+    "upload_time_iso_8601": "2020-12-28T01:08:24.144283Z",
+    "url": "https://files.pythonhosted.org/packages/d5/a4/5bdb4e6bb53192ef580fa851be2e7c263d62f3a39ee2f964d5b832c022cf/importlib_resources-4.1.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c6c9c267e6ff93460c0f467f243e2144b46d5c409c339d31d587d5d98def49e5",
+     "md5": "50d55f79197071960611c45d6a0a4c3d",
+     "sha256": "ea17df80a0ff04b5dbd3d96dbeab1842acfd1c6c902eaeb8c8858abf2720161e"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "50d55f79197071960611c45d6a0a4c3d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 22370,
+    "upload_time": "2021-01-10T01:40:50",
+    "upload_time_iso_8601": "2021-01-10T01:40:50.611496Z",
+    "url": "https://files.pythonhosted.org/packages/c6/c9/c267e6ff93460c0f467f243e2144b46d5c409c339d31d587d5d98def49e5/importlib_resources-5.0.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e0fb875db4023c8b075071cfd5f89203e39dc73b760142586ee9584c67bfd461",
+     "md5": "aefbc78747c661e30fb968075b04024f",
+     "sha256": "4743f090ed8946e713745ec0e660249ef9fb0b9843eacc5b5ff931d2fd5aa67f"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "aefbc78747c661e30fb968075b04024f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 30603,
+    "upload_time": "2021-01-10T01:40:51",
+    "upload_time_iso_8601": "2021-01-10T01:40:51.694170Z",
+    "url": "https://files.pythonhosted.org/packages/e0/fb/875db4023c8b075071cfd5f89203e39dc73b760142586ee9584c67bfd461/importlib_resources-5.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "5ae24c539c41f0af2cf87a151e1caf70a8ffd6fa072e7e12fd8fe765cea6045b",
+     "md5": "4a2c76471fa0269da91f787f0c86a4bb",
+     "sha256": "a009a924559cc382a2bdf56abef48dfb5fd1d3ffbeab8aeee17babab3f142101"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4a2c76471fa0269da91f787f0c86a4bb",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24294,
+    "upload_time": "2021-02-28T19:04:49",
+    "upload_time_iso_8601": "2021-02-28T19:04:49.361205Z",
+    "url": "https://files.pythonhosted.org/packages/5a/e2/4c539c41f0af2cf87a151e1caf70a8ffd6fa072e7e12fd8fe765cea6045b/importlib_resources-5.0.2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6d66df2d109b41fa4cc2e60f25899fbea1a3d78dfc351fd8e5f2eca3652bc082",
+     "md5": "c743ead7547250f294e0b4e08be8c954",
+     "sha256": "6743d5e4919b7a56b701581b5020ea7e3727b99ef6e512d5bb4bd0c4af940f74"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c743ead7547250f294e0b4e08be8c954",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31258,
+    "upload_time": "2021-02-28T19:04:50",
+    "upload_time_iso_8601": "2021-02-28T19:04:50.435669Z",
+    "url": "https://files.pythonhosted.org/packages/6d/66/df2d109b41fa4cc2e60f25899fbea1a3d78dfc351fd8e5f2eca3652bc082/importlib_resources-5.0.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "59dd7bea858c4329ae43eae0224e5a7873893a64b103a2d4a881fe246a85d0cf",
+     "md5": "49d0a40bbcb4efd1fbe6a2d7eac83b2c",
+     "sha256": "296c3757c2bfe0079e211376f3a4655a66873e4a4557e881b2e3d4461727450c"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.3-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "49d0a40bbcb4efd1fbe6a2d7eac83b2c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24262,
+    "upload_time": "2021-02-28T19:17:26",
+    "upload_time_iso_8601": "2021-02-28T19:17:26.608064Z",
+    "url": "https://files.pythonhosted.org/packages/59/dd/7bea858c4329ae43eae0224e5a7873893a64b103a2d4a881fe246a85d0cf/importlib_resources-5.0.3-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "dca7bb07af62909ba70366b01d3194a102d8d9ebaa0a9aacc2e81506e0730971",
+     "md5": "df69d46bd5565ddf2bde3ee2ed200748",
+     "sha256": "ab7c1732d6c47437dabb9579b26672ba7ccd8d95d7e0269000469f2fc312f3d0"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "df69d46bd5565ddf2bde3ee2ed200748",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31233,
+    "upload_time": "2021-02-28T19:17:27",
+    "upload_time_iso_8601": "2021-02-28T19:17:27.534382Z",
+    "url": "https://files.pythonhosted.org/packages/dc/a7/bb07af62909ba70366b01d3194a102d8d9ebaa0a9aacc2e81506e0730971/importlib_resources-5.0.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2418d182a52da64ab646dfc94dc871a506c82ff3490f614d4835cecc7d03688d",
+     "md5": "075060bd6a053afa976205edd4da8371",
+     "sha256": "f8585ae38b7481d0ce85a12dd05375b5b6473c5601254d0ddf286d970943faff"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.4-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "075060bd6a053afa976205edd4da8371",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24331,
+    "upload_time": "2021-03-04T18:43:59",
+    "upload_time_iso_8601": "2021-03-04T18:43:59.382835Z",
+    "url": "https://files.pythonhosted.org/packages/24/18/d182a52da64ab646dfc94dc871a506c82ff3490f614d4835cecc7d03688d/importlib_resources-5.0.4-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4053d662af683bbfca3d60b690cefbb834b6cc168eb2d3642b7439b7c308138d",
+     "md5": "96278c31d64b86c31cb9980697d926f2",
+     "sha256": "68da50a414fc14e0e1ebac1d1d8e008be0adf338787b23388ea1619007c827cb"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "96278c31d64b86c31cb9980697d926f2",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31316,
+    "upload_time": "2021-03-04T18:44:00",
+    "upload_time_iso_8601": "2021-03-04T18:44:00.472705Z",
+    "url": "https://files.pythonhosted.org/packages/40/53/d662af683bbfca3d60b690cefbb834b6cc168eb2d3642b7439b7c308138d/importlib_resources-5.0.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.5": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a5b33452b40d05c9b2b8462761ae52f9094bdd10cf3c1b6ceea37fb3e2199272",
+     "md5": "57ee320a81e4346be475eeb4c59c12a2",
+     "sha256": "7d9f5f1c56c14cdd182b7419d17548986af17da26ef4ce3f760d1bb217dbc067"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.5-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "57ee320a81e4346be475eeb4c59c12a2",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24357,
+    "upload_time": "2021-05-21T15:52:32",
+    "upload_time_iso_8601": "2021-05-21T15:52:32.552911Z",
+    "url": "https://files.pythonhosted.org/packages/a5/b3/3452b40d05c9b2b8462761ae52f9094bdd10cf3c1b6ceea37fb3e2199272/importlib_resources-5.0.5-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e7ba6b0c2dd45bef7d97d8056048bf209899bfc96bdfec908caf68f56628600e",
+     "md5": "c41815bcb307f306ac9ce8fee864d6c7",
+     "sha256": "09c292c554531b0a71ecf514be9ff96ede149dbfcd807c0defe39a9935e79bef"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.5.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c41815bcb307f306ac9ce8fee864d6c7",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31385,
+    "upload_time": "2021-05-21T15:52:33",
+    "upload_time_iso_8601": "2021-05-21T15:52:33.563724Z",
+    "url": "https://files.pythonhosted.org/packages/e7/ba/6b0c2dd45bef7d97d8056048bf209899bfc96bdfec908caf68f56628600e/importlib_resources-5.0.5.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.6": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "dc9587eb42ad44ab623bcd2cdd8aa589a2fef6ae3cc44b4977ca932deb687fe2",
+     "md5": "b1ebfd9f3cdfee716f95b3c2bd1d3523",
+     "sha256": "f974b0ac168fb6d074328c97e7fbee2e4d4a9acdbbacc32d99aa351a0f1e40bd"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.6-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b1ebfd9f3cdfee716f95b3c2bd1d3523",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24356,
+    "upload_time": "2021-05-26T18:11:10",
+    "upload_time_iso_8601": "2021-05-26T18:11:10.432670Z",
+    "url": "https://files.pythonhosted.org/packages/dc/95/87eb42ad44ab623bcd2cdd8aa589a2fef6ae3cc44b4977ca932deb687fe2/importlib_resources-5.0.6-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3c677fb45559f23ca7394d614541fd9013e8bf352d93f35f5ec1e35b82dc60da",
+     "md5": "002f88fe70297619b0c51e0c6f0e758a",
+     "sha256": "c143dc3e13a16dcb0f7cb059761cfdfe87cbb79fdb16c5ebeba840f2372bdf90"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.6.tar.gz",
+    "has_sig": false,
+    "md5_digest": "002f88fe70297619b0c51e0c6f0e758a",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31299,
+    "upload_time": "2021-05-26T18:11:11",
+    "upload_time_iso_8601": "2021-05-26T18:11:11.540152Z",
+    "url": "https://files.pythonhosted.org/packages/3c/67/7fb45559f23ca7394d614541fd9013e8bf352d93f35f5ec1e35b82dc60da/importlib_resources-5.0.6.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.0.7": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "46107cc167fe072037c3cd2a15a92bb963b86f2bab8ac0995fab95fb7a152b80",
+     "md5": "2539d5aaeeba7084d57a949c5b67e04e",
+     "sha256": "2238159eb743bd85304a16e0536048b3e991c531d1cd51c4a834d1ccf2829057"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.7-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2539d5aaeeba7084d57a949c5b67e04e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24373,
+    "upload_time": "2021-10-10T00:49:45",
+    "upload_time_iso_8601": "2021-10-10T00:49:45.959886Z",
+    "url": "https://files.pythonhosted.org/packages/46/10/7cc167fe072037c3cd2a15a92bb963b86f2bab8ac0995fab95fb7a152b80/importlib_resources-5.0.7-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4ad522aa0454c06788e59f406a2b0e569fac835c6c45e5ad6ed968804920f0ac",
+     "md5": "d79c42175e12c96008e502c9218f4c2c",
+     "sha256": "4df460394562b4581bb4e4087ad9447bd433148fba44241754ec3152499f1d1b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.0.7.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d79c42175e12c96008e502c9218f4c2c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31354,
+    "upload_time": "2021-10-10T00:49:47",
+    "upload_time_iso_8601": "2021-10-10T00:49:47.236953Z",
+    "url": "https://files.pythonhosted.org/packages/4a/d5/22aa0454c06788e59f406a2b0e569fac835c6c45e5ad6ed968804920f0ac/importlib_resources-5.0.7.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "82707bf5f275a738629a7252c30c8461502d3658a75363db9f4f88ddbeb9eeac",
+     "md5": "5d2d44d356fe281198da8805400651d7",
+     "sha256": "885b8eae589179f661c909d699a546cf10d83692553e34dca1bf5eb06f7f6217"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5d2d44d356fe281198da8805400651d7",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 24563,
+    "upload_time": "2021-01-19T03:22:36",
+    "upload_time_iso_8601": "2021-01-19T03:22:36.740156Z",
+    "url": "https://files.pythonhosted.org/packages/82/70/7bf5f275a738629a7252c30c8461502d3658a75363db9f4f88ddbeb9eeac/importlib_resources-5.1.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e7ef8bf9f2469c2c0a1bf00c39b2a076f71c4e511a3014a296b50eb425a2633d",
+     "md5": "a3ca1dce486f7fba1691938124e54133",
+     "sha256": "bfdad047bce441405a49cf8eb48ddce5e56c696e185f59147a8b79e75e9e6380"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a3ca1dce486f7fba1691938124e54133",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 31435,
+    "upload_time": "2021-01-19T03:22:37",
+    "upload_time_iso_8601": "2021-01-19T03:22:37.817534Z",
+    "url": "https://files.pythonhosted.org/packages/e7/ef/8bf9f2469c2c0a1bf00c39b2a076f71c4e511a3014a296b50eb425a2633d/importlib_resources-5.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.1.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f56ea5c7a7147407a318cb421d10d84bb2049e81d0b7472eb0a91a30b9ea24a6",
+     "md5": "c17d1d7798de8424ebe40aaf878f585f",
+     "sha256": "67bcf65e7b9f7f2ea54a342254c7e87607819955469034bc581fae26e1743306"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "c17d1d7798de8424ebe40aaf878f585f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 25344,
+    "upload_time": "2021-02-28T19:54:05",
+    "upload_time_iso_8601": "2021-02-28T19:54:05.291458Z",
+    "url": "https://files.pythonhosted.org/packages/f5/6e/a5c7a7147407a318cb421d10d84bb2049e81d0b7472eb0a91a30b9ea24a6/importlib_resources-5.1.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3236a380aecd01d0db4a73f95167906a1f99afdffb965b3cd5e634e124e45436",
+     "md5": "1fefbd462becea80f67dbdf6f128ceae",
+     "sha256": "563c5579cd40a7d5c6256ea6519b510152b6968103ab540b9771a50093a09056"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1fefbd462becea80f67dbdf6f128ceae",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 32125,
+    "upload_time": "2021-02-28T19:54:06",
+    "upload_time_iso_8601": "2021-02-28T19:54:06.232709Z",
+    "url": "https://files.pythonhosted.org/packages/32/36/a380aecd01d0db4a73f95167906a1f99afdffb965b3cd5e634e124e45436/importlib_resources-5.1.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.1.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f05e69e6a0602c1f18d390952177de648468c4a380252858b0022affc3ce7811",
+     "md5": "4414bda5a4cd09f2b87cffa1aa10fd33",
+     "sha256": "ebab3efe74d83b04d6bf5cd9a17f0c5c93e60fb60f30c90f56265fce4682a469"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4414bda5a4cd09f2b87cffa1aa10fd33",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 25413,
+    "upload_time": "2021-03-04T18:47:33",
+    "upload_time_iso_8601": "2021-03-04T18:47:33.257170Z",
+    "url": "https://files.pythonhosted.org/packages/f0/5e/69e6a0602c1f18d390952177de648468c4a380252858b0022affc3ce7811/importlib_resources-5.1.2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c8b2d8263caf10de8632ef6756991d52e7fb0d8f5aa1e473344fad79b19ccb23",
+     "md5": "98bebc276cc79a446b69fdf7225e456c",
+     "sha256": "642586fc4740bd1cad7690f836b3321309402b20b332529f25617ff18e8e1370"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "98bebc276cc79a446b69fdf7225e456c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 32177,
+    "upload_time": "2021-03-04T18:47:34",
+    "upload_time_iso_8601": "2021-03-04T18:47:34.624320Z",
+    "url": "https://files.pythonhosted.org/packages/c8/b2/d8263caf10de8632ef6756991d52e7fb0d8f5aa1e473344fad79b19ccb23/importlib_resources-5.1.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.1.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b233c74ccb6c48e4111f604f69ab102eba3fc126f143306f2efb0faba70c970a",
+     "md5": "5a50fa88ce5e7006b0fce9dcde54bd71",
+     "sha256": "3b9c774e0e7e8d9c069eb2fe6aee7e9ae71759a381dec02eb45249fba7f38713"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.3-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5a50fa88ce5e7006b0fce9dcde54bd71",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 26538,
+    "upload_time": "2021-05-13T13:42:30",
+    "upload_time_iso_8601": "2021-05-13T13:42:30.777145Z",
+    "url": "https://files.pythonhosted.org/packages/b2/33/c74ccb6c48e4111f604f69ab102eba3fc126f143306f2efb0faba70c970a/importlib_resources-5.1.3-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2b7072b28b3c681e68d3166b2c1d40ee424516cee9c4eb725e10775823c268ef",
+     "md5": "84fa07387d0f851f271ed46bc7754aa2",
+     "sha256": "0786b216556e53b34156263ab654406e543a8b0d9b1381019e25a36a09263c36"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "84fa07387d0f851f271ed46bc7754aa2",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 28613,
+    "upload_time": "2021-05-13T13:42:31",
+    "upload_time_iso_8601": "2021-05-13T13:42:31.708117Z",
+    "url": "https://files.pythonhosted.org/packages/2b/70/72b28b3c681e68d3166b2c1d40ee424516cee9c4eb725e10775823c268ef/importlib_resources-5.1.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.1.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a430b230b6586bcf6b80752ae42979f3b0da70bbde977d2b73eafd20c693b3db",
+     "md5": "1ac7b82ef1eabf5210185daf98da4a6e",
+     "sha256": "e962bff7440364183203d179d7ae9ad90cb1f2b74dcb84300e88ecc42dca3351"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.4-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1ac7b82ef1eabf5210185daf98da4a6e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 26571,
+    "upload_time": "2021-05-21T16:44:05",
+    "upload_time_iso_8601": "2021-05-21T16:44:05.534555Z",
+    "url": "https://files.pythonhosted.org/packages/a4/30/b230b6586bcf6b80752ae42979f3b0da70bbde977d2b73eafd20c693b3db/importlib_resources-5.1.4-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7e6c2077c481c94e7a75e0678a41cb4e2a7916ac215e7a7677c5839513122d24",
+     "md5": "a4586b3cbb3d39c7a5e7ffc49d9ceb53",
+     "sha256": "54161657e8ffc76596c4ede7080ca68cb02962a2e074a2586b695a93a925d36e"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.1.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a4586b3cbb3d39c7a5e7ffc49d9ceb53",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 28783,
+    "upload_time": "2021-05-21T16:44:06",
+    "upload_time_iso_8601": "2021-05-21T16:44:06.706492Z",
+    "url": "https://files.pythonhosted.org/packages/7e/6c/2077c481c94e7a75e0678a41cb4e2a7916ac215e7a7677c5839513122d24/importlib_resources-5.1.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.10.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c8476bfe2147eae436391916b3741a2cd9a76763e9671703a0d1d8e83142816e",
+     "md5": "a44f40f783e0101a4673173e27706e53",
+     "sha256": "ee17ec648f85480d523596ce49eae8ead87d5631ae1551f913c0100b5edd3437"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a44f40f783e0101a4673173e27706e53",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 34706,
+    "upload_time": "2022-10-08T01:10:35",
+    "upload_time_iso_8601": "2022-10-08T01:10:35.119479Z",
+    "url": "https://files.pythonhosted.org/packages/c8/47/6bfe2147eae436391916b3741a2cd9a76763e9671703a0d1d8e83142816e/importlib_resources-5.10.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "06726bf0df4fe7a139147f5d6b473f16d5aefb7bc5b719ba5dd33f230d35760f",
+     "md5": "8afc48c5f3a7c4ba63cb38163340d78b",
+     "sha256": "c01b1b94210d9849f286b86bb51bcea7cd56dde0600d8db721d7b81330711668"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8afc48c5f3a7c4ba63cb38163340d78b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 37906,
+    "upload_time": "2022-10-08T01:10:36",
+    "upload_time_iso_8601": "2022-10-08T01:10:36.882269Z",
+    "url": "https://files.pythonhosted.org/packages/06/72/6bf0df4fe7a139147f5d6b473f16d5aefb7bc5b719ba5dd33f230d35760f/importlib_resources-5.10.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.10.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ab72b4374afdfacc45bfcdd71404d5ac1315cf90b5b591d6110e1a4a8d1c8cfe",
+     "md5": "bd7cac69635ce93e0c2a2bff40cf9d34",
+     "sha256": "c09b067d82e72c66f4f8eb12332f5efbebc9b007c0b6c40818108c9870adc363"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bd7cac69635ce93e0c2a2bff40cf9d34",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 34704,
+    "upload_time": "2022-12-06T14:17:13",
+    "upload_time_iso_8601": "2022-12-06T14:17:13.323565Z",
+    "url": "https://files.pythonhosted.org/packages/ab/72/b4374afdfacc45bfcdd71404d5ac1315cf90b5b591d6110e1a4a8d1c8cfe/importlib_resources-5.10.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "1cc8cfc6ae38e378be60925f121cce01e7f4996dc3aca424799a693e48c9ce4d",
+     "md5": "0f4f229ba34cd81e7685772f020c7e62",
+     "sha256": "32bb095bda29741f6ef0e5278c42df98d135391bee5f932841efc0041f748dc3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0f4f229ba34cd81e7685772f020c7e62",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 38476,
+    "upload_time": "2022-12-06T14:17:14",
+    "upload_time_iso_8601": "2022-12-06T14:17:14.769441Z",
+    "url": "https://files.pythonhosted.org/packages/1c/c8/cfc6ae38e378be60925f121cce01e7f4996dc3aca424799a693e48c9ce4d/importlib_resources-5.10.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.10.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "be0fbd3e7fa47cc43276051c557d3b2fe946664781d2ecf08b05d074e1a3ee59",
+     "md5": "e7833ec70be2397fe8f3a3afb7369297",
+     "sha256": "7d543798b0beca10b6a01ac7cafda9f822c54db9e8376a6bf57e0cbd74d486b6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e7833ec70be2397fe8f3a3afb7369297",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 34696,
+    "upload_time": "2022-12-28T21:35:15",
+    "upload_time_iso_8601": "2022-12-28T21:35:15.373520Z",
+    "url": "https://files.pythonhosted.org/packages/be/0f/bd3e7fa47cc43276051c557d3b2fe946664781d2ecf08b05d074e1a3ee59/importlib_resources-5.10.2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2ef8be5c59ff2545362397cbc989f5cd3835326fc4092433d50dfaf21616bc71",
+     "md5": "0db00551b9f5ea7a794c7bb7cf44b349",
+     "sha256": "e4a96c8cc0339647ff9a5e0550d9f276fc5a01ffa276012b58ec108cfd7b8484"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0db00551b9f5ea7a794c7bb7cf44b349",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 38614,
+    "upload_time": "2022-12-28T21:35:16",
+    "upload_time_iso_8601": "2022-12-28T21:35:16.934722Z",
+    "url": "https://files.pythonhosted.org/packages/2e/f8/be5c59ff2545362397cbc989f5cd3835326fc4092433d50dfaf21616bc71/importlib_resources-5.10.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.10.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b2cd6f2aeeb3bb6ca2df941c62b67802b53aadf091ba32a37074ee274c86b61e",
+     "md5": "bf7a9e33c03441b74c0b317924e2b7b1",
+     "sha256": "6b033bf14e8105581b4e05380b33d652be643fae8b47063f2fcdcaca91a8a7a7"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.3-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bf7a9e33c03441b74c0b317924e2b7b1",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 34871,
+    "upload_time": "2023-02-17T18:13:31",
+    "upload_time_iso_8601": "2023-02-17T18:13:31.343651Z",
+    "url": "https://files.pythonhosted.org/packages/b2/cd/6f2aeeb3bb6ca2df941c62b67802b53aadf091ba32a37074ee274c86b61e/importlib_resources-5.10.3-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b5a4735edd4f55d17cbbf257d72ef2d22184da97b8d51a201acb6c55e55d909d",
+     "md5": "a9f4645a9e2a784834d157d1eea0c08c",
+     "sha256": "b61dfc33a21f55ed2c58209f46eac2272e5a8069a58e18664a8a0e22991f4d46"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a9f4645a9e2a784834d157d1eea0c08c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 39038,
+    "upload_time": "2023-02-17T18:13:33",
+    "upload_time_iso_8601": "2023-02-17T18:13:33.011520Z",
+    "url": "https://files.pythonhosted.org/packages/b5/a4/735edd4f55d17cbbf257d72ef2d22184da97b8d51a201acb6c55e55d909d/importlib_resources-5.10.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.10.4": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6613a43c01908bd502c62e069de26d85dc4c9d23c98e0f6d5d0364556734404f",
+     "md5": "6ef2cd159e72a423f80141a5b94c5f88",
+     "sha256": "3a583a424e2850fdc1f6ef46cb365ed31e5db6c98effe2ad355895940a5e6d82"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.4-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "6ef2cd159e72a423f80141a5b94c5f88",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 34869,
+    "upload_time": "2023-02-17T18:42:07",
+    "upload_time_iso_8601": "2023-02-17T18:42:07.540742Z",
+    "url": "https://files.pythonhosted.org/packages/66/13/a43c01908bd502c62e069de26d85dc4c9d23c98e0f6d5d0364556734404f/importlib_resources-5.10.4-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "22397425960f82188364f820551631ed0a5c0ef04bae95d8d48978a662b33e15",
+     "md5": "85319fcc529c5d953e97cdb7cca95cd4",
+     "sha256": "1ad02d09c5a5433969811966e647672c52a3d9fb89ba088c2fe253cf52167abc"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.10.4.tar.gz",
+    "has_sig": false,
+    "md5_digest": "85319fcc529c5d953e97cdb7cca95cd4",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 39059,
+    "upload_time": "2023-02-17T18:42:08",
+    "upload_time_iso_8601": "2023-02-17T18:42:08.988509Z",
+    "url": "https://files.pythonhosted.org/packages/22/39/7425960f82188364f820551631ed0a5c0ef04bae95d8d48978a662b33e15/importlib_resources-5.10.4.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.11.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9b04a5fd609def5e7d623211cbcc68d54ab422635bcb4a8bed3bb46f45335666",
+     "md5": "2ef8079d4a74964da4b7e6fc6810d127",
+     "sha256": "c0a55f37559b5e9ca1d3fce02d60243846245ad8f8d806a4484093806d4d0ae5"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.11.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2ef8079d4a74964da4b7e6fc6810d127",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 35573,
+    "upload_time": "2023-02-17T18:19:02",
+    "upload_time_iso_8601": "2023-02-17T18:19:02.053951Z",
+    "url": "https://files.pythonhosted.org/packages/9b/04/a5fd609def5e7d623211cbcc68d54ab422635bcb4a8bed3bb46f45335666/importlib_resources-5.11.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "cb04fd767a2b42b8444176f5daaa1037048a8e3318ba9f29a68746e6d9bf0b8a",
+     "md5": "6655dd44c980e2db6db5af4aebfb0949",
+     "sha256": "1e534a02295f3eeee0785e21b26c726557909cbaf1b871cf9adcbc0df44c1308"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.11.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "6655dd44c980e2db6db5af4aebfb0949",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 39550,
+    "upload_time": "2023-02-17T18:19:03",
+    "upload_time_iso_8601": "2023-02-17T18:19:03.616816Z",
+    "url": "https://files.pythonhosted.org/packages/cb/04/fd767a2b42b8444176f5daaa1037048a8e3318ba9f29a68746e6d9bf0b8a/importlib_resources-5.11.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.11.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "568bdbb7f9d6b08e4c90e312fbb3a1f3c40fc1036d4b21c363448d0dc75d4ae7",
+     "md5": "594513663faf9165f03908b830da7478",
+     "sha256": "04358673182e6b483bc9bab4c6d0b8a7e75a8f33bbe8a9009a90a23a34920146"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.11.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "594513663faf9165f03908b830da7478",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 35572,
+    "upload_time": "2023-02-17T18:46:24",
+    "upload_time_iso_8601": "2023-02-17T18:46:24.990208Z",
+    "url": "https://files.pythonhosted.org/packages/56/8b/dbb7f9d6b08e4c90e312fbb3a1f3c40fc1036d4b21c363448d0dc75d4ae7/importlib_resources-5.11.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6b93cdde2242712d0c0fc9af6f601039bcbc541d71c607099eb00afda8984dc4",
+     "md5": "ae4e28af892a48bafe565cc1ebfa40df",
+     "sha256": "390bfc5c00efd1ef7f7973828604def6d60a9c226c1638fe501faf1e7a3a7582"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.11.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ae4e28af892a48bafe565cc1ebfa40df",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 39605,
+    "upload_time": "2023-02-17T18:46:27",
+    "upload_time_iso_8601": "2023-02-17T18:46:27.250890Z",
+    "url": "https://files.pythonhosted.org/packages/6b/93/cdde2242712d0c0fc9af6f601039bcbc541d71c607099eb00afda8984dc4/importlib_resources-5.11.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.12.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3871c13ea695a4393639830bf96baea956538ba7a9d06fcce7cef10bfff20f72",
+     "md5": "c5e12879fa296f6b0b7142106a2159a6",
+     "sha256": "7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.12.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "c5e12879fa296f6b0b7142106a2159a6",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 36211,
+    "upload_time": "2023-02-17T22:32:19",
+    "upload_time_iso_8601": "2023-02-17T22:32:19.266735Z",
+    "url": "https://files.pythonhosted.org/packages/38/71/c13ea695a4393639830bf96baea956538ba7a9d06fcce7cef10bfff20f72/importlib_resources-5.12.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4ea23cab1de83f95dd15297c15bdc04d50902391d707247cada1f021bbfe2149",
+     "md5": "5457c25b89b19fcaca8af03e541dfa41",
+     "sha256": "4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.12.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5457c25b89b19fcaca8af03e541dfa41",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 39894,
+    "upload_time": "2023-02-17T22:32:21",
+    "upload_time_iso_8601": "2023-02-17T22:32:21.013757Z",
+    "url": "https://files.pythonhosted.org/packages/4e/a2/3cab1de83f95dd15297c15bdc04d50902391d707247cada1f021bbfe2149/importlib_resources-5.12.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c38dcb49c07dd01e797e76e86f33c3472ebd861216b57296095f5c17be9b79e8",
+     "md5": "0d4c97abd6eeca3ca8295d12396d2ff4",
+     "sha256": "a0143290bef3cbc99de9e40176e4987780939a955b8632f02ce6c935f42e9bfc"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "0d4c97abd6eeca3ca8295d12396d2ff4",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 27630,
+    "upload_time": "2021-06-28T00:17:34",
+    "upload_time_iso_8601": "2021-06-28T00:17:34.809050Z",
+    "url": "https://files.pythonhosted.org/packages/c3/8d/cb49c07dd01e797e76e86f33c3472ebd861216b57296095f5c17be9b79e8/importlib_resources-5.2.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ac9430b82b3a3a7c4f7fd7be1082047cc9a135a10c1bcb0158a2aec20d8fec57",
+     "md5": "037779ba4204a2419292ce90a4a97114",
+     "sha256": "22a2c42d8c6a1d30aa8a0e1f57293725bfd5c013d562585e46aff469e0ff78b3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "037779ba4204a2419292ce90a4a97114",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 29655,
+    "upload_time": "2021-06-28T00:17:35",
+    "upload_time_iso_8601": "2021-06-28T00:17:35.933927Z",
+    "url": "https://files.pythonhosted.org/packages/ac/94/30b82b3a3a7c4f7fd7be1082047cc9a135a10c1bcb0158a2aec20d8fec57/importlib_resources-5.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.2.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "83578456fe5bfc08d52e4001a94931e479dc3b10796ad5f24639ed3e2c6f062c",
+     "md5": "f5f03654076ecdb301bf85bbde33598e",
+     "sha256": "b9a075a844a03e0fb0ab70e5b0ea138c92e9f07f3a21fc11a656cf9492dbf64f"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "f5f03654076ecdb301bf85bbde33598e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 27617,
+    "upload_time": "2021-07-29T02:01:24",
+    "upload_time_iso_8601": "2021-07-29T02:01:24.475336Z",
+    "url": "https://files.pythonhosted.org/packages/83/57/8456fe5bfc08d52e4001a94931e479dc3b10796ad5f24639ed3e2c6f062c/importlib_resources-5.2.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d57f15c3daac87930bc474fd8658c1c7ea231a59f0a31d5a5c140bc17f79c8ad",
+     "md5": "2d94742502c3c8c3f7c364348c800ed1",
+     "sha256": "c3789472eacdf3e20a4d746f7fe7cdf53c122e76f78813fbfb04d618e0152b6a"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "2d94742502c3c8c3f7c364348c800ed1",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 29622,
+    "upload_time": "2021-07-29T02:01:26",
+    "upload_time_iso_8601": "2021-07-29T02:01:26.166785Z",
+    "url": "https://files.pythonhosted.org/packages/d5/7f/15c3daac87930bc474fd8658c1c7ea231a59f0a31d5a5c140bc17f79c8ad/importlib_resources-5.2.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.2.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f26c2f3b930513bb971172ffceb63cf4e910944e57451724e69b1dec97cfefa6",
+     "md5": "3ef0d7ff26fa3fe5fc37b82fbb173abb",
+     "sha256": "2480d8e07d1890056cb53c96e3de44fead9c62f2ba949b0f2e4c4345f4afa977"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "3ef0d7ff26fa3fe5fc37b82fbb173abb",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 27613,
+    "upload_time": "2021-07-30T21:08:00",
+    "upload_time_iso_8601": "2021-07-30T21:08:00.318190Z",
+    "url": "https://files.pythonhosted.org/packages/f2/6c/2f3b930513bb971172ffceb63cf4e910944e57451724e69b1dec97cfefa6/importlib_resources-5.2.2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b17ab9e2309e5c619ba3da8806e43bb17873ec6eab22a3d79347778c80563028",
+     "md5": "5db738106ca7c05340495c36357986a2",
+     "sha256": "a65882a4d0fe5fbf702273456ba2ce74fe44892c25e42e057aca526b702a6d4b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5db738106ca7c05340495c36357986a2",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 29651,
+    "upload_time": "2021-07-30T21:08:01",
+    "upload_time_iso_8601": "2021-07-30T21:08:01.858907Z",
+    "url": "https://files.pythonhosted.org/packages/b1/7a/b9e2309e5c619ba3da8806e43bb17873ec6eab22a3d79347778c80563028/importlib_resources-5.2.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.2.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "118e84a6a778a1160cefcef1192a7bd26e4e6689981553aff13c2b2b6f1c352f",
+     "md5": "3dd793e538fe19a279693eacd4883cf9",
+     "sha256": "ae35ed1cfe8c0d6c1a53ecd168167f01fa93b893d51a62cdf23aea044c67211b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.3-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "3dd793e538fe19a279693eacd4883cf9",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 27859,
+    "upload_time": "2021-10-17T19:36:27",
+    "upload_time_iso_8601": "2021-10-17T19:36:27.463489Z",
+    "url": "https://files.pythonhosted.org/packages/11/8e/84a6a778a1160cefcef1192a7bd26e4e6689981553aff13c2b2b6f1c352f/importlib_resources-5.2.3-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e6eb9a21e2ae696a0530c73304f9d1d3c063065f82d3562822b55466c6ef62ef",
+     "md5": "bfebf1d43c624a5250dd0e8660346261",
+     "sha256": "203d70dda34cfbfbb42324a8d4211196e7d3e858de21a5eb68c6d1cdd99e4e98"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.2.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "bfebf1d43c624a5250dd0e8660346261",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 30055,
+    "upload_time": "2021-10-17T19:36:29",
+    "upload_time_iso_8601": "2021-10-17T19:36:29.732886Z",
+    "url": "https://files.pythonhosted.org/packages/e6/eb/9a21e2ae696a0530c73304f9d1d3c063065f82d3562822b55466c6ef62ef/importlib_resources-5.2.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.3.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b18ef29e92e403acda0e28789c0f994500239dff45065c3b28e3a2855afc4f9a",
+     "md5": "e88d5a604b7498156fc660f376512b56",
+     "sha256": "7a65eb0d8ee98eedab76e6deb51195c67f8e575959f6356a6e15fd7e1148f2a3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.3.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e88d5a604b7498156fc660f376512b56",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 28384,
+    "upload_time": "2021-10-18T18:02:08",
+    "upload_time_iso_8601": "2021-10-18T18:02:08.404959Z",
+    "url": "https://files.pythonhosted.org/packages/b1/8e/f29e92e403acda0e28789c0f994500239dff45065c3b28e3a2855afc4f9a/importlib_resources-5.3.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "35d2d0bdb7d46318a8ee2a63ef130a384fd675bc833f7641e7371cbd9648af74",
+     "md5": "b063192ffad5924ccaefcea9759ca75b",
+     "sha256": "f2e58e721b505a79abe67f5868d99f8886aec8594c962c7490d0c22925f518da"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.3.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b063192ffad5924ccaefcea9759ca75b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 30784,
+    "upload_time": "2021-10-18T18:02:10",
+    "upload_time_iso_8601": "2021-10-18T18:02:10.236881Z",
+    "url": "https://files.pythonhosted.org/packages/35/d2/d0bdb7d46318a8ee2a63ef130a384fd675bc833f7641e7371cbd9648af74/importlib_resources-5.3.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.4.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "241b33e489669a94da3ef4562938cd306e8fa915e13939d7b8277cb5569cb405",
+     "md5": "b80e996c894cc9ed24e862b2ad06c08c",
+     "sha256": "33a95faed5fc19b4bc16b29a6eeae248a3fe69dd55d4d229d2b480e23eeaad45"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.4.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b80e996c894cc9ed24e862b2ad06c08c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 28066,
+    "upload_time": "2021-10-30T14:50:58",
+    "upload_time_iso_8601": "2021-10-30T14:50:58.179334Z",
+    "url": "https://files.pythonhosted.org/packages/24/1b/33e489669a94da3ef4562938cd306e8fa915e13939d7b8277cb5569cb405/importlib_resources-5.4.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b5d851ace1c1ea6609c01c7f46ca2978e11821aa0efaaa7516002ef6df000731",
+     "md5": "ef86f9f1bb77958b171afaafbedf6c91",
+     "sha256": "d756e2f85dd4de2ba89be0b21dba2a3bbec2e871a42a3a16719258a11f87506b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.4.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ef86f9f1bb77958b171afaafbedf6c91",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 30554,
+    "upload_time": "2021-10-30T14:50:59",
+    "upload_time_iso_8601": "2021-10-30T14:50:59.592996Z",
+    "url": "https://files.pythonhosted.org/packages/b5/d8/51ace1c1ea6609c01c7f46ca2978e11821aa0efaaa7516002ef6df000731/importlib_resources-5.4.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.6.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "286ebacd1e6760f49748c7483929545aa65a3a8c62f779b18c51743a07c3e6ab",
+     "md5": "9c77cac0cba171c653d48d10055c9038",
+     "sha256": "a9dd72f6cc106aeb50f6e66b86b69b454766dd6e39b69ac68450253058706bcc"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.6.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "9c77cac0cba171c653d48d10055c9038",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 28268,
+    "upload_time": "2022-03-26T01:20:33",
+    "upload_time_iso_8601": "2022-03-26T01:20:33.255966Z",
+    "url": "https://files.pythonhosted.org/packages/28/6e/bacd1e6760f49748c7483929545aa65a3a8c62f779b18c51743a07c3e6ab/importlib_resources-5.6.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e55aed1104ccc8d798a22560be48ee93d3f1139418a8e4bb9603c7965b185486",
+     "md5": "0ae9c56e65f5c970075cbe9d900aed7b",
+     "sha256": "1b93238cbf23b4cde34240dd8321d99e9bf2eb4bc91c0c99b2886283e7baad85"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.6.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "0ae9c56e65f5c970075cbe9d900aed7b",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 30846,
+    "upload_time": "2022-03-26T01:20:35",
+    "upload_time_iso_8601": "2022-03-26T01:20:35.204274Z",
+    "url": "https://files.pythonhosted.org/packages/e5/5a/ed1104ccc8d798a22560be48ee93d3f1139418a8e4bb9603c7965b185486/importlib_resources-5.6.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.7.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7349dd32d3f5caf55f049c923bc972dde126b79065ff751cd8634e472742889e",
+     "md5": "d5c845e72d458446b42817c50feb3e43",
+     "sha256": "9c4c12f9ef4329a00c1f72f30bddb4f10e582766b8705980bb76356b3ba8bc91"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.7.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "d5c845e72d458446b42817c50feb3e43",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 28467,
+    "upload_time": "2022-04-13T12:35:26",
+    "upload_time_iso_8601": "2022-04-13T12:35:26.293582Z",
+    "url": "https://files.pythonhosted.org/packages/73/49/dd32d3f5caf55f049c923bc972dde126b79065ff751cd8634e472742889e/importlib_resources-5.7.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9dcf64d938a85a0c0c0a04e29de3323d457589d650fa26694de787367151b31d",
+     "md5": "3ee37d0a66df086dd067f1b8a68ead96",
+     "sha256": "f6a4a9949f36ae289facec8dac1a899a54cbaf6a135cc8552d2c8b69209c06a3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.7.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3ee37d0a66df086dd067f1b8a68ead96",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 31185,
+    "upload_time": "2022-04-13T12:35:27",
+    "upload_time_iso_8601": "2022-04-13T12:35:27.663407Z",
+    "url": "https://files.pythonhosted.org/packages/9d/cf/64d938a85a0c0c0a04e29de3323d457589d650fa26694de787367151b31d/importlib_resources-5.7.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.7.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "bd4d19cb95029e824d878d5d13b62825839b5b024a62706ea308781a9e2cf534",
+     "md5": "593a5430383c7907b33876dbe9d887bb",
+     "sha256": "e447dc01619b1e951286f3929be820029d48c75eb25d265c28b92a16548212b8"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.7.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "593a5430383c7907b33876dbe9d887bb",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 28519,
+    "upload_time": "2022-04-17T00:49:12",
+    "upload_time_iso_8601": "2022-04-17T00:49:12.540244Z",
+    "url": "https://files.pythonhosted.org/packages/bd/4d/19cb95029e824d878d5d13b62825839b5b024a62706ea308781a9e2cf534/importlib_resources-5.7.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "073c4e27ef7d4cea5203ed4b52b7fe96ddd08559d9f147a2a4307e7d6d98c035",
+     "md5": "c824bbb240390b1bf71bb9d5a7c4bc38",
+     "sha256": "b6062987dfc51f0fcb809187cffbd60f35df7acb4589091f154214af6d0d49d3"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.7.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c824bbb240390b1bf71bb9d5a7c4bc38",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 31272,
+    "upload_time": "2022-04-17T00:49:13",
+    "upload_time_iso_8601": "2022-04-17T00:49:13.995587Z",
+    "url": "https://files.pythonhosted.org/packages/07/3c/4e27ef7d4cea5203ed4b52b7fe96ddd08559d9f147a2a4307e7d6d98c035/importlib_resources-5.7.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.8.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3ca74e4a2176fed10ab233cc39b083ba4ec222ba52de2be606e3e2b5195264e9",
+     "md5": "5682f56b9f85009114b3ce8dba5cd1cd",
+     "sha256": "7952325ffd516c05a8ad0858c74dff2c3343f136fe66a6002b2623dd1d43f223"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.8.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5682f56b9f85009114b3ce8dba5cd1cd",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 28683,
+    "upload_time": "2022-06-16T01:34:58",
+    "upload_time_iso_8601": "2022-06-16T01:34:58.191462Z",
+    "url": "https://files.pythonhosted.org/packages/3c/a7/4e4a2176fed10ab233cc39b083ba4ec222ba52de2be606e3e2b5195264e9/importlib_resources-5.8.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a566b844887f2225049abd75a0c54415d419e334b7a7e2a69c5a5c4968e30906",
+     "md5": "de2c49e938f07d7967f0e5991623ce14",
+     "sha256": "568c9f16cb204f9decc8d6d24a572eeea27dacbb4cee9e6b03a8025736769751"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.8.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "de2c49e938f07d7967f0e5991623ce14",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 31461,
+    "upload_time": "2022-06-16T01:34:59",
+    "upload_time_iso_8601": "2022-06-16T01:34:59.929558Z",
+    "url": "https://files.pythonhosted.org/packages/a5/66/b844887f2225049abd75a0c54415d419e334b7a7e2a69c5a5c4968e30906/importlib_resources-5.8.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.8.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "be1ff5a73ba2612c0b9efb4babd07163feed72390c42655e2eb2399b3eb9ab89",
+     "md5": "eede47035192a032ef362d6af86a9d46",
+     "sha256": "3cd3a19cc65381ec243e1ffa4c49cddc5da0226402b35d354b0003ce7586181b"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.8.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "eede47035192a032ef362d6af86a9d46",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 32553,
+    "upload_time": "2022-07-22T16:23:35",
+    "upload_time_iso_8601": "2022-07-22T16:23:35.653590Z",
+    "url": "https://files.pythonhosted.org/packages/be/1f/f5a73ba2612c0b9efb4babd07163feed72390c42655e2eb2399b3eb9ab89/importlib_resources-5.8.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "23d94751bf3d41665683433011d5790458a90f8cd4cfbeef3c7abbd166262b24",
+     "md5": "b7351889ef34077415c10635f28ac8bd",
+     "sha256": "fa6350b0f5ec4a294aaf794a34b58c950f0a78d5c3de36d749abe1e22e8be5fc"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.8.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "b7351889ef34077415c10635f28ac8bd",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 35849,
+    "upload_time": "2022-07-22T16:23:37",
+    "upload_time_iso_8601": "2022-07-22T16:23:37.857955Z",
+    "url": "https://files.pythonhosted.org/packages/23/d9/4751bf3d41665683433011d5790458a90f8cd4cfbeef3c7abbd166262b24/importlib_resources-5.8.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "5.9.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d3914df247dd4da18b72b5bbabe1fa2b85029c34e1d6f0afdd6329d15d6bf2b5",
+     "md5": "a94d72d7d7b022102bde932ee7e1130d",
+     "sha256": "f78a8df21a79bcc30cfd400bdc38f314333de7c0fb619763f6b9dabab8268bb7"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.9.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a94d72d7d7b022102bde932ee7e1130d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 33030,
+    "upload_time": "2022-07-22T16:47:03",
+    "upload_time_iso_8601": "2022-07-22T16:47:03.952797Z",
+    "url": "https://files.pythonhosted.org/packages/d3/91/4df247dd4da18b72b5bbabe1fa2b85029c34e1d6f0afdd6329d15d6bf2b5/importlib_resources-5.9.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "38b6bc58f9261c70abb5fd670f9ad5d84445a402b4b473f308c5bf699cd379e0",
+     "md5": "3b6d98270d40b2ba7af1f8d09188f0c2",
+     "sha256": "5481e97fb45af8dcf2f798952625591c58fe599d0735d86b10f54de086a61681"
+    },
+    "downloads": -1,
+    "filename": "importlib_resources-5.9.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3b6d98270d40b2ba7af1f8d09188f0c2",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 36314,
+    "upload_time": "2022-07-22T16:48:22",
+    "upload_time_iso_8601": "2022-07-22T16:48:22.185469Z",
+    "url": "https://files.pythonhosted.org/packages/38/b6/bc58f9261c70abb5fd670f9ad5d84445a402b4b473f308c5bf699cd379e0/importlib_resources-5.9.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ]
+ },
+ "urls": [
+  {
+   "comment_text": "",
+   "digests": {
+    "blake2b_256": "3871c13ea695a4393639830bf96baea956538ba7a9d06fcce7cef10bfff20f72",
+    "md5": "c5e12879fa296f6b0b7142106a2159a6",
+    "sha256": "7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"
+   },
+   "downloads": -1,
+   "filename": "importlib_resources-5.12.0-py3-none-any.whl",
+   "has_sig": false,
+   "md5_digest": "c5e12879fa296f6b0b7142106a2159a6",
+   "packagetype": "bdist_wheel",
+   "python_version": "py3",
+   "requires_python": ">=3.7",
+   "size": 36211,
+   "upload_time": "2023-02-17T22:32:19",
+   "upload_time_iso_8601": "2023-02-17T22:32:19.266735Z",
+   "url": "https://files.pythonhosted.org/packages/38/71/c13ea695a4393639830bf96baea956538ba7a9d06fcce7cef10bfff20f72/importlib_resources-5.12.0-py3-none-any.whl",
+   "yanked": false,
+   "yanked_reason": null
+  },
+  {
+   "comment_text": "",
+   "digests": {
+    "blake2b_256": "4ea23cab1de83f95dd15297c15bdc04d50902391d707247cada1f021bbfe2149",
+    "md5": "5457c25b89b19fcaca8af03e541dfa41",
+    "sha256": "4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"
+   },
+   "downloads": -1,
+   "filename": "importlib_resources-5.12.0.tar.gz",
+   "has_sig": false,
+   "md5_digest": "5457c25b89b19fcaca8af03e541dfa41",
+   "packagetype": "sdist",
+   "python_version": "source",
+   "requires_python": ">=3.7",
+   "size": 39894,
+   "upload_time": "2023-02-17T22:32:21",
+   "upload_time_iso_8601": "2023-02-17T22:32:21.013757Z",
+   "url": "https://files.pythonhosted.org/packages/4e/a2/3cab1de83f95dd15297c15bdc04d50902391d707247cada1f021bbfe2149/importlib_resources-5.12.0.tar.gz",
+   "yanked": false,
+   "yanked_reason": null
+  }
+ ],
+ "vulnerabilities": []
+}

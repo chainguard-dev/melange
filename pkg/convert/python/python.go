@@ -142,7 +142,7 @@ func (c *PythonContext) Generate() error {
 
 func stripDep(dep string) (string, error) {
 	//removing all the special chars from the requirements like   "importlib-metadata (>=3.6.0) ; python_version < \"3.10\""
-	re, err := regexp.Compile(`[;()\[\]~=<>]`)
+	re, err := regexp.Compile(`[;()\[\]!~=<>]`)
 	if err != nil {
 		return "", err
 	}

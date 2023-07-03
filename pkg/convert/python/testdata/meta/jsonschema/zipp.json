@@ -1,0 +1,2089 @@
+{
+ "info": {
+  "author": "Jason R. Coombs",
+  "author_email": "jaraco@jaraco.com",
+  "bugtrack_url": null,
+  "classifiers": [
+   "Development Status :: 5 - Production/Stable",
+   "Intended Audience :: Developers",
+   "License :: OSI Approved :: MIT License",
+   "Programming Language :: Python :: 3",
+   "Programming Language :: Python :: 3 :: Only"
+  ],
+  "description": ".. image:: https://img.shields.io/pypi/v/zipp.svg\n   :target: https://pypi.org/project/zipp\n\n.. image:: https://img.shields.io/pypi/pyversions/zipp.svg\n\n.. image:: https://github.com/jaraco/zipp/workflows/tests/badge.svg\n   :target: https://github.com/jaraco/zipp/actions?query=workflow%3A%22tests%22\n   :alt: tests\n\n.. image:: https://img.shields.io/badge/code%20style-black-000000.svg\n   :target: https://github.com/psf/black\n   :alt: Code style: Black\n\n.. .. image:: https://readthedocs.org/projects/skeleton/badge/?version=latest\n..    :target: https://skeleton.readthedocs.io/en/latest/?badge=latest\n\n.. image:: https://img.shields.io/badge/skeleton-2023-informational\n   :target: https://blog.jaraco.com/skeleton\n\n.. image:: https://tidelift.com/badges/package/pypi/zipp\n   :target: https://tidelift.com/subscription/pkg/pypi-zipp?utm_source=pypi-zipp&utm_medium=readme\n\n\nA pathlib-compatible Zipfile object wrapper. Official backport of the standard library\n`Path object <https://docs.python.org/3.8/library/zipfile.html#path-objects>`_.\n\n\nCompatibility\n=============\n\nNew features are introduced in this third-party library and later merged\ninto CPython. The following table indicates which versions of this library\nwere contributed to different versions in the standard library:\n\n.. list-table::\n   :header-rows: 1\n\n   * - zipp\n     - stdlib\n   * - 3.9\n     - 3.12\n   * - 3.5\n     - 3.11\n   * - 3.2\n     - 3.10\n   * - 3.3 ??\n     - 3.9\n   * - 1.0\n     - 3.8\n\n\nUsage\n=====\n\nUse ``zipp.Path`` in place of ``zipfile.Path`` on any Python.\n\nFor Enterprise\n==============\n\nAvailable as part of the Tidelift Subscription.\n\nThis project and the maintainers of thousands of other packages are working with Tidelift to deliver one enterprise subscription that covers all of the open source you use.\n\n`Learn more <https://tidelift.com/subscription/pkg/pypi-zipp?utm_source=pypi-zipp&utm_medium=referral&utm_campaign=github>`_.\n\nSecurity Contact\n================\n\nTo report a security vulnerability, please use the\n`Tidelift security contact <https://tidelift.com/security>`_.\nTidelift will coordinate the fix and disclosure.\n",
+  "description_content_type": "",
+  "docs_url": null,
+  "download_url": "",
+  "downloads": {
+   "last_day": -1,
+   "last_month": -1,
+   "last_week": -1
+  },
+  "home_page": "https://github.com/jaraco/zipp",
+  "keywords": "",
+  "license": "",
+  "maintainer": "",
+  "maintainer_email": "",
+  "name": "zipp",
+  "package_url": "https://pypi.org/project/zipp/",
+  "platform": null,
+  "project_url": "https://pypi.org/project/zipp/",
+  "project_urls": {
+   "Homepage": "https://github.com/jaraco/zipp"
+  },
+  "release_url": "https://pypi.org/project/zipp/3.15.0/",
+  "requires_dist": [
+   "sphinx (>=3.5) ; extra == 'docs'",
+   "jaraco.packaging (>=9) ; extra == 'docs'",
+   "rst.linker (>=1.9) ; extra == 'docs'",
+   "furo ; extra == 'docs'",
+   "sphinx-lint ; extra == 'docs'",
+   "jaraco.tidelift (>=1.4) ; extra == 'docs'",
+   "pytest (>=6) ; extra == 'testing'",
+   "pytest-checkdocs (>=2.4) ; extra == 'testing'",
+   "flake8 (<5) ; extra == 'testing'",
+   "pytest-cov ; extra == 'testing'",
+   "pytest-enabler (>=1.3) ; extra == 'testing'",
+   "jaraco.itertools ; extra == 'testing'",
+   "jaraco.functools ; extra == 'testing'",
+   "more-itertools ; extra == 'testing'",
+   "big-O ; extra == 'testing'",
+   "pytest-black (>=0.3.7) ; (platform_python_implementation != \"PyPy\") and extra == 'testing'",
+   "pytest-mypy (>=0.9.1) ; (platform_python_implementation != \"PyPy\") and extra == 'testing'",
+   "pytest-flake8 ; (python_version < \"3.12\") and extra == 'testing'"
+  ],
+  "requires_python": ">=3.7",
+  "summary": "Backport of pathlib-compatible object wrapper for zip files",
+  "version": "3.15.0",
+  "yanked": false,
+  "yanked_reason": null
+ },
+ "last_serial": 17022682,
+ "releases": {
+  "0.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "53873763ae5d8eedf3189f43d810880474afbed8e3133edb274564f1213a75ca",
+     "md5": "f998c20ed6828e22bacd396293dd4bd0",
+     "sha256": "d4f0e226d38a00cddd05f84850971a5e8a7dfdab8e8827ca45642e4078f01461"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.1.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "f998c20ed6828e22bacd396293dd4bd0",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3155,
+    "upload_time": "2018-11-15T22:02:57",
+    "upload_time_iso_8601": "2018-11-15T22:02:57.320159Z",
+    "url": "https://files.pythonhosted.org/packages/53/87/3763ae5d8eedf3189f43d810880474afbed8e3133edb274564f1213a75ca/zipp-0.1.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3669e69f37b9381538360254bff365ade32f54c829041a14f8150992f5dba3d0",
+     "md5": "c3f1c6b2bc65216da7cb50bea900593c",
+     "sha256": "849d59947815d7f86686eab57283224aa549b27b4deb8ccb61b80014b9de574c"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c3f1c6b2bc65216da7cb50bea900593c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 5900,
+    "upload_time": "2018-11-15T22:03:12",
+    "upload_time_iso_8601": "2018-11-15T22:03:12.690555Z",
+    "url": "https://files.pythonhosted.org/packages/36/69/e69f37b9381538360254bff365ade32f54c829041a14f8150992f5dba3d0/zipp-0.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "322b06b52565ab91fa6daa3ce9098e5ee47d62193f077f6bdbb21b452f43bdbf",
+     "md5": "9c830efbafc06a125b367e981da69ae8",
+     "sha256": "17f0de3aea3b7d9fffb89822a8e4e92cb2f929e0bfd8a33ff08f6afbe18d457a"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.2.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "9c830efbafc06a125b367e981da69ae8",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3130,
+    "upload_time": "2018-11-16T00:07:03",
+    "upload_time_iso_8601": "2018-11-16T00:07:03.299869Z",
+    "url": "https://files.pythonhosted.org/packages/32/2b/06b52565ab91fa6daa3ce9098e5ee47d62193f077f6bdbb21b452f43bdbf/zipp-0.2.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "de04884bb7742f68215e6a7727ec256d5092068e4fa6bffab5d37ca79bb5c630",
+     "md5": "721e52111071d2878a602e5c2ac4e80c",
+     "sha256": "68e3b1dc4c36b36614def9a7f4fbce806bb8b1f21a77ad62c596b5533c503d22"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "721e52111071d2878a602e5c2ac4e80c",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 5910,
+    "upload_time": "2018-11-16T00:07:04",
+    "upload_time_iso_8601": "2018-11-16T00:07:04.599904Z",
+    "url": "https://files.pythonhosted.org/packages/de/04/884bb7742f68215e6a7727ec256d5092068e4fa6bffab5d37ca79bb5c630/zipp-0.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.2.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ba5c42991c949734405fee0b92c2de07f9eab5aae45c5c665c03ccfdd4a0d9d5",
+     "md5": "bb07c7da8c6e187183d2820fa5575e49",
+     "sha256": "dd757322c77af7be1cef4872b58c02295556f11b9a7dbb8021b5fb9e344f28a5"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.2.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bb07c7da8c6e187183d2820fa5575e49",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3143,
+    "upload_time": "2018-11-16T00:22:52",
+    "upload_time_iso_8601": "2018-11-16T00:22:52.405876Z",
+    "url": "https://files.pythonhosted.org/packages/ba/5c/42991c949734405fee0b92c2de07f9eab5aae45c5c665c03ccfdd4a0d9d5/zipp-0.2.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a318996efec45f7dfc7c10b7ea46f10c7e5872b67885a1e8e6eb5ddb7656c533",
+     "md5": "9fa8494b270fb7fe4731c138c5b26b4f",
+     "sha256": "f06a23a7fc6d1020329f887031b76f03fd9dc0f51d02870cfc03d4cd97abbf9f"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.2.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "9fa8494b270fb7fe4731c138c5b26b4f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 5945,
+    "upload_time": "2018-11-16T00:22:53",
+    "upload_time_iso_8601": "2018-11-16T00:22:53.428608Z",
+    "url": "https://files.pythonhosted.org/packages/a3/18/996efec45f7dfc7c10b7ea46f10c7e5872b67885a1e8e6eb5ddb7656c533/zipp-0.2.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.3.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ffd7d2a8a4d4297c72b44a18b4cfccb546b8f80c0dca6794de3631f76b33ee6b",
+     "md5": "9c7839787614d7686c5b26a74f593ede",
+     "sha256": "1a0015bd9ff522c02629f8f1ad4395606ff0f5d86599dc6267a754763a8e6be7"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "9c7839787614d7686c5b26a74f593ede",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3304,
+    "upload_time": "2018-12-01T04:16:04",
+    "upload_time_iso_8601": "2018-12-01T04:16:04.113620Z",
+    "url": "https://files.pythonhosted.org/packages/ff/d7/d2a8a4d4297c72b44a18b4cfccb546b8f80c0dca6794de3631f76b33ee6b/zipp-0.3.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "982d5d399b6cd9c51a592df2ff9f523721512f48ccf3f4b0972be9b90c6577fa",
+     "md5": "91edb65bcd13301ba282cf736692ec5e",
+     "sha256": "b6d5f3e3ba5d38eb7f6f682dd697802f4ff44a394151817701b410e1b959f6c6"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "91edb65bcd13301ba282cf736692ec5e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 6318,
+    "upload_time": "2018-12-01T04:16:05",
+    "upload_time_iso_8601": "2018-12-01T04:16:05.378124Z",
+    "url": "https://files.pythonhosted.org/packages/98/2d/5d399b6cd9c51a592df2ff9f523721512f48ccf3f4b0972be9b90c6577fa/zipp-0.3.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.3.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f7de718b936768de59dd7b9b29e5872378b3e6b747f726c9f9f962cbfc5c35e2",
+     "md5": "27e4fe64597cd93401cefd248167590e",
+     "sha256": "7ba6ae2d86276d925e30c3ecf848de7a18a6cfdf08fd0dc477d7c41a56cd13ef"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "27e4fe64597cd93401cefd248167590e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3310,
+    "upload_time": "2018-12-01T17:20:41",
+    "upload_time_iso_8601": "2018-12-01T17:20:41.858856Z",
+    "url": "https://files.pythonhosted.org/packages/f7/de/718b936768de59dd7b9b29e5872378b3e6b747f726c9f9f962cbfc5c35e2/zipp-0.3.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "50e96a2d6160b1a5c6fe8e5d70dacdd1310d68822f5110d62f5f1d1ff1897dbb",
+     "md5": "92c5e1e8fd11f2903142fb8c88c13694",
+     "sha256": "30aeba39f049e37be6fee6ed6af9f8816a9078eac47c80a197fe64684ae04a79"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "92c5e1e8fd11f2903142fb8c88c13694",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 6385,
+    "upload_time": "2018-12-01T17:20:43",
+    "upload_time_iso_8601": "2018-12-01T17:20:43.868158Z",
+    "url": "https://files.pythonhosted.org/packages/50/e9/6a2d6160b1a5c6fe8e5d70dacdd1310d68822f5110d62f5f1d1ff1897dbb/zipp-0.3.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.3.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "23b62d5424acc0f4e58dbed6ff1b29e16b9767d7cfbde5373750e25ea731086f",
+     "md5": "3802251ee8cde2b3f450a3b8933ce10d",
+     "sha256": "d24400b1649ccb43ee82f5fabe37546d6e0268f0beca7ed8e33987e4bbc39224"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "3802251ee8cde2b3f450a3b8933ce10d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3343,
+    "upload_time": "2018-12-01T18:05:18",
+    "upload_time_iso_8601": "2018-12-01T18:05:18.020302Z",
+    "url": "https://files.pythonhosted.org/packages/23/b6/2d5424acc0f4e58dbed6ff1b29e16b9767d7cfbde5373750e25ea731086f/zipp-0.3.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "dcea0ee7490966af70ccfcc4172def5741a2d66f7400cedbf7ef44cba401c4a7",
+     "md5": "07fa9f8ba7eb62c550285ae4eb34ef94",
+     "sha256": "118501fe80ac3dbef3cfc67c0398e7e1a2eac29bb0d2122de4b2cc0dfd8dca0e"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "07fa9f8ba7eb62c550285ae4eb34ef94",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 6534,
+    "upload_time": "2018-12-01T18:05:19",
+    "upload_time_iso_8601": "2018-12-01T18:05:19.220072Z",
+    "url": "https://files.pythonhosted.org/packages/dc/ea/0ee7490966af70ccfcc4172def5741a2d66f7400cedbf7ef44cba401c4a7/zipp-0.3.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.3.3": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "004210a1f8d29eaf9c7f2b555a5d1d602b9261f2a0cbec08f8f23d9056f5915d",
+     "md5": "4a8f5cfce6824f2d061a817724309cfc",
+     "sha256": "682b3e1c62b7026afe24eadf6be579fb45fec54c07ea218bded8092af07a68c4"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.3-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4a8f5cfce6824f2d061a817724309cfc",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3352,
+    "upload_time": "2018-12-27T16:38:14",
+    "upload_time_iso_8601": "2018-12-27T16:38:14.389193Z",
+    "url": "https://files.pythonhosted.org/packages/00/42/10a1f8d29eaf9c7f2b555a5d1d602b9261f2a0cbec08f8f23d9056f5915d/zipp-0.3.3-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "0ff4930f91b0527d9701623d4895a978ec0abd6b8904ef272a2701190fdbf9f8",
+     "md5": "4e728e05a64f12cf3ca979e4b1cfdcd1",
+     "sha256": "55ca87266c38af6658b84db8cfb7343cdb0bf275f93c7afaea0d8e7a209c7478"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.3.3.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4e728e05a64f12cf3ca979e4b1cfdcd1",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 9719,
+    "upload_time": "2018-12-27T16:38:15",
+    "upload_time_iso_8601": "2018-12-27T16:38:15.691507Z",
+    "url": "https://files.pythonhosted.org/packages/0f/f4/930f91b0527d9701623d4895a978ec0abd6b8904ef272a2701190fdbf9f8/zipp-0.3.3.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.4.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "93bc6633bc2b7bb9ded59358636966914e23f7531b2c770aee3286fd7de9bfb8",
+     "md5": "1a65d368aa7bd1e51c0ef3ad91d6e82f",
+     "sha256": "139391b239594fd8b91d856bc530fbd2df0892b17dd8d98a91f018715954185f"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.4.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "1a65d368aa7bd1e51c0ef3ad91d6e82f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3416,
+    "upload_time": "2019-04-28T17:12:57",
+    "upload_time_iso_8601": "2019-04-28T17:12:57.038863Z",
+    "url": "https://files.pythonhosted.org/packages/93/bc/6633bc2b7bb9ded59358636966914e23f7531b2c770aee3286fd7de9bfb8/zipp-0.4.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b7bc2086e90e0ca8438414acd6e35736439ac14608361ed556b2dcda7793a8d3",
+     "md5": "30a9f25b36bc2827a4a2bbb15bb19524",
+     "sha256": "8047e4575ce8d700370a3301bbfc972896a5845eb62dd535da395b86be95dfad"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.4.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "30a9f25b36bc2827a4a2bbb15bb19524",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 10539,
+    "upload_time": "2019-04-28T17:13:00",
+    "upload_time_iso_8601": "2019-04-28T17:13:00.432233Z",
+    "url": "https://files.pythonhosted.org/packages/b7/bc/2086e90e0ca8438414acd6e35736439ac14608361ed556b2dcda7793a8d3/zipp-0.4.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.5.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a4cd80a10d136899d5128ad79685ade788e5d8b48ccd4c666370d52b2a9331ab",
+     "md5": "7796dc740780a48cf2719fb8d53bf4fc",
+     "sha256": "46dfd547d9ccbf8bdc26ecea52818046bb28509f12bb6a0de1cd66ab06e9a9be"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.5.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "7796dc740780a48cf2719fb8d53bf4fc",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3714,
+    "upload_time": "2019-05-08T18:41:42",
+    "upload_time_iso_8601": "2019-05-08T18:41:42.690670Z",
+    "url": "https://files.pythonhosted.org/packages/a4/cd/80a10d136899d5128ad79685ade788e5d8b48ccd4c666370d52b2a9331ab/zipp-0.5.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4465799bbac4c284c93ce9cbe67956a3625a4e1941d580832656bea202554117",
+     "md5": "660aa93f8e2b6915f58bb4ef11104e62",
+     "sha256": "d7ac25f895fb65bff937b381353c14eb1fa23d35f40abd72a5342cd57eb57fd1"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.5.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "660aa93f8e2b6915f58bb4ef11104e62",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 10926,
+    "upload_time": "2019-05-08T18:41:44",
+    "upload_time_iso_8601": "2019-05-08T18:41:44.026863Z",
+    "url": "https://files.pythonhosted.org/packages/44/65/799bbac4c284c93ce9cbe67956a3625a4e1941d580832656bea202554117/zipp-0.5.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.5.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a00f9bf71d438d2e9d5fd0e4569ea4d1a2b6f5a524c234c6d221b494298bb4d1",
+     "md5": "9db42fa98fe4b1f4f8e228b23932e8b6",
+     "sha256": "8c1019c6aad13642199fbe458275ad6a84907634cc9f0989877ccc4a2840139d"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.5.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "9db42fa98fe4b1f4f8e228b23932e8b6",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3819,
+    "upload_time": "2019-05-16T15:35:20",
+    "upload_time_iso_8601": "2019-05-16T15:35:20.580352Z",
+    "url": "https://files.pythonhosted.org/packages/a0/0f/9bf71d438d2e9d5fd0e4569ea4d1a2b6f5a524c234c6d221b494298bb4d1/zipp-0.5.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f9c415a1260171956ed4f8190962b1771c7dbca4a39360c15f9c2b77e667a489",
+     "md5": "45286cd2f2e0c3423b4e18a863d3b84d",
+     "sha256": "ca943a7e809cc12257001ccfb99e3563da9af99d52f261725e96dfe0f9275bc3"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.5.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "45286cd2f2e0c3423b4e18a863d3b84d",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 10763,
+    "upload_time": "2019-05-16T15:35:21",
+    "upload_time_iso_8601": "2019-05-16T15:35:21.822145Z",
+    "url": "https://files.pythonhosted.org/packages/f9/c4/15a1260171956ed4f8190962b1771c7dbca4a39360c15f9c2b77e667a489/zipp-0.5.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.5.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "dabd1a5fdf15aa44231fd09f63ecf175b60f057ae37ec65b343bb009364923f3",
+     "md5": "32388bdca8dbad8c3d82ad8055230262",
+     "sha256": "8a5712cfd3bb4248015eb3b0b3c54a5f6ee3f2425963ef2a0125b8bc40aafaec"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.5.2-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "32388bdca8dbad8c3d82ad8055230262",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 3824,
+    "upload_time": "2019-07-07T21:14:03",
+    "upload_time_iso_8601": "2019-07-07T21:14:03.747003Z",
+    "url": "https://files.pythonhosted.org/packages/da/bd/1a5fdf15aa44231fd09f63ecf175b60f057ae37ec65b343bb009364923f3/zipp-0.5.2-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "66ae1d6693cde3b3e3c14e95cf3408f24d0e869ead42a79993b611d8817d929a",
+     "md5": "a0fd3753611113293992665059c69730",
+     "sha256": "4970c3758f4e89a7857a973b1e2a5d75bcdc47794442f2e2dd4fe8e0466e809a"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.5.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a0fd3753611113293992665059c69730",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 10875,
+    "upload_time": "2019-07-07T21:14:05",
+    "upload_time_iso_8601": "2019-07-07T21:14:05.176933Z",
+    "url": "https://files.pythonhosted.org/packages/66/ae/1d6693cde3b3e3c14e95cf3408f24d0e869ead42a79993b611d8817d929a/zipp-0.5.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "0.6.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "743d1ee25a26411ba0401b43c6376d2316a71addcc72ef8690b101b4ea56d76a",
+     "md5": "6ee71428273bf9c45bd38e0f0c4b3d6f",
+     "sha256": "f06903e9f1f43b12d371004b4ac7b06ab39a44adc747266928ae6debfa7b3335"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.6.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "6ee71428273bf9c45bd38e0f0c4b3d6f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 4113,
+    "upload_time": "2019-08-24T16:27:53",
+    "upload_time_iso_8601": "2019-08-24T16:27:53.417153Z",
+    "url": "https://files.pythonhosted.org/packages/74/3d/1ee25a26411ba0401b43c6376d2316a71addcc72ef8690b101b4ea56d76a/zipp-0.6.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "57dd585d728479d97d25aeeb9aa470d36a4ad8d0ba5610f84e14770128ce6ff7",
+     "md5": "d4451a749d8a7c3c392a9edd1864a937",
+     "sha256": "3718b1cbcd963c7d4c5511a8240812904164b7f381b647143a89d3b98f9bcd8e"
+    },
+    "downloads": -1,
+    "filename": "zipp-0.6.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d4451a749d8a7c3c392a9edd1864a937",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 10778,
+    "upload_time": "2019-08-24T16:27:54",
+    "upload_time_iso_8601": "2019-08-24T16:27:54.736411Z",
+    "url": "https://files.pythonhosted.org/packages/57/dd/585d728479d97d25aeeb9aa470d36a4ad8d0ba5610f84e14770128ce6ff7/zipp-0.6.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f450cc72c5bcd48f6e98219fc4a88a5227e9e28b81637a99c49feba1d51f4d50",
+     "md5": "a9be7874fe9c8328117f0535ce8f574c",
+     "sha256": "8dda78f06bd1674bd8720df8a50bb47b6e1233c503a4eed8e7810686bde37656"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.0.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a9be7874fe9c8328117f0535ce8f574c",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 4111,
+    "upload_time": "2020-01-13T23:10:43",
+    "upload_time_iso_8601": "2020-01-13T23:10:43.608355Z",
+    "url": "https://files.pythonhosted.org/packages/f4/50/cc72c5bcd48f6e98219fc4a88a5227e9e28b81637a99c49feba1d51f4d50/zipp-1.0.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d4cdef86396dce8910413b6ca1ef31ec09367c47e15fc1a12def2cc8ae134dea",
+     "md5": "49b29a0469c1af728fdf681187fb3a5e",
+     "sha256": "d38fbe01bbf7a3593a32bc35a9c4453c32bc42b98c377f9bff7e9f8da157786c"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "49b29a0469c1af728fdf681187fb3a5e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 10821,
+    "upload_time": "2020-01-13T23:10:45",
+    "upload_time_iso_8601": "2020-01-13T23:10:45.052212Z",
+    "url": "https://files.pythonhosted.org/packages/d4/cd/ef86396dce8910413b6ca1ef31ec09367c47e15fc1a12def2cc8ae134dea/zipp-1.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2121ff0bfa221d5f5c5dc495977219c4de8f44ba8203f6724fb648113f9902cb",
+     "md5": "a34320352b447f7839ce165ddd625c75",
+     "sha256": "15428d652e993b6ce86694c3cccf0d71aa7afdc6ef1807fa25a920e9444e0281"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.1.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a34320352b447f7839ce165ddd625c75",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 4625,
+    "upload_time": "2020-01-25T21:11:06",
+    "upload_time_iso_8601": "2020-01-25T21:11:06.124883Z",
+    "url": "https://files.pythonhosted.org/packages/21/21/ff0bfa221d5f5c5dc495977219c4de8f44ba8203f6724fb648113f9902cb/zipp-1.1.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c2a153403f6a433049cc0d30b1304cc33cc49157c5918b87ae2d027d354e872a",
+     "md5": "31f2e9dc68fbad6dff60a618107fc55e",
+     "sha256": "d9d2efe11d3a3fb9184da550d35bd1319dc8e30a63255927c82bb42fca1f4f7c"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "31f2e9dc68fbad6dff60a618107fc55e",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 12837,
+    "upload_time": "2020-01-25T21:11:07",
+    "upload_time_iso_8601": "2020-01-25T21:11:07.225429Z",
+    "url": "https://files.pythonhosted.org/packages/c2/a1/53403f6a433049cc0d30b1304cc33cc49157c5918b87ae2d027d354e872a/zipp-1.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.1.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3a689933874a0ccb4dfcde81e1c390c3af1d141d0a6618cb6d23fb10a16b1fa0",
+     "md5": "5013b65eaf665fd3f21ed345ebb5d32e",
+     "sha256": "17d81ba5ae175e354dbd1401955f183a369bc6c91e12ba311c31654eb45e941d"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.1.1-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "5013b65eaf665fd3f21ed345ebb5d32e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 4644,
+    "upload_time": "2020-02-17T17:58:03",
+    "upload_time_iso_8601": "2020-02-17T17:58:03.108795Z",
+    "url": "https://files.pythonhosted.org/packages/3a/68/9933874a0ccb4dfcde81e1c390c3af1d141d0a6618cb6d23fb10a16b1fa0/zipp-1.1.1-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f2290e238804bf6902c6eaf5409fb4dc3470601cf58be95531ce4673c522d681",
+     "md5": "8ac7259466450c9a27abb9da20e7c3d2",
+     "sha256": "bc3eb6cc0b61029825f4ff8de5b20a75f11639d75aad95ea0e11500e37534923"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.1.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8ac7259466450c9a27abb9da20e7c3d2",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 12944,
+    "upload_time": "2020-02-17T17:58:04",
+    "upload_time_iso_8601": "2020-02-17T17:58:04.318535Z",
+    "url": "https://files.pythonhosted.org/packages/f2/29/0e238804bf6902c6eaf5409fb4dc3470601cf58be95531ce4673c522d681/zipp-1.1.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "1.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "960a67556e9b7782df7118c1f49bdc494da5e5e429c93aa77965f33e81287c8c",
+     "md5": "9c32bf0abe6dd409282f9ae30d4b9157",
+     "sha256": "e0d9e63797e483a30d27e09fffd308c59a700d365ec34e93cc100844168bf921"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.2.0-py2.py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "9c32bf0abe6dd409282f9ae30d4b9157",
+    "packagetype": "bdist_wheel",
+    "python_version": "py2.py3",
+    "requires_python": ">=2.7",
+    "size": 4821,
+    "upload_time": "2020-02-17T18:32:52",
+    "upload_time_iso_8601": "2020-02-17T18:32:52.318042Z",
+    "url": "https://files.pythonhosted.org/packages/96/0a/67556e9b7782df7118c1f49bdc494da5e5e429c93aa77965f33e81287c8c/zipp-1.2.0-py2.py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7808d52f0ea643bc1068d6dc98b412f4966a9b63255d20911a23ac3220c033c4",
+     "md5": "c25d36db01d011eb2067c722cbd56279",
+     "sha256": "c70410551488251b0fee67b460fb9a536af8d6f9f008ad10ac51f615b6a521b1"
+    },
+    "downloads": -1,
+    "filename": "zipp-1.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "c25d36db01d011eb2067c722cbd56279",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=2.7",
+    "size": 13357,
+    "upload_time": "2020-02-17T18:32:53",
+    "upload_time_iso_8601": "2020-02-17T18:32:53.297686Z",
+    "url": "https://files.pythonhosted.org/packages/78/08/d52f0ea643bc1068d6dc98b412f4966a9b63255d20911a23ac3220c033c4/zipp-1.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "45d8f1e05f399573d2b4723dae1c1f1487dd2e7871c79ed32da741f49faaa226",
+     "md5": "7b8c8475976d8025f2ee16f2381f378b",
+     "sha256": "57147f6b0403b59f33fd357f169f860e031303415aeb7d04ede4839d23905ab8"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.0.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "7b8c8475976d8025f2ee16f2381f378b",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 4172,
+    "upload_time": "2020-01-20T00:16:33",
+    "upload_time_iso_8601": "2020-01-20T00:16:33.709929Z",
+    "url": "https://files.pythonhosted.org/packages/45/d8/f1e05f399573d2b4723dae1c1f1487dd2e7871c79ed32da741f49faaa226/zipp-2.0.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "eef76c3ca4764a8025da9422825c2bc367fdc8dd115ebb52e4ef057f234938c4",
+     "md5": "2bc608312bc259bd490cfb4832c898ed",
+     "sha256": "7ae5ccaca427bafa9760ac3cd8f8c244bfc259794b5b6bb9db4dda2241575d09"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "2bc608312bc259bd490cfb4832c898ed",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 12813,
+    "upload_time": "2020-01-20T00:16:34",
+    "upload_time_iso_8601": "2020-01-20T00:16:34.954420Z",
+    "url": "https://files.pythonhosted.org/packages/ee/f7/6c3ca4764a8025da9422825c2bc367fdc8dd115ebb52e4ef057f234938c4/zipp-2.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.0.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "e10fc25ab0632254f276599b664c3b9973f537a04910130321e0fb936806ff40",
+     "md5": "f673f0623878aa2439158fcbaadacfb7",
+     "sha256": "e013e7800f60ec4dde789ebf4e9f7a54236e4bbf5df2a1a4e20ce9e1d9609d67"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.0.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "f673f0623878aa2439158fcbaadacfb7",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 4146,
+    "upload_time": "2020-01-23T02:11:47",
+    "upload_time_iso_8601": "2020-01-23T02:11:47.472363Z",
+    "url": "https://files.pythonhosted.org/packages/e1/0f/c25ab0632254f276599b664c3b9973f537a04910130321e0fb936806ff40/zipp-2.0.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "69d2daa94177e934b0b1b0780f5c856c41c248a88b2f43c046ae23afb0116ec0",
+     "md5": "92c2c9584b18a11b69db07d93dda9447",
+     "sha256": "b338014b9bc7102ca69e0fb96ed07215a8954d2989bc5d83658494ab2ba634af"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.0.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "92c2c9584b18a11b69db07d93dda9447",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 12790,
+    "upload_time": "2020-01-23T02:11:48",
+    "upload_time_iso_8601": "2020-01-23T02:11:48.475663Z",
+    "url": "https://files.pythonhosted.org/packages/69/d2/daa94177e934b0b1b0780f5c856c41c248a88b2f43c046ae23afb0116ec0/zipp-2.0.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "be694ac28bf238f287f1677f41392e24d2c4ffafcf11648c23824f5f62ef6ccb",
+     "md5": "e7718f11f230e46c65594488b2f219b3",
+     "sha256": "ccc94ed0909b58ffe34430ea5451f07bc0c76467d7081619a454bf5c98b89e28"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.1.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e7718f11f230e46c65594488b2f219b3",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 4553,
+    "upload_time": "2020-01-25T21:17:04",
+    "upload_time_iso_8601": "2020-01-25T21:17:04.669318Z",
+    "url": "https://files.pythonhosted.org/packages/be/69/4ac28bf238f287f1677f41392e24d2c4ffafcf11648c23824f5f62ef6ccb/zipp-2.1.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "11b589f3ab6d45b2709863761bab58c574b2344ef215749abb5407818c21c9ca",
+     "md5": "a1779fadeb9c2ee736fa6fa9cded5053",
+     "sha256": "feae2f18633c32fc71f2de629bfb3bd3c9325cd4419642b1f1da42ee488d9b98"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "a1779fadeb9c2ee736fa6fa9cded5053",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 13758,
+    "upload_time": "2020-01-25T21:17:05",
+    "upload_time_iso_8601": "2020-01-25T21:17:05.633352Z",
+    "url": "https://files.pythonhosted.org/packages/11/b5/89f3ab6d45b2709863761bab58c574b2344ef215749abb5407818c21c9ca/zipp-2.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4642f2dd964b2a6b1921b08d661138148c1bcd3f038462a44019416f2342b618",
+     "md5": "e4d1918918e94bbeaa83d9c5b3127ae0",
+     "sha256": "d65287feb793213ffe11c0f31b81602be31448f38aeb8ffc2eb286c4f6f6657e"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.2.0-py36-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e4d1918918e94bbeaa83d9c5b3127ae0",
+    "packagetype": "bdist_wheel",
+    "python_version": "py36",
+    "requires_python": ">=3.6",
+    "size": 4572,
+    "upload_time": "2020-02-07T22:20:56",
+    "upload_time_iso_8601": "2020-02-07T22:20:56.604373Z",
+    "url": "https://files.pythonhosted.org/packages/46/42/f2dd964b2a6b1921b08d661138148c1bcd3f038462a44019416f2342b618/zipp-2.2.0-py36-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6085668bca4a9ef474ca634c993e768f12bd99af1f06bb90bb2655bc538a967e",
+     "md5": "44b208fd6240d13ad46d6e9f3ed703c3",
+     "sha256": "5c56e330306215cd3553342cfafc73dda2c60792384117893f3a83f8a1209f50"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "44b208fd6240d13ad46d6e9f3ed703c3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 13850,
+    "upload_time": "2020-02-07T22:20:58",
+    "upload_time_iso_8601": "2020-02-07T22:20:58.336076Z",
+    "url": "https://files.pythonhosted.org/packages/60/85/668bca4a9ef474ca634c993e768f12bd99af1f06bb90bb2655bc538a967e/zipp-2.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "2.2.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "02be979f0f8ce7f165e293b3a85605681a9896c718589c7a86e8d60ec5ad62e9",
+     "md5": "2fcc631d590ba2133e1bc76f6e095dca",
+     "sha256": "6f181bdb1a8c8019f8c11517680f7c1a836a7274c40de9165abfd6da228e54f2"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.2.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "2fcc631d590ba2133e1bc76f6e095dca",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 4630,
+    "upload_time": "2020-02-17T17:57:55",
+    "upload_time_iso_8601": "2020-02-17T17:57:55.481474Z",
+    "url": "https://files.pythonhosted.org/packages/02/be/979f0f8ce7f165e293b3a85605681a9896c718589c7a86e8d60ec5ad62e9/zipp-2.2.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "57df164686623a1d9f68206996e959eb10f09bab0934af5cbb6eb5249175f953",
+     "md5": "389d6f728a3a828df1ad3191e94d55f9",
+     "sha256": "fddb41c555ab338cdf27bc1d92cc6e3c05db8d1f1e7ba89d9646976702367333"
+    },
+    "downloads": -1,
+    "filename": "zipp-2.2.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "389d6f728a3a828df1ad3191e94d55f9",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 14027,
+    "upload_time": "2020-02-17T17:57:56",
+    "upload_time_iso_8601": "2020-02-17T17:57:56.909077Z",
+    "url": "https://files.pythonhosted.org/packages/57/df/164686623a1d9f68206996e959eb10f09bab0934af5cbb6eb5249175f953/zipp-2.2.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.0.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6f6da55f6e81ac213942b9a19cbc05b560c726c3e16f8fb17555f059c17d65f2",
+     "md5": "123b8e65f4dc22a72512621ae9da6625",
+     "sha256": "12248a63bbdf7548f89cb4c7cda4681e537031eda29c02ea29674bc6854460c2"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.0.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "123b8e65f4dc22a72512621ae9da6625",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 4807,
+    "upload_time": "2020-02-17T18:33:28",
+    "upload_time_iso_8601": "2020-02-17T18:33:28.034792Z",
+    "url": "https://files.pythonhosted.org/packages/6f/6d/a55f6e81ac213942b9a19cbc05b560c726c3e16f8fb17555f059c17d65f2/zipp-3.0.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "4209bb2a28216f9572da61a2c56c6d5bf6d8c011371d8268f42a9ca5a4cbaf40",
+     "md5": "e96f9fb08c6677a58044c8f250008882",
+     "sha256": "7c0f8e91abc0dc07a5068f315c52cb30c66bfbc581e5b50704c8a2f6ebae794a"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.0.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "e96f9fb08c6677a58044c8f250008882",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 14501,
+    "upload_time": "2020-02-17T18:33:29",
+    "upload_time_iso_8601": "2020-02-17T18:33:29.076247Z",
+    "url": "https://files.pythonhosted.org/packages/42/09/bb2a28216f9572da61a2c56c6d5bf6d8c011371d8268f42a9ca5a4cbaf40/zipp-3.0.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.1.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "b234bfcb43cc0ba81f527bc4f40ef41ba2ff4080e047acb0586b56b3d017ace4",
+     "md5": "7e65965fa4597782a8d7c76c6ed21a85",
+     "sha256": "aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.1.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "7e65965fa4597782a8d7c76c6ed21a85",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 4872,
+    "upload_time": "2020-03-03T10:59:16",
+    "upload_time_iso_8601": "2020-03-03T10:59:16.165395Z",
+    "url": "https://files.pythonhosted.org/packages/b2/34/bfcb43cc0ba81f527bc4f40ef41ba2ff4080e047acb0586b56b3d017ace4/zipp-3.1.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ce8c2c5f7dc1b418f659d36c04dec9446612fc7b45c8095cc7369dd772513055",
+     "md5": "199da7385f080ec45da6c1942e2b5996",
+     "sha256": "c599e4d75c98f6798c509911d08a22e6c021d074469042177c8c86fb92eefd96"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.1.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "199da7385f080ec45da6c1942e2b5996",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 14808,
+    "upload_time": "2020-03-03T10:59:17",
+    "upload_time_iso_8601": "2020-03-03T10:59:17.580099Z",
+    "url": "https://files.pythonhosted.org/packages/ce/8c/2c5f7dc1b418f659d36c04dec9446612fc7b45c8095cc7369dd772513055/zipp-3.1.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.10.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "408ad63273ed0fa4a3d06f77e7b043f6577d8894e95515b0c187c52e2c0efabb",
+     "md5": "45e75fc446a78b655d1dc740d41e5e4f",
+     "sha256": "4fcb6f278987a6605757302a6e40e896257570d11c51628968ccb2a47e80c6c1"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.10.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "45e75fc446a78b655d1dc740d41e5e4f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6187,
+    "upload_time": "2022-10-24T01:21:48",
+    "upload_time_iso_8601": "2022-10-24T01:21:48.050220Z",
+    "url": "https://files.pythonhosted.org/packages/40/8a/d63273ed0fa4a3d06f77e7b043f6577d8894e95515b0c187c52e2c0efabb/zipp-3.10.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "8dd71bd1e0a5bc95a27a6f5c4ee8066ddfc5b69a9ec8d39ab11a41a804ec8f0d",
+     "md5": "f75b65d022528a44877626641f0f95c3",
+     "sha256": "7a7262fd930bd3e36c50b9a64897aec3fafff3dfdeec9623ae22b40e93f99bb8"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.10.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "f75b65d022528a44877626641f0f95c3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 15564,
+    "upload_time": "2022-10-24T01:21:49",
+    "upload_time_iso_8601": "2022-10-24T01:21:49.981107Z",
+    "url": "https://files.pythonhosted.org/packages/8d/d7/1bd1e0a5bc95a27a6f5c4ee8066ddfc5b69a9ec8d39ab11a41a804ec8f0d/zipp-3.10.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.11.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d820256eb3f3f437c575fb1a2efdce5e801a5ce3162ea8117da96c43e6ee97d8",
+     "md5": "98855115e8570343e1f1d042327a75d7",
+     "sha256": "83a28fcb75844b5c0cdaf5aa4003c2d728c77e05f5aeabe8e95e56727005fbaa"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.11.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "98855115e8570343e1f1d042327a75d7",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6562,
+    "upload_time": "2022-11-25T18:12:50",
+    "upload_time_iso_8601": "2022-11-25T18:12:50.517592Z",
+    "url": "https://files.pythonhosted.org/packages/d8/20/256eb3f3f437c575fb1a2efdce5e801a5ce3162ea8117da96c43e6ee97d8/zipp-3.11.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "8eb38b16a007184714f71157b1a71bbe632c5d66dd43bc8152b3c799b13881e1",
+     "md5": "1fbff3bca7294a3a7f09fa3f0652c3da",
+     "sha256": "a7a22e05929290a67401440b39690ae6563279bced5f314609d9d03798f56766"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.11.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1fbff3bca7294a3a7f09fa3f0652c3da",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 16799,
+    "upload_time": "2022-11-25T18:12:51",
+    "upload_time_iso_8601": "2022-11-25T18:12:51.704364Z",
+    "url": "https://files.pythonhosted.org/packages/8e/b3/8b16a007184714f71157b1a71bbe632c5d66dd43bc8152b3c799b13881e1/zipp-3.11.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.12.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "013c9d84fc1dbac1c5103bf3cd994e4895642001f75eb2139bddbc02aa1906e5",
+     "md5": "c7411b1b2cd758332f3ab7ca1ab0caf5",
+     "sha256": "9eb0a4c5feab9b08871db0d672745b53450d7f26992fd1e4653aa43345e97b86"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.12.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "c7411b1b2cd758332f3ab7ca1ab0caf5",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6627,
+    "upload_time": "2023-01-27T22:46:38",
+    "upload_time_iso_8601": "2023-01-27T22:46:38.184149Z",
+    "url": "https://files.pythonhosted.org/packages/01/3c/9d84fc1dbac1c5103bf3cd994e4895642001f75eb2139bddbc02aa1906e5/zipp-3.12.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3505f81a74656c04e94f05c1ef186127cceb913493f1f8a21bb142a93c786ee8",
+     "md5": "1f0f67e3e7856aef6e91ba353ce524e3",
+     "sha256": "73efd63936398aac78fd92b6f4865190119d6c91b531532e798977ea8dd402eb"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.12.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "1f0f67e3e7856aef6e91ba353ce524e3",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 17705,
+    "upload_time": "2023-01-27T22:46:39",
+    "upload_time_iso_8601": "2023-01-27T22:46:39.788699Z",
+    "url": "https://files.pythonhosted.org/packages/35/05/f81a74656c04e94f05c1ef186127cceb913493f1f8a21bb142a93c786ee8/zipp-3.12.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.12.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "377d4a5221043904612db108bbe7d0ad7409015fb143bae137c72d9dfd7b75e1",
+     "md5": "e377da0396565d8783c7e204800b6583",
+     "sha256": "6c4fe274b8f85ec73c37a8e4e3fa00df9fb9335da96fb789e3b96b318e5097b3"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.12.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "e377da0396565d8783c7e204800b6583",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6718,
+    "upload_time": "2023-02-05T17:47:17",
+    "upload_time_iso_8601": "2023-02-05T17:47:17.566933Z",
+    "url": "https://files.pythonhosted.org/packages/37/7d/4a5221043904612db108bbe7d0ad7409015fb143bae137c72d9dfd7b75e1/zipp-3.12.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "1f2954ba1934c45af649698410456fa8a78a475c82efd5c562e51011079458d1",
+     "md5": "6cc740ee6b1c7e80262e914d1d5d7e79",
+     "sha256": "a3cac813d40993596b39ea9e93a18e8a2076d5c378b8bc88ec32ab264e04ad02"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.12.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "6cc740ee6b1c7e80262e914d1d5d7e79",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 17987,
+    "upload_time": "2023-02-05T17:47:18",
+    "upload_time_iso_8601": "2023-02-05T17:47:18.903123Z",
+    "url": "https://files.pythonhosted.org/packages/1f/29/54ba1934c45af649698410456fa8a78a475c82efd5c562e51011079458d1/zipp-3.12.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.13.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "957b1608a7344743f54a8c072d64d2a279934fd204d6d015278b0a0ed4ce104b",
+     "md5": "bbe676c29bf9e6db5a128cf2cbcb3b0f",
+     "sha256": "e8b2a36ea17df80ffe9e2c4fda3f693c3dad6df1697d3cd3af232db680950b0b"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.13.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bbe676c29bf9e6db5a128cf2cbcb3b0f",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6718,
+    "upload_time": "2023-02-09T17:04:05",
+    "upload_time_iso_8601": "2023-02-09T17:04:05.249660Z",
+    "url": "https://files.pythonhosted.org/packages/95/7b/1608a7344743f54a8c072d64d2a279934fd204d6d015278b0a0ed4ce104b/zipp-3.13.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "d12fba544a8a6ad5ad9dcec1b00f536bb9fb078f5f50d1a1408876de18a9151b",
+     "md5": "ee68b317a1393b11c2d4037a30d18bed",
+     "sha256": "23f70e964bc11a34cef175bc90ba2914e1e4545ea1e3e2f67c079671883f9cb6"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.13.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ee68b317a1393b11c2d4037a30d18bed",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 18725,
+    "upload_time": "2023-02-09T17:04:06",
+    "upload_time_iso_8601": "2023-02-09T17:04:06.617204Z",
+    "url": "https://files.pythonhosted.org/packages/d1/2f/ba544a8a6ad5ad9dcec1b00f536bb9fb078f5f50d1a1408876de18a9151b/zipp-3.13.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.14.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "a87d90189265f0a9bcdf79b1143b77b0ef6dca0a5f13783f1e1efa4d7d7eafca",
+     "md5": "d5441872afc6ebdd5ef223afd1bbfc28",
+     "sha256": "188834565033387710d046e3fe96acfc9b5e86cbca7f39ff69cf21a4128198b7"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.14.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "d5441872afc6ebdd5ef223afd1bbfc28",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6706,
+    "upload_time": "2023-02-18T00:47:56",
+    "upload_time_iso_8601": "2023-02-18T00:47:56.202058Z",
+    "url": "https://files.pythonhosted.org/packages/a8/7d/90189265f0a9bcdf79b1143b77b0ef6dca0a5f13783f1e1efa4d7d7eafca/zipp-3.14.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ab47b47d02b741e0aa6f998fc80457d3dfc05cb7732ef480597c2971cbc79260",
+     "md5": "4562e20704fda17222f87d6618a4f604",
+     "sha256": "9e5421e176ef5ab4c0ad896624e87a7b2f07aca746c9b2aa305952800cb8eecb"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.14.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "4562e20704fda17222f87d6618a4f604",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 18405,
+    "upload_time": "2023-02-18T00:47:57",
+    "upload_time_iso_8601": "2023-02-18T00:47:57.382151Z",
+    "url": "https://files.pythonhosted.org/packages/ab/47/b47d02b741e0aa6f998fc80457d3dfc05cb7732ef480597c2971cbc79260/zipp-3.14.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.15.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "5bfac9e82bbe1af6266adf08afb563905eb87cab83fde00a0a08963510621047",
+     "md5": "7c135a41b74b0ae8a5d67b665f4facdf",
+     "sha256": "48904fc76a60e542af151aded95726c1a5c34ed43ab4134b597665c86d7ad556"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.15.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "7c135a41b74b0ae8a5d67b665f4facdf",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 6758,
+    "upload_time": "2023-02-25T02:17:20",
+    "upload_time_iso_8601": "2023-02-25T02:17:20.807094Z",
+    "url": "https://files.pythonhosted.org/packages/5b/fa/c9e82bbe1af6266adf08afb563905eb87cab83fde00a0a08963510621047/zipp-3.15.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "0027f0ac6b846684cecce1ee93d32450c45ab607f65c2e0255f0092032d91f07",
+     "md5": "6e06bc2894588451a9787b9f22f9b0ba",
+     "sha256": "112929ad649da941c23de50f356a2b5570c954b65150642bccdd66bf194d224b"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.15.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "6e06bc2894588451a9787b9f22f9b0ba",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 18454,
+    "upload_time": "2023-02-25T02:17:22",
+    "upload_time_iso_8601": "2023-02-25T02:17:22.503369Z",
+    "url": "https://files.pythonhosted.org/packages/00/27/f0ac6b846684cecce1ee93d32450c45ab607f65c2e0255f0092032d91f07/zipp-3.15.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.2.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c4793b770d51254a31bb85ba56ea70d7428d0c2c659a233cc9722352e028b539",
+     "md5": "13d2827b2200ce4cf3d42df0d37bc32a",
+     "sha256": "43f4fa8d8bb313e65d8323a3952ef8756bf40f9a5c3ea7334be23ee4ec8278b6"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.2.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "13d2827b2200ce4cf3d42df0d37bc32a",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5110,
+    "upload_time": "2020-09-22T15:29:23",
+    "upload_time_iso_8601": "2020-09-22T15:29:23.094415Z",
+    "url": "https://files.pythonhosted.org/packages/c4/79/3b770d51254a31bb85ba56ea70d7428d0c2c659a233cc9722352e028b539/zipp-3.2.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "30a3a67b64feac23b22c71ca2a4084387a6f205dc7cb4f0c67c755d6a4b29a7f",
+     "md5": "321a0dfa1080d58e5de0800a26565452",
+     "sha256": "b52f22895f4cfce194bc8172f3819ee8de7540aa6d873535a8668b730b8b411f"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.2.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "321a0dfa1080d58e5de0800a26565452",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 16238,
+    "upload_time": "2020-09-22T15:29:24",
+    "upload_time_iso_8601": "2020-09-22T15:29:24.298274Z",
+    "url": "https://files.pythonhosted.org/packages/30/a3/a67b64feac23b22c71ca2a4084387a6f205dc7cb4f0c67c755d6a4b29a7f/zipp-3.2.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.3.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "151bdbf5af0148ba527fb2164d2a2ecf623e77ca93877a83379a5b1aab563e40",
+     "md5": "a7289e2eb0400d6687da76b1e18a3d7e",
+     "sha256": "eed8ec0b8d1416b2ca33516a37a08892442f3954dee131e92cfd92d8fe3e7066"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.3.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "a7289e2eb0400d6687da76b1e18a3d7e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5259,
+    "upload_time": "2020-10-03T18:55:40",
+    "upload_time_iso_8601": "2020-10-03T18:55:40.482332Z",
+    "url": "https://files.pythonhosted.org/packages/15/1b/dbf5af0148ba527fb2164d2a2ecf623e77ca93877a83379a5b1aab563e40/zipp-3.3.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "7b508a41d217ae898bb7a422a55a2a2afc22dfaab42b7bce5fe771a3892fe5e7",
+     "md5": "87a53f0bf48671f6bf6d3e9938218509",
+     "sha256": "64ad89efee774d1897a58607895d80789c59778ea02185dd846ac38394a8642b"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.3.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "87a53f0bf48671f6bf6d3e9938218509",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 16796,
+    "upload_time": "2020-10-03T18:55:41",
+    "upload_time_iso_8601": "2020-10-03T18:55:41.609074Z",
+    "url": "https://files.pythonhosted.org/packages/7b/50/8a41d217ae898bb7a422a55a2a2afc22dfaab42b7bce5fe771a3892fe5e7/zipp-3.3.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.3.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "64f20aa52375e14863b377bc9eb58fde6ec48e0a7f73fdf91c9876669559fe45",
+     "md5": "4225ece94ec28a0bf22ca3bbd518c38d",
+     "sha256": "16522f69653f0d67be90e8baa4a46d66389145b734345d68a257da53df670903"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.3.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "4225ece94ec28a0bf22ca3bbd518c38d",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5259,
+    "upload_time": "2020-10-16T01:59:56",
+    "upload_time_iso_8601": "2020-10-16T01:59:56.057666Z",
+    "url": "https://files.pythonhosted.org/packages/64/f2/0aa52375e14863b377bc9eb58fde6ec48e0a7f73fdf91c9876669559fe45/zipp-3.3.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "494d374ccacda17692db1d93b00a637b8255ec97608b0c51f3b66bc9c57fe3e1",
+     "md5": "8bc697a6f65b8e2f75bcadfb90e98e58",
+     "sha256": "c1532a8030c32fd52ff6a288d855fe7adef5823ba1d26a29a68fd6314aa72baa"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.3.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8bc697a6f65b8e2f75bcadfb90e98e58",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 17336,
+    "upload_time": "2020-10-16T01:59:57",
+    "upload_time_iso_8601": "2020-10-16T01:59:57.212914Z",
+    "url": "https://files.pythonhosted.org/packages/49/4d/374ccacda17692db1d93b00a637b8255ec97608b0c51f3b66bc9c57fe3e1/zipp-3.3.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.3.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9201d39a8a821b1f9fcd88e6f4981a06143914805525b4608fb9660e2c498f7d",
+     "md5": "933fcea135780f44accb2d15bb611b21",
+     "sha256": "50a4ef266c31c9409627b46012e206382eb8d23f46fbd358065a8335cfbf7d8f"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.3.2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "933fcea135780f44accb2d15bb611b21",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5206,
+    "upload_time": "2020-10-24T03:04:30",
+    "upload_time_iso_8601": "2020-10-24T03:04:30.965904Z",
+    "url": "https://files.pythonhosted.org/packages/92/01/d39a8a821b1f9fcd88e6f4981a06143914805525b4608fb9660e2c498f7d/zipp-3.3.2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "9ffe94c25f36127b10ad83e56429e47a62b9d780e0b40e21cf6fbce326bcdb38",
+     "md5": "dbf8b5f261ec28a180ac19ab4056d2c9",
+     "sha256": "adf8f2ed8f614ced567d849cae9d183cef6cfd27c77a5cae7a28029be0c2b7a7"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.3.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "dbf8b5f261ec28a180ac19ab4056d2c9",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 15570,
+    "upload_time": "2020-10-24T03:04:31",
+    "upload_time_iso_8601": "2020-10-24T03:04:31.896539Z",
+    "url": "https://files.pythonhosted.org/packages/9f/fe/94c25f36127b10ad83e56429e47a62b9d780e0b40e21cf6fbce326bcdb38/zipp-3.3.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.4.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "41ad6a4f1a124b325618a7fb758b885b68ff7b058eec47d9220a12ab38d90b1f",
+     "md5": "bbd9aa1c9d53ed2178157746c7198fae",
+     "sha256": "102c24ef8f171fd729d46599845e95c7ab894a4cf45f5de11a44cc7444fb1108"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.4.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "bbd9aa1c9d53ed2178157746c7198fae",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5213,
+    "upload_time": "2020-10-25T18:40:27",
+    "upload_time_iso_8601": "2020-10-25T18:40:27.422786Z",
+    "url": "https://files.pythonhosted.org/packages/41/ad/6a4f1a124b325618a7fb758b885b68ff7b058eec47d9220a12ab38d90b1f/zipp-3.4.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "ceb0757db659e8b91cb3ea47d90350d7735817fe1df36086afc77c1c4610d559",
+     "md5": "ae81f228995578b840d76d1b7d87fede",
+     "sha256": "ed5eee1974372595f9e416cc7bbeeb12335201d8081ca8a0743c954d4446e5cb"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.4.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "ae81f228995578b840d76d1b7d87fede",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 15638,
+    "upload_time": "2020-10-25T18:40:28",
+    "upload_time_iso_8601": "2020-10-25T18:40:28.404028Z",
+    "url": "https://files.pythonhosted.org/packages/ce/b0/757db659e8b91cb3ea47d90350d7735817fe1df36086afc77c1c4610d559/zipp-3.4.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.4.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "0f8c715c54e9e34c0c4820f616a913a7de3337d0cd79074dd1bed4dd840f16ae",
+     "md5": "483005e4371c4272901908cffc968ac2",
+     "sha256": "51cb66cc54621609dd593d1787f286ee42a5c0adbb4b29abea5a63edc3e03098"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.4.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "483005e4371c4272901908cffc968ac2",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5191,
+    "upload_time": "2021-03-05T02:42:13",
+    "upload_time_iso_8601": "2021-03-05T02:42:13.334304Z",
+    "url": "https://files.pythonhosted.org/packages/0f/8c/715c54e9e34c0c4820f616a913a7de3337d0cd79074dd1bed4dd840f16ae/zipp-3.4.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "38f94fa6df2753ded1bcc1ce2fdd8046f78bd240ff7647f5c9bcf547c0df77e3",
+     "md5": "3d91c7ab73b62ac3674210df94df600a",
+     "sha256": "3607921face881ba3e026887d8150cca609d517579abe052ac81fc5aeffdbd76"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.4.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3d91c7ab73b62ac3674210df94df600a",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 16545,
+    "upload_time": "2021-03-05T02:42:14",
+    "upload_time_iso_8601": "2021-03-05T02:42:14.388358Z",
+    "url": "https://files.pythonhosted.org/packages/38/f9/4fa6df2753ded1bcc1ce2fdd8046f78bd240ff7647f5c9bcf547c0df77e3/zipp-3.4.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.4.2": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "c11cb361860b2ef2a34c12e3c3244411f1d3beaf8c534a3e85ab7d6d61c7ee51",
+     "md5": "d4ebfdb6a32cede97e90841eac8b28c5",
+     "sha256": "a5303f8ad20aff64720bf548256646f74fc8c167065c0d177a98a7cadceed85a"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.4.2-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "d4ebfdb6a32cede97e90841eac8b28c5",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5275,
+    "upload_time": "2021-07-02T22:56:56",
+    "upload_time_iso_8601": "2021-07-02T22:56:56.315303Z",
+    "url": "https://files.pythonhosted.org/packages/c1/1c/b361860b2ef2a34c12e3c3244411f1d3beaf8c534a3e85ab7d6d61c7ee51/zipp-3.4.2-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "260b396f6fa399c95b01e3040a2c0907f777defc75a502f4dcd8441530e3d6a4",
+     "md5": "d9c3ae8264d3f3d872bc1cfccc897804",
+     "sha256": "ce85de43ee0ead77dd0fbee3902bec1501aef59b92a2e18265396b22a1d756ab"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.4.2.tar.gz",
+    "has_sig": false,
+    "md5_digest": "d9c3ae8264d3f3d872bc1cfccc897804",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 12581,
+    "upload_time": "2021-07-02T22:56:57",
+    "upload_time_iso_8601": "2021-07-02T22:56:57.178184Z",
+    "url": "https://files.pythonhosted.org/packages/26/0b/396f6fa399c95b01e3040a2c0907f777defc75a502f4dcd8441530e3d6a4/zipp-3.4.2.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.5.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "92d989f433969fb8dc5b9cbdd4b4deb587720ec1aeb59a020cf15002b9593eef",
+     "md5": "0ec47fbf522751f6c5fa904cb33f1f59",
+     "sha256": "957cfda87797e389580cb8b9e3870841ca991e2125350677b2ca83a0e99390a3"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.5.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "0ec47fbf522751f6c5fa904cb33f1f59",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5700,
+    "upload_time": "2021-07-02T23:51:45",
+    "upload_time_iso_8601": "2021-07-02T23:51:45.759726Z",
+    "url": "https://files.pythonhosted.org/packages/92/d9/89f433969fb8dc5b9cbdd4b4deb587720ec1aeb59a020cf15002b9593eef/zipp-3.5.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3a9f1d4b62cbe8d222539a84089eeab603d8e45ee1f897803a0ae0860400d6e7",
+     "md5": "617efbf3edb707c57008ec00f408972f",
+     "sha256": "f5812b1e007e48cff63449a5e9f4e7ebea716b4111f9c4f9a645f91d579bf0c4"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.5.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "617efbf3edb707c57008ec00f408972f",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 13270,
+    "upload_time": "2021-07-02T23:51:47",
+    "upload_time_iso_8601": "2021-07-02T23:51:47.004396Z",
+    "url": "https://files.pythonhosted.org/packages/3a/9f/1d4b62cbe8d222539a84089eeab603d8e45ee1f897803a0ae0860400d6e7/zipp-3.5.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.5.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "6cb30f6b1fef97055a75cebbcd5d4719145963f09cf9d62793201a769b1e3aaa",
+     "md5": "b2f6ffc0d2055cf2eac6f3c35101a26e",
+     "sha256": "8dc6c4d5a809d659067cc713f76bcf42fae8ae641db12fddfa93694a15abc96b"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.5.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "b2f6ffc0d2055cf2eac6f3c35101a26e",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5298,
+    "upload_time": "2021-09-28T16:58:13",
+    "upload_time_iso_8601": "2021-09-28T16:58:13.144803Z",
+    "url": "https://files.pythonhosted.org/packages/6c/b3/0f6b1fef97055a75cebbcd5d4719145963f09cf9d62793201a769b1e3aaa/zipp-3.5.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "76e4b0f1010d29a61e3527667b214498da73299f747dd25ad0fd135705170716",
+     "md5": "31ba90daf8af0808d93748dfb64e8d09",
+     "sha256": "1fc9641b26f3bd81069b7738b039f2819cab6e3fc3399a953e19d92cc81eff4d"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.5.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "31ba90daf8af0808d93748dfb64e8d09",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 13005,
+    "upload_time": "2021-09-28T16:58:14",
+    "upload_time_iso_8601": "2021-09-28T16:58:14.853167Z",
+    "url": "https://files.pythonhosted.org/packages/76/e4/b0f1010d29a61e3527667b214498da73299f747dd25ad0fd135705170716/zipp-3.5.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.6.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "bddfd4a4974a3e3957fd1c1fa3082366d7fff6e428ddb55f074bf64876f8e8ad",
+     "md5": "655d8bb10a010accc0158d23b11f2009",
+     "sha256": "9fe5ea21568a0a70e50f273397638d39b03353731e6cbbb3fd8502a33fec40bc"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.6.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "655d8bb10a010accc0158d23b11f2009",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.6",
+    "size": 5313,
+    "upload_time": "2021-09-29T15:34:00",
+    "upload_time_iso_8601": "2021-09-29T15:34:00.831229Z",
+    "url": "https://files.pythonhosted.org/packages/bd/df/d4a4974a3e3957fd1c1fa3082366d7fff6e428ddb55f074bf64876f8e8ad/zipp-3.6.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "02bf0d03dbdedb83afec081fefe86cae3a2447250ef1a81ac601a9a56e785401",
+     "md5": "8d5cf6eb3270384ae13a6440797ea564",
+     "sha256": "71c644c5369f4a6e07636f0aa966270449561fcea2e3d6747b8d23efaa9d7832"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.6.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8d5cf6eb3270384ae13a6440797ea564",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.6",
+    "size": 13047,
+    "upload_time": "2021-09-29T15:34:01",
+    "upload_time_iso_8601": "2021-09-29T15:34:01.816585Z",
+    "url": "https://files.pythonhosted.org/packages/02/bf/0d03dbdedb83afec081fefe86cae3a2447250ef1a81ac601a9a56e785401/zipp-3.6.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.7.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "52c5df7953fe6065185af5956265e3b16f13c2826c2b1ba23d43154f3af453bc",
+     "md5": "fe228758662bbf708699fe52d0232b3b",
+     "sha256": "b47250dd24f92b7dd6a0a8fc5244da14608f3ca90a5efcd37a3b1642fac9a375"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.7.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "fe228758662bbf708699fe52d0232b3b",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 5312,
+    "upload_time": "2021-12-31T00:02:16",
+    "upload_time_iso_8601": "2021-12-31T00:02:16.739641Z",
+    "url": "https://files.pythonhosted.org/packages/52/c5/df7953fe6065185af5956265e3b16f13c2826c2b1ba23d43154f3af453bc/zipp-3.7.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "94643115548d41cb001378099cb4fc6a6889c64ef43ac1b0e68c9e80b55884fa",
+     "md5": "5a1fc692b57b348d1e259484b405ddf6",
+     "sha256": "9f50f446828eb9d45b267433fd3e9da8d801f614129124863f9c51ebceafb87d"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.7.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "5a1fc692b57b348d1e259484b405ddf6",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 12989,
+    "upload_time": "2021-12-31T00:02:18",
+    "upload_time_iso_8601": "2021-12-31T00:02:18.216615Z",
+    "url": "https://files.pythonhosted.org/packages/94/64/3115548d41cb001378099cb4fc6a6889c64ef43ac1b0e68c9e80b55884fa/zipp-3.7.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.8.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "800e16a7ee38617aab6a624e95948d314097cc2669edae9b02ded53309941cfc",
+     "md5": "da531f1b3a5c5e65470cb74729242bfc",
+     "sha256": "c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.8.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "da531f1b3a5c5e65470cb74729242bfc",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 5369,
+    "upload_time": "2022-04-03T15:07:27",
+    "upload_time_iso_8601": "2022-04-03T15:07:27.225245Z",
+    "url": "https://files.pythonhosted.org/packages/80/0e/16a7ee38617aab6a624e95948d314097cc2669edae9b02ded53309941cfc/zipp-3.8.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "cc3c3e8c69cd493297003da83f26ccf1faea5dd7da7892a0a7c965ac3bcba7bf",
+     "md5": "8864ff5ed01cd28755cc87f1443dbc67",
+     "sha256": "56bf8aadb83c24db6c4b577e13de374ccfb67da2078beba1d037c17980bf43ad"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.8.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "8864ff5ed01cd28755cc87f1443dbc67",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 13344,
+    "upload_time": "2022-04-03T15:07:28",
+    "upload_time_iso_8601": "2022-04-03T15:07:28.747898Z",
+    "url": "https://files.pythonhosted.org/packages/cc/3c/3e8c69cd493297003da83f26ccf1faea5dd7da7892a0a7c965ac3bcba7bf/zipp-3.8.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.8.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "f036639d6742bcc3ffdce8b85c31d79fcfae7bb04b95f0e5c4c6f8b206a038cc",
+     "md5": "300aa262796e7ebfb57b4d6731821c29",
+     "sha256": "47c40d7fe183a6f21403a199b3e4192cca5774656965b0a4988ad2f8feb5f009"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.8.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "300aa262796e7ebfb57b4d6731821c29",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 5645,
+    "upload_time": "2022-07-12T14:21:20",
+    "upload_time_iso_8601": "2022-07-12T14:21:20.506913Z",
+    "url": "https://files.pythonhosted.org/packages/f0/36/639d6742bcc3ffdce8b85c31d79fcfae7bb04b95f0e5c4c6f8b206a038cc/zipp-3.8.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "3be3fb79a1ea5f3a7e9745f688855d3c673f2ef7921639a380ec76f7d4d83a85",
+     "md5": "6f15c3e3c78919f8936749b0033e0cea",
+     "sha256": "05b45f1ee8f807d0cc928485ca40a07cb491cf092ff587c0df9cb1fd154848d2"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.8.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "6f15c3e3c78919f8936749b0033e0cea",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 14189,
+    "upload_time": "2022-07-12T14:21:21",
+    "upload_time_iso_8601": "2022-07-12T14:21:21.776053Z",
+    "url": "https://files.pythonhosted.org/packages/3b/e3/fb79a1ea5f3a7e9745f688855d3c673f2ef7921639a380ec76f7d4d83a85/zipp-3.8.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.9.0": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "0985302c153615db93e9197f13e02f448b3f95d7d786948f2fb3d6d5830a481b",
+     "md5": "c75a0a86788f20e54324ee2a94ae1e54",
+     "sha256": "972cfa31bc2fedd3fa838a51e9bc7e64b7fb725a8c00e7431554311f180e9980"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.9.0-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "c75a0a86788f20e54324ee2a94ae1e54",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 5769,
+    "upload_time": "2022-10-08T18:06:29",
+    "upload_time_iso_8601": "2022-10-08T18:06:29.078961Z",
+    "url": "https://files.pythonhosted.org/packages/09/85/302c153615db93e9197f13e02f448b3f95d7d786948f2fb3d6d5830a481b/zipp-3.9.0-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "412e1341c5634c25e7254df01ec1f6cbd2bcdee3e647709e7c3647d1b362e3ac",
+     "md5": "46815096f7e8cf91de9a0d6c84727608",
+     "sha256": "3a7af91c3db40ec72dd9d154ae18e008c69efe8ca88dde4f9a731bb82fe2f9eb"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.9.0.tar.gz",
+    "has_sig": false,
+    "md5_digest": "46815096f7e8cf91de9a0d6c84727608",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 15118,
+    "upload_time": "2022-10-08T18:06:30",
+    "upload_time_iso_8601": "2022-10-08T18:06:30.304931Z",
+    "url": "https://files.pythonhosted.org/packages/41/2e/1341c5634c25e7254df01ec1f6cbd2bcdee3e647709e7c3647d1b362e3ac/zipp-3.9.0.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ],
+  "3.9.1": [
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "79d96b26d99a966d2e299cc250cda9c54715f7e62db8136d6fca7691de7a0e41",
+     "md5": "20c43b1d45070ee490a909c4b0dffc16",
+     "sha256": "910e3ea948f842be9addc22f51698c57c5a39053edf45a76bcafd2832a0b6cfb"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.9.1-py3-none-any.whl",
+    "has_sig": false,
+    "md5_digest": "20c43b1d45070ee490a909c4b0dffc16",
+    "packagetype": "bdist_wheel",
+    "python_version": "py3",
+    "requires_python": ">=3.7",
+    "size": 5926,
+    "upload_time": "2022-10-24T01:14:24",
+    "upload_time_iso_8601": "2022-10-24T01:14:24.176906Z",
+    "url": "https://files.pythonhosted.org/packages/79/d9/6b26d99a966d2e299cc250cda9c54715f7e62db8136d6fca7691de7a0e41/zipp-3.9.1-py3-none-any.whl",
+    "yanked": false,
+    "yanked_reason": null
+   },
+   {
+    "comment_text": "",
+    "digests": {
+     "blake2b_256": "2140791c00c9788d8a8b005a20248a9ce2fb46aaf12fa12b0ff9e1639aea04af",
+     "md5": "3957d118db1db260a4918b85919e77aa",
+     "sha256": "97276b5f589df6611b416f839d9e212d9122eadf8dbf2a7be39b74968d681c52"
+    },
+    "downloads": -1,
+    "filename": "zipp-3.9.1.tar.gz",
+    "has_sig": false,
+    "md5_digest": "3957d118db1db260a4918b85919e77aa",
+    "packagetype": "sdist",
+    "python_version": "source",
+    "requires_python": ">=3.7",
+    "size": 15307,
+    "upload_time": "2022-10-24T01:14:25",
+    "upload_time_iso_8601": "2022-10-24T01:14:25.498777Z",
+    "url": "https://files.pythonhosted.org/packages/21/40/791c00c9788d8a8b005a20248a9ce2fb46aaf12fa12b0ff9e1639aea04af/zipp-3.9.1.tar.gz",
+    "yanked": false,
+    "yanked_reason": null
+   }
+  ]
+ },
+ "urls": [
+  {
+   "comment_text": "",
+   "digests": {
+    "blake2b_256": "5bfac9e82bbe1af6266adf08afb563905eb87cab83fde00a0a08963510621047",
+    "md5": "7c135a41b74b0ae8a5d67b665f4facdf",
+    "sha256": "48904fc76a60e542af151aded95726c1a5c34ed43ab4134b597665c86d7ad556"
+   },
+   "downloads": -1,
+   "filename": "zipp-3.15.0-py3-none-any.whl",
+   "has_sig": false,
+   "md5_digest": "7c135a41b74b0ae8a5d67b665f4facdf",
+   "packagetype": "bdist_wheel",
+   "python_version": "py3",
+   "requires_python": ">=3.7",
+   "size": 6758,
+   "upload_time": "2023-02-25T02:17:20",
+   "upload_time_iso_8601": "2023-02-25T02:17:20.807094Z",
+   "url": "https://files.pythonhosted.org/packages/5b/fa/c9e82bbe1af6266adf08afb563905eb87cab83fde00a0a08963510621047/zipp-3.15.0-py3-none-any.whl",
+   "yanked": false,
+   "yanked_reason": null
+  },
+  {
+   "comment_text": "",
+   "digests": {
+    "blake2b_256": "0027f0ac6b846684cecce1ee93d32450c45ab607f65c2e0255f0092032d91f07",
+    "md5": "6e06bc2894588451a9787b9f22f9b0ba",
+    "sha256": "112929ad649da941c23de50f356a2b5570c954b65150642bccdd66bf194d224b"
+   },
+   "downloads": -1,
+   "filename": "zipp-3.15.0.tar.gz",
+   "has_sig": false,
+   "md5_digest": "6e06bc2894588451a9787b9f22f9b0ba",
+   "packagetype": "sdist",
+   "python_version": "source",
+   "requires_python": ">=3.7",
+   "size": 18454,
+   "upload_time": "2023-02-25T02:17:22",
+   "upload_time_iso_8601": "2023-02-25T02:17:22.503369Z",
+   "url": "https://files.pythonhosted.org/packages/00/27/f0ac6b846684cecce1ee93d32450c45ab607f65c2e0255f0092032d91f07/zipp-3.15.0.tar.gz",
+   "yanked": false,
+   "yanked_reason": null
+  }
+ ],
+ "vulnerabilities": []
+}

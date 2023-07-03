@@ -1372,27 +1372,25 @@ func (b *Build) OverlayBinSh() error {
 	return nil
 }
 
-func (b *Build) fetchBucket(cmm CacheMembershipMap) (string, error) {
-	cb := context.TODO()
-
+func (b *Build) fetchBucket(ctx context.Context, cmm CacheMembershipMap) (string, error) {
 	tmp, err := os.MkdirTemp("", "melange-cache")
 	if err != nil {
 		return "", err
 	}
 	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(b.CacheSource, "gs://"), "/")
 
-	client, err := storage.NewClient(cb)
+	client, err := storage.NewClient(ctx)
 	if err != nil {
 		b.Logger.Printf("downgrading to anonymous mode: %s", err)
 
-		client, err = storage.NewClient(cb, option.WithoutAuthentication())
+		client, err = storage.NewClient(ctx, option.WithoutAuthentication())
 		if err != nil {
 			return "", fmt.Errorf("failed to get storage client: %w", err)
 		}
 	}
 
 	bh := client.Bucket(bucket)
-	it := bh.Objects(cb, &storage.Query{Prefix: prefix})
+	it := bh.Objects(ctx, &storage.Query{Prefix: prefix})
 	for {
 		attrs, err := it.Next()
 		if err == iterator.Done {
@@ -1404,7 +1402,7 @@ func (b *Build) fetchBucket(cmm CacheMembershipMap) (string, error) {
 		if !cmm[on] {
 			continue
 		}
-		rc, err := bh.Object(on).NewReader(cb)
+		rc, err := bh.Object(on).NewReader(ctx)
 		if err != nil {
 			return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
 		}
@@ -1431,7 +1429,7 @@ func (b *Build) IsBuildLess() bool {
 	return len(b.Configuration.Pipeline) == 0
 }
 
-func (b *Build) PopulateCache() error {
+func (b *Build) PopulateCache(ctx context.Context) error {
 	if b.CacheDir == "" {
 		return nil
 	}
@@ -1446,7 +1444,7 @@ func (b *Build) PopulateCache() error {
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
 	if strings.HasPrefix(b.CacheSource, "gs://") {
-		tmp, err := b.fetchBucket(cmm)
+		tmp, err := b.fetchBucket(ctx, cmm)
 		if err != nil {
 			return err
 		}
@@ -1610,7 +1608,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 		}
 
-		if err := b.PopulateCache(); err != nil {
+		if err := b.PopulateCache(ctx); err != nil {
 			return fmt.Errorf("unable to populate cache: %w", err)
 		}
 	}
@@ -1787,7 +1785,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if b, err := index.New(opts...); err != nil {
 			return fmt.Errorf("unable to create index b: %w", err)
 		} else {
-			if err := b.GenerateIndex(); err != nil {
+			if err := b.GenerateIndex(ctx); err != nil {
 				return fmt.Errorf("unable to generate index: %w", err)
 			}
 

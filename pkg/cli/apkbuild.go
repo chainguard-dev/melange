@@ -60,7 +60,7 @@ func ApkBuild() *cobra.Command {
 }
 
 func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) error {
-	context, err := apkbuild.New()
+	context, err := apkbuild.New(ctx)
 	if err != nil {
 		return errors.Wrap(err, "initialising convert command")
 	}
@@ -73,7 +73,7 @@ func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) er
 
 	context.Logger.Printf("generating convert config files for APKBUILD %s", configFilename)
 
-	err = context.Generate(configFilename, packageName)
+	err = context.Generate(ctx, configFilename, packageName)
 	if err != nil {
 		return errors.Wrap(err, "generating convert configuration")
 	}

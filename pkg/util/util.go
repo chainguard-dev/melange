@@ -15,6 +15,7 @@
 package util
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"hash"
@@ -25,7 +26,7 @@ import (
 )
 
 // DownloadFile downloads a file and returns a path to it in temporary storage.
-func DownloadFile(uri string) (string, error) {
+func DownloadFile(ctx context.Context, uri string) (string, error) {
 	targetFile, err := os.CreateTemp("", "melange-update-*")
 	if err != nil {
 		return "", err
@@ -40,7 +41,7 @@ func DownloadFile(uri string) (string, error) {
 		},
 	}
 
-	req, err := http.NewRequest("GET", uri, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 	if err != nil {
 		return "", err
 	}

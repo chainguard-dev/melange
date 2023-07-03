@@ -50,5 +50,5 @@ func IndexCmd(ctx context.Context, opts ...index.Option) error {
 	if err != nil {
 		return err
 	}
-	return ic.GenerateIndex()
+	return ic.GenerateIndex(ctx)
 }

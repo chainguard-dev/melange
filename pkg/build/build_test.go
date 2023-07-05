@@ -34,9 +34,10 @@ var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.T
 // file. When in doubt, add your test here.
 func TestConfiguration_Load(t *testing.T) {
 	tests := []struct {
-		name       string
-		requireErr require.ErrorAssertionFunc
-		expected   Configuration
+		name                string
+		skipConfigCleanStep bool
+		requireErr          require.ErrorAssertionFunc
+		expected            Configuration
 	}{
 		{
 			name:       "range-subpackages",
@@ -167,6 +168,29 @@ func TestConfiguration_Load(t *testing.T) {
 			requireErr: requireErrInvalidConfiguration,
 			expected:   Configuration{},
 		},
+		{
+			name:                "env-vars-set-that-have-default-values",
+			skipConfigCleanStep: true,
+			requireErr:          require.NoError,
+			expected: Configuration{
+				Package: Package{
+					Name:    "cosign",
+					Version: "2.0.0",
+					Epoch:   0,
+				},
+				Environment: apko_types.ImageConfiguration{
+					Environment: map[string]string{
+						"HOME":   "/home/build/special-case",
+						"GOPATH": "/var/cache/melange/go",
+					},
+					Accounts: apko_types.ImageAccounts{
+						Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: 1000}},
+						Groups: []apko_types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
+					},
+				},
+				Subpackages: []Subpackage{},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -181,7 +205,9 @@ func TestConfiguration_Load(t *testing.T) {
 			err := cfg.Load(ctx)
 			tt.requireErr(t, err)
 
-			cleanTestConfig(cfg)
+			if !tt.skipConfigCleanStep {
+				cleanTestConfig(cfg)
+			}
 
 			if d := cmp.Diff(tt.expected, *cfg, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
 				t.Fatalf("actual didn't match expected (-want, +got): %s", d)

@@ -1082,8 +1082,17 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		cfg.Environment.Environment = make(map[string]string)
 	}
 
-	cfg.Environment.Environment["HOME"] = "/home/build"
-	cfg.Environment.Environment["GOPATH"] = "/home/build/.cache/go"
+	const (
+		defaultEnvVarHOME   = "/home/build"
+		defaultEnvVarGOPATH = "/home/build/.cache/go"
+	)
+
+	if cfg.Environment.Environment["HOME"] == "" {
+		cfg.Environment.Environment["HOME"] = defaultEnvVarHOME
+	}
+	if cfg.Environment.Environment["GOPATH"] == "" {
+		cfg.Environment.Environment["GOPATH"] = defaultEnvVarGOPATH
+	}
 
 	// If a variables file was defined, merge it into the variables block.
 	if varsFile := options.varsFilePath; varsFile != "" {

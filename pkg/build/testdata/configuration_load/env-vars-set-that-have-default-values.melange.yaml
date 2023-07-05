@@ -1,0 +1,9 @@
+package:
+  name: cosign
+  version: 2.0.0
+  epoch: 0
+
+environment:
+  environment:
+    HOME: /home/build/special-case
+    GOPATH: /var/cache/melange/go

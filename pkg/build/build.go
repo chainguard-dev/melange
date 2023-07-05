@@ -1242,7 +1242,7 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 	bc.Summarize()
 
 	// lay out the contents for the image in a directory.
-	if _, err := bc.BuildImage(); err != nil {
+	if _, err := bc.BuildImage(ctx); err != nil {
 		return fmt.Errorf("unable to generate image: %w", err)
 	}
 	// if the runner needs an image, create an OCI image from the directory and load it.
@@ -1250,7 +1250,7 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 	if loader == nil {
 		return fmt.Errorf("runner %s does not support OCI image loading", b.Runner.Name())
 	}
-	layerTarGZ, layer, err := bc.ImageLayoutToLayer()
+	layerTarGZ, layer, err := bc.ImageLayoutToLayer(ctx)
 	if err != nil {
 		return err
 	}

@@ -15,8 +15,11 @@
 package sbom
 
 import (
+	"context"
 	"fmt"
 	"log"
+
+	"go.opentelemetry.io/otel"
 )
 
 func NewGenerator() (*Generator, error) {
@@ -56,7 +59,10 @@ type Generator struct {
 }
 
 // GenerateSBOM runs the main SBOM generation process
-func (g *Generator) GenerateSBOM(spec *Spec) error {
+func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
+	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
+	defer span.End()
+
 	spec.logger = g.logger
 	shouldRun, err := g.impl.CheckEnvironment(spec)
 	if err != nil {

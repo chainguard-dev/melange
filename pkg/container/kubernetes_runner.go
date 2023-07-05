@@ -32,6 +32,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/imdario/mergo"
+	"go.opentelemetry.io/otel"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -92,6 +93,9 @@ func (*k8s) Name() string {
 
 // StartPod implements Runner
 func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.StartPod")
+	defer span.End()
+
 	if cfg.PodID != "" {
 		return fmt.Errorf("pod already running: %s", cfg.PodID)
 	}
@@ -186,6 +190,9 @@ func (*k8s) TempDir() string {
 
 // TerminatePod implements Runner
 func (k *k8s) TerminatePod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.TerminatePod")
+	defer span.End()
+
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -525,6 +532,9 @@ type k8sLoader struct {
 
 // LoadImage implements Loader
 func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (string, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.LoadImage")
+	defer span.End()
+
 	img, err := mutate.ConfigFile(empty.Image, &ggcrv1.ConfigFile{
 		OS:           arch.ToOCIPlatform().OS,
 		Architecture: arch.ToOCIPlatform().Architecture,
@@ -554,7 +564,7 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 	}
 	ref := repo.Digest(d.String())
 	k.logger.Infof("pushing build image (%s) to %s", humanize.Bytes(uint64(sz)), ref.String())
-	if err := remote.Write(ref, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+	if err := remote.Write(ref, img, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx)); err != nil {
 		return "", err
 	}
 

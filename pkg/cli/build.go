@@ -24,6 +24,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -146,6 +147,9 @@ func Build() *cobra.Command {
 }
 
 func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ...build.Option) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "BuildCmd")
+	defer span.End()
+
 	if len(archs) == 0 {
 		archs = apko_types.AllArchs
 	}

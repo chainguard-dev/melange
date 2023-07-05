@@ -29,6 +29,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"go.opentelemetry.io/otel"
 )
 
 const BubblewrapName = "bubblewrap"
@@ -106,6 +107,9 @@ func (bw *bubblewrap) TempDir() string {
 // StartPod starts a pod if necessary.  On Bubblewrap, we just run
 // ldconfig to prime ld.so.cache for glibc < 2.37 builds.
 func (bw *bubblewrap) StartPod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "bubblewrap.StartPod")
+	defer span.End()
+
 	script := "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true"
 	return bw.Run(ctx, cfg, "/bin/sh", "-c", script)
 }
@@ -126,6 +130,9 @@ func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadClo
 type bubblewrapOCILoader struct{}
 
 func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
+	defer span.End()
+
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
 	guestDir, err := os.MkdirTemp("", "melange-guest-*")

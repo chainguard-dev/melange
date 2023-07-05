@@ -35,6 +35,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	limastore "github.com/lima-vm/lima/pkg/store"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -110,6 +111,9 @@ func (l *lima) Run(ctx context.Context, cfg *Config, args ...string) error {
 
 // StartPod starts a pod for supporting a lima task.
 func (l *lima) StartPod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "lima.StartPod")
+	defer span.End()
+
 	// make sure our VM is running
 	if err := l.startVM(ctx); err != nil {
 		return err
@@ -151,6 +155,9 @@ func (l *lima) StartPod(ctx context.Context, cfg *Config) error {
 // TerminatePod terminates a pod for supporting a Docker task,
 // if necessary.
 func (l *lima) TerminatePod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "lima.TerminatePod")
+	defer span.End()
+
 	name := cfg.PodID
 	// first check the state of the pod
 	containers, err := l.listContainers(ctx, name)
@@ -418,6 +425,9 @@ type limaOCILoader struct {
 }
 
 func (l limaOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "lima.LoadImage")
+	defer span.End()
+
 	// convert the layer into an image
 	tmp, err := os.MkdirTemp("", "")
 	if err != nil {

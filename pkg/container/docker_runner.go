@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"chainguard.dev/apko/pkg/log"
+	"go.opentelemetry.io/otel"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
@@ -56,6 +57,9 @@ func (dk *docker) Name() string {
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.
 func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "docker.StartPod")
+	defer span.End()
+
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
@@ -103,6 +107,9 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 // TerminatePod terminates a pod for supporting a Docker task,
 // if necessary.
 func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "docker.TerminatePod")
+	defer span.End()
+
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -249,6 +256,9 @@ func (d *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, 
 type dockerLoader struct{}
 
 func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "docker.LoadImage")
+	defer span.End()
+
 	dig, _, err := apko_oci.PublishImageFromLayer(ctx,
 		layer, bc.ImageConfiguration, bc.Options.SourceDateEpoch, arch,
 		bc.Logger(), true, true, []string{"melange:latest"})

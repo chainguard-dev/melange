@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
 
 	"gopkg.in/yaml.v3"
 
@@ -389,6 +390,9 @@ func (p *Pipeline) checkAssertions(pb *PipelineBuild) error {
 }
 
 func (p *Pipeline) Run(ctx context.Context, pb *PipelineBuild) (bool, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "Pipeline.Run")
+	defer span.End()
+
 	if p.Label != "" && p.Label == pb.Build.BreakpointLabel {
 		return false, fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
 	}

@@ -36,6 +36,7 @@ import (
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	"github.com/psanford/memfs"
+	"go.opentelemetry.io/otel"
 )
 
 type PackageBuild struct {
@@ -57,6 +58,9 @@ type PackageBuild struct {
 }
 
 func (pkg *Package) Emit(ctx context.Context, pb *PipelineBuild) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "Emit")
+	defer span.End()
+
 	fakesp := Subpackage{
 		Name:         pkg.Name,
 		Dependencies: pkg.Dependencies,

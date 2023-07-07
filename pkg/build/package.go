@@ -475,7 +475,10 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *Dependencies) err
 			// An executable program should never have a SONAME, but apparently binaries built
 			// with some versions of jlink do.  Thus, if an interpreter is set (meaning it is an
 			// executable program), we do not scan the object for SONAMEs.
-			if !pc.Options.NoProvides && interp == "" {
+			//
+			// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
+			// functionality work.  So we always generate provides entries for libc.
+			if !pc.Options.NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {

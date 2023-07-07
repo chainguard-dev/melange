@@ -75,4 +75,4 @@ jobs:
           sudo apt-get -y install bubblewrap
 
       - run: |
-          make MELANGE="sudo melange" BUILDWORLD="no" packages/${{matrix.package}}
+          make MELANGE="sudo melange" BUILDWORLD="no" package/${{matrix.package}}

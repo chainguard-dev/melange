@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -32,8 +33,9 @@ import (
 )
 
 const (
-	testDataDir = "testdata/"
-	metaDir     = testDataDir + "/meta"
+	testDataDir       = "testdata/"
+	botocoreMetaDir   = testDataDir + "/meta/botocore"
+	jsonschemaMetaDir = testDataDir + "/meta/jsonschema"
 )
 
 var versions = [2]string{"3.11", "3.10"}
@@ -60,7 +62,7 @@ var versions = [2]string{"3.11", "3.10"}
 func TestGetPythonMeta(t *testing.T) {
 
 	// Get list of all python metadata files in testdata dir
-	packages, err := os.ReadDir(filepath.Join(metaDir))
+	packages, err := os.ReadDir(filepath.Join(botocoreMetaDir))
 	assert.NoError(t, err)
 	assert.NotEmpty(t, packages)
 
@@ -72,7 +74,7 @@ func TestGetPythonMeta(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Read the pack meta into
-		data, err := os.ReadFile(filepath.Join(metaDir, pack.Name()))
+		data, err := os.ReadFile(filepath.Join(botocoreMetaDir, pack.Name()))
 		assert.NoError(t, err)
 
 		var expected Package
@@ -91,7 +93,7 @@ func TestGetPythonMeta(t *testing.T) {
 
 func TestFindDependencies(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		path := filepath.Join(metaDir, req.URL.String())
+		path := filepath.Join(jsonschemaMetaDir, botocoreMetaDir, req.URL.String())
 		log.Printf("convert:test:server: %s", path)
 
 		data, err := os.ReadFile(path)
@@ -102,33 +104,38 @@ func TestFindDependencies(t *testing.T) {
 		assert.NoError(t, err)
 	}))
 	defer server.Close()
-	pythonPackages, err := os.ReadDir(filepath.Join(metaDir))
-	assert.NoError(t, err)
-	assert.NotEmpty(t, pythonPackages)
 
 	for i := range versions {
-		pythonctx, err := SetupContext(versions[i])
+		pythonctxs, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
-		p, err := pythonctx.PackageIndex.Get(context.Background(), pythonctx.PackageName, pythonctx.PackageVersion)
-		assert.NoError(t, err)
-		pythonctx.ToCheck = append(pythonctx.ToCheck, p.Info.Name)
+		for _, pythonctx := range pythonctxs {
+			p, err := pythonctx.PackageIndex.Get(context.Background(), pythonctx.PackageName, pythonctx.PackageVersion)
+			assert.NoError(t, err)
+			pythonctx.ToCheck = append(pythonctx.ToCheck, p.Info.Name)
 
-		// Build list of dependencies
-		err = pythonctx.findDep(context.Background())
-		assert.NoError(t, err)
+			// Build list of dependencies
+			err = pythonctx.findDep(context.Background())
+			assert.NoError(t, err)
 
-		log.Printf("[%s] Generating %v files", pythonctx.PackageName, len(pythonctx.ToGenerate))
-		for _, pack := range pythonPackages {
-			packName := strings.TrimSuffix(pack.Name(), ".json")
-			_, ok := pythonctx.ToGenerate[packName]
-			assert.True(t, ok)
+			//get specific python packages for package
+			pythonPackages, err := GetJsonsPackagesForPackage(pythonctx.PackageName)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, pythonPackages)
 
-			// Remove dependency from the list
-			delete(pythonctx.ToGenerate, packName)
+			log.Printf("[%s] Generating %v files", pythonctx.PackageName, len(pythonctx.ToGenerate))
+			for _, pack := range pythonPackages {
+				packName := strings.TrimSuffix(pack.Name(), ".json")
+				_, ok := pythonctx.ToGenerate[packName]
+				assert.True(t, ok)
+
+				// Remove dependency from the list
+				delete(pythonctx.ToGenerate, packName)
+			}
+			// The dependency list should be empty
+			assert.Empty(t, pythonctx.ToGenerate)
 		}
-		// The dependency list should be empty
-		assert.Empty(t, pythonctx.ToGenerate)
+
 	}
 }
 
@@ -136,9 +143,11 @@ func TestGenerateManifest(t *testing.T) {
 	ctx := context.Background()
 
 	for i := range versions {
-		pythonctx, err := SetupContext(versions[i])
+		pythonctxs, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
+		//botocore ctx
+		pythonctx := pythonctxs[0]
 		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion)
 		assert.NoError(t, err)
 
@@ -201,9 +210,11 @@ func TestGenerateManifest(t *testing.T) {
 // TestGeneratePackage tests when a gem has multiple licenses
 func TestGeneratePackage(t *testing.T) {
 	for i := range versions {
-		pythonctx, err := SetupContext(versions[i])
+		pythonctxs, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
+		//botocore ctx
+		pythonctx := pythonctxs[0]
 		got := pythonctx.generatePackage(pythonctx.Package, pythonctx.PackageVersion)
 
 		expected := build.Package{
@@ -225,40 +236,81 @@ func TestGeneratePackage(t *testing.T) {
 	}
 }
 
-func SetupContext(version string) (*PythonContext, error) {
-	pythonctx, err := New("botocore")
+func SetupContext(version string) ([]*PythonContext, error) {
+	botocorepythonctx, err := New("botocore")
 	if err != nil {
 		return nil, err
 	}
 
-	pythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
-	pythonctx.PackageName = "botocore"
-	pythonctx.PackageVersion = "1.29.78"
-	pythonctx.PythonVersion = version
+	botocorepythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
+	botocorepythonctx.PackageName = "botocore"
+	botocorepythonctx.PackageVersion = "1.29.78"
+	botocorepythonctx.PythonVersion = version
 
 	// Read the gem meta into
-	data, err := os.ReadFile(filepath.Join(metaDir, "botocore.json"))
+	data, err := os.ReadFile(filepath.Join(botocoreMetaDir, "botocore.json"))
 	if err != nil {
 		return nil, err
 	}
 
-	var packageMeta Package
-	err = json.Unmarshal(data, &packageMeta)
+	var botocorePackageMeta Package
+	err = json.Unmarshal(data, &botocorePackageMeta)
 	if err != nil {
 		return nil, err
 	}
 
-	pythonctx.Package = packageMeta
-	pythonctx.Package.Dependencies = []string{"py" + version + "-jmespath", "py" + version + "-python-dateutil", "py" + version + "-urllib3"}
+	botocorepythonctx.Package = botocorePackageMeta
+	botocorepythonctx.Package.Dependencies = []string{"py" + version + "-jmespath", "py" + version + "-python-dateutil", "py" + version + "-urllib3"}
 
-	return &pythonctx, nil
+	jsonschemapythonctx, err := New("jsonschema")
+	if err != nil {
+		return nil, err
+	}
+
+	jsonschemapythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
+	jsonschemapythonctx.PackageName = "jsonschema"
+	jsonschemapythonctx.PackageVersion = "4.17.3"
+	jsonschemapythonctx.PythonVersion = version
+
+	// Read the gem meta into
+	data, err = os.ReadFile(filepath.Join(jsonschemaMetaDir, "jsonschema.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonschemaPackageMeta Package
+	err = json.Unmarshal(data, &jsonschemaPackageMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonschemapythonctx.Package = botocorePackageMeta
+	jsonschemapythonctx.Package.Dependencies = []string{"py" + version + "-attrs", "py" + version + "-importlib-metadata", "py" + version + "-importlib-resources", "py" + version + "-pkgutil-resolve-name", "py" + version + "-pyrsistent", "py" + version + "-typing-extensions"}
+
+	pythonctxs := []*PythonContext{
+		&botocorepythonctx,
+		&jsonschemapythonctx,
+	}
+	return pythonctxs, nil
+}
+
+func GetJsonsPackagesForPackage(packageName string) ([]fs.DirEntry, error) {
+	if packageName == "botocore" {
+		return os.ReadDir(filepath.Join(botocoreMetaDir))
+	} else if packageName == "jsonschema" {
+		return os.ReadDir(filepath.Join(jsonschemaMetaDir))
+	}
+	return nil, fmt.Errorf("Unknown package %s", packageName)
 }
 
 // TestGenerateEnvironment tests when there are additional keyring and
 // repository entries
 func TestGenerateEnvironment(t *testing.T) {
-	pythonctx, err := SetupContext("3.10")
+	pythonctxs, err := SetupContext("3.10")
 	assert.NoError(t, err)
+
+	//botocore ctx
+	pythonctx := pythonctxs[0]
 
 	pythonctx.PythonVersion = "3.10"
 	got310 := pythonctx.generateEnvironment(pythonctx.Package)
@@ -280,7 +332,10 @@ func TestGenerateEnvironment(t *testing.T) {
 
 	assert.Equal(t, got310, expected310)
 
-	pythonctx, err = SetupContext("3.11")
+	pythonctxs, err = SetupContext("3.11")
+
+	//botocore ctx
+	pythonctx = pythonctxs[0]
 	assert.NoError(t, err)
 	got311 := pythonctx.generateEnvironment(pythonctx.Package)
 

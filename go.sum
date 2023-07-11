@@ -1,5 +1,5 @@
-chainguard.dev/apko v0.9.1-0.20230705171221-64a1fbe2dddd h1:DaaV5xV4xujVcowt6ojfCEr8QoP0nFUtpJJJFa5QHPU=
-chainguard.dev/apko v0.9.1-0.20230705171221-64a1fbe2dddd/go.mod h1:KmLC0Kkm0NFDp6aeotfhv8LFLPOmd6MtJvJh4TisSgQ=
+chainguard.dev/apko v0.9.1-0.20230711074042-37b82f3a5bd8 h1:JEoyunyKNXDJd7hbKNHT9ZgwO994h6kwyN/UQX0FSok=
+chainguard.dev/apko v0.9.1-0.20230711074042-37b82f3a5bd8/go.mod h1:II9b/9pR4hPZKmp/6umhCO7JvJV1711rBEJW6aw5d7I=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
@@ -76,8 +76,8 @@ github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
-github.com/chainguard-dev/go-apk v0.0.0-20230705164040-61f000049aac h1:ViEFSyPqOjWDHu1UuKOHdGVffa9A3VV0XQ0cSqHgXBM=
-github.com/chainguard-dev/go-apk v0.0.0-20230705164040-61f000049aac/go.mod h1:sNZqgAX8clMvo10Lg0NmoO4ry71+S/LmIgrPZogBMzs=
+github.com/chainguard-dev/go-apk v0.0.0-20230710230135-7fc46e8b3c4d h1:FiATZeiXcC0fq/604scYNZteOnEteWQhvqFZsOhSr6Y=
+github.com/chainguard-dev/go-apk v0.0.0-20230710230135-7fc46e8b3c4d/go.mod h1:woT/bFOpXAUI8PgmogdS4IPPwdNdfhg8XnNQeA+R7j8=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
 github.com/chainguard-dev/kontext v0.1.0/go.mod h1:hdyG5Sia0niCW8HN8MDXcDh/nL0sgcWQYSjPRFZOX/w=
 github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e h1:TlpfdSUjQkrq2yh+bySzoOmPKspeaxmOr1fmsNCfNXM=
@@ -373,6 +373,8 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/compress v1.16.7 h1:2mk3MPGNzKyxErAw8YaohYh69+pa4sIQSC0fPGCFR9I=
 github.com/klauspost/compress v1.16.7/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
+github.com/klauspost/pgzip v1.2.5 h1:qnWYvvKqedOF2ulHpMG72XQol4ILEJ8k2wwRl/Km8oE=
+github.com/klauspost/pgzip v1.2.5/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.2/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc h1:30n5Eq2aBsT+cmDxl8F4PcfptcBxW5J22lbVErc/X9c=

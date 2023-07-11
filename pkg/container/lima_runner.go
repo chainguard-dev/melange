@@ -256,8 +256,15 @@ func (l *lima) terminateVM(ctx context.Context, cfg *Config) error {
 
 func (l *lima) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
 	pr, pw := io.Pipe()
-	err := l.nerdctl(ctx, melangeVMName, nil, pw, nil, "exec", "-i", "tar", "cf", "-", "-C", runnerWorkdir, "melange-out")
-	return pr, err
+	go func() {
+		defer pw.Close()
+
+		if err := l.nerdctl(ctx, melangeVMName, nil, pw, nil, "exec", "-i", cfg.PodID, "tar", "cf", "-", "-C", runnerWorkdir, "melange-out"); err != nil {
+			pw.CloseWithError(fmt.Errorf("failed to tar workspace: %w", err))
+		}
+	}()
+
+	return pr, nil
 }
 
 // these private functions handle some reusable code to avoid duplication.

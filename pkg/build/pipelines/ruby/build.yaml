@@ -6,6 +6,11 @@ needs:
     - ca-certificates-bundle
 
 inputs:
+  dir:
+    description: |
+      The working directory
+    default: .
+
   gem:
     description: |
       Gem name
@@ -29,6 +34,8 @@ pipeline:
       fi
 
   - runs: |
+      cd ${{inputs.dir}}
+
       output_flag=''
       [ -n '${{inputs.output}}' ] && output_flag='--output ${{inputs.output}}'
 

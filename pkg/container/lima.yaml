@@ -24,6 +24,6 @@ provision:
   script: |
     rm -f $HOME/containerd.sock
     ln -s /proc/$(cat $XDG_RUNTIME_DIR/containerd-rootless/child_pid)/root/run/containerd/containerd.sock ${HOME}/containerd.sock
- - mode: system
-   script: |
-     chmod 0755 /etc/cni
+- mode: system
+  script: |
+    chmod 0755 /etc/cni

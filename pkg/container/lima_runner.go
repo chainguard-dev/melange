@@ -333,7 +333,7 @@ func (l *lima) start(ctx context.Context, name string, exists bool) error {
 
 	if !exists {
 		buf = bytes.NewReader(config)
-		args = append(args, "/dev/stdin")
+		args = append(args, "-")
 	}
 	return l.limactl(ctx, buf, nil, nil, args...)
 }

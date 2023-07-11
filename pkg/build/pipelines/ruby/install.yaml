@@ -6,6 +6,11 @@ needs:
     - ca-certificates-bundle
 
 inputs:
+  dir:
+    description: |
+      The working directory
+    default: .
+
   gem:
     description: |
       Gem name
@@ -36,6 +41,8 @@ pipeline:
       fi
   - name: Ruby install
     runs: |
+      cd ${{inputs.dir}}
+
       if [ -z "${{inputs.gem}}" ] && [ -z "${{inputs.gem-file}}" ]; then
         echo "ERROR: You need to specify gem or gem-file"
         exit 1

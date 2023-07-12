@@ -34,6 +34,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
+	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"go.opentelemetry.io/otel"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
@@ -1924,6 +1925,7 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, cfg *container.Config) er
 	defer span.End()
 
 	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
+
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
 	if err != nil {
 		return err
@@ -1931,34 +1933,88 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, cfg *container.Config) er
 	defer r.Close()
 	tr := tar.NewReader(r)
 
+	dfs := apkofs.DirFS(b.WorkspaceDir)
+
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
 			return err
 		}
 
-		target := filepath.Join(b.WorkspaceDir, hdr.Name)
-
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
-					return err
+			// special case, if the target already exists, and it is a symlink to a directory, we can accept it as is
+			// otherwise, we need to create the directory.
+			if fi, err := dfs.Stat(hdr.Name); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+				if target, err := dfs.Readlink(hdr.Name); err == nil {
+					if fi, err = dfs.Stat(target); err == nil && fi.IsDir() {
+						// "break" rather than "continue", so that any handling outside of this switch statement is processed
+						break
+					}
 				}
 			}
+
+			if err := dfs.MkdirAll(hdr.Name, hdr.FileInfo().Mode().Perm()); err != nil {
+				return fmt.Errorf("error creating directory %s: %w", hdr.Name, err)
+			}
+
+			// xattrs
+			for k, v := range hdr.PAXRecords {
+				if !strings.HasPrefix(k, "SCHILY.xattr.") {
+					continue
+				}
+				attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+				if err := dfs.SetXattr(hdr.Name, attrName, []byte(v)); err != nil {
+					return fmt.Errorf("error setting xattr %s on %s: %w", attrName, hdr.Name, err)
+				}
+			}
+
 		case tar.TypeReg:
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
+			f, err := dfs.OpenFile(hdr.Name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, hdr.FileInfo().Mode())
 			if err != nil {
+				return fmt.Errorf("error creating file %s: %w", hdr.Name, err)
+			}
+
+			if _, err := io.CopyN(f, tr, hdr.Size); err != nil {
+				return fmt.Errorf("error writing contents of file %s: %w", hdr.Name, err)
+			}
+
+			if err := f.Close(); err != nil {
 				return err
 			}
 
-			if _, err := io.Copy(f, tr); err != nil {
+		case tar.TypeSymlink:
+			if target, err := dfs.Readlink(hdr.Name); err == nil && target == hdr.Linkname {
+				continue
+			}
+
+			if err := dfs.Symlink(hdr.Linkname, hdr.Name); err != nil {
+				return fmt.Errorf("error installing symlink from %s -> %s: %w", hdr.Name, hdr.Linkname, err)
+			}
+
+		case tar.TypeLink:
+			if err := dfs.Link(hdr.Linkname, hdr.Name); err != nil {
 				return err
 			}
-			f.Close()
+		default:
+			return fmt.Errorf("unsupported tar type %d for %s", hdr.Typeflag, hdr.Name)
+		}
+
+		// TODO: The primary caller of this function is the KubernetesRunner, which
+		// uses the busybox variant of `tar` that doesn't support xattrs. So this
+		// is mostly useless until a different implementation is used for fetching
+		// remote workspaces
+		for k, v := range hdr.PAXRecords {
+			if !strings.HasPrefix(k, "SCHILY.xattr.") {
+				continue
+			}
+			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+			if err := dfs.SetXattr(hdr.Name, attrName, []byte(v)); err != nil {
+				return fmt.Errorf("error setting xattr %s on %s: %w", attrName, hdr.Name, err)
+			}
 		}
 	}
 

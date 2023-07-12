@@ -48,6 +48,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	// Mysteriously required to support legacy GCP auth (required by k8s libs). Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 const (
@@ -79,7 +82,7 @@ func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
 
 	client, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create kubernetes client, ensure the provided (or default) kubernetes context is configured correctly: %v", err)
 	}
 	runner.clientset = client
 
@@ -111,7 +114,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		data, _ := yaml.Marshal(builderPod)
 		k.logger.Warnf("failed creating builder pod\n%v", string(data))
-		return fmt.Errorf("creating builder pod: %v", err)
+		return fmt.Errorf("creating kubernetes builder pod: %v", err)
 	}
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
 
@@ -229,21 +232,11 @@ func (k *k8s) TestUsability(ctx context.Context) bool {
 
 // WorkspaceTar implements Runner
 func (k *k8s) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	cmd := []string{"tar", "cf", "-", "-C", runnerWorkdir, "melange-out"}
-	r, w := io.Pipe()
-
-	go func() {
-		defer w.Close()
-
-		if err := k.Exec(ctx, cfg.PodID, cmd, remotecommand.StreamOptions{
-			Stdout: w,
-			Stderr: os.Stderr,
-		}); err != nil {
-			panic(err)
-		}
-	}()
-
-	return r, nil
+	// TODO: This ultimately ends up as some configurable interface on
+	// io.ReadCloser in the future when we support more workspace fetchers than
+	// `kubectl exec -- tar ...`
+	reader := newKubernetesRunnerTarFetcher(k.restConfig, k.clientset, k.logger, k.Config.Namespace, cfg.PodID)
+	return reader, nil
 }
 
 // OCIImageLoader implements Runner
@@ -403,7 +396,7 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) *KubernetesRunner
 		Provider:     "generic",
 		Namespace:    "default",
 		Repo:         "ttl.sh/melange",
-		StartTimeout: 5 * time.Minute,
+		StartTimeout: 10 * time.Minute,
 		BuildTimeout: 30 * time.Minute,
 		Resources: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("2"),
@@ -455,6 +448,12 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			NodeSelector: map[string]string{
 				"kubernetes.io/arch": cfg.Arch.String(),
 			},
+			Tolerations: []corev1.Toleration{{
+				Key:      "kubernetes.io/arch",
+				Operator: corev1.TolerationOpEqual,
+				Value:    cfg.Arch.String(),
+				Effect:   corev1.TaintEffectNoSchedule,
+			}},
 			ServiceAccountName: "default",
 			SecurityContext: &corev1.PodSecurityContext{
 				SeccompProfile: &corev1.SeccompProfile{
@@ -568,4 +567,92 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 	}
 
 	return ref.String(), nil
+}
+
+type kubernetesRunnerTarFetcher struct {
+	reader     *io.PipeReader
+	outStream  *io.PipeWriter
+	bytesRead  uint64
+	retries    int
+	maxRetries int
+
+	podName      string
+	podNamespace string
+
+	restConfig *rest.Config
+	client     kubernetes.Interface
+	logger     log.Logger
+}
+
+// newKubernetesRunnerTarFetcher creates and "opens" the tar pipe to the remote pod, the pod must be running
+func newKubernetesRunnerTarFetcher(cfg *rest.Config, client kubernetes.Interface, logger log.Logger, namespace string, name string) *kubernetesRunnerTarFetcher {
+	t := &kubernetesRunnerTarFetcher{
+		maxRetries:   10,
+		podName:      name,
+		podNamespace: namespace,
+		restConfig:   cfg,
+		client:       client,
+		logger:       logger,
+	}
+	t.initReadFrom(0)
+	return t
+}
+
+func (t *kubernetesRunnerTarFetcher) initReadFrom(n uint64) {
+	t.reader, t.outStream = io.Pipe()
+
+	execfn := func() error {
+		req := t.client.
+			CoreV1().
+			RESTClient().
+			Post().
+			Resource("pods").
+			Name(t.podName).
+			Namespace(t.podNamespace).
+			SubResource("exec").
+			VersionedParams(&corev1.PodExecOptions{
+				Container: kubernetesBuilderPodWorkspaceContainerName,
+				Command:   []string{"/bin/sh", "-c", fmt.Sprintf("tar -cf - -C %s %s | tail -c+%d", runnerWorkdir, "melange-out", n)},
+				Stdout:    true,
+				Stderr:    true,
+			}, scheme.ParameterCodec)
+
+		exec, err := remotecommand.NewSPDYExecutor(t.restConfig, "POST", req.URL())
+		if err != nil {
+			return fmt.Errorf("failed to create remote command executor: %v", err)
+		}
+
+		return exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+			Stdout: t.outStream,
+			Stderr: os.Stderr,
+		})
+	}
+
+	go func() {
+		defer t.outStream.Close()
+		err := execfn()
+		if err != nil {
+			t.logger.Errorf("failed retrieving workspace while streaming tar from pod: %v", err)
+		}
+	}()
+}
+
+func (t *kubernetesRunnerTarFetcher) Read(p []byte) (n int, err error) {
+	n, err = t.reader.Read(p)
+	if err != nil {
+		if t.retries < t.maxRetries {
+			t.retries++
+			t.logger.Debugf("Resuming fetch at %d bytes, retry %d/%d\n", t.bytesRead, t.retries, t.maxRetries)
+			err = nil
+		} else {
+			t.logger.Errorf("Failed to fetch after after %d retries\n", t.retries)
+		}
+	} else {
+		t.bytesRead += uint64(n)
+	}
+	return
+}
+
+func (t *kubernetesRunnerTarFetcher) Close() error {
+	return nil
 }

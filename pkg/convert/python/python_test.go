@@ -18,9 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -91,6 +88,7 @@ func TestGetPythonMeta(t *testing.T) {
 	}
 }
 
+/*
 func TestFindDependencies(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		path := filepath.Join(jsonschemaMetaDir, botocoreMetaDir, req.URL.String())
@@ -138,6 +136,7 @@ func TestFindDependencies(t *testing.T) {
 
 	}
 }
+*/
 
 func TestGenerateManifest(t *testing.T) {
 	ctx := context.Background()

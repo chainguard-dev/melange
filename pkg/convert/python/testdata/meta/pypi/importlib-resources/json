@@ -1,0 +1,105 @@
+{
+ "info": {
+  "author": "Barry Warsaw",
+  "author_email": "barry@python.org",
+  "bugtrack_url": null,
+  "classifiers": [
+   "Development Status :: 5 - Production/Stable",
+   "Intended Audience :: Developers",
+   "License :: OSI Approved :: Apache Software License",
+   "Programming Language :: Python :: 3",
+   "Programming Language :: Python :: 3 :: Only"
+  ],
+  "description": ".. image:: https://img.shields.io/pypi/v/importlib_resources.svg\n   :target: https://pypi.org/project/importlib_resources\n\n.. image:: https://img.shields.io/pypi/pyversions/importlib_resources.svg\n\n.. image:: https://github.com/python/importlib_resources/workflows/tests/badge.svg\n   :target: https://github.com/python/importlib_resources/actions?query=workflow%3A%22tests%22\n   :alt: tests\n\n.. image:: https://img.shields.io/badge/code%20style-black-000000.svg\n   :target: https://github.com/psf/black\n   :alt: Code style: Black\n\n.. image:: https://readthedocs.org/projects/importlib-resources/badge/?version=latest\n   :target: https://importlib-resources.readthedocs.io/en/latest/?badge=latest\n\n.. image:: https://img.shields.io/badge/skeleton-2023-informational\n   :target: https://blog.jaraco.com/skeleton\n\n.. image:: https://tidelift.com/badges/package/pypi/importlib-resources\n   :target: https://tidelift.com/subscription/pkg/pypi-importlib-resources?utm_source=pypi-importlib-resources&utm_medium=readme\n\n``importlib_resources`` is a backport of Python standard library\n`importlib.resources\n<https://docs.python.org/3/library/importlib.html#module-importlib.resources>`_\nmodule for older Pythons.\n\nThe key goal of this module is to replace parts of `pkg_resources\n<https://setuptools.readthedocs.io/en/latest/pkg_resources.html>`_ with a\nsolution in Python's stdlib that relies on well-defined APIs.  This makes\nreading resources included in packages easier, with more stable and consistent\nsemantics.\n\nCompatibility\n=============\n\nNew features are introduced in this third-party library and later merged\ninto CPython. The following table indicates which versions of this library\nwere contributed to different versions in the standard library:\n\n.. list-table::\n   :header-rows: 1\n\n   * - importlib_resources\n     - stdlib\n   * - 5.9\n     - 3.12\n   * - 5.7\n     - 3.11\n   * - 5.0\n     - 3.10\n   * - 1.3\n     - 3.9\n   * - 0.5 (?)\n     - 3.7\n\nFor Enterprise\n==============\n\nAvailable as part of the Tidelift Subscription.\n\nThis project and the maintainers of thousands of other packages are working with Tidelift to deliver one enterprise subscription that covers all of the open source you use.\n\n`Learn more <https://tidelift.com/subscription/pkg/pypi-importlib-resources?utm_source=pypi-importlib-resources&utm_medium=referral&utm_campaign=github>`_.\n\nSecurity Contact\n================\n\nTo report a security vulnerability, please use the\n`Tidelift security contact <https://tidelift.com/security>`_.\nTidelift will coordinate the fix and disclosure.\n",
+  "description_content_type": "",
+  "docs_url": null,
+  "download_url": "",
+  "downloads": {
+   "last_day": -1,
+   "last_month": -1,
+   "last_week": -1
+  },
+  "home_page": "https://github.com/python/importlib_resources",
+  "keywords": "",
+  "license": "",
+  "maintainer": "",
+  "maintainer_email": "",
+  "name": "importlib-resources",
+  "package_url": "https://pypi.org/project/importlib-resources/",
+  "platform": null,
+  "project_url": "https://pypi.org/project/importlib-resources/",
+  "project_urls": {
+   "Documentation": "https://importlib-resources.readthedocs.io/",
+   "Homepage": "https://github.com/python/importlib_resources"
+  },
+  "release_url": "https://pypi.org/project/importlib-resources/5.12.0/",
+  "requires_dist": [
+   "zipp (>=3.1.0) ; python_version < \"3.10\"",
+   "sphinx (>=3.5) ; extra == 'docs'",
+   "jaraco.packaging (>=9) ; extra == 'docs'",
+   "rst.linker (>=1.9) ; extra == 'docs'",
+   "furo ; extra == 'docs'",
+   "sphinx-lint ; extra == 'docs'",
+   "jaraco.tidelift (>=1.4) ; extra == 'docs'",
+   "pytest (>=6) ; extra == 'testing'",
+   "pytest-checkdocs (>=2.4) ; extra == 'testing'",
+   "flake8 (<5) ; extra == 'testing'",
+   "pytest-cov ; extra == 'testing'",
+   "pytest-enabler (>=1.3) ; extra == 'testing'",
+   "pytest-black (>=0.3.7) ; (platform_python_implementation != \"PyPy\") and extra == 'testing'",
+   "pytest-mypy (>=0.9.1) ; (platform_python_implementation != \"PyPy\") and extra == 'testing'",
+   "pytest-flake8 ; (python_version < \"3.12\") and extra == 'testing'"
+  ],
+  "requires_python": ">=3.7",
+  "summary": "Read resources from Python packages",
+  "version": "5.12.0",
+  "yanked": false,
+  "yanked_reason": null
+ },
+ "last_serial": 18804288,
+ "urls": [
+  {
+   "comment_text": "",
+   "digests": {
+    "blake2b_256": "3871c13ea695a4393639830bf96baea956538ba7a9d06fcce7cef10bfff20f72",
+    "md5": "c5e12879fa296f6b0b7142106a2159a6",
+    "sha256": "7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"
+   },
+   "downloads": -1,
+   "filename": "importlib_resources-5.12.0-py3-none-any.whl",
+   "has_sig": false,
+   "md5_digest": "c5e12879fa296f6b0b7142106a2159a6",
+   "packagetype": "bdist_wheel",
+   "python_version": "py3",
+   "requires_python": ">=3.7",
+   "size": 36211,
+   "upload_time": "2023-02-17T22:32:19",
+   "upload_time_iso_8601": "2023-02-17T22:32:19.266735Z",
+   "url": "https://files.pythonhosted.org/packages/38/71/c13ea695a4393639830bf96baea956538ba7a9d06fcce7cef10bfff20f72/importlib_resources-5.12.0-py3-none-any.whl",
+   "yanked": false,
+   "yanked_reason": null
+  },
+  {
+   "comment_text": "",
+   "digests": {
+    "blake2b_256": "4ea23cab1de83f95dd15297c15bdc04d50902391d707247cada1f021bbfe2149",
+    "md5": "5457c25b89b19fcaca8af03e541dfa41",
+    "sha256": "4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"
+   },
+   "downloads": -1,
+   "filename": "importlib_resources-5.12.0.tar.gz",
+   "has_sig": false,
+   "md5_digest": "5457c25b89b19fcaca8af03e541dfa41",
+   "packagetype": "sdist",
+   "python_version": "source",
+   "requires_python": ">=3.7",
+   "size": 39894,
+   "upload_time": "2023-02-17T22:32:21",
+   "upload_time_iso_8601": "2023-02-17T22:32:21.013757Z",
+   "url": "https://files.pythonhosted.org/packages/4e/a2/3cab1de83f95dd15297c15bdc04d50902391d707247cada1f021bbfe2149/importlib_resources-5.12.0.tar.gz",
+   "yanked": false,
+   "yanked_reason": null
+  }
+ ],
+ "vulnerabilities": []
+}

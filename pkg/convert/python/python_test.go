@@ -17,7 +17,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,9 +33,10 @@ import (
 )
 
 const (
-	testDataDir       = "testdata/"
-	botocoreMetaDir   = testDataDir + "/meta/botocore"
-	jsonschemaMetaDir = testDataDir + "/meta/jsonschema"
+	testDataDir    = "testdata/"
+	botocoreMeta   = testDataDir + "/meta/pypi/botocore/"
+	jsonschemaMeta = testDataDir + "/meta/pypi/jsonschema/"
+	pypiMetaDir    = testDataDir + "/meta"
 )
 
 var versions = [2]string{"3.11", "3.10"}
@@ -59,39 +63,30 @@ var versions = [2]string{"3.11", "3.10"}
 func TestGetPythonMeta(t *testing.T) {
 
 	// Get list of all python metadata files in testdata dir
-	packages, err := os.ReadDir(filepath.Join(botocoreMetaDir))
+	p, err := os.ReadFile(filepath.Join(botocoreMeta, "json"))
 	assert.NoError(t, err)
-	assert.NotEmpty(t, packages)
+	assert.NotEmpty(t, p)
 
-	// Iterate through all pack metadata files and ensure the server response is
-	// the same as the file.
-	for _, pack := range packages {
-		pythonctx, err := New(pack.Name())
-		pythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
-		assert.NoError(t, err)
+	pythonctx, err := New("botocore")
+	pythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
+	assert.NoError(t, err)
 
-		// Read the pack meta into
-		data, err := os.ReadFile(filepath.Join(botocoreMetaDir, pack.Name()))
-		assert.NoError(t, err)
+	var expected Package
+	err = json.Unmarshal(p, &expected)
+	assert.NoError(t, err)
 
-		var expected Package
-		err = json.Unmarshal(data, &expected)
-		assert.NoError(t, err)
-		p := strings.Split(pack.Name(), ".")
-
-		// Ensure expected == got
-		got, err := pythonctx.PackageIndex.Get(context.Background(), p[0], pythonctx.PackageVersion)
-		fmt.Printf("Comparing GOT %s to Expected %s\n", got.Info.Name, expected.Info.Name)
-		assert.NoError(t, err)
-		assert.Equal(t, expected.Info.Name, got.Info.Name)
-
-	}
+	// Ensure expected == got
+	got, err := pythonctx.PackageIndex.Get(context.Background(), "botocore", pythonctx.PackageVersion)
+	fmt.Printf("Comparing GOT %s to Expected %s\n", got.Info.Name, expected.Info.Name)
+	assert.NoError(t, err)
+	assert.Equal(t, expected.Info.Name, got.Info.Name)
 }
 
-/*
 func TestFindDependencies(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		path := filepath.Join(jsonschemaMetaDir, botocoreMetaDir, req.URL.String())
+		latestVersion, err := removeVersionsFromURL(req.URL.String())
+		assert.NoError(t, err)
+		path := filepath.Join(pypiMetaDir, latestVersion)
 		log.Printf("convert:test:server: %s", path)
 
 		data, err := os.ReadFile(path)
@@ -101,6 +96,7 @@ func TestFindDependencies(t *testing.T) {
 		_, err = w.Write(data)
 		assert.NoError(t, err)
 	}))
+
 	defer server.Close()
 
 	for i := range versions {
@@ -108,6 +104,7 @@ func TestFindDependencies(t *testing.T) {
 		assert.NoError(t, err)
 
 		for _, pythonctx := range pythonctxs {
+			pythonctx.PackageIndex.url = server.URL
 			p, err := pythonctx.PackageIndex.Get(context.Background(), pythonctx.PackageName, pythonctx.PackageVersion)
 			assert.NoError(t, err)
 			pythonctx.ToCheck = append(pythonctx.ToCheck, p.Info.Name)
@@ -122,8 +119,7 @@ func TestFindDependencies(t *testing.T) {
 			assert.NotEmpty(t, pythonPackages)
 
 			log.Printf("[%s] Generating %v files", pythonctx.PackageName, len(pythonctx.ToGenerate))
-			for _, pack := range pythonPackages {
-				packName := strings.TrimSuffix(pack.Name(), ".json")
+			for _, packName := range pythonPackages {
 				_, ok := pythonctx.ToGenerate[packName]
 				assert.True(t, ok)
 
@@ -136,7 +132,6 @@ func TestFindDependencies(t *testing.T) {
 
 	}
 }
-*/
 
 func TestGenerateManifest(t *testing.T) {
 	ctx := context.Background()
@@ -241,13 +236,13 @@ func SetupContext(version string) ([]*PythonContext, error) {
 		return nil, err
 	}
 
-	botocorepythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
+	botocorepythonctx.PackageIndex = NewPackageIndex("https://pypi.org/")
 	botocorepythonctx.PackageName = "botocore"
 	botocorepythonctx.PackageVersion = "1.29.78"
 	botocorepythonctx.PythonVersion = version
 
 	// Read the gem meta into
-	data, err := os.ReadFile(filepath.Join(botocoreMetaDir, "botocore.json"))
+	data, err := os.ReadFile(filepath.Join(botocoreMeta, "json"))
 	if err != nil {
 		return nil, err
 	}
@@ -266,13 +261,13 @@ func SetupContext(version string) ([]*PythonContext, error) {
 		return nil, err
 	}
 
-	jsonschemapythonctx.PackageIndex = NewPackageIndex("https://pypi.org")
+	jsonschemapythonctx.PackageIndex = NewPackageIndex("https://pypi.org/")
 	jsonschemapythonctx.PackageName = "jsonschema"
 	jsonschemapythonctx.PackageVersion = "4.17.3"
 	jsonschemapythonctx.PythonVersion = version
 
 	// Read the gem meta into
-	data, err = os.ReadFile(filepath.Join(jsonschemaMetaDir, "jsonschema.json"))
+	data, err = os.ReadFile(filepath.Join(jsonschemaMeta, "json"))
 	if err != nil {
 		return nil, err
 	}
@@ -293,11 +288,11 @@ func SetupContext(version string) ([]*PythonContext, error) {
 	return pythonctxs, nil
 }
 
-func GetJsonsPackagesForPackage(packageName string) ([]fs.DirEntry, error) {
+func GetJsonsPackagesForPackage(packageName string) ([]string, error) {
 	if packageName == "botocore" {
-		return os.ReadDir(filepath.Join(botocoreMetaDir))
+		return []string{"botocore", "jmespath", "python-dateutil", "urllib3", "six"}, nil
 	} else if packageName == "jsonschema" {
-		return os.ReadDir(filepath.Join(jsonschemaMetaDir))
+		return []string{"jsonschema", "attrs", "importlib-metadata", "importlib-resources", "pkgutil_resolve_name", "pyrsistent", "typing-extensions", "zipp"}, nil
 	}
 	return nil, fmt.Errorf("Unknown package %s", packageName)
 }
@@ -354,4 +349,23 @@ func TestGenerateEnvironment(t *testing.T) {
 	}
 
 	assert.Equal(t, got311, expected311)
+}
+
+func removeVersionsFromURL(inputURL string) (string, error) {
+	parsedURL, err := url.Parse(inputURL)
+	if err != nil {
+		return "", err
+	}
+
+	path := strings.TrimSuffix(parsedURL.Path, "/")
+	segments := strings.Split(path, "/")
+	for i := len(segments) - 1; i >= 0; i-- {
+		if strings.Contains(segments[i], ".") {
+			segments = append(segments[:i], segments[i+1:]...)
+			break
+		}
+	}
+
+	parsedURL.Path = strings.Join(segments, "/")
+	return parsedURL.String(), nil
 }

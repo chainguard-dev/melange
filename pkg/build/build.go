@@ -34,6 +34,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
+	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"go.opentelemetry.io/otel"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
@@ -1715,7 +1716,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// Retrieve the post build workspace from the runner
-	if err := b.RetrieveWorkspace(ctx, cfg); err != nil {
+	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
+	if err := b.RetrieveWorkspace(ctx); err != nil {
 		return fmt.Errorf("retrieving workspace: %v", err)
 	}
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
@@ -1919,11 +1921,10 @@ func (b *Build) WorkspaceConfig() *container.Config {
 // RetrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
-func (b *Build) RetrieveWorkspace(ctx context.Context, cfg *container.Config) error {
+func (b *Build) RetrieveWorkspace(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
 	defer span.End()
 
-	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
 	if err != nil {
 		return err
@@ -1931,34 +1932,71 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, cfg *container.Config) er
 	defer r.Close()
 	tr := tar.NewReader(r)
 
+	fs := apkofs.DirFS(b.WorkspaceDir)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
 			return err
 		}
 
-		target := filepath.Join(b.WorkspaceDir, hdr.Name)
-
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
-					return err
+			if fi, err := fs.Stat(hdr.Name); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+				if target, err := fs.Readlink(hdr.Name); err == nil {
+					if fi, err = fs.Stat(target); err == nil && fi.IsDir() {
+						break
+					}
 				}
 			}
+
+			if err := fs.MkdirAll(hdr.Name, hdr.FileInfo().Mode().Perm()); err != nil {
+				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
+			}
+
 		case tar.TypeReg:
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
+			f, err := fs.OpenFile(hdr.Name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, hdr.FileInfo().Mode())
 			if err != nil {
+				return fmt.Errorf("unable to open file %s: %w", hdr.Name, err)
+			}
+
+			if _, err := io.CopyN(f, tr, hdr.Size); err != nil {
+				return fmt.Errorf("unable to copy file %s: %w", hdr.Name, err)
+			}
+
+			if err := f.Close(); err != nil {
+				return fmt.Errorf("unable to close file %s: %w", hdr.Name, err)
+			}
+
+		case tar.TypeSymlink:
+			if target, err := fs.Readlink(hdr.Name); err == nil && target == hdr.Linkname {
+				continue
+			}
+
+			if err := fs.Symlink(hdr.Linkname, hdr.Name); err != nil {
+				return fmt.Errorf("unable to create symlink %s -> %s: %w", hdr.Name, hdr.Linkname, err)
+			}
+
+		case tar.TypeLink:
+			if err := fs.Link(hdr.Linkname, hdr.Name); err != nil {
 				return err
 			}
 
-			if _, err := io.Copy(f, tr); err != nil {
-				return err
+		default:
+			return fmt.Errorf("unexpected tar type %d for %s", hdr.Typeflag, hdr.Name)
+		}
+
+		for k, v := range hdr.PAXRecords {
+			if !strings.HasPrefix(k, "SCHILY.xattr.") {
+				continue
 			}
-			f.Close()
+			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+			fmt.Println("setting xattr", attrName, "on", hdr.Name)
+			if err := fs.SetXattr(hdr.Name, attrName, []byte(v)); err != nil {
+				return fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
+			}
 		}
 	}
 

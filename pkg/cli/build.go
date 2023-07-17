@@ -58,6 +58,7 @@ func Build() *cobra.Command {
 	var logPolicy []string
 	var createBuildLog bool
 	var debug bool
+	var debugRunner bool
 	var runner string
 
 	cmd := &cobra.Command{
@@ -94,6 +95,7 @@ func Build() *cobra.Command {
 				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
+				build.WithDebugRunner(debugRunner),
 				build.WithLogPolicy(logPolicy),
 				build.WithRunner(runner),
 			}
@@ -142,6 +144,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
+	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build suceeds or fails")
 
 	return cmd
 }

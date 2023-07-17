@@ -403,6 +403,7 @@ type Build struct {
 	imgRef             string
 	containerConfig    *container.Config
 	Debug              bool
+	DebugRunner        bool
 	LogPolicy          []string
 
 	EnabledBuildOptions []string
@@ -817,6 +818,14 @@ func WithCreateBuildLog(createBuildLog bool) Option {
 func WithDebug(debug bool) Option {
 	return func(b *Build) error {
 		b.Debug = debug
+		return nil
+	}
+}
+
+// WithDebugRunner indicates whether the runner should leave the build environment up on failures
+func WithDebugRunner(debug bool) Option {
+	return func(b *Build) error {
+		b.DebugRunner = debug
 		return nil
 	}
 }
@@ -1645,6 +1654,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
 		}
+		if !b.DebugRunner {
+			defer func() {
+				if err := b.Runner.TerminatePod(ctx, cfg); err != nil {
+					b.Logger.Warnf("unable to terminate pod: %s", err)
+				}
+			}()
+		}
 
 		// run the main pipeline
 		b.Logger.Printf("running the main pipeline")
@@ -1757,11 +1773,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	if !b.IsBuildLess() {
-		// terminate pod
-		if err := b.Runner.TerminatePod(ctx, cfg); err != nil {
-			b.Logger.Printf("WARNING: unable to terminate pod: %s", err)
-		}
-
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
 			b.Logger.Printf("WARNING: unable to clean guest container: %s", err)

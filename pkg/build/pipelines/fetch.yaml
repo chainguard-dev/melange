@@ -74,7 +74,7 @@ pipeline:
       fi
 
       if [ ! -f $bn ]; then
-        wget -q -T${{inputs.timeout}} --dns-timeout=${{inputs.dns-timeout}} --tries=${{inputs.retry-limit}} --random-wait --retry-connrefused --continue ${{inputs.uri}}
+        wget -q '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
       fi
 
       if [ "${{inputs.expected-sha256}}" != "" ]; then

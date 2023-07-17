@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/util/exec"
 	"knative.dev/pkg/ptr"
 	"sigs.k8s.io/yaml"
 
@@ -253,6 +254,18 @@ func (k *k8s) OCIImageLoader() Loader {
 
 // Exec runs a command on the pod
 func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts remotecommand.StreamOptions) error {
+	// The k8s runner has no concept of a "WorkingDir", so we prepend the standard
+	// command to root us in WorkingDir
+	if len(cmd) != 3 {
+		k.logger.Warnf("unknown command format, expected 3 elements but got %d, this might not work...", len(cmd))
+	} else if cmd[0] != "/bin/sh" || cmd[1] != "-c" {
+		k.logger.Warnf("unknown command format, expected '/bin/sh -c' but got [%s %s], this might not work...", cmd[0], cmd[1])
+	} else {
+		cmd[2] = fmt.Sprintf(`[ -d '%s' ] || mkdir -p '%s'
+cd '%s'
+%s`, runnerWorkdir, runnerWorkdir, runnerWorkdir, cmd[2])
+	}
+
 	req := k.clientset.
 		CoreV1().
 		RESTClient().
@@ -268,14 +281,37 @@ func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts
 			Stderr:    true,
 		}, scheme.ParameterCodec)
 
-	k.logger.Infof("executing command %v", cmd)
-	exec, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
+	executor, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
 	if err != nil {
 		return fmt.Errorf("failed to create remote command executor: %v", err)
 	}
 
-	if err := exec.StreamWithContext(ctx, streamOpts); err != nil {
-		return fmt.Errorf("failed to stream remote command: %v", err)
+	// Backoff up to 4 times with a 1 second initial delay, tripling each time
+	backoff := wait.Backoff{
+		Steps:    4,
+		Duration: 1 * time.Second,
+		Factor:   3,
+		Jitter:   0.1,
+	}
+
+	k.logger.Infof("remote executing command %v", cmd)
+	if err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
+		err := executor.StreamWithContext(ctx, streamOpts)
+		switch e := err.(type) {
+		case *exec.CodeExitError, exec.ExitError:
+			// Non recoverable error
+			k.logger.Warnf("non-recoverable error (%T) executing remote command: %v", e, err)
+			return false, err
+		case nil:
+			// Succeeded without error
+			return true, nil
+		}
+
+		// Everything else is retryable without altering the existing build step
+		k.logger.Warnf("attempting to recover (%T) after failing to execute remote command: %v", err, err)
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("failed executing remote command: %v", err)
 	}
 
 	return nil

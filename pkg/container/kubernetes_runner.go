@@ -65,6 +65,7 @@ type k8s struct {
 	clientset  kubernetes.Interface
 	restConfig *rest.Config
 	logger     log.Logger
+	pod        *corev1.Pod
 }
 
 func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
@@ -145,6 +146,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	}
 	k.logger.Infof("pod [%s/%s] is ready", pod.Namespace, pod.Name)
 
+	k.pod = pod
 	cfg.PodID = pod.Name
 	return nil
 }
@@ -206,6 +208,7 @@ func (k *k8s) TerminatePod(ctx context.Context, cfg *Config) error {
 	}
 
 	cfg.PodID = ""
+	k.pod = nil
 	return nil
 }
 
@@ -231,21 +234,11 @@ func (k *k8s) TestUsability(ctx context.Context) bool {
 
 // WorkspaceTar implements Runner
 func (k *k8s) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	cmd := []string{"tar", "cf", "-", "-C", runnerWorkdir, "melange-out"}
-	r, w := io.Pipe()
-
-	go func() {
-		defer w.Close()
-
-		if err := k.Exec(ctx, cfg.PodID, cmd, remotecommand.StreamOptions{
-			Stdout: w,
-			Stderr: os.Stderr,
-		}); err != nil {
-			panic(err)
-		}
-	}()
-
-	return r, nil
+	fetcher, err := newK8sTarFetcher(k.restConfig, k.pod)
+	if err != nil {
+		return nil, fmt.Errorf("creating k8s tar fetcher: %v", err)
+	}
+	return fetcher.Fetch(ctx)
 }
 
 // OCIImageLoader implements Runner
@@ -289,7 +282,7 @@ cd '%s'
 
 	// Backoff up to 4 times with a 1 second initial delay, tripling each time
 	backoff := wait.Backoff{
-		Steps:    4,
+		Steps:    6,
 		Duration: 1 * time.Second,
 		Factor:   3,
 		Jitter:   0.1,
@@ -632,4 +625,93 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 	}
 
 	return ref.String(), nil
+}
+
+type k8sTarFetcher struct {
+	client     kubernetes.Interface
+	restconfig *rest.Config
+	pod        metav1.Object
+}
+
+func newK8sTarFetcher(restconfig *rest.Config, pod metav1.Object) (*k8sTarFetcher, error) {
+	client, err := kubernetes.NewForConfig(restconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &k8sTarFetcher{
+		client:     client,
+		restconfig: restconfig,
+		pod:        pod,
+	}, nil
+}
+
+func (f *k8sTarFetcher) Fetch(ctx context.Context) (io.ReadCloser, error) {
+	readAt := func(w io.Writer, offset uint64) error {
+		req := f.client.CoreV1().RESTClient().Post().Resource("pods").Name(f.pod.GetName()).Namespace(f.pod.GetNamespace()).SubResource("exec").VersionedParams(&corev1.PodExecOptions{
+			Container: kubernetesBuilderPodWorkspaceContainerName,
+			Command: []string{
+				"/bin/sh", "-c",
+				// Write a gzip compressed tar stream to stdout, starting at the given offset (n)
+				fmt.Sprintf("([ -f /tmp/melange-out.tar.gz ] || tar -czf /tmp/melange-out.tar.gz -C %s melange-out) && cat /tmp/melange-out.tar.gz | tail -c+%d", runnerWorkdir, offset),
+			},
+			Stdout: true,
+			Stderr: true,
+		}, scheme.ParameterCodec)
+
+		exec, err := remotecommand.NewSPDYExecutor(f.restconfig, "POST", req.URL())
+		if err != nil {
+			return err
+		}
+		return exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+			Stdout: w,
+			Stderr: os.Stderr,
+		})
+	}
+	tp := &retryableTarPipe{
+		MaxRetries: 5,
+		ReadAt:     readAt,
+	}
+	tp.initReadFrom(0)
+	return tp, nil
+}
+
+type retryableTarPipe struct {
+	ReadAt     func(w io.Writer, n uint64) error
+	MaxRetries int
+
+	reader   *io.PipeReader
+	out      *io.PipeWriter
+	progress uint64
+	retries  int
+}
+
+func (p *retryableTarPipe) Close() error {
+	return p.out.Close()
+}
+
+func (p *retryableTarPipe) initReadFrom(n uint64) {
+	p.reader, p.out = io.Pipe()
+
+	go func() {
+		defer p.out.Close()
+		err := p.ReadAt(p.out, n)
+		if err != nil {
+			fmt.Println("failed to read: ", err)
+		}
+	}()
+}
+
+func (p *retryableTarPipe) Read(data []byte) (n int, err error) {
+	n, err = p.reader.Read(data)
+	if err != nil {
+		if p.retries < p.MaxRetries {
+			p.retries++
+			p.initReadFrom(p.progress + 1)
+			err = nil
+		}
+	} else {
+		p.progress += uint64(n)
+	}
+	return
 }

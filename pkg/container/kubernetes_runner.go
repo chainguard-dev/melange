@@ -311,16 +311,29 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 				MountPath: mount.Destination,
 			}},
 		})
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: mountName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
 		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 			Name:      mountName,
 			MountPath: mount.Destination,
 		})
+
+		// Only append the volume if it doesn't already volumeExists. This prevents us
+		// from overriding any user defined volume, such as generic ephemeral
+		// volumes
+		volumeExists := false
+		for _, v := range pod.Spec.Volumes {
+			if v.Name == mountName {
+				volumeExists = true
+			}
+		}
+		if !volumeExists {
+			// Use a generic empty dir volume as the default
+			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+				Name: mountName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+		}
 	}
 
 	return pod, nil
@@ -463,6 +476,13 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			},
 			Volumes: []corev1.Volume{},
 		},
+	}
+
+	for k, v := range cfg.Environment {
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 
 	for k, v := range c.Annotations {

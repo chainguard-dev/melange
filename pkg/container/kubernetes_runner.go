@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -475,10 +476,17 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) *KubernetesRunner
 	return cfg
 }
 
+// escapeRFC1123 escapes a string to be RFC1123 compliant.  We don't worry about
+// being collision free because these are generally fed to generateName which
+// appends a randomized suffix.
+func escapeRFC1123(name string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(name, ".", "-"), "_", "-")
+}
+
 func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("melange-builder-%s-%s-", cfg.PackageName, cfg.Arch.String()),
+			GenerateName: fmt.Sprintf("melange-builder-%s-%s-", escapeRFC1123(cfg.PackageName), cfg.Arch.String()),
 			Namespace:    c.Namespace,
 			Labels: map[string]string{
 				"kubernetes.io/arch":             cfg.Arch.String(),

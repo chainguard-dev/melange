@@ -16,6 +16,7 @@ package build
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -1939,9 +1940,17 @@ func (b *Build) RetrieveWorkspace(ctx context.Context) error {
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
 	if err != nil {
 		return err
+	} else if r == nil {
+		return nil
 	}
 	defer r.Close()
-	tr := tar.NewReader(r)
+
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return err
+	}
+	defer gr.Close()
+	tr := tar.NewReader(gr)
 
 	fs := apkofs.DirFS(b.WorkspaceDir)
 	for {

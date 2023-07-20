@@ -259,7 +259,7 @@ func (l *lima) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, er
 	go func() {
 		defer pw.Close()
 
-		if err := l.nerdctl(ctx, melangeVMName, nil, pw, nil, "exec", "-i", cfg.PodID, "tar", "cf", "-", "-C", runnerWorkdir, "melange-out"); err != nil {
+		if err := l.nerdctl(ctx, melangeVMName, nil, pw, nil, "exec", "-i", cfg.PodID, "tar", "czf", "-", "-C", runnerWorkdir, "melange-out"); err != nil {
 			pw.CloseWithError(fmt.Errorf("failed to tar workspace: %w", err))
 		}
 	}()

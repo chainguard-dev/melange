@@ -15,7 +15,6 @@
 package container
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -249,8 +248,7 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 // WorkspaceTar implements Runner
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
 func (d *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	var buffer bytes.Buffer
-	return io.NopCloser(&buffer), nil
+	return nil, nil
 }
 
 type dockerLoader struct{}

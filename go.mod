@@ -17,6 +17,8 @@ require (
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/imdario/mergo v0.3.16
 	github.com/joho/godotenv v1.5.1
+	github.com/klauspost/compress v1.16.7
+	github.com/klauspost/pgzip v1.2.5
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/lima-vm/lima v0.16.0
 	github.com/opencontainers/image-spec v1.1.0-rc4
@@ -107,8 +109,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
-	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20230630152916-bd29cc430fd6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

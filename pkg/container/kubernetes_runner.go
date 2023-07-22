@@ -396,12 +396,16 @@ func (k *k8s) filterMounts(mount BindMount) bool {
 		return true
 	}
 
+	if mount.Destination == "/var/cache/melange" {
+		k.logger.Warnf("skipping k8s runner irrelevant cache mount %s -> %s", mount.Source, mount.Destination)
+		return true
+	}
+
 	// Skip anything that can't be mounted to a destination
 	if mount.Destination == "" {
 		return true
 	}
 
-	// TODO: More filtering?
 	return false
 }
 

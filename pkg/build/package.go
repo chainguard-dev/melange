@@ -32,6 +32,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/pgzip"
+
 	"chainguard.dev/apko/pkg/log"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
@@ -237,8 +240,13 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context, digest hash.
 	}
 
 	mw := io.MultiWriter(digest, w)
-	if err := tarctx.WriteTargz(ctx, mw, fsys); err != nil {
+	zw := gzip.NewWriter(mw)
+
+	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
 		return digest, fmt.Errorf("unable to write control tarball: %w", err)
+	}
+	if err := zw.Close(); err != nil {
+		return digest, fmt.Errorf("flushing control section gzip: %w", err)
 	}
 
 	controlHash := hex.EncodeToString(digest.Sum(nil))
@@ -635,8 +643,14 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, w io.Wr
 
 	digest := sha256.New()
 	mw := io.MultiWriter(digest, w)
-	if err := tarctx.WriteTargz(ctx, mw, fsys); err != nil {
+	zw := pgzip.NewWriter(mw)
+
+	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)
+	}
+
+	if err := zw.Close(); err != nil {
+		return fmt.Errorf("flushing data section gzip: %w", err)
 	}
 
 	pc.DataHash = hex.EncodeToString(digest.Sum(nil))
@@ -671,8 +685,14 @@ func (pc *PackageBuild) emitNormalSignatureSection(ctx context.Context, h hash.H
 		return fmt.Errorf("unable to build signature FS: %w", err)
 	}
 
-	if err := tarctx.WriteTargz(ctx, w, fsys); err != nil {
+	zw := gzip.NewWriter(w)
+
+	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
 		return fmt.Errorf("unable to write signature tarball: %w", err)
+	}
+
+	if err := zw.Close(); err != nil {
+		return fmt.Errorf("flushing control section gzip: %w", err)
 	}
 
 	if _, err := w.Seek(0, io.SeekStart); err != nil {

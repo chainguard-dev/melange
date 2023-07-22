@@ -153,6 +153,9 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 
 // Run implements Runner
 func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Run")
+	defer span.End()
+
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod isn't running")
 	}
@@ -234,6 +237,9 @@ func (k *k8s) TestUsability(ctx context.Context) bool {
 
 // WorkspaceTar implements Runner
 func (k *k8s) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.WorkspaceTar")
+	defer span.End()
+
 	fetcher, err := newK8sTarFetcher(k.restConfig, k.pod)
 	if err != nil {
 		return nil, fmt.Errorf("creating k8s tar fetcher: %v", err)
@@ -248,6 +254,9 @@ func (k *k8s) OCIImageLoader() Loader {
 
 // Exec runs a command on the pod
 func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts remotecommand.StreamOptions) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Exec")
+	defer span.End()
+
 	// The k8s runner has no concept of a "WorkingDir", so we prepend the standard
 	// command to root us in WorkingDir
 	if len(cmd) != 3 {
@@ -312,6 +321,9 @@ cd '%s'
 }
 
 func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.NewBuildPod")
+	defer span.End()
+
 	repo, err := name.NewRepository(k.Config.Repo)
 	if err != nil {
 		return nil, err
@@ -372,6 +384,9 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 // bundle is a thin wrapper around kontext.Bundle that ensures the bundle is rooted in the given path
 // TODO: This should be upstreamed in kontext.Bundle() when we change that to use go-apk.FullFS
 func (k *k8s) bundle(ctx context.Context, path string, tag name.Tag) (name.Digest, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.bundle")
+	defer span.End()
+
 	var ref name.Digest
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -647,6 +662,9 @@ func newK8sTarFetcher(restconfig *rest.Config, pod metav1.Object) (*k8sTarFetche
 }
 
 func (f *k8sTarFetcher) Fetch(ctx context.Context) (io.ReadCloser, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Fetch")
+	defer span.End()
+
 	readAt := func(w io.Writer, offset uint64) error {
 		req := f.client.CoreV1().RESTClient().Post().Resource("pods").Name(f.pod.GetName()).Namespace(f.pod.GetNamespace()).SubResource("exec").VersionedParams(&corev1.PodExecOptions{
 			Container: kubernetesBuilderPodWorkspaceContainerName,

@@ -1688,8 +1688,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		langs := []string{}
-
 		if !b.IsBuildLess() {
 			b.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 			pb.Subpackage = &sp
@@ -1706,6 +1704,38 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 				if _, err := p.Run(ctx, &pb); err != nil {
 					return fmt.Errorf("unable to run pipeline: %w", err)
 				}
+			}
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
+		return err
+	}
+
+	// Retrieve the post build workspace from the runner
+	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
+	if err := b.RetrieveWorkspace(ctx); err != nil {
+		return fmt.Errorf("retrieving workspace: %v", err)
+	}
+	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
+
+	// generate SBOMs for subpackages
+	for _, sp := range b.Configuration.Subpackages {
+		langs := []string{}
+
+		if !b.IsBuildLess() {
+			b.Logger.Printf("generating SBOM for subpackage %s", sp.Name)
+			pb.Subpackage = &sp
+
+			result, err := sp.ShouldRun(&pb)
+			if err != nil {
+				return err
+			}
+			if !result {
+				continue
+			}
+
+			for _, p := range sp.Pipeline {
 				langs = append(langs, p.SBOM.Language)
 			}
 		}
@@ -1727,17 +1757,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("writing SBOMs: %w", err)
 		}
 	}
-
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
-		return err
-	}
-
-	// Retrieve the post build workspace from the runner
-	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
-	if err := b.RetrieveWorkspace(ctx); err != nil {
-		return fmt.Errorf("retrieving workspace: %v", err)
-	}
-	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
 	if err := generator.GenerateSBOM(ctx, &sbom.Spec{
 		Path:           filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),

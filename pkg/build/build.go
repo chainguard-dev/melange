@@ -38,6 +38,10 @@ import (
 	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/go-git/go-git/v5"
 	"github.com/joho/godotenv"
 	"github.com/yookoala/realpath"
@@ -1390,46 +1394,87 @@ func (b *Build) fetchBucket(ctx context.Context, cmm CacheMembershipMap) (string
 	if err != nil {
 		return "", err
 	}
-	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(b.CacheSource, "gs://"), "/")
+	if strings.HasPrefix(b.CacheSource, "gs://") {
+		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(b.CacheSource, "gs://"), "/")
 
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		b.Logger.Printf("downgrading to anonymous mode: %s", err)
+		client, err := storage.NewClient(ctx)
+		if err != nil {
+			b.Logger.Printf("downgrading to anonymous mode: %s", err)
 
-		client, err = storage.NewClient(ctx, option.WithoutAuthentication())
-		if err != nil {
-			return "", fmt.Errorf("failed to get storage client: %w", err)
+			client, err = storage.NewClient(ctx, option.WithoutAuthentication())
+			if err != nil {
+				return "", fmt.Errorf("failed to get storage client: %w", err)
+			}
 		}
-	}
 
-	bh := client.Bucket(bucket)
-	it := bh.Objects(ctx, &storage.Query{Prefix: prefix})
-	for {
-		attrs, err := it.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			return tmp, fmt.Errorf("failed to get next remote cache object: %w", err)
+		bh := client.Bucket(bucket)
+		it := bh.Objects(ctx, &storage.Query{Prefix: prefix})
+		for {
+			attrs, err := it.Next()
+			if err == iterator.Done {
+				break
+			} else if err != nil {
+				return tmp, fmt.Errorf("failed to get next remote cache object: %w", err)
+			}
+			on := attrs.Name
+			if !cmm[on] {
+				continue
+			}
+			rc, err := bh.Object(on).NewReader(ctx)
+			if err != nil {
+				return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
+			}
+			w, err := os.Create(filepath.Join(tmp, on))
+			if err != nil {
+				return tmp, err
+			}
+			if _, err := io.Copy(w, rc); err != nil {
+				return tmp, fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
+			}
+			if err := rc.Close(); err != nil {
+				return tmp, fmt.Errorf("failed to close remote cache object %s: %w", on, err)
+			}
+			b.Logger.Printf("cached gs://%s/%s -> %s", bucket, on, w.Name())
 		}
-		on := attrs.Name
-		if !cmm[on] {
-			continue
-		}
-		rc, err := bh.Object(on).NewReader(ctx)
+	} else if strings.HasPrefix(b.CacheSource, "s3://") {
+		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(b.CacheSource, "s3://"), "/")
+		sess := session.Must(session.NewSession())
+		svc := s3.New(sess)
+		objs, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{
+			Bucket: aws.String(bucket),
+			Prefix: aws.String(prefix),
+		})
 		if err != nil {
-			return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
+			return tmp, fmt.Errorf("failed to list remote cache object from s3: %w", err)
 		}
-		w, err := os.Create(filepath.Join(tmp, on))
-		if err != nil {
-			return tmp, err
+		downloader := s3manager.NewDownloader(sess)
+		downloadObjs := []s3manager.BatchDownloadObject{}
+		for i := 0; i < len(objs.Contents); i++ {
+			evaluatedFilePath := strings.Split(*objs.Contents[i].Key, "/")
+			on := evaluatedFilePath[len(evaluatedFilePath)-1]
+			if !cmm[on] {
+				continue
+			}
+			w, err := os.Create(filepath.Join(tmp, on))
+			if err != nil {
+				return tmp, err
+			}
+			downloadObjs = append(downloadObjs,
+				s3manager.BatchDownloadObject{
+					Object: &s3.GetObjectInput{
+						Bucket: aws.String(bucket),
+						Key:    aws.String(*objs.Contents[i].Key),
+					},
+					Writer: w,
+				},
+			)
 		}
-		if _, err := io.Copy(w, rc); err != nil {
-			return tmp, fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
+		iter := &s3manager.DownloadObjectsIterator{Objects: downloadObjs}
+		if err := downloader.DownloadWithIterator(aws.BackgroundContext(), iter); err != nil {
+			return tmp, fmt.Errorf("failed to get remote cache object from s3: %w", err)
+		} else {
+			b.Logger.Printf("cached s3://%s/%s -> %s", bucket, prefix, tmp)
 		}
-		if err := rc.Close(); err != nil {
-			return tmp, fmt.Errorf("failed to close remote cache object %s: %w", on, err)
-		}
-		b.Logger.Printf("cached gs://%s/%s -> %s", bucket, on, w.Name())
 	}
 
 	return tmp, nil
@@ -1459,7 +1504,7 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(b.CacheSource, "gs://") {
+	if strings.HasPrefix(b.CacheSource, "gs://") || strings.HasPrefix(b.CacheSource, "s3://") {
 		tmp, err := b.fetchBucket(ctx, cmm)
 		if err != nil {
 			return err

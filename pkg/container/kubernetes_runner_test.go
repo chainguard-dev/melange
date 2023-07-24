@@ -162,6 +162,80 @@ func Test_k8s_StartPod(t *testing.T) {
 				return *got.Spec.RuntimeClassName == "foo"
 			},
 		},
+		{
+			name:   "profiles should merge with resources with glob matcher",
+			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			k8sCfg: &KubernetesRunnerConfig{
+				Resources: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("9001Gi"),
+				},
+				Profiles: map[string]KubernetesRunnerConfigProfile{
+					"foo": {
+						Matchers: KubernetesRunnerConfigProfileMatcher{Glob: []string{"do*key"}},
+						Resources: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("2"),
+						},
+					},
+					"bar": {
+						Matchers: KubernetesRunnerConfigProfileMatcher{Glob: []string{"donkey"}},
+						Resources: corev1.ResourceList{
+							corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			},
+			wanter: func(got corev1.Pod) bool {
+				return got.Spec.Containers[0].Resources.Requests.Cpu().Equal(resource.MustParse("2")) &&
+					got.Spec.Containers[0].Resources.Requests.Memory().Equal(resource.MustParse("9001Gi")) &&
+					got.Spec.Containers[0].Resources.Requests.StorageEphemeral().Equal(resource.MustParse("10Gi"))
+			},
+		},
+		{
+			name:   "profile should merge with pod template with regex matcher",
+			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			k8sCfg: &KubernetesRunnerConfig{
+				PodTemplate: &KubernetesRunnerConfigPodTemplate{
+					Volumes: []corev1.Volume{{
+						Name:         "foo",
+						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+					}},
+				},
+				Profiles: map[string]KubernetesRunnerConfigProfile{
+					"foo": {
+						Matchers: KubernetesRunnerConfigProfileMatcher{Regex: []string{"^donkey$"}},
+						PodTemplate: &KubernetesRunnerConfigPodTemplate{
+							Volumes: []corev1.Volume{{
+								Name:         "bar",
+								VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+							}},
+						},
+					},
+					"bar": {
+						Matchers: KubernetesRunnerConfigProfileMatcher{Regex: []string{"donkey"}},
+						PodTemplate: &KubernetesRunnerConfigPodTemplate{
+							NodeSelector: map[string]string{"foo": "bar"},
+							Volumes: []corev1.Volume{
+								{Name: "bar", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+								{Name: "baz", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							},
+						},
+					},
+				},
+			},
+			wanter: func(got corev1.Pod) bool {
+				if len(got.Spec.Volumes) != 3 {
+					return false
+				}
+				if got.Spec.NodeSelector["foo"] != "bar" {
+					return false
+				}
+				if got.Spec.NodeSelector["kubernetes.io/arch"] != "arm64" {
+					return false
+				}
+				return got.Spec.Volumes[0].Name == "foo" && got.Spec.Volumes[1].Name == "bar" && got.Spec.Volumes[2].Name == "baz"
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

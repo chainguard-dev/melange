@@ -19,6 +19,15 @@ import (
 	"chainguard.dev/apko/pkg/log"
 )
 
+const (
+	// DefaultWorkspaceDir is the default path to the workspace directory in the runner's environment.
+	DefaultWorkspaceDir = "/home/build"
+	// DefaultCacheDir is the default path to the cache directory in the runner's environment.
+	DefaultCacheDir = "/var/cache/melange"
+	// DefaultResolvConfPath is the default path to the resolv.conf file in the runner's environment.
+	DefaultResolvConfPath = "/etc/resolv.conf"
+)
+
 type BindMount struct {
 	Source      string
 	Destination string

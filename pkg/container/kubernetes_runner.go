@@ -407,7 +407,12 @@ func (k *k8s) bundle(ctx context.Context, path string, tag name.Tag) (name.Diges
 // filterMounts filters mounts that are not supported by the k8s runner
 func (k *k8s) filterMounts(mount BindMount) bool {
 	// the kubelet handles this
-	if mount.Source == "/etc/resolv.conf" {
+	if mount.Source == DefaultResolvConfPath {
+		return true
+	}
+
+	if mount.Destination == DefaultCacheDir {
+		k.logger.Warnf("skipping k8s runner irrelevant cache mount %s -> %s", mount.Source, mount.Destination)
 		return true
 	}
 
@@ -416,7 +421,6 @@ func (k *k8s) filterMounts(mount BindMount) bool {
 		return true
 	}
 
-	// TODO: More filtering?
 	return false
 }
 

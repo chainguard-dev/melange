@@ -1879,8 +1879,8 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 	}
 
 	mounts := []container.BindMount{
-		{Source: b.WorkspaceDir, Destination: "/home/build"},
-		{Source: "/etc/resolv.conf", Destination: "/etc/resolv.conf"},
+		{Source: b.WorkspaceDir, Destination: container.DefaultWorkspaceDir},
+		{Source: "/etc/resolv.conf", Destination: container.DefaultResolvConfPath},
 	}
 
 	if b.CacheDir != "" {
@@ -1890,7 +1890,7 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 				b.Logger.Printf("could not resolve path for --cache-dir: %s", err)
 			}
 
-			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: "/var/cache/melange"})
+			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
 			b.Logger.Printf("--cache-dir %s not a dir; skipping", b.CacheDir)
 		}

@@ -312,6 +312,10 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 		}
 	}
 
+	if release.Url == "" {
+		return pipeline, errors.New("could not find any sdist package in available releases")
+	}
+
 	artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, release.Url)
 	if err != nil {
 		c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)

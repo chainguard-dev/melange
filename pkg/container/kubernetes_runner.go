@@ -534,11 +534,13 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			Annotations: map[string]string{},
 		},
 		Spec: corev1.PodSpec{
+			// Don't putz around for 30s when we kill things.
+			TerminationGracePeriodSeconds: ptr.Int64(0),
 			Containers: []corev1.Container{{
 				Name:  kubernetesBuilderPodWorkspaceContainerName,
 				Image: cfg.ImgRef,
 				// ldconfig is run to prime ld.so.cache for glibc packages which require it.
-				Command: []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
+				Command: []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nsleep infinity"},
 				Resources: corev1.ResourceRequirements{
 					Requests: c.Resources,
 				},
@@ -665,6 +667,7 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 	ref := repo.Digest(d.String())
 	k.logger.Infof("pushing build image (%s) to %s", humanize.Bytes(uint64(sz)), ref.String())
 	if err := remote.Write(ref, img, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx)); err != nil {
+		k.logger.Infof("error publishing build image: %v", err)
 		return "", err
 	}
 

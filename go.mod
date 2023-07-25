@@ -17,6 +17,7 @@ require (
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/imdario/mergo v0.3.16
 	github.com/joho/godotenv v1.5.1
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.16.7
 	github.com/klauspost/pgzip v1.2.5
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc

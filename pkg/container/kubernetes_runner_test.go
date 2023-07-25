@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/imdario/mergo"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +22,90 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+func TestKubernetesRunnerConfig(t *testing.T) {
+	t.Parallel()
+
+	dwant, _ := NewKubernetesConfig()
+
+	// Intentionally use raw yaml to surface any type marshaling issues
+	writeRaw := func(data []byte) string {
+		f, err := os.CreateTemp("", "config.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		if _, err := f.Write(data); err != nil {
+			t.Fatal(err)
+		}
+
+		return f.Name()
+	}
+
+	tests := []struct {
+		name     string
+		rawInput string
+		envs     map[string]string
+		want     *KubernetesRunnerConfig
+	}{
+		{
+			name: "should have default values",
+			want: dwant,
+		},
+		{
+			name: "should override default values with global yaml values",
+			rawInput: `
+namespace: foo
+startTimeout: 10s
+`,
+			want: &KubernetesRunnerConfig{
+				Namespace:    "foo",
+				StartTimeout: metav1.Duration{Duration: 10 * time.Second},
+			},
+		},
+		{
+			name: "should override values with global yaml values and env vars",
+			rawInput: `
+namespace: foo
+startTimeout: 5m
+repo: somewhere
+`,
+			envs: map[string]string{
+				"MELANGE_REPO": "nowhere",
+			},
+			want: &KubernetesRunnerConfig{
+				Namespace:    "foo",
+				StartTimeout: metav1.Duration{Duration: 5 * time.Minute},
+				Repo:         "nowhere",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Pickup the default want values
+			want, _ := NewKubernetesConfig()
+			if err := mergo.Merge(want, tt.want, mergo.WithOverride); err != nil {
+				t.Fatal(err)
+			}
+
+			for k, v := range tt.envs {
+				if err := os.Setenv(k, v); err != nil {
+					t.Fatalf("setting env var %s=%s: %v", k, v, err)
+				}
+			}
+			got, err := NewKubernetesConfig(WithKubernetesRunnerConfigBaseConfigFile(writeRaw([]byte(tt.rawInput))))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(got, want, cmpopts.IgnoreUnexported(KubernetesRunnerConfig{})); diff != "" {
+				t.Errorf("KubernetesConfig mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func Test_k8s_StartPod(t *testing.T) {
 	t.Parallel()
 
@@ -26,6 +114,7 @@ func Test_k8s_StartPod(t *testing.T) {
 	tests := []struct {
 		name   string
 		pkgCfg *Config
+		envs   map[string]string
 		k8sCfg *KubernetesRunnerConfig
 		wanter func(got corev1.Pod) bool
 	}{
@@ -38,11 +127,37 @@ func Test_k8s_StartPod(t *testing.T) {
 			},
 		},
 		{
-			name:   "should use global namespace instead of default",
+			name:   "should load global configs from yaml",
 			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{Namespace: "not-default"},
 			wanter: func(got corev1.Pod) bool {
 				return got.Namespace == "not-default"
+			},
+		},
+		{
+			name:   "should prioritize environment configs",
+			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			k8sCfg: &KubernetesRunnerConfig{Namespace: "not-default"},
+			envs: map[string]string{
+				"MELANGE_NAMESPACE": "from-env",
+				"MELANGE_REPO":      "nowhere",
+			},
+			wanter: func(got corev1.Pod) bool {
+				return got.Namespace == "from-env"
+			},
+		},
+		{
+			name:   "should skip environment configs for certain fields",
+			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			k8sCfg: &KubernetesRunnerConfig{PodTemplate: &KubernetesRunnerConfigPodTemplate{ServiceAccountName: "foo"}},
+			envs: map[string]string{
+				"MELANGE_SERVICE_ACCOUNT_NAME": "bar",
+				"MELANGE_SERVICEACCOUNTNAME":   "bar",
+				"SERVICE_ACCOUNT_NAME":         "bar",
+				"SERVICEACCOUNTNAME":           "bar",
+			},
+			wanter: func(got corev1.Pod) bool {
+				return got.Spec.ServiceAccountName == "foo"
 			},
 		},
 		{
@@ -165,13 +280,21 @@ func Test_k8s_StartPod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wantCfg := NewKubernetesConfig(WithKubernetesRunnerConfigBaseConfigFile(writeYamlToTemp(t, tt.k8sCfg)))
+			for k, v := range tt.envs {
+				if err := os.Setenv(k, v); err != nil {
+					t.Fatalf("setting env var %s=%s: %v", k, v, err)
+				}
+			}
+			gotCfg, err := NewKubernetesConfig(WithKubernetesRunnerConfigBaseConfigFile(writeYamlToTemp(t, tt.k8sCfg)))
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			fc := fake.NewSimpleClientset()
-			fc.PrependReactor("create", "pods", podDefaulterAction(t, tt.pkgCfg, wantCfg))
+			fc.PrependReactor("create", "pods", podDefaulterAction(t, tt.pkgCfg, gotCfg))
 
 			r := &k8s{
-				Config:    wantCfg,
+				Config:    gotCfg,
 				logger:    log.NewLogger(os.Stdout),
 				clientset: fc,
 			}
@@ -180,7 +303,7 @@ func Test_k8s_StartPod(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			gots, err := fc.CoreV1().Pods(wantCfg.Namespace).List(ctx, metav1.ListOptions{})
+			gots, err := fc.CoreV1().Pods(gotCfg.Namespace).List(ctx, metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -19,7 +19,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.16.7
-	github.com/klauspost/pgzip v1.2.5
+	github.com/klauspost/pgzip v1.2.6
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/lima-vm/lima v0.16.0
 	github.com/opencontainers/image-spec v1.1.0-rc4

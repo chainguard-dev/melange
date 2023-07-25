@@ -340,6 +340,7 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 		k.logger.Infof("creating mount '%s' from %s at %s", mountName, mount.Source, mount.Destination)
 		bundle, err := k.bundle(ctx, mount.Source, repo.Tag(fmt.Sprintf("%s-%s", cfg.PackageName, mountName)))
 		if err != nil {
+			k.logger.Warnf("error creating bundle: %v", err)
 			return nil, err
 		}
 		k.logger.Infof("mount '%s' uploaded to %s", mountName, bundle.String())

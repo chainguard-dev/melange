@@ -36,6 +36,7 @@ import (
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+	"github.com/google/go-containerregistry/pkg/logs"
 	"go.opentelemetry.io/otel"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
@@ -445,6 +446,10 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Enable printing warnings and progress from GGCR.
+	logs.Warn.SetOutput(writer)
+	logs.Progress.SetOutput(writer)
 
 	logger := &apko_log.Adapter{
 		Out:   writer,

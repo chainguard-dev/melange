@@ -33,6 +33,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/imdario/mergo"
+	"github.com/kelseyhightower/envconfig"
 	"go.opentelemetry.io/otel"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -69,8 +70,13 @@ type k8s struct {
 }
 
 func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
+	cfg, err := NewKubernetesConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure kubernetes runner: %v", err)
+	}
+
 	runner := &k8s{
-		Config: NewKubernetesConfig(),
+		Config: cfg,
 		logger: logger,
 	}
 
@@ -118,7 +124,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	}
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
 
-	if err := wait.PollUntilContextTimeout(ctx, 10*time.Second, k.Config.StartTimeout, true, func(ctx context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, 10*time.Second, k.Config.StartTimeout.Duration, true, func(ctx context.Context) (done bool, err error) {
 		p, err := podclient.Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -438,9 +444,9 @@ type KubernetesRunnerConfig struct {
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 
-	StartTimeout time.Duration `json:"startTimeout" yaml:"startTimeout"`
-	BuildTimeout time.Duration `json:"buildTimeout" yaml:"buildTimeout"`
+	StartTimeout metav1.Duration `json:"startTimeout" yaml:"startTimeout" split_words:"true"`
 
+	// This field and everything below it is ignored by the environment variable parser
 	PodTemplate *KubernetesRunnerConfigPodTemplate `json:"podTemplate,omitempty" yaml:"podTemplate,omitempty" ignored:"true"`
 
 	// A "burstable" QOS is really the only thing that makes sense for ephemeral builder pods
@@ -461,13 +467,12 @@ type KubernetesRunnerConfigPodTemplate struct {
 }
 
 // NewKubernetesConfig returns a default Kubernetes runner config setup
-func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) *KubernetesRunnerConfig {
+func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) (*KubernetesRunnerConfig, error) {
 	cfg := &KubernetesRunnerConfig{
 		Provider:     "generic",
 		Namespace:    "default",
 		Repo:         "ttl.sh/melange",
-		StartTimeout: 5 * time.Minute,
-		BuildTimeout: 30 * time.Minute,
+		StartTimeout: metav1.Duration{Duration: 10 * time.Minute},
 		Resources: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("2"),
 			corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -480,13 +485,32 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) *KubernetesRunner
 		o(cfg)
 	}
 
-	// We don't care about errors here, the empty value is safe to "merge"
+	// Override the defaults with values obtained from the global config file
 	global := &KubernetesRunnerConfig{}
-	data, _ := os.ReadFile(cfg.baseConfigFile)
-	_ = yaml.Unmarshal(data, global)
-	_ = mergo.Merge(cfg, global, mergo.WithOverride)
+	data, err := os.ReadFile(cfg.baseConfigFile)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("error reading config file %s: %w", cfg.baseConfigFile, err)
+	} else {
+		if err := yaml.Unmarshal(data, global); err != nil {
+			return nil, fmt.Errorf("error parsing config file %s: %w", cfg.baseConfigFile, err)
+		}
+	}
 
-	return cfg
+	if err := mergo.Merge(cfg, global, mergo.WithOverride); err != nil {
+		return nil, fmt.Errorf("error merging config file values %s with defaults: %w", cfg.baseConfigFile, err)
+	}
+
+	// Finally, override with the values from the environment
+	var envcfg KubernetesRunnerConfig
+	if err := envconfig.Process("melange", &envcfg); err != nil {
+		return nil, fmt.Errorf("error parsing environment variables: %w", err)
+	}
+
+	if err := mergo.Merge(cfg, envcfg, mergo.WithOverride); err != nil {
+		return nil, fmt.Errorf("error merging environment variables with defaults: %w", err)
+	}
+
+	return cfg, nil
 }
 
 // escapeRFC1123 escapes a string to be RFC1123 compliant.  We don't worry about

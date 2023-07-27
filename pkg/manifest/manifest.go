@@ -8,20 +8,20 @@ import (
 	"gopkg.in/yaml.v3"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"github.com/pkg/errors"
 )
 
 type GeneratedMelangeConfig struct {
-	Package              build.Package                `yaml:"package"`
+	Package              config.Package               `yaml:"package"`
 	Environment          apkotypes.ImageConfiguration `yaml:"environment,omitempty"`
-	Pipeline             []build.Pipeline             `yaml:"pipeline,omitempty"`
-	Subpackages          []build.Subpackage           `yaml:"subpackages,omitempty"`
+	Pipeline             []config.Pipeline            `yaml:"pipeline,omitempty"`
+	Subpackages          []config.Subpackage          `yaml:"subpackages,omitempty"`
 	Vars                 map[string]string            `yaml:"vars,omitempty"`
 	GeneratedFromComment string                       `yaml:"-"`
 }
 
-func (m *GeneratedMelangeConfig) SetPackage(pkg build.Package) {
+func (m *GeneratedMelangeConfig) SetPackage(pkg config.Package) {
 	m.Package = pkg
 }
 
@@ -29,11 +29,11 @@ func (m *GeneratedMelangeConfig) SetEnvironment(env apkotypes.ImageConfiguration
 	m.Environment = env
 }
 
-func (m *GeneratedMelangeConfig) SetPipeline(pipeline []build.Pipeline) {
+func (m *GeneratedMelangeConfig) SetPipeline(pipeline []config.Pipeline) {
 	m.Pipeline = pipeline
 }
 
-func (m *GeneratedMelangeConfig) SetSubpackages(sub []build.Subpackage) {
+func (m *GeneratedMelangeConfig) SetSubpackages(sub []config.Subpackage) {
 	m.Subpackages = sub
 }
 

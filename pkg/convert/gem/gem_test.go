@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -214,19 +214,19 @@ func TestGeneratePackage(t *testing.T) {
 		Licenses: []string{"MIT", "Ruby"},
 	}
 
-	expected := build.Package{
+	expected := config.Package{
 		Epoch:       0,
 		Name:        fmt.Sprintf("ruby-%s", g.Name),
 		Description: g.Info,
 		Version:     g.Version,
-		Copyright: []build.Copyright{
+		Copyright: []config.Copyright{
 			{
 				License: "MIT",
 			}, {
 				License: "Ruby",
 			},
 		},
-		Dependencies: build.Dependencies{
+		Dependencies: config.Dependencies{
 			Runtime: []string{},
 		},
 	}

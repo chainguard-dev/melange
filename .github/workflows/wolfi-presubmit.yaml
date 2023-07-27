@@ -23,7 +23,7 @@ jobs:
         run: |
           make melange
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: melange-${{github.run_id}}
           path: ${{github.workspace}}/melange
@@ -31,8 +31,8 @@ jobs:
 
   build-packages:
     name: Build packages
-    needs: [build-melange]
-    # TODO: Set up a larger runner for this.
+    needs:
+      - build-melange
     runs-on: ubuntu-latest
 
     # This is a list of packages which covers basic and exotic uses of
@@ -61,7 +61,7 @@ jobs:
         with:
           repository: wolfi-dev/os
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
           name: melange-${{github.run_id}}
           path: ${{github.workspace}}/.melange-dir

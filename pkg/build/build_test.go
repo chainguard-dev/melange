@@ -40,12 +40,12 @@ func TestConfiguration_Load(t *testing.T) {
 		name                string
 		skipConfigCleanStep bool
 		requireErr          require.ErrorAssertionFunc
-		expected            config.Configuration
+		expected	    *config.Configuration
 	}{
 		{
 			name:       "range-subpackages",
 			requireErr: require.NoError,
-			expected: config.Configuration{
+			expected: &config.Configuration{
 				Package: config.Package{
 					Name:    "hello",
 					Version: "world",
@@ -121,7 +121,7 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name:       "github",
 			requireErr: require.NoError,
-			expected: config.Configuration{
+			expected: &config.Configuration{
 				Package: config.Package{
 					Name:    "cosign",
 					Version: "2.0.0",
@@ -140,7 +140,7 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name:       "release-monitor",
 			requireErr: require.NoError,
-			expected: config.Configuration{
+			expected: &config.Configuration{
 				Package: config.Package{Name: "bison", Version: "3.8.2"},
 				Update: config.Update{
 					Enabled: true,
@@ -152,30 +152,34 @@ func TestConfiguration_Load(t *testing.T) {
 			},
 		},
 		{
-			name:       "unknown-fields",
-			requireErr: require.Error,
-			expected:   config.Configuration{},
+			name:                "unknown-fields",
+			skipConfigCleanStep: true,
+			requireErr:          require.Error,
+			expected:            nil,
 		},
 		{
-			name:       "missing-package-name",
-			requireErr: requireErrInvalidConfiguration,
-			expected:   config.Configuration{},
+			name:                "missing-package-name",
+			skipConfigCleanStep: true,
+			requireErr:          requireErrInvalidConfiguration,
+			expected:            nil,
 		},
 		{
-			name:       "invalid-package-name",
-			requireErr: requireErrInvalidConfiguration,
-			expected:   config.Configuration{},
+			name:               "invalid-package-name",
+			skipConfigCleanStep: true,
+			requireErr:          requireErrInvalidConfiguration,
+			expected:            nil,
 		},
 		{
-			name:       "invalid-range-subpackage-name",
-			requireErr: requireErrInvalidConfiguration,
-			expected:   config.Configuration{},
+			name:                "invalid-range-subpackage-name",
+			skipConfigCleanStep: true,
+			requireErr:          requireErrInvalidConfiguration,
+			expected:            nil,
 		},
 		{
 			name:                "env-vars-set-that-have-default-values",
 			skipConfigCleanStep: true,
 			requireErr:          require.NoError,
-			expected: config.Configuration{
+			expected: &config.Configuration{
 				Package: config.Package{
 					Name:    "cosign",
 					Version: "2.0.0",
@@ -211,21 +215,17 @@ func TestConfiguration_Load(t *testing.T) {
 				config.WithVarsFileForParsing(ctx.VarsFile))
 			tt.requireErr(t, err)
 
-			if err != nil {
+			if !tt.skipConfigCleanStep {
+				cleanTestConfig(cfg)
+			}
+
+			if tt.expected == nil {
 				if cfg != nil {
-					t.Fatalf("ParseConfiguration(): error was not returned, but no config was")
+					t.Fatalf("actual didn't match expected (want nil, got config)")
 				}
 			} else {
-				if cfg == nil {
-					t.Fatalf("ParseConfiguration(): config was not returned, but no error was")
-				} else {
-					if !tt.skipConfigCleanStep {
-						cleanTestConfig(cfg)
-					}
-
-					if d := cmp.Diff(tt.expected, *cfg, cmpopts.IgnoreUnexported(config.Pipeline{})); d != "" {
-						t.Fatalf("actual didn't match expected (-want, +got): %s", d)
-					}
+				if d := cmp.Diff(*tt.expected, *cfg, cmpopts.IgnoreUnexported(config.Pipeline{})); d != "" {
+					t.Fatalf("actual didn't match expected (-want, +got): %s", d)
 				}
 			}
 		})

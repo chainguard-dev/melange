@@ -11,7 +11,7 @@ require (
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-git/go-git/v5 v5.8.0
+	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.15.2
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
@@ -53,9 +53,10 @@ require (
 	cloud.google.com/go/compute v1.20.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.0 // indirect
+	dario.cat/mergo v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20230626094100-7e9e0395ebec // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230717121422-5aa5874ade95 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
@@ -110,7 +111,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20230630152916-bd29cc430fd6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -131,7 +131,7 @@ require (
 	github.com/sigstore/cosign/v2 v2.1.1 // indirect
 	github.com/sigstore/rekor v1.2.2 // indirect
 	github.com/sigstore/sigstore v1.7.1 // indirect
-	github.com/skeema/knownhosts v1.1.1 // indirect
+	github.com/skeema/knownhosts v1.2.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/theupdateframework/go-tuf v0.5.2 // indirect

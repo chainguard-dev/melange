@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -211,17 +211,17 @@ func TestGeneratePackage(t *testing.T) {
 		pythonctx := pythonctxs[0]
 		got := pythonctx.generatePackage(pythonctx.Package, pythonctx.PackageVersion)
 
-		expected := build.Package{
+		expected := config.Package{
 			Name:        "py" + versions[i] + "-botocore",
 			Version:     "1.29.78",
 			Epoch:       0,
 			Description: "Low-level, data-driven core of boto 3.",
-			Copyright: []build.Copyright{
+			Copyright: []config.Copyright{
 				{
 					License: "Apache License 2.0",
 				},
 			},
-			Dependencies: build.Dependencies{
+			Dependencies: config.Dependencies{
 				Runtime: []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]},
 			},
 		}

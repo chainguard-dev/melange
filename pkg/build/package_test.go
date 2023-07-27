@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"chainguard.dev/melange/pkg/config"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,6 +56,16 @@ func Test_removeSelfProvidedDeps_WithEmptyProvides(t *testing.T) {
 }
 
 func Test_GenerateControlData(t *testing.T) {
+	pkgctx, err := NewPackageContext(
+		&config.Package{
+			Version: "1.2.3",
+			Epoch:   4,
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewPackageContext() = %v", err)
+	}
+
 	tests := []struct {
 		name string
 		pb   *PackageBuild
@@ -64,10 +76,7 @@ func Test_GenerateControlData(t *testing.T) {
 			Build: &Build{
 				SourceDateEpoch: time.Unix(0, 0),
 			},
-			Origin: &Package{
-				Version: "1.2.3",
-				Epoch:   4,
-			},
+			Origin:        pkgctx,
 			PackageName:   "glibc",
 			Arch:          "aarch64",
 			InstalledSize: 666,
@@ -94,10 +103,7 @@ datahash = baadf00d
 			Build: &Build{
 				SourceDateEpoch: time.Unix(12345678, 0),
 			},
-			Origin: &Package{
-				Version: "1.2.3",
-				Epoch:   4,
-			},
+			Origin:        pkgctx,
 			PackageName:   "glibc",
 			Arch:          "aarch64",
 			InstalledSize: 666,

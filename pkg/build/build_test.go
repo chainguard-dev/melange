@@ -20,6 +20,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/logger"
+
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -27,7 +30,7 @@ import (
 )
 
 var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...interface{}) {
-	require.ErrorAs(t, err, &ErrInvalidConfiguration{})
+	require.ErrorAs(t, err, &config.ErrInvalidConfiguration{})
 }
 
 // TestConfiguration_Load is the main set of tests for loading a configuration
@@ -37,40 +40,40 @@ func TestConfiguration_Load(t *testing.T) {
 		name                string
 		skipConfigCleanStep bool
 		requireErr          require.ErrorAssertionFunc
-		expected            Configuration
+		expected            config.Configuration
 	}{
 		{
 			name:       "range-subpackages",
 			requireErr: require.NoError,
-			expected: Configuration{
-				Package: Package{
+			expected: config.Configuration{
+				Package: config.Package{
 					Name:    "hello",
 					Version: "world",
 				},
-				Pipeline: []Pipeline{
+				Pipeline: []config.Pipeline{
 					{
 						Name: "hello",
 						Runs: "world",
 					},
 				},
-				Subpackages: []Subpackage{{
+				Subpackages: []config.Subpackage{{
 					Name: "cats",
-					Pipeline: []Pipeline{{
+					Pipeline: []config.Pipeline{{
 						Runs: "cats are angry",
 					}},
 				}, {
 					Name: "dogs",
-					Pipeline: []Pipeline{{
+					Pipeline: []config.Pipeline{{
 						Runs: "dogs are loyal",
 					}},
 				}, {
 					Name: "turtles",
-					Pipeline: []Pipeline{{
+					Pipeline: []config.Pipeline{{
 						Runs: "turtles are slow",
 					}},
 				}, {
 					Name: "donatello",
-					Pipeline: []Pipeline{
+					Pipeline: []config.Pipeline{
 						{
 							Runs: "donatello's color is purple",
 						},
@@ -81,7 +84,7 @@ func TestConfiguration_Load(t *testing.T) {
 					},
 				}, {
 					Name: "leonardo",
-					Pipeline: []Pipeline{
+					Pipeline: []config.Pipeline{
 						{
 							Runs: "leonardo's color is blue",
 						},
@@ -92,7 +95,7 @@ func TestConfiguration_Load(t *testing.T) {
 					},
 				}, {
 					Name: "michelangelo",
-					Pipeline: []Pipeline{
+					Pipeline: []config.Pipeline{
 						{
 							Runs: "michelangelo's color is orange",
 						},
@@ -103,7 +106,7 @@ func TestConfiguration_Load(t *testing.T) {
 					},
 				}, {
 					Name: "raphael",
-					Pipeline: []Pipeline{
+					Pipeline: []config.Pipeline{
 						{
 							Runs: "raphael's color is red",
 						},
@@ -118,15 +121,15 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name:       "github",
 			requireErr: require.NoError,
-			expected: Configuration{
-				Package: Package{
+			expected: config.Configuration{
+				Package: config.Package{
 					Name:    "cosign",
 					Version: "2.0.0",
 				},
-				Update: Update{
+				Update: config.Update{
 					Enabled: true,
 					Shared:  false,
-					GitHubMonitor: &GitHubMonitor{
+					GitHubMonitor: &config.GitHubMonitor{
 						Identifier:  "sigstore/cosign",
 						StripPrefix: "v",
 						UseTags:     true,
@@ -137,12 +140,12 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name:       "release-monitor",
 			requireErr: require.NoError,
-			expected: Configuration{
-				Package: Package{Name: "bison", Version: "3.8.2"},
-				Update: Update{
+			expected: config.Configuration{
+				Package: config.Package{Name: "bison", Version: "3.8.2"},
+				Update: config.Update{
 					Enabled: true,
 					Shared:  false,
-					ReleaseMonitor: &ReleaseMonitor{
+					ReleaseMonitor: &config.ReleaseMonitor{
 						Identifier: 193,
 					},
 				},
@@ -151,29 +154,29 @@ func TestConfiguration_Load(t *testing.T) {
 		{
 			name:       "unknown-fields",
 			requireErr: require.Error,
-			expected:   Configuration{},
+			expected:   config.Configuration{},
 		},
 		{
 			name:       "missing-package-name",
 			requireErr: requireErrInvalidConfiguration,
-			expected:   Configuration{},
+			expected:   config.Configuration{},
 		},
 		{
 			name:       "invalid-package-name",
 			requireErr: requireErrInvalidConfiguration,
-			expected:   Configuration{},
+			expected:   config.Configuration{},
 		},
 		{
 			name:       "invalid-range-subpackage-name",
 			requireErr: requireErrInvalidConfiguration,
-			expected:   Configuration{},
+			expected:   config.Configuration{},
 		},
 		{
 			name:                "env-vars-set-that-have-default-values",
 			skipConfigCleanStep: true,
 			requireErr:          require.NoError,
-			expected: Configuration{
-				Package: Package{
+			expected: config.Configuration{
+				Package: config.Package{
 					Name:    "cosign",
 					Version: "2.0.0",
 					Epoch:   0,
@@ -188,35 +191,48 @@ func TestConfiguration_Load(t *testing.T) {
 						Groups: []apko_types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
 					},
 				},
-				Subpackages: []Subpackage{},
+				Subpackages: []config.Subpackage{},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			log := nopLogger{}
+			log := logger.NopLogger{}
 			ctx := Build{
 				ConfigFile: filepath.Join("testdata", "configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
 				Logger:     log,
 			}
 
-			cfg := &Configuration{}
-			err := cfg.Load(ctx)
+			cfg, err := config.ParseConfiguration(
+				ctx.ConfigFile,
+				config.WithEnvFileForParsing(ctx.EnvFile),
+				config.WithLogger(ctx.Logger),
+				config.WithVarsFileForParsing(ctx.VarsFile))
 			tt.requireErr(t, err)
 
-			if !tt.skipConfigCleanStep {
-				cleanTestConfig(cfg)
-			}
+			if err != nil {
+				if cfg != nil {
+					t.Fatalf("ParseConfiguration(): error was not returned, but no config was")
+				}
+			} else {
+				if cfg == nil {
+					t.Fatalf("ParseConfiguration(): config was not returned, but no error was")
+				} else {
+					if !tt.skipConfigCleanStep {
+						cleanTestConfig(cfg)
+					}
 
-			if d := cmp.Diff(tt.expected, *cfg, cmpopts.IgnoreUnexported(Pipeline{})); d != "" {
-				t.Fatalf("actual didn't match expected (-want, +got): %s", d)
+					if d := cmp.Diff(tt.expected, *cfg, cmpopts.IgnoreUnexported(config.Pipeline{})); d != "" {
+						t.Fatalf("actual didn't match expected (-want, +got): %s", d)
+					}
+				}
 			}
 		})
 	}
 }
 
-func cleanTestConfig(cfg *Configuration) {
+func cleanTestConfig(cfg *config.Configuration) {
 	if cfg == nil {
 		return
 	}
@@ -238,12 +254,12 @@ package:
   name: nginx
   version: 100
 `
-	expected := &Configuration{
-		Package: Package{
+	expected := &config.Configuration{
+		Package: config.Package{
 			Name:    "nginx",
 			Version: "100",
 		},
-		Subpackages: []Subpackage{},
+		Subpackages: []config.Subpackage{},
 	}
 	expected.Environment.Accounts.Users = []apko_types.User{{
 		UserName: "build",
@@ -265,13 +281,17 @@ package:
 		t.Fatal(err)
 	}
 
-	log := nopLogger{}
+	log := logger.NopLogger{}
 	ctx := Build{
 		ConfigFile: f,
 		Logger:     log,
 	}
-	cfg := &Configuration{}
-	if err := cfg.Load(ctx); err != nil {
+	cfg, err := config.ParseConfiguration(
+		ctx.ConfigFile,
+		config.WithEnvFileForParsing(ctx.EnvFile),
+		config.WithLogger(ctx.Logger),
+		config.WithVarsFileForParsing(ctx.VarsFile))
+	if err != nil {
 		t.Fatal(err)
 	}
 	if d := cmp.Diff(expected, cfg); d != "" {

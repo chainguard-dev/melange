@@ -1061,7 +1061,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		for _, p := range b.Configuration.Pipeline {
 			pctx, err := NewPipelineContext(&p, b.Logger)
 			if err != nil {
-				return fmt.Errorf("invalid pipeline context: %w")
+				return fmt.Errorf("invalid pipeline context: %w", err)
 			}
 			if _, err := pctx.Run(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)

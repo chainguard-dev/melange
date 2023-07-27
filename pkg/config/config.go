@@ -196,8 +196,6 @@ type Pipeline struct {
 	WorkDir string `yaml:"working-directory,omitempty"`
 	// Optional: Configuration for the generated SBOM
 	SBOM SBOM `yaml:"sbom,omitempty"`
-
-	steps int
 }
 
 type Subpackage struct {

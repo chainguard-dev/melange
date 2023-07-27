@@ -39,7 +39,6 @@ import (
 	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"cloud.google.com/go/storage"
-	"github.com/go-git/go-git/v5"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"google.golang.org/api/iterator"
@@ -538,26 +537,6 @@ func WithPackageCacheDir(apkCacheDir string) Option {
 		b.ApkCacheDir = apkCacheDir
 		return nil
 	}
-}
-
-func detectCommit(dirPath string, logger apko_log.Logger) string {
-	// Best-effort detection of current commit, to be used when not specified in the config file
-
-	// TODO: figure out how to use an abstract FS
-	repo, err := git.PlainOpen(dirPath)
-	if err != nil {
-		logger.Printf("unable to detect git commit for build configuration: %v", err)
-		return ""
-	}
-
-	head, err := repo.Head()
-	if err != nil {
-		return ""
-	}
-
-	commit := head.Hash().String()
-	logger.Printf("detected git commit for build configuration: %s", commit)
-	return commit
 }
 
 // BuildGuest invokes apko to build the guest environment.

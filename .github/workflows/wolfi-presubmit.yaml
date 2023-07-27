@@ -42,6 +42,7 @@ jobs:
     # Feel free to add additional packages to this matrix which exercise
     # Melange in new ways (e.g. new pipelines, etc.)
     strategy:
+      fail-fast: false
       matrix:
         package:
           - hello-wolfi

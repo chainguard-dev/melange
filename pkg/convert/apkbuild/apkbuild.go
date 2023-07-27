@@ -19,7 +19,7 @@ import (
 	"chainguard.dev/melange/pkg/manifest"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/convert/wolfios"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/pkg/errors"
@@ -148,7 +148,7 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 		Apkbuild: &parsedApkBuild,
 		GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{
 			GeneratedFromComment: apkbuildURL,
-			Package: build.Package{
+			Package: config.Package{
 				Epoch: 0,
 			},
 		},
@@ -320,7 +320,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 			expectedSha = "FIXME - SOURCE URL NOT VALID"
 		}
 
-		pipeline := build.Pipeline{
+		pipeline := config.Pipeline{
 			Uses: "fetch",
 			With: map[string]string{
 				"uri":             strings.ReplaceAll(location, apkBuild.Pkgver, "${{package.version}}"),
@@ -341,7 +341,7 @@ func (c ApkConvertor) mapconvert() {
 	c.GeneratedMelangeConfig.Package.Version = c.Apkbuild.Pkgver
 	c.GeneratedMelangeConfig.Package.Epoch = 0
 
-	copyright := build.Copyright{
+	copyright := config.Copyright{
 		License: c.Apkbuild.License,
 	}
 	c.GeneratedMelangeConfig.Package.Copyright = append(c.GeneratedMelangeConfig.Package.Copyright, copyright)
@@ -360,28 +360,28 @@ func (c ApkConvertor) mapconvert() {
 	//switch c.Apkbuild.BuilderType {
 	//
 	//case BuilderTypeCMake:
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "cmake/configure"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "cmake/build"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "cmake/install"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/configure"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/build"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/install"})
 	//
 	//case BuilderTypeMeson:
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "meson/configure"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "meson/compile"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "meson/install"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/configure"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/compile"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/install"})
 	//
 	//case BuilderTypeMake:
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "autoconf/configure"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "autoconf/make"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "autoconf/make-install"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "strip"})
+	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/configure"})
+	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make"})
+	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make-install"})
+	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "strip"})
 
 	//default:
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, build.Pipeline{Uses: "# FIXME"})
+	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "# FIXME"})
 	//
 	//}
 
 	for _, subPackage := range c.Apkbuild.Subpackages {
-		subpackage := build.Subpackage{
+		subpackage := config.Subpackage{
 			Name: strings.Replace(subPackage.Subpkgname, "$pkgname", c.Apkbuild.Pkgname, 1),
 		}
 
@@ -400,7 +400,7 @@ func (c ApkConvertor) mapconvert() {
 				ext = "static"
 			case "dev":
 				ext = "dev"
-				subpackage.Dependencies = build.Dependencies{
+				subpackage.Dependencies = config.Dependencies{
 					Runtime: []string{c.Apkbuild.Pkgname},
 				}
 				// include dev dependencies in the dev runtime
@@ -415,12 +415,12 @@ func (c ApkConvertor) mapconvert() {
 				ext = "FIXME"
 			}
 
-			subpackage.Pipeline = []build.Pipeline{{Uses: "split/" + ext}}
+			subpackage.Pipeline = []config.Pipeline{{Uses: "split/" + ext}}
 			subpackage.Description = c.Apkbuild.Pkgname + " " + ext
 
 		} else {
 			// if we don't recognise the extension make it obvious user needs to manually fix the mconvert config
-			subpackage.Pipeline = []build.Pipeline{{Runs: "FIXME"}}
+			subpackage.Pipeline = []config.Pipeline{{Runs: "FIXME"}}
 		}
 
 		c.GeneratedMelangeConfig.Subpackages = append(c.GeneratedMelangeConfig.Subpackages, subpackage)

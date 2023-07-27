@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build
+package config
 
 // ListOption describes an optional deviation to a list, for example, a
 // list of packages.
@@ -36,35 +36,4 @@ type EnvironmentOption struct {
 type BuildOption struct {
 	Vars        map[string]string `yaml:"vars,omitempty"`
 	Environment EnvironmentOption `yaml:"environment,omitempty"`
-}
-
-// Apply applies a patch described by a BuildOption to a package build.
-func (bo BuildOption) Apply(b *Build) error {
-	// Patch the variables block.
-	if b.Configuration.Vars == nil {
-		b.Configuration.Vars = make(map[string]string)
-	}
-
-	for k, v := range bo.Vars {
-		b.Configuration.Vars[k] = v
-	}
-
-	// Patch the build environment configuration.
-	lo := bo.Environment.Contents.Packages
-	b.Configuration.Environment.Contents.Packages = append(b.Configuration.Environment.Contents.Packages, lo.Add...)
-
-	for _, pkg := range lo.Remove {
-		pkgList := b.Configuration.Environment.Contents.Packages
-
-		for pos, ppkg := range pkgList {
-			if pkg == ppkg {
-				pkgList[pos] = pkgList[len(pkgList)-1]
-				pkgList = pkgList[:len(pkgList)-1]
-			}
-		}
-
-		b.Configuration.Environment.Contents.Packages = pkgList
-	}
-
-	return nil
 }

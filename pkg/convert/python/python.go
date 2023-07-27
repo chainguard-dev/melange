@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/manifest"
 	"github.com/pkg/errors"
 )
@@ -224,25 +224,25 @@ func (c *PythonContext) generateManifest(ctx context.Context, pack Package, vers
 //
 // It will iterate through all licenses returned by rubygems.org and place them
 // under the copyright section.
-func (c *PythonContext) generatePackage(pack Package, version string) build.Package {
+func (c *PythonContext) generatePackage(pack Package, version string) config.Package {
 	c.Logger.Printf("[%s] Generate Package", pack.Info.Name)
 
 	c.Logger.Printf("[%s] Run time Deps %v", pack.Info.Name, pack.Dependencies)
 
 	pack.Dependencies = append(pack.Dependencies, "python-"+c.PythonVersion)
 
-	pkg := build.Package{
+	pkg := config.Package{
 		Name:        fmt.Sprintf("py%s-%s", c.PythonVersion, pack.Info.Name),
 		Version:     version,
 		Epoch:       0,
 		Description: pack.Info.Summary,
-		Copyright:   []build.Copyright{},
-		Dependencies: build.Dependencies{
+		Copyright:   []config.Copyright{},
+		Dependencies: config.Dependencies{
 			Runtime: pack.Dependencies,
 		},
 	}
 
-	pkg.Copyright = append(pkg.Copyright, build.Copyright{
+	pkg.Copyright = append(pkg.Copyright, config.Copyright{
 		License: pack.Info.License,
 	})
 
@@ -293,9 +293,9 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 // The sha256 of the artifact should be generated automatically. If the
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
-func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, version string) ([]build.Pipeline, error) {
+func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, version string) ([]config.Pipeline, error) {
 
-	var pipeline []build.Pipeline
+	var pipeline []config.Pipeline
 
 	c.Logger.Printf("[%s] Generate Pipeline for version %s", pack.Info.Name, version)
 
@@ -328,7 +328,7 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 			artifact256SHA, release.Digest.Sha256))
 	}
 
-	fetch := build.Pipeline{
+	fetch := config.Pipeline{
 		Uses: "fetch",
 		With: map[string]string{
 			"uri":             strings.ReplaceAll(release.Url, version, "${{package.version}}"),
@@ -336,16 +336,16 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 			"expected-sha256": artifact256SHA,
 		},
 	}
-	pythonBuild := build.Pipeline{
+	pythonBuild := config.Pipeline{
 		Runs: pythonBuildPipeline,
 		Name: "Python Build",
 	}
 
-	pythonInstall := build.Pipeline{
+	pythonInstall := config.Pipeline{
 		Runs: pythonInstallPipeline,
 		Name: "Python Install",
 	}
-	strip := build.Pipeline{
+	strip := config.Pipeline{
 		Uses: "strip",
 	}
 	pipeline = append(pipeline, fetch)

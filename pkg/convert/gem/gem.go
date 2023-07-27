@@ -26,7 +26,7 @@ import (
 	"time"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
 
@@ -254,19 +254,19 @@ func (c *GemContext) generateManifest(ctx context.Context, g GemMeta) (manifest.
 //
 // It will iterate through all licenses returned by rubygems.org and place them
 // under the copyright section.
-func (c *GemContext) generatePackage(g GemMeta) build.Package {
-	pkg := build.Package{
+func (c *GemContext) generatePackage(g GemMeta) config.Package {
+	pkg := config.Package{
 		Epoch:       0,
 		Name:        fmt.Sprintf("ruby%s-%s", c.RubyVersion, g.Name),
 		Description: g.Info,
 		Version:     g.Version,
-		Copyright:   []build.Copyright{},
-		Dependencies: build.Dependencies{
+		Copyright:   []config.Copyright{},
+		Dependencies: config.Dependencies{
 			Runtime: []string{},
 		},
 	}
 	for _, license := range g.Licenses {
-		pkg.Copyright = append(pkg.Copyright, build.Copyright{
+		pkg.Copyright = append(pkg.Copyright, config.Copyright{
 			License: license,
 		})
 	}
@@ -317,7 +317,7 @@ func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 // The sha256 of the artifact should be generated automatically. If the
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
-func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []build.Pipeline {
+func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []config.Pipeline {
 	artifactURI := fmt.Sprintf("%s/archive/refs/tags/%s", g.RepoURI, fmt.Sprintf("v%s.tar.gz", g.Version))
 
 	artifactSHA, err := c.getGemArtifactSHA(ctx, artifactURI)
@@ -328,7 +328,7 @@ func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []build.Pi
 		artifactSHA = fmt.Sprintf("FAILED GENERATION. Investigate by going to https://rubygems.org/gems/%s", g.Name)
 	}
 
-	pipeline := []build.Pipeline{
+	pipeline := []config.Pipeline{
 		{
 			Uses: "fetch",
 			With: map[string]string{

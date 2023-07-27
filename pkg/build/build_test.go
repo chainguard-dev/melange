@@ -40,7 +40,7 @@ func TestConfiguration_Load(t *testing.T) {
 		name                string
 		skipConfigCleanStep bool
 		requireErr          require.ErrorAssertionFunc
-		expected	    *config.Configuration
+		expected            *config.Configuration
 	}{
 		{
 			name:       "range-subpackages",
@@ -164,7 +164,7 @@ func TestConfiguration_Load(t *testing.T) {
 			expected:            nil,
 		},
 		{
-			name:               "invalid-package-name",
+			name:                "invalid-package-name",
 			skipConfigCleanStep: true,
 			requireErr:          requireErrInvalidConfiguration,
 			expected:            nil,

@@ -17,10 +17,14 @@ package renovate
 import (
 	"context"
 	"os"
-
-	"chainguard.dev/melange/pkg/config"
+	"runtime"
+	"strconv"
 
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
+
+	apko_types "chainguard.dev/apko/pkg/build/types"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 // Context contains the default settings for renovations.
@@ -56,6 +60,7 @@ func New(opts ...Option) (*Context, error) {
 type RenovationContext struct {
 	Context       *Context
 	Configuration *config.Configuration
+	Vars          map[string]string
 }
 
 // Renovator performs a renovation.
@@ -90,7 +95,25 @@ func (rc *RenovationContext) LoadConfig() error {
 		return err
 	}
 
+	vars, err := cfg.GetVarsFromConfig()
+	if err != nil {
+		return err
+	}
+
+	// These are probably sufficient for now.
+	// TODO(Elizafox): Enable cross-arch bumping
+	vars[config.SubstitutionPackageName] = cfg.Package.Name
+	vars[config.SubstitutionPackageVersion] = cfg.Package.Version
+	vars[config.SubstitutionPackageEpoch] = strconv.FormatUint(cfg.Package.Epoch, 10)
+	vars[config.SubstitutionBuildArch] = apko_types.ParseArchitecture(runtime.GOARCH).ToAPK()
+
+	err = cfg.PerformVarSubstitutions(vars)
+	if err != nil {
+		return err
+	}
+
 	rc.Configuration = cfg
+	rc.Vars = vars
 	return nil
 }
 

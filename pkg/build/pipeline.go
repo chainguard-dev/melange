@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 
 	"gopkg.in/yaml.v3"
@@ -34,6 +32,7 @@ import (
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/logger"
+	"chainguard.dev/melange/pkg/util"
 )
 
 type PipelineContext struct {
@@ -49,19 +48,6 @@ func NewPipelineContext(p *config.Pipeline, logger apko_log.Logger) (*PipelineCo
 		steps:    0,
 	}, nil
 }
-
-const (
-	substitutionPackageName          = "${{package.name}}"
-	substitutionPackageVersion       = "${{package.version}}"
-	substitutionPackageEpoch         = "${{package.epoch}}"
-	substitutionTargetsDestdir       = "${{targets.destdir}}"
-	substitutionSubPkgDir            = "${{targets.subpkgdir}}"
-	substitutionHostTripletGnu       = "${{host.triplet.gnu}}"
-	substitutionHostTripletRust      = "${{host.triplet.rust}}"
-	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
-	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
-	substitutionBuildArch            = "${{build.arch}}"
-)
 
 type PipelineBuild struct {
 	Build      *Build
@@ -97,7 +83,7 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 	// do the actual mutations
 	for k, v := range nw {
-		nval, err := MutateStringFromMap(nw, v)
+		nval, err := util.MutateStringFromMap(nw, v)
 		if err != nil {
 			return nil, err
 		}
@@ -109,30 +95,35 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	nw := map[string]string{
-		substitutionPackageName:          pb.Package.Package.Name,
-		substitutionPackageVersion:       pb.Package.Package.Version,
-		substitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
-		substitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
-		substitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
-		substitutionHostTripletRust:      pb.Build.BuildTripletRust(),
-		substitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
-		substitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
-		substitutionBuildArch:            pb.Build.Arch.ToAPK(),
+		config.SubstitutionPackageName:          pb.Package.Package.Name,
+		config.SubstitutionPackageVersion:       pb.Package.Package.Version,
+		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
+		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
+		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
+		config.SubstitutionHostTripletRust:      pb.Build.BuildTripletRust(),
+		config.SubstitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
+		config.SubstitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
+		config.SubstitutionBuildArch:            pb.Build.Arch.ToAPK(),
+	}
+
+	// Retrieve vars from config
+	subst_nw, err := pb.Build.Configuration.GetVarsFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range subst_nw {
+		nw[k] = v
+	}
+
+	// Perform substitutions on current map
+	err = pb.Build.Configuration.PerformVarSubstitutions(nw)
+	if err != nil {
+		return nil, err
 	}
 
 	if pb.Subpackage != nil {
-		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
-	}
-
-	for k, v := range pb.Build.Configuration.Vars {
-		nk := fmt.Sprintf("${{vars.%s}}", k)
-
-		nv, err := MutateStringFromMap(nw, v)
-		if err != nil {
-			return nil, err
-		}
-
-		nw[nk] = nv
+		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
 	}
 
 	for k := range pb.Build.Configuration.Options {
@@ -145,40 +136,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[nk] = "true"
 	}
 
-	for _, v := range pb.Build.Configuration.VarTransforms {
-		nk := fmt.Sprintf("${{vars.%s}}", v.To)
-		from, err := MutateStringFromMap(nw, v.From)
-		if err != nil {
-			return nil, err
-		}
-
-		re, err := regexp.Compile(v.Match)
-		if err != nil {
-			return nil, errors.Wrapf(err, "match value: %s string does not compile into a regex", v.Match)
-		}
-
-		output := re.ReplaceAllString(from, v.Replace)
-		nw[nk] = output
-	}
-
 	return nw, nil
-}
-
-func MutateStringFromMap(with map[string]string, input string) (string, error) {
-	lookupWith := func(key string) (string, error) {
-		if val, ok := with[key]; ok {
-			return val, nil
-		}
-
-		nk := fmt.Sprintf("${{%s}}", key)
-		if val, ok := with[nk]; ok {
-			return val, nil
-		}
-
-		return "", fmt.Errorf("variable %s not defined", key)
-	}
-
-	return cond.Subst(input, lookupWith)
 }
 
 func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
@@ -304,13 +262,13 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 
 	workdir := "/home/build"
 	if pctx.Pipeline.WorkDir != "" {
-		workdir, err = MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
+		workdir, err = util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
 		if err != nil {
 			return err
 		}
 	}
 
-	fragment, err := MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Runs)
+	fragment, err := util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Runs)
 	if err != nil {
 		return err
 	}

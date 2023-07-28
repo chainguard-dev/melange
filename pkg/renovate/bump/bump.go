@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/renovate"
 	"chainguard.dev/melange/pkg/util"
 )
@@ -87,11 +87,21 @@ func New(opts ...Option) renovate.Renovator {
 		versionNode.Style = yaml.FlowStyle
 		versionNode.Tag = "!!str"
 
+		// Update the variable mapping with the target version
+		rc.Vars[config.SubstitutionPackageVersion] = bcfg.TargetVersion
+
 		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
 		if err != nil {
 			return err
 		}
 		epochNode.Value = "0"
+		rc.Vars[config.SubstitutionPackageEpoch] = epochNode.Value
+
+		// Recompute variable transforms
+		err = rc.Configuration.PerformVarSubstitutions(rc.Vars)
+		if err != nil {
+			return err
+		}
 
 		// Find our main pipeline YAML node.
 		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")
@@ -105,7 +115,7 @@ func New(opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("fetch"))
 
 		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := updateFetch(ctx, fetchNode, bcfg.TargetVersion); err != nil {
+			if err := updateFetch(ctx, rc, fetchNode, bcfg.TargetVersion); err != nil {
 				return err
 			}
 		}
@@ -125,7 +135,7 @@ func New(opts ...Option) renovate.Renovator {
 }
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
-func updateFetch(ctx context.Context, node *yaml.Node, targetVersion string) error {
+func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml.Node, targetVersion string) error {
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -139,7 +149,10 @@ func updateFetch(ctx context.Context, node *yaml.Node, targetVersion string) err
 	log.Printf("processing fetch node:")
 
 	// Fetch the new sources.
-	evaluatedUri := strings.ReplaceAll(uriNode.Value, "${{package.version}}", targetVersion)
+	evaluatedUri, err := util.MutateStringFromMap(rc.Vars, uriNode.Value)
+	if err != nil {
+		return err
+	}
 	log.Printf("  uri: %s", uriNode.Value)
 	log.Printf("  evaluated: %s", evaluatedUri)
 

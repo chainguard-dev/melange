@@ -58,9 +58,9 @@ func New(opts ...Option) (*Context, error) {
 // RenovationContext encapsulates state relating to an
 // ongoing renovation.
 type RenovationContext struct {
-	Context *Context
+	Context       *Context
 	Configuration *config.Configuration
-	Vars map[string]string
+	Vars          map[string]string
 }
 
 // Renovator performs a renovation.
@@ -102,10 +102,10 @@ func (rc *RenovationContext) LoadConfig() error {
 
 	// These are probably sufficient for now.
 	// TODO(Elizafox): Enable cross-arch bumping
-	vars[config.SubstitutionPackageName]    = cfg.Package.Name
+	vars[config.SubstitutionPackageName] = cfg.Package.Name
 	vars[config.SubstitutionPackageVersion] = cfg.Package.Version
-	vars[config.SubstitutionPackageEpoch]   = strconv.FormatUint(cfg.Package.Epoch, 10)
-	vars[config.SubstitutionBuildArch]      = apko_types.ParseArchitecture(runtime.GOARCH).ToAPK()
+	vars[config.SubstitutionPackageEpoch] = strconv.FormatUint(cfg.Package.Epoch, 10)
+	vars[config.SubstitutionBuildArch] = apko_types.ParseArchitecture(runtime.GOARCH).ToAPK()
 
 	err = cfg.PerformVarSubstitutions(vars)
 	if err != nil {

@@ -23,6 +23,19 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
+const (
+	SubstitutionPackageName          = "${{package.name}}"
+	SubstitutionPackageVersion       = "${{package.version}}"
+	SubstitutionPackageEpoch         = "${{package.epoch}}"
+	SubstitutionTargetsDestdir       = "${{targets.destdir}}"
+	SubstitutionSubPkgDir            = "${{targets.subpkgdir}}"
+	SubstitutionHostTripletGnu       = "${{host.triplet.gnu}}"
+	SubstitutionHostTripletRust      = "${{host.triplet.rust}}"
+	SubstitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
+	SubstitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
+	SubstitutionBuildArch            = "${{build.arch}}"
+)
+
 func (cfg Configuration) GetVarsFromConfig() (map[string]string, error) {
 	nw := map[string]string{}
 

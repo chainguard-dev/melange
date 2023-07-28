@@ -17,6 +17,7 @@ package renovate
 import (
 	"context"
 	"os"
+	"strconv"
 
 	"chainguard.dev/melange/pkg/config"
 
@@ -26,7 +27,6 @@ import (
 // Context contains the default settings for renovations.
 type Context struct {
 	ConfigFile string
-	Vars map[string]string
 }
 
 type Option func(ctx *Context) error
@@ -57,6 +57,7 @@ func New(opts ...Option) (*Context, error) {
 type RenovationContext struct {
 	Context *Context
 	Configuration *config.Configuration
+	Vars map[string]string
 }
 
 // Renovator performs a renovation.
@@ -91,7 +92,23 @@ func (rc *RenovationContext) LoadConfig() error {
 		return err
 	}
 
+	vars, err := cfg.GetVarsFromConfig()
+	if err != nil {
+		return err
+	}
+
+	// These are probably sufficient for now.
+	vars[config.SubstitutionPackageName]    = cfg.Package.Name
+	vars[config.SubstitutionPackageVersion] = cfg.Package.Version
+	vars[config.SubstitutionPackageEpoch]   = strconv.FormatUint(cfg.Package.Epoch, 10)
+
+	err = cfg.PerformVarSubstitutions(vars)
+	if err != nil {
+		return err
+	}
+
 	rc.Configuration = cfg
+	rc.Vars = vars
 	return nil
 }
 

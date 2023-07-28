@@ -49,19 +49,6 @@ func NewPipelineContext(p *config.Pipeline, logger apko_log.Logger) (*PipelineCo
 	}, nil
 }
 
-const (
-	substitutionPackageName          = "${{package.name}}"
-	substitutionPackageVersion       = "${{package.version}}"
-	substitutionPackageEpoch         = "${{package.epoch}}"
-	substitutionTargetsDestdir       = "${{targets.destdir}}"
-	substitutionSubPkgDir            = "${{targets.subpkgdir}}"
-	substitutionHostTripletGnu       = "${{host.triplet.gnu}}"
-	substitutionHostTripletRust      = "${{host.triplet.rust}}"
-	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
-	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
-	substitutionBuildArch            = "${{build.arch}}"
-)
-
 type PipelineBuild struct {
 	Build      *Build
 	Package    *PackageContext
@@ -108,15 +95,15 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	nw := map[string]string{
-		substitutionPackageName:          pb.Package.Package.Name,
-		substitutionPackageVersion:       pb.Package.Package.Version,
-		substitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
-		substitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
-		substitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
-		substitutionHostTripletRust:      pb.Build.BuildTripletRust(),
-		substitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
-		substitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
-		substitutionBuildArch:            pb.Build.Arch.ToAPK(),
+		config.SubstitutionPackageName:          pb.Package.Package.Name,
+		config.SubstitutionPackageVersion:       pb.Package.Package.Version,
+		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
+		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
+		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
+		config.SubstitutionHostTripletRust:      pb.Build.BuildTripletRust(),
+		config.SubstitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
+		config.SubstitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
+		config.SubstitutionBuildArch:            pb.Build.Arch.ToAPK(),
 	}
 	
 	// Retrieve vars from config
@@ -136,7 +123,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	if pb.Subpackage != nil {
-		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
+		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
 	}
 
 	for k := range pb.Build.Configuration.Options {

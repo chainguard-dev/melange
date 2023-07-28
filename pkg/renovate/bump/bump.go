@@ -74,7 +74,7 @@ func New(opts ...Option) renovate.Renovator {
 		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
 
 		// Find the package.version node first and change it.
-		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
+		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func New(opts ...Option) renovate.Renovator {
 		epochNode.Value = "0"
 
 		// Find our main pipeline YAML node.
-		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
+		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")
 		if err != nil {
 			return err
 		}

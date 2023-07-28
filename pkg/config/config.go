@@ -15,6 +15,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -270,6 +271,9 @@ type Configuration struct {
 	VarTransforms []VarTransforms `yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `yaml:"options,omitempty"`
+
+	// Parsed AST for this configuration
+	root *yaml.Node
 }
 
 // Name returns a name for the configuration, using the package name.
@@ -477,9 +481,26 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		return nil, err
 	}
 
-	cfg := Configuration{}
+	root := yaml.Node{}
 
-	decoder := yaml.NewDecoder(f)
+	cfg := Configuration{root: &root}
+
+	// Unmarshal into a node first
+	decoder_node := yaml.NewDecoder(f)
+	err = decoder_node.Decode(&root)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
+	}
+
+	// XXX(Elizafox) - Node.Decode doesn't allow setting of KnownFields, so we do this cheesy hack below
+	data, err := yaml.Marshal(&root)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
+	}
+
+	// Now unmarshal it into the struct, part of said cheesy hack
+	reader := bytes.NewReader(data)
+	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)
 	err = decoder.Decode(&cfg)
 	if err != nil {
@@ -650,6 +671,10 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	}
 
 	return &cfg, nil
+}
+
+func (cfg Configuration) Root() *yaml.Node {
+	return cfg.root
 }
 
 type ErrInvalidConfiguration struct {

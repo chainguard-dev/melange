@@ -98,7 +98,10 @@ func New(opts ...Option) renovate.Renovator {
 		rc.Vars[config.SubstitutionPackageEpoch] = epochNode.Value
 
 		// Recompute variable transforms
-		rc.Configuration.PerformVarSubstitutions(rc.Vars)
+		err = rc.Configuration.PerformVarSubstitutions(rc.Vars)
+		if err != nil {
+			return err
+		}
 
 		// Find our main pipeline YAML node.
 		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")

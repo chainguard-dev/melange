@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/util"
 
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func Test_mutateStringFromMap(t *testing.T) {
 	}
 
 	input1 := "${{inputs.foo}} ${{inputs.baz-bah-boom}}"
-	output1, err := MutateStringFromMap(keys, input1)
+	output1, err := util.MutateStringFromMap(keys, input1)
 
 	require.NoError(t, err)
 	require.Equal(t, output1, "foo ", "bogus variable substitution not deleted")

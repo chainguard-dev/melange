@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 
 	"gopkg.in/yaml.v3"
@@ -34,6 +32,7 @@ import (
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/logger"
+	"chainguard.dev/melange/pkg/util"
 )
 
 type PipelineContext struct {
@@ -97,7 +96,7 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 	// do the actual mutations
 	for k, v := range nw {
-		nval, err := MutateStringFromMap(nw, v)
+		nval, err := util.MutateStringFromMap(nw, v)
 		if err != nil {
 			return nil, err
 		}
@@ -124,15 +123,13 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
 	}
 
-	for k, v := range pb.Build.Configuration.Vars {
-		nk := fmt.Sprintf("${{vars.%s}}", k)
-
-		nv, err := MutateStringFromMap(nw, v)
-		if err != nil {
-			return nil, err
-		}
-
-		nw[nk] = nv
+	err := config.GetVarsFromConfig(&pb.Build.Configuration, nw)
+	if err != nil {
+		return nil, err
+	}
+	err = config.PerformVarSubstitutions(&pb.Build.Configuration, nw)
+	if err != nil {
+		return nil, err
 	}
 
 	for k := range pb.Build.Configuration.Options {
@@ -145,40 +142,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[nk] = "true"
 	}
 
-	for _, v := range pb.Build.Configuration.VarTransforms {
-		nk := fmt.Sprintf("${{vars.%s}}", v.To)
-		from, err := MutateStringFromMap(nw, v.From)
-		if err != nil {
-			return nil, err
-		}
-
-		re, err := regexp.Compile(v.Match)
-		if err != nil {
-			return nil, errors.Wrapf(err, "match value: %s string does not compile into a regex", v.Match)
-		}
-
-		output := re.ReplaceAllString(from, v.Replace)
-		nw[nk] = output
-	}
-
 	return nw, nil
-}
-
-func MutateStringFromMap(with map[string]string, input string) (string, error) {
-	lookupWith := func(key string) (string, error) {
-		if val, ok := with[key]; ok {
-			return val, nil
-		}
-
-		nk := fmt.Sprintf("${{%s}}", key)
-		if val, ok := with[nk]; ok {
-			return val, nil
-		}
-
-		return "", fmt.Errorf("variable %s not defined", key)
-	}
-
-	return cond.Subst(input, lookupWith)
 }
 
 func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
@@ -304,13 +268,13 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 
 	workdir := "/home/build"
 	if pctx.Pipeline.WorkDir != "" {
-		workdir, err = MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
+		workdir, err = util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
 		if err != nil {
 			return err
 		}
 	}
 
-	fragment, err := MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Runs)
+	fragment, err := util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Runs)
 	if err != nil {
 		return err
 	}

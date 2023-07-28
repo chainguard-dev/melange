@@ -227,8 +227,7 @@ func TestConfiguration_Load(t *testing.T) {
 				if d := cmp.Diff(
 					*tt.expected,
 					*cfg,
-					cmpopts.IgnoreUnexported(config.Pipeline{}),
-					cmpopts.IgnoreFields(config.Configuration{}, "Root"),
+					cmpopts.IgnoreUnexported(config.Pipeline{}, config.Configuration{}),
 				); d != "" {
 					t.Fatalf("actual didn't match expected (-want, +got): %s", d)
 				}
@@ -299,7 +298,7 @@ package:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d := cmp.Diff(expected, cfg, cmpopts.IgnoreFields(config.Configuration{}, "Root")); d != "" {
+	if d := cmp.Diff(expected, cfg, cmpopts.IgnoreUnexported(config.Configuration{})); d != "" {
 		t.Fatalf("actual didn't match expected: %s", d)
 	}
 }

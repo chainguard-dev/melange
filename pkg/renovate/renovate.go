@@ -105,7 +105,7 @@ func (rc *RenovationContext) WriteConfig() error {
 
 	enc := formatted.NewEncoder(configFile).AutomaticConfig()
 
-	if err := enc.Encode(rc.Configuration.Root.Content[0]); err != nil {
+	if err := enc.Encode(rc.Configuration.Root().Content[0]); err != nil {
 		return err
 	}
 

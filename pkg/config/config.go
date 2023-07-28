@@ -273,7 +273,7 @@ type Configuration struct {
 	Options map[string]BuildOption `yaml:"options,omitempty"`
 
 	// Parsed AST for this configuration
-	Root yaml.Node `yaml:"-"`
+	root *yaml.Node
 }
 
 // Name returns a name for the configuration, using the package name.
@@ -481,10 +481,11 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		return nil, err
 	}
 
-	cfg := Configuration{}
+	root := yaml.Node{}
+
+	cfg := Configuration{root: &root}
 
 	// Unmarshal into a node first
-	root := yaml.Node{}
 	decoder_node := yaml.NewDecoder(f)
 	err = decoder_node.Decode(&root)
 	if err != nil {
@@ -505,8 +506,6 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
-
-	cfg.Root = root
 
 	detectedCommit := detectCommit(configurationDirPath, options.logger)
 	if cfg.Package.Commit == "" {
@@ -672,6 +671,10 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	}
 
 	return &cfg, nil
+}
+
+func (cfg Configuration) Root() *yaml.Node {
+	return cfg.root
 }
 
 type ErrInvalidConfiguration struct {

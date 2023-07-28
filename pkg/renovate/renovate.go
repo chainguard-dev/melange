@@ -54,7 +54,7 @@ func New(opts ...Option) (*Context, error) {
 // RenovationContext encapsulates state relating to an
 // ongoing renovation.
 type RenovationContext struct {
-	Context *Context
+	Context       *Context
 	Configuration *config.Configuration
 }
 

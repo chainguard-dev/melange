@@ -44,6 +44,25 @@ archives:
     wrap_in_directory: true
     rlcp: true
 
+brews:
+  - name: melange
+    tap:
+      owner: chainguard-dev
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    url_template: "https://github.com/chainguard-dev/melange/releases/download/{{ .Version }}/{{ .ArtifactName }}"
+    folder: Formula
+    commit_author:
+      name: guardian
+      email: guardian@chainguard.dev
+    homepage: "https://github.com/chainguard-dev/melange"
+    description: "Build apk packages using declarative pipelines"
+    install: |
+      bin.install "{{ .Binary }}" => "{{ .ProjectName }}"
+    test: |
+      system "#{bin}/{{ .ProjectName }}", "version"
+
 checksum:
   name_template: 'checksums.txt'
 
@@ -60,5 +79,5 @@ changelog:
 
 release:
   draft: false
-  prerelease: true
+  prerelease: auto
   name_template: "Release {{ .Tag }}"

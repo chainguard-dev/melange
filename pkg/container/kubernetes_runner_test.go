@@ -23,8 +23,6 @@ import (
 )
 
 func TestKubernetesRunnerConfig(t *testing.T) {
-	t.Parallel()
-
 	dwant, _ := NewKubernetesConfig()
 
 	// Intentionally use raw yaml to surface any type marshaling issues

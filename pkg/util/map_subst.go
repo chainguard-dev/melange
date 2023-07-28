@@ -20,6 +20,7 @@ import (
 	"chainguard.dev/melange/pkg/cond"
 )
 
+// Given a string and a map, replace the variables in the string with values in the map
 func MutateStringFromMap(with map[string]string, input string) (string, error) {
 	lookupWith := func(key string) (string, error) {
 		if val, ok := with[key]; ok {

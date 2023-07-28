@@ -36,6 +36,7 @@ const (
 	SubstitutionBuildArch            = "${{build.arch}}"
 )
 
+// Get get variables from configuration and return them in a map
 func (cfg Configuration) GetVarsFromConfig() (map[string]string, error) {
 	nw := map[string]string{}
 
@@ -53,6 +54,7 @@ func (cfg Configuration) GetVarsFromConfig() (map[string]string, error) {
 	return nw, nil
 }
 
+// Perform variable substitutions from the config on a given map
 func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
 	for _, v := range cfg.VarTransforms {
 		nk := fmt.Sprintf("${{vars.%s}}", v.To)

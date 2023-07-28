@@ -23,23 +23,25 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
-func GetVarsFromConfig(Configuration *Configuration, nw map[string]string) error {
-	for k, v := range Configuration.Vars {
+func (cfg Configuration) GetVarsFromConfig() (map[string]string, error) {
+	nw := map[string]string{}
+
+	for k, v := range cfg.Vars {
 		nk := fmt.Sprintf("${{vars.%s}}", k)
 
 		nv, err := util.MutateStringFromMap(nw, v)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		nw[nk] = nv
 	}
 
-	return nil
+	return nw, nil
 }
 
-func PerformVarSubstitutions(Configuration *Configuration, nw map[string]string) error {
-	for _, v := range Configuration.VarTransforms {
+func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
+	for _, v := range cfg.VarTransforms {
 		nk := fmt.Sprintf("${{vars.%s}}", v.To)
 		from, err := util.MutateStringFromMap(nw, v.From)
 		if err != nil {

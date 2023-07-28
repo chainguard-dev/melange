@@ -26,6 +26,7 @@ import (
 // Context contains the default settings for renovations.
 type Context struct {
 	ConfigFile string
+	Vars map[string]string
 }
 
 type Option func(ctx *Context) error

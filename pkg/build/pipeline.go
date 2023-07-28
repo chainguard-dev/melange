@@ -118,18 +118,25 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		substitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
 		substitutionBuildArch:            pb.Build.Arch.ToAPK(),
 	}
+	
+	// Retrieve vars from config
+	subst_nw, err := pb.Build.Configuration.GetVarsFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range subst_nw {
+		nw[k] = v
+	}
+
+	// Perform substitutions on current map
+	err = pb.Build.Configuration.PerformVarSubstitutions(nw)
+	if err != nil {
+		return nil, err
+	}
 
 	if pb.Subpackage != nil {
 		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
-	}
-
-	err := config.GetVarsFromConfig(&pb.Build.Configuration, nw)
-	if err != nil {
-		return nil, err
-	}
-	err = config.PerformVarSubstitutions(&pb.Build.Configuration, nw)
-	if err != nil {
-		return nil, err
 	}
 
 	for k := range pb.Build.Configuration.Options {

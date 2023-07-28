@@ -15,6 +15,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -270,6 +271,9 @@ type Configuration struct {
 	VarTransforms []VarTransforms `yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `yaml:"options,omitempty"`
+
+	// Parsed AST for this configuration
+	Root yaml.Node `yaml:"-"`
 }
 
 // Name returns a name for the configuration, using the package name.
@@ -479,12 +483,30 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 
 	cfg := Configuration{}
 
-	decoder := yaml.NewDecoder(f)
+	// Unmarshal into a node first
+	root := yaml.Node{}
+	decoder_node := yaml.NewDecoder(f)
+	err = decoder_node.Decode(&root)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
+	}
+
+	// XXX(Elizafox) - Node.Decode doesn't allow setting of KnownFields, so we do this cheesy hack below
+	data, err := yaml.Marshal(&root)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
+	}
+
+	// Now unmarshal it into the struct, part of said cheesy hack
+	reader := bytes.NewReader(data)
+	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)
 	err = decoder.Decode(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
+
+	cfg.Root = root
 
 	detectedCommit := detectCommit(configurationDirPath, options.logger)
 	if cfg.Package.Commit == "" {

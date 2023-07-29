@@ -20,17 +20,18 @@ inputs:
 
 pipeline:
   - runs: |
-      if [ -n "${{inputs.patches}}" ]; then
-        for i in ${{inputs.patches}}; do
-          patch -p${{inputs.strip-components}} < $i
-        done
-      else
-        if [ -n "${{inputs.series}}" ]; then
-          grep -v -E '^(#|$)' ${{inputs.series}} | (while read patchfile; do
-            patch -p${{inputs.strip-components}} < $patchfile
-          done)
+      series='${{inputs.series}}'
+
+      if [ -z $series ]; then
+        if [ -n '${{inputs.patches}}' ]; then
+          series=$(mktemp)
+          echo '${{inputs.patches}}' | awk '{ for(i = 1; i <= NF; i++) { print $i; } }' > $series
         else
           echo "ERROR: Neither patches or series was set."
           exit 1
         fi
       fi
+
+      grep -v -E '^(#|$)' $series | (while read patchfile; do
+        patch '-p${{inputs.strip-components}}' < $patchfile
+      done)

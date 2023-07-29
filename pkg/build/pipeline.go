@@ -20,43 +20,47 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 
 	"gopkg.in/yaml.v3"
 
+	apko_log "chainguard.dev/apko/pkg/log"
+
 	"chainguard.dev/melange/pkg/cond"
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/logger"
+	"chainguard.dev/melange/pkg/util"
 )
 
-const (
-	substitutionPackageName          = "${{package.name}}"
-	substitutionPackageVersion       = "${{package.version}}"
-	substitutionPackageEpoch         = "${{package.epoch}}"
-	substitutionTargetsDestdir       = "${{targets.destdir}}"
-	substitutionSubPkgDir            = "${{targets.subpkgdir}}"
-	substitutionHostTripletGnu       = "${{host.triplet.gnu}}"
-	substitutionHostTripletRust      = "${{host.triplet.rust}}"
-	substitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
-	substitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
-	substitutionBuildArch            = "${{build.arch}}"
-)
+type PipelineContext struct {
+	Pipeline *config.Pipeline
+	logger   apko_log.Logger
+	steps    int
+}
+
+func NewPipelineContext(p *config.Pipeline, logger apko_log.Logger) (*PipelineContext, error) {
+	return &PipelineContext{
+		Pipeline: p,
+		logger:   logger,
+		steps:    0,
+	}, nil
+}
 
 type PipelineBuild struct {
 	Build      *Build
-	Package    *Package
-	Subpackage *Subpackage
+	Package    *PackageContext
+	Subpackage *SubpackageContext
 }
 
-func (p *Pipeline) Identity() string {
-	if p.Name != "" {
-		return p.Name
+func (pctx *PipelineContext) Identity() string {
+	if pctx.Pipeline.Name != "" {
+		return pctx.Pipeline.Name
 	}
-	if p.Uses != "" {
-		return p.Uses
+	if pctx.Pipeline.Uses != "" {
+		return pctx.Pipeline.Uses
 	}
 	return "???"
 }
@@ -79,7 +83,7 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 	// do the actual mutations
 	for k, v := range nw {
-		nval, err := MutateStringFromMap(nw, v)
+		nval, err := util.MutateStringFromMap(nw, v)
 		if err != nil {
 			return nil, err
 		}
@@ -91,30 +95,35 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	nw := map[string]string{
-		substitutionPackageName:          pb.Package.Name,
-		substitutionPackageVersion:       pb.Package.Version,
-		substitutionPackageEpoch:         strconv.FormatUint(pb.Package.Epoch, 10),
-		substitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
-		substitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
-		substitutionHostTripletRust:      pb.Build.BuildTripletRust(),
-		substitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
-		substitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
-		substitutionBuildArch:            pb.Build.Arch.ToAPK(),
+		config.SubstitutionPackageName:          pb.Package.Package.Name,
+		config.SubstitutionPackageVersion:       pb.Package.Package.Version,
+		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
+		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
+		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
+		config.SubstitutionHostTripletRust:      pb.Build.BuildTripletRust(),
+		config.SubstitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
+		config.SubstitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
+		config.SubstitutionBuildArch:            pb.Build.Arch.ToAPK(),
+	}
+
+	// Retrieve vars from config
+	subst_nw, err := pb.Build.Configuration.GetVarsFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range subst_nw {
+		nw[k] = v
+	}
+
+	// Perform substitutions on current map
+	err = pb.Build.Configuration.PerformVarSubstitutions(nw)
+	if err != nil {
+		return nil, err
 	}
 
 	if pb.Subpackage != nil {
-		nw[substitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Name)
-	}
-
-	for k, v := range pb.Build.Configuration.Vars {
-		nk := fmt.Sprintf("${{vars.%s}}", k)
-
-		nv, err := MutateStringFromMap(nw, v)
-		if err != nil {
-			return nil, err
-		}
-
-		nw[nk] = nv
+		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
 	}
 
 	for k := range pb.Build.Configuration.Options {
@@ -127,44 +136,11 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[nk] = "true"
 	}
 
-	for _, v := range pb.Build.Configuration.VarTransforms {
-		nk := fmt.Sprintf("${{vars.%s}}", v.To)
-		from, err := MutateStringFromMap(nw, v.From)
-		if err != nil {
-			return nil, err
-		}
-
-		re, err := regexp.Compile(v.Match)
-		if err != nil {
-			return nil, errors.Wrapf(err, "match value: %s string does not compile into a regex", v.Match)
-		}
-
-		output := re.ReplaceAllString(from, v.Replace)
-		nw[nk] = output
-	}
-
 	return nw, nil
 }
 
-func MutateStringFromMap(with map[string]string, input string) (string, error) {
-	lookupWith := func(key string) (string, error) {
-		if val, ok := with[key]; ok {
-			return val, nil
-		}
-
-		nk := fmt.Sprintf("${{%s}}", key)
-		if val, ok := with[nk]; ok {
-			return val, nil
-		}
-
-		return "", fmt.Errorf("variable %s not defined", key)
-	}
-
-	return cond.Subst(input, lookupWith)
-}
-
 func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
-	// this is the worst case possible length, assuming no overlap.
+	// this is the worst case possible length, assuming no overlapctx.
 	length := len(left) + len(right)
 	output := make(map[string]string, length)
 
@@ -181,7 +157,7 @@ func rightJoinMap(left map[string]string, right map[string]string) map[string]st
 	return output
 }
 
-func validateWith(data map[string]string, inputs map[string]Input) (map[string]string, error) {
+func validateWith(data map[string]string, inputs map[string]config.Input) (map[string]string, error) {
 	if data == nil {
 		data = make(map[string]string)
 	}
@@ -212,7 +188,7 @@ func loadPipelineData(dir string, uses string) ([]byte, error) {
 	return data, nil
 }
 
-func (p *Pipeline) loadUse(pb *PipelineBuild, uses string, with map[string]string) error {
+func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[string]string) error {
 	data, err := loadPipelineData(pb.Build.PipelineDir, uses)
 	if err != nil {
 		data, err = loadPipelineData(pb.Build.BuiltinPipelineDir, uses)
@@ -224,75 +200,75 @@ func (p *Pipeline) loadUse(pb *PipelineBuild, uses string, with map[string]strin
 		}
 	}
 
-	if err := yaml.Unmarshal(data, p); err != nil {
-		return fmt.Errorf("unable to parse pipeline: %w", err)
+	if err := yaml.Unmarshal(data, &pctx.Pipeline); err != nil {
+		return fmt.Errorf("unable to parse pipeline %q: %w", uses, err)
 	}
 
-	validated, err := validateWith(with, p.Inputs)
+	validated, err := validateWith(with, pctx.Pipeline.Inputs)
 	if err != nil {
 		return fmt.Errorf("unable to construct pipeline: %w", err)
 	}
-	p.With, err = MutateWith(pb, validated)
+	pctx.Pipeline.With, err = MutateWith(pb, validated)
 	if err != nil {
 		return err
 	}
 
-	for k := range p.Pipeline {
-		p.Pipeline[k].With = rightJoinMap(p.With, p.Pipeline[k].With)
+	for k := range pctx.Pipeline.Pipeline {
+		pctx.Pipeline.Pipeline[k].With = rightJoinMap(pctx.Pipeline.With, pctx.Pipeline.Pipeline[k].With)
 	}
 
 	return nil
 }
 
-func (p *Pipeline) dumpWith() {
-	for k, v := range p.With {
-		p.logger.Debugf("    %s: %s", k, v)
+func (pctx *PipelineContext) dumpWith() {
+	for k, v := range pctx.Pipeline.With {
+		pctx.logger.Debugf("    %s: %s", k, v)
 	}
 }
 
-func (p *Pipeline) evalUse(ctx context.Context, pb *PipelineBuild) error {
-	sp, err := NewPipeline(pb)
+func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) error {
+	spctx, err := NewPipelineContextFromPipelineBuild(pb)
 	if err != nil {
 		return err
 	}
-	sp.WorkDir = p.WorkDir
+	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
-	if err := sp.loadUse(pb, p.Uses, p.With); err != nil {
+	if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 		return err
 	}
 
-	p.logger.Printf("  using %s", p.Uses)
-	sp.dumpWith()
+	pctx.logger.Printf("  using %s", pctx.Pipeline.Uses)
+	spctx.dumpWith()
 
-	ran, err := sp.Run(ctx, pb)
+	ran, err := spctx.Run(ctx, pb)
 	if err != nil {
 		return err
 	}
 
 	if ran {
-		p.steps++
+		pctx.steps++
 	}
 
 	return nil
 }
 
-func (p *Pipeline) evalRun(ctx context.Context, pb *PipelineBuild) error {
+func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) error {
 	var err error
-	p.With, err = MutateWith(pb, p.With)
+	pctx.Pipeline.With, err = MutateWith(pb, pctx.Pipeline.With)
 	if err != nil {
 		return err
 	}
-	p.dumpWith()
+	pctx.dumpWith()
 
 	workdir := "/home/build"
-	if p.WorkDir != "" {
-		workdir, err = MutateStringFromMap(p.With, p.WorkDir)
+	if pctx.Pipeline.WorkDir != "" {
+		workdir, err = util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
 		if err != nil {
 			return err
 		}
 	}
 
-	fragment, err := MutateStringFromMap(p.With, p.Runs)
+	fragment, err := util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Runs)
 	if err != nil {
 		return err
 	}
@@ -319,13 +295,13 @@ exit 0`, debugOption, sysPath, workdir, workdir, workdir, fragment)
 	return nil
 }
 
-func (p *Pipeline) evaluateBranchConditional(pb *PipelineBuild) bool {
-	if p.If == "" {
+func (pctx *PipelineContext) evaluateBranchConditional(pb *PipelineBuild) bool {
+	if pctx.Pipeline.If == "" {
 		return true
 	}
 
 	lookupWith := func(key string) (string, error) {
-		mutated, err := MutateWith(pb, p.With)
+		mutated, err := MutateWith(pb, pctx.Pipeline.With)
 		if err != nil {
 			return "", err
 		}
@@ -333,156 +309,168 @@ func (p *Pipeline) evaluateBranchConditional(pb *PipelineBuild) bool {
 		return mutated[nk], nil
 	}
 
-	result, err := cond.Evaluate(p.If, lookupWith)
+	result, err := cond.Evaluate(pctx.Pipeline.If, lookupWith)
 	if err != nil {
-		panic(fmt.Errorf("could not evaluate if-conditional '%s': %w", p.If, err))
+		panic(fmt.Errorf("could not evaluate if-conditional '%s': %w", pctx.Pipeline.If, err))
 	}
 
-	p.logger.Printf("evaluating if-conditional '%s' --> %t", p.If, result)
+	pctx.logger.Printf("evaluating if-conditional '%s' --> %t", pctx.Pipeline.If, result)
 
 	return result
 }
 
-func (p *Pipeline) isContinuationPoint(pb *PipelineBuild) bool {
+func (pctx *PipelineContext) isContinuationPoint(pb *PipelineBuild) bool {
 	b := pb.Build
 
 	if b.ContinueLabel == "" {
 		return true
 	}
 
-	if b.ContinueLabel == p.Label {
+	if b.ContinueLabel == pctx.Pipeline.Label {
 		b.foundContinuation = true
 	}
 
 	return b.foundContinuation
 }
 
-func (p *Pipeline) shouldEvaluateBranch(pb *PipelineBuild) bool {
-	if !p.isContinuationPoint(pb) {
+func (pctx *PipelineContext) shouldEvaluateBranch(pb *PipelineBuild) bool {
+	if !pctx.isContinuationPoint(pb) {
 		return false
 	}
 
-	return p.evaluateBranchConditional(pb)
+	return pctx.evaluateBranchConditional(pb)
 }
 
-func (p *Pipeline) evaluateBranch(ctx context.Context, pb *PipelineBuild) error {
-	if p.Identity() != "???" {
-		p.logger.Printf("running step %s", p.Identity())
+func (pctx *PipelineContext) evaluateBranch(ctx context.Context, pb *PipelineBuild) error {
+	if pctx.Identity() != "???" {
+		pctx.logger.Printf("running step %s", pctx.Identity())
 	}
 
-	if p.Uses != "" {
-		return p.evalUse(ctx, pb)
+	if pctx.Pipeline.Uses != "" {
+		return pctx.evalUse(ctx, pb)
 	}
 
-	if p.Runs != "" {
-		return p.evalRun(ctx, pb)
+	if pctx.Pipeline.Runs != "" {
+		return pctx.evalRun(ctx, pb)
 	}
 
 	return nil
 }
 
-func (p *Pipeline) checkAssertions(pb *PipelineBuild) error {
-	if p.Assertions.RequiredSteps > 0 && p.steps < p.Assertions.RequiredSteps {
-		return fmt.Errorf("pipeline did not run the required %d steps, only %d", p.Assertions.RequiredSteps, p.steps)
+func (pctx *PipelineContext) checkAssertions(pb *PipelineBuild) error {
+	if pctx.Pipeline.Assertions.RequiredSteps > 0 && pctx.steps < pctx.Pipeline.Assertions.RequiredSteps {
+		return fmt.Errorf("pipeline did not run the required %d steps, only %d", pctx.Pipeline.Assertions.RequiredSteps, pctx.steps)
 	}
 
 	return nil
 }
 
-func (p *Pipeline) Run(ctx context.Context, pb *PipelineBuild) (bool, error) {
+func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "Pipeline.Run")
 	defer span.End()
 
-	if p.Label != "" && p.Label == pb.Build.BreakpointLabel {
-		return false, fmt.Errorf("stopping execution at breakpoint: %s", p.Label)
+	if pctx.Pipeline.Label != "" && pctx.Pipeline.Label == pb.Build.BreakpointLabel {
+		return false, fmt.Errorf("stopping execution at breakpoint: %s", pctx.Pipeline.Label)
 	}
 
-	if p.logger == nil {
-		if err := p.initializeFromPipelineBuild(pb); err != nil {
+	if pctx.logger == nil {
+		if err := pctx.initializeFromPipelineBuild(pb); err != nil {
 			return false, err
 		}
 	}
 
-	if p.shouldEvaluateBranch(pb) {
-		if err := p.evaluateBranch(ctx, pb); err != nil {
+	if pctx.shouldEvaluateBranch(pb) {
+		if err := pctx.evaluateBranch(ctx, pb); err != nil {
 			return false, err
 		}
 	} else {
 		return false, nil
 	}
 
-	for _, sp := range p.Pipeline {
+	for _, sp := range pctx.Pipeline.Pipeline {
 		if sp.WorkDir == "" {
-			sp.WorkDir = p.WorkDir
+			sp.WorkDir = pctx.Pipeline.WorkDir
 		}
 
-		ran, err := sp.Run(ctx, pb)
+		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
+		if err != nil {
+			return false, err
+		}
+
+		ran, err := spctx.Run(ctx, pb)
 
 		if err != nil {
 			return false, err
 		}
 
 		if ran {
-			p.steps++
+			pctx.steps++
 		}
 	}
 
-	if err := p.checkAssertions(pb); err != nil {
+	if err := pctx.checkAssertions(pb); err != nil {
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (p *Pipeline) initializeFromPipelineBuild(pb *PipelineBuild) error {
+func (pctx *PipelineContext) initializeFromPipelineBuild(pb *PipelineBuild) error {
 	if l := pb.Build.Logger; l != nil {
-		p.logger = pb.Build.Logger
+		pctx.logger = pb.Build.Logger
 	} else {
-		p.logger = nopLogger{}
+		pctx.logger = logger.NopLogger{}
 	}
+
+	pctx.Pipeline = &config.Pipeline{}
 
 	return nil
 }
 
-func NewPipeline(pb *PipelineBuild) (*Pipeline, error) {
-	p := Pipeline{}
+func NewPipelineContextFromPipelineBuild(pb *PipelineBuild) (*PipelineContext, error) {
+	pctx := PipelineContext{}
 
-	if err := p.initializeFromPipelineBuild(pb); err != nil {
+	if err := pctx.initializeFromPipelineBuild(pb); err != nil {
 		return nil, err
 	}
 
-	return &p, nil
+	return &pctx, nil
 }
 
 // TODO(kaniini): Precompile pipeline before running / evaluating its
 // needs.
-func (p *Pipeline) ApplyNeeds(pb *PipelineBuild) error {
+func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 	ic := &pb.Build.Configuration.Environment
 
-	for _, pkg := range p.Needs.Packages {
-		p.logger.Printf("  adding package %q for pipeline %q", pkg, p.Identity())
+	for _, pkg := range pctx.Pipeline.Needs.Packages {
+		pctx.logger.Printf("  adding package %q for pipeline %q", pkg, pctx.Identity())
 		ic.Contents.Packages = append(ic.Contents.Packages, pkg)
 	}
 
-	if p.Uses != "" {
-		sp, err := NewPipeline(pb)
+	if pctx.Pipeline.Uses != "" {
+		spctx, err := NewPipelineContextFromPipelineBuild(pb)
 		if err != nil {
 			return err
 		}
 
-		if err := sp.loadUse(pb, p.Uses, p.With); err != nil {
+		if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 			return err
 		}
 
-		if err := sp.ApplyNeeds(pb); err != nil {
+		if err := spctx.ApplyNeeds(pb); err != nil {
 			return err
 		}
 	}
 
 	ic.Contents.Packages = dedup(ic.Contents.Packages)
 
-	for _, sp := range p.Pipeline {
-		if err := sp.ApplyNeeds(pb); err != nil {
+	for _, sp := range pctx.Pipeline.Pipeline {
+		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
+		if err != nil {
+			return err
+		}
+
+		if err := spctx.ApplyNeeds(pb); err != nil {
 			return err
 		}
 	}

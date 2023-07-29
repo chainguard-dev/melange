@@ -17,9 +17,14 @@ package renovate
 import (
 	"context"
 	"os"
+	"runtime"
+	"strconv"
 
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
-	"gopkg.in/yaml.v3"
+
+	apko_types "chainguard.dev/apko/pkg/build/types"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 // Context contains the default settings for renovations.
@@ -53,8 +58,9 @@ func New(opts ...Option) (*Context, error) {
 // RenovationContext encapsulates state relating to an
 // ongoing renovation.
 type RenovationContext struct {
-	Context *Context
-	Root    yaml.Node
+	Context       *Context
+	Configuration *config.Configuration
+	Vars          map[string]string
 }
 
 // Renovator performs a renovation.
@@ -84,15 +90,30 @@ func (c *Context) Renovate(ctx context.Context, renovators ...Renovator) error {
 
 // LoadConfig loads the configuration data into an AST for renovation.
 func (rc *RenovationContext) LoadConfig() error {
-	configData, err := os.ReadFile(rc.Context.ConfigFile)
+	cfg, err := config.ParseConfiguration(rc.Context.ConfigFile)
 	if err != nil {
 		return err
 	}
 
-	if err := yaml.Unmarshal(configData, &rc.Root); err != nil {
+	vars, err := cfg.GetVarsFromConfig()
+	if err != nil {
 		return err
 	}
 
+	// These are probably sufficient for now.
+	// TODO(Elizafox): Enable cross-arch bumping
+	vars[config.SubstitutionPackageName] = cfg.Package.Name
+	vars[config.SubstitutionPackageVersion] = cfg.Package.Version
+	vars[config.SubstitutionPackageEpoch] = strconv.FormatUint(cfg.Package.Epoch, 10)
+	vars[config.SubstitutionBuildArch] = apko_types.ParseArchitecture(runtime.GOARCH).ToAPK()
+
+	err = cfg.PerformVarSubstitutions(vars)
+	if err != nil {
+		return err
+	}
+
+	rc.Configuration = cfg
+	rc.Vars = vars
 	return nil
 }
 
@@ -107,7 +128,7 @@ func (rc *RenovationContext) WriteConfig() error {
 
 	enc := formatted.NewEncoder(configFile).AutomaticConfig()
 
-	if err := enc.Encode(rc.Root.Content[0]); err != nil {
+	if err := enc.Encode(rc.Configuration.Root().Content[0]); err != nil {
 		return err
 	}
 

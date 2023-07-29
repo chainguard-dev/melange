@@ -76,7 +76,7 @@ func New(opts ...Option) renovate.Renovator {
 
 	return func(ctx context.Context, rc *renovate.RenovationContext) error {
 		// Find the package.name and package.version nodes.
-		packageNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "package")
+		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func New(opts ...Option) renovate.Renovator {
 		log.Printf("fetching artifacts relating to %s-%s", cfg.packageName, cfg.packageVersion)
 
 		// Find our main pipeline YAML node.
-		pipelineNode, err := renovate.NodeFromMapping(rc.Root.Content[0], "pipeline")
+		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")
 		if err != nil {
 			return err
 		}

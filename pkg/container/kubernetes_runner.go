@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -32,12 +33,14 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/imdario/mergo"
+	"github.com/kelseyhightower/envconfig"
 	"go.opentelemetry.io/otel"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/util/exec"
 	"knative.dev/pkg/ptr"
 	"sigs.k8s.io/yaml"
 
@@ -63,11 +66,17 @@ type k8s struct {
 	clientset  kubernetes.Interface
 	restConfig *rest.Config
 	logger     log.Logger
+	pod        *corev1.Pod
 }
 
 func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
+	cfg, err := NewKubernetesConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure kubernetes runner: %v", err)
+	}
+
 	runner := &k8s{
-		Config: NewKubernetesConfig(),
+		Config: cfg,
 		logger: logger,
 	}
 
@@ -115,7 +124,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	}
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
 
-	if err := wait.PollUntilContextTimeout(ctx, 10*time.Second, k.Config.StartTimeout, true, func(ctx context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, 10*time.Second, k.Config.StartTimeout.Duration, true, func(ctx context.Context) (done bool, err error) {
 		p, err := podclient.Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -143,12 +152,16 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	}
 	k.logger.Infof("pod [%s/%s] is ready", pod.Namespace, pod.Name)
 
+	k.pod = pod
 	cfg.PodID = pod.Name
 	return nil
 }
 
 // Run implements Runner
 func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Run")
+	defer span.End()
+
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod isn't running")
 	}
@@ -204,6 +217,7 @@ func (k *k8s) TerminatePod(ctx context.Context, cfg *Config) error {
 	}
 
 	cfg.PodID = ""
+	k.pod = nil
 	return nil
 }
 
@@ -229,21 +243,14 @@ func (k *k8s) TestUsability(ctx context.Context) bool {
 
 // WorkspaceTar implements Runner
 func (k *k8s) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	cmd := []string{"tar", "cf", "-", "-C", runnerWorkdir, "melange-out"}
-	r, w := io.Pipe()
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.WorkspaceTar")
+	defer span.End()
 
-	go func() {
-		defer w.Close()
-
-		if err := k.Exec(ctx, cfg.PodID, cmd, remotecommand.StreamOptions{
-			Stdout: w,
-			Stderr: os.Stderr,
-		}); err != nil {
-			panic(err)
-		}
-	}()
-
-	return r, nil
+	fetcher, err := newK8sTarFetcher(k.restConfig, k.pod)
+	if err != nil {
+		return nil, fmt.Errorf("creating k8s tar fetcher: %v", err)
+	}
+	return fetcher.Fetch(ctx)
 }
 
 // OCIImageLoader implements Runner
@@ -253,6 +260,21 @@ func (k *k8s) OCIImageLoader() Loader {
 
 // Exec runs a command on the pod
 func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts remotecommand.StreamOptions) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Exec")
+	defer span.End()
+
+	// The k8s runner has no concept of a "WorkingDir", so we prepend the standard
+	// command to root us in WorkingDir
+	if len(cmd) != 3 {
+		k.logger.Warnf("unknown command format, expected 3 elements but got %d, this might not work...", len(cmd))
+	} else if cmd[0] != "/bin/sh" || cmd[1] != "-c" {
+		k.logger.Warnf("unknown command format, expected '/bin/sh -c' but got [%s %s], this might not work...", cmd[0], cmd[1])
+	} else {
+		cmd[2] = fmt.Sprintf(`[ -d '%s' ] || mkdir -p '%s'
+cd '%s'
+%s`, runnerWorkdir, runnerWorkdir, runnerWorkdir, cmd[2])
+	}
+
 	req := k.clientset.
 		CoreV1().
 		RESTClient().
@@ -268,20 +290,46 @@ func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts
 			Stderr:    true,
 		}, scheme.ParameterCodec)
 
-	k.logger.Infof("executing command %v", cmd)
-	exec, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
+	executor, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
 	if err != nil {
 		return fmt.Errorf("failed to create remote command executor: %v", err)
 	}
 
-	if err := exec.StreamWithContext(ctx, streamOpts); err != nil {
-		return fmt.Errorf("failed to stream remote command: %v", err)
+	// Backoff up to 4 times with a 1 second initial delay, tripling each time
+	backoff := wait.Backoff{
+		Steps:    6,
+		Duration: 1 * time.Second,
+		Factor:   3,
+		Jitter:   0.1,
+	}
+
+	k.logger.Infof("remote executing command %v", cmd)
+	if err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
+		err := executor.StreamWithContext(ctx, streamOpts)
+		switch e := err.(type) {
+		case *exec.CodeExitError, exec.ExitError:
+			// Non recoverable error
+			k.logger.Warnf("non-recoverable error (%T) executing remote command: %v", e, err)
+			return false, err
+		case nil:
+			// Succeeded without error
+			return true, nil
+		}
+
+		// Everything else is retryable without altering the existing build step
+		k.logger.Warnf("attempting to recover (%T) after failing to execute remote command: %v", err, err)
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("failed executing remote command: %v", err)
 	}
 
 	return nil
 }
 
 func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.NewBuildPod")
+	defer span.End()
+
 	repo, err := name.NewRepository(k.Config.Repo)
 	if err != nil {
 		return nil, err
@@ -298,6 +346,7 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 		k.logger.Infof("creating mount '%s' from %s at %s", mountName, mount.Source, mount.Destination)
 		bundle, err := k.bundle(ctx, mount.Source, repo.Tag(fmt.Sprintf("%s-%s", cfg.PackageName, mountName)))
 		if err != nil {
+			k.logger.Warnf("error creating bundle: %v", err)
 			return nil, err
 		}
 		k.logger.Infof("mount '%s' uploaded to %s", mountName, bundle.String())
@@ -311,16 +360,29 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 				MountPath: mount.Destination,
 			}},
 		})
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: mountName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
 		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 			Name:      mountName,
 			MountPath: mount.Destination,
 		})
+
+		// Only append the volume if it doesn't already volumeExists. This prevents us
+		// from overriding any user defined volume, such as generic ephemeral
+		// volumes
+		volumeExists := false
+		for _, v := range pod.Spec.Volumes {
+			if v.Name == mountName {
+				volumeExists = true
+			}
+		}
+		if !volumeExists {
+			// Use a generic empty dir volume as the default
+			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+				Name: mountName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+		}
 	}
 
 	return pod, nil
@@ -329,6 +391,9 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 // bundle is a thin wrapper around kontext.Bundle that ensures the bundle is rooted in the given path
 // TODO: This should be upstreamed in kontext.Bundle() when we change that to use go-apk.FullFS
 func (k *k8s) bundle(ctx context.Context, path string, tag name.Tag) (name.Digest, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.bundle")
+	defer span.End()
+
 	var ref name.Digest
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -349,7 +414,12 @@ func (k *k8s) bundle(ctx context.Context, path string, tag name.Tag) (name.Diges
 // filterMounts filters mounts that are not supported by the k8s runner
 func (k *k8s) filterMounts(mount BindMount) bool {
 	// the kubelet handles this
-	if mount.Source == "/etc/resolv.conf" {
+	if mount.Source == DefaultResolvConfPath {
+		return true
+	}
+
+	if mount.Destination == DefaultCacheDir {
+		k.logger.Warnf("skipping k8s runner irrelevant cache mount %s -> %s", mount.Source, mount.Destination)
 		return true
 	}
 
@@ -358,7 +428,6 @@ func (k *k8s) filterMounts(mount BindMount) bool {
 		return true
 	}
 
-	// TODO: More filtering?
 	return false
 }
 
@@ -375,9 +444,9 @@ type KubernetesRunnerConfig struct {
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 
-	StartTimeout time.Duration `json:"startTimeout" yaml:"startTimeout"`
-	BuildTimeout time.Duration `json:"buildTimeout" yaml:"buildTimeout"`
+	StartTimeout metav1.Duration `json:"startTimeout" yaml:"startTimeout" split_words:"true"`
 
+	// This field and everything below it is ignored by the environment variable parser
 	PodTemplate *KubernetesRunnerConfigPodTemplate `json:"podTemplate,omitempty" yaml:"podTemplate,omitempty" ignored:"true"`
 
 	// A "burstable" QOS is really the only thing that makes sense for ephemeral builder pods
@@ -398,13 +467,12 @@ type KubernetesRunnerConfigPodTemplate struct {
 }
 
 // NewKubernetesConfig returns a default Kubernetes runner config setup
-func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) *KubernetesRunnerConfig {
+func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) (*KubernetesRunnerConfig, error) {
 	cfg := &KubernetesRunnerConfig{
 		Provider:     "generic",
 		Namespace:    "default",
 		Repo:         "ttl.sh/melange",
-		StartTimeout: 5 * time.Minute,
-		BuildTimeout: 30 * time.Minute,
+		StartTimeout: metav1.Duration{Duration: 10 * time.Minute},
 		Resources: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("2"),
 			corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -417,19 +485,45 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) *KubernetesRunner
 		o(cfg)
 	}
 
-	// We don't care about errors here, the empty value is safe to "merge"
+	// Override the defaults with values obtained from the global config file
 	global := &KubernetesRunnerConfig{}
-	data, _ := os.ReadFile(cfg.baseConfigFile)
-	_ = yaml.Unmarshal(data, global)
-	_ = mergo.Merge(cfg, global, mergo.WithOverride)
+	data, err := os.ReadFile(cfg.baseConfigFile)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("error reading config file %s: %w", cfg.baseConfigFile, err)
+	} else {
+		if err := yaml.Unmarshal(data, global); err != nil {
+			return nil, fmt.Errorf("error parsing config file %s: %w", cfg.baseConfigFile, err)
+		}
+	}
 
-	return cfg
+	if err := mergo.Merge(cfg, global, mergo.WithOverride); err != nil {
+		return nil, fmt.Errorf("error merging config file values %s with defaults: %w", cfg.baseConfigFile, err)
+	}
+
+	// Finally, override with the values from the environment
+	var envcfg KubernetesRunnerConfig
+	if err := envconfig.Process("melange", &envcfg); err != nil {
+		return nil, fmt.Errorf("error parsing environment variables: %w", err)
+	}
+
+	if err := mergo.Merge(cfg, envcfg, mergo.WithOverride); err != nil {
+		return nil, fmt.Errorf("error merging environment variables with defaults: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// escapeRFC1123 escapes a string to be RFC1123 compliant.  We don't worry about
+// being collision free because these are generally fed to generateName which
+// appends a randomized suffix.
+func escapeRFC1123(name string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(name, ".", "-"), "_", "-")
 }
 
 func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("melange-builder-%s-%s-", cfg.PackageName, cfg.Arch.String()),
+			GenerateName: fmt.Sprintf("melange-builder-%s-%s-", escapeRFC1123(cfg.PackageName), cfg.Arch.String()),
 			Namespace:    c.Namespace,
 			Labels: map[string]string{
 				"kubernetes.io/arch":             cfg.Arch.String(),
@@ -440,11 +534,13 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			Annotations: map[string]string{},
 		},
 		Spec: corev1.PodSpec{
+			// Don't putz around for 30s when we kill things.
+			TerminationGracePeriodSeconds: ptr.Int64(0),
 			Containers: []corev1.Container{{
 				Name:  kubernetesBuilderPodWorkspaceContainerName,
 				Image: cfg.ImgRef,
 				// ldconfig is run to prime ld.so.cache for glibc packages which require it.
-				Command: []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
+				Command: []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nsleep infinity"},
 				Resources: corev1.ResourceRequirements{
 					Requests: c.Resources,
 				},
@@ -463,6 +559,13 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			},
 			Volumes: []corev1.Volume{},
 		},
+	}
+
+	for k, v := range cfg.Environment {
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 
 	for k, v := range c.Annotations {
@@ -564,8 +667,101 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 	ref := repo.Digest(d.String())
 	k.logger.Infof("pushing build image (%s) to %s", humanize.Bytes(uint64(sz)), ref.String())
 	if err := remote.Write(ref, img, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx)); err != nil {
+		k.logger.Infof("error publishing build image: %v", err)
 		return "", err
 	}
 
 	return ref.String(), nil
+}
+
+type k8sTarFetcher struct {
+	client     kubernetes.Interface
+	restconfig *rest.Config
+	pod        metav1.Object
+}
+
+func newK8sTarFetcher(restconfig *rest.Config, pod metav1.Object) (*k8sTarFetcher, error) {
+	client, err := kubernetes.NewForConfig(restconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &k8sTarFetcher{
+		client:     client,
+		restconfig: restconfig,
+		pod:        pod,
+	}, nil
+}
+
+func (f *k8sTarFetcher) Fetch(ctx context.Context) (io.ReadCloser, error) {
+	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Fetch")
+	defer span.End()
+
+	readAt := func(w io.Writer, offset uint64) error {
+		req := f.client.CoreV1().RESTClient().Post().Resource("pods").Name(f.pod.GetName()).Namespace(f.pod.GetNamespace()).SubResource("exec").VersionedParams(&corev1.PodExecOptions{
+			Container: kubernetesBuilderPodWorkspaceContainerName,
+			Command: []string{
+				"/bin/sh", "-c",
+				// Write a gzip compressed tar stream to stdout, starting at the given offset (n)
+				fmt.Sprintf("([ -f /tmp/melange-out.tar.gz ] || tar -czf /tmp/melange-out.tar.gz -C %s melange-out) && cat /tmp/melange-out.tar.gz | tail -c+%d", runnerWorkdir, offset),
+			},
+			Stdout: true,
+			Stderr: true,
+		}, scheme.ParameterCodec)
+
+		exec, err := remotecommand.NewSPDYExecutor(f.restconfig, "POST", req.URL())
+		if err != nil {
+			return err
+		}
+		return exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+			Stdout: w,
+			Stderr: os.Stderr,
+		})
+	}
+	tp := &retryableTarPipe{
+		MaxRetries: 5,
+		ReadAt:     readAt,
+	}
+	tp.initReadFrom(0)
+	return tp, nil
+}
+
+type retryableTarPipe struct {
+	ReadAt     func(w io.Writer, n uint64) error
+	MaxRetries int
+
+	reader   *io.PipeReader
+	out      *io.PipeWriter
+	progress uint64
+	retries  int
+}
+
+func (p *retryableTarPipe) Close() error {
+	return p.out.Close()
+}
+
+func (p *retryableTarPipe) initReadFrom(n uint64) {
+	p.reader, p.out = io.Pipe()
+
+	go func() {
+		defer p.out.Close()
+		err := p.ReadAt(p.out, n)
+		if err != nil {
+			fmt.Println("failed to read: ", err)
+		}
+	}()
+}
+
+func (p *retryableTarPipe) Read(data []byte) (n int, err error) {
+	n, err = p.reader.Read(data)
+	if err != nil {
+		if p.retries < p.MaxRetries {
+			p.retries++
+			p.initReadFrom(p.progress + 1)
+			err = nil
+		}
+	} else {
+		p.progress += uint64(n)
+	}
+	return
 }

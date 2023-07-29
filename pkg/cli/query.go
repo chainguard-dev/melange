@@ -20,7 +20,7 @@ import (
 	"os"
 	"text/template"
 
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +41,7 @@ func Query() *cobra.Command {
 }
 
 func QueryCmd(ctx context.Context, configFile, pattern string) error {
-	config, err := build.ParseConfiguration(configFile)
+	config, err := config.ParseConfiguration(configFile)
 	if err != nil {
 		return err
 	}

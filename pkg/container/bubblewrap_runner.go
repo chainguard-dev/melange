@@ -16,7 +16,6 @@ package container
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -123,8 +122,7 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 // WorkspaceTar implements Runner
 // This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
 func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	var buffer bytes.Buffer
-	return io.NopCloser(&buffer), nil
+	return nil, nil
 }
 
 type bubblewrapOCILoader struct{}

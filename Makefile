@@ -109,7 +109,7 @@ GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
 	set -e ;
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3;
 
 .PHONY: fmt
 fmt: ## Format all go files
@@ -158,7 +158,6 @@ snapshot: ## Run Goreleaser in snapshot mode
 .PHONY: release
 release: ## Run Goreleaser in release mode
 	LDFLAGS="$(LDFLAGS)" goreleaser release --clean
-
 
 #######################
 # Sign images

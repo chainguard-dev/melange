@@ -17,6 +17,9 @@ package build
 import (
 	"testing"
 
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/util"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +30,7 @@ func Test_mutateStringFromMap(t *testing.T) {
 	}
 
 	input1 := "${{inputs.foo}} ${{inputs.baz-bah-boom}}"
-	output1, err := MutateStringFromMap(keys, input1)
+	output1, err := util.MutateStringFromMap(keys, input1)
 
 	require.NoError(t, err)
 	require.Equal(t, output1, "foo ", "bogus variable substitution not deleted")
@@ -44,12 +47,22 @@ func Test_substitutionMap(t *testing.T) {
 		{initialVersion: "1.2.3.9", match: `\.(\d+)$`, replace: "+$1", expected: "1.2.3+9"},
 	}
 	for _, tt := range tests {
+		pkgctx, err := NewPackageContext(
+			&config.Package{
+				Name:    "foo",
+				Version: tt.initialVersion,
+			},
+		)
+		if err != nil {
+			t.Fatalf("NewPackageContext() = %v", err)
+		}
+
 		t.Run("sub", func(t *testing.T) {
 			pb := &PipelineBuild{
-				Package: &Package{Name: "foo", Version: tt.initialVersion},
+				Package: pkgctx,
 				Build: &Build{
-					Configuration: Configuration{
-						VarTransforms: []VarTransforms{
+					Configuration: config.Configuration{
+						VarTransforms: []config.VarTransforms{
 							{
 								From:    "${{package.version}}",
 								Match:   tt.match,

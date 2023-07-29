@@ -17,7 +17,7 @@ import (
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
 
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"gitlab.alpinelinux.org/alpine/go/apkbuild"
 	"golang.org/x/time/rate"
@@ -223,7 +223,7 @@ func TestContext_getSourceSha(t *testing.T) {
 				"uri":             server.URL + "/" + strings.ReplaceAll(tt.fields.TestUrl, tt.fields.PackageVersion, "${{package.version}}"),
 				"expected-sha256": tt.fields.ExpectedSha,
 			}
-			pipeline := build.Pipeline{Uses: "fetch", With: with}
+			pipeline := config.Pipeline{Uses: "fetch", With: with}
 
 			assert.NoError(t, c.buildFetchStep(context.Background(), c.ApkConvertors[tt.name]))
 			assert.Equalf(t, pipeline, c.ApkConvertors[tt.name].GeneratedMelangeConfig.Pipeline[0], "expected sha incorrect")

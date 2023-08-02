@@ -314,6 +314,8 @@ type Update struct {
 	ReleaseMonitor *ReleaseMonitor `yaml:"release-monitor,omitempty"`
 	// The configuration block for updates tracked via the Github API
 	GitHubMonitor *GitHubMonitor `yaml:"github,omitempty"`
+	// The configuration block for transforming the `package.version` into an APK version
+	VersionTransform []VersionTransform `yaml:"version-transform,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/
@@ -339,6 +341,14 @@ type GitHubMonitor struct {
 	// Override the default of using a GitHub release to identify related tag to
 	// fetch.  Not all projects use GitHub releases but just use tags
 	UseTags bool `yaml:"use-tag,omitempty"`
+}
+
+// VersionTransform allows mapping the package version to an APK version
+type VersionTransform struct {
+	// Required: The regular expression to match against the `package.version` variable
+	Match string `yaml:"match"`
+	// Required: The repl to replace on all `match` matches
+	Replace string `yaml:"replace"`
 }
 
 type RangeData struct {

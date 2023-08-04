@@ -28,10 +28,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
 
+	"github.com/chainguard-dev/go-pkgconfig"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
@@ -563,6 +565,63 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 	return nil
 }
 
+var pkgConfigVersionRegexp = regexp.MustCompile("-(alpha|beta|rc|pre)")
+
+// TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
+var generateRuntimePkgConfigDeps = false
+
+// generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
+// as well as dependency relationships.
+func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) error {
+	pc.Logger.Printf("scanning for pkg-config data...")
+
+	fsys := readlinkFS(pc.WorkspaceSubdir())
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !strings.Contains(path, ".pc") {
+			return nil
+		}
+
+		pkg, err := pkgconfig.Load(filepath.Join(pc.WorkspaceSubdir(), path))
+		if err != nil {
+			return err
+		}
+
+		pcName := filepath.Base(path)
+		pcName, _ = strings.CutSuffix(pcName, ".pc")
+
+		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
+		if !pc.Options.NoProvides {
+			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+		}
+
+		if generateRuntimePkgConfigDeps {
+			// TODO(kaniini): Capture version relationships here too.  In practice, this does not matter
+			// so much though for us.
+			for _, dep := range pkg.Requires {
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+			}
+
+			for _, dep := range pkg.RequiresPrivate {
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+			}
+
+			for _, dep := range pkg.RequiresInternal {
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // removeSelfProvidedDeps removes dependencies which are provided by the package itself.
 func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 	providedDepsMap := map[string]bool{}
@@ -590,6 +649,7 @@ func (pc *PackageBuild) GenerateDependencies() error {
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
+		generatePkgConfigDeps,
 	}
 
 	for _, gen := range generators {

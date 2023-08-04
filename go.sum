@@ -80,6 +80,8 @@ github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/chainguard-dev/go-apk v0.0.0-20230710230135-7fc46e8b3c4d h1:FiATZeiXcC0fq/604scYNZteOnEteWQhvqFZsOhSr6Y=
 github.com/chainguard-dev/go-apk v0.0.0-20230710230135-7fc46e8b3c4d/go.mod h1:woT/bFOpXAUI8PgmogdS4IPPwdNdfhg8XnNQeA+R7j8=
+github.com/chainguard-dev/go-pkgconfig v0.0.0-20230805235849-9bda3971e4cb h1:lKz/2jUE8VOXjg3Z+CctAMtpDcvIHALNR9Jv+9eSgUU=
+github.com/chainguard-dev/go-pkgconfig v0.0.0-20230805235849-9bda3971e4cb/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
 github.com/chainguard-dev/kontext v0.1.0/go.mod h1:hdyG5Sia0niCW8HN8MDXcDh/nL0sgcWQYSjPRFZOX/w=
 github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e h1:TlpfdSUjQkrq2yh+bySzoOmPKspeaxmOr1fmsNCfNXM=

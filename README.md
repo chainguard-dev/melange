@@ -13,7 +13,7 @@ Key features:
  - **Multi-architecture by default.** QEMU is used to emulate various
    architectures, avoiding the need for cross-compilation steps.
 
-## Why
+## Motivation
 
 Secure software factories are the evolution of DevOps, allowing a
 user to prove the provenance of all artifacts incorporated
@@ -31,25 +31,25 @@ the form of OCI container images with [apko][apko].
 You can install Melange from Homebrew:
 
 ```shell
-brew install melange
+$ brew install melange
 ```
 
 You can also install Melange from source:
 
 ```shell
-go install chainguard.dev/melange@latest
+$ go install chainguard.dev/melange@latest
 ```
 
 You can also use the Melange container image:
 
 ```shell
-docker run cgr.dev/chainguard/melange version
+$ docker run cgr.dev/chainguard/melange version
 ```
 
 To use the examples, you'll generally want to mount your current directory into the container and provide elevated privileges, e.g.:
 
 ```shell
-docker run --privileged -v "$PWD":/work cgr.dev/chainguard/melange build examples/gnu-hello.yaml
+$ docker run --privileged -v "$PWD":/work cgr.dev/chainguard/melange build examples/gnu-hello.yaml
 ```
 
 Running outside of a container requires [Docker](https://docs.docker.com/get-docker/), but should also work with other run-times such as [podman](https://podman.io/getting-started/installation).
@@ -103,13 +103,13 @@ pipeline:
 We can build this with:
 
 ```shell
-melange build examples/gnu-hello.yaml
+$ melange build examples/gnu-hello.yaml
 ```
 
 or, with Docker:
 
 ```shell
-docker run --privileged --rm -v "${PWD}":/work \
+$ docker run --privileged --rm -v "${PWD}":/work \
   cgr.dev/chainguard/melange build examples/gnu-hello.yaml
 ```
 
@@ -118,8 +118,9 @@ This will create a `packages` folder, with an entry for each architecture suppor
 If you want to sign your apks, create a signing key with the `melange keygen` command:
 
 ```shell
-melange keygen
+$ melange keygen
 ```
+
 ```
  generating keypair with a 4096 bit prime, please wait...
  wrote private key to melange.rsa

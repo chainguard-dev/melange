@@ -23,7 +23,7 @@ func PackageVersion() *cobra.Command {
 		Use:   "package-version",
 		Short: "Report the target package for a YAML configuration file",
 		Long: `Report the target package for a YAML configuration file.
-		Shortcut for equivlaent of running:
+		Shortcut for equivalent of running:
 		
 			melange query config.yaml '{{ .Package.Name }}-{{ .Package.Version }}-r{{ .Package.Epoch }}'
 		`,

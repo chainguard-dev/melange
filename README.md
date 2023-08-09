@@ -52,7 +52,7 @@ To use the examples, you'll generally want to mount your current directory into 
 docker run --privileged -v "$PWD":/work cgr.dev/chainguard/melange build examples/gnu-hello.yaml
 ```
 
-Running outside of a container requires [Docker](https://docs.docker.com/get-docker/), but should also work with other runtimes such as [podman](https://podman.io/getting-started/installation).
+Running outside of a container requires [Docker](https://docs.docker.com/get-docker/), but should also work with other run-times such as [podman](https://podman.io/getting-started/installation).
 
 Alternatively, if you're on a Mac, you can use the [melange instructions for Lima](https://github.com/chainguard-dev/melange/blob/main/mac/README.md#Lima) to run an Alpine Linux VM.
 
@@ -146,15 +146,15 @@ pipeline:
 
 Melange provides the following default substitutions which can be referenced in the build file pipeline:
 
-| **Substitution**         | **Description**                                   |
-|--------------------------|---------------------------------------------------|
-| `${{package.name}}`      | Package name                                      |
-| `${{package.version}}`   | Package version                                   |
-| `${{package.epoch}}`     | Package epoch                                     |
-| `${{targets.destdir}}`   | Directory where targets will be stored            |
-| `${{targets.subpkgdir}}` | Directory where subpackage targets will be stored |
+| **Substitution**         | **Description**                                    |
+|--------------------------|----------------------------------------------------|
+| `${{package.name}}`      | Package name                                       |
+| `${{package.version}}`   | Package version                                    |
+| `${{package.epoch}}`     | Package epoch                                      |
+| `${{targets.destdir}}`   | Directory where targets will be stored             |
+| `${{targets.subpkgdir}}` | Directory where sub-package targets will be stored |
 
-An example build file pipeline with subsitutuions:
+An example build file pipeline with substitutions:
 
 ```yaml
 pipeline:

@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// SignIndex Sign an APK index
 func SignIndex() *cobra.Command {
 	var signingKey string
 
@@ -40,6 +41,7 @@ func SignIndex() *cobra.Command {
 	return cmd
 }
 
+// SignIndexCmd called from SignIndex()
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
 	return sign.SignIndex(ctx, LogDefault(), signingKey, indexFile)
 }

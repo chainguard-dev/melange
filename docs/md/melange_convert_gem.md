@@ -15,16 +15,15 @@ Converts an gem into a melange.yaml
 
 Converts an gem into a melange.yaml.
 
-```
-melange convert gem [flags]
+```sh
+$ melange convert gem [flags]
 ```
 
 ### Examples
 
-```
-
+```sh
 # Convert the latest fluentd gem
-convert gem fluentd
+$ convert gem fluentd
 ```
 
 ### Options

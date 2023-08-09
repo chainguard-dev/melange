@@ -15,16 +15,15 @@ Converts a python package into a melange.yaml
 
 Converts an python package into a melange.yaml.
 
-```
-melange convert python [flags]
+```sh
+$ melange convert python [flags]
 ```
 
 ### Examples
 
-```
-
+```sh
 # Convert the latest botocore python package
-convert python botocore
+$ convert python botocore
 ```
 
 ### Options

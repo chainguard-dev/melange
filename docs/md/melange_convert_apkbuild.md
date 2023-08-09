@@ -15,14 +15,14 @@ Converts an APKBUILD package into a melange.yaml
 
 Converts an APKBUILD package into a melange.yaml.
 
-```
-melange convert apkbuild [flags]
+```sh
+$ melange convert apkbuild [flags]
 ```
 
 ### Examples
 
-```
-  convert apkbuild libx11
+```sh
+$ convert apkbuild libx11
 ```
 
 ### Options

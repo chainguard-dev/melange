@@ -15,14 +15,14 @@ Creates a repository index from a list of package files
 
 Creates a repository index from a list of package files.
 
-```
-melange index [flags]
+```sh
+$ melange index [flags]
 ```
 
 ### Examples
 
-```
-  melange index -o APKINDEX.tar.gz *.apk
+```sh
+$ melange index -o APKINDEX.tar.gz *.apk
 ```
 
 ### Options

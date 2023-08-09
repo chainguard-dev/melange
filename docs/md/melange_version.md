@@ -11,8 +11,8 @@ toc: true
 
 Prints the version
 
-```
-melange version [flags]
+```sh
+$ melange version [flags]
 ```
 
 ### Options

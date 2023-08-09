@@ -15,14 +15,14 @@ Sign an APK index
 
 Sign an APK index.
 
-```
-melange sign-index [flags]
+```sh
+$ melange sign-index [flags]
 ```
 
 ### Examples
 
-```
-  melange sign-index [--signing-key=key.rsa] <APKINDEX.tar.gz>
+```sh
+$ melange sign-index [--signing-key=key.rsa] <APKINDEX.tar.gz>
 ```
 
 ### Options

@@ -111,4 +111,4 @@ etc. - all `runs` commands inside pipelines run natively on the processor.
 On the other hand, when building for alternative architecture, e.g. for arm64 while on amd64, the commands are run
 using [binfmt_misc](https://en.wikipedia.org/wiki/Binfmt_misc) user-mode emulation.
 
-melange does not need to do anything to make this work, provided `binfmt_misc` is installed on the host system.
+`melange` does not need to do anything to make this work, provided `binfmt_misc` is installed on the host system.

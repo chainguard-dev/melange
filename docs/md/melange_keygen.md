@@ -15,14 +15,14 @@ Generate a key for package signing
 
 Generate a key for package signing.
 
-```
-melange keygen [flags]
+```sh
+$ melange keygen [flags]
 ```
 
 ### Examples
 
-```
-  melange keygen [key.rsa]
+```sh
+$ melange keygen [key.rsa]
 ```
 
 ### Options

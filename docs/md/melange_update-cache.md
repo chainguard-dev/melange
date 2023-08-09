@@ -15,14 +15,14 @@ Update a source artifact cache
 
 Update a source artifact cache.
 
-```
-melange update-cache [flags]
+```sh
+$ melange update-cache [flags]
 ```
 
 ### Examples
 
-```
-  melange update-cache --cache-dir <cache-dir> <config.yaml>
+```sh
+$ melange update-cache --cache-dir <cache-dir> <config.yaml>
 ```
 
 ### Options

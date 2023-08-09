@@ -26,25 +26,30 @@ MacOS:
 
 Zsh:
 
+
+```sh
 # If shell completion is not already enabled in your environment you will need
 # to enable it.  You can execute the following once:
 
 $ echo "autoload -U compinit; compinit" >> ~/.zshrc
+```
 
+```sh
 # To load completions for each session, execute once:
 $ melange completion zsh > "${fpath[1]}/_melange"
 
 # You will need to start a new shell for this setup to take effect.
+```
 
 Fish:
-
+```sh
 $ melange completion fish | source
 
 # To load completions for each session, execute once:
 $ melange completion fish > ~/.config/fish/completions/melange.fish
-
-
 ```
+
+```sh
 melange completion [bash|zsh|fish|powershell]
 ```
 

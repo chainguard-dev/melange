@@ -43,8 +43,7 @@ const (
 	melangeWritableParent = "/tmp/melange"
 	// containerImageName name to use; this MUST be the fully qualified name, because we intend to work directly with containerd in the future
 	containerImageName = "index.docker.io/library/melange:latest"
-	// LimaName const with the value of "lima"
-	LimaName = "lima"
+	LimaName           = "lima"
 )
 
 //go:embed lima.yaml

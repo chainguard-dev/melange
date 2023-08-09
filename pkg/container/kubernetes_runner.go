@@ -54,9 +54,7 @@ import (
 )
 
 const (
-	// KubernetesName = "kubernetes"
-	KubernetesName = "kubernetes"
-	// KubernetesConfigFileName = ".melange.k8s.yaml"
+	KubernetesName                             = "kubernetes"
 	KubernetesConfigFileName                   = ".melange.k8s.yaml"
 	kubernetesBuilderPodWorkspaceContainerName = "workspace"
 )
@@ -620,10 +618,9 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 	return pod
 }
 
-// KubernetesRunnerConfigOptions Kubernetes runner config options
 type KubernetesRunnerConfigOptions func(*KubernetesRunnerConfig)
 
-// WithKubernetesRunnerConfigBaseConfigFile accepts path to config file
+// WithKubernetesRunnerConfigBaseConfigFile sets path to config file
 func WithKubernetesRunnerConfigBaseConfigFile(path string) KubernetesRunnerConfigOptions {
 	return func(c *KubernetesRunnerConfig) {
 		c.baseConfigFile = path

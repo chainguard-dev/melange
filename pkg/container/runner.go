@@ -26,7 +26,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
-// Runner interface
 type Runner interface {
 	Name() string
 	TestUsability(ctx context.Context) bool
@@ -45,7 +44,6 @@ type Runner interface {
 	WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error)
 }
 
-// Loader interface
 type Loader interface {
 	LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
 }

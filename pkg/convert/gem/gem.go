@@ -35,9 +35,7 @@ import (
 )
 
 const (
-	// DefaultRubyVersion = 3.2
-	DefaultRubyVersion = "3.2"
-	// DefaultBaseURIFormat = "https://rubygems.org/api/v1/gems/%s.json"
+	DefaultRubyVersion   = "3.2"
 	DefaultBaseURIFormat = "https://rubygems.org/api/v1/gems/%s.json"
 )
 
@@ -78,14 +76,13 @@ type GemContext struct {
 
 // GemMeta is the json response from rubygems.org
 type GemMeta struct {
-	Name          string   `json:"name"`
-	Version       string   `json:"version"`
-	Info          string   `json:"info"`
-	Licenses      []string `json:"licenses"`
-	SourceCodeURI string   `json:"source_code_uri"`
-	HomepageURI   string   `json:"homepage_uri"`
-	// GemMetaDependencies holds Gem meta dependencies
-	Dependencies GemMetaDependencies `json:"dependencies"`
+	Name          string              `json:"name"`
+	Version       string              `json:"version"`
+	Info          string              `json:"info"`
+	Licenses      []string            `json:"licenses"`
+	SourceCodeURI string              `json:"source_code_uri"`
+	HomepageURI   string              `json:"homepage_uri"`
+	Dependencies  GemMetaDependencies `json:"dependencies"`
 
 	// RepoURI is not a part of the gem metadata returned by rubygems.org,
 	// however it is intended to be the source of truth for the repository

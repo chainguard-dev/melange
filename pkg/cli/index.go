@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Index Creates a repository index from a list of package files
 func Index() *cobra.Command {
 	var apkIndexFilename string
 	var expectedArch string
@@ -45,6 +46,7 @@ func Index() *cobra.Command {
 	return cmd
 }
 
+// IndexCmd generates a new index
 func IndexCmd(ctx context.Context, opts ...index.Option) error {
 	ic, err := index.New(opts...)
 	if err != nil {

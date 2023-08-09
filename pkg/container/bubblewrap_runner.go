@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+// BubblewrapName = "bubblewrap"
 const BubblewrapName = "bubblewrap"
 
 type bubblewrap struct {

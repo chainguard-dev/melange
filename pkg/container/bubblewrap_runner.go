@@ -160,10 +160,10 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 			if err != nil {
 				return ref, fmt.Errorf("failed to create file %s: %w", fullname, err)
 			}
-			defer f.Close()
 			if _, err := io.Copy(f, tr); err != nil {
 				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
 			}
+			f.Close()
 		case tar.TypeSymlink:
 			if err := os.Symlink(hdr.Linkname, filepath.Join(guestDir, hdr.Name)); err != nil {
 				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)

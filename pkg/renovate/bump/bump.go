@@ -149,14 +149,14 @@ func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml
 	log.Printf("processing fetch node:")
 
 	// Fetch the new sources.
-	evaluatedUri, err := util.MutateStringFromMap(rc.Vars, uriNode.Value)
+	evaluatedURI, err := util.MutateStringFromMap(rc.Vars, uriNode.Value)
 	if err != nil {
 		return err
 	}
 	log.Printf("  uri: %s", uriNode.Value)
-	log.Printf("  evaluated: %s", evaluatedUri)
+	log.Printf("  evaluated: %s", evaluatedURI)
 
-	downloadedFile, err := util.DownloadFile(ctx, evaluatedUri)
+	downloadedFile, err := util.DownloadFile(ctx, evaluatedURI)
 	if err != nil {
 		return err
 	}

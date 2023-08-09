@@ -15,6 +15,7 @@
 package cli
 
 import (
+	// Not sure why these are blankly imported?
 	_ "context"
 	_ "fmt"
 
@@ -24,6 +25,7 @@ import (
 	"chainguard.dev/melange/pkg/renovate/cache"
 )
 
+// UpdateCache Update a source artifact cache
 func UpdateCache() *cobra.Command {
 	var cacheDir string
 

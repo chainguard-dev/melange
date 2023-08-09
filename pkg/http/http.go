@@ -45,7 +45,7 @@ func NewClient(rl *rate.Limiter) *RLHTTPClient {
 // sha256 hash of it.
 //
 // On success, it will return the sha256 hash as a string.
-func (r *RLHTTPClient) GetArtifactSHA256(ctx context.Context, artifactURI string) (string, error) {
+func (c *RLHTTPClient) GetArtifactSHA256(ctx context.Context, artifactURI string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", artifactURI, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating request for %s", artifactURI)

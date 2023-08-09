@@ -391,7 +391,7 @@ func WithFS(filesystem fs.FS) ConfigurationParsingOption {
 	}
 }
 
-// WithEnvFileForParsing set the paths from whcih to read an environment file.
+// WithEnvFileForParsing set the paths from which to read an environment file.
 func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.envFilePath = path

@@ -619,6 +619,7 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 
 type KubernetesRunnerConfigOptions func(*KubernetesRunnerConfig)
 
+// WithKubernetesRunnerConfigBaseConfigFile sets the path to a config file with KubernetesRunner-specific options
 func WithKubernetesRunnerConfigBaseConfigFile(path string) KubernetesRunnerConfigOptions {
 	return func(c *KubernetesRunnerConfig) {
 		c.baseConfigFile = path

@@ -14,7 +14,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-containerregistry v0.15.2
+	github.com/google/go-containerregistry v0.16.1
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/imdario/mergo v0.3.16
 	github.com/joho/godotenv v1.5.1

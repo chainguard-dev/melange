@@ -19,7 +19,7 @@ run_builder() {
     if ! (docker inspect melange-inception:latest >/dev/null 2>&1 ); then
         set -e
         mkdir _output > /dev/null 2>&1 || : 
-        docker run --rm -v $(pwd):/melange -w /melange \
+        docker run --rm -v "$(pwd)":/melange -w /melange \
             cgr.dev/chainguard/apko@${BUILDER_APKO_TAG} build \
             ./hack/melange-devenv.yaml ${IMAGE_TAG}:latest ./_output/melange-inception.tar.gz  \
             --sbom=false
@@ -31,7 +31,7 @@ run_builder() {
 
 run() {
     docker run --rm --privileged -w /melage -v /var/run/docker.sock:/var/run/docker.sock \
-        -v $(pwd):/melage -ti ${IMAGE_TAG}:latest hack/make-devenv.sh setup
+        -v "$(pwd)":/melange -ti ${IMAGE_TAG}:latest hack/make-devenv.sh setup
 }
 
 setup() {

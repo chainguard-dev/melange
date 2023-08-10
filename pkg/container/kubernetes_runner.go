@@ -490,10 +490,8 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) (*KubernetesRunne
 	data, err := os.ReadFile(cfg.baseConfigFile)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("error reading config file %s: %w", cfg.baseConfigFile, err)
-	} else {
-		if err := yaml.Unmarshal(data, global); err != nil {
-			return nil, fmt.Errorf("error parsing config file %s: %w", cfg.baseConfigFile, err)
-		}
+	} else if err := yaml.Unmarshal(data, global); err != nil {
+		return nil, fmt.Errorf("error parsing config file %s: %w", cfg.baseConfigFile, err)
 	}
 
 	if err := mergo.Merge(cfg, global, mergo.WithOverride); err != nil {
@@ -621,6 +619,7 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 
 type KubernetesRunnerConfigOptions func(*KubernetesRunnerConfig)
 
+// WithKubernetesRunnerConfigBaseConfigFile sets the path to a config file with KubernetesRunner-specific options
 func WithKubernetesRunnerConfigBaseConfigFile(path string) KubernetesRunnerConfigOptions {
 	return func(c *KubernetesRunnerConfig) {
 		c.baseConfigFile = path

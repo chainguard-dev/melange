@@ -154,7 +154,7 @@ Melange provides the following default substitutions which can be referenced in 
 | `${{targets.destdir}}`   | Directory where targets will be stored            |
 | `${{targets.subpkgdir}}` | Directory where subpackage targets will be stored |
 
-An example build file pipeline with subsitutuions:
+An example build file pipeline with substitutions:
 
 ```yaml
 pipeline:

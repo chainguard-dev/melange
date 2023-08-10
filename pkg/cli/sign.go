@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// SignIndex is a constructor that returns a cobra.Command which wraps the SignIndexCmd() function.
 func SignIndex() *cobra.Command {
 	var signingKey string
 
@@ -40,6 +41,7 @@ func SignIndex() *cobra.Command {
 	return cmd
 }
 
+// SignIndexCmd is the backend implementation of the "melange sign-index" command.
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
 	return sign.SignIndex(ctx, LogDefault(), signingKey, indexFile)
 }

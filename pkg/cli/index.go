@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Index is a constructor for a cobra.Command which wraps the IndexCmd function.
 func Index() *cobra.Command {
 	var apkIndexFilename string
 	var expectedArch string
@@ -45,6 +46,7 @@ func Index() *cobra.Command {
 	return cmd
 }
 
+// IndexCmd is the backend implementation of the "melange index" command.
 func IndexCmd(ctx context.Context, opts ...index.Option) error {
 	ic, err := index.New(opts...)
 	if err != nil {

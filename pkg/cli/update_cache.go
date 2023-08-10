@@ -15,15 +15,13 @@
 package cli
 
 import (
-	_ "context"
-	_ "fmt"
-
 	"github.com/spf13/cobra"
 
 	"chainguard.dev/melange/pkg/renovate"
 	"chainguard.dev/melange/pkg/renovate/cache"
 )
 
+// UpdateCache is a constructor for a cobra.Command which provides the "melange update-cache" command.
 func UpdateCache() *cobra.Command {
 	var cacheDir string
 

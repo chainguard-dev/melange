@@ -61,11 +61,11 @@ func TestGetGemMeta(t *testing.T) {
 			expected.RepoURI = expected.HomepageURI
 		}
 
-		gemUrl := fmt.Sprintf("%s/%s/", server.URL, gem.Name())
+		gemURL := fmt.Sprintf("%s/%s/", server.URL, gem.Name())
 		assert.NoError(t, err)
 
 		// Ensure expected == got
-		got, err := gemctx.getGemMeta(context.Background(), gemUrl)
+		got, err := gemctx.getGemMeta(context.Background(), gemURL)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, got)
 	}

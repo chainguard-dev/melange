@@ -28,7 +28,7 @@ func GetDefaultRunner() runner {
 	return r
 }
 
-// GetAllrunners returns a list of all valid runners.
+// GetAllRunners returns a list of all valid runners.
 func GetAllRunners() []runner {
 	return []runner{
 		runnerBubblewrap,

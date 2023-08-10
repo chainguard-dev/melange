@@ -490,10 +490,8 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) (*KubernetesRunne
 	data, err := os.ReadFile(cfg.baseConfigFile)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("error reading config file %s: %w", cfg.baseConfigFile, err)
-	} else {
-		if err := yaml.Unmarshal(data, global); err != nil {
-			return nil, fmt.Errorf("error parsing config file %s: %w", cfg.baseConfigFile, err)
-		}
+	} else if err := yaml.Unmarshal(data, global); err != nil {
+		return nil, fmt.Errorf("error parsing config file %s: %w", cfg.baseConfigFile, err)
 	}
 
 	if err := mergo.Merge(cfg, global, mergo.WithOverride); err != nil {

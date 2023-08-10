@@ -15,7 +15,6 @@
 package cli
 
 import (
-
 	"github.com/spf13/cobra"
 
 	"chainguard.dev/melange/pkg/renovate"

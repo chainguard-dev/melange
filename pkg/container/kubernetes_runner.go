@@ -79,8 +79,12 @@ func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
 		Config: cfg,
 		logger: logger,
 	}
-
-	restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(clientcmd.NewDefaultClientConfigLoadingRules(), &clientcmd.ConfigOverrides{}).ClientConfig()
+	override := &clientcmd.ConfigOverrides{}
+	if cfg.Context != "" {
+		logger.Infof("Using kubecontext: %s", cfg.Context)
+		override.CurrentContext = cfg.Context
+	}
+	restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(clientcmd.NewDefaultClientConfigLoadingRules(), override).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load kubeconfig: %v", err)
 	}
@@ -439,6 +443,7 @@ func (k *k8s) filterMounts(mount BindMount) bool {
 // TODO: Add loaders from package config and environment
 type KubernetesRunnerConfig struct {
 	Provider    string            `json:"provider" yaml:"provider"`
+	Context     string            `json:"context" yaml:"context"`
 	Repo        string            `json:"repo" yaml:"repo"`
 	Namespace   string            `json:"namespace" yaml:"namespace"`
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`

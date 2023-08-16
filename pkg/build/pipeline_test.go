@@ -17,6 +17,8 @@ package build
 import (
 	"testing"
 
+	"chainguard.dev/melange/pkg/logger"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 
@@ -78,4 +80,50 @@ func Test_substitutionMap(t *testing.T) {
 			require.Equal(t, tt.expected, m["${{vars.mangled-package-version}}"])
 		})
 	}
+}
+
+func Test_substitutionNeedPackages(t *testing.T) {
+	pkgctx, err := NewPackageContext(
+		&config.Package{
+			Name:    "foo",
+			Version: "1.2.3",
+		},
+	)
+	require.NoError(t, err)
+
+	p := &config.Pipeline{
+		Needs: struct{ Packages []string }{Packages: []string{"foo", "${{inputs.go-package}}"}},
+		Inputs: map[string]config.Input{
+			"go-package": {
+				Default: "go",
+			},
+		},
+	}
+
+	log := logger.NopLogger{}
+	pctx, err := NewPipelineContext(p, log)
+	require.NoError(t, err)
+
+	pb := &PipelineBuild{
+		Package: pkgctx,
+		Build: &Build{
+			PipelineDir: "pipelines",
+			Configuration: config.Configuration{
+				Pipeline: []config.Pipeline{
+					{
+						Uses: "go/build",
+						With: map[string]string{
+							"go-package": "go-5.4.3",
+							"output":     "foo",
+							"packages":   "./bar",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err = pctx.loadUse(pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
+	require.NoError(t, err)
+	require.Equal(t, "go-5.4.3", pb.Build.Configuration.Pipeline[0].With["go-package"])
 }

@@ -2,12 +2,17 @@ name: Run a build using the go compiler
 
 needs:
   packages:
-    - go
+    - ${{inputs.go-package}}
     - busybox
     - ca-certificates-bundle
     - git
 
 inputs:
+  go-package:
+    description: |
+      The go package to install
+    default: go
+
   package:
     description: |
       Import path to the package 

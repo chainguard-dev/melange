@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/klauspost/compress/gzip"
@@ -21,7 +22,7 @@ type ApkSigner interface {
 	SignatureName() string
 }
 
-func EmitSignature(ctx context.Context, signer ApkSigner, controlData []byte) ([]byte, error) {
+func EmitSignature(ctx context.Context, signer ApkSigner, controlData []byte, sde time.Time) ([]byte, error) {
 	_, span := otel.Tracer("melange").Start(ctx, "EmitSignature")
 	defer span.End()
 
@@ -37,13 +38,15 @@ func EmitSignature(ctx context.Context, signer ApkSigner, controlData []byte) ([
 
 	// The signature tarball only contains a single file
 	if err := tw.WriteHeader(&tar.Header{
-		Name:  signer.SignatureName(),
-		Size:  int64(len(sig)),
-		Mode:  int64(os.ModePerm),
-		Uid:   0,
-		Gid:   0,
-		Uname: "root",
-		Gname: "root",
+		Name:     signer.SignatureName(),
+		Typeflag: tar.TypeReg,
+		Size:     int64(len(sig)),
+		Mode:     int64(os.ModePerm),
+		Uid:      0,
+		Gid:      0,
+		Uname:    "root",
+		Gname:    "root",
+		ModTime:  sde,
 	}); err != nil {
 		return nil, err
 	}

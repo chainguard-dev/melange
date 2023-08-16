@@ -6,19 +6,26 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
+	"os"
 	"testing"
+	"time"
 
 	"chainguard.dev/melange/pkg/build"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
+
+const MockName = "mockiavelli"
 
 func TestEmitSignature(t *testing.T) {
 	ctx := context.Background()
+	sde := time.Unix(12345678, 0)
 
 	controlData := []byte("donkey")
 
 	signer := &mockSigner{}
 
-	sig, err := build.EmitSignature(ctx, signer, controlData)
+	sig, err := build.EmitSignature(ctx, signer, controlData, sde)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +55,21 @@ func TestEmitSignature(t *testing.T) {
 	}
 
 	// Should only have a single file in here
+	hdrWant := &tar.Header{
+		Name:     MockName,
+		Typeflag: tar.TypeReg,
+		Size:     int64(len(controlData)),
+		Mode:     int64(os.ModePerm),
+		Uid:      0,
+		Gid:      0,
+		Uname:    "root",
+		Gname:    "root",
+		ModTime:  sde,
+	}
+	if diff := cmp.Diff(hdr, hdrWant, cmpopts.IgnoreFields(tar.Header{}, "AccessTime", "ChangeTime", "Format")); diff != "" {
+		t.Errorf("Expected %v got %v", hdr, hdrWant)
+	}
+
 	if hdr.Name != "mockiavelli" {
 		t.Errorf("Unexpected tar header name: got %v want %v", hdr.Name, "mockaveli")
 	}

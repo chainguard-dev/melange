@@ -15,10 +15,18 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
 
+	"chainguard.dev/melange/pkg/build"
+	"github.com/chainguard-dev/go-apk/pkg/apk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 // SignIndex is a constructor that returns a cobra.Command which wraps the SignIndexCmd() function.
@@ -44,4 +52,134 @@ func SignIndex() *cobra.Command {
 // SignIndexCmd is the backend implementation of the "melange sign-index" command.
 func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
 	return sign.SignIndex(ctx, LogDefault(), signingKey, indexFile)
+}
+
+type signOpts struct {
+	Key string
+
+	logger *log.Logger
+}
+
+func Sign() *cobra.Command {
+	o := &signOpts{
+		logger: log.New(log.Writer(), "melange-sign: ", log.LstdFlags|log.Lmsgprefix),
+	}
+
+	cmd := &cobra.Command{
+		Use:   "sign",
+		Short: "Sign an APK package",
+		Long:  "Signs an APK package on disk with the provided key. The package is replaced with the APK containing the new signature.",
+		Example: `
+		melange sign [--signing-key=key.rsa] package.apk
+
+		melange sign [--signing-key=key.rsa] *.apk
+		`,
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			return o.RunAllE(ctx, args...)
+		},
+	}
+
+	cmd.Flags().StringVarP(&o.Key, "signing-key", "k", "local-melange.rsa", "The signing key to use.")
+
+	return cmd
+}
+
+func (o signOpts) RunAllE(ctx context.Context, pkgs ...string) error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	for _, pkg := range pkgs {
+		p := pkg
+
+		g.Go(func() error {
+			return o.run(ctx, p)
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o signOpts) run(ctx context.Context, pkg string) error {
+	o.logger.Printf("Processing apk %s", pkg)
+
+	apkr, err := os.Open(pkg)
+	if err != nil {
+		return err
+	}
+
+	eapk, err := apk.ExpandApk(ctx, apkr, "")
+	if err != nil {
+		return fmt.Errorf("expanding apk: %v", err)
+	}
+	defer eapk.Close()
+
+	if err := apkr.Close(); err != nil {
+		return err
+	}
+
+	// Split the streams and then rebuild
+	cf, err := os.Open(eapk.ControlFile)
+	if err != nil {
+		return err
+	}
+
+	pc := &build.PackageBuild{
+		Build: &build.Build{
+			SigningKey:        o.Key,
+			SigningPassphrase: "",
+		},
+	}
+
+	cdata, err := os.ReadFile(eapk.ControlFile)
+	if err != nil {
+		return err
+	}
+
+	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata)
+	if err != nil {
+		return err
+	}
+
+	df, err := os.Open(eapk.PackageFile)
+	if err != nil {
+		return err
+	}
+
+	tf, err := os.CreateTemp("", "melange-signer")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tf.Name())
+
+	for _, fp := range []io.Reader{bytes.NewBuffer(sigData), cf, df} {
+		if _, err := io.Copy(tf, fp); err != nil {
+			return err
+		}
+	}
+
+	if err := tf.Sync(); err != nil {
+		return err
+	}
+
+	if _, err := tf.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	// Replace the package file with the new one
+	f, err := os.Create(pkg)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, tf); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -17,13 +17,11 @@ package build
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
 	"crypto/sha256"
 	"debug/elf"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -40,7 +38,6 @@ import (
 	"chainguard.dev/melange/pkg/config"
 
 	"chainguard.dev/apko/pkg/log"
-	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
@@ -201,7 +198,7 @@ func (pc *PackageBuild) GenerateControlData(w io.Writer) error {
 	return template.Must(tmpl.Parse(controlTemplate)).Execute(w, pc)
 }
 
-func (pc *PackageBuild) generateControlSection(ctx context.Context, digest hash.Hash, w io.WriteSeeker) (hash.Hash, error) {
+func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, error) {
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
 		tarball.WithOverrideUIDGID(0, 0),
@@ -210,86 +207,79 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context, digest hash.
 		tarball.WithSkipClose(true),
 	)
 	if err != nil {
-		return digest, fmt.Errorf("unable to build tarball context: %w", err)
+		return nil, fmt.Errorf("unable to build tarball context: %w", err)
 	}
 
 	var controlBuf bytes.Buffer
 	if err := pc.GenerateControlData(&controlBuf); err != nil {
-		return digest, fmt.Errorf("unable to process control template: %w", err)
+		return nil, fmt.Errorf("unable to process control template: %w", err)
 	}
 
 	fsys := memfs.New()
 	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
-		return digest, fmt.Errorf("unable to build control FS: %w", err)
+		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
 	if pc.Scriptlets.Trigger.Script != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".trigger", []byte(pc.Scriptlets.Trigger.Script), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
 	if pc.Scriptlets.PreInstall != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".pre-install", []byte(pc.Scriptlets.PreInstall), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
 	if pc.Scriptlets.PostInstall != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".post-install", []byte(pc.Scriptlets.PostInstall), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
 	if pc.Scriptlets.PreDeinstall != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".pre-deinstall", []byte(pc.Scriptlets.PreDeinstall), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
 	if pc.Scriptlets.PostDeinstall != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".post-deinstall", []byte(pc.Scriptlets.PostDeinstall), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
 	if pc.Scriptlets.PreUpgrade != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".pre-upgrade", []byte(pc.Scriptlets.PreUpgrade), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
 	if pc.Scriptlets.PostUpgrade != "" {
 		// #nosec G306 -- scriptlets must be executable
 		if err := fsys.WriteFile(".post-upgrade", []byte(pc.Scriptlets.PostUpgrade), 0755); err != nil {
-			return digest, fmt.Errorf("unable to build control FS: %w", err)
+			return nil, fmt.Errorf("unable to build control FS: %w", err)
 		}
 	}
 
-	mw := io.MultiWriter(digest, w)
-	zw := gzip.NewWriter(mw)
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
 
 	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
-		return digest, fmt.Errorf("unable to write control tarball: %w", err)
+		return nil, fmt.Errorf("unable to write control tarball: %w", err)
 	}
 	if err := zw.Close(); err != nil {
-		return digest, fmt.Errorf("flushing control section gzip: %w", err)
+		return nil, fmt.Errorf("flushing control section gzip: %w", err)
 	}
 
-	controlHash := hex.EncodeToString(digest.Sum(nil))
-	pc.Logger.Printf("  control.tar.gz digest: %s", controlHash)
-
-	if _, err := w.Seek(0, io.SeekStart); err != nil {
-		return digest, fmt.Errorf("unable to rewind control tarball: %w", err)
-	}
-
-	return digest, nil
+	return buf.Bytes(), nil
 }
 
 func (pc *PackageBuild) SignatureName() string {
@@ -736,7 +726,7 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, w io.Wr
 	return nil
 }
 
-func (pc *PackageBuild) emitNormalSignatureSection(ctx context.Context, h hash.Hash, w io.WriteSeeker) error {
+func (pc *PackageBuild) EmitNormalSignatureSection(ctx context.Context, signature []byte, w io.WriteSeeker) error {
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
 		tarball.WithOverrideUIDGID(0, 0),
@@ -749,12 +739,8 @@ func (pc *PackageBuild) emitNormalSignatureSection(ctx context.Context, h hash.H
 	}
 
 	fsys := memfs.New()
-	sigbuf, err := sign.RSASignSHA1Digest(h.Sum(nil), pc.Build.SigningKey, pc.Build.SigningPassphrase)
-	if err != nil {
-		return fmt.Errorf("unable to generate signature: %w", err)
-	}
 
-	if err := fsys.WriteFile(pc.SignatureName(), sigbuf, 0644); err != nil {
+	if err := fsys.WriteFile(pc.SignatureName(), signature, 0644); err != nil {
 		return fmt.Errorf("unable to build signature FS: %w", err)
 	}
 
@@ -814,47 +800,20 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 		return err
 	}
 
-	// prepare control.tar.gz
-	controlTarGz, err := os.CreateTemp("", "melange-control-*.tar.gz")
-	if err != nil {
-		return fmt.Errorf("unable to open temporary file for writing: %w", err)
-	}
-	defer controlTarGz.Close()
-	defer os.Remove(controlTarGz.Name())
-
-	var controlDigest hash.Hash
-
-	// APKv2 style signature is a SHA-1 hash on the control digest,
-	// APKv2+Fulcio style signature is an SHA-256 hash on the control
-	// digest.
-	controlDigest = sha256.New()
-
-	// Key-based signature (normal), use SHA-1
-	if pc.Build.SigningKey != "" {
-		controlDigest = sha1.New()
-	}
-
-	finalDigest, err := pc.generateControlSection(ctx, controlDigest, controlTarGz)
+	controlSectionData, err := pc.generateControlSection(ctx)
 	if err != nil {
 		return err
 	}
 
-	combinedParts := []io.Reader{controlTarGz, dataTarGz}
+	combinedParts := []io.Reader{bytes.NewReader(controlSectionData), dataTarGz}
 
 	if pc.wantSignature() {
-		signatureTarGz, err := os.CreateTemp("", "melange-signature-*.tar.gz")
+		signatureData, err := EmitSignature(ctx, pc.Signer(), controlSectionData)
 		if err != nil {
-			return fmt.Errorf("unable to open temporary file for writing: %w", err)
-		}
-		defer signatureTarGz.Close()
-		defer os.Remove(signatureTarGz.Name())
-
-		// TODO(kaniini): Emit fulcio signature if signing key not configured.
-		if err := pc.emitNormalSignatureSection(ctx, finalDigest, signatureTarGz); err != nil {
-			return err
+			return fmt.Errorf("emitting signature: %v", err)
 		}
 
-		combinedParts = append([]io.Reader{signatureTarGz}, combinedParts...)
+		combinedParts = append([]io.Reader{bytes.NewReader(signatureData)}, combinedParts...)
 	}
 
 	// build the final tarball
@@ -880,4 +839,17 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (pc *PackageBuild) Signer() ApkSigner {
+	var signer ApkSigner
+	if pc.Build.SigningKey == "" {
+		signer = &FulcioApkSigner{}
+	} else {
+		signer = &KeyApkSigner{
+			KeyFile:       pc.Build.SigningKey,
+			KeyPassphrase: pc.Build.SigningPassphrase,
+		}
+	}
+	return signer
 }

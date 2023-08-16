@@ -128,6 +128,12 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 		return err
 	}
 
+	// Use the control sections ModTime (set to SDE) for the signature
+	cfinfo, err := os.Stat(eapk.ControlFile)
+	if err != nil {
+		return err
+	}
+
 	pc := &build.PackageBuild{
 		Build: &build.Build{
 			SigningKey:        o.Key,
@@ -140,7 +146,7 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 		return err
 	}
 
-	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata)
+	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata, cfinfo.ModTime())
 	if err != nil {
 		return err
 	}

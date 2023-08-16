@@ -726,41 +726,6 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, w io.Wr
 	return nil
 }
 
-func (pc *PackageBuild) EmitNormalSignatureSection(ctx context.Context, signature []byte, w io.WriteSeeker) error {
-	tarctx, err := tarball.NewContext(
-		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
-		tarball.WithOverrideUIDGID(0, 0),
-		tarball.WithOverrideUname("root"),
-		tarball.WithOverrideGname("root"),
-		tarball.WithSkipClose(true),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to build tarball context: %w", err)
-	}
-
-	fsys := memfs.New()
-
-	if err := fsys.WriteFile(pc.SignatureName(), signature, 0644); err != nil {
-		return fmt.Errorf("unable to build signature FS: %w", err)
-	}
-
-	zw := gzip.NewWriter(w)
-
-	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
-		return fmt.Errorf("unable to write signature tarball: %w", err)
-	}
-
-	if err := zw.Close(); err != nil {
-		return fmt.Errorf("flushing control section gzip: %w", err)
-	}
-
-	if _, err := w.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("unable to rewind signature tarball: %w", err)
-	}
-
-	return nil
-}
-
 func (pc *PackageBuild) wantSignature() bool {
 	return pc.Build.SigningKey != ""
 }
@@ -808,7 +773,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	combinedParts := []io.Reader{bytes.NewReader(controlSectionData), dataTarGz}
 
 	if pc.wantSignature() {
-		signatureData, err := EmitSignature(ctx, pc.Signer(), controlSectionData)
+		signatureData, err := EmitSignature(ctx, pc.Signer(), controlSectionData, pc.Build.SourceDateEpoch)
 		if err != nil {
 			return fmt.Errorf("emitting signature: %v", err)
 		}

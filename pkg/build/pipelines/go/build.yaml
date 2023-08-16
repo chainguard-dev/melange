@@ -2,11 +2,16 @@ name: Run a build using the go compiler
 
 needs:
   packages:
-    - go
+    - ${{inputs.go-package}}
     - busybox
     - ca-certificates-bundle
 
 inputs:
+  go-package:
+    description: |
+      The go package to install
+    default: go
+
   packages:
     description: |
       List of space-separated packages to compile. Files con also be specified.

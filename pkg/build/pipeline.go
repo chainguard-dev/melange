@@ -213,6 +213,14 @@ func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[st
 		return err
 	}
 
+	// allow input mutations on needs.packages
+	for p := range pctx.Pipeline.Needs.Packages {
+		pctx.Pipeline.Needs.Packages[p], err = util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Needs.Packages[p])
+		if err != nil {
+			return err
+		}
+	}
+
 	for k := range pctx.Pipeline.Pipeline {
 		pctx.Pipeline.Pipeline[k].With = rightJoinMap(pctx.Pipeline.With, pctx.Pipeline.Pipeline[k].With)
 	}

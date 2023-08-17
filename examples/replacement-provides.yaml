@@ -1,0 +1,13 @@
+package:
+  name: replacement-provides
+  version: 0.0.1
+  description: example using a replacement in provides
+  dependencies:
+    provides:
+      - replacement-provides-version=${{package.version}}
+      - replacement-provides-foo=${{vars.foo}}
+      - replacement-provides-bar=${{vars.bar}}
+
+vars:
+  foo: FOO
+  bar: BAR

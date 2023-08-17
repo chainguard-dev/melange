@@ -10,7 +10,7 @@ import (
 
 func Test_applySubstitutionsInProvides(t *testing.T) {
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
-	os.WriteFile(fp, []byte(`
+	if err := os.WriteFile(fp, []byte(`
 package:
   name: replacement-provides
   version: 0.0.1
@@ -32,7 +32,9 @@ subpackages:
         - subpackage-version=${{package.version}}
         - subpackage-foo=${{vars.foo}}
         - subpackage-bar=${{vars.bar}}
-`), 0644)
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
 	cfg, err := ParseConfiguration(fp)
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)

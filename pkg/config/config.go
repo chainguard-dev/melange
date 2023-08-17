@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -33,6 +34,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/logger"
+	"chainguard.dev/melange/pkg/util"
 )
 
 type Scriptlets struct {
@@ -113,6 +115,27 @@ func (p Package) PackageURL(distro string) string {
 		p.Name,
 		version,
 	)
+}
+
+func (c *Configuration) applySubstitutionsForProvides() error {
+	nw := buildConfigMap(c)
+	for i, prov := range c.Package.Dependencies.Provides {
+		var err error
+		c.Package.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
+		}
+	}
+	for _, sp := range c.Subpackages {
+		for i, prov := range sp.Dependencies.Provides {
+			var err error
+			sp.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
+			if err != nil {
+				return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
+			}
+		}
+	}
+	return nil
 }
 
 type Copyright struct {
@@ -447,9 +470,10 @@ func detectCommit(dirPath string, logger apko_log.Logger) string {
 // buildConfigMap builds a map used to prepare a replacer for variable substitution.
 func buildConfigMap(cfg *Configuration) map[string]string {
 	out := map[string]string{
-		"${{package.name}}":        cfg.Package.Name,
-		"${{package.version}}":     cfg.Package.Version,
-		"${{package.description}}": cfg.Package.Description,
+		SubstitutionPackageName:        cfg.Package.Name,
+		SubstitutionPackageVersion:     cfg.Package.Version,
+		SubstitutionPackageDescription: cfg.Package.Description,
+		SubstitutionPackageEpoch:       strconv.FormatUint(cfg.Package.Epoch, 10),
 	}
 
 	for k, v := range cfg.Vars {
@@ -674,6 +698,10 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	}
 
 	cfg.Subpackages = subpackages
+
+	if err := cfg.applySubstitutionsForProvides(); err != nil {
+		return nil, err
+	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
 	if err = cfg.validate(); err != nil {

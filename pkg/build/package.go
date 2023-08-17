@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"text/template"
@@ -42,6 +43,24 @@ import (
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
 )
+
+// pgzip's default is GOMAXPROCS(0)
+//
+// This is fine for single builds, but we will starve CPU for larger builds.
+// 8 is our max because modern laptops tend to have ~8 performance cores, and
+// large CI machines tend to have ~64 cores.
+//
+// This gives us near 100% utility on workstations, allows us to do ~8
+// concurrent builds on giant machines, and uses only 1 core on tiny machines.
+var pgzipThreads = min(runtime.GOMAXPROCS(0), 8)
+
+func min(l, r int) int {
+	if l < r {
+		return l
+	}
+
+	return r
+}
 
 type PackageContext struct {
 	Package *config.Package
@@ -707,6 +726,9 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, w io.Wr
 	digest := sha256.New()
 	mw := io.MultiWriter(digest, w)
 	zw := pgzip.NewWriter(mw)
+	if err := zw.SetConcurrency(1<<20, pgzipThreads); err != nil {
+		return fmt.Errorf("tried to set pgzip concurrency to %d: %w", pgzipThreads, err)
+	}
 
 	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)

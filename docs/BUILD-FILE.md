@@ -1,40 +1,39 @@
 # melange build file
 
-This documents the melange build file structure, fields, when, and why to use
-various fields.
+This documents the melange build file structure, fields, when, and why to use various fields.
 
 # High level structure overview
 
-The following are the high level sections for the build file, with detailed
-descriptions for each of them, and their fields in the sections following.
+The following are the high level sections for the build file, with detailed descriptions for each of them, and their fields in the sections following.
 
- * package
+ ## Required
+ ### package
 
    Package metadata about this package, name, version, etc.
- * environment
+ ### environment
 
     Specification for the packages build environment
- * pipeline
+ ### pipeline
 
     Ordered list of pipelines that produce this package
 
-And the following optional sections:
- * subpackages
+## Optional
+### subpackages
 
    List of subpackages that this package also produces. For example, docs.
- * data
+### data
 
    Arbitrary list of data available for templating in the pipeline.
- * [update](./UPDATE.md)
+### [update](./UPDATE.md)
 
    Defines how this package is auto updated
- * vars
+### vars
 
    Map of arbitrary variables available for templating in the pipeline.
- * [var-transforms](./VAR-TRANSFORMS.md)
+### [var-transforms](./VAR-TRANSFORMS.md)
 
    List of transformations to create for the builtin template variables.
- * options
+### options
 
    Deviations to the build
 
@@ -43,7 +42,7 @@ And the following optional sections:
 Details about the particular package that will be used to find and use it.
 
 ### name
-Unique name for the package. For example:
+Unique name for the package. Convention is to use the same name as the YAML file without extension. This is what people will search for, so it's a good idea to keep it consistent with how the package is named in other distributions. for example:
 ```
 name: python-3.10
 ```
@@ -56,7 +55,7 @@ version: 3.10.12
 
 ### epoch
 Monotonically increasing value (starting at 0) indicating same version of the
-package with changes (security patches for example) applied to it.
+package, but with changes (security patches for example) applied to it.
 ```
 epoch: 0
 ```
@@ -66,7 +65,7 @@ form: `<name>-<version>-r<epoch>.apk` for our example above, this would be:
 `python-3.10-3.10.12-r0.apk`.
 
 ### description
-Human readable description of the package. For example:
+Human readable description of the package. Make this meaningful, as this information shows up when searching for the package with apk, for example:
 ```
 description: "the Python programming language"
 ```
@@ -92,8 +91,7 @@ List of copyrights for this package. Each entry in the list consists of 3
 fields that define the scope (paths, and which license applies to it):
 
 #### license
-The license for either the package or part of the package (if there are
-multiple entries).
+The license for either the package or part of the package (if there are multiple entries). It is important to note that only packages with OSI-approved licenses can be included in Wolfi. You can check the relevant package info in the licenses page at [opensource.org](https://opensource.org/licenses/).
 
 #### paths [optional]
 The license paths that this license applies to
@@ -196,6 +194,20 @@ those directories? Something else??
 # environment
 Environment defines the build environment, including what the dependencies are,
 including repositories, packages, etc.
+
+## Local building
+When building locally, you'll also need to include information about where to find Wolfi packages. This is not needed when submitting the package to the Wolfi OS repository. The "contents" node is used for that:
+
+```yaml
+environment:
+  contents:
+    repositories:
+    - https://packages.wolfi.dev/bootstrap/stage3
+    - https://packages.wolfi.dev/os
+    keyring:
+    - https://packages.wolfi.dev/bootstrap/stage3/wolfi-signing.rsa.pub
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+```
 
 ## contents
 Contents has 3 lists that define where to look for packages, how to validate the

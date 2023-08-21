@@ -15,12 +15,12 @@ inputs:
 
   package:
     description: |
-      Import path to the package 
+      Import path to the package
     required: true
 
-  version: 
+  version:
     description: |
-      Package version to install. This can be a version tag (v1.0.0), a 
+      Package version to install. This can be a version tag (v1.0.0), a
       commit hash or another ref (eg latest or HEAD).
 
   prefix:
@@ -64,11 +64,11 @@ pipeline:
 
       # Run go install
       go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.package}}${VERSION}
-      mkdir -p ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}
+      mkdir -p ${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}
 
       # Move all resulting files to the target dir
       echo "go/install: Installing built binaries"
       for f in $(ls ${GOBIN})
       do
-        mv -v ${GOBIN}/${f} ${{targets.destdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${f}
+        mv -v ${GOBIN}/${f} ${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}/${f}
       done

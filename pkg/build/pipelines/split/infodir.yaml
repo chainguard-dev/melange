@@ -1,10 +1,11 @@
 name: Split GNU info pages
 
 pipeline:
-  - runs: |
+  - if: ${{targets.destdir}} != ${{targets.contextdir}}
+    runs: |
       if [ -d "${{targets.destdir}}/usr/share/info" ]; then
         rm -f "${{targets.destdir}}"/usr/share/info/dir
 
-        mkdir -p "${{targets.subpkgdir}}/usr/share"
-        mv "${{targets.destdir}}"/usr/share/info "${{targets.subpkgdir}}/usr/share"
+        mkdir -p "${{targets.contextdir}}/usr/share"
+        mv "${{targets.destdir}}"/usr/share/info "${{targets.contextdir}}/usr/share"
       fi

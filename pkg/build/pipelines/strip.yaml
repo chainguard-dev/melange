@@ -6,8 +6,8 @@ needs:
     - scanelf
 
 pipeline:
-  - runs: |
-      cd "${{targets.destdir}}"
+  - working-directory: ${{targets.contextdir}}
+    runs: |
       scanelf --recursive --nobanner --osabi --etype "ET_DYN,ET_EXEC" . \
         | while read type osabi filename; do
 

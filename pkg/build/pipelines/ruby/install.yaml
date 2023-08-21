@@ -51,8 +51,8 @@ pipeline:
       [ -n '${{inputs.gem-file}}' ] && GEM=${{inputs.gem-file}}
       [ -n '${{inputs.gem}}' ] && GEM=${{inputs.gem}}-${{inputs.version}}.gem
 
-      TARGET_DIR_BIN="${{targets.destdir}}/usr/bin"
-      TARGET_DIR_INSTALL="${{targets.destdir}}$(ruby -e 'puts Gem.default_dir')/"
+      TARGET_DIR_BIN="${{targets.contextdir}}/usr/bin"
+      TARGET_DIR_INSTALL="${{targets.contextdir}}$(ruby -e 'puts Gem.default_dir')/"
 
       mkdir -p "${TARGET_DIR_BIN}"
       mkdir -p "${TARGET_DIR_INSTALL}"

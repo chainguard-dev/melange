@@ -1,7 +1,7 @@
 ---
 title: "melange convert apkbuild"
 slug: melange_convert_apkbuild
-url: /open-source/melange/reference/melange_convert_apkbuild/
+url: /docs/md/melange_convert_apkbuild.md
 draft: false
 images: []
 type: "article"
@@ -38,5 +38,5 @@ melange convert apkbuild [flags]
 
 ### SEE ALSO
 
-* [melange convert](/open-source/melange/reference/melange_convert/)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
+* [melange convert](/docs/md/melange_convert.md)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 

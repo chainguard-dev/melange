@@ -1,7 +1,7 @@
 ---
 title: "melange keygen"
 slug: melange_keygen
-url: /open-source/melange/reference/melange_keygen/
+url: /docs/md/melange_keygen.md
 draft: false
 images: []
 type: "article"
@@ -34,5 +34,5 @@ melange keygen [flags]
 
 ### SEE ALSO
 
-* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

@@ -1,7 +1,7 @@
 ---
 title: "melange build"
 slug: melange_build
-url: /open-source/melange/reference/melange_build/
+url: /docs/md/melange_build.md
 draft: false
 images: []
 type: "article"
@@ -52,7 +52,7 @@ melange build [flags]
       --overlay-binsh string        use specified file as /bin/sh overlay in build environment
       --pipeline-dir string         directory used to extend defined built-in pipelines
   -r, --repository-append strings   path to extra repositories to include in the build environment
-      --runner string               which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "lima" "kubernetes"] (default "bubblewrap")
+      --runner string               which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "lima" "kubernetes"] (default "docker")
       --signing-key string          key to use for signing
       --source-dir string           directory used for included sources
       --strip-origin-name           whether origin names should be stripped (for bootstrap)
@@ -62,5 +62,5 @@ melange build [flags]
 
 ### SEE ALSO
 
-* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

@@ -1,7 +1,7 @@
 ---
 title: "melange sign"
 slug: melange_sign
-url: /open-source/melange/reference/melange_sign/
+url: /docs/md/melange_sign.md
 draft: false
 images: []
 type: "article"
@@ -38,5 +38,5 @@ melange sign [flags]
 
 ### SEE ALSO
 
-* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

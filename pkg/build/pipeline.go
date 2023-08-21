@@ -128,6 +128,16 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
 	}
 
+	packageNames := []string{pb.Package.Package.Name}
+	for _, sp := range pb.Build.Configuration.Subpackages {
+		packageNames = append(packageNames, sp.Name)
+	}
+
+	for _, pn := range packageNames {
+		k := fmt.Sprintf("${{targets.package.%s}}", pn)
+		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
+	}
+
 	for k := range pb.Build.Configuration.Options {
 		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
 		nw[nk] = "false"

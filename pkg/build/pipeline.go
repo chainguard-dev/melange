@@ -99,6 +99,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		config.SubstitutionPackageVersion:       pb.Package.Package.Version,
 		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
 		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
+		config.SubstitutionTargetsContextdir:    fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
 		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
 		config.SubstitutionHostTripletRust:      pb.Build.BuildTripletRust(),
 		config.SubstitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
@@ -124,6 +125,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 
 	if pb.Subpackage != nil {
 		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
+		nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
 	}
 
 	for k := range pb.Build.Configuration.Options {

@@ -29,6 +29,7 @@ const (
 	SubstitutionPackageEpoch         = "${{package.epoch}}"
 	SubstitutionPackageDescription   = "${{package.description}}"
 	SubstitutionTargetsDestdir       = "${{targets.destdir}}"
+	SubstitutionTargetsContextdir    = "${{targets.contextdir}}"
 	SubstitutionSubPkgDir            = "${{targets.subpkgdir}}"
 	SubstitutionHostTripletGnu       = "${{host.triplet.gnu}}"
 	SubstitutionHostTripletRust      = "${{host.triplet.rust}}"

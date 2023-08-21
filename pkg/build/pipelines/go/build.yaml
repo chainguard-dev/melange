@@ -22,10 +22,10 @@ inputs:
   tags:
     description: |
       A comma-separated list of build tags to pass to the go compiler
-  
+
   output:
     description: |
-      Filename to use when writing the binary. The final install location inside 
+      Filename to use when writing the binary. The final install location inside
       the apk will be in prefix / install-dir / output
     required: true
 
@@ -78,11 +78,6 @@ pipeline:
       fi
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
-      if [ "${{inputs.subpackage}}" == "true" ]; then
-        DEST_PATH="-o ${{targets.subpkgdir}}/${BASE_PATH}"
-      else
-        DEST_PATH="-o ${{targets.destdir}}/${BASE_PATH}"
-      fi
 
       cd "${{inputs.modroot}}"
 
@@ -95,4 +90,4 @@ pipeline:
         # If vendor is specified, update the vendor directory
         "${{inputs.vendor}}" && go mod vendor
       fi
-      go build ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
+      go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}

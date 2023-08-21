@@ -6,14 +6,15 @@ needs:
     - scanelf
 
 pipeline:
-  - runs: |
+  - if: ${{targets.destdir}} != ${{targets.contextdir}}
+    runs: |
       mkdir -p "${{targets.destdir}}/.dbg-tmp"
       # note: the ${{targets.subpkgdir}} doesn't exist when the glob is evaluated
       scanelf -Ry "${{targets.destdir}}"/* | while read type src; do
         if [ "$type" != ET_DYN ]; then
           continue
         fi
-        dst=${{targets.subpkgdir}}/usr/lib/debug/${src#"${{targets.destdir}}"/*/}.debug
+        dst=${{targets.contextdir}}/usr/lib/debug/${src#"${{targets.destdir}}"/*/}.debug
         mkdir -p "${dst%/*}"
         ino=$(stat -c %i "$src")
         if ! [ -e "${{targets.destdir}}/.dbg-tmp/$ino" ]; then

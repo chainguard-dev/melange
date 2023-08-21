@@ -12,4 +12,4 @@ inputs:
 
 pipeline:
   - runs: |
-      DESTDIR="${{targets.destdir}}" meson install -C ${{inputs.output-dir}}
+      DESTDIR="${{targets.contextdir}}" meson install -C ${{inputs.output-dir}}

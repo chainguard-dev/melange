@@ -76,7 +76,7 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 		return err
 	}
 
-	t, err := os.CreateTemp("", "melange-sign-index")
+	t, err := os.Create(fmt.Sprintf("%s.new", indexFile))
 	if err != nil {
 		return err
 	}

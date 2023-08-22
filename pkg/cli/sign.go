@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
@@ -22,36 +23,136 @@ import (
 	"log"
 	"os"
 
-	"chainguard.dev/melange/pkg/build"
 	"github.com/chainguard-dev/go-apk/pkg/apk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
+	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/build"
 )
+
+type signIndexOpts struct {
+	Key   string
+	Force bool
+}
 
 // SignIndex is a constructor that returns a cobra.Command which wraps the SignIndexCmd() function.
 func SignIndex() *cobra.Command {
-	var signingKey string
+	o := &signIndexOpts{}
 
 	cmd := &cobra.Command{
-		Use:     "sign-index",
-		Short:   "Sign an APK index",
-		Long:    `Sign an APK index.`,
-		Example: `  melange sign-index [--signing-key=key.rsa] <APKINDEX.tar.gz>`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:   "sign-index",
+		Short: "Sign an APK index",
+		Long:  `Sign an APK index.`,
+		Example: `
+    # Re-sign an index with the same signature
+    melange sign-index [--signing-key=key.rsa] <APKINDEX.tar.gz>
+
+    # Sign a new index with a new signature
+    melange sign-index [--signing-key=key.rsa] <APKINDEX.tar.gz> --force
+    `,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return SignIndexCmd(cmd.Context(), signingKey, args[0])
+			return o.SignIndex(cmd.Context(), args[0])
 		},
 	}
 
-	cmd.Flags().StringVar(&signingKey, "signing-key", "melange.rsa", "the signing key to use")
+	cmd.Flags().StringVar(&o.Key, "signing-key", "melange.rsa", "the signing key to use")
+	cmd.Flags().BoolVarP(&o.Force, "force", "f", false, "when toggled, overwrites the specified index with a new index using the provided signature")
 
 	return cmd
 }
 
-// SignIndexCmd is the backend implementation of the "melange sign-index" command.
-func SignIndexCmd(ctx context.Context, signingKey string, indexFile string) error {
-	return sign.SignIndex(ctx, LogDefault(), signingKey, indexFile)
+func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
+	logger := LogDefault()
+
+	if !o.Force {
+		return sign.SignIndex(ctx, logger, o.Key, indexFile)
+	}
+
+	idx, err := parseIndexWithoutSignature(ctx, indexFile)
+	if err != nil {
+		return err
+	}
+
+	t, err := os.CreateTemp("", "melange-sign-index")
+	if err != nil {
+		return err
+	}
+
+	if _, err := t.Write(idx); err != nil {
+		return err
+	}
+
+	if err := t.Sync(); err != nil {
+		return err
+	}
+
+	if _, err := t.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	if err := sign.SignIndex(ctx, logger, o.Key, t.Name()); err != nil {
+		return err
+	}
+
+	logger.Printf("Replacing existing signed index (%s) with signed index with key %s", indexFile, o.Key)
+	if err := os.Rename(t.Name(), indexFile); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// parseIndexWithoutSignature takes in an index file and returns the unsigned []byte represenation of it
+func parseIndexWithoutSignature(ctx context.Context, indexFile string) ([]byte, error) {
+	orig, err := os.Open(indexFile)
+	if err != nil {
+		return nil, err
+	}
+	defer orig.Close()
+
+	gr, err := gzip.NewReader(orig)
+	if err != nil {
+		return nil, err
+	}
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+
+	var nb bytes.Buffer
+
+	gw := gzip.NewWriter(&nb)
+	tw := tar.NewWriter(gw)
+
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if hdr.Name == "DESCRIPTION" || hdr.Name == "APKINDEX" {
+			if err := tw.WriteHeader(hdr); err != nil {
+				return nil, err
+			}
+			if _, err := io.Copy(tw, tr); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	if err := gw.Close(); err != nil {
+		return nil, err
+	}
+
+	return nb.Bytes(), nil
 }
 
 type signOpts struct {

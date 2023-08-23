@@ -43,20 +43,22 @@ func main() {
 
 	var pathout string
 	var baseURL string
+	var suffix string
 	flag.StringVar(&pathout, "out", "./md", "Path to the output directory.")
 	flag.StringVar(&baseURL, "baseurl", "/open-source/melange/reference/", "Base URL for melange-docs on Academy site.")
+	flag.StringVar(&suffix, "suffix", "/", "Suffix for the MD files.")
 	flag.Parse()
 
 	filePrepender := func(filename string) string {
 		name := filepath.Base(filename)
 		base := strings.Split(strings.TrimSuffix(name, path.Ext(name)), "/")[:1][0]
-		url := baseURL + strings.ToLower(base) + "/"
+		url := baseURL + strings.ToLower(base) + suffix
 		return fmt.Sprintf(fmTemplate, strings.ReplaceAll(base, "_", " "), base, url)
 	}
 
 	linkHandler := func(name string) string {
 		base := strings.TrimSuffix(name, path.Ext(name))
-		return baseURL + strings.ToLower(base) + "/"
+		return baseURL + strings.ToLower(base) + suffix
 	}
 
 	if err := os.MkdirAll(pathout, os.ModePerm); err != nil && !os.IsExist(err) {

@@ -167,11 +167,20 @@ sign-image: ko ## Sign images built using ko
 	./hack/sign-images.sh
 
 ##################
-# docs
+# docs - This appears to create the docs for the Chainguard Academy site, so
+# left as is.
 ##################
 .PHONY: docs
 docs:
 	go run docs/main.go --out docs/md
+
+##################
+# docs - This creates documents where the links are self-referential to this
+# repo.
+##################
+.PHONY: docs-repo
+docs-repo:
+	go run docs/main.go --baseurl /docs/md/ --suffix .md --out docs/md
 
 ##################
 # help

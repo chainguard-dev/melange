@@ -26,6 +26,9 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
@@ -188,6 +191,26 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 			return err
 		}
 		destinationFile = client.Bucket(bucket).Object(path.Join(prefix, filename)).NewWriter(ctx)
+	} else if strings.HasPrefix(cfg.CacheDir, "s3://") {
+		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cfg.CacheDir, "s3://"), "/")
+		sess := session.Must(session.NewSession())
+		uploader := s3manager.NewUploader(sess)
+		sourceFile, err := os.Open(downloadedFile)
+		if err != nil {
+			return err
+		}
+		defer sourceFile.Close()
+		_, err = uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(path.Join(prefix, filename)),
+			Body:   sourceFile,
+		})
+		if err != nil {
+			return err
+		} else {
+			log.Printf("  wrote: %s", destinationPath)
+			return nil
+		}
 	} else {
 		var err error
 		destinationFile, err = os.Create(destinationPath)

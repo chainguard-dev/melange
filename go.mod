@@ -5,6 +5,7 @@ go 1.20
 require (
 	chainguard.dev/apko v0.9.1-0.20230711074042-37b82f3a5bd8
 	cloud.google.com/go/storage v1.31.0
+	github.com/aws/aws-sdk-go v1.44.288
 	github.com/chainguard-dev/go-apk v0.0.0-20230710230135-7fc46e8b3c4d
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0
@@ -109,6 +110,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect

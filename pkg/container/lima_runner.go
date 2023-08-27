@@ -32,6 +32,7 @@ import (
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
+	"chainguard.dev/apko/pkg/options"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	limastore "github.com/lima-vm/lima/pkg/store"
@@ -443,8 +444,18 @@ func (l limaOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 
 	outputTarGZ := filepath.Join(tmp, "oci_image.tar.gz")
 
+	// This is a bit janky but BuildImageTarballFromLayer expects an Options.
+	creationTime, err := bc.GetBuildDateEpoch()
+	if err != nil {
+		return "", err
+	}
+	bopt := options.Options{
+		SourceDateEpoch: creationTime,
+		Arch:            arch,
+	}
+
 	if err := apko_oci.BuildImageTarballFromLayer(
-		containerImageName, layer, outputTarGZ, bc.ImageConfiguration, bc.Logger(), bc.Options); err != nil {
+		containerImageName, layer, outputTarGZ, bc.ImageConfiguration(), bc.Logger(), bopt); err != nil {
 		return ref, fmt.Errorf("failed to build OCI image: %w", err)
 	}
 	f, err := os.Open(outputTarGZ)

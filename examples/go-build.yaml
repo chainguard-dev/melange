@@ -27,7 +27,7 @@ pipeline:
     with:
       repository: https://github.com/puerco/hello.git
       destination: build-dir
-  - run: |
+  - runs: |
       git checkout ${{package.version}}
   - uses: go/build
     with:

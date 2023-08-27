@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"chainguard.dev/apko/pkg/log"
 	"go.opentelemetry.io/otel"
@@ -32,7 +31,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -253,22 +251,23 @@ func (d *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, 
 
 type dockerLoader struct{}
 
-func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (string, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.LoadImage")
 	defer span.End()
 
-	dig, _, err := apko_oci.PublishImageFromLayer(ctx,
-		layer, bc.ImageConfiguration, bc.Options.SourceDateEpoch, arch,
-		bc.Logger(), true, true, []string{"melange:latest"})
+	creationTime, err := bc.GetBuildDateEpoch()
 	if err != nil {
 		return "", err
 	}
-	// unfortunately, the hash in docker is not the actual image hash, but rather the hash of the config,
-	// so using the @sha256: breaks it. we have to stick with just the tag.
-	inTag := strings.TrimSuffix(dig.String(), fmt.Sprintf("@%s", dig.Identifier()))
-	tag, err := name.NewTag(inTag, name.WeakValidation)
+
+	img, err := apko_oci.BuildImageFromLayer(layer, bc.ImageConfiguration(), creationTime, arch, bc.Logger())
 	if err != nil {
 		return "", err
 	}
-	return tag.String(), nil
+
+	ref, err := apko_oci.LoadImage(ctx, img, bc.Logger(), []string{"melange:latest"})
+	if err != nil {
+		return "", err
+	}
+	return ref.String(), nil
 }

@@ -556,7 +556,7 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 
 	b.Logger.Printf("building workspace in '%s' with apko", b.GuestDir)
 
-	bc, err := apko_build.New(b.GuestDir,
+	bc, err := apko_build.New(ctx, b.GuestDir,
 		apko_build.WithImageConfiguration(b.Configuration.Environment),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
@@ -569,14 +569,10 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 		return fmt.Errorf("unable to create build context: %w", err)
 	}
 
-	if err := bc.Refresh(); err != nil {
-		return fmt.Errorf("unable to refresh build context: %w", err)
-	}
-
 	bc.Summarize()
 
 	// lay out the contents for the image in a directory.
-	if _, err := bc.BuildImage(ctx); err != nil {
+	if err := bc.BuildImage(ctx); err != nil {
 		return fmt.Errorf("unable to generate image: %w", err)
 	}
 	// if the runner needs an image, create an OCI image from the directory and load it.

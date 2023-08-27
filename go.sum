@@ -395,8 +395,8 @@ github.com/letsencrypt/boulder v0.0.0-20230823180119-72e01b337abc h1:mlxs7YApLbD
 github.com/letsencrypt/boulder v0.0.0-20230823180119-72e01b337abc/go.mod h1:QxVawq7cLEno3oWIpkQfeylV8DzySjOMzQqXnWeyans=
 github.com/lima-vm/go-qcow2reader v0.1.1 h1:UegxTAU4usoSzKLDqhbaNmmV4Ec4qhQO11QYeLLy7Jc=
 github.com/lima-vm/go-qcow2reader v0.1.1/go.mod h1:e3p29BzLT8hNh4jbLezdFAHU4eBijf0bm5GilStCRKE=
-github.com/lima-vm/lima v0.17.0 h1:izv+9Wf8CPZdQEX6Qvck2V4osElB/Ymg+ntN/PPy2KI=
-github.com/lima-vm/lima v0.17.0/go.mod h1:grXW7g0fhYdPcozxvbO8P7kuILU8r02xwwHYmgaZTis=
+github.com/lima-vm/lima v0.17.2 h1:qW6hJr9pL9UdKJ4DMre0WByq6/C6GABLt1+L6MURXj4=
+github.com/lima-vm/lima v0.17.2/go.mod h1:11OhWybhpOY1MEy6v0D2KInRroGFh70EDqu27mJJlmw=
 github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=

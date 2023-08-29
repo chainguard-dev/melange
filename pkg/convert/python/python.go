@@ -204,7 +204,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 
 func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
-	generated := manifest.GeneratedMelangeConfig{}
+	generated := manifest.GeneratedMelangeConfig{Logger: c.Logger}
 
 	// Generate each field in the manifest
 	generated.GeneratedFromComment = pack.Info.ProjectUrl

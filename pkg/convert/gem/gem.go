@@ -238,7 +238,7 @@ func (c *GemContext) getGemMeta(ctx context.Context, gemURI string) (GemMeta, er
 // can continue and discrepancies can be handled later.
 func (c *GemContext) generateManifest(ctx context.Context, g GemMeta) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
-	generated := manifest.GeneratedMelangeConfig{}
+	generated := manifest.GeneratedMelangeConfig{Logger: c.Logger}
 
 	// Generate each field in the manifest
 	generated.GeneratedFromComment = g.RepoURI

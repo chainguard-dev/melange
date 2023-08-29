@@ -147,6 +147,7 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 	c.ApkConvertors[packageName] = ApkConvertor{
 		Apkbuild: &parsedApkBuild,
 		GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{
+			Logger:               c.Logger,
 			GeneratedFromComment: apkbuildURL,
 			Package: config.Package{
 				Epoch: 0,

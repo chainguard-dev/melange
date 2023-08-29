@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -19,6 +20,7 @@ type GeneratedMelangeConfig struct {
 	Subpackages          []config.Subpackage          `yaml:"subpackages,omitempty"`
 	Vars                 map[string]string            `yaml:"vars,omitempty"`
 	GeneratedFromComment string                       `yaml:"-"`
+	Logger               *log.Logger                  `yaml:"-"`
 }
 
 func (m *GeneratedMelangeConfig) SetPackage(pkg config.Package) {
@@ -68,5 +70,8 @@ func (m *GeneratedMelangeConfig) Write(dir string) error {
 		return errors.Wrapf(err, "creating writing to file %s", manifestPath)
 	}
 
+	if m.Logger != nil {
+		m.Logger.Printf("Generated melange config: %s", manifestPath)
+	}
 	return nil
 }

@@ -202,6 +202,15 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 	return c.findDep(ctx)
 }
 
+func normalizePythonVersion(version string) string {
+	// If the version is "3" then it's "python3" instead of "python-3"
+	// TODO(vaikas): Are there other special cases like this?
+	if version == "3" {
+		return "python3"
+	}
+	return "python-" + version
+}
+
 func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
 	generated := manifest.GeneratedMelangeConfig{}
@@ -229,7 +238,7 @@ func (c *PythonContext) generatePackage(pack Package, version string) config.Pac
 
 	c.Logger.Printf("[%s] Run time Deps %v", pack.Info.Name, pack.Dependencies)
 
-	pack.Dependencies = append(pack.Dependencies, "python-"+c.PythonVersion)
+	pack.Dependencies = append(pack.Dependencies, normalizePythonVersion(c.PythonVersion))
 
 	pkg := config.Package{
 		Name:        fmt.Sprintf("py%s-%s", c.PythonVersion, pack.Info.Name),
@@ -259,7 +268,7 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 		"wolfi-base",
 		"busybox",
 		"build-base",
-		"python-" + c.PythonVersion,            //Set the python version requested
+		normalizePythonVersion(c.PythonVersion),
 		"py" + c.PythonVersion + "-setuptools", //Set the specific python set up tools
 
 	}

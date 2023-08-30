@@ -283,8 +283,6 @@ func (c *GemContext) generatePackage(g GemMeta) config.Package {
 func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 	env := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
-			Repositories: []string{"https://packages.wolfi.dev/os"},
-			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages: []string{
 				"ca-certificates-bundle",
 				fmt.Sprintf("ruby-%s", c.RubyVersion),

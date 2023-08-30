@@ -266,9 +266,7 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 
 	env := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
-			Repositories: []string{"https://packages.wolfi.dev/os"},
-			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
-			Packages:     pythonStandard,
+			Packages: pythonStandard,
 		},
 	}
 

@@ -30,13 +30,19 @@ convert python botocore
 ### Options
 
 ```
+      --base-uri-format string   URI to use for querying gems for provided package name (default "https://pypi.org")
+  -h, --help                     help for python
+      --package-version string   version of the python package to convert
+      --python-version string    version of the python to build the package (default "3.11")
+```
+
+### Options inherited from parent commands
+
+```
       --additional-keyrings stringArray       additional repositories to be added to convert environment config
       --additional-repositories stringArray   additional repositories to be added to convert environment config
-      --base-uri-format string                URI to use for querying gems for provided package name (default "https://pypi.org")
-  -h, --help                                  help for python
-      --out-dir string                        directory where convert config will be output (default "./generated")
-      --package-version string                version of the python package to convert
-      --python-version string                 version of the python to build the package (default "3.11")
+  -o, --out-dir string                        directory where convert config will be output (default "./generated")
+      --wolfi-defaults                        if true, adds wolfi repo, and keyring to config (default true)
 ```
 
 ### SEE ALSO

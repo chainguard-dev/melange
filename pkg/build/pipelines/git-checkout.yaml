@@ -32,10 +32,20 @@ inputs:
     description: |
       The expected commit hash
 
+  recurse-submodules:
+    description: |
+      Indicates whether --recurse-submodules should be passed to git clone.
+    default: false
+
 pipeline:
   - runs: |
       if [ -z "${{inputs.branch}}" ] && [ -z "${{inputs.tag}}" ]; then
         echo "Warning (git-checkout): you have not specified a branch or tag."
+      fi
+
+      git_clone_flags=""
+      if [ "${{inputs.recurse-submodules}}" == "true" ]; then
+        git_clone_flags="--recurse-submodules"
       fi
 
       [ -n '${{inputs.branch}}' ] && clone_target='--branch ${{inputs.branch}}'
@@ -47,7 +57,7 @@ pipeline:
 
       git config --global --add safe.directory $workdir
       git config --global --add safe.directory $clone_fullpath
-      git clone $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+      git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
 
       cd $workdir
       tar -c . | (cd $clone_fullpath && tar -x)

@@ -140,8 +140,12 @@ func TestGenerateManifest(t *testing.T) {
 		pythonctxs, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
-		//botocore ctx
+		// botocore ctx
 		pythonctx := pythonctxs[0]
+		// Add additionalReposities and additionalKeyrings
+		pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+		pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
+
 		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion)
 		assert.NoError(t, err)
 
@@ -157,8 +161,8 @@ func TestGenerateManifest(t *testing.T) {
 		assert.Equal(t, got.Package.Copyright[0].License, "Apache License 2.0")
 
 		// Check Environment
-		assert.Equal(t, got.Environment.Contents.Repositories, []string{"https://packages.wolfi.dev/os"})
-		assert.Equal(t, got.Environment.Contents.Keyring, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"})
+		assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.Repositories)
+		assert.Equal(t, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}, got.Environment.Contents.Keyring)
 		assert.Equal(t, got.Environment.Contents.Packages, []string{
 			"ca-certificates-bundle",
 			"wolfi-base",
@@ -307,6 +311,9 @@ func TestGenerateEnvironment(t *testing.T) {
 	pythonctx := pythonctxs[0]
 
 	pythonctx.PythonVersion = "3.10"
+	// Add additionalReposities and additionalKeyrings
+	pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+	pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
 	got310 := pythonctx.generateEnvironment(pythonctx.Package)
 
 	expected310 := apkotypes.ImageConfiguration{
@@ -324,13 +331,16 @@ func TestGenerateEnvironment(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, got310, expected310)
+	assert.Equal(t, expected310, got310)
 
 	pythonctxs, err = SetupContext("3.11")
 
 	//botocore ctx
 	pythonctx = pythonctxs[0]
 	assert.NoError(t, err)
+	pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+	pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
+
 	got311 := pythonctx.generateEnvironment(pythonctx.Package)
 
 	expected311 := apkotypes.ImageConfiguration{
@@ -348,7 +358,7 @@ func TestGenerateEnvironment(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, got311, expected311)
+	assert.Equal(t, expected311, got311)
 }
 
 func removeVersionsFromURL(inputURL string) (string, error) {

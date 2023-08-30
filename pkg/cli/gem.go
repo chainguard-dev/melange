@@ -51,6 +51,14 @@ convert gem fluentd`,
 				return errors.New("too many arguments, expected only 1")
 			}
 
+			var err error
+			// Note we pass true here to get the default behaviour of adding
+			// the wolfi repo and keyring. This is because we want to add them
+			// by default for gem.
+			o.outDir, o.additionalRepositories, o.additionalKeyrings, err = getCommonValues(cmd, true)
+			if err != nil {
+				return err
+			}
 			return o.gemBuild(cmd.Context(), args[0])
 		},
 	}
@@ -60,19 +68,8 @@ convert gem fluentd`,
 		"version of ruby to use throughout generated manifests",
 	)
 	cmd.Flags().StringVar(
-		&o.outDir, "out-dir", "./generated", "directory where convert config will be output",
-	)
-	cmd.Flags().StringVar(
 		&o.baseURIFormat, "base-uri-format", gem.DefaultBaseURIFormat,
 		"URI to use for querying gems for provided package name",
-	)
-	cmd.Flags().StringArrayVar(
-		&o.additionalRepositories, "additional-repositories", []string{},
-		"additional repositories to be added to convert environment config",
-	)
-	cmd.Flags().StringArrayVar(
-		&o.additionalKeyrings, "additional-keyrings", []string{},
-		"additional repositories to be added to convert environment config",
 	)
 	return cmd
 }

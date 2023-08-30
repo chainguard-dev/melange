@@ -132,6 +132,10 @@ func TestGenerateManifest(t *testing.T) {
 
 	gemctx.RubyVersion = DefaultRubyVersion
 
+	// Add additionalReposities and additionalKeyrings
+	gemctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+	gemctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
+
 	// Read the gem meta into
 	data, err := os.ReadFile(filepath.Join(gemMetaDir, "async.json"))
 	assert.NoError(t, err)
@@ -259,8 +263,9 @@ func TestGenerateEnvironment(t *testing.T) {
 	gemctx, err := New()
 	assert.NoError(t, err)
 
-	gemctx.AdditionalKeyrings = []string{"melange.rsa.pub"}
-	gemctx.AdditionalRepositories = []string{"local /github/workspace/packages"}
+	// Add additionalReposities and additionalKeyrings
+	gemctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"}
+	gemctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"}
 	gemctx.RubyVersion = DefaultRubyVersion
 
 	got := gemctx.generateEnvironment()

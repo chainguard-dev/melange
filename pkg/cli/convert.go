@@ -26,10 +26,8 @@ const (
 )
 
 type convertCmd struct {
-	outDir                 string
-	additionalRepositories []string
-	additionalKeyrings     []string
-	wolfiDefaults          bool
+	outDir        string
+	wolfiDefaults bool
 }
 
 func Convert() *cobra.Command {

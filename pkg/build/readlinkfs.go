@@ -86,6 +86,15 @@ func stringsFromByteSlice(buf []byte) []string {
 	return result
 }
 
+// xattrIgnoreList contains a mapping of xattr names used by various
+// security features which leak their state into packages.  We need to
+// ignore these xattrs because they require special permissions to be
+// set when the underlying security features are in use.
+var xattrIgnoreList = map[string]bool{
+	"com.apple.provenance": true,
+	"security.csm":         true,
+}
+
 func (f *rlfs) ListXattrs(path string) (map[string][]byte, error) {
 	realPath := filepath.Join(f.base, path)
 
@@ -108,6 +117,10 @@ func (f *rlfs) ListXattrs(path string) (map[string][]byte, error) {
 	xattrMap := map[string][]byte{}
 	xattrNames := stringsFromByteSlice(buf[:read])
 	for _, xattrName := range xattrNames {
+		if _, ok := xattrIgnoreList[xattrName]; ok {
+			continue
+		}
+
 		result, err := f.GetXattr(path, xattrName)
 		if err != nil {
 			return map[string][]byte{}, err

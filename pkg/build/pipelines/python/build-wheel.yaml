@@ -12,6 +12,6 @@ pipeline:
       fi
 
   - runs: |
-      python -m build
+      python3 -m build
       python3 -m installer -d "${{targets.contextdir}}" dist/*.whl
       find ${{targets.contextdir}} -name "*.pyc" -exec rm -rf '{}' +

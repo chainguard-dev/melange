@@ -72,10 +72,6 @@ type PythonContext struct {
 	ToCheck []string
 }
 
-// TODO: This should be a pipeline
-const pythonBuildPipeline = `python setup.py build`
-const pythonInstallPipeline = `python setup.py install --prefix=/usr --root="${{targets.destdir}}"`
-
 // New initialises a new PythonContext.
 func New(packageName string) (PythonContext, error) {
 
@@ -259,8 +255,8 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 		"wolfi-base",
 		"busybox",
 		"build-base",
-		"python-" + c.PythonVersion,            //Set the python version requested
-		"py" + c.PythonVersion + "-setuptools", //Set the specific python set up tools
+		"python-" + c.PythonVersion,            // Set the python version requested
+		"py" + c.PythonVersion + "-setuptools", // Set the specific python set up tools
 
 	}
 
@@ -335,13 +331,13 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 		},
 	}
 	pythonBuild := config.Pipeline{
-		Runs: pythonBuildPipeline,
 		Name: "Python Build",
+		Uses: "python/build",
 	}
 
 	pythonInstall := config.Pipeline{
-		Runs: pythonInstallPipeline,
 		Name: "Python Install",
+		Uses: "python/install",
 	}
 	strip := config.Pipeline{
 		Uses: "strip",

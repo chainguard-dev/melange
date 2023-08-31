@@ -199,8 +199,8 @@ func TestGenerateManifest(t *testing.T) {
 		})
 
 		// Check Pipeline - runs
-		assert.Equal(t, got.Pipeline[1].Runs, pythonBuildPipeline)
-		assert.Equal(t, got.Pipeline[2].Runs, pythonInstallPipeline)
+		assert.Equal(t, got.Pipeline[1].Uses, "python/build")
+		assert.Equal(t, got.Pipeline[2].Uses, "python/install")
 		assert.Equal(t, got.Pipeline[3].Uses, "strip")
 	}
 }

@@ -6,7 +6,7 @@ needs:
 
 pipeline:
   - runs: |
-      if ! [ -x "$(command -v python)" ]; then
+      if ! [ -x "$(command -v python3)" ]; then
         echo 'Error: Python is not installed.'
         exit 1
       fi

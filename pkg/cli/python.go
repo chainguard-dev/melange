@@ -76,7 +76,7 @@ convert python botocore`,
 	cmd.Flags().StringVar(&o.packageVersion, "package-version", "", "version of the python package to convert")
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org",
 		"URI to use for querying gems for provided package name")
-	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3.11", "version of the python to build the package")
+	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3", "version of the python to build the package")
 	return cmd
 }
 

@@ -12,4 +12,4 @@ pipeline:
       fi
 
   - runs: |
-      python setup.py install --prefix=/usr --root="${{targets.contextdir}}"`
+      python setup.py install --prefix=/usr --root="${{targets.contextdir}}"

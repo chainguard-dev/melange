@@ -22,7 +22,7 @@ type Items struct {
 type Item struct {
 	Ecosystem string `json:"ecosystem"`
 	Homepage  string `json:"homepage"`
-	Id        int    `json:"id"`
+	ID        int    `json:"id"`
 }
 
 func NewMonitorFinder() *MonitorFinder {

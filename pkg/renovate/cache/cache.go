@@ -128,12 +128,12 @@ func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 	log.Printf("processing fetch node:")
 
 	// Fetch the new sources.
-	evaluatedUri := strings.ReplaceAll(uriNode.Value, "${{package.version}}", cfg.packageVersion)
-	evaluatedUri = strings.ReplaceAll(evaluatedUri, "${{package.name}}", cfg.packageName)
+	evaluatedURI := strings.ReplaceAll(uriNode.Value, "${{package.version}}", cfg.packageVersion)
+	evaluatedURI = strings.ReplaceAll(evaluatedURI, "${{package.name}}", cfg.packageName)
 	log.Printf("  uri: %s", uriNode.Value)
-	log.Printf("  evaluated: %s", evaluatedUri)
+	log.Printf("  evaluated: %s", evaluatedURI)
 
-	downloadedFile, err := util.DownloadFile(ctx, evaluatedUri)
+	downloadedFile, err := util.DownloadFile(ctx, evaluatedURI)
 	if err != nil {
 		return err
 	}

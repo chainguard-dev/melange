@@ -15,9 +15,6 @@
 package cli
 
 import (
-	_ "context"
-	_ "fmt"
-
 	"github.com/spf13/cobra"
 
 	"chainguard.dev/melange/pkg/renovate"
@@ -42,12 +39,7 @@ func Bump() *cobra.Command {
 				bump.WithTargetVersion(args[1]),
 				bump.WithExpectedCommit(expectedCommit),
 			)
-
-			if err := rc.Renovate(cmd.Context(), bumpRenovator); err != nil {
-				return err
-			}
-
-			return nil
+			return rc.Renovate(cmd.Context(), bumpRenovator)
 		},
 	}
 	cmd.Flags().StringVar(&expectedCommit, "expected-commit", "", "optional flag to update the expected-commit value of a git-checkout pipeline")

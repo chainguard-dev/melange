@@ -40,7 +40,7 @@ func Query() *cobra.Command {
 	return cmd
 }
 
-func QueryCmd(ctx context.Context, configFile, pattern string) error {
+func QueryCmd(_ context.Context, configFile, pattern string) error {
 	config, err := config.ParseConfiguration(configFile)
 	if err != nil {
 		return err
@@ -53,6 +53,5 @@ func QueryCmd(ctx context.Context, configFile, pattern string) error {
 	if err != nil {
 		return fmt.Errorf("error executing template: %w", err)
 	}
-
 	return nil
 }

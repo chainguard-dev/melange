@@ -85,7 +85,7 @@ func Convert() *cobra.Command {
 func getGithubClient(ctx context.Context, cmd *cobra.Command) (*github.Client, error) {
 	useGithub, err := cmd.Flags().GetBool("use-github")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get use-github flag: %v", err)
+		return nil, fmt.Errorf("failed to get use-github flag: %w", err)
 	}
 	if !useGithub {
 		return nil, nil
@@ -101,7 +101,7 @@ func getGithubClient(ctx context.Context, cmd *cobra.Command) (*github.Client, e
 func getRelaseMonitoringClient(cmd *cobra.Command) (*relmon.MonitorFinder, error) {
 	useRelMon, err := cmd.Flags().GetBool("use-relmon")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get use-relmon flag: %v", err)
+		return nil, fmt.Errorf("failed to get use-relmon flag: %w", err)
 	}
 	if !useRelMon {
 		return nil, nil
@@ -116,24 +116,24 @@ func getRelaseMonitoringClient(cmd *cobra.Command) (*relmon.MonitorFinder, error
 func getCommonValues(cmd *cobra.Command, honorWolfiDefaults bool) (string, []string, []string, error) {
 	outDir, err := cmd.Flags().GetString("out-dir")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to get out-dir flag: %v", err)
+		return "", nil, nil, fmt.Errorf("failed to get out-dir flag: %w", err)
 	}
 
 	additionalRepositories, err := cmd.Flags().GetStringArray("additional-repositories")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to get additional-repositories flag: %v", err)
+		return "", nil, nil, fmt.Errorf("failed to get additional-repositories flag: %w", err)
 	}
 
 	additionalKeyrings, err := cmd.Flags().GetStringArray("additional-keyrings")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to get additional-keyrings flag: %v", err)
+		return "", nil, nil, fmt.Errorf("failed to get additional-keyrings flag: %w", err)
 	}
 	// To ensure backwards compatibility while we migrate to the
 	// explicitly specifying the wolfi repos, we add them by default
 	// unless instructed not to.
 	wolfiDefaults, err := cmd.Flags().GetBool("wolfi-defaults")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to get wolfi-defaults flag: %v", err)
+		return "", nil, nil, fmt.Errorf("failed to get wolfi-defaults flag: %w", err)
 	}
 
 	if honorWolfiDefaults && wolfiDefaults {

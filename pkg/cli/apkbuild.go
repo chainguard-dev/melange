@@ -41,7 +41,6 @@ func ApkBuild() *cobra.Command {
 		Example: `  convert apkbuild libx11`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if len(args) != 1 {
 				return errors.New("too many arguments, expected only 1")
 			}

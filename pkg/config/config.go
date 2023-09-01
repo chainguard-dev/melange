@@ -117,16 +117,16 @@ func (p Package) PackageURL(distro string) string {
 	)
 }
 
-func (c *Configuration) applySubstitutionsForProvides() error {
-	nw := buildConfigMap(c)
-	for i, prov := range c.Package.Dependencies.Provides {
+func (cfg *Configuration) applySubstitutionsForProvides() error {
+	nw := buildConfigMap(cfg)
+	for i, prov := range cfg.Package.Dependencies.Provides {
 		var err error
-		c.Package.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
+		cfg.Package.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
 		if err != nil {
 			return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
 		}
 	}
-	for _, sp := range c.Subpackages {
+	for _, sp := range cfg.Subpackages {
 		for i, prov := range sp.Dependencies.Provides {
 			var err error
 			sp.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
@@ -583,7 +583,6 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 				Description: replacer.Replace(sp.Description),
 			}
 			for _, p := range sp.Pipeline {
-
 				// take a copy of the with map, so we can replace the values
 				replacedWith := make(map[string]string)
 				for key, value := range p.With {

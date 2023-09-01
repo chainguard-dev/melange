@@ -18,7 +18,6 @@ import (
 )
 
 func TestBump_versions(t *testing.T) {
-
 	dir := t.TempDir()
 
 	tests := []struct {
@@ -32,7 +31,6 @@ func TestBump_versions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			err, server := setupTestServer(t)
 			assert.NoError(t, err)
 
@@ -60,14 +58,11 @@ func TestBump_versions(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Contains(t, string(resultData), tt.expectedVersion)
 			assert.Contains(t, string(resultData), "expected-sha256: cc2c52929ace57623ff517408a577e783e10042655963b2c8f0633e109337d7a")
-
 		})
 	}
-
 }
 
 func TestBump_withExpectedCommit(t *testing.T) {
-
 	dir := t.TempDir()
 
 	tests := []struct {
@@ -79,7 +74,6 @@ func TestBump_withExpectedCommit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
 			assert.NoError(t, err)
 
@@ -102,10 +96,8 @@ func TestBump_withExpectedCommit(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, rs.Package.Version, tt.newVersion)
 			assert.Contains(t, rs.Pipeline[0].With["expected-commit"], tt.expectedCommit)
-
 		})
 	}
-
 }
 func setupTestServer(t *testing.T) (error, *httptest.Server) {
 	packageData, err := os.ReadFile(filepath.Join("testdata", "cheese-7.0.1.tar.gz"))
@@ -119,7 +111,6 @@ func setupTestServer(t *testing.T) (error, *httptest.Server) {
 		// Send response to be tested
 		_, err = rw.Write(packageData)
 		assert.NoError(t, err)
-
 	}))
 	return err, server
 }

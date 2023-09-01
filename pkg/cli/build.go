@@ -143,12 +143,12 @@ func Build() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
-	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build suceeds or fails")
+	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 
 	return cmd
 }
 
-func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ...build.Option) error {
+func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...build.Option) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildCmd")
 	defer span.End()
 
@@ -164,7 +164,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Build{}
 	for _, arch := range archs {
-		opts := append(base_opts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
+		opts := append(baseOpts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
@@ -193,14 +193,8 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, base_opts ..
 
 				return fmt.Errorf("failed to build package: %w", err)
 			}
-
 			return nil
 		})
 	}
-
-	if err := errg.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return errg.Wait()
 }

@@ -55,7 +55,6 @@ func (c Context) GetWolfiPackages(ctx context.Context) (map[string]bool, error) 
 	}
 
 	return parseIndex(filepath.Join(dir, "APKINDEX"))
-
 }
 
 func parseIndex(indexFile string) (map[string]bool, error) {
@@ -84,7 +83,6 @@ func parseIndex(indexFile string) (map[string]bool, error) {
 // Untar takes a destination path and a reader; a tar reader loops over the tarfile
 // creating the file structure at 'dst' along the way, and writing any files
 func Untar(dst string, r io.Reader) error {
-
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return err
@@ -97,7 +95,6 @@ func Untar(dst string, r io.Reader) error {
 		header, err := tr.Next()
 
 		switch {
-
 		// if no more files are found return
 		case err == io.EOF:
 			return nil
@@ -120,7 +117,6 @@ func Untar(dst string, r io.Reader) error {
 
 		// check the file type
 		switch header.Typeflag {
-
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {

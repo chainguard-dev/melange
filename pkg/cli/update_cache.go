@@ -46,12 +46,7 @@ func UpdateCache() *cobra.Command {
 			if err := rc.LoadConfig(); err != nil {
 				return err
 			}
-
-			if err := cacheRenovator(cmd.Context(), &rc); err != nil {
-				return err
-			}
-
-			return nil
+			return cacheRenovator(cmd.Context(), &rc)
 		},
 	}
 

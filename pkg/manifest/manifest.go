@@ -19,6 +19,7 @@ type GeneratedMelangeConfig struct {
 	Pipeline             []config.Pipeline            `yaml:"pipeline,omitempty"`
 	Subpackages          []config.Subpackage          `yaml:"subpackages,omitempty"`
 	Vars                 map[string]string            `yaml:"vars,omitempty"`
+	Update               config.Update                `yaml:"update,omitempty"`
 	GeneratedFromComment string                       `yaml:"-"`
 	Logger               *log.Logger                  `yaml:"-"`
 }

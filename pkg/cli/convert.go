@@ -15,8 +15,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"os"
 
+	"chainguard.dev/melange/pkg/convert/relmon"
+	"github.com/google/go-github/v54/github"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +32,8 @@ const (
 type convertCmd struct {
 	outDir        string
 	wolfiDefaults bool
+	useRelMon     bool
+	useGithub     bool
 }
 
 func Convert() *cobra.Command {
@@ -36,8 +42,8 @@ func Convert() *cobra.Command {
 		Use:               "convert",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
-		TraverseChildren:  true,
-		Short:             "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
+		//TraverseChildren:  true,
+		Short: "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
 		Long: `Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 								Check that the build executes and builds the apk as expected, using the wolfi-dev/sdk to test the install of built apk
 								Dependencies are recursively generated and a lot of assumptions are made for you, there be dragons here.
@@ -60,12 +66,47 @@ func Convert() *cobra.Command {
 	// not add them by default.
 	cmd.PersistentFlags().BoolVar(&c.wolfiDefaults, "wolfi-defaults", true, "if true, adds wolfi repo, and keyring to config")
 
+	// Experimental flag to see if we can fetch monitoring release data, and
+	// hence use it for Update section.
+	cmd.PersistentFlags().BoolVar(&c.useRelMon, "use-relmon", false, "**experimental** if true, tries to use release-monitoring to fetch release monitoring data.")
+
+	// Experimental flag to see if we can fetch github repo details and use that
+	// in pipeline to fetch instead of the ftp.
+	cmd.PersistentFlags().BoolVar(&c.useGithub, "use-github", false, "**experimental** if true, tries to use github to figure out the release commit details (python only for now). To prevent rate limiting, you can set the GITHUB_TOKEN env variable to a github token.")
+
 	cmd.AddCommand(
 		ApkBuild(),
 		GemBuild(),
 		PythonBuild(),
 	)
 	return cmd
+}
+
+func getGithubClient(ctx context.Context, cmd *cobra.Command) (*github.Client, error) {
+	useGithub, err := cmd.Flags().GetBool("use-github")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get use-github flag: %v", err)
+	}
+	if !useGithub {
+		return nil, nil
+	}
+	// TODO(vaikas): Do the right auth stuff here if we want to keep doing this.
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return github.NewTokenClient(ctx, os.Getenv("GITHUB_TOKEN")), nil
+	}
+	// Just return the default client for now.
+	return github.NewClient(nil), nil
+}
+
+func getRelaseMonitoringClient(cmd *cobra.Command) (*relmon.MonitorFinder, error) {
+	useRelMon, err := cmd.Flags().GetBool("use-relmon")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get use-relmon flag: %v", err)
+	}
+	if !useRelMon {
+		return nil, nil
+	}
+	return relmon.NewMonitorFinder(), nil
 }
 
 // Helper function for getting the out-dir, additional-repositories and

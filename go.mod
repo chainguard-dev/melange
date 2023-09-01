@@ -15,6 +15,7 @@ require (
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.16.1
+	github.com/google/go-github/v54 v54.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/imdario/mergo v0.3.16
 	github.com/joho/godotenv v1.5.1
@@ -22,6 +23,7 @@ require (
 	github.com/klauspost/compress v1.16.7
 	github.com/klauspost/pgzip v1.2.6
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
+	github.com/kubescape/go-git-url v0.0.25
 	github.com/lima-vm/lima v0.17.0
 	github.com/opencontainers/image-spec v1.1.0-rc4
 	github.com/package-url/packageurl-go v0.1.1
@@ -96,6 +98,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -141,6 +144,7 @@ require (
 	github.com/theupdateframework/go-tuf v0.6.1 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
+	github.com/whilp/git-urls v1.0.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xorcare/pointer v1.2.2 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect

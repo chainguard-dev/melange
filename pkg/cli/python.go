@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"chainguard.dev/melange/pkg/convert/python"
+	"chainguard.dev/melange/pkg/convert/relmon"
 
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +32,8 @@ type pythonOptions struct {
 	baseURIFormat          string
 	pythonVersion          string
 	packageVersion         string
+	ghClient               *github.Client
+	mf                     *relmon.MonitorFinder
 }
 
 // PythonBuild is the top-level `convert python` cobra command
@@ -54,6 +58,14 @@ convert python botocore`,
 			// the wolfi repo and keyring. This is because we want to add them
 			// by default for python.
 			o.outDir, o.additionalRepositories, o.additionalKeyrings, err = getCommonValues(cmd, true)
+			if err != nil {
+				return err
+			}
+			o.ghClient, err = getGithubClient(context.TODO(), cmd)
+			if err != nil {
+				return err
+			}
+			o.mf, err = getRelaseMonitoringClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -83,6 +95,10 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	pythonContext.PackageVersion = o.packageVersion
 	pythonContext.PythonVersion = o.pythonVersion
 	pythonContext.PackageName = packageName
+
+	// These two are conditionally set above, and if nil, they are unused.
+	pythonContext.GithubClient = o.ghClient
+	pythonContext.MonitoringClient = o.mf
 
 	pythonContext.Logger.Printf("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
 

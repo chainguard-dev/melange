@@ -281,7 +281,7 @@ func (c *PythonContext) generateManifest(ctx context.Context, pack Package, vers
 		// then do not add UseTags==true, since we want to use releases.
 		hasReleases := false
 		for _, v := range ghVersions {
-			if v.IsLatest == true {
+			if v.IsLatest {
 				hasReleases = true
 			}
 		}

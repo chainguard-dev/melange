@@ -115,7 +115,7 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 				// This is super hackery, but for example, pycparser does not use
 				// tags like 'v2.21', but instead uses 'release_v2.21', so we need
 				// This can also happen if the version is v2.21 but the tag is 2.21
-				for tagSuffix, _ := range ret {
+				for tagSuffix := range ret {
 					if strings.HasSuffix(*tag.Name, tagSuffix) {
 						grc.Logger.Printf("[%s] found tag %s with suffix %s", repo, *tag.Name, tagSuffix)
 						ret[tagSuffix] = &TagData{

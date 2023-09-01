@@ -182,10 +182,11 @@ func (grc *GithubRepoClient) GetVersions(ctx context.Context, version string) ([
 
 	// Latest release is optional, so don't fail if we can't get it.
 	latestReleaseVersion := ""
-	if err != nil {
+	switch {
+	case err != nil:
 		// This is not a fatal error, we don't give up that easy...
 		grc.Logger.Printf("[%s] failed to get latest release (this is fine there might be not be releases): %v", repo, err)
-	} else if latestRelease != nil {
+	case latestRelease != nil:
 		// If latest is different from the version to look for, then add that in
 		// here.
 		latestReleaseVersion = *latestRelease.TagName
@@ -193,14 +194,14 @@ func (grc *GithubRepoClient) GetVersions(ctx context.Context, version string) ([
 			grc.Logger.Printf("[%s] latest release is different from pypi, so fetching that too: %s", repo, *latestRelease.Name)
 			tagsToLook = append(tagsToLook, *latestRelease.TagName)
 		}
-	} else {
+	default:
 		// Lastly, if there is no latest release, look for the special "highest"
 		// which is for cases like github.com/eliben/pycparser, where there are
 		// no releases, but just tags.
 		grc.Logger.Printf("[%s] looks like there's no latest release so find the newest tag", repo)
 		tagsToLook = append(tagsToLook, "highest")
-	}
 
+	}
 	tagData, err := grc.GetTags(ctx, tagsToLook)
 	if err != nil {
 		return nil, err

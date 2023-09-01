@@ -72,7 +72,7 @@ type k8s struct {
 func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
 	cfg, err := NewKubernetesConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to configure kubernetes runner: %v", err)
+		return nil, fmt.Errorf("failed to configure kubernetes runner: %w", err)
 	}
 
 	runner := &k8s{
@@ -86,7 +86,7 @@ func KubernetesRunner(_ context.Context, logger log.Logger) (Runner, error) {
 	}
 	restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(clientcmd.NewDefaultClientConfigLoadingRules(), override).ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load kubeconfig: %v", err)
+		return nil, fmt.Errorf("failed to load kubeconfig: %w", err)
 	}
 	runner.restConfig = restConfig
 
@@ -124,7 +124,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		data, _ := yaml.Marshal(builderPod)
 		k.logger.Warnf("failed creating builder pod\n%v", string(data))
-		return fmt.Errorf("creating builder pod: %v", err)
+		return fmt.Errorf("creating builder pod: %w", err)
 	}
 	k.logger.Infof("created builder pod '%s' with UID '%s'", pod.Name, pod.UID)
 
@@ -188,7 +188,7 @@ func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
 		Stdout: stdoutPipeW,
 		Stderr: stderrPipeW,
 	}); err != nil {
-		return fmt.Errorf("running remote command: %v", err)
+		return fmt.Errorf("running remote command: %w", err)
 	}
 
 	stdoutPipeW.Close()
@@ -296,7 +296,7 @@ cd '%s'
 
 	executor, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
 	if err != nil {
-		return fmt.Errorf("failed to create remote command executor: %v", err)
+		return fmt.Errorf("failed to create remote command executor: %w", err)
 	}
 
 	// Backoff up to 4 times with a 1 second initial delay, tripling each time
@@ -324,7 +324,7 @@ cd '%s'
 		k.logger.Warnf("attempting to recover (%T) after failing to execute remote command: %v", err, err)
 		return false, nil
 	}); err != nil {
-		return fmt.Errorf("failed executing remote command: %v", err)
+		return fmt.Errorf("failed executing remote command: %w", err)
 	}
 
 	return nil
@@ -350,7 +350,7 @@ func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error)
 		k.logger.Infof("creating mount '%s' from %s at %s", mountName, mount.Source, mount.Destination)
 		bundle, err := k.bundle(ctx, mount.Source, repo.Tag(fmt.Sprintf("%s-%s", cfg.PackageName, mountName)))
 		if err != nil {
-			k.logger.Warnf("error creating bundle: %v", err)
+			k.logger.Warnf("error creating bundle: %w", err)
 			return nil, err
 		}
 		k.logger.Infof("mount '%s' uploaded to %s", mountName, bundle.String())

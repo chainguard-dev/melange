@@ -48,7 +48,6 @@ func PythonBuild() *cobra.Command {
 convert python botocore`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if len(args) != 1 {
 				return errors.New("too many arguments, expected only 1")
 			}
@@ -103,5 +102,4 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	pythonContext.Logger.Printf("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
 
 	return pythonContext.Generate(ctx)
-
 }

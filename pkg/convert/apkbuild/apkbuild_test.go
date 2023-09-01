@@ -25,7 +25,6 @@ import (
 )
 
 func TestGetApkDependencies(t *testing.T) {
-
 	deps, err := os.ReadDir(filepath.Join("testdata", "deps"))
 	assert.NoError(t, err)
 	assert.NotEmpty(t, deps)
@@ -37,7 +36,6 @@ func TestGetApkDependencies(t *testing.T) {
 
 	// Start a local HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-
 		// assert requests dependency is in the list of test files
 		assert.True(t, util.Contains(filenames, req.URL.String()), "requests file does not match any test files")
 
@@ -74,7 +72,6 @@ func TestGetApkDependencies(t *testing.T) {
 
 	// assert correct order
 	assert.Equal(t, []string{"bar", "foo", "crisps", "wine", "beer", "cheese"}, tctx.OrderedKeys)
-
 }
 
 func TestGetApkBuildFile(t *testing.T) {
@@ -129,15 +126,13 @@ func TestGetApkBuildFile(t *testing.T) {
 	assert.Equal(t, "xorgproto", parsedApkbuild.Makedepends[2].Pkgname)
 	assert.Equal(t, "util-macros", parsedApkbuild.Makedepends[3].Pkgname)
 	assert.Equal(t, "xmlto", parsedApkbuild.Makedepends[4].Pkgname)
-
 }
 
 func TestContext_getSourceSha(t *testing.T) {
-
 	type fields struct {
 		ExpectedSha    string
 		Sha512         string
-		TestUrl        string
+		TestURL        string
 		PackageVersion string
 	}
 	var tests = []struct {
@@ -147,7 +142,7 @@ func TestContext_getSourceSha(t *testing.T) {
 		{
 			name: "tar.xz",
 			fields: fields{
-				TestUrl:        "foo-1.2.3.tar.xz",
+				TestURL:        "foo-1.2.3.tar.xz",
 				PackageVersion: "1.2.3",
 				Sha512:         "45c3e1ad1cc945ba83cf95e439d9d83520df955e53612efd592f53c173a118a949780c619bb744631c0867474bd770dc0308e0669732ab5d4bffcf417f3e9014",
 				ExpectedSha:    "6b23c4b39242db1d58ab397387b7a3a325e903cd4df332f5a089ac63cc1ca049",
@@ -156,7 +151,7 @@ func TestContext_getSourceSha(t *testing.T) {
 		{
 			name: "tar.gz",
 			fields: fields{
-				TestUrl:        "bar-4.5.6.tar.gz",
+				TestURL:        "bar-4.5.6.tar.gz",
 				PackageVersion: "4.5.6",
 				Sha512:         "3676c02e883fc26800bcd8542c4cc476a00fb5505c5019433c8316a401565317630803150d8a75d1f3111909c445b700dd123d3c0310a56849d76ed9f72da5cd",
 				ExpectedSha:    "cc2c52929ace57623ff517408a577e783e10042655963b2c8f0633e109337d7a",
@@ -165,7 +160,7 @@ func TestContext_getSourceSha(t *testing.T) {
 		{
 			name: "tar.bz2",
 			fields: fields{
-				TestUrl:        "cheese-7.8.9.tar.bz2",
+				TestURL:        "cheese-7.8.9.tar.bz2",
 				PackageVersion: "7.8.9",
 				Sha512:         "2a83fd55473a74d2cf4110449070978fb5765cac13862ab926f1af3b88259e80dac61ec3a82319cf7fabfc90427436d73d70f201c28504f8222fb908e00bd797",
 				ExpectedSha:    "8452aa9c8cefc805c8930bc53394c7de15f43edc82dd86e619d794cd7f60b410",
@@ -174,7 +169,7 @@ func TestContext_getSourceSha(t *testing.T) {
 		{
 			name: "bad",
 			fields: fields{
-				TestUrl:        "cheese-7.8.9.tar.bz2",
+				TestURL:        "cheese-7.8.9.tar.bz2",
 				PackageVersion: "7.8.9",
 				Sha512:         "nonmatchingsha512",
 				ExpectedSha:    "SHA512 DOES NOT MATCH SOURCE - VALIDATE MANUALLY",
@@ -183,17 +178,16 @@ func TestContext_getSourceSha(t *testing.T) {
 	}
 	for _, tt := range tests {
 		// read testdata file
-		data, err := os.ReadFile(filepath.Join("testdata", tt.fields.TestUrl))
+		data, err := os.ReadFile(filepath.Join("testdata", tt.fields.TestURL))
 		assert.NoError(t, err)
 
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			// Test request parameters
-			assert.Equal(t, req.URL.String(), "/"+tt.fields.TestUrl)
+			assert.Equal(t, req.URL.String(), "/"+tt.fields.TestURL)
 
 			// Send response to be tested
 			_, err = rw.Write(data)
 			assert.NoError(t, err)
-
 		}))
 
 		// initialise Context with test values
@@ -203,14 +197,14 @@ func TestContext_getSourceSha(t *testing.T) {
 			Apkbuild: &apkbuild.Apkbuild{
 				Source: []apkbuild.Source{
 					{
-						Filename: tt.fields.TestUrl,
-						Location: server.URL + "/" + tt.fields.TestUrl,
+						Filename: tt.fields.TestURL,
+						Location: server.URL + "/" + tt.fields.TestURL,
 					},
 				},
 				Pkgver: tt.fields.PackageVersion,
 				Sha512sums: []apkbuild.SourceHash{
 					{
-						Source: tt.fields.TestUrl,
+						Source: tt.fields.TestURL,
 						Hash:   tt.fields.Sha512},
 				},
 			},
@@ -218,22 +212,19 @@ func TestContext_getSourceSha(t *testing.T) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-
 			with := map[string]string{
-				"uri":             server.URL + "/" + strings.ReplaceAll(tt.fields.TestUrl, tt.fields.PackageVersion, "${{package.version}}"),
+				"uri":             server.URL + "/" + strings.ReplaceAll(tt.fields.TestURL, tt.fields.PackageVersion, "${{package.version}}"),
 				"expected-sha256": tt.fields.ExpectedSha,
 			}
 			pipeline := config.Pipeline{Uses: "fetch", With: with}
 
 			assert.NoError(t, c.buildFetchStep(context.Background(), c.ApkConvertors[tt.name]))
 			assert.Equalf(t, pipeline, c.ApkConvertors[tt.name].GeneratedMelangeConfig.Pipeline[0], "expected sha incorrect")
-
 		})
 	}
 }
 
 func Test_context_mapconvert(t *testing.T) {
-
 	apkBuild := &apkbuild.Apkbuild{
 		Pkgname: "test-pkg",
 		Pkgver:  "1.2.3",
@@ -263,7 +254,6 @@ func Test_context_mapconvert(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			subpackages := []apkbuild.Subpackage{}
 			for _, subpackage := range tt.subPackages {
 				subpackages = append(subpackages, apkbuild.Subpackage{
@@ -298,7 +288,6 @@ func Test_context_mapconvert(t *testing.T) {
 }
 
 func TestMultilineParsing(t *testing.T) {
-
 	data, err := os.ReadFile(filepath.Join("testdata", "multi_source", "APKBUILD"))
 	assert.NoError(t, err)
 

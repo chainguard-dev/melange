@@ -39,7 +39,6 @@ func Test_mutateStringFromMap(t *testing.T) {
 }
 
 func Test_substitutionMap(t *testing.T) {
-
 	tests := []struct {
 		initialVersion string
 		match          string

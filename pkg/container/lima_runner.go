@@ -272,7 +272,7 @@ func (l *lima) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, er
 
 // limactl issues limactl commands to work with VMs
 func (l *lima) limactl(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer, args ...string) error {
-	baseargs := args[:]
+	baseargs := args
 	l.logger.Printf("limactl %v", baseargs)
 	cmd := exec.CommandContext(ctx, "limactl", baseargs...)
 	if stdin != nil {

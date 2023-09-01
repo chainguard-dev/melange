@@ -23,7 +23,10 @@ import (
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
+	githubpkg "chainguard.dev/melange/pkg/convert/github"
+	"chainguard.dev/melange/pkg/convert/relmon"
 	"chainguard.dev/melange/pkg/manifest"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 )
 
@@ -70,6 +73,14 @@ type PythonContext struct {
 	// ToCheck is the list of dependencies that have yet to be checked for
 	// transitive dependencies.
 	ToCheck []string
+
+	// If non-nil, this is the github client to use for fetching metadata
+	// to get the commit data for the package.
+	GithubClient *github.Client
+
+	// If non-nil, this is the Release Monitoring client to use for fetching
+	// metadata to get the monitoring data for the package.
+	MonitoringClient *relmon.MonitorFinder
 }
 
 // TODO: This should be a pipeline
@@ -125,7 +136,47 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 			version = c.PackageVersion
 		}
 
-		generated, err := c.generateManifest(ctx, pack, version)
+		ghVersions := []githubpkg.TagData{}
+		var relmon *relmon.Item
+		if c.GithubClient != nil {
+			c.Logger.Printf("Trying to get commit data for %s", pack.Info.Name)
+			// If we have a github client, then try to get the commit data.
+			githubURL := pack.Info.GetSourceURL()
+			if githubURL != "" {
+				c.Logger.Printf("[%s] Using github URL %s for %s", pack.Info.Name, githubURL, pack.Info.Name)
+				owner, repo, err := githubpkg.ParseGithubURL(githubURL)
+				if err != nil {
+					c.Logger.Printf("error parsing github url %s - %s ", githubURL, err)
+				} else {
+					client := githubpkg.NewGithubRepoClient(c.GithubClient, owner, repo)
+					client.Logger = c.Logger
+					versions, err := client.GetVersions(ctx, version)
+					if err != nil {
+						c.Logger.Printf("error getting versions for %s - %s ", pack.Info.Name, err)
+					}
+					// This is fine in error case, since it's nothing.
+					for _, version := range versions {
+						c.Logger.Printf("[%s] got github version: %+v\n", pack.Info.Name, version)
+					}
+					ghVersions = versions
+				}
+
+			}
+		}
+
+		// If the release monitoring client has been configured, see if we can
+		// fetch the data for this package.
+		if c.MonitoringClient != nil {
+			monitoring, err := c.MonitoringClient.FindMonitor(ctx, pack.Info.Name)
+			if err != nil {
+				fmt.Printf("Failed to find monitoring: %v\n", err)
+			} else {
+				fmt.Printf("Found monitoring: %+v\n", monitoring)
+				relmon = monitoring
+			}
+		}
+
+		generated, err := c.generateManifest(ctx, pack, version, ghVersions, relmon)
 		if err != nil {
 			c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", pack.Info.Name, err)
 			return err
@@ -202,7 +253,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 	return c.findDep(ctx)
 }
 
-func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string) (manifest.GeneratedMelangeConfig, error) {
+func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string, ghVersions []githubpkg.TagData, monitorInfo *relmon.Item) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
 	generated := manifest.GeneratedMelangeConfig{Logger: c.Logger}
 
@@ -211,12 +262,45 @@ func (c *PythonContext) generateManifest(ctx context.Context, pack Package, vers
 	generated.Package = c.generatePackage(pack, version)
 	generated.Environment = c.generateEnvironment(pack)
 
-	pipelines, err := c.generatePipeline(ctx, pack, version)
+	pipelines, err := c.generatePipeline(ctx, pack, version, ghVersions)
 	if err != nil {
 		return manifest.GeneratedMelangeConfig{}, err
 	}
 	generated.Pipeline = pipelines
 
+	// If the release monitoring has been filled, add an Update block for it.
+	if monitorInfo != nil {
+		generated.Update = config.Update{
+			Enabled: true,
+			ReleaseMonitor: &config.ReleaseMonitor{
+				Identifier: monitorInfo.Id,
+			},
+		}
+	} else if len(ghVersions) > 0 {
+		// HACKITY HACK. Check if we found a latest release, and if we did,
+		// then do not add UseTags==true, since we want to use releases.
+		hasReleases := false
+		for _, v := range ghVersions {
+			if v.IsLatest == true {
+				hasReleases = true
+			}
+		}
+		// Just use the first version to extract the stuff we need.
+		v := ghVersions[0]
+		// Set up the update block to use the GitHub API
+		generated.Update = config.Update{
+			Enabled: true,
+			GitHubMonitor: &config.GitHubMonitor{
+				Identifier: v.Repo,
+			},
+		}
+		if !hasReleases {
+			generated.Update.GitHubMonitor.StripPrefix = v.TagPrefix
+			if v.TagPrefix != "" {
+				generated.Update.GitHubMonitor.UseTags = true
+			}
+		}
+	}
 	return generated, nil
 }
 
@@ -284,56 +368,75 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 // generatePipeline handles generating the Pipeline field of the melange manifest
 //
 // It currently consists of three pipelines
-// 1. fetch - fetches the artifact
-// 2. patch - generates the patch pipeline in case it's needed
-// 3. runs - runs the actual build and install
+//  1. fetch - fetches the artifact. NOTE: There can be multiple of these in
+//     case there are multiple versions that we find. Seems safest to let the
+//     human decide which one to use.
+//  2. patch - generates the patch pipeline in case it's needed
+//  3. runs - runs the actual build and install
 //
 // The sha256 of the artifact should be generated automatically. If the
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
-func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, version string) ([]config.Pipeline, error) {
+func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, version string, ghVersions []githubpkg.TagData) ([]config.Pipeline, error) {
 
 	var pipeline []config.Pipeline
 
 	c.Logger.Printf("[%s] Generate Pipeline for version %s", pack.Info.Name, version)
 
-	releases, ok := pack.Releases[version]
-	// If the key exists
-	if !ok {
-		return pipeline, errors.New(fmt.Sprintf("Package version %s was not in releases for %s", version, pack.Info.Name))
-	}
-
-	var release Release
-	for _, r := range releases {
-		if r.PackageType == "sdist" {
-			release = r
+	// This uses the ftp method to get the package, but if we were configured
+	// and able to fetch GitHub versions, then we should use those instead.
+	if len(ghVersions) == 0 {
+		releases, ok := pack.Releases[version]
+		// If the key exists
+		if !ok {
+			return pipeline, errors.New(fmt.Sprintf("Package version %s was not in releases for %s", version, pack.Info.Name))
 		}
+
+		var release Release
+		for _, r := range releases {
+			if r.PackageType == "sdist" {
+				release = r
+			}
+		}
+
+		if release.Url == "" {
+			return pipeline, errors.New("could not find any sdist package in available releases")
+		}
+
+		artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, release.Url)
+		if err != nil {
+			c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)
+			c.Logger.Printf("[%s]  Or try 'curl %s' to check out the API", pack.Info.Name, pack.Info.DownloadUrl)
+			artifact256SHA = fmt.Sprintf("FAILED GENERATION. Investigate by going to %s", pack.Info.ProjectUrl)
+		}
+
+		if artifact256SHA != release.Digest.Sha256 {
+			return pipeline, errors.New(fmt.Sprintf("Artifact 256SHA %s did not match Package data SHA256 %s",
+				artifact256SHA, release.Digest.Sha256))
+		}
+
+		fetch := config.Pipeline{
+			Uses: "fetch",
+			With: map[string]string{
+				"uri":             strings.ReplaceAll(release.Url, version, "${{package.version}}"),
+				"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", release.Url),
+				"expected-sha256": artifact256SHA,
+			},
+		}
+		pipeline = append(pipeline, fetch)
+	}
+	// Add all the github versions to the fetch pipeline.
+	for _, ghVersion := range ghVersions {
+		pipeline = append(pipeline, config.Pipeline{
+			Uses: "git-checkout",
+			With: map[string]string{
+				"repository":      ghVersion.Repo,
+				"tag":             ghVersion.TagPrefix + "${{package.version}}",
+				"README":          fmt.Sprintf("for version %s, if you use this, update the package.version above to this version", ghVersion.Tag),
+				"expected-commit": ghVersion.SHA,
+			}})
 	}
 
-	if release.Url == "" {
-		return pipeline, errors.New("could not find any sdist package in available releases")
-	}
-
-	artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, release.Url)
-	if err != nil {
-		c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)
-		c.Logger.Printf("[%s]  Or try 'curl %s' to check out the API", pack.Info.Name, pack.Info.DownloadUrl)
-		artifact256SHA = fmt.Sprintf("FAILED GENERATION. Investigate by going to %s", pack.Info.ProjectUrl)
-	}
-
-	if artifact256SHA != release.Digest.Sha256 {
-		return pipeline, errors.New(fmt.Sprintf("Artifact 256SHA %s did not match Package data SHA256 %s",
-			artifact256SHA, release.Digest.Sha256))
-	}
-
-	fetch := config.Pipeline{
-		Uses: "fetch",
-		With: map[string]string{
-			"uri":             strings.ReplaceAll(release.Url, version, "${{package.version}}"),
-			"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", release.Url),
-			"expected-sha256": artifact256SHA,
-		},
-	}
 	pythonBuild := config.Pipeline{
 		Runs: pythonBuildPipeline,
 		Name: "Python Build",
@@ -346,7 +449,6 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 	strip := config.Pipeline{
 		Uses: "strip",
 	}
-	pipeline = append(pipeline, fetch)
 	pipeline = append(pipeline, pythonBuild)
 	pipeline = append(pipeline, pythonInstall)
 	pipeline = append(pipeline, strip)

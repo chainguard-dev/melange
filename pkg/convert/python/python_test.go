@@ -146,7 +146,7 @@ func TestGenerateManifest(t *testing.T) {
 		pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
 		pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
 
-		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion)
+		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion, nil, nil)
 		assert.NoError(t, err)
 
 		// Check Package

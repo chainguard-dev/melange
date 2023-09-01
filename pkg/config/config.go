@@ -285,7 +285,7 @@ type Configuration struct {
 	// pipeline
 	Data []RangeData `yaml:"data,omitempty"`
 	// Optional: The update block determining how this package is auto updated
-	Update Update `yaml:"update"`
+	Update Update `yaml:"update,omitempty"`
 	// Optional: A map of arbitrary variables that can be used via templating in
 	// the pipeline
 	Vars map[string]string `yaml:"vars,omitempty"`

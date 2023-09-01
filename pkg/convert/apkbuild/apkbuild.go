@@ -148,10 +148,10 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 		GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{
 			Logger:               c.Logger,
 			GeneratedFromComment: apkbuildURL,
-			Package: config.Package{
-				Epoch: 0,
-			},
 		},
+	}
+	c.ApkConvertors[packageName].GeneratedMelangeConfig.Package = config.Package{
+		Epoch: 0,
 	}
 	c.OrderedKeys = append(c.OrderedKeys, packageName)
 	return nil

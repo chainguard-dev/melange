@@ -14,14 +14,9 @@ import (
 )
 
 type GeneratedMelangeConfig struct {
-	Package              config.Package               `yaml:"package"`
-	Environment          apkotypes.ImageConfiguration `yaml:"environment,omitempty"`
-	Pipeline             []config.Pipeline            `yaml:"pipeline,omitempty"`
-	Subpackages          []config.Subpackage          `yaml:"subpackages,omitempty"`
-	Vars                 map[string]string            `yaml:"vars,omitempty"`
-	Update               config.Update                `yaml:"update,omitempty"`
-	GeneratedFromComment string                       `yaml:"-"`
-	Logger               *log.Logger                  `yaml:"-"`
+	config.Configuration `yaml:",inline"`
+	GeneratedFromComment string      `yaml:"-"`
+	Logger               *log.Logger `yaml:"-"`
 }
 
 func (m *GeneratedMelangeConfig) SetPackage(pkg config.Package) {
@@ -65,6 +60,7 @@ func (m *GeneratedMelangeConfig) Write(dir string) error {
 	}
 
 	ye := yaml.NewEncoder(f)
+	ye.SetIndent(10)
 	defer ye.Close()
 
 	if err := ye.Encode(m); err != nil {

@@ -276,7 +276,7 @@ type Configuration struct {
 	// Package metadata
 	Package Package `yaml:"package"`
 	// The specification for the packages build environment
-	Environment apko_types.ImageConfiguration
+	Environment apko_types.ImageConfiguration `yaml:"environment,omitempty"`
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.
@@ -520,8 +520,8 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	cfg := Configuration{root: &root}
 
 	// Unmarshal into a node first
-	decoder_node := yaml.NewDecoder(f)
-	err = decoder_node.Decode(&root)
+	decoderNode := yaml.NewDecoder(f)
+	err = decoderNode.Decode(&root)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}

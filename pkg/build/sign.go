@@ -4,21 +4,25 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
+
 	"github.com/klauspost/compress/gzip"
+	"github.com/sigstore/sigstore/pkg/signature/kms"
+	"github.com/sigstore/sigstore/pkg/signature/options"
 	"go.opentelemetry.io/otel"
 )
 
 type ApkSigner interface {
 	Sign(controlData []byte) ([]byte, error)
-
 	SignatureName() string
 }
 
@@ -67,6 +71,28 @@ func EmitSignature(ctx context.Context, signer ApkSigner, controlData []byte, sd
 	return sigbuf.Bytes(), nil
 }
 
+type SignerOpts struct {
+	SigningKey        string
+	SigningPassphrase string
+}
+
+func Signer(opts SignerOpts) (ApkSigner, error) {
+	var signer ApkSigner
+	if opts.SigningKey == "" {
+		signer = &FulcioApkSigner{}
+	} else {
+		if strings.Contains(opts.SigningKey, "://") {
+			return NewKMSApkSigner(opts.SigningKey)
+		} else {
+			signer = &KeyApkSigner{
+				KeyFile:       opts.SigningKey,
+				KeyPassphrase: opts.SigningPassphrase,
+			}
+		}
+	}
+	return signer, nil
+}
+
 // Key base signature (normal) uses a SHA-1 hash on the control digest.
 type KeyApkSigner struct {
 	KeyFile       string
@@ -109,4 +135,36 @@ func (*FulcioApkSigner) Sign(control []byte) ([]byte, error) {
 // SignatureName implements ApkSigner.
 func (*FulcioApkSigner) SignatureName() string {
 	panic("unimplemented")
+}
+
+// KMSApkSigner is a signer that uses KMS.
+// This feature should be work when SHA-256 signature is supported.
+type KMSApkSigner struct {
+	keyName string
+	signer  kms.SignerVerifier
+}
+
+// NewKMSApkSigner gets KMS signer based on key reference.
+func NewKMSApkSigner(keyRef string) (*KMSApkSigner, error) {
+	sv, err := kms.Get(context.Background(), keyRef, crypto.SHA1)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get KMS signer: %w", err)
+	}
+
+	keyID := strings.Split(keyRef, "/")
+
+	return &KMSApkSigner{
+		signer:  sv,
+		keyName: keyID[len(keyID)-1],
+	}, nil
+}
+
+// Sign implements ApkSigner using KMS.
+func (s KMSApkSigner) Sign(control []byte) ([]byte, error) {
+	// Note: not all KMS signers supports SHA-1.
+	return s.signer.SignMessage(bytes.NewReader(control), options.WithCryptoSignerOpts(crypto.SHA1))
+}
+
+func (s KMSApkSigner) SignatureName() string {
+	return fmt.Sprintf(".SIGN.RSA.%s.pub", s.keyName)
 }

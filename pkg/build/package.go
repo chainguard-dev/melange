@@ -301,10 +301,6 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	return buf.Bytes(), nil
 }
 
-func (pc *PackageBuild) SignatureName() string {
-	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Build.SigningKey))
-}
-
 type DependencyGenerator func(*PackageBuild, *config.Dependencies) error
 
 func dedup(in []string) []string {
@@ -795,7 +791,15 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	combinedParts := []io.Reader{bytes.NewReader(controlSectionData), dataTarGz}
 
 	if pc.wantSignature() {
-		signatureData, err := EmitSignature(ctx, pc.Signer(), controlSectionData, pc.Build.SourceDateEpoch)
+		signer, err := Signer(SignerOpts{
+			SigningKey:        pc.Build.SigningKey,
+			SigningPassphrase: pc.Build.SigningPassphrase,
+		})
+		if err != nil {
+			return fmt.Errorf("signer: %v", err)
+		}
+
+		signatureData, err := EmitSignature(ctx, signer, controlSectionData, pc.Build.SourceDateEpoch)
 		if err != nil {
 			return fmt.Errorf("emitting signature: %v", err)
 		}
@@ -826,17 +830,4 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (pc *PackageBuild) Signer() ApkSigner {
-	var signer ApkSigner
-	if pc.Build.SigningKey == "" {
-		signer = &FulcioApkSigner{}
-	} else {
-		signer = &KeyApkSigner{
-			KeyFile:       pc.Build.SigningKey,
-			KeyPassphrase: pc.Build.SigningPassphrase,
-		}
-	}
-	return signer
 }

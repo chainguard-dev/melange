@@ -282,8 +282,6 @@ func Test_context_mapconvert(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			t.Logf("expected: %s", string(expected))
-			t.Logf("actual: %s", string(actual))
 			assert.YAMLEqf(t, string(expected), string(actual), "generated convert yaml not the same as expected")
 		})
 	}

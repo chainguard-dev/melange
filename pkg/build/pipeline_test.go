@@ -15,9 +15,12 @@
 package build
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"chainguard.dev/melange/pkg/logger"
+	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
@@ -125,4 +128,24 @@ func Test_substitutionNeedPackages(t *testing.T) {
 	err = pctx.loadUse(pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
 	require.NoError(t, err)
 	require.Equal(t, "go-5.4.3", pb.Build.Configuration.Pipeline[0].With["go-package"])
+}
+
+func TestAllPipelines(t *testing.T) {
+	// Get all the yamls in pipelines/*/*.yaml and test that they unmarshal
+	pipelines, err := filepath.Glob("pipelines/*/*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pipeline := &config.Pipeline{}
+	for _, p := range pipelines {
+		t.Run(p, func(t *testing.T) {
+			b, err := os.ReadFile(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := yaml.Unmarshal(b, pipeline); err != nil {
+				t.Errorf("unexpected error unmarshalling pipeline: %v", err)
+			}
+		})
+	}
 }

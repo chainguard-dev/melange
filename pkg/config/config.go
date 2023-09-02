@@ -276,7 +276,7 @@ type Configuration struct {
 	// Package metadata
 	Package Package `yaml:"package"`
 	// The specification for the packages build environment
-	Environment apko_types.ImageConfiguration `yaml:"environment,omitempty"`
+	Environment apko_types.ImageConfiguration
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.

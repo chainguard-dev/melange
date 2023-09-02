@@ -5,6 +5,7 @@ package:
   description: test package description
   copyright:
     - license: MIT
+environment: {}
 pipeline:
   - uses: autoconf/configure
   - uses: autoconf/make

@@ -594,7 +594,26 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 			return nil
 		}
 
-		pkg, err := pkgconfig.Load(filepath.Join(pc.WorkspaceSubdir(), path))
+		realPath := path
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+
+		// Sigh.  ncurses uses symlinks to alias .pc files to other .pc files.
+		// We want to catalog all of the provided pkg-config identifiers, but
+		// that requires us to dereference the symlink.
+		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			realPath, err = os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
+			if err != nil {
+				return fmt.Errorf("dereferencing pkg-config file %s: %w", path, err)
+			}
+		}
+
+		pkg, err := pkgconfig.Load(filepath.Join(pc.WorkspaceSubdir(), realPath))
 		if err != nil {
 			return err
 		}

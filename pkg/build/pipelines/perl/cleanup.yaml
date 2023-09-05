@@ -1,0 +1,9 @@
+name: Clean up installation files
+
+needs:
+  packages:
+    - busybox
+
+pipeline:
+  - runs: |
+      find "${{targets.destdir}}" \( -name perllocal.pod -o -name .packlist \) -delete

@@ -277,11 +277,17 @@ func (c *PythonContext) generateManifest(ctx context.Context, pack Package, vers
 		}
 		// Just use the first version to extract the stuff we need.
 		v := ghVersions[0]
+
+		// We already parsed this earlier, so this absolutely should not fail.
+		owner, repo, err := githubpkg.ParseGithubURL(v.Repo)
+		if err != nil {
+			return manifest.GeneratedMelangeConfig{}, fmt.Errorf("failed to parse github URL %s : %w", v.Repo, err)
+		}
 		// Set up the update block to use the GitHub API
 		generated.Update = config.Update{
 			Enabled: true,
 			GitHubMonitor: &config.GitHubMonitor{
-				Identifier: v.Repo,
+				Identifier: owner + "/" + repo,
 			},
 		}
 		if !hasReleases {

@@ -513,5 +513,10 @@ func (c ApkConvertor) write(orderNumber, outdir string) error {
 	if err != nil {
 		return errors.Wrapf(err, "creating writing to file %s", mconvertFile)
 	}
+
+	if c.Logger != nil {
+		c.Logger.Printf("Generated melange config: %s", mconvertFile)
+	}
+
 	return nil
 }

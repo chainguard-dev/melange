@@ -84,6 +84,39 @@ func Test_substitutionMap(t *testing.T) {
 	}
 }
 
+func Test_MutateWith(t *testing.T) {
+	for _, tc := range []struct {
+		version string
+		epoch   uint64
+		want    string
+	}{{version: "1.2.3",
+		epoch: 0,
+		want:  "1.2.3-r0",
+	}, {
+		version: "1.2.3",
+		epoch:   3,
+		want:    "1.2.3-r3",
+	}} {
+		pb := &PipelineBuild{
+			Package: &PackageContext{
+				Package: &config.Package{
+					Version: tc.version,
+					Epoch:   tc.epoch,
+				},
+			},
+			Build: &Build{},
+		}
+		got, err := MutateWith(pb, map[string]string{})
+		if err != nil {
+			t.Fatalf("MutateWith failed with: %v", err)
+		}
+		gotFullVer := got[config.SubstitutionPackageFullVersion]
+		if gotFullVer != tc.want {
+			t.Errorf("got %s, want %s", gotFullVer, tc.want)
+		}
+	}
+}
+
 func Test_substitutionNeedPackages(t *testing.T) {
 	pkgctx, err := NewPackageContext(
 		&config.Package{

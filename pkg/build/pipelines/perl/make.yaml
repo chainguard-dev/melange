@@ -1,0 +1,12 @@
+name: Create a Makefile for a Perl module
+
+needs:
+  packages:
+    - busybox
+    - perl
+
+pipeline:
+  - runs: |
+      export PERL_CFLAGS=$(perl -MConfig -E 'say $Config{ccflags}')
+      export CFLAGS="${CFLAGS} ${PERL_CFLAGS}"
+      PERL_MM_USE_DEFAULT=1 perl -I. Makefile.PL INSTALLDIRS=vendor

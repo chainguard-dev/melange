@@ -579,8 +579,12 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 				"${{range.value}}": v,
 			})
 			thingToAdd := Subpackage{
-				Name:        replacer.Replace(sp.Name),
-				Description: replacer.Replace(sp.Description),
+				Name:         replacer.Replace(sp.Name),
+				Description:  replacer.Replace(sp.Description),
+				Dependencies: sp.Dependencies,
+				Options:      sp.Options,
+				URL:          sp.URL,
+				If:           sp.If,
 			}
 			for _, p := range sp.Pipeline {
 				// take a copy of the with map, so we can replace the values

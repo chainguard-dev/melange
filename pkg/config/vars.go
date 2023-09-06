@@ -26,6 +26,7 @@ import (
 const (
 	SubstitutionPackageName          = "${{package.name}}"
 	SubstitutionPackageVersion       = "${{package.version}}"
+	SubstitutionPackageFullVersion   = "${{package.full-version}}"
 	SubstitutionPackageEpoch         = "${{package.epoch}}"
 	SubstitutionPackageDescription   = "${{package.description}}"
 	SubstitutionTargetsDestdir       = "${{targets.destdir}}"

@@ -1,0 +1,17 @@
+name: Build a Python wheel with gpep517
+
+needs:
+  packages:
+    - busybox
+
+pipeline:
+  - runs: |
+      if ! [ -x "$(command -v python3)" ]; then
+        echo 'Error: Python is not installed.'
+        exit 1
+      fi
+
+  - runs: |
+      python3 -m gpep517 build-wheel --wheel-dir dist --output-fd 3 3>&1 >&2
+      python3 -m installer -d "${{targets.contextdir}}" dist/*.whl
+      find ${{targets.contextdir}} -name "*.pyc" -exec rm -rf '{}' +

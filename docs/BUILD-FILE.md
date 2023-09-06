@@ -121,7 +121,59 @@ dependencies:
     - curl
 ```
 
-  TODO(vaikas): How does it decide, or can you control which version to install? Latest? Does anybody care?
+#### provides
+Provides allows you to create "aliases" for a package. If your `package.name` is
+for example `php-8.1`, but you want somebody be able to get this package by
+`php`, you could provide a section like this:
+
+```
+  dependencies:
+    provides:
+      - php=8.1.23
+```
+
+The above example is pinned to the version 8.1.23, but it's typically better to
+provide a floating version, so that when the package gets upgraded, the user
+will get the latest one. For that melange provides a `${{package.full-version}}`
+variable. It gets expanded to `${{package.version}}-r${{package-epoch}}`. So for
+the example above, you could do this
+```
+  dependencies:
+    provides:
+      - php=${{package.full-version}}
+```
+
+You can also do the same thing to provide parallel version streams, so again
+using our php example, there are 8.1.X and 8.2.X streams, so the condensed
+example here:
+`php-8.1.yaml`:
+```
+package:
+  name: php-8.1
+  version: 8.1.23
+  epoch: 0
+  dependencies:
+    provides:
+      - php=${{package.full-version}}
+```
+
+`php-8.2.yaml`:
+```
+package:
+  name: php-8.2
+  version: 8.2.10
+  epoch: 1
+  dependencies:
+    provides:
+      - php=${{package.full-version}}
+```
+
+When user does `apk add php-8.1`, they will get the `php 8.1.23` because they
+are explicitly asking for the 8.1 version, and will get the latest version of
+8.1. When user does `apk add php-8.2`, they will get the `php 8.2.10` because
+they again explicitly asked for the 8.2 version. Now if they just ask for php
+`apk add php`, they will get the latest version `php 8.2.10` assuming they have
+no other additional constraints defined.
 
 ### options
 Options that describe the package functionality. Currently there are three

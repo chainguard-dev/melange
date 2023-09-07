@@ -474,6 +474,7 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 		SubstitutionPackageVersion:     cfg.Package.Version,
 		SubstitutionPackageDescription: cfg.Package.Description,
 		SubstitutionPackageEpoch:       strconv.FormatUint(cfg.Package.Epoch, 10),
+		SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%d", cfg.Package.Version, cfg.Package.Epoch),
 	}
 
 	for k, v := range cfg.Vars {

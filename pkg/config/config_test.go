@@ -14,12 +14,14 @@ func Test_applySubstitutionsInProvides(t *testing.T) {
 package:
   name: replacement-provides
   version: 0.0.1
+  epoch: 7
   description: example using a replacement in provides
   dependencies:
     provides:
       - replacement-provides-version=${{package.version}}
       - replacement-provides-foo=${{vars.foo}}
       - replacement-provides-bar=${{vars.bar}}
+      - replacement-provides=${{package.full-version}}
 
 vars:
   foo: FOO
@@ -43,6 +45,7 @@ subpackages:
 		"replacement-provides-version=0.0.1",
 		"replacement-provides-foo=FOO",
 		"replacement-provides-bar=BAR",
+		"replacement-provides=0.0.1-r7",
 	}, cfg.Package.Dependencies.Provides)
 
 	require.Equal(t, []string{

@@ -493,6 +493,17 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 	return strings.NewReplacer(replacements...)
 }
 
+func replaceAll(r *strings.Replacer, in []string) []string {
+	if in == nil {
+		return nil
+	}
+	out := make([]string, len(in))
+	for i, s := range in {
+		out[i] = r.Replace(s)
+	}
+	return out
+}
+
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
 func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
@@ -580,12 +591,17 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 				"${{range.value}}": v,
 			})
 			thingToAdd := Subpackage{
-				Name:         replacer.Replace(sp.Name),
-				Description:  replacer.Replace(sp.Description),
-				Dependencies: sp.Dependencies,
-				Options:      sp.Options,
-				URL:          sp.URL,
-				If:           sp.If,
+				Name:        replacer.Replace(sp.Name),
+				Description: replacer.Replace(sp.Description),
+				Dependencies: Dependencies{
+					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
+					Provides:         replaceAll(replacer, sp.Dependencies.Provides),
+					Replaces:         replaceAll(replacer, sp.Dependencies.Replaces),
+					ProviderPriority: sp.Dependencies.ProviderPriority,
+				},
+				Options: sp.Options,
+				URL:     replacer.Replace(sp.URL),
+				If:      replacer.Replace(sp.If),
 			}
 			for _, p := range sp.Pipeline {
 				// take a copy of the with map, so we can replace the values

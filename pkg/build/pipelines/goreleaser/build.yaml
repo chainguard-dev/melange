@@ -1,0 +1,72 @@
+name: Run a build using the GoReleaser
+
+needs:
+  packages:
+    - busybox
+    - ca-certificates-bundle
+    - goreleaser
+
+inputs:
+  args:
+    description: |
+      List of space-separated args to pass to the GoReleaser `release` command.
+    required: false
+  
+  output:
+    description: |
+      Filename to use when writing the binary. The final install location inside
+      the apk will be in /usr/bin by default.
+    required: true
+    default: "${{targets.contextdir}}/usr/bin/${{package.name}}"
+
+  snapshot:
+    description: |
+      If true, the GoReleaser `release` command will be run with the `--snapshot`
+      flag.
+    default: "false"
+
+  config-file: 
+    description: |
+      Path to the GoReleaser config file. If not specified, the default config
+      file will be used.
+    required: false
+
+  working-dir:
+    default: "."
+    required: false
+    description: |
+      Top directory of the go module, this is where go.mod lives. Before buiding
+      the go pipeline wil cd into this directory.
+
+pipeline:
+  - runs: |
+      #!/bin/sh
+      set -eux -o pipefail
+      goreleaser_flags="--clean --skip-docker --skip-ko --skip-publish ${{inputs.args}}"
+
+      DIR="$(dirname '${{inputs.output}}')"
+      mkdir -p "${{targets.contextdir}}"/$DIR
+      BASENAME="$(basename '${{inputs.output}}')"
+
+      # if working-dir is rather than "." cd into that directory
+      if [ "${{inputs.working-dir}}" != "." ]; then
+        cd ${{inputs.working-dir}}
+      fi
+
+      if [ "${{inputs.snapshot}}" = "true" ]; then
+        goreleaser_flags="$goreleaser_flags --snapshot"
+      fi
+
+      if [ -n "${{inputs.config-file}}" ]; then
+        goreleaser_flags="$goreleaser_flags --config ${{inputs.config-file}}"
+      fi
+    
+      goreleaser release $goreleaser_flags
+      echo "Copying binary to ${{inputs.output}}"
+      # build.arch is equal to aarch64 make it arm64
+      if [ "${{build.arch}}" = "aarch64" ]; then
+        build_arch="arm64"
+      else
+        build_arch="${{build.arch}}"
+      fi
+      install -Dm755 ./dist/${BASENAME}_linux_*/* "${{inputs.output}}"

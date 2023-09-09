@@ -482,6 +482,11 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 		}
 
 		if mode.Perm()&0555 == 0555 {
+			libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+			if !allowedPrefix(path, libDirs) {
+				return nil
+			}
+
 			basename := filepath.Base(path)
 
 			// most likely a shell script instead of an ELF, so treat any

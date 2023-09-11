@@ -434,18 +434,13 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 
 	pythonBuild := config.Pipeline{
 		Name: "Python Build",
-		Uses: "python/build",
+		Uses: "python/build-wheel",
 	}
 
-	pythonInstall := config.Pipeline{
-		Name: "Python Install",
-		Uses: "python/install",
-	}
 	strip := config.Pipeline{
 		Uses: "strip",
 	}
 	pipeline = append(pipeline, pythonBuild)
-	pipeline = append(pipeline, pythonInstall)
 	pipeline = append(pipeline, strip)
 
 	return pipeline, nil

@@ -220,6 +220,8 @@ type Pipeline struct {
 	WorkDir string `yaml:"working-directory,omitempty"`
 	// Optional: Configuration for the generated SBOM
 	SBOM SBOM `yaml:"sbom,omitempty"`
+	// Optional: environment variables to override the apko environment
+	Environment map[string]string `yaml:"environment,omitempty"`
 }
 
 type Subpackage struct {

@@ -273,6 +273,24 @@ func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) err
 	return nil
 }
 
+// Build a script to run as part of evalRun
+func (pctx *PipelineContext) buildEvalRunCommand(debugOption rune, sysPath string, workdir string, fragment string) []string {
+	envExport := "export %s='%s'"
+	envArr := []string{}
+	for k, v := range pctx.Pipeline.Environment {
+		envArr = append(envArr, fmt.Sprintf(envExport, k, v))
+	}
+	envString := strings.Join(envArr, "\n")
+	script := fmt.Sprintf(`set -e%c
+export PATH='%s'
+%s
+[ -d '%s' ] || mkdir -p '%s'
+cd '%s'
+%s
+exit 0`, debugOption, sysPath, envString, workdir, workdir, workdir, fragment)
+	return []string{"/bin/sh", "-c", script}
+}
+
 func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) error {
 	var err error
 	pctx.Pipeline.With, err = MutateWith(pb, pctx.Pipeline.With)
@@ -280,6 +298,13 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 		return err
 	}
 	pctx.dumpWith()
+
+	debugOption := ' '
+	if pb.Build.Debug {
+		debugOption = 'x'
+	}
+
+	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 	workdir := "/home/build"
 	if pctx.Pipeline.WorkDir != "" {
@@ -294,21 +319,8 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 		return err
 	}
 
-	debugOption := ' '
-	if pb.Build.Debug {
-		debugOption = 'x'
-	}
-
-	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	script := fmt.Sprintf(`set -e%c
-export PATH='%s'
-[ -d '%s' ] || mkdir -p '%s'
-cd '%s'
-%s
-exit 0`, debugOption, sysPath, workdir, workdir, workdir, fragment)
-	command := []string{"/bin/sh", "-c", script}
+	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
 	config := pb.Build.WorkspaceConfig()
-
 	if err := pb.Build.Runner.Run(ctx, config, command...); err != nil {
 		return err
 	}
@@ -412,6 +424,8 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 		if sp.WorkDir == "" {
 			sp.WorkDir = pctx.Pipeline.WorkDir
 		}
+
+		sp.Environment = rightJoinMap(pctx.Pipeline.Environment, sp.Environment)
 
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
 		if err != nil {

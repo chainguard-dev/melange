@@ -54,3 +54,45 @@ subpackages:
 		"subpackage-bar=BAR",
 	}, cfg.Subpackages[0].Dependencies.Provides)
 }
+
+func Test_propagatePipelines(t *testing.T) {
+	fp := filepath.Join(os.TempDir(), "melange-test-propagatePipelines")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: propagate-pipelines
+  version: 0.0.1
+  epoch: 1
+  description: example testing propagation of child pipelines
+
+pipeline:
+  - environment:
+      foo: FOO
+      bar: BAR
+    pipeline:
+      - environment:
+          foo: BAR
+          baz: BAZ
+
+subpackages:
+  - name: subpackage
+    pipeline:
+    - environment:
+        foo: FOO
+        bar: BAR
+      pipeline:
+      - environment:
+          foo: BAR
+          baz: BAZ
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, map[string]string{"foo": "FOO", "bar": "BAR"}, cfg.Pipeline[0].Environment)
+	require.Equal(t, map[string]string{"foo": "BAR", "bar": "BAR", "baz": "BAZ"}, cfg.Pipeline[0].Pipeline[0].Environment)
+	require.Equal(t, map[string]string{"foo": "FOO", "bar": "BAR"}, cfg.Subpackages[0].Pipeline[0].Environment)
+	require.Equal(t, map[string]string{"foo": "BAR", "bar": "BAR", "baz": "BAZ"}, cfg.Subpackages[0].Pipeline[0].Pipeline[0].Environment)
+}

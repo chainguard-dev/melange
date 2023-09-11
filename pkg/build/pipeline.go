@@ -425,6 +425,8 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 			sp.WorkDir = pctx.Pipeline.WorkDir
 		}
 
+		sp.Environment = rightJoinMap(pctx.Pipeline.Environment, sp.Environment)
+
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
 		if err != nil {
 			return false, err

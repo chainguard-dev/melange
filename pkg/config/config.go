@@ -506,6 +506,33 @@ func replaceAll(r *strings.Replacer, in []string) []string {
 	return out
 }
 
+// propagateChildPipelines performs downward propagation of configuration values.
+func (p *Pipeline) propagateChildPipelines() {
+	for idx := range p.Pipeline {
+		if p.Pipeline[idx].WorkDir == "" {
+			p.Pipeline[idx].WorkDir = p.WorkDir
+		}
+
+		p.Pipeline[idx].Environment = util.RightJoinMap(p.Environment, p.Pipeline[idx].Environment)
+
+		p.Pipeline[idx].propagateChildPipelines()
+	}
+}
+
+// propagatePipelines performs downward propagation of all pipelines in the config.
+func (cfg *Configuration) propagatePipelines() {
+	for _, sp := range cfg.Pipeline {
+		sp.propagateChildPipelines()
+	}
+
+	// Also propagate subpackages
+	for _, sp := range cfg.Subpackages {
+		for _, spp := range sp.Pipeline {
+			spp.propagateChildPipelines()
+		}
+	}
+}
+
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
 func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
@@ -724,6 +751,9 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err
 	}
+
+	// Propagate all child pipelines
+	cfg.propagatePipelines()
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
 	if err = cfg.validate(); err != nil {

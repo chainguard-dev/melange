@@ -152,24 +152,6 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	return nw, nil
 }
 
-func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
-	// this is the worst case possible length, assuming no overlapctx.
-	length := len(left) + len(right)
-	output := make(map[string]string, length)
-
-	// copy the left-side first
-	for k, v := range left {
-		output[k] = v
-	}
-
-	// overlay the right-side on top
-	for k, v := range right {
-		output[k] = v
-	}
-
-	return output
-}
-
 func validateWith(data map[string]string, inputs map[string]config.Input) (map[string]string, error) {
 	if data == nil {
 		data = make(map[string]string)
@@ -235,7 +217,7 @@ func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[st
 	}
 
 	for k := range pctx.Pipeline.Pipeline {
-		pctx.Pipeline.Pipeline[k].With = rightJoinMap(pctx.Pipeline.With, pctx.Pipeline.Pipeline[k].With)
+		pctx.Pipeline.Pipeline[k].With = util.RightJoinMap(pctx.Pipeline.With, pctx.Pipeline.Pipeline[k].With)
 	}
 
 	return nil
@@ -421,12 +403,6 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 	}
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		if sp.WorkDir == "" {
-			sp.WorkDir = pctx.Pipeline.WorkDir
-		}
-
-		sp.Environment = rightJoinMap(pctx.Pipeline.Environment, sp.Environment)
-
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
 		if err != nil {
 			return false, err

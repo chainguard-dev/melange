@@ -1,0 +1,20 @@
+name: PHP 8.2 phpize and configure a PHP PECL module.
+
+needs:
+  packages:
+    - autoconf
+    - busybox
+    - php-8.2-dev
+
+inputs:
+  php-config:
+    description: php-config to use
+    default: "php-config"
+  prefix:
+    description: prefix to use for configure
+    default: "/usr"
+
+pipeline:
+  - runs: |
+      phpize
+      ./configure --prefix=${{inputs.prefix}} --with-php-config=${{inputs.php-config}}

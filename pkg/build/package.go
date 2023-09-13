@@ -482,11 +482,6 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 		}
 
 		if mode.Perm()&0555 == 0555 {
-			libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
-			if !allowedPrefix(path, libDirs) {
-				return nil
-			}
-
 			basename := filepath.Base(path)
 
 			// most likely a shell script instead of an ELF, so treat any
@@ -534,6 +529,11 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 			// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
 			// functionality work.  So we always generate provides entries for libc.
 			if !pc.Options.NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
+				libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+				if !allowedPrefix(path, libDirs) {
+					return nil
+				}
+
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {

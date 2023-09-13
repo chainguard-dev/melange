@@ -171,7 +171,7 @@ func TestGenerateManifest(t *testing.T) {
 		})
 
 		// Check Pipeline
-		assert.Equal(t, len(got.Pipeline), 4)
+		assert.Equal(t, len(got.Pipeline), 3)
 
 		// Check Pipeline - fetch
 		assert.Equal(t, got.Pipeline[0].Uses, "fetch")
@@ -197,9 +197,8 @@ func TestGenerateManifest(t *testing.T) {
 		})
 
 		// Check Pipeline - runs
-		assert.Equal(t, got.Pipeline[1].Uses, "python/build")
-		assert.Equal(t, got.Pipeline[2].Uses, "python/install")
-		assert.Equal(t, got.Pipeline[3].Uses, "strip")
+		assert.Equal(t, got.Pipeline[1].Uses, "python/build-wheel")
+		assert.Equal(t, got.Pipeline[2].Uses, "strip")
 	}
 }
 

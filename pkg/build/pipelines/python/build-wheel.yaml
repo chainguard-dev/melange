@@ -3,6 +3,8 @@ name: Build a Python wheel
 needs:
   packages:
     - busybox
+    - py3-build
+    - py3-installer
 
 pipeline:
   - runs: |

@@ -1,10 +1,9 @@
-name: PHP 8.2 phpize and configure a PHP PECL module.
+name: PHP phpize and configure a PHP PECL module. Requires php-dev version to be installed.
 
 needs:
   packages:
     - autoconf
     - busybox
-    - php-8.2-dev
 
 inputs:
   php-config:

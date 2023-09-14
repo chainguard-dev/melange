@@ -1,0 +1,19 @@
+name: PHP phpize and configure a PHP PECL module. Requires php-dev version to be installed.
+
+needs:
+  packages:
+    - autoconf
+    - busybox
+
+inputs:
+  php-config:
+    description: php-config to use
+    default: "php-config"
+  prefix:
+    description: prefix to use for configure
+    default: "/usr"
+
+pipeline:
+  - runs: |
+      phpize
+      ./configure --prefix=${{inputs.prefix}} --with-php-config=${{inputs.php-config}}

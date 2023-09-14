@@ -5,7 +5,6 @@ needs:
     - automake
     - busybox
     - cmake
-    - php-8.1-dev
 
 inputs:
   extension:

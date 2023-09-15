@@ -63,7 +63,6 @@ func isSetUidOrGidLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	}
 
 	mode := info.Mode()
-	fmt.Printf("%s %o\n", path, mode)
 	if mode&fs.ModeSetuid != 0 {
 		return fmt.Errorf("File is setuid")
 	} else if mode&fs.ModeSetgid != 0 {

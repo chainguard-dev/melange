@@ -234,11 +234,11 @@ func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) err
 	if err != nil {
 		return err
 	}
-	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
 	if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 		return err
 	}
+	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
 	pctx.logger.Printf("  using %s", pctx.Pipeline.Uses)
 	spctx.dumpWith()
@@ -406,6 +406,9 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
 		if err != nil {
 			return false, err
+		}
+		if spctx.Pipeline.WorkDir == "" {
+			spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 		}
 
 		ran, err := spctx.Run(ctx, pb)

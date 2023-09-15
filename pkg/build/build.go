@@ -944,6 +944,11 @@ func (sp SubpackageContext) ShouldRun(pb *PipelineBuild) (bool, error) {
 	return result, nil
 }
 
+var defaultLinters = []string{
+	"setuidgid",
+	"usrlocal",
+}
+
 func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
@@ -1041,6 +1046,22 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if _, err := pctx.Run(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
+		}
+	}
+
+	if !b.IsBuildLess() {
+		b.Logger.Printf("running package linter checks")
+		chk := b.Configuration.Package.Checks
+		linters := chk.GetLinters()
+
+		// FIXME(Elizafox): apkofs doesn't support setuid/setgid
+		//fsys := apkofs.DirFS(b.WorkspaceDir)
+		fsys := os.DirFS(b.WorkspaceDir)
+
+		lctx := LinterContext{b.Configuration.Package.Name, &b.Configuration, &chk}
+		err = lintPackageFs(lctx, fsys, linters)
+		if err != nil {
+			return fmt.Errorf("Error with package linter:\n%w", err)
 		}
 	}
 

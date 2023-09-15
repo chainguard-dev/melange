@@ -1108,6 +1108,30 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
+	// Run subpackage linters
+	for _, sp := range b.Configuration.Subpackages {
+		if b.IsBuildLess() {
+			continue
+		}
+
+		b.Logger.Printf("running pipeline for subpackage %s", sp.Name)
+
+		chk := sp.Checks
+		linters := chk.GetLinters()
+
+		// FIXME(Elizafox): apkofs doesn't support setuid/setgid
+		//fsys := apkofs.DirFS(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name))
+
+		// TODO(Elizafox): getting the workspace dir path should be refactored.
+		fsys := os.DirFS(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name))
+		lctx := LinterContext{b.Configuration.Package.Name, &b.Configuration, &chk}
+		err = lintPackageFs(lctx, fsys, linters)
+		if err != nil {
+			return fmt.Errorf("Error with package linter:\n%w", err)
+		}
+
+	}
+
 	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
 		return err
 	}

@@ -96,3 +96,80 @@ subpackages:
 	require.Equal(t, map[string]string{"foo": "FOO", "bar": "BAR"}, cfg.Subpackages[0].Pipeline[0].Environment)
 	require.Equal(t, map[string]string{"foo": "BAR", "bar": "BAR", "baz": "BAZ"}, cfg.Subpackages[0].Pipeline[0].Pipeline[0].Environment)
 }
+
+func Test_propagateWorkingDirectory(t *testing.T) {
+	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: propagate-workdir
+  version: 0.0.1
+  epoch: 1
+  description: example testing propagation of working directory
+
+pipeline:
+  - working-directory: /home/build/foo
+    pipeline:
+      - runs: pwd
+
+  - working-directory: /home/build/bar
+    pipeline:
+      - working-directory: /home/build/baz
+        pipeline:
+          - runs: pwd
+          - runs: pwd
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, "/home/build/foo", cfg.Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/foo", cfg.Pipeline[0].Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/bar", cfg.Pipeline[1].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[1].WorkDir)
+}
+
+func Test_propagateWorkingDirectoryToUsesNodes(t *testing.T) {
+	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: propagate-workdir
+  version: 0.0.1
+  epoch: 1
+  description: example testing propagation of working directory
+
+pipeline:
+  - working-directory: /home/build/foo
+    pipeline:
+      - runs: pwd
+
+  - working-directory: /home/build/bar
+    pipeline:
+      - working-directory: /home/build/baz
+        pipeline:
+          - runs: pwd
+          - runs: pwd
+          - uses: fetch
+            with:
+              uri: https://example.com/foo.zip
+              expected-sha256: 123456
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, "/home/build/foo", cfg.Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/foo", cfg.Pipeline[0].Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/bar", cfg.Pipeline[1].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[0].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[1].WorkDir)
+	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[2].WorkDir)
+}

@@ -1022,6 +1022,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
 
+	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
+		return err
+	}
+
 	cfg := b.WorkspaceConfig()
 	if !b.IsBuildLess() {
 		cfg.Arch = b.Arch
@@ -1047,15 +1051,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
 		}
-	}
 
-	if !b.IsBuildLess() {
 		b.Logger.Printf("running package linter checks")
 		chk := b.Configuration.Package.Checks
 		linters := chk.GetLinters()
 
-		// FIXME(Elizafox): apkofs doesn't support setuid/setgid
-		//fsys := apkofs.DirFS(b.WorkspaceDir)
 		fsys := os.DirFS(b.WorkspaceDir)
 
 		lctx := LinterContext{b.Configuration.Package.Name, &b.Configuration, &chk}
@@ -1106,6 +1106,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 				}
 			}
 		}
+
+		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
+			return err
+		}
 	}
 
 	// Run subpackage linters
@@ -1119,21 +1123,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		chk := sp.Checks
 		linters := chk.GetLinters()
 
-		// FIXME(Elizafox): apkofs doesn't support setuid/setgid
-		//fsys := apkofs.DirFS(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name))
-
 		// TODO(Elizafox): getting the workspace dir path should be refactored.
-		fsys := os.DirFS(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name))
+		path := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
+		fsys := os.DirFS(path)
 		lctx := LinterContext{b.Configuration.Package.Name, &b.Configuration, &chk}
 		err = lintPackageFs(lctx, fsys, linters)
 		if err != nil {
 			return fmt.Errorf("Error with package linter:\n%w", err)
 		}
-
-	}
-
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
-		return err
 	}
 
 	// Retrieve the post build workspace from the runner
@@ -1166,10 +1163,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			for _, p := range sp.Pipeline {
 				langs = append(langs, p.SBOM.Language)
 			}
-		}
-
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
-			return err
 		}
 
 		if err := generator.GenerateSBOM(ctx, &sbom.Spec{

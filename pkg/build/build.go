@@ -944,11 +944,6 @@ func (sp SubpackageContext) ShouldRun(pb *PipelineBuild) (bool, error) {
 	return result, nil
 }
 
-var defaultLinters = []string{
-	"setuidgid",
-	"usrlocal",
-}
-
 func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()

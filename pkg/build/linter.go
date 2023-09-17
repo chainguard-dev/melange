@@ -37,10 +37,14 @@ type Linter struct {
 
 var Linters = map[string]Linter{
 	"usrlocal":  Linter{usrLocalLinter, "This package should be a -compat package"},
-	"setuidgid": Linter{isSetUidOrGidLinter, "This package has a setuid/setgid binary, set `checks: - setuidgid' to disable this"},
+	"varempty":  Linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
+	"tempdir":   Linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
+	"setuidgid": Linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
 }
 
-var isUsrLocalRegex = regexp.MustCompile("usr/local/")
+var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
+var isVarEmptyRegex = regexp.MustCompile("^var/local/")
+var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isCompatPackage = regexp.MustCompile("-compat$")
 
 func usrLocalLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
@@ -51,6 +55,22 @@ func usrLocalLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
 
 	if isUsrLocalRegex.MatchString(path) {
 		return fmt.Errorf("/usr/local path found in non-compat package")
+	}
+
+	return nil
+}
+
+func varEmptyLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
+	if isVarEmptyRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /var/empty")
+	}
+
+	return nil
+}
+
+func tempDirLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
+	if isTempDirRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to a temp dir")
 	}
 
 	return nil
@@ -86,7 +106,7 @@ func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
 
 			err = linter.LinterFunc(lctx, path, d)
 			if err != nil {
-				return fmt.Errorf("Linter %s failed at path %s: %w; suggest: %s", linterName, path, err, linter.Explain)
+				return fmt.Errorf("Linter %s failed at path \"%s\": %w; suggest: %s", linterName, path, err, linter.Explain)
 			}
 		}
 

@@ -339,7 +339,9 @@ func (cfg Configuration) Name() string {
 
 var defaultLinters = []string{
 	"setuidgid",
+	"tempdir",
 	"usrlocal",
+	"varempty",
 }
 
 type VarTransforms struct {

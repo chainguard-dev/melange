@@ -37,7 +37,7 @@ func Test_usrLocalLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"usrlocal"},
-				Disabled: []string{"setuidgid"},
+				Disabled: []string{"setuidgid", "tempdir", "varempty"},
 			},
 		},
 	}
@@ -54,6 +54,97 @@ func Test_usrLocalLinter(t *testing.T) {
 	assert.Error(t, lintPackageFs(lctx, fsys, linters))
 }
 
+func Test_varEmptyLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "test",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks: config.Checks{
+				Enabled:  []string{"varempty"},
+				Disabled: []string{"setuidgid", "tempdir", "usrlocal"},
+			},
+		},
+	}
+
+	pathdir := filepath.Join(dir, "var", "empty")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filepath.Join(pathdir, "test.txt"))
+	assert.NoError(t, err)
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"varempty"})
+	fsys := os.DirFS(dir)
+	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
+	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+}
+
+func Test_tempDirLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "test",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks: config.Checks{
+				Enabled:  []string{"tempdir"},
+				Disabled: []string{"setuidgid", "usrlocal", "varempty"},
+			},
+		},
+	}
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"tempdir"})
+
+	fsys := os.DirFS(dir)
+
+	// Test /tmp check
+	pathdir := filepath.Join(dir, "tmp")
+	filename := filepath.Join(pathdir, "test.txt")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filename)
+	assert.NoError(t, err)
+	os.Remove(filename)
+
+	// Test /run check
+	pathdir = filepath.Join(dir, "run")
+	filename = filepath.Join(pathdir, "test.txt")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filename)
+	assert.NoError(t, err)
+	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
+	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	os.Remove(filename)
+
+	// Test /var/tmp check
+	pathdir = filepath.Join(dir, "var", "tmp")
+	filename = filepath.Join(pathdir, "test.txt")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filename)
+	assert.NoError(t, err)
+	os.Remove(filename)
+
+	// Test /var/run check
+	pathdir = filepath.Join(dir, "var", "run")
+	filename = filepath.Join(pathdir, "test.txt")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filename)
+	assert.NoError(t, err)
+	os.Remove(filename)
+}
+
 func Test_setUidGidLinter(t *testing.T) {
 	dir, err := os.MkdirTemp("", "melange.XXXXX")
 	defer os.RemoveAll(dir)
@@ -66,7 +157,7 @@ func Test_setUidGidLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"setuidgid"},
-				Disabled: []string{"usrlocal"},
+				Disabled: []string{"tempdir", "usrlocal", "varempty"},
 			},
 		},
 	}

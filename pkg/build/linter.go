@@ -36,14 +36,14 @@ type Linter struct {
 }
 
 var Linters = map[string]Linter{
+	"setuidgid": Linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
+	"tempdir":   Linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
 	"usrlocal":  Linter{usrLocalLinter, "This package should be a -compat package"},
 	"varempty":  Linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
-	"tempdir":   Linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
-	"setuidgid": Linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
 }
 
 var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
-var isVarEmptyRegex = regexp.MustCompile("^var/local/")
+var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isCompatPackage = regexp.MustCompile("-compat$")
 

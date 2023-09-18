@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -38,36 +39,52 @@ type Package struct {
 	Info         Info                 `json:"info"`
 	LastSerial   int                  `json:"last_serial"`
 	Releases     map[string][]Release `json:"releases"`
-	Urls         []Release            `json:"urls"`
+	URLs         []Release            `json:"urls"`
 	Dependencies []string             `json:"dependencies"`
 }
 
 type Info struct {
-	Author                 string        `json:"author"`
-	AuthorEmail            string        `json:"author_email"`
-	BugtrackUrl            string        `json:"bugtrack_url"`
-	Classifiers            []string      `json:"classifiers"`
-	Description            string        `json:"description"`
-	DescriptionContentType string        `json:"description_content_type"`
-	DocsUrl                string        `json:"docs_url"`
-	DownloadUrl            string        `json:"download_url"`
-	Downloads              InfoDownloads `json:"downloads"`
-	HomePage               string        `json:"home_page"`
-	Keywords               string        `json:"keywords"`
-	License                string        `json:"license"`
-	Maintainer             string        `json:"maintainer"`
-	MaintainerEmail        string        `json:"maintainer_email"`
-	Name                   string        `json:"name"`
-	PackageUrl             string        `json:"package_url"`
-	Platform               string        `json:"platform"`
-	ProjectUrl             string        `json:"project_url"`
-	ReleaseUrl             string        `json:"release_url"`
-	RequiresDist           []string      `json:"requires_dist"`
-	RequiresPython         string        `json:"requires_python"`
-	Summary                string        `json:"summary"`
-	Version                string        `json:"version"`
-	Yanked                 bool          `json:"yanked"`
-	YankedReason           string        `json:"yanked_reason"`
+	Author                 string            `json:"author"`
+	AuthorEmail            string            `json:"author_email"`
+	BugtrackURL            string            `json:"bugtrack_url"`
+	Classifiers            []string          `json:"classifiers"`
+	Description            string            `json:"description"`
+	DescriptionContentType string            `json:"description_content_type"`
+	DocsURL                string            `json:"docs_url"`
+	DownloadURL            string            `json:"download_url"`
+	Downloads              InfoDownloads     `json:"downloads"`
+	HomePage               string            `json:"home_page"`
+	Keywords               string            `json:"keywords"`
+	License                string            `json:"license"`
+	Maintainer             string            `json:"maintainer"`
+	MaintainerEmail        string            `json:"maintainer_email"`
+	Name                   string            `json:"name"`
+	PackageURL             string            `json:"package_url"`
+	Platform               string            `json:"platform"`
+	ProjectURL             string            `json:"project_url"`
+	ProjectURLs            map[string]string `json:"project_urls"`
+	ReleaseURL             string            `json:"release_url"`
+	RequiresDist           []string          `json:"requires_dist"`
+	RequiresPython         string            `json:"requires_python"`
+	Summary                string            `json:"summary"`
+	Version                string            `json:"version"`
+	Yanked                 bool              `json:"yanked"`
+	YankedReason           string            `json:"yanked_reason"`
+}
+
+// GetSourceURL returns the source url for the package. This is sometimes
+// Homepage, sometimes in the ProjectUrls as Homepage or Source.
+func (i *Info) GetSourceURL() string {
+	if strings.Contains(i.HomePage, "github.com") {
+		return i.HomePage
+	}
+	if strings.Contains(i.ProjectURLs["Homepage"], "github.com") {
+		return i.ProjectURLs["Homepage"]
+	}
+	if strings.Contains(i.ProjectURLs["Source"], "github.com") {
+		return i.ProjectURLs["Source"]
+	}
+	return ""
 }
 
 type InfoDownloads struct {
@@ -87,7 +104,7 @@ type Release struct {
 	PythonVersion     string         `json:"python_version"`
 	Size              int            `json:"size"`
 	UploadTimeIso8601 string         `json:"upload_time_iso_8601"`
-	Url               string         `json:"url"`
+	URL               string         `json:"url"`
 	Yanked            bool           `json:"yanked"`
 	YankedReason      string         `json:"yanked_reason"`
 }
@@ -105,9 +122,8 @@ func (p *PackageIndex) CheckSourceDeps(projectName string) error {
 func (p *PackageIndex) Get(ctx context.Context, projectName, version string) (*Package, error) {
 	if version == "" {
 		return p.GetLatest(ctx, projectName)
-	} else {
-		return p.GetVersion(ctx, projectName, version)
 	}
+	return p.GetVersion(ctx, projectName, version)
 }
 
 func (p *PackageIndex) GetLatest(ctx context.Context, projectName string) (*Package, error) {

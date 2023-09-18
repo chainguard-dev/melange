@@ -99,7 +99,6 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 
 	// loop over map and generate convert config for each
 	for i, key := range c.OrderedKeys {
-
 		apkConverter := c.ApkConvertors[key]
 
 		// automatically add a fetch step to the convert config to fetch the source
@@ -147,11 +146,12 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 	c.ApkConvertors[packageName] = ApkConvertor{
 		Apkbuild: &parsedApkBuild,
 		GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{
+			Logger:               c.Logger,
 			GeneratedFromComment: apkbuildURL,
-			Package: config.Package{
-				Epoch: 0,
-			},
 		},
+	}
+	c.ApkConvertors[packageName].GeneratedMelangeConfig.Package = config.Package{
+		Epoch: 0,
 	}
 	c.OrderedKeys = append(c.OrderedKeys, packageName)
 	return nil
@@ -168,7 +168,6 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 
 	// recursively loop round and add any missing dependencies to the map
 	for _, dep := range dependencies {
-
 		if strings.TrimSpace(dep) == "" {
 			continue
 		}
@@ -208,7 +207,6 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 
 			reorderdKeys = append(reorderdKeys, dep)
 			c.OrderedKeys = reorderdKeys
-
 		} else {
 			// if the dependency doesn't already exist let's go and get it
 			err := c.getApkBuildFile(ctx, dependencyApkBuildURI, dep)
@@ -261,7 +259,6 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 	// there can be multiple sources, let's add them all so, it's easier for users to remove from generated files if not needed
 	for _, source := range apkBuild.Source {
-
 		location := source.Location
 
 		_, err := url.ParseRequestURI(location)
@@ -290,12 +287,10 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 		var expectedSha string
 		if !failed {
-
 			// validate the source we are using matches the correct sha512 in the APKBIULD
 			validated := false
 			for _, shas := range apkBuild.Sha512sums {
 				if shas.Source == source.Filename {
-
 					h512 := sha512.New()
 					h512.Write(b)
 
@@ -315,7 +310,6 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 				expectedSha = fmt.Sprintf("%x", h256.Sum(nil))
 			}
-
 		} else {
 			expectedSha = "FIXME - SOURCE URL NOT VALID"
 		}
@@ -335,7 +329,6 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 // maps APKBUILD values to mconvert
 func (c ApkConvertor) mapconvert() {
-
 	c.GeneratedMelangeConfig.Package.Name = c.Apkbuild.Pkgname
 	c.GeneratedMelangeConfig.Package.Description = c.Apkbuild.Pkgdesc
 	c.GeneratedMelangeConfig.Package.Version = c.Apkbuild.Pkgver
@@ -352,24 +345,24 @@ func (c ApkConvertor) mapconvert() {
 		c.GeneratedMelangeConfig.Package.Scriptlets.Trigger.Script = "FIXME"
 	}
 
-	//if c.Apkbuild.Funcs["build"] != nil {
+	// if c.Apkbuild.Funcs["build"] != nil {
 	//	// todo lets check the command and add the correct cmake | make | meson mconvert pipelines
 	//	//build := c.Apkbuild.Funcs["build"]
 	//}
 
-	//switch c.Apkbuild.BuilderType {
+	// switch c.Apkbuild.BuilderType {
 	//
-	//case BuilderTypeCMake:
+	// case BuilderTypeCMake:
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/configure"})
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/build"})
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/install"})
 	//
-	//case BuilderTypeMeson:
+	// case BuilderTypeMeson:
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/configure"})
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/compile"})
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/install"})
 	//
-	//case BuilderTypeMake:
+	// case BuilderTypeMake:
 	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/configure"})
 	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make"})
 	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make-install"})
@@ -387,7 +380,7 @@ func (c ApkConvertor) mapconvert() {
 
 		// generate subpackages based on the subpackages defined in the APKBUILD
 		var ext string
-		//parts := strings.Split(subPackage.Subpkgname, "-")
+		// parts := strings.Split(subPackage.Subpkgname, "-")
 
 		i := strings.LastIndex(subPackage.Subpkgname, "-")
 		if i > 0 {
@@ -417,7 +410,6 @@ func (c ApkConvertor) mapconvert() {
 
 			subpackage.Pipeline = []config.Pipeline{{Uses: "split/" + ext}}
 			subpackage.Description = c.Apkbuild.Pkgname + " " + ext
-
 		} else {
 			// if we don't recognise the extension make it obvious user needs to manually fix the mconvert config
 			subpackage.Pipeline = []config.Pipeline{{Runs: "FIXME"}}
@@ -429,7 +421,6 @@ func (c ApkConvertor) mapconvert() {
 
 // adds a mconvert environment section
 func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyrings []string) {
-
 	// wolfi-os base environment
 	env := apkotypes.ImageConfiguration{
 		Contents: struct {
@@ -460,7 +451,7 @@ func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyring
 	for _, dependsDev := range c.Apkbuild.DependsDev {
 		d := dependsDev.Pkgname
 		if !strings.HasSuffix(d, "-dev") {
-			d = d + "-dev"
+			d += "-dev"
 		}
 		if !contains(env.Contents.Packages, d) {
 			env.Contents.Packages = append(env.Contents.Packages, d)
@@ -493,7 +484,6 @@ func contains(s []string, str string) bool {
 }
 
 func (c ApkConvertor) write(orderNumber, outdir string) error {
-
 	actual, err := yaml.Marshal(&c.GeneratedMelangeConfig)
 	if err != nil {
 		return errors.Wrapf(err, "marshalling mconvert configuration")
@@ -523,5 +513,10 @@ func (c ApkConvertor) write(orderNumber, outdir string) error {
 	if err != nil {
 		return errors.Wrapf(err, "creating writing to file %s", mconvertFile)
 	}
+
+	if c.Logger != nil {
+		c.Logger.Printf("Generated melange config: %s", mconvertFile)
+	}
+
 	return nil
 }

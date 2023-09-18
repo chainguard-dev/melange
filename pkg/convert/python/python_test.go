@@ -41,7 +41,7 @@ const (
 
 var versions = [2]string{"3.11", "3.10"}
 
-//var testdata = []string{"botocore", "jmespath", "python-dateutil", "urllib3", "six"}
+// var testdata = []string{"botocore", "jmespath", "python-dateutil", "urllib3", "six"}
 
 /*func TestGetTestData(t *testing.T) {
 	for _, pack := range testdata {
@@ -61,7 +61,6 @@ var versions = [2]string{"3.11", "3.10"}
 }*/
 
 func TestGetPythonMeta(t *testing.T) {
-
 	// Get list of all python metadata files in testdata dir
 	p, err := os.ReadFile(filepath.Join(botocoreMeta, "json"))
 	assert.NoError(t, err)
@@ -113,7 +112,7 @@ func TestFindDependencies(t *testing.T) {
 			err = pythonctx.findDep(context.Background())
 			assert.NoError(t, err)
 
-			//get specific python packages for package
+			// get specific python packages for package
 			pythonPackages, err := GetJsonsPackagesForPackage(pythonctx.PackageName)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, pythonPackages)
@@ -129,7 +128,6 @@ func TestFindDependencies(t *testing.T) {
 			// The dependency list should be empty
 			assert.Empty(t, pythonctx.ToGenerate)
 		}
-
 	}
 }
 
@@ -140,9 +138,13 @@ func TestGenerateManifest(t *testing.T) {
 		pythonctxs, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
-		//botocore ctx
+		// botocore ctx
 		pythonctx := pythonctxs[0]
-		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion)
+		// Add additionalReposities and additionalKeyrings
+		pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+		pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
+
+		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion, nil, nil)
 		assert.NoError(t, err)
 
 		// Check Package
@@ -157,8 +159,8 @@ func TestGenerateManifest(t *testing.T) {
 		assert.Equal(t, got.Package.Copyright[0].License, "Apache License 2.0")
 
 		// Check Environment
-		assert.Equal(t, got.Environment.Contents.Repositories, []string{"https://packages.wolfi.dev/os"})
-		assert.Equal(t, got.Environment.Contents.Keyring, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"})
+		assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.Repositories)
+		assert.Equal(t, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}, got.Environment.Contents.Keyring)
 		assert.Equal(t, got.Environment.Contents.Packages, []string{
 			"ca-certificates-bundle",
 			"wolfi-base",
@@ -169,7 +171,7 @@ func TestGenerateManifest(t *testing.T) {
 		})
 
 		// Check Pipeline
-		assert.Equal(t, len(got.Pipeline), 4)
+		assert.Equal(t, len(got.Pipeline), 3)
 
 		// Check Pipeline - fetch
 		assert.Equal(t, got.Pipeline[0].Uses, "fetch")
@@ -186,18 +188,17 @@ func TestGenerateManifest(t *testing.T) {
 			}
 		}
 		assert.NotEmpty(t, release)
-		assert.Equal(t, "https://files.pythonhosted.org/packages/8f/34/d4bcefeabfb8e4b46157e84ea55c3ecc7399d5f9a3454728e1d0d5f9cb83/botocore-"+pythonctx.PackageVersion+".tar.gz", release.Url)
+		assert.Equal(t, "https://files.pythonhosted.org/packages/8f/34/d4bcefeabfb8e4b46157e84ea55c3ecc7399d5f9a3454728e1d0d5f9cb83/botocore-"+pythonctx.PackageVersion+".tar.gz", release.URL)
 
 		assert.Equal(t, got.Pipeline[0].With, map[string]string{
-			"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", release.Url),
+			"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", release.URL),
 			"expected-sha256": "2bee6ed037590ef1e4884d944486232871513915f12a8590c63e3bb6046479bf",
-			"uri":             strings.ReplaceAll(release.Url, pythonctx.PackageVersion, "${{package.version}}"),
+			"uri":             strings.ReplaceAll(release.URL, pythonctx.PackageVersion, "${{package.version}}"),
 		})
 
 		// Check Pipeline - runs
-		assert.Equal(t, got.Pipeline[1].Runs, pythonBuildPipeline)
-		assert.Equal(t, got.Pipeline[2].Runs, pythonInstallPipeline)
-		assert.Equal(t, got.Pipeline[3].Uses, "strip")
+		assert.Equal(t, got.Pipeline[1].Uses, "python/build-wheel")
+		assert.Equal(t, got.Pipeline[2].Uses, "strip")
 	}
 }
 
@@ -207,7 +208,7 @@ func TestGeneratePackage(t *testing.T) {
 		pythonctxs, err := SetupContext(versions[i])
 		assert.NoError(t, err)
 
-		//botocore ctx
+		// botocore ctx
 		pythonctx := pythonctxs[0]
 		got := pythonctx.generatePackage(pythonctx.Package, pythonctx.PackageVersion)
 
@@ -303,10 +304,13 @@ func TestGenerateEnvironment(t *testing.T) {
 	pythonctxs, err := SetupContext("3.10")
 	assert.NoError(t, err)
 
-	//botocore ctx
+	// botocore ctx
 	pythonctx := pythonctxs[0]
 
 	pythonctx.PythonVersion = "3.10"
+	// Add additionalReposities and additionalKeyrings
+	pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+	pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
 	got310 := pythonctx.generateEnvironment(pythonctx.Package)
 
 	expected310 := apkotypes.ImageConfiguration{
@@ -324,13 +328,16 @@ func TestGenerateEnvironment(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, got310, expected310)
+	assert.Equal(t, expected310, got310)
 
 	pythonctxs, err = SetupContext("3.11")
 
-	//botocore ctx
+	// botocore ctx
 	pythonctx = pythonctxs[0]
 	assert.NoError(t, err)
+	pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+	pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
+
 	got311 := pythonctx.generateEnvironment(pythonctx.Package)
 
 	expected311 := apkotypes.ImageConfiguration{
@@ -348,7 +355,7 @@ func TestGenerateEnvironment(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, got311, expected311)
+	assert.Equal(t, expected311, got311)
 }
 
 func removeVersionsFromURL(inputURL string) (string, error) {

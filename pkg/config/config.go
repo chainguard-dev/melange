@@ -117,16 +117,16 @@ func (p Package) PackageURL(distro string) string {
 	)
 }
 
-func (c *Configuration) applySubstitutionsForProvides() error {
-	nw := buildConfigMap(c)
-	for i, prov := range c.Package.Dependencies.Provides {
+func (cfg *Configuration) applySubstitutionsForProvides() error {
+	nw := buildConfigMap(cfg)
+	for i, prov := range cfg.Package.Dependencies.Provides {
 		var err error
-		c.Package.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
+		cfg.Package.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
 		if err != nil {
 			return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
 		}
 	}
-	for _, sp := range c.Subpackages {
+	for _, sp := range cfg.Subpackages {
 		for i, prov := range sp.Dependencies.Provides {
 			var err error
 			sp.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
@@ -220,6 +220,8 @@ type Pipeline struct {
 	WorkDir string `yaml:"working-directory,omitempty"`
 	// Optional: Configuration for the generated SBOM
 	SBOM SBOM `yaml:"sbom,omitempty"`
+	// Optional: environment variables to override the apko environment
+	Environment map[string]string `yaml:"environment,omitempty"`
 }
 
 type Subpackage struct {
@@ -285,7 +287,7 @@ type Configuration struct {
 	// pipeline
 	Data []RangeData `yaml:"data,omitempty"`
 	// Optional: The update block determining how this package is auto updated
-	Update Update `yaml:"update"`
+	Update Update `yaml:"update,omitempty"`
 	// Optional: A map of arbitrary variables that can be used via templating in
 	// the pipeline
 	Vars map[string]string `yaml:"vars,omitempty"`
@@ -474,6 +476,7 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 		SubstitutionPackageVersion:     cfg.Package.Version,
 		SubstitutionPackageDescription: cfg.Package.Description,
 		SubstitutionPackageEpoch:       strconv.FormatUint(cfg.Package.Epoch, 10),
+		SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%d", cfg.Package.Version, cfg.Package.Epoch),
 	}
 
 	for k, v := range cfg.Vars {
@@ -490,6 +493,44 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 		replacements = append(replacements, k, v)
 	}
 	return strings.NewReplacer(replacements...)
+}
+
+func replaceAll(r *strings.Replacer, in []string) []string {
+	if in == nil {
+		return nil
+	}
+	out := make([]string, len(in))
+	for i, s := range in {
+		out[i] = r.Replace(s)
+	}
+	return out
+}
+
+// propagateChildPipelines performs downward propagation of configuration values.
+func (p *Pipeline) propagateChildPipelines() {
+	for idx := range p.Pipeline {
+		if p.Pipeline[idx].WorkDir == "" {
+			p.Pipeline[idx].WorkDir = p.WorkDir
+		}
+
+		p.Pipeline[idx].Environment = util.RightJoinMap(p.Environment, p.Pipeline[idx].Environment)
+
+		p.Pipeline[idx].propagateChildPipelines()
+	}
+}
+
+// propagatePipelines performs downward propagation of all pipelines in the config.
+func (cfg *Configuration) propagatePipelines() {
+	for _, sp := range cfg.Pipeline {
+		sp.propagateChildPipelines()
+	}
+
+	// Also propagate subpackages
+	for _, sp := range cfg.Subpackages {
+		for _, spp := range sp.Pipeline {
+			spp.propagateChildPipelines()
+		}
+	}
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
@@ -520,8 +561,8 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	cfg := Configuration{root: &root}
 
 	// Unmarshal into a node first
-	decoder_node := yaml.NewDecoder(f)
-	err = decoder_node.Decode(&root)
+	decoderNode := yaml.NewDecoder(f)
+	err = decoderNode.Decode(&root)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
@@ -581,9 +622,17 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 			thingToAdd := Subpackage{
 				Name:        replacer.Replace(sp.Name),
 				Description: replacer.Replace(sp.Description),
+				Dependencies: Dependencies{
+					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
+					Provides:         replaceAll(replacer, sp.Dependencies.Provides),
+					Replaces:         replaceAll(replacer, sp.Dependencies.Replaces),
+					ProviderPriority: sp.Dependencies.ProviderPriority,
+				},
+				Options: sp.Options,
+				URL:     replacer.Replace(sp.URL),
+				If:      replacer.Replace(sp.If),
 			}
 			for _, p := range sp.Pipeline {
-
 				// take a copy of the with map, so we can replace the values
 				replacedWith := make(map[string]string)
 				for key, value := range p.With {
@@ -702,6 +751,9 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err
 	}
+
+	// Propagate all child pipelines
+	cfg.propagatePipelines()
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
 	if err = cfg.validate(); err != nil {

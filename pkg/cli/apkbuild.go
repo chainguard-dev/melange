@@ -41,19 +41,24 @@ func ApkBuild() *cobra.Command {
 		Example: `  convert apkbuild libx11`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if len(args) != 1 {
 				return errors.New("too many arguments, expected only 1")
 			}
 
+			var err error
+			// Note we pass false here to avoid the default behaviour of adding
+			// the wolfi repo and keyring. This is because we don't want to
+			// add them by default for apkbuilds, but we do want to add them
+			// but we want them for others.
+			o.outDir, o.additionalRepositories, o.additionalKeyrings, err = getCommonValues(cmd, false)
+			if err != nil {
+				return err
+			}
 			return o.ApkBuildCmd(cmd.Context(), args[0])
 		},
 	}
 
-	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://git.alpinelinux.org/aports/plain/main/%s/APKBUILD", "URI to use for querying APKBUILD for provided package name")
-	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
-	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
 	cmd.Flags().StringArrayVar(&o.excludePackages, "exclude-packages", []string{}, "packages to exclude from auto generation of melange configs when detected in APKBUILD files")
 
 	return cmd

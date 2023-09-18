@@ -13,7 +13,6 @@ import (
 )
 
 func Test_getWolfiPackages(t *testing.T) {
-
 	data, err := os.ReadFile(filepath.Join("testdata", "APKINDEX.tar.gz"))
 	assert.NoError(t, err)
 
@@ -25,7 +24,6 @@ func Test_getWolfiPackages(t *testing.T) {
 		// Send response to be tested
 		_, err = rw.Write(data)
 		assert.NoError(t, err)
-
 	}))
 
 	c := New(server.Client(), server.URL+"/APKINDEX.tar.gz")
@@ -34,5 +32,4 @@ func Test_getWolfiPackages(t *testing.T) {
 	assert.True(t, wolfiPackages["pkgconf-doc"])
 	assert.True(t, wolfiPackages["wolfi-baselayout"])
 	assert.True(t, wolfiPackages["bash-doc"])
-
 }

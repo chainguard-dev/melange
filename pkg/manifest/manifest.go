@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -13,12 +14,9 @@ import (
 )
 
 type GeneratedMelangeConfig struct {
-	Package              config.Package               `yaml:"package"`
-	Environment          apkotypes.ImageConfiguration `yaml:"environment,omitempty"`
-	Pipeline             []config.Pipeline            `yaml:"pipeline,omitempty"`
-	Subpackages          []config.Subpackage          `yaml:"subpackages,omitempty"`
-	Vars                 map[string]string            `yaml:"vars,omitempty"`
-	GeneratedFromComment string                       `yaml:"-"`
+	config.Configuration `yaml:",inline"`
+	GeneratedFromComment string      `yaml:"-"`
+	Logger               *log.Logger `yaml:"-"`
 }
 
 func (m *GeneratedMelangeConfig) SetPackage(pkg config.Package) {
@@ -68,5 +66,8 @@ func (m *GeneratedMelangeConfig) Write(dir string) error {
 		return errors.Wrapf(err, "creating writing to file %s", manifestPath)
 	}
 
+	if m.Logger != nil {
+		m.Logger.Printf("Generated melange config: %s", manifestPath)
+	}
 	return nil
 }

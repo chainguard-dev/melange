@@ -82,6 +82,25 @@ func HashFile(downloadedFile string, digest hash.Hash) (string, error) {
 	return hex.EncodeToString(digest.Sum(nil)), nil
 }
 
+// Given a left and right map, perform a right join and return the result
+func RightJoinMap(left map[string]string, right map[string]string) map[string]string {
+	// this is the worst case possible length, assuming no overlaps.
+	length := len(left) + len(right)
+	output := make(map[string]string, length)
+
+	// copy the left-side first
+	for k, v := range left {
+		output[k] = v
+	}
+
+	// overlay the right-side on top
+	for k, v := range right {
+		output[k] = v
+	}
+
+	return output
+}
+
 func ReverseSlice[T comparable](s []T) {
 	sort.SliceStable(s, func(i, j int) bool {
 		return i > j

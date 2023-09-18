@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"chainguard.dev/melange/pkg/convert/python"
+	"chainguard.dev/melange/pkg/convert/relmon"
 
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +32,8 @@ type pythonOptions struct {
 	baseURIFormat          string
 	pythonVersion          string
 	packageVersion         string
+	ghClient               *github.Client
+	mf                     *relmon.MonitorFinder
 }
 
 // PythonBuild is the top-level `convert python` cobra command
@@ -44,23 +48,34 @@ func PythonBuild() *cobra.Command {
 convert python botocore`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if len(args) != 1 {
 				return errors.New("too many arguments, expected only 1")
 			}
 
+			var err error
+			// Note we pass true here to get the default behaviour of adding
+			// the wolfi repo and keyring. This is because we want to add them
+			// by default for python.
+			o.outDir, o.additionalRepositories, o.additionalKeyrings, err = getCommonValues(cmd, true)
+			if err != nil {
+				return err
+			}
+			o.ghClient, err = getGithubClient(context.TODO(), cmd)
+			if err != nil {
+				return err
+			}
+			o.mf, err = getRelaseMonitoringClient(cmd)
+			if err != nil {
+				return err
+			}
 			return o.pythonBuild(cmd.Context(), args[0])
 		},
 	}
 
-	cmd.Flags().StringVar(&o.outDir, "out-dir", "./generated", "directory where convert config will be output")
 	cmd.Flags().StringVar(&o.packageVersion, "package-version", "", "version of the python package to convert")
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org",
 		"URI to use for querying gems for provided package name")
-	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3.11", "version of the python to build the package")
-	cmd.Flags().StringArrayVar(&o.additionalRepositories, "additional-repositories", []string{}, "additional repositories to be added to convert environment config")
-	cmd.Flags().StringArrayVar(&o.additionalKeyrings, "additional-keyrings", []string{}, "additional repositories to be added to convert environment config")
-
+	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3", "version of the python to build the package")
 	return cmd
 }
 
@@ -80,8 +95,11 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	pythonContext.PythonVersion = o.pythonVersion
 	pythonContext.PackageName = packageName
 
+	// These two are conditionally set above, and if nil, they are unused.
+	pythonContext.GithubClient = o.ghClient
+	pythonContext.MonitoringClient = o.mf
+
 	pythonContext.Logger.Printf("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
 
 	return pythonContext.Generate(ctx)
-
 }

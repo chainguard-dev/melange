@@ -1,0 +1,17 @@
+name: Installs and enables a PHP PECL module.
+
+needs:
+  packages:
+    - automake
+    - busybox
+
+inputs:
+  extension:
+    description: Name of the PECL extension to install.
+    required: true
+
+pipeline:
+  - runs: |
+      make INSTALL_ROOT="${{targets.destdir}}" install
+      install -d ${{targets.destdir}}/etc/php/conf.d
+      echo "extension=${{inputs.extension}}" > ${{targets.destdir}}/etc/php/conf.d/${{inputs.extension}}.ini

@@ -529,6 +529,11 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 			// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
 			// functionality work.  So we always generate provides entries for libc.
 			if !pc.Options.NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
+				libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+				if !allowedPrefix(path, libDirs) {
+					return nil
+				}
+
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
@@ -591,6 +596,19 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 		}
 
 		if !strings.Contains(path, ".pc") {
+			return nil
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+
+		// Sigh.  ncurses uses symlinks to alias .pc files to other .pc files.
+		// Skip the symlinks for now.
+		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
 			return nil
 		}
 

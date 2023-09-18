@@ -1,0 +1,19 @@
+name: Build a Python wheel
+
+needs:
+  packages:
+    - busybox
+    - py3-build
+    - py3-installer
+
+pipeline:
+  - runs: |
+      if ! [ -x "$(command -v python3)" ]; then
+        echo 'Error: Python is not installed.'
+        exit 1
+      fi
+
+  - runs: |
+      python3 -m build
+      python3 -m installer -d "${{targets.contextdir}}" dist/*.whl
+      find ${{targets.contextdir}} -name "*.pyc" -exec rm -rf '{}' +

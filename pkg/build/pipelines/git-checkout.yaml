@@ -32,10 +32,20 @@ inputs:
     description: |
       The expected commit hash
 
+  recurse-submodules:
+    description: |
+      Indicates whether --recurse-submodules should be passed to git clone.
+    default: false
+
 pipeline:
   - runs: |
       if [ -z "${{inputs.branch}}" ] && [ -z "${{inputs.tag}}" ]; then
         echo "Warning (git-checkout): you have not specified a branch or tag."
+      fi
+
+      git_clone_flags=""
+      if [ "${{inputs.recurse-submodules}}" == "true" ]; then
+        git_clone_flags="--recurse-submodules"
       fi
 
       [ -n '${{inputs.branch}}' ] && clone_target='--branch ${{inputs.branch}}'
@@ -47,7 +57,7 @@ pipeline:
 
       git config --global --add safe.directory $workdir
       git config --global --add safe.directory $clone_fullpath
-      git clone $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+      git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
 
       cd $workdir
       tar -c . | (cd $clone_fullpath && tar -x)
@@ -57,12 +67,32 @@ pipeline:
 
       if [ -z "${{inputs.expected-commit}}" ]; then
         echo "Warning (git-checkout): no expected-commit"
-      else
-        [ -n '${{inputs.branch}}' ] && remote_commit=$(git rev-list -1 origin/"${{inputs.branch}}")
-        [ -n '${{inputs.tag}}' ] && remote_commit=$(git rev-list -1 "${{inputs.tag}}")
-
+      elif [ -n '${{inputs.branch}}' ]; then
+        remote_commit=$(git rev-parse --verify --end-of-options "refs/heads/${{inputs.branch}}")
         if [[ '${{inputs.expected-commit}}' != "$remote_commit" ]]; then
           echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got $remote_commit"
           exit 1
         fi
+      elif [ -n '${{inputs.tag}}' ]; then
+        # If it's a tag, then it could be a lightweight or annotated tag.
+        # Lightweight tags point directly to the commit and do not have any messages, signatures, or other data.
+        # Annotated tags point to its own git object containing the tag data, with a reference to the underlying commit.
+        # We expect most tags to be using annotated tags.
+
+        # Compare direct tag value
+        remote_commit=$(git rev-parse --verify --end-of-options "refs/tags/${{inputs.tag}}")
+        if [[ '${{inputs.expected-commit}}' == "$remote_commit" ]]; then
+          exit 0
+        fi
+
+        # Try to unpeel the tag and compare the underlying value.
+        echo "Warning (git-checkout): expected commit ${{inputs.expected-commit}}, does not match tag ${remote_commit}. Attempting to unpeel tag."
+
+        unpeeled_commit=$(git rev-parse --verify --end-of-options "refs/tags/${{inputs.tag}}^{}")
+        if [[ '${{inputs.expected-commit}}' != "${unpeeled_commit}" ]]; then
+          echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got ${unpeeled_commit}"
+          exit 1
+        fi
+      else
+        echo "Error (git-checkout): no branch or tag provided"
       fi

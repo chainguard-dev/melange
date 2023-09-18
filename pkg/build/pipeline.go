@@ -98,6 +98,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		config.SubstitutionPackageName:          pb.Package.Package.Name,
 		config.SubstitutionPackageVersion:       pb.Package.Package.Version,
 		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
+		config.SubstitutionPackageFullVersion:   fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
 		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
 		config.SubstitutionTargetsContextdir:    fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
 		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
@@ -149,24 +150,6 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	return nw, nil
-}
-
-func rightJoinMap(left map[string]string, right map[string]string) map[string]string {
-	// this is the worst case possible length, assuming no overlapctx.
-	length := len(left) + len(right)
-	output := make(map[string]string, length)
-
-	// copy the left-side first
-	for k, v := range left {
-		output[k] = v
-	}
-
-	// overlay the right-side on top
-	for k, v := range right {
-		output[k] = v
-	}
-
-	return output
 }
 
 func validateWith(data map[string]string, inputs map[string]config.Input) (map[string]string, error) {
@@ -234,7 +217,7 @@ func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[st
 	}
 
 	for k := range pctx.Pipeline.Pipeline {
-		pctx.Pipeline.Pipeline[k].With = rightJoinMap(pctx.Pipeline.With, pctx.Pipeline.Pipeline[k].With)
+		pctx.Pipeline.Pipeline[k].With = util.RightJoinMap(pctx.Pipeline.With, pctx.Pipeline.Pipeline[k].With)
 	}
 
 	return nil
@@ -251,11 +234,11 @@ func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) err
 	if err != nil {
 		return err
 	}
-	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
 	if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 		return err
 	}
+	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
 	pctx.logger.Printf("  using %s", pctx.Pipeline.Uses)
 	spctx.dumpWith()
@@ -272,6 +255,24 @@ func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) err
 	return nil
 }
 
+// Build a script to run as part of evalRun
+func (pctx *PipelineContext) buildEvalRunCommand(debugOption rune, sysPath string, workdir string, fragment string) []string {
+	envExport := "export %s='%s'"
+	envArr := []string{}
+	for k, v := range pctx.Pipeline.Environment {
+		envArr = append(envArr, fmt.Sprintf(envExport, k, v))
+	}
+	envString := strings.Join(envArr, "\n")
+	script := fmt.Sprintf(`set -e%c
+export PATH='%s'
+%s
+[ -d '%s' ] || mkdir -p '%s'
+cd '%s'
+%s
+exit 0`, debugOption, sysPath, envString, workdir, workdir, workdir, fragment)
+	return []string{"/bin/sh", "-c", script}
+}
+
 func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) error {
 	var err error
 	pctx.Pipeline.With, err = MutateWith(pb, pctx.Pipeline.With)
@@ -279,6 +280,13 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 		return err
 	}
 	pctx.dumpWith()
+
+	debugOption := ' '
+	if pb.Build.Debug {
+		debugOption = 'x'
+	}
+
+	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 	workdir := "/home/build"
 	if pctx.Pipeline.WorkDir != "" {
@@ -293,21 +301,8 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 		return err
 	}
 
-	debugOption := ' '
-	if pb.Build.Debug {
-		debugOption = 'x'
-	}
-
-	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	script := fmt.Sprintf(`set -e%c
-export PATH='%s'
-[ -d '%s' ] || mkdir -p '%s'
-cd '%s'
-%s
-exit 0`, debugOption, sysPath, workdir, workdir, workdir, fragment)
-	command := []string{"/bin/sh", "-c", script}
+	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
 	config := pb.Build.WorkspaceConfig()
-
 	if err := pb.Build.Runner.Run(ctx, config, command...); err != nil {
 		return err
 	}
@@ -408,13 +403,12 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 	}
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		if sp.WorkDir == "" {
-			sp.WorkDir = pctx.Pipeline.WorkDir
-		}
-
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
 		if err != nil {
 			return false, err
+		}
+		if spctx.Pipeline.WorkDir == "" {
+			spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 		}
 
 		ran, err := spctx.Run(ctx, pb)

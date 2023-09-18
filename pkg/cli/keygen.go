@@ -100,7 +100,7 @@ func Keygen() *cobra.Command {
 	return cmd
 }
 
-func KeygenCmd(ctx context.Context, opts ...KeygenOption) error {
+func KeygenCmd(_ context.Context, opts ...KeygenOption) error {
 	kc, err := newKeygenContext(opts...)
 	if err != nil {
 		return err

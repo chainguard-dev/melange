@@ -1,0 +1,20 @@
+name: Configure GCP Maven Central mirror for faster downloads
+needs:
+  packages:
+    - busybox
+pipeline:
+  - runs: |
+      # Maven checks $USER/.m2, we set $HOME to /home/build but it hardcodes $USER somehow
+      mkdir -p /root/.m2
+      cat > /root/.m2/settings.xml <<EOF
+        <settings>
+          <mirrors>
+            <mirror>
+              <id>google-maven-central</id>
+              <name>GCS Maven Central mirror</name>
+              <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+              <mirrorOf>*</mirrorOf>
+            </mirror>
+          </mirrors>
+        </settings>
+      EOF

@@ -79,7 +79,6 @@ $ melange completion fish > ~/.config/fish/completions/melange.fish
 				if err != nil {
 					return
 				}
-
 			}
 		},
 	}

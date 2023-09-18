@@ -98,15 +98,11 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 	}
 
 	logger.Printf("Replacing existing signed index (%s) with signed index with key %s", indexFile, o.Key)
-	if err := os.Rename(t.Name(), indexFile); err != nil {
-		return err
-	}
-
-	return nil
+	return os.Rename(t.Name(), indexFile)
 }
 
-// parseIndexWithoutSignature takes in an index file and returns the unsigned []byte represenation of it
-func parseIndexWithoutSignature(ctx context.Context, indexFile string) ([]byte, error) {
+// parseIndexWithoutSignature takes in an index file and returns the unsigned []byte representation of it
+func parseIndexWithoutSignature(_ context.Context, indexFile string) ([]byte, error) {
 	orig, err := os.Open(indexFile)
 	if err != nil {
 		return nil, err
@@ -197,12 +193,7 @@ func (o signOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 			return o.run(ctx, p)
 		})
 	}
-
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return g.Wait()
 }
 
 func (o signOpts) run(ctx context.Context, pkg string) error {
@@ -215,7 +206,7 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 
 	eapk, err := apk.ExpandApk(ctx, apkr, "")
 	if err != nil {
-		return fmt.Errorf("expanding apk: %v", err)
+		return fmt.Errorf("expanding apk: %w", err)
 	}
 	defer eapk.Close()
 

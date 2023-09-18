@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version: '1.20'
+          go-version: '1.21'
           check-latest: true
 
       - name: build
@@ -24,7 +24,7 @@ jobs:
           make melange
           ./melange version
 
-      - uses: goreleaser/goreleaser-action@336e29918d653399e599bfca99fadc1d7ffbc9f7 # v4.3.0
+      - uses: goreleaser/goreleaser-action@5fdedb94abba051217030cc86d4523cf3f02243d # v4.6.0
         with:
           version: latest
           install-only: true

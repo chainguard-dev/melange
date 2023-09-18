@@ -47,12 +47,7 @@ var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isCompatPackage = regexp.MustCompile("-compat$")
 
-func usrLocalLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
-	// If this is already a compat package, do nothing.
-	if isCompatPackage.MatchString(lctx.pkgname) {
-		return nil
-	}
-
+func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isUsrLocalRegex.MatchString(path) {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
@@ -60,7 +55,7 @@ func usrLocalLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
 	return nil
 }
 
-func varEmptyLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
+func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isVarEmptyRegex.MatchString(path) {
 		return fmt.Errorf("Package writes to /var/empty")
 	}
@@ -68,7 +63,7 @@ func varEmptyLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
 	return nil
 }
 
-func tempDirLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
+func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isTempDirRegex.MatchString(path) {
 		return fmt.Errorf("Package writes to a temp dir")
 	}
@@ -76,7 +71,7 @@ func tempDirLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
 	return nil
 }
 
-func isSetUidOrGidLinter(lctx LinterContext, path string, d fs.DirEntry) error {
+func isSetUidOrGidLinter(_ LinterContext, _ string, d fs.DirEntry) error {
 	info, err := d.Info()
 	if err != nil {
 		return err
@@ -93,6 +88,11 @@ func isSetUidOrGidLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 }
 
 func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
+	// If this is a compat package, do nothing.
+	if isCompatPackage.MatchString(lctx.pkgname) {
+		return nil
+	}
+
 	walkCb := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("Error traversing tree at %s: %w", path, err)

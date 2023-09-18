@@ -35,7 +35,7 @@ type Linter struct {
 	Explain    string
 }
 
-var Linters = map[string]Linter{
+var linterMap = map[string]Linter{
 	"setuidgid": Linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
 	"tempdir":   Linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
 	"usrlocal":  Linter{usrLocalLinter, "This package should be a -compat package"},
@@ -99,7 +99,7 @@ func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
 		}
 
 		for _, linterName := range linters {
-			linter, present := Linters[linterName]
+			linter, present := linterMap[linterName]
 			if !present {
 				return fmt.Errorf("Linter %s is unknown", linterName)
 			}

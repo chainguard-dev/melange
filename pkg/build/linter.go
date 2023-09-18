@@ -28,18 +28,18 @@ type LinterContext struct {
 	chk     *config.Checks
 }
 
-type LinterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
+type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
 
-type Linter struct {
-	LinterFunc LinterFunc
+type linter struct {
+	LinterFunc linterFunc
 	Explain    string
 }
 
-var linterMap = map[string]Linter{
-	"setuidgid": Linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
-	"tempdir":   Linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
-	"usrlocal":  Linter{usrLocalLinter, "This package should be a -compat package"},
-	"varempty":  Linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
+var linterMap = map[string]linter{
+	"setuidgid": linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
+	"tempdir":   linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
+	"usrlocal":  linter{usrLocalLinter, "This package should be a -compat package"},
+	"varempty":  linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
 }
 
 var isUsrLocalRegex = regexp.MustCompile("^usr/local/")

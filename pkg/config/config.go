@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -77,6 +78,13 @@ type PackageOption struct {
 	NoCommands bool `yaml:"no-commands"`
 }
 
+type Checks struct {
+	// Optional: enable these linters that are not enabled by default.
+	Enabled []string `yaml:"enabled,omitempty"`
+	// Optional: disable these linters that are not enabled by default.
+	Disabled []string `yaml:"disabled,omitempty"`
+}
+
 type Package struct {
 	// The name of the package
 	Name string `yaml:"name"`
@@ -101,6 +109,8 @@ type Package struct {
 	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
 	Scriptlets Scriptlets `yaml:"scriptlets,omitempty"`
+	// Optional: enabling, disabling, and configuration of build checks
+	Checks Checks `yaml:"checks,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the package. For more
@@ -171,6 +181,25 @@ func (p *Package) FullCopyright() string {
 		copyright += cp.Attestation + "\n"
 	}
 	return copyright
+}
+
+// Computes the list of package or subpackage linters, taking into account default linters.
+// This includes the default linters as well, unless disabled.
+func (chk *Checks) GetLinters() []string {
+	linters := defaultLinters
+
+	// Enable non-default linters
+	for _, v := range chk.Enabled {
+		// Ensure we don't get duplicate values
+		if !slices.Contains(linters, v) {
+			linters = append(linters, v)
+		}
+	}
+
+	// Filter linters
+	linters = slices.DeleteFunc(linters, func(n string) bool { return slices.Contains(chk.Disabled, n) })
+
+	return linters
 }
 
 type Needs struct {
@@ -244,6 +273,8 @@ type Subpackage struct {
 	URL string `yaml:"url,omitempty"`
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `yaml:"commit,omitempty"`
+	// Optional: enabling, disabling, and configuration of build checks
+	Checks Checks `yaml:"checks,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the subpackage. For more
@@ -304,6 +335,13 @@ type Configuration struct {
 // Name returns a name for the configuration, using the package name.
 func (cfg Configuration) Name() string {
 	return cfg.Package.Name
+}
+
+var defaultLinters = []string{
+	"setuidgid",
+	"tempdir",
+	"usrlocal",
+	"varempty",
 }
 
 type VarTransforms struct {

@@ -63,10 +63,4 @@ pipeline:
     
       goreleaser release $goreleaser_flags
       echo "Copying binary to ${{inputs.output}}"
-      # build.arch is equal to aarch64 make it arm64
-      if [ "${{build.arch}}" = "aarch64" ]; then
-        build_arch="arm64"
-      else
-        build_arch="${{build.arch}}"
-      fi
       install -Dm755 ./dist/${BASENAME}_linux_*/* "${{inputs.output}}"

@@ -24,7 +24,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/kubescape/go-git-url v0.0.25
-	github.com/lima-vm/lima v0.17.0
+	github.com/lima-vm/lima v0.17.2
 	github.com/opencontainers/image-spec v1.1.0-rc4
 	github.com/package-url/packageurl-go v0.1.1
 	github.com/pkg/errors v0.9.1

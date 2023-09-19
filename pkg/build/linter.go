@@ -119,8 +119,8 @@ func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 }
 
 func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
-	if d.IsDir() {
-		// Don't worry about directories
+	if !d.Type().IsRegular() {
+		// Don't worry about non-files
 		return nil
 	}
 

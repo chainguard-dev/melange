@@ -35,6 +35,13 @@ type linter struct {
 	Explain    string
 }
 
+type postLinterFunc func(lctx LinterContext, fsys fs.FS) error
+
+type postLinter struct {
+	LinterFunc postLinterFunc
+	Explain    string
+}
+
 var linterMap = map[string]linter{
 	"dev":        linter{devLinter, "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev"},
 	"opt":        linter{optLinter, "This package should be a -compat package"},
@@ -44,6 +51,10 @@ var linterMap = map[string]linter{
 	"usrlocal":   linter{usrLocalLinter, "This package should be a -compat package"},
 	"varempty":   linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
 	"worldwrite": linter{worldWriteableLinter, "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package"},
+}
+
+var postLinterMap = map[string]postLinter{
+	"empty": postLinter{emptyPostLinter, "Verify that this package is supposed to be empty, if so set the no-provides package option; otherwise, check the build"},
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
@@ -141,12 +152,42 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 	return nil
 }
 
+func emptyPostLinter(lctx LinterContext, fsys fs.FS) error {
+	foundfile := false
+	walkCb := func(path string, _ fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path == "." {
+			// Skip root
+			return nil
+		}
+
+		foundfile = true
+		return fs.SkipAll
+	}
+
+	err := fs.WalkDir(fsys, ".", walkCb)
+	if err != nil {
+		return err
+	}
+
+	if foundfile || lctx.cfg.Package.Options.NoProvides {
+		// Nothing to do
+		return nil
+	}
+
+	return fmt.Errorf("Package is empty but no-provides is not set")
+}
+
 func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if isCompatPackage.MatchString(lctx.pkgname) {
 		return nil
 	}
 
+	postLinters := []string{}
 	walkCb := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("Error traversing tree at %s: %w", path, err)
@@ -155,7 +196,14 @@ func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
 		for _, linterName := range linters {
 			linter, present := linterMap[linterName]
 			if !present {
-				return fmt.Errorf("Linter %s is unknown", linterName)
+				// Check if it's a post linter instead
+				_, present = postLinterMap[linterName]
+				if !present {
+					return fmt.Errorf("Linter %s is unknown", linterName)
+				}
+
+				postLinters = append(postLinters, linterName)
+				continue
 			}
 
 			err = linter.LinterFunc(lctx, path, d)
@@ -170,6 +218,15 @@ func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
 	err := fs.WalkDir(fsys, ".", walkCb)
 	if err != nil {
 		return err
+	}
+
+	// Run post-walking linters
+	for _, linterName := range postLinters {
+		linter := postLinterMap[linterName]
+		err = linter.LinterFunc(lctx, fsys)
+		if err != nil {
+			return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
+		}
 	}
 
 	return nil

@@ -69,7 +69,7 @@ type Scriptlets struct {
 
 type PackageOption struct {
 	// Optional: Signify this package as a virtual package which does not provide
-	// any files, executables, librariries, etc... and is otherwise empty
+	// any files, executables, libraries, etc... and is otherwise empty
 	NoProvides bool `yaml:"no-provides"`
 	// Optional: Mark this package as a self contained package that does not
 	// depend on any other package
@@ -339,6 +339,7 @@ func (cfg Configuration) Name() string {
 
 var defaultLinters = []string{
 	"dev",
+	"empty",
 	"opt",
 	"srv",
 	"setuidgid",

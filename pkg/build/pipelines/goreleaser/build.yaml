@@ -63,4 +63,10 @@ pipeline:
     
       goreleaser release $goreleaser_flags
       echo "Copying binary to ${{inputs.output}}"
-      install -Dm755 ./dist/${BASENAME}_linux_*/* "${{inputs.output}}"
+      build_arch="${{build.arch}}"
+      if [ "$build_arch" = "aarch64" ]; then
+        build_arch="arm64"
+      elif [ "$build_arch" = "x86_64" ]; then
+        build_arch="amd64"
+      fi
+      install -Dm755 ./dist/${BASENAME}_linux_$build_arch*/* "${{inputs.output}}"

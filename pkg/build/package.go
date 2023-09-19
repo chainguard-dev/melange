@@ -595,7 +595,7 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 			return err
 		}
 
-		if !strings.Contains(path, ".pc") {
+		if !strings.HasSuffix(path, ".pc") {
 			return nil
 		}
 
@@ -614,7 +614,8 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 
 		pkg, err := pkgconfig.Load(filepath.Join(pc.WorkspaceSubdir(), path))
 		if err != nil {
-			return err
+			pc.Logger.Printf("WARNING: Unable to load .pc file (%s) using pkgconfig: %v", path, err)
+			return nil
 		}
 
 		pcName := filepath.Base(path)

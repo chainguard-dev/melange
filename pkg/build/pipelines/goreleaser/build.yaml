@@ -45,7 +45,7 @@ pipeline:
       goreleaser_flags="--clean --skip-docker --skip-ko --skip-publish ${{inputs.args}}"
 
       DIR="$(dirname '${{inputs.output}}')"
-      mkdir -p "${{targets.contextdir}}"/$DIR
+      mkdir -p $DIR
       BASENAME="$(basename '${{inputs.output}}')"
 
       # if working-dir is rather than "." cd into that directory

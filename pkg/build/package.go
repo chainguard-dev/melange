@@ -464,7 +464,7 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
-					pc.Logger.Printf("WARNING: library %s lacks SONAME", path)
+					pc.Logger.Warnf("library %s lacks SONAME", path)
 					return nil
 				}
 
@@ -537,7 +537,7 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
-					pc.Logger.Printf("WARNING: library %s lacks SONAME", path)
+					pc.Logger.Warnf("library %s lacks SONAME", path)
 					return nil
 				}
 
@@ -566,7 +566,7 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 
 		logFile, err := os.Create(fmt.Sprintf("%s.%s", pc.Build.DependencyLog, pc.Arch))
 		if err != nil {
-			pc.Logger.Printf("WARNING: Unable to open dependency log: %v", err)
+			pc.Logger.Warnf("Unable to open dependency log: %v", err)
 		}
 		defer logFile.Close()
 
@@ -614,7 +614,7 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 
 		pkg, err := pkgconfig.Load(filepath.Join(pc.WorkspaceSubdir(), path))
 		if err != nil {
-			pc.Logger.Printf("WARNING: Unable to load .pc file (%s) using pkgconfig: %v", path, err)
+			pc.Logger.Warnf("Unable to load .pc file (%s) using pkgconfig: %v", path, err)
 			return nil
 		}
 

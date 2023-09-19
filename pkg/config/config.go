@@ -338,6 +338,9 @@ func (cfg Configuration) Name() string {
 }
 
 var defaultLinters = []string{
+	"dev",
+	"opt",
+	"srv",
 	"setuidgid",
 	"tempdir",
 	"usrlocal",

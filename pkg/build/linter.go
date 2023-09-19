@@ -36,13 +36,14 @@ type linter struct {
 }
 
 var linterMap = map[string]linter{
-	"dev":       linter{devLinter, "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev"},
-	"opt":       linter{optLinter, "This package should be a -compat package"},
-	"setuidgid": linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
-	"srv":       linter{srvLinter, "This package should be a -compat package"},
-	"tempdir":   linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
-	"usrlocal":  linter{usrLocalLinter, "This package should be a -compat package"},
-	"varempty":  linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
+	"dev":        linter{devLinter, "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev"},
+	"opt":        linter{optLinter, "This package should be a -compat package"},
+	"setuidgid":  linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
+	"srv":        linter{srvLinter, "This package should be a -compat package"},
+	"tempdir":    linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
+	"usrlocal":   linter{usrLocalLinter, "This package should be a -compat package"},
+	"varempty":   linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
+	"worldwrite": linter{worldWriteableLinter, "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package"},
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
@@ -112,6 +113,29 @@ func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isVarEmptyRegex.MatchString(path) {
 		return fmt.Errorf("Package writes to /var/empty")
+	}
+
+	return nil
+}
+
+func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
+	if d.IsDir() {
+		// Don't worry about directories
+		return nil
+	}
+
+	info, err := d.Info()
+	if err != nil {
+		return err
+	}
+
+	mode := info.Mode()
+	if mode&0002 != 0 {
+		if mode&0111 != 0 {
+			return fmt.Errorf("World-writeable executable file found in package (security risk)")
+		} else {
+			return fmt.Errorf("World-writeable file found in package")
+		}
 	}
 
 	return nil

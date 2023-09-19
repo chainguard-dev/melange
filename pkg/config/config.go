@@ -345,6 +345,7 @@ var defaultLinters = []string{
 	"tempdir",
 	"usrlocal",
 	"varempty",
+	"worldwrite",
 }
 
 type VarTransforms struct {

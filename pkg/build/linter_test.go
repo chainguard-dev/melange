@@ -37,7 +37,7 @@ func Test_usrLocalLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"usrlocal"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "varempty"},
+				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -66,7 +66,7 @@ func Test_varEmptyLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"varempty"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "usrlocal"},
+				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "worldwrite"},
 			},
 		},
 	}
@@ -96,7 +96,7 @@ func Test_devLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"dev"},
-				Disabled: []string{"opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -126,7 +126,7 @@ func Test_optLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"opt"},
-				Disabled: []string{"dev", "setuidgid", "srv", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -156,7 +156,7 @@ func Test_srvLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"srv"},
-				Disabled: []string{"dev", "opt", "setuidgid", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "opt", "setuidgid", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -186,7 +186,7 @@ func Test_tempDirLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"tempdir"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "opt", "setuidgid", "srv", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -247,7 +247,7 @@ func Test_setUidGidLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"setuidgid"},
-				Disabled: []string{"dev", "opt", "srv", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "opt", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -268,6 +268,61 @@ func Test_setUidGidLinter(t *testing.T) {
 	assert.Equal(t, linters, []string{"setuidgid"})
 	fsys := os.DirFS(dir)
 	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
+	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+}
+
+func Test_worldWriteLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "test",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks: config.Checks{
+				Enabled:  []string{"worldwrite"},
+				Disabled: []string{"dev", "opt", "srv", "setuidgid", "tempdir", "usrlocal", "varempty"},
+			},
+		},
+	}
+
+	usrLocalDirPath := filepath.Join(dir, "usr", "lib")
+	err = os.MkdirAll(usrLocalDirPath, 0777)
+	assert.NoError(t, err)
+
+	// Ensure 777 dirs don't trigger it
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"worldwrite"})
+	fsys := os.DirFS(dir)
+	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
+	assert.NoError(t, lintPackageFs(lctx, fsys, linters))
+
+	// Create test file
+	filePath := filepath.Join(usrLocalDirPath, "test.txt")
+	_, err = os.Create(filepath.Join(filePath))
+	assert.NoError(t, err)
+
+	// Set writeable and executable bits for non-world
+	err = os.Chmod(filePath, 0770)
+	assert.NoError(t, err)
+
+	// Linter should not trigger
+	assert.NoError(t, lintPackageFs(lctx, fsys, linters))
+
+	// Set writeable bit (but not executable bit)
+	err = os.Chmod(filePath, 0776)
+	assert.NoError(t, err)
+
+	// Linter should trigger
+	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+
+	// Set writeable and executable bit
+	err = os.Chmod(filePath, 0777)
+	assert.NoError(t, err)
+
+	// Linter should trigger
 	assert.Error(t, lintPackageFs(lctx, fsys, linters))
 }
 

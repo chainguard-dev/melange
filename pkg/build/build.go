@@ -1121,7 +1121,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// TODO(Elizafox): getting the workspace dir path should be refactored.
 		path := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
 		fsys := os.DirFS(path)
-		lctx := LinterContext{b.Configuration.Package.Name, &b.Configuration, &chk}
+		lctx := LinterContext{sp.Name, &b.Configuration, &chk}
 		err = lintPackageFs(lctx, fsys, linters)
 		if err != nil {
 			return fmt.Errorf("Error with package linter:\n%w", err)

@@ -36,36 +36,34 @@ type linter struct {
 }
 
 var linterMap = map[string]linter{
+	"dev":       linter{devLinter, "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev"},
+	"opt":       linter{optLinter, "This package should be a -compat package"},
 	"setuidgid": linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
+	"srv":       linter{srvLinter, "This package should be a -compat package"},
 	"tempdir":   linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
 	"usrlocal":  linter{usrLocalLinter, "This package should be a -compat package"},
 	"varempty":  linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
 }
 
+var isDevRegex = regexp.MustCompile("^dev/")
+var isOptRegex = regexp.MustCompile("^opt/")
+var isSrvRegex = regexp.MustCompile("^srv/")
+var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
 var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
-var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isCompatPackage = regexp.MustCompile("-compat$")
 
-func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isUsrLocalRegex.MatchString(path) {
-		return fmt.Errorf("/usr/local path found in non-compat package")
+func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isDevRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /dev")
 	}
 
 	return nil
 }
 
-func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isVarEmptyRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to /var/empty")
-	}
-
-	return nil
-}
-
-func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isTempDirRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to a temp dir")
+func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isOptRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /opt")
 	}
 
 	return nil
@@ -82,6 +80,38 @@ func isSetUidOrGidLinter(_ LinterContext, _ string, d fs.DirEntry) error {
 		return fmt.Errorf("File is setuid")
 	} else if mode&fs.ModeSetgid != 0 {
 		return fmt.Errorf("File is setgid")
+	}
+
+	return nil
+}
+
+func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isSrvRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /srv")
+	}
+
+	return nil
+}
+
+func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isTempDirRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to a temp dir")
+	}
+
+	return nil
+}
+
+func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isUsrLocalRegex.MatchString(path) {
+		return fmt.Errorf("/usr/local path found in non-compat package")
+	}
+
+	return nil
+}
+
+func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isVarEmptyRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /var/empty")
 	}
 
 	return nil

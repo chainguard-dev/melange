@@ -262,8 +262,15 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 	}
 
 	if idx.SigningKey != "" {
+		signer, err := Signer(SignerOpts{
+			SigningKey: idx.SigningKey,
+		})
+		if err != nil {
+			return fmt.Errorf("signer: %v", err)
+		}
+
 		idx.Logger.Printf("signing apk index at %s", idx.IndexFile)
-		if err := sign.SignIndex(ctx, idx.Logger, idx.SigningKey, idx.IndexFile); err != nil {
+		if err := sign.SignIndex(ctx, idx.Logger, signer, idx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
 	}

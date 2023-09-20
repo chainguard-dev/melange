@@ -30,6 +30,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/index"
 )
 
 type signIndexOpts struct {
@@ -67,8 +68,12 @@ func SignIndex() *cobra.Command {
 func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 	logger := LogDefault()
 
+	signer, err := index.Signer(index.SignerOpts{
+		SigningKey: o.Key,
+	})
+
 	if !o.Force {
-		return sign.SignIndex(ctx, logger, o.Key, indexFile)
+		return sign.SignIndex(ctx, logger, signer, indexFile)
 	}
 
 	idx, err := parseIndexWithoutSignature(ctx, indexFile)
@@ -93,7 +98,7 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 		return err
 	}
 
-	if err := sign.SignIndex(ctx, logger, o.Key, t.Name()); err != nil {
+	if err := sign.SignIndex(ctx, logger, signer, t.Name()); err != nil {
 		return err
 	}
 
@@ -238,7 +243,15 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 		return err
 	}
 
-	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata, cfinfo.ModTime())
+	signer, err := build.Signer(build.SignerOpts{
+		SigningKey:        pc.Build.SigningKey,
+		SigningPassphrase: pc.Build.SigningPassphrase,
+	})
+	if err != nil {
+		return fmt.Errorf("signer: %v", err)
+	}
+
+	sigData, err := build.EmitSignature(ctx, signer, cdata, cfinfo.ModTime())
 	if err != nil {
 		return err
 	}

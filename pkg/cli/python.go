@@ -16,6 +16,12 @@ package cli
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+
+	"chainguard.dev/melange/pkg/index"
 
 	"chainguard.dev/melange/pkg/convert/python"
 	"chainguard.dev/melange/pkg/convert/relmon"
@@ -34,6 +40,7 @@ type pythonOptions struct {
 	packageVersion         string
 	ghClient               *github.Client
 	mf                     *relmon.MonitorFinder
+	useExistingPackages    bool
 }
 
 // PythonBuild is the top-level `convert python` cobra command
@@ -60,7 +67,7 @@ convert python botocore`,
 			if err != nil {
 				return err
 			}
-			o.ghClient, err = getGithubClient(context.TODO(), cmd)
+			o.ghClient, err = getGithubClient(cmd.Context(), cmd)
 			if err != nil {
 				return err
 			}
@@ -76,12 +83,49 @@ convert python botocore`,
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org",
 		"URI to use for querying gems for provided package name")
 	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3", "version of the python to build the package")
+
+	// Experimental flag to use the already existing packages in the Wolfi APK repo
+	cmd.Flags().BoolVar(&o.useExistingPackages, "use-existing", false, "**experimental** if true, use the existing packages in the Wolfi APK repo")
+
 	return cmd
 }
 
-// pythonBuild is the main cli function. It just sets up the PythonBuild context and
+func (o pythonOptions) pythonBuild(ctx context.Context, arg string) error {
+	var (
+		r   io.ReadCloser
+		err error
+	)
+
+	switch {
+	case strings.HasPrefix(arg, "http://"), strings.HasPrefix(arg, "https://"):
+		resp, err := http.Get(arg)
+		if err != nil {
+			return errors.Wrapf(err, "getting %s", arg)
+		}
+		r = resp.Body
+	case strings.Contains(arg, "/"), strings.Contains(arg, "requirements"):
+		r, err = os.Open(arg)
+	default:
+		// If we neither have a HTTP(s) URL, nor a file path, we assume it's a
+		// package name, and try to convert it as-is way.
+		return o.pythonPackageBuild(ctx, arg, nil)
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "read")
+	}
+
+	pkgs, err := python.ParseRequirementsTxt(r)
+	if err != nil {
+		return errors.Wrap(err, "parse requirements")
+	}
+
+	return o.pythonPackageBuild(ctx, arg, pkgs)
+}
+
+// pythonPackageBuild is the main cli function. It just sets up the PythonBuild context and
 // then executes the manifest generation.
-func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) error {
+func (o pythonOptions) pythonPackageBuild(ctx context.Context, packageName string, initialDeps []string) error {
 	pythonContext, err := python.New(packageName)
 	if err != nil {
 		return errors.Wrap(err, "initialising python command")
@@ -94,12 +138,42 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	pythonContext.PackageVersion = o.packageVersion
 	pythonContext.PythonVersion = o.pythonVersion
 	pythonContext.PackageName = packageName
+	pythonContext.ToCheck = initialDeps
 
 	// These two are conditionally set above, and if nil, they are unused.
 	pythonContext.GithubClient = o.ghClient
 	pythonContext.MonitoringClient = o.mf
 
+	if o.useExistingPackages {
+		ep, err := getExistedPythonPackagesFromIndex()
+		if err != nil {
+			return errors.Wrap(err, "existing packages from index")
+		}
+		pythonContext.ExistingPackages = ep
+	}
+
 	pythonContext.Logger.Printf("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
 
-	return pythonContext.Generate(ctx)
+	if len(pythonContext.ToCheck) > 0 {
+		return pythonContext.GenerateFromRequirements(ctx)
+	}
+
+	return pythonContext.GenerateFromIndex(ctx)
+}
+
+func getExistedPythonPackagesFromIndex() ([]string, error) {
+	ic, err := index.New(index.WithExpectedArch("x86_64"))
+	if err != nil {
+		return nil, err
+	}
+	if err := ic.LoadIndex("https://packages.wolfi.dev/os"); err != nil {
+		return nil, err
+	}
+	var existedPackages []string
+	for _, pkg := range ic.Index.Packages {
+		if strings.HasPrefix(pkg.Name, "py3") {
+			existedPackages = append(existedPackages, pkg.Name)
+		}
+	}
+	return existedPackages, nil
 }

@@ -60,6 +60,7 @@ func (m *GeneratedMelangeConfig) Write(dir string) error {
 	}
 
 	ye := yaml.NewEncoder(f)
+	ye.SetIndent(2)
 	defer ye.Close()
 
 	if err := ye.Encode(m); err != nil {

@@ -266,6 +266,7 @@ func SetupContext(version string) ([]*PythonContext, error) {
 	jsonschemapythonctx.PackageName = "jsonschema"
 	jsonschemapythonctx.PackageVersion = "4.17.3"
 	jsonschemapythonctx.PythonVersion = version
+	jsonschemapythonctx.OutDir = "./testdata/generated"
 
 	// Read the gem meta into
 	data, err = os.ReadFile(filepath.Join(jsonschemaMeta, "json"))
@@ -375,4 +376,26 @@ func removeVersionsFromURL(inputURL string) (string, error) {
 
 	parsedURL.Path = strings.Join(segments, "/")
 	return parsedURL.String(), nil
+}
+
+func TestPythonContext_gatherGeneratedPackages(t *testing.T) {
+	c, err := SetupContext("3.10")
+	assert.NoError(t, err)
+	p := c[1]
+
+	pkgs := p.gatherGeneratedPackages()
+	assert.Equal(t, []string{"foo", "bar", "baz"}, pkgs)
+}
+
+func TestPythonContext_checkIfPackageExist(t *testing.T) {
+	c, err := SetupContext("3.10")
+	assert.NoError(t, err)
+	p := c[1]
+
+	p.ExistingPackages = []string{"foo", "py3-bar", "py3.10-baz", "py3.11-qux"}
+	assert.True(t, p.checkIfPackageExist("foo"))
+	assert.True(t, p.checkIfPackageExist("bar"))
+	assert.True(t, p.checkIfPackageExist("baz"))
+	assert.True(t, p.checkIfPackageExist("qux"))
+	assert.False(t, p.checkIfPackageExist("quux"))
 }

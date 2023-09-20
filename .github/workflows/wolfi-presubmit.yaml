@@ -53,7 +53,7 @@ jobs:
           - gdk-pixbuf
           - gitsign
           - guac
-          - exa
+          - mdbook
           - s3cmd
           - perl-yaml-syck
           - xmlto

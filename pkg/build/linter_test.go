@@ -25,6 +25,30 @@ import (
 	"chainguard.dev/melange/pkg/config"
 )
 
+func Test_emptyLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "testempty",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks: config.Checks{
+				Enabled:  []string{"empty"},
+				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+			},
+		},
+	}
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"empty"})
+	fsys := os.DirFS(dir)
+	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
+	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+}
+
 func Test_usrLocalLinter(t *testing.T) {
 	dir, err := os.MkdirTemp("", "melange.XXXXX")
 	defer os.RemoveAll(dir)
@@ -32,12 +56,12 @@ func Test_usrLocalLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testusrlocal",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"usrlocal"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "srv", "tempdir", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -61,12 +85,12 @@ func Test_varEmptyLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testvarempty",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"varempty"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "worldwrite"},
 			},
 		},
 	}
@@ -91,12 +115,12 @@ func Test_devLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testdev",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"dev"},
-				Disabled: []string{"opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"empty", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -121,12 +145,12 @@ func Test_optLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testopt",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"opt"},
-				Disabled: []string{"dev", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -151,12 +175,12 @@ func Test_srvLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testsrv",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"srv"},
-				Disabled: []string{"dev", "opt", "setuidgid", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -181,12 +205,12 @@ func Test_tempDirLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testtempdir",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"tempdir"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "srv", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -242,12 +266,12 @@ func Test_setUidGidLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testsetuidgid",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"setuidgid"},
-				Disabled: []string{"dev", "opt", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -278,12 +302,12 @@ func Test_worldWriteLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testworldwrite",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"worldwrite"},
-				Disabled: []string{"dev", "opt", "srv", "setuidgid", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "empty", "opt", "srv", "setuidgid", "tempdir", "usrlocal", "varempty"},
 			},
 		},
 	}
@@ -333,7 +357,7 @@ func Test_disableDefaultLinter(t *testing.T) {
 
 	cfg := config.Configuration{
 		Package: config.Package{
-			Name:    "test",
+			Name:    "testdisable",
 			Version: "4.2.0",
 			Epoch:   0,
 			Checks: config.Checks{

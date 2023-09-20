@@ -28,21 +28,6 @@ type LinterContext struct {
 	chk     *config.Checks
 }
 
-func (lctx LinterContext) getPackageOptions() (*config.PackageOption, error) {
-	if lctx.pkgname == lctx.cfg.Package.Name {
-		return &lctx.cfg.Package.Options, nil
-	}
-
-	for _, spkg := range lctx.cfg.Subpackages {
-		if lctx.pkgname == spkg.Name {
-			return &spkg.Options, nil
-		}
-	}
-
-	// Shouldn't get here
-	return nil, fmt.Errorf("Could not locate package or subpackage!")
-}
-
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
 
 type linter struct {
@@ -69,7 +54,7 @@ var linterMap = map[string]linter{
 }
 
 var postLinterMap = map[string]postLinter{
-	"empty": postLinter{emptyPostLinter, "Verify that this package is supposed to be empty, if so set the no-provides package option; otherwise, check the build"},
+	"empty": postLinter{emptyPostLinter, "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build"},
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
@@ -167,7 +152,7 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 	return nil
 }
 
-func emptyPostLinter(lctx LinterContext, fsys fs.FS) error {
+func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	foundfile := false
 	walkCb := func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
@@ -190,16 +175,6 @@ func emptyPostLinter(lctx LinterContext, fsys fs.FS) error {
 
 	// Nothing to do
 	if foundfile {
-		return nil
-	}
-
-	options, err := lctx.getPackageOptions()
-	if err != nil {
-		return err
-	}
-
-	if options.NoProvides {
-		// Nothing to do
 		return nil
 	}
 

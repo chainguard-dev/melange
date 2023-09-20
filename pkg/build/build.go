@@ -1105,15 +1105,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
 			return err
 		}
-	}
 
-	// Run subpackage linters
-	for _, sp := range b.Configuration.Subpackages {
-		if b.IsBuildLess() {
-			continue
-		}
-
-		b.Logger.Printf("running pipeline for subpackage %s", sp.Name)
+		b.Logger.Printf("running package linters for subpackage %s", sp.Name)
 
 		chk := sp.Checks
 		linters := chk.GetLinters()

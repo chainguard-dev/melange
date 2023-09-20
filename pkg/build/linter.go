@@ -28,6 +28,21 @@ type LinterContext struct {
 	chk     *config.Checks
 }
 
+func (lctx LinterContext) getPackageOptions() (*config.PackageOption, error) {
+	if lctx.pkgname == lctx.cfg.Package.Name {
+		return &lctx.cfg.Package.Options, nil
+	}
+
+	for _, spkg := range lctx.cfg.Subpackages {
+		if lctx.pkgname == spkg.Name {
+			return &spkg.Options, nil
+		}
+	}
+
+	// Shouldn't get here
+	return nil, fmt.Errorf("Could not locate package or subpackage!")
+}
+
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
 
 type linter struct {
@@ -173,7 +188,17 @@ func emptyPostLinter(lctx LinterContext, fsys fs.FS) error {
 		return err
 	}
 
-	if foundfile || lctx.cfg.Package.Options.NoProvides {
+	// Nothing to do
+	if foundfile {
+		return nil
+	}
+
+	options, err := lctx.getPackageOptions()
+	if err != nil {
+		return err
+	}
+
+	if options.NoProvides {
 		// Nothing to do
 		return nil
 	}

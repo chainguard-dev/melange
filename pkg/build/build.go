@@ -33,16 +33,15 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
 	apko_log "chainguard.dev/apko/pkg/log"
+	"cloud.google.com/go/storage"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/google/go-containerregistry/pkg/logs"
-	"go.opentelemetry.io/otel"
-	"k8s.io/kube-openapi/pkg/util/sets"
-
-	"cloud.google.com/go/storage"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"k8s.io/kube-openapi/pkg/util/sets"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
@@ -556,14 +555,15 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 
 	b.Logger.Printf("building workspace in '%s' with apko", b.GuestDir)
 
-	bc, err := apko_build.New(ctx, b.GuestDir,
+	guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
+	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(b.Configuration.Environment),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraRepos(b.ExtraRepos),
 		apko_build.WithLogger(b.Logger),
 		apko_build.WithDebugLogging(true),
-		apko_build.WithCacheDir(b.ApkCacheDir),
+		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create build context: %w", err)

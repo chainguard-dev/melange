@@ -945,6 +945,11 @@ func (sp SubpackageContext) ShouldRun(pb *PipelineBuild) (bool, error) {
 	return result, nil
 }
 
+type linterTarget struct {
+	pkgName string
+	checks  config.Checks
+}
+
 func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
@@ -1022,6 +1027,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return err
 	}
 
+	linterQueue := []linterTarget{}
+
 	cfg := b.WorkspaceConfig()
 	if !b.IsBuildLess() {
 		cfg.Arch = b.Arch
@@ -1048,17 +1055,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 		}
 
-		b.Logger.Printf("running package linter checks")
-		chk := b.Configuration.Package.Checks
-		linters := chk.GetLinters()
-
-		fsys := os.DirFS(b.WorkspaceDir)
-
-		lctx := linter.NewLinterContext(b.Configuration.Package.Name, &b.Configuration, &chk)
-		err = lctx.LintPackageFs(fsys, linters)
-		if err != nil {
-			return fmt.Errorf("Error with package linter:\n%w", err)
+		// add the main package to the linter queue
+		lintTarget := linterTarget{
+			pkgName: b.Configuration.Package.Name,
+			checks:  b.Configuration.Package.Checks,
 		}
+		linterQueue = append(linterQueue, lintTarget)
 	}
 
 	// Run the SBOM generator
@@ -1107,19 +1109,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return err
 		}
 
-		b.Logger.Printf("running package linters for subpackage %s", sp.Name)
-
-		chk := sp.Checks
-		linters := chk.GetLinters()
-
-		// TODO(Elizafox): getting the workspace dir path should be refactored.
-		path := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
-		fsys := os.DirFS(path)
-		lctx := linter.NewLinterContext(sp.Name, &b.Configuration, &chk)
-		err = lctx.LintPackageFs(fsys, linters)
-		if err != nil {
-			return fmt.Errorf("Error with package linter:\n%w", err)
+		// add the main package to the linter queue
+		lintTarget := linterTarget{
+			pkgName: sp.Name,
+			checks:  sp.Checks,
 		}
+		linterQueue = append(linterQueue, lintTarget)
 	}
 
 	// Retrieve the post build workspace from the runner
@@ -1128,6 +1123,21 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("retrieving workspace: %v", err)
 	}
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
+
+	// perform package linting
+	for _, lt := range linterQueue {
+		b.Logger.Printf("running package linters for %s", lt.pkgName)
+
+		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
+		fsys := os.DirFS(path)
+		lctx := linter.NewLinterContext(lt.pkgName, &b.Configuration, &lt.checks)
+		linters := lt.checks.GetLinters()
+
+		err = lctx.LintPackageFs(fsys, linters)
+		if err != nil {
+			return fmt.Errorf("package linter error: %w", err)
+		}
+	}
 
 	// generate SBOMs for subpackages
 	for _, sp := range b.Configuration.Subpackages {

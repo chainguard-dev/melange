@@ -1018,7 +1018,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to populate workspace: %w", err)
 	}
 
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
+	melange_out_dir := filepath.Join(b.WorkspaceDir, "melange-out")
+
+	if err := os.MkdirAll(filepath.Join(melange_out_dir, b.Configuration.Package.Name), 0o755); err != nil {
 		return err
 	}
 
@@ -1052,8 +1054,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		chk := b.Configuration.Package.Checks
 		linters := chk.GetLinters()
 
-		fsys := os.DirFS(b.WorkspaceDir)
-
+		fsys := os.DirFS(filepath.Join(melange_out_dir, b.Configuration.Package.Name))
 		lctx := linter.NewLinterContext(b.Configuration.Package.Name, &b.Configuration, &chk)
 		err = lctx.LintPackageFs(fsys, linters)
 		if err != nil {
@@ -1113,7 +1114,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linters := chk.GetLinters()
 
 		// TODO(Elizafox): getting the workspace dir path should be refactored.
-		path := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
+		path := filepath.Join(melange_out_dir, sp.Name)
 		fsys := os.DirFS(path)
 		lctx := linter.NewLinterContext(sp.Name, &b.Configuration, &chk)
 		err = lctx.LintPackageFs(fsys, linters)

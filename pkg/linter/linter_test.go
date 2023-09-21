@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build
+package linter
 
 import (
 	"io/fs"
@@ -45,8 +45,8 @@ func Test_emptyLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"empty"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_usrLocalLinter(t *testing.T) {
@@ -74,8 +74,8 @@ func Test_usrLocalLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"usrlocal"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_varEmptyLinter(t *testing.T) {
@@ -104,8 +104,8 @@ func Test_varEmptyLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"varempty"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_devLinter(t *testing.T) {
@@ -134,8 +134,8 @@ func Test_devLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"dev"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_optLinter(t *testing.T) {
@@ -164,8 +164,8 @@ func Test_optLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"opt"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_srvLinter(t *testing.T) {
@@ -194,8 +194,8 @@ func Test_srvLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"srv"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_tempDirLinter(t *testing.T) {
@@ -236,8 +236,8 @@ func Test_tempDirLinter(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = os.Create(filename)
 	assert.NoError(t, err)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 	os.Remove(filename)
 
 	// Test /var/tmp check
@@ -291,8 +291,8 @@ func Test_setUidGidLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"setuidgid"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_worldWriteLinter(t *testing.T) {
@@ -320,8 +320,8 @@ func Test_worldWriteLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"worldwrite"})
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.NoError(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.NoError(t, lctx.LintPackageFs(fsys, linters))
 
 	// Create test file
 	filePath := filepath.Join(usrLocalDirPath, "test.txt")
@@ -333,21 +333,21 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Linter should not trigger
-	assert.NoError(t, lintPackageFs(lctx, fsys, linters))
+	assert.NoError(t, lctx.LintPackageFs(fsys, linters))
 
 	// Set writeable bit (but not executable bit)
 	err = os.Chmod(filePath, 0776)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 
 	// Set writeable and executable bit
 	err = os.Chmod(filePath, 0777)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	assert.Error(t, lintPackageFs(lctx, fsys, linters))
+	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
 func Test_disableDefaultLinter(t *testing.T) {
@@ -377,6 +377,6 @@ func Test_disableDefaultLinter(t *testing.T) {
 
 	linters := cfg.Package.Checks.GetLinters()
 	fsys := os.DirFS(dir)
-	lctx := LinterContext{cfg.Package.Name, &cfg, &cfg.Package.Checks}
-	assert.NoError(t, lintPackageFs(lctx, fsys, linters))
+	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	assert.NoError(t, lctx.LintPackageFs(fsys, linters))
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build
+package linter
 
 import (
 	"fmt"
@@ -26,6 +26,10 @@ type LinterContext struct {
 	pkgname string
 	cfg     *config.Configuration
 	chk     *config.Checks
+}
+
+func NewLinterContext(name string, cfg *config.Configuration, chk *config.Checks) LinterContext {
+	return LinterContext{name, cfg, chk}
 }
 
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
@@ -181,7 +185,7 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	return fmt.Errorf("Package is empty but no-provides is not set")
 }
 
-func lintPackageFs(lctx LinterContext, fsys fs.FS, linters []string) error {
+func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if isCompatPackage.MatchString(lctx.pkgname) {
 		return nil

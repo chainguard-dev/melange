@@ -6,7 +6,7 @@ toolchain go1.21.1
 
 require (
 	chainguard.dev/apko v0.10.1-0.20230918194837-e9722fcc3e50
-	cloud.google.com/go/storage v1.32.0
+	cloud.google.com/go/storage v1.33.0
 	github.com/chainguard-dev/go-apk v0.0.0-20230906161245-0728258ab917
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0

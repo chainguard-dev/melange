@@ -37,7 +37,7 @@ func Test_emptyLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"empty"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "opt", "setuidgid", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -45,7 +45,7 @@ func Test_emptyLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"empty"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -61,7 +61,7 @@ func Test_usrLocalLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"usrlocal"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "srv", "tempdir", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -74,7 +74,7 @@ func Test_usrLocalLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"usrlocal"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -90,7 +90,7 @@ func Test_varEmptyLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"varempty"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "worldwrite"},
 			},
 		},
 	}
@@ -104,7 +104,7 @@ func Test_varEmptyLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"varempty"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -120,7 +120,7 @@ func Test_devLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"dev"},
-				Disabled: []string{"empty", "opt", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -134,7 +134,7 @@ func Test_devLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"dev"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -150,7 +150,7 @@ func Test_optLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"opt"},
-				Disabled: []string{"dev", "empty", "setuidgid", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -164,7 +164,7 @@ func Test_optLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"opt"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -180,7 +180,7 @@ func Test_srvLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"srv"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -194,7 +194,7 @@ func Test_srvLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"srv"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -210,7 +210,7 @@ func Test_tempDirLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"tempdir"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "srv", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -236,7 +236,7 @@ func Test_tempDirLinter(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = os.Create(filename)
 	assert.NoError(t, err)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 	os.Remove(filename)
 
@@ -271,7 +271,7 @@ func Test_setUidGidLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"setuidgid"},
-				Disabled: []string{"dev", "empty", "opt", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -291,7 +291,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"setuidgid"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.Error(t, lctx.LintPackageFs(fsys, linters))
 }
 
@@ -307,7 +307,7 @@ func Test_worldWriteLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"worldwrite"},
-				Disabled: []string{"dev", "empty", "opt", "srv", "setuidgid", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty"},
 			},
 		},
 	}
@@ -320,7 +320,7 @@ func Test_worldWriteLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"worldwrite"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.NoError(t, lctx.LintPackageFs(fsys, linters))
 
 	// Create test file
@@ -377,6 +377,6 @@ func Test_disableDefaultLinter(t *testing.T) {
 
 	linters := cfg.Package.Checks.GetLinters()
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, &cfg, &cfg.Package.Checks)
+	lctx := NewLinterContext(cfg.Package.Name, dir, &cfg, &cfg.Package.Checks)
 	assert.NoError(t, lctx.LintPackageFs(fsys, linters))
 }

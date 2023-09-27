@@ -5,6 +5,12 @@ needs:
     - binutils
     - scanelf
 
+inputs:
+  opts:
+    description: |
+      The option flags to pass to the strip command.
+    default: -g
+
 pipeline:
   - working-directory: ${{targets.contextdir}}
     runs: |
@@ -13,5 +19,5 @@ pipeline:
 
         [ "$osabi" != "STANDALONE" ] || continue
         # scanelf may have picked up a temp file so verify that file still exists
-        strip "${filename}" || [ ! -e "$filename" ]
+        strip ${{inputs.opts}} "${filename}" || [ ! -e "$filename" ]
       done

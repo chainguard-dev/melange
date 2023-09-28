@@ -36,9 +36,9 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
-	gitlab.alpinelinux.org/alpine/go v0.8.0
+	gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b
 	go.opentelemetry.io/otel v1.18.0
-	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.12.0
 	golang.org/x/time v0.3.0

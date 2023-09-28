@@ -343,6 +343,7 @@ var defaultLinters = []string{
 	"opt",
 	"srv",
 	"setuidgid",
+	"strip",
 	"tempdir",
 	"usrlocal",
 	"varempty",

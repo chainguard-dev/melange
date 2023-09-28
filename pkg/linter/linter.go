@@ -15,8 +15,12 @@
 package linter
 
 import (
+	"debug/elf"
 	"fmt"
+	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"regexp"
 
 	"chainguard.dev/melange/pkg/config"
@@ -24,12 +28,13 @@ import (
 
 type LinterContext struct {
 	pkgname string
+	fsys    fs.FS
 	cfg     *config.Configuration
 	chk     *config.Checks
 }
 
-func NewLinterContext(name string, cfg *config.Configuration, chk *config.Checks) LinterContext {
-	return LinterContext{name, cfg, chk}
+func NewLinterContext(name string, fsys fs.FS, cfg *config.Configuration, chk *config.Checks) LinterContext {
+	return LinterContext{name, fsys, cfg, chk}
 }
 
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
@@ -55,6 +60,7 @@ var linterMap = map[string]linter{
 	"usrlocal":   linter{usrLocalLinter, "This package should be a -compat package"},
 	"varempty":   linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
 	"worldwrite": linter{worldWriteableLinter, "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package"},
+	"strip":      linter{strippedLinter, "Properly strip all binaries in the pipeline"},
 }
 
 var postLinterMap = map[string]postLinter{
@@ -67,7 +73,8 @@ var isSrvRegex = regexp.MustCompile("^srv/")
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
 var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
-var isCompatPackage = regexp.MustCompile("-compat$")
+var isCompatPackageRegex = regexp.MustCompile("-compat$")
+var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isDevRegex.MatchString(path) {
@@ -156,6 +163,64 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 	return nil
 }
 
+func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
+	if !d.Type().IsRegular() {
+		// Don't worry about non-files
+		return nil
+	}
+
+	info, err := d.Info()
+	if err != nil {
+		return err
+	}
+
+	ext := filepath.Ext(path)
+	mode := info.Mode()
+	if mode&0111 == 0 && !isObjectFileRegex.MatchString(ext) {
+		// Not an executable or library
+		return nil
+	}
+
+	reader, err := lctx.fsys.Open(path)
+	if err != nil {
+		return fmt.Errorf("Could not open file for reading: %v", err)
+	}
+	defer reader.Close()
+
+	// XXX(Elizafox) - fs.Open doesn't support the ReaderAt interface so we copy it to a temp file.
+	// This sucks but what can you do?
+	tempfile, err := os.CreateTemp("", "melange.XXXXX")
+	if err != nil {
+		return fmt.Errorf("Could not create temporary file: %v", err)
+	}
+	defer os.Remove(tempfile.Name())
+
+	_, err = io.Copy(tempfile, reader)
+	if err != nil {
+		return fmt.Errorf("Could not write to temporary file: %v", err)
+	}
+
+	_, err = tempfile.Seek(0, 0)
+	if err != nil {
+		return fmt.Errorf("Could not rewind temporary file: %v", err)
+	}
+
+	file, err := elf.NewFile(tempfile)
+	if err != nil {
+		// We don't particularly care if this fails, it means it's probably not an ELF file
+		fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
+		return nil
+	}
+	defer file.Close()
+
+	// No debug sections allowed
+	if file.Section(".debug") != nil || file.Section(".zdebug") != nil {
+		return fmt.Errorf("File is not stripped")
+	}
+
+	return nil
+}
+
 func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	foundfile := false
 	walkCb := func(path string, _ fs.DirEntry, err error) error {
@@ -187,7 +252,7 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 
 func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
-	if isCompatPackage.MatchString(lctx.pkgname) {
+	if isCompatPackageRegex.MatchString(lctx.pkgname) {
 		return nil
 	}
 
@@ -212,22 +277,21 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
 
 			err = linter.LinterFunc(lctx, path, d)
 			if err != nil {
-				return fmt.Errorf("Linter %s failed at path \"%s\": %w; suggest: %s", linterName, path, err, linter.Explain)
+				return fmt.Errorf("Linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
 			}
 		}
 
 		return nil
 	}
 
-	err := fs.WalkDir(fsys, ".", walkCb)
-	if err != nil {
+	if err := fs.WalkDir(fsys, ".", walkCb); err != nil {
 		return err
 	}
 
 	// Run post-walking linters
 	for _, linterName := range postLinters {
 		linter := postLinterMap[linterName]
-		err = linter.LinterFunc(lctx, fsys)
+		err := linter.LinterFunc(lctx, fsys)
 		if err != nil {
 			return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
 		}

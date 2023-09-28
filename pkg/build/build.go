@@ -1130,7 +1130,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
 		fsys := os.DirFS(path)
-		lctx := linter.NewLinterContext(lt.pkgName, &b.Configuration, &lt.checks)
+		lctx := linter.NewLinterContext(lt.pkgName, fsys, &b.Configuration, &lt.checks)
 		linters := lt.checks.GetLinters()
 
 		err = lctx.LintPackageFs(fsys, linters)

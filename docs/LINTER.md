@@ -26,3 +26,25 @@ To handle these cases, we use the convention that subpackages ending in `-compat
 To encourage this convention, we have a linter that will fail if a package builds components into locations that are likely to be for upstream compatibility, where the package is not named like `-compat`.
 
 When a linter finds an issue, you should normally have the main package install into `/usr/bin`, and have a `-compat` subpackage that moves or symlinks the files into the expected location outside of the normal location.
+
+### Disabling lints
+
+When a lint fails, it is sending a clear signal that something is wrong. Therefore, ints should only be disabled after discussion with other team members ensuring it is in fact the right thing to do.
+
+When in doubt, assume the linter is correct, and a true problem exists. Follow the guidance given by the lint diagnostic to fix it.
+
+When disabling a lint, a justification should be provided in the form of a comment, to help other maintainers.
+
+To disable a lint, use something similar to the following configuration:
+
+```yaml
+package:
+  name: foobar
+  version: 1.0.0
+  epoch: 42
+  checks:
+    disable:
+      - setuidgid  # Package is meant to have setuid binaries
+        debug      # Toolchain problems require we keep debug info
+        ...
+```

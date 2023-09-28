@@ -193,6 +193,7 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	if err != nil {
 		return fmt.Errorf("Could not create temporary file: %v", err)
 	}
+	defer tempfile.Close()
 	defer os.Remove(tempfile.Name())
 
 	_, err = io.Copy(tempfile, reader)

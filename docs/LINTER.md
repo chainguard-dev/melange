@@ -29,7 +29,7 @@ When a linter finds an issue, you should normally have the main package install 
 
 ### Disabling lints
 
-When a lint fails, it is sending a clear signal that something is wrong. Therefore, ints should only be disabled after discussion with other team members ensuring it is in fact the right thing to do.
+When a lint fails, it is sending a clear signal that something is wrong. Therefore, lints should only be disabled after discussion with other team members ensuring it is in fact the right thing to do.
 
 When in doubt, assume the linter is correct, and a true problem exists. Follow the guidance given by the lint diagnostic to fix it.
 

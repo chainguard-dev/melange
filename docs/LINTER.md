@@ -9,7 +9,8 @@ The available linters are:
 - `dev`: If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev.
 - `opt`: This package should be a -compat package (see below)
 - `setuidgid`: Unset the setuid/setgid bit on the relevant files, or remove this linter.
-- `srv`: This s package should be a -compat package (see below)
+- `srv`: This package should be a -compat package (see below)
+- `strip`: Ensure the binary is stripped in the pipeline.
 - `tempdir`: Remove any offending files in temporary dirs in the pipeline.
 - `usrlocal`: This package should be a -compat package (see below)
 - `varempty`: Remove any offending files in /var/empty in the pipeline.

@@ -7,6 +7,7 @@ This can prevent common mistakes and misconfigurations, and is a good way to cat
 The available linters are:
 
 - `dev`: If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev.
+- `home`: This package should be a -compat package (see below)
 - `opt`: This package should be a -compat package (see below)
 - `setuidgid`: Unset the setuid/setgid bit on the relevant files, or remove this linter.
 - `srv`: This package should be a -compat package (see below)

@@ -53,6 +53,7 @@ type postLinter struct {
 
 var linterMap = map[string]linter{
 	"dev":        linter{devLinter, "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev"},
+	"home":       linter{homeLinter, "This package should be a -compat package"},
 	"opt":        linter{optLinter, "This package should be a -compat package"},
 	"setuidgid":  linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
 	"srv":        linter{srvLinter, "This package should be a -compat package"},
@@ -68,6 +69,7 @@ var postLinterMap = map[string]postLinter{
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
+var isHomeRegex = regexp.MustCompile("^home/")
 var isOptRegex = regexp.MustCompile("^opt/")
 var isSrvRegex = regexp.MustCompile("^srv/")
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
@@ -79,6 +81,14 @@ var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isDevRegex.MatchString(path) {
 		return fmt.Errorf("Package writes to /dev")
+	}
+
+	return nil
+}
+
+func homeLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if isHomeRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /home")
 	}
 
 	return nil

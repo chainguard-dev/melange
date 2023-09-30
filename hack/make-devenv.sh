@@ -30,7 +30,7 @@ run_builder() {
 }
 
 run() {
-    docker run --rm --privileged -w /melage -v /var/run/docker.sock:/var/run/docker.sock \
+    docker run --rm --privileged -w /melange -v /var/run/docker.sock:/var/run/docker.sock \
         -v "$(pwd)":/melange -ti ${IMAGE_TAG}:latest hack/make-devenv.sh setup
 }
 

@@ -20,15 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
-	apko_log "chainguard.dev/apko/pkg/log"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/korovkin/limiter"
-	"github.com/sirupsen/logrus"
 	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
 	"go.opentelemetry.io/otel"
 )
@@ -39,7 +38,6 @@ type Index struct {
 	SourceIndexFile    string
 	MergeIndexFileFlag bool
 	SigningKey         string
-	Logger             *logrus.Logger
 	ExpectedArch       string
 	Index              apkrepo.ApkIndex
 }
@@ -113,12 +111,6 @@ func WithExpectedArch(expectedArch string) Option {
 func New(opts ...Option) (*Index, error) {
 	idx := Index{
 		PackageFiles: []string{},
-		Logger: &logrus.Logger{
-			Out:       os.Stderr,
-			Formatter: &apko_log.Formatter{},
-			Hooks:     make(logrus.LevelHooks),
-			Level:     logrus.InfoLevel,
-		},
 	}
 
 	for _, opt := range opts {
@@ -149,7 +141,7 @@ func (idx *Index) LoadIndex(sourceFile string) error {
 	idx.Index.Description = index.Description
 	idx.Index.Packages = append(idx.Index.Packages, index.Packages...)
 
-	idx.Logger.Printf("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), sourceFile)
+	log.Printf("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), sourceFile)
 
 	return nil
 }
@@ -163,7 +155,7 @@ func (idx *Index) UpdateIndex() error {
 	for i, apkFile := range idx.PackageFiles {
 		i, apkFile := i, apkFile // capture the loop variables
 		if _, err := g.Execute(func() {
-			idx.Logger.Printf("processing package %s", apkFile)
+			log.Printf("processing package %s", apkFile)
 			f, err := os.Open(apkFile)
 			if err != nil {
 				// nolint:errcheck
@@ -179,7 +171,7 @@ func (idx *Index) UpdateIndex() error {
 			}
 
 			if idx.ExpectedArch != "" && pkg.Arch != idx.ExpectedArch {
-				idx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+				log.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
 					pkg.Name, pkg.Version, pkg.Arch, idx.ExpectedArch)
 				return
 			}
@@ -227,7 +219,7 @@ func (idx *Index) UpdateIndex() error {
 		}
 	}
 
-	idx.Logger.Printf("updating index at %s with new packages: %v", idx.IndexFile, pkgNames)
+	log.Printf("updating index at %s with new packages: %v", idx.IndexFile, pkgNames)
 
 	return nil
 }
@@ -262,8 +254,8 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 	}
 
 	if idx.SigningKey != "" {
-		idx.Logger.Printf("signing apk index at %s", idx.IndexFile)
-		if err := sign.SignIndex(ctx, idx.Logger, idx.SigningKey, idx.IndexFile); err != nil {
+		log.Printf("signing apk index at %s", idx.IndexFile)
+		if err := sign.SignIndex(ctx, nil, idx.SigningKey, idx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
 	}

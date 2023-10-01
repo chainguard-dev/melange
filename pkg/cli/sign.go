@@ -65,10 +65,8 @@ func SignIndex() *cobra.Command {
 }
 
 func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
-	logger := LogDefault()
-
 	if !o.Force {
-		return sign.SignIndex(ctx, logger, o.Key, indexFile)
+		return sign.SignIndex(ctx, nil, o.Key, indexFile)
 	}
 
 	idx, err := parseIndexWithoutSignature(ctx, indexFile)
@@ -93,11 +91,11 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 		return err
 	}
 
-	if err := sign.SignIndex(ctx, logger, o.Key, t.Name()); err != nil {
+	if err := sign.SignIndex(ctx, nil, o.Key, t.Name()); err != nil {
 		return err
 	}
 
-	logger.Printf("Replacing existing signed index (%s) with signed index with key %s", indexFile, o.Key)
+	log.Printf("Replacing existing signed index (%s) with signed index with key %s", indexFile, o.Key)
 	return os.Rename(t.Name(), indexFile)
 }
 

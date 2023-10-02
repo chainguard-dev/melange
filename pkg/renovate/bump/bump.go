@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
@@ -83,6 +84,11 @@ func New(opts ...Option) renovate.Renovator {
 		if err != nil {
 			return err
 		}
+
+		resetEpoch := true
+		if versionNode.Value == bcfg.TargetVersion {
+			resetEpoch = false
+		}
 		versionNode.Value = bcfg.TargetVersion
 		versionNode.Style = yaml.FlowStyle
 		versionNode.Tag = "!!str"
@@ -94,7 +100,18 @@ func New(opts ...Option) renovate.Renovator {
 		if err != nil {
 			return err
 		}
-		epochNode.Value = "0"
+
+		// if the version is changing then reset the epoch to 0 else if the version is the same then increment the epoch by 1
+		if resetEpoch {
+			epochNode.Value = "0"
+		} else {
+			epoch, err := strconv.Atoi(epochNode.Value)
+			if err != nil {
+				return err
+			}
+			epochNode.Value = fmt.Sprintf("%d", epoch+1)
+		}
+
 		rc.Vars[config.SubstitutionPackageEpoch] = epochNode.Value
 
 		// Recompute variable transforms

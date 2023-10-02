@@ -45,6 +45,6 @@ package:
   checks:
     disable:
       - setuidgid  # Package is meant to have setuid binaries
-        debug      # Toolchain problems require we keep debug info
+      - debug      # Toolchain problems require we keep debug info
         ...
 ```

@@ -34,6 +34,7 @@ convert python botocore
   -h, --help                     help for python
       --package-version string   version of the python package to convert
       --python-version string    version of the python to build the package (default "3")
+      --use-existing             **experimental** if true, use the existing packages in the Wolfi APK repo
 ```
 
 ### Options inherited from parent commands

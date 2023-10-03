@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
+	"os"
 	"strings"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
@@ -81,6 +81,10 @@ type PythonContext struct {
 	// If non-nil, this is the Release Monitoring client to use for fetching
 	// metadata to get the monitoring data for the package.
 	MonitoringClient *relmon.MonitorFinder
+
+	// If non-nil, this is the existing packages in Wolfi index repository
+	// to skip generating melange files for existing packages.
+	ExistingPackages []string
 }
 
 // New initialises a new PythonContext.
@@ -93,11 +97,16 @@ func New(packageName string) (PythonContext, error) {
 	return context, nil
 }
 
-// Generate is the entrypoint to generate a ruby gem melange file. It handles
-// recursively finding all dependencies for a pypi package and generating a melange file
-// for each.
-func (c *PythonContext) Generate(ctx context.Context) error {
-	c.Logger.Printf("[%s] Generating manifests", c.PackageName)
+func (c *PythonContext) GenerateFromRequirements(ctx context.Context) error {
+	c.Logger.Printf("[%s] Generating manifests from given requirements.txt", c.PackageName)
+
+	c.PackageIndex = NewPackageIndex(c.BaseURIFormat)
+
+	return c.generate(ctx)
+}
+
+func (c *PythonContext) GenerateFromIndex(ctx context.Context) error {
+	c.Logger.Printf("[%s] Generating manifests from remote upstream index", c.PackageName)
 
 	c.PackageIndex = NewPackageIndex(c.BaseURIFormat)
 
@@ -112,85 +121,112 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 	// add self to check to start the find dep tree
 	c.ToCheck = append(c.ToCheck, p.Info.Name)
 
+	return c.generate(ctx)
+}
+
+func (c *PythonContext) generate(ctx context.Context) error {
+	// If EXPERIMENTAL flag is set, merge the locally-generated manifests with
+	// the existing ones to avoid re-fetching and re-generating the same ones.
+	if len(c.ExistingPackages) > 0 {
+		c.ExistingPackages = append(c.ExistingPackages, c.gatherGeneratedPackages()...)
+	}
+
 	// download the package json metadata and find all it's deps
-	err = c.findDep(ctx)
-	if err != nil {
+	if err := c.findDep(ctx); err != nil {
 		return err
 	}
 
 	c.Logger.Printf("[%s] Generating %v files", c.PackageName, len(c.ToGenerate))
 
+	return c.generatePackages(ctx)
+}
+
+// Generate is the entrypoint to generate a ruby gem melange file. It handles
+// recursively finding all dependencies for a pypi package and generating a melange file
+// for each.
+func (c *PythonContext) generatePackages(ctx context.Context) error {
+	errs := make(map[string]error)
+
 	// generate melange files for all dependencies
 	for m, pack := range c.ToGenerate {
 		c.Logger.Printf("[%s] Index %v Package %v ", pack.Info.Name, m, pack.Info.Name)
 		c.Logger.Printf("[%s] Create manifest", pack.Info.Name)
-		version := pack.Info.Version
-		// if were generating the package asked for , check the version wasn't specified
-		if c.PackageName == pack.Info.Name && c.PackageVersion != "" {
-			version = c.PackageVersion
-		}
 
-		ghVersions := []githubpkg.TagData{}
-		var relmon *relmon.Item
-		if c.GithubClient != nil {
-			c.Logger.Printf("Trying to get commit data for %s", pack.Info.Name)
-			// If we have a github client, then try to get the commit data.
-			githubURL := pack.Info.GetSourceURL()
-			if githubURL != "" {
-				c.Logger.Printf("[%s] Using github URL %s for %s", pack.Info.Name, githubURL, pack.Info.Name)
-				owner, repo, err := githubpkg.ParseGithubURL(githubURL)
-				if err != nil {
-					c.Logger.Printf("error parsing github url %s - %s ", githubURL, err)
-				} else {
-					client := githubpkg.NewGithubRepoClient(c.GithubClient, owner, repo)
-					client.Logger = c.Logger
-					versions, err := client.GetVersions(ctx, version)
-					if err != nil {
-						c.Logger.Printf("error getting versions for %s - %s ", pack.Info.Name, err)
-					}
-					// This is fine in error case, since it's nothing.
-					for _, version := range versions {
-						c.Logger.Printf("[%s] got github version: %+v\n", pack.Info.Name, version)
-					}
-					ghVersions = versions
-				}
-			}
+		if err := c.finalizePackage(ctx, pack); err != nil {
+			errs[pack.Info.Name] = err
 		}
+	}
 
-		// If the release monitoring client has been configured, see if we can
-		// fetch the data for this package.
-		if c.MonitoringClient != nil {
-			monitoring, err := c.MonitoringClient.FindMonitor(ctx, pack.Info.Name)
-			if err != nil {
-				fmt.Printf("Failed to find monitoring: %v\n", err)
-			} else {
-				fmt.Printf("Found monitoring: %+v\n", monitoring)
-				relmon = monitoring
-			}
-		}
+	for p, e := range errs {
+		c.Logger.Printf("[%s] FAILED TO CREATE PACKAGE %v", p, e)
+	}
 
-		generated, err := c.generateManifest(ctx, pack, version, ghVersions, relmon)
-		if err != nil {
-			c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", pack.Info.Name, err)
-			return err
-		}
-
-		err = generated.Write(c.OutDir)
-		if err != nil {
-			c.Logger.Printf("[%s] FAILED TO WRITE MANIFEST %v", pack.Info.Name, err)
-			return err
-		}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to generate %d packages", len(errs))
 	}
 
 	return nil
 }
 
-func stripDep(dep string) (string, error) {
-	// removing all the special chars from the requirements like   "importlib-metadata (>=3.6.0) ; python_version < \"3.10\""
-	re := regexp.MustCompile(`[;()\[\]!~=<>]`)
-	dep = re.ReplaceAllString(dep, " ")
-	depStrip := strings.Split(dep, " ")
-	return depStrip[0], nil
+func (c *PythonContext) finalizePackage(ctx context.Context, pack Package) error {
+	version := pack.Info.Version
+	// if were generating the package asked for , check the version wasn't specified
+	if c.PackageName == pack.Info.Name && c.PackageVersion != "" {
+		version = c.PackageVersion
+	}
+
+	ghVersions := []githubpkg.TagData{}
+	var relmon *relmon.Item
+	if c.GithubClient != nil {
+		c.Logger.Printf("Trying to get commit data for %s", pack.Info.Name)
+		// If we have a github client, then try to get the commit data.
+		githubURL := pack.Info.GetSourceURL()
+		if githubURL != "" {
+			c.Logger.Printf("[%s] Using github URL %s for %s", pack.Info.Name, githubURL, pack.Info.Name)
+			owner, repo, err := githubpkg.ParseGithubURL(githubURL)
+			if err != nil {
+				c.Logger.Printf("error parsing github url %s - %s ", githubURL, err)
+			} else {
+				client := githubpkg.NewGithubRepoClient(c.GithubClient, owner, repo)
+				client.Logger = c.Logger
+				versions, err := client.GetVersions(ctx, version)
+				if err != nil {
+					c.Logger.Printf("error getting versions for %s - %s ", pack.Info.Name, err)
+				}
+				// This is fine in error case, since it's nothing.
+				for _, version := range versions {
+					c.Logger.Printf("[%s] got github version: %+v\n", pack.Info.Name, version)
+				}
+				ghVersions = versions
+			}
+		}
+	}
+
+	// If the release monitoring client has been configured, see if we can
+	// fetch the data for this package.
+	if c.MonitoringClient != nil {
+		monitoring, err := c.MonitoringClient.FindMonitor(ctx, pack.Info.Name)
+		if err != nil {
+			fmt.Printf("Failed to find monitoring: %v\n", err)
+		} else {
+			fmt.Printf("Found monitoring: %+v\n", monitoring)
+			relmon = monitoring
+		}
+	}
+
+	generated, err := c.generateManifest(ctx, pack, version, ghVersions, relmon)
+	if err != nil {
+		c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", pack.Info.Name, err)
+		return err
+	}
+
+	err = generated.Write(c.OutDir)
+	if err != nil {
+		c.Logger.Printf("[%s] FAILED TO WRITE MANIFEST %v", pack.Info.Name, err)
+		return err
+	}
+
+	return nil
 }
 
 // FindDep - given a python package retrieve all its dependencies
@@ -199,15 +235,23 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 		return nil
 	}
 
-	c.Logger.Printf("[%s] Check Dependency list: %v", c.PackageName, c.ToCheck)
-	c.Logger.Printf("[%s] Fetch Package Data", c.ToCheck[0])
+	current := c.ToCheck[0]
 
-	p, err := c.PackageIndex.GetLatest(ctx, c.ToCheck[0])
+	if c.checkIfPackageExist(current) {
+		c.Logger.Printf("[%s] Package already exists in Wolfi index, skipping", current)
+		c.ToCheck = c.ToCheck[1:]
+		return c.findDep(ctx)
+	}
+
+	c.Logger.Printf("[%s] Check Dependency list: %v", c.PackageName, c.ToCheck)
+	c.Logger.Printf("[%s] Fetch Package Data", current)
+
+	p, err := c.PackageIndex.GetLatest(ctx, current)
 	if err != nil {
 		return err
 	}
 
-	c.Logger.Printf("[%s] %s Add to generate list", c.ToCheck[0], p.Info.Name)
+	c.Logger.Printf("[%s] %s Add to generate list", current, p.Info.Name)
 	c.ToCheck = c.ToCheck[1:]
 
 	c.Logger.Printf("[%s] Check for dependencies", p.Info.Name)
@@ -241,6 +285,49 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 	c.ToGenerate[p.Info.Name] = *p
 	// recursive call
 	return c.findDep(ctx)
+}
+
+// checkIfPackageExist checks if the package already exists in the ExistingPackages.
+func (c *PythonContext) checkIfPackageExist(pkg string) bool {
+	for _, p := range c.ExistingPackages {
+		if c.trimPackageName(p) == pkg || p == pkg {
+			return true
+		}
+	}
+	return false
+}
+
+// gatherGeneratedPackages returns the list of files generated by the melange
+// itself. So that we don't have to fetch and generate the same manifests
+// again.
+func (c *PythonContext) gatherGeneratedPackages() []string {
+	files, err := os.ReadDir(c.OutDir)
+	if err != nil {
+		return []string{}
+	}
+	var packages []string
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		packages = append(packages, c.trimPackageName(f.Name()))
+	}
+	return packages
+}
+
+// trimPackageName trims the `py<version>-` prefix and `.yaml` suffix from the
+// package name to get the actual package name.
+func (c *PythonContext) trimPackageName(name string) string {
+	pkg := strings.TrimPrefix(name, "py"+c.PythonVersion+"-")
+	pkg = strings.TrimSuffix(pkg, ".yaml")
+	// To handle the case where the package name starts with py but
+	// version is different.
+	if strings.HasPrefix(pkg, "py") {
+		if idx := strings.Index(pkg, "-"); idx != -1 {
+			pkg = pkg[idx+1:]
+		}
+	}
+	return pkg
 }
 
 func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string, ghVersions []githubpkg.TagData, monitorInfo *relmon.Item) (manifest.GeneratedMelangeConfig, error) {

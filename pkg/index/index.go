@@ -17,9 +17,9 @@ package index
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,18 +130,15 @@ func New(opts ...Option) (*Index, error) {
 	return &idx, nil
 }
 
-func (idx *Index) LoadIndex(sourceFile string) error {
-	f, err := os.Open(sourceFile)
+// LoadIndex loads an APKINDEX file from a URL or local file.
+func (idx *Index) LoadIndex(source string) error {
+	rc, err := idx.read(source)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-
-		return err
+		return fmt.Errorf("failed to read index file from source: %w", err)
 	}
-	defer f.Close()
+	defer rc.Close()
 
-	index, err := apkrepo.IndexFromArchive(f)
+	index, err := apkrepo.IndexFromArchive(rc)
 	if err != nil {
 		return fmt.Errorf("failed to read apkindex from archive file: %w", err)
 	}
@@ -149,9 +146,35 @@ func (idx *Index) LoadIndex(sourceFile string) error {
 	idx.Index.Description = index.Description
 	idx.Index.Packages = append(idx.Index.Packages, index.Packages...)
 
-	idx.Logger.Printf("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), sourceFile)
+	idx.Logger.Printf("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), source)
 
 	return nil
+}
+
+func (idx *Index) read(source string) (io.ReadCloser, error) {
+	var rc io.ReadCloser
+	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		url := fmt.Sprintf("%s/%s/APKINDEX.tar.gz", source, idx.ExpectedArch)
+		resp, err := http.Get(url) //nolint:gosec
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			return nil, fmt.Errorf("GET %s (%d): %s", url, resp.StatusCode, b)
+		}
+		rc = resp.Body
+	} else {
+		f, err := os.Open(source)
+		if err != nil {
+			return nil, fmt.Errorf("opening %q: %w", source, err)
+		}
+		rc = f
+	}
+	return rc, nil
 }
 
 func (idx *Index) UpdateIndex() error {

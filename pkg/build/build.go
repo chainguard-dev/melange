@@ -91,6 +91,7 @@ type Build struct {
 	Debug              bool
 	DebugRunner        bool
 	LogPolicy          []string
+	FailOnLint         bool
 
 	EnabledBuildOptions []string
 }
@@ -248,6 +249,14 @@ type Option func(*Build) error
 func WithConfig(configFile string) Option {
 	return func(b *Build) error {
 		b.ConfigFile = configFile
+		return nil
+	}
+}
+
+// WithFailOnLint sets whether or not to fail on lint errors.
+func WithFailOnLint(fail bool) Option {
+	return func(b *Build) error {
+		b.FailOnLint = fail
 		return nil
 	}
 }
@@ -1125,6 +1134,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
 	// perform package linting
+	var errs []error
 	for _, lt := range linterQueue {
 		b.Logger.Printf("running package linters for %s", lt.pkgName)
 
@@ -1133,10 +1143,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		lctx := linter.NewLinterContext(lt.pkgName, fsys, &b.Configuration, &lt.checks)
 		linters := lt.checks.GetLinters()
 
-		err = lctx.LintPackageFs(fsys, linters)
-		if err != nil {
-			return fmt.Errorf("package linter error: %w", err)
+		if err := lctx.LintPackageFs(fsys, linters); err != nil {
+			errs = append(errs, err)
 		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		if b.FailOnLint {
+			return fmt.Errorf("package linter errors: %w", err)
+		}
+		b.Logger.Warnf("package linter errors: %s", err)
 	}
 
 	// generate SBOMs for subpackages

@@ -93,7 +93,7 @@ func New(packageName string) (PythonContext, error) {
 	return context, nil
 }
 
-// Generate is the entrypoint to generate a ruby gem melange file. It handles
+// Generate is the entrypoint to generate a python package melange file. It handles
 // recursively finding all dependencies for a pypi package and generating a melange file
 // for each.
 func (c *PythonContext) Generate(ctx context.Context) error {

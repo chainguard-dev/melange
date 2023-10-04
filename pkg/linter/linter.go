@@ -40,31 +40,73 @@ func NewLinterContext(name string, fsys fs.FS, cfg *config.Configuration, chk *c
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
 
 type linter struct {
-	LinterFunc linterFunc
-	Explain    string
+	LinterFunc  linterFunc
+	FailOnError bool
+	Explain     string
 }
 
 type postLinterFunc func(lctx LinterContext, fsys fs.FS) error
 
 type postLinter struct {
-	LinterFunc postLinterFunc
-	Explain    string
+	LinterFunc  postLinterFunc
+	FailOnError bool
+	Explain     string
 }
 
 var linterMap = map[string]linter{
-	"dev":        linter{devLinter, "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev"},
-	"opt":        linter{optLinter, "This package should be a -compat package"},
-	"setuidgid":  linter{isSetUidOrGidLinter, "Unset the setuid/setgid bit on the relevant files, or remove this linter"},
-	"srv":        linter{srvLinter, "This package should be a -compat package"},
-	"tempdir":    linter{tempDirLinter, "Remove any offending files in temporary dirs in the pipeline"},
-	"usrlocal":   linter{usrLocalLinter, "This package should be a -compat package"},
-	"varempty":   linter{varEmptyLinter, "Remove any offending files in /var/empty in the pipeline"},
-	"worldwrite": linter{worldWriteableLinter, "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package"},
-	"strip":      linter{strippedLinter, "Properly strip all binaries in the pipeline"},
+	"dev": linter{
+		LinterFunc:  devLinter,
+		FailOnError: false,
+		Explain:     "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
+	},
+	"opt": linter{
+		LinterFunc:  optLinter,
+		FailOnError: false,
+		Explain:     "This package should be a -compat package",
+	},
+	"setuidgid": linter{
+		LinterFunc:  isSetUidOrGidLinter,
+		FailOnError: false,
+		Explain:     "Unset the setuid/setgid bit on the relevant files, or remove this linter",
+	},
+	"srv": linter{
+		LinterFunc:  srvLinter,
+		FailOnError: false,
+		Explain:     "This package should be a -compat package",
+	},
+	"tempdir": linter{
+		LinterFunc:  tempDirLinter,
+		FailOnError: false,
+		Explain:     "Remove any offending files in temporary dirs in the pipeline",
+	},
+	"usrlocal": linter{
+		LinterFunc:  usrLocalLinter,
+		FailOnError: false,
+		Explain:     "This package should be a -compat package",
+	},
+	"varempty": linter{
+		LinterFunc:  varEmptyLinter,
+		FailOnError: false,
+		Explain:     "Remove any offending files in /var/empty in the pipeline",
+	},
+	"worldwrite": linter{
+		LinterFunc:  worldWriteableLinter,
+		FailOnError: false,
+		Explain:     "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
+	},
+	"strip": linter{
+		LinterFunc:  strippedLinter,
+		FailOnError: false,
+		Explain:     "Properly strip all binaries in the pipeline",
+	},
 }
 
 var postLinterMap = map[string]postLinter{
-	"empty": postLinter{emptyPostLinter, "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build"},
+	"empty": postLinter{
+		LinterFunc:  emptyPostLinter,
+		FailOnError: false,
+		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
+	},
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
@@ -251,7 +293,7 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	return fmt.Errorf("Package is empty but no-provides is not set")
 }
 
-func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
+func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []string) error {
 	// If this is a compat package, do nothing.
 	if isCompatPackageRegex.MatchString(lctx.pkgname) {
 		return nil
@@ -278,7 +320,10 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
 
 			err = linter.LinterFunc(lctx, path, d)
 			if err != nil {
-				return fmt.Errorf("Linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
+				if linter.FailOnError {
+					return fmt.Errorf("Linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
+				}
+				warn(err)
 			}
 		}
 
@@ -294,7 +339,10 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
 		linter := postLinterMap[linterName]
 		err := linter.LinterFunc(lctx, fsys)
 		if err != nil {
-			return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
+			if linter.FailOnError {
+				return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
+			}
+			warn(err)
 		}
 	}
 

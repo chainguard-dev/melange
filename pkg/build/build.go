@@ -91,6 +91,7 @@ type Build struct {
 	Debug              bool
 	DebugRunner        bool
 	LogPolicy          []string
+	FailOnLintWarning  bool
 
 	EnabledBuildOptions []string
 }
@@ -248,6 +249,14 @@ type Option func(*Build) error
 func WithConfig(configFile string) Option {
 	return func(b *Build) error {
 		b.ConfigFile = configFile
+		return nil
+	}
+}
+
+// WithFailOnLintWarning sets whether or not to fail on linter warnings.
+func WithFailOnLintWarning(fail bool) Option {
+	return func(b *Build) error {
+		b.FailOnLintWarning = fail
 		return nil
 	}
 }
@@ -1133,9 +1142,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		lctx := linter.NewLinterContext(lt.pkgName, fsys, &b.Configuration, &lt.checks)
 		linters := lt.checks.GetLinters()
 
-		err = lctx.LintPackageFs(fsys, linters)
+		var innerErr error
+		err = lctx.LintPackageFs(fsys, func(err error) {
+			if b.FailOnLintWarning {
+				innerErr = err
+			} else {
+				b.Logger.Warnf("WARNING: %v", err)
+			}
+		}, linters)
 		if err != nil {
 			return fmt.Errorf("package linter error: %w", err)
+		} else if innerErr != nil {
+			return fmt.Errorf("package linter warning: %w", err)
 		}
 	}
 

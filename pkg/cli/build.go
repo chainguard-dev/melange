@@ -60,6 +60,7 @@ func Build() *cobra.Command {
 	var debug bool
 	var debugRunner bool
 	var runner string
+	var failOnLintWarning bool
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -97,6 +98,7 @@ func Build() *cobra.Command {
 				build.WithDebugRunner(debugRunner),
 				build.WithLogPolicy(logPolicy),
 				build.WithRunner(runner),
+				build.WithFailOnLintWarning(failOnLintWarning),
 			}
 
 			if len(args) > 0 {
@@ -144,6 +146,7 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
+	cmd.Flags().BoolVar(&failOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
 
 	return cmd
 }

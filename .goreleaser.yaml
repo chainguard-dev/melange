@@ -50,7 +50,7 @@ brews:
       name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    url_template: "https://github.com/chainguard-dev/melange/releases/download/{{ .Version }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/chainguard-dev/melange/releases/download/v{{ .Version }}/{{ .ArtifactName }}"
     folder: Formula
     commit_author:
       name: guardian

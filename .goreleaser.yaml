@@ -42,11 +42,10 @@ archives:
   - files:
       - LICENSE
     wrap_in_directory: true
-    rlcp: true
 
 brews:
   - name: melange
-    tap:
+    repository:
       owner: chainguard-dev
       name: homebrew-tap
       branch: main

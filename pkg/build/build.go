@@ -1058,7 +1058,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
 			pkgName: b.Configuration.Package.Name,
-			checks:  b.Configuration.Package.Checks,
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}
@@ -1112,7 +1111,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
 			pkgName: sp.Name,
-			checks:  sp.Checks,
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}
@@ -1130,7 +1128,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
 		fsys := os.DirFS(path)
-		lctx := linter.NewLinterContext(lt.pkgName, fsys, &b.Configuration, &lt.checks)
+		lctx := linter.NewLinterContext(lt.pkgName, fsys)
 		linters := lt.checks.GetLinters()
 
 		err = lctx.LintPackageFs(fsys, linters)

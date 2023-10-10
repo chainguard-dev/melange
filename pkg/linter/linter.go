@@ -22,19 +22,15 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-
-	"chainguard.dev/melange/pkg/config"
 )
 
 type LinterContext struct {
 	pkgname string
 	fsys    fs.FS
-	cfg     *config.Configuration
-	chk     *config.Checks
 }
 
-func NewLinterContext(name string, fsys fs.FS, cfg *config.Configuration, chk *config.Checks) LinterContext {
-	return LinterContext{name, fsys, cfg, chk}
+func NewLinterContext(name string, fsys fs.FS) LinterContext {
+	return LinterContext{name, fsys}
 }
 
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error

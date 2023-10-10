@@ -1132,6 +1132,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
 	// perform package linting
+	var errs []error
 	for _, lt := range linterQueue {
 		b.Logger.Printf("running package linters for %s", lt.pkgName)
 
@@ -1140,18 +1141,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		lctx := linter.NewLinterContext(lt.pkgName, fsys)
 		linters := lt.checks.GetLinters()
 
-		var innerErr error
-		err = lctx.LintPackageFs(fsys, func(err error) {
-			if b.FailOnLintWarning {
-				innerErr = err
-			} else {
-				b.Logger.Warnf("WARNING: %v", err)
-			}
-		}, linters)
-		if err != nil {
+		if err := lctx.LintPackageFs(fsys, linters); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		if b.FailOnLintWarning {
 			return fmt.Errorf("package linter error: %w", err)
-		} else if innerErr != nil {
-			return fmt.Errorf("package linter warning: %w", err)
+		} else {
+			b.Logger.Warnf("WARNING: %v", err)
 		}
 	}
 

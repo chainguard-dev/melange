@@ -16,6 +16,7 @@ package linter
 
 import (
 	"debug/elf"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -262,7 +263,8 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 
 func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	foundfile := false
-	walkCb := func(path string, _ fs.DirEntry, err error) error {
+
+	if err := fs.WalkDir(fsys, ".", func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -274,10 +276,7 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 
 		foundfile = true
 		return fs.SkipAll
-	}
-
-	err := fs.WalkDir(fsys, ".", walkCb)
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -289,18 +288,19 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	return fmt.Errorf("Package is empty but no-provides is not set")
 }
 
-func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []string) error {
+func (lctx LinterContext) LintPackageFs(fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if isCompatPackageRegex.MatchString(lctx.pkgname) {
 		return nil
 	}
 
 	postLinters := []string{}
-	walkCb := func(path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("Error traversing tree at %s: %w", path, err)
 		}
 
+		var errs []error
 		for _, linterName := range linters {
 			linter, present := linterMap[linterName]
 			if !present {
@@ -314,33 +314,24 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 				continue
 			}
 
-			err = linter.LinterFunc(lctx, path, d)
-			if err != nil {
-				if linter.FailOnError {
-					return fmt.Errorf("Linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
-				}
-				warn(err)
+			if err := linter.LinterFunc(lctx, path, d); err != nil {
+				errs = append(errs, err)
 			}
 		}
-
-		return nil
-	}
-
-	if err := fs.WalkDir(fsys, ".", walkCb); err != nil {
+		return errors.Join(errs...)
+	}); err != nil {
 		return err
 	}
 
 	// Run post-walking linters
+	var errs []error
 	for _, linterName := range postLinters {
 		linter := postLinterMap[linterName]
-		err := linter.LinterFunc(lctx, fsys)
-		if err != nil {
-			if linter.FailOnError {
-				return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
-			}
-			warn(err)
+		if err := linter.LinterFunc(lctx, fsys); err != nil {
+			errs = append(errs, err)
 		}
 	}
+	return errors.Join(errs...)
 
 	return nil
 }

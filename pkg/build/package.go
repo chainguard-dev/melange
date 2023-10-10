@@ -54,6 +54,8 @@ import (
 // concurrent builds on giant machines, and uses only 1 core on tiny machines.
 var pgzipThreads = min(runtime.GOMAXPROCS(0), 8)
 
+var libDirs = []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+
 func min(l, r int) int {
 	if l < r {
 		return l
@@ -202,6 +204,9 @@ provides = {{ $dep }}
 {{- end }}
 {{- range $dep := .Dependencies.Replaces }}
 replaces = {{ $dep }}
+{{- end }}
+{{- range $dep := .Dependencies.Vendored }}
+# vendored = {{ $dep }}
 {{- end }}
 {{- if .Dependencies.ProviderPriority }}
 provider_priority = {{ .Dependencies.ProviderPriority }}
@@ -397,7 +402,6 @@ func findInterpreter(bin *elf.File) (string, error) {
 // dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
 // directories.
 func (pc *PackageBuild) dereferenceCrossPackageSymlink(path string) (string, error) {
-	libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
 	targetPackageNames := []string{pc.PackageName, pc.Build.Configuration.Package.Name}
 	realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
 	if err != nil {
@@ -529,11 +533,6 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 			// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
 			// functionality work.  So we always generate provides entries for libc.
 			if !pc.Options.NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
-				libDirs := []string{"lib", "usr/lib", "lib64", "usr/lib64"}
-				if !allowedPrefix(path, libDirs) {
-					return nil
-				}
-
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
@@ -551,7 +550,11 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 						libver = "0"
 					}
 
-					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					if allowedPrefix(path, libDirs) {
+						generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					} else {
+						generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
+					}
 				}
 			}
 		}
@@ -686,13 +689,22 @@ func (pc *PackageBuild) GenerateDependencies() error {
 		}
 	}
 
-	newruntime := append(pc.Dependencies.Runtime, generated.Runtime...)
+	// Only consider vendored deps for self-provided generated runtime deps.
+	// If a runtime dep is explicitly configured, assume we actually do need it.
+	// This gives us an escape hatch in melange config in case there is a runtime
+	// dep that we don't want to be satisfied by a vendored dep.
+	unvendored := removeSelfProvidedDeps(generated.Runtime, generated.Vendored)
+
+	newruntime := append(pc.Dependencies.Runtime, unvendored...)
 	pc.Dependencies.Runtime = dedup(newruntime)
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
 	pc.Dependencies.Provides = dedup(newprovides)
 
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
+
+	// Sets .PKGINFO `# vendored = ...` comments; does not affect resolution.
+	pc.Dependencies.Vendored = generated.Vendored
 
 	pc.Dependencies.Summarize(pc.Logger)
 

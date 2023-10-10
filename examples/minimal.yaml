@@ -11,4 +11,5 @@ environment:
       - busybox
 pipeline:
   - runs: |
-      echo hello
+      mkdir -p "${{targets.destdir}}"
+      echo "hello" > "${{targets.destdir}}/hello"

@@ -437,6 +437,10 @@ type Dependencies struct {
 	// Optional: An integer compared against other equal package provides used to
 	// determine priority
 	ProviderPriority int `yaml:"provider-priority,omitempty"`
+
+	// List of self-provided dependencies found outside of lib directories
+	// ("lib", "usr/lib", "lib64", or "usr/lib64").
+	Vendored []string `yaml:"-"`
 }
 
 type ConfigurationParsingOption func(*configOptions)

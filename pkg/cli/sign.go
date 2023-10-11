@@ -23,7 +23,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/chainguard-dev/go-apk/pkg/apk"
+	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
@@ -204,7 +204,7 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 		return err
 	}
 
-	eapk, err := apk.ExpandApk(ctx, apkr, "")
+	eapk, err := expandapk.ExpandApk(ctx, apkr, "")
 	if err != nil {
 		return fmt.Errorf("expanding apk: %w", err)
 	}

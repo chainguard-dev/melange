@@ -15,6 +15,7 @@
 package linter
 
 import (
+	"context"
 	"debug/elf"
 	"fmt"
 	"io"
@@ -22,6 +23,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+
+	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+
+	"gopkg.in/ini.v1"
 )
 
 type LinterContext struct {
@@ -340,6 +345,44 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 			}
 			warn(err)
 		}
+	}
+
+	return nil
+}
+
+func LintApk(ctx context.Context, path string, warn func(error), linters []string) error {
+	apkfs, err := apkofs.NewAPKFS(ctx, path)
+	if err != nil {
+		return err
+	}
+
+	// Get the package name
+	f, err := apkfs.Open("PKGINFO")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	cfg, err := ini.Load(data)
+	if err != nil {
+		return err
+	}
+
+	pkgname := cfg.Section("").Key("pkgname").MustString("")
+	if pkgname == "" {
+		return fmt.Errorf("pkgname is nonexistent")
+	}
+
+	lctx := NewLinterContext(pkgname, apkfs)
+
+	err = lctx.LintPackageFs(apkfs, warn, linters)
+	if err != nil {
+		return err
 	}
 
 	return nil

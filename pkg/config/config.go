@@ -836,12 +836,37 @@ func (cfg Configuration) validate() error {
 
 	// TODO: try to validate value of .package.version
 
-	for i, sp := range cfg.Subpackages {
+	if err := validatePipeline(cfg.Pipeline); err != nil {
+		return ErrInvalidConfiguration{Problem: fmt.Errorf("pipeline validation failed: %w", err)}
+	}
+
+	for _, sp := range cfg.Subpackages {
 		if !packageNameRegex.MatchString(sp.Name) {
-			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
+			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage %q must match regex %q", sp.Name, packageNameRegex)}
+		}
+		if err := validatePipeline(sp.Pipeline); err != nil {
+			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage %q pipeline validation failed: %w", sp.Name, err)}
 		}
 	}
 
+	return nil
+}
+
+func validatePipeline(steps []Pipeline) error {
+	for _, step := range steps {
+		if step.Uses == "" && len(step.With) != 0 {
+			return fmt.Errorf("pipeline step %q cannot use 'with' except with 'uses'", step.Name)
+		}
+		if step.Pipeline != nil {
+			if step.Runs != "" && step.Uses != "" {
+				return fmt.Errorf("pipeline step %q cannot use 'runs' or 'uses' with 'pipeline'", step.Name)
+			}
+
+			if err := validatePipeline(step.Pipeline); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

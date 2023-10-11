@@ -380,10 +380,5 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 
 	lctx := NewLinterContext(pkgname, apkfs)
 
-	err = lctx.LintPackageFs(apkfs, warn, linters)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return lctx.LintPackageFs(apkfs, warn, linters)
 }

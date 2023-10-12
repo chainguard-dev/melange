@@ -357,7 +357,7 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 	}
 
 	// Get the package name
-	f, err := apkfs.Open("PKGINFO")
+	f, err := apkfs.Open("./.PKGINFO")
 	if err != nil {
 		return err
 	}

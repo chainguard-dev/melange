@@ -74,7 +74,6 @@ func New(opts ...Option) renovate.Renovator {
 	return func(ctx context.Context, rc *renovate.RenovationContext) error {
 		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
 
-		// Find the package.version node first and change it.
 		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
 			return err
@@ -85,24 +84,13 @@ func New(opts ...Option) renovate.Renovator {
 			return err
 		}
 
-		resetEpoch := true
-		if versionNode.Value == bcfg.TargetVersion {
-			resetEpoch = false
-		}
-		versionNode.Value = bcfg.TargetVersion
-		versionNode.Style = yaml.FlowStyle
-		versionNode.Tag = "!!str"
-
-		// Update the variable mapping with the target version
-		rc.Vars[config.SubstitutionPackageVersion] = bcfg.TargetVersion
-
+		// if the version is changing then reset the epoch to 0 else if the version is the same then increment the epoch by 1
 		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
 		if err != nil {
 			return err
 		}
 
-		// if the version is changing then reset the epoch to 0 else if the version is the same then increment the epoch by 1
-		if resetEpoch {
+		if versionNode.Value != bcfg.TargetVersion {
 			epochNode.Value = "0"
 		} else {
 			epoch, err := strconv.Atoi(epochNode.Value)
@@ -112,6 +100,11 @@ func New(opts ...Option) renovate.Renovator {
 			epochNode.Value = fmt.Sprintf("%d", epoch+1)
 		}
 
+		versionNode.Value = bcfg.TargetVersion
+		versionNode.Style = yaml.FlowStyle
+		versionNode.Tag = "!!str"
+
+		rc.Vars[config.SubstitutionPackageVersion] = bcfg.TargetVersion
 		rc.Vars[config.SubstitutionPackageEpoch] = epochNode.Value
 
 		// Recompute variable transforms

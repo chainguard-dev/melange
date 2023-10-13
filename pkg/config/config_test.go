@@ -17,6 +17,9 @@ package:
   epoch: 7
   description: example using a replacement in provides
   dependencies:
+    runtime:
+      - ${{package.name}}-config
+      - ${{vars.bar}}
     provides:
       - replacement-provides-version=${{package.version}}
       - replacement-provides-foo=${{vars.foo}}
@@ -30,6 +33,9 @@ vars:
 subpackages:
   - name: subpackage
     dependencies:
+      runtime:
+        - ${{package.name}}-config-${{package.version}}
+        - ${{vars.foo}}
       provides:
         - subpackage-version=${{package.version}}
         - subpackage-foo=${{vars.foo}}
@@ -53,6 +59,16 @@ subpackages:
 		"subpackage-foo=FOO",
 		"subpackage-bar=BAR",
 	}, cfg.Subpackages[0].Dependencies.Provides)
+
+	require.Equal(t, []string{
+		"replacement-provides-config",
+		"BAR",
+	}, cfg.Package.Dependencies.Runtime)
+
+	require.Equal(t, []string{
+		"replacement-provides-config-0.0.1",
+		"FOO",
+	}, cfg.Subpackages[0].Dependencies.Runtime)
 }
 
 func Test_propagatePipelines(t *testing.T) {

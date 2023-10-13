@@ -78,8 +78,12 @@ github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chainguard-dev/go-apk v0.0.0-20231011214341-9fd940f239fa h1:/0YERfoVMpYqZcRTB3iX9f/2uY3D4UHpDMuJ7dPcPNA=
-github.com/chainguard-dev/go-apk v0.0.0-20231011214341-9fd940f239fa/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
+github.com/chainguard-dev/go-apk v0.0.0-20231013182320-57b3bf0ffe36 h1:KrP0+lBNlfo4M4ibDT9ZAUNMEQycMP1nAHrUBa9rL+M=
+github.com/chainguard-dev/go-apk v0.0.0-20231013182320-57b3bf0ffe36/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
+github.com/chainguard-dev/go-apk v0.0.0-20231013212454-7a1fcf5f7b06 h1:UI87oVdoOfg+whBX6P2LxnAGNzcy8JoxfE7fQdZkMb8=
+github.com/chainguard-dev/go-apk v0.0.0-20231013212454-7a1fcf5f7b06/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
+github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927 h1:XLUyypdjL9gj21rLXfKEvJf7bdheqAGxpvgXwmbkapM=
+github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3SY2sW8rUIxG9wXMxXlMN7sd9VNUSdZ+FnVqOrm2nI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=

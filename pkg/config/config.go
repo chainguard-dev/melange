@@ -34,6 +34,7 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	"chainguard.dev/melange/pkg/logger"
 	"chainguard.dev/melange/pkg/util"
 )
@@ -186,7 +187,7 @@ func (p *Package) FullCopyright() string {
 // Computes the list of package or subpackage linters, taking into account default linters.
 // This includes the default linters as well, unless disabled.
 func (chk *Checks) GetLinters() []string {
-	linters := defaultLinters
+	linters := linter_defaults.DefaultLinters
 
 	// Enable non-default linters
 	for _, v := range chk.Enabled {
@@ -335,19 +336,6 @@ type Configuration struct {
 // Name returns a name for the configuration, using the package name.
 func (cfg Configuration) Name() string {
 	return cfg.Package.Name
-}
-
-var defaultLinters = []string{
-	"dev",
-	"empty",
-	"opt",
-	"srv",
-	"setuidgid",
-	"strip",
-	"tempdir",
-	"usrlocal",
-	"varempty",
-	"worldwrite",
 }
 
 type VarTransforms struct {

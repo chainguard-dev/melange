@@ -7,7 +7,6 @@ toolchain go1.21.1
 require (
 	chainguard.dev/apko v0.10.1-0.20230918194837-e9722fcc3e50
 	cloud.google.com/go/storage v1.33.0
-	github.com/chainguard-dev/go-apk v0.0.0-20231011214341-9fd940f239fa
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0
 	github.com/chainguard-dev/yam v0.0.0-20230411155911-ba3a3357c32e
@@ -65,6 +64,7 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/containerd v1.7.3 // indirect

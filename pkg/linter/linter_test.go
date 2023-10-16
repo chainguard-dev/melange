@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"chainguard.dev/melange/pkg/config"
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
 func Test_emptyLinter(t *testing.T) {
@@ -439,6 +440,6 @@ func Test_lintApk(t *testing.T) {
 	called := false
 	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
 		called = true
-	}, DefaultLinters))
+	}, linter_defaults.DefaultLinters))
 	assert.False(t, called)
 }

@@ -34,6 +34,7 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	"chainguard.dev/melange/pkg/logger"
 	"chainguard.dev/melange/pkg/util"
 )
@@ -186,7 +187,7 @@ func (p *Package) FullCopyright() string {
 // Computes the list of package or subpackage linters, taking into account default linters.
 // This includes the default linters as well, unless disabled.
 func (chk *Checks) GetLinters() []string {
-	linters := linter.DefaultLinters
+	linters := linter_defaults.DefaultLinters
 
 	// Enable non-default linters
 	for _, v := range chk.Enabled {

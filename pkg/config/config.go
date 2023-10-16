@@ -187,7 +187,7 @@ func (p *Package) FullCopyright() string {
 // Computes the list of package or subpackage linters, taking into account default linters.
 // This includes the default linters as well, unless disabled.
 func (chk *Checks) GetLinters() []string {
-	linters := linter_defaults.DefaultLinters
+	linters := linter.DefaultLinters
 
 	// Enable non-default linters
 	for _, v := range chk.Enabled {

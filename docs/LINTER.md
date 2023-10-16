@@ -16,6 +16,10 @@ The available linters are:
 - `varempty`: Remove any offending files in /var/empty in the pipeline.
 - `worldwrite`: Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package (see below)
 
+### Default linters
+
+At present, all linters are enabled by default. This is subject to change in the future as more linters are added.
+
 ### `-compat` packages
 
 In nearly every case, binaries should be available in `/usr/bin/`, libraries in `/usr/lib/`, and so on.

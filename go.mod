@@ -21,7 +21,7 @@ require (
 	github.com/imdario/mergo v0.3.16
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/klauspost/compress v1.17.0
+	github.com/klauspost/compress v1.17.1
 	github.com/klauspost/pgzip v1.2.6
 	github.com/korovkin/limiter v0.0.0-20221015170604-22eb1ceceddc
 	github.com/kubescape/go-git-url v0.0.25
@@ -64,7 +64,7 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927 // indirect
+	github.com/chainguard-dev/go-apk v0.0.0-20231016174213-101841fc58cd // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/containerd v1.7.3 // indirect

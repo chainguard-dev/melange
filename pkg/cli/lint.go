@@ -39,8 +39,8 @@ func Lint() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "lint",
-		Short:   "Lint an APK file.",
-		Long:    `Verify the given APK file passes linter checks`,
+		Short:   "EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors",
+		Long:    `Lint is an EXPERIMENTAL COMMAND - Lints an APK file, checking for problems and errors.`,
 		Example: `  melange lint [--enable=foo[,bar]] [--disable=baz] foo.apk`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -80,8 +80,8 @@ func Lint() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringSliceVar(&enabled, "enabled", []string{}, "")
-	cmd.Flags().StringSliceVar(&disabled, "disabled", []string{}, "")
+	cmd.Flags().StringSliceVar(&enabled, "enabled", []string{}, "enable additional, non-default lints, `--disabled` overrides this")
+	cmd.Flags().StringSliceVar(&disabled, "disabled", []string{}, "disable linters enabled by default or passed in `--enabled`")
 
 	return cmd
 }

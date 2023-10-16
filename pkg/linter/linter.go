@@ -30,19 +30,6 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-var DefaultLinters = []string{
-	"dev",
-	"empty",
-	"opt",
-	"srv",
-	"setuidgid",
-	"strip",
-	"tempdir",
-	"usrlocal",
-	"varempty",
-	"worldwrite",
-}
-
 type LinterContext struct {
 	pkgname string
 	fsys    fs.FS

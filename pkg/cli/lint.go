@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"chainguard.dev/melange/pkg/linter"
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
 type LintOpts struct {
@@ -49,7 +50,7 @@ func Lint() *cobra.Command {
 			linterSet := map[string]struct{}{}
 
 			// Get all default linters, ignoring disabled ones
-			for _, e := range linter.DefaultLinters {
+			for _, e := range linter_defaults.DefaultLinters {
 				if !slices.Contains(disabled, e) {
 					linterSet[e] = struct{}{}
 				}

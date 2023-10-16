@@ -84,6 +84,8 @@ github.com/chainguard-dev/go-apk v0.0.0-20231013212454-7a1fcf5f7b06 h1:UI87oVdoO
 github.com/chainguard-dev/go-apk v0.0.0-20231013212454-7a1fcf5f7b06/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
 github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927 h1:XLUyypdjL9gj21rLXfKEvJf7bdheqAGxpvgXwmbkapM=
 github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
+github.com/chainguard-dev/go-apk v0.0.0-20231016174213-101841fc58cd h1:NdAKPtZ255GcwSl6fKYDm4Akuq/Ew/uCrp1DgXf/TKI=
+github.com/chainguard-dev/go-apk v0.0.0-20231016174213-101841fc58cd/go.mod h1:h9FJUalZlGXwus+ZXGD2rB8A9Ii4xdqgTH92S0KtVwg=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3SY2sW8rUIxG9wXMxXlMN7sd9VNUSdZ+FnVqOrm2nI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
@@ -398,6 +400,8 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/compress v1.17.0 h1:Rnbp4K9EjcDuVuHtd0dgA4qNuv9yKDYKK1ulpJwgrqM=
 github.com/klauspost/compress v1.17.0/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
+github.com/klauspost/compress v1.17.1 h1:NE3C767s2ak2bweCZo3+rdP4U/HoyVXLv/X9f2gPS5g=
+github.com/klauspost/compress v1.17.1/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=
 github.com/klauspost/pgzip v1.2.6/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=

@@ -148,6 +148,27 @@ func (cfg *Configuration) applySubstitutionsForProvides() error {
 	return nil
 }
 
+func (cfg *Configuration) applySubstitutionsForRuntime() error {
+	nw := buildConfigMap(cfg)
+	for i, runtime := range cfg.Package.Dependencies.Runtime {
+		var err error
+		cfg.Package.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", runtime, err)
+		}
+	}
+	for _, srt := range cfg.Subpackages {
+		for i, prov := range srt.Dependencies.Runtime {
+			var err error
+			srt.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, prov)
+			if err != nil {
+				return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
+			}
+		}
+	}
+	return nil
+}
+
 type Copyright struct {
 	// Optional: The license paths, typically '*'
 	Paths []string `yaml:"paths,omitempty"`
@@ -797,6 +818,9 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	cfg.Subpackages = subpackages
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
+		return nil, err
+	}
+	if err := cfg.applySubstitutionsForRuntime(); err != nil {
 		return nil, err
 	}
 

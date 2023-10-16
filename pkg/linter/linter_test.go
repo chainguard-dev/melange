@@ -15,6 +15,7 @@
 package linter
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -430,5 +431,14 @@ func Test_disableDefaultLinter(t *testing.T) {
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
 	}, linters))
+	assert.False(t, called)
+}
+
+func Test_lintApk(t *testing.T) {
+	ctx := context.Background()
+	called := false
+	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
+		called = true
+	}, DefaultLinters))
 	assert.False(t, called)
 }

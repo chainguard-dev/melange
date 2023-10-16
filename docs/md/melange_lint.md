@@ -22,11 +22,12 @@ Lint is an EXPERIMENTAL COMMAND - Lints an APK file, checking for problems and e
 
 ```
 
-      --enabled[=][foo,[bar]...]   enable additional, non-default lints, `--disabled` overrides this
-      --disabled[=][foo,[bar]...]  disable linters enabled by default or passed in `--enabled`
-  -h, --help                                  help for lint
+      --enabled string   enable additional, non-default lints, `--disabled` overrides this
+      --disabled string  disable linters enabled by default or passed in `--enabled`
+      -h, --help         help for lint
 ```
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/docs/md/melange.md)	 -
+

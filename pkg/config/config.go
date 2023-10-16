@@ -34,7 +34,6 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
-	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	"chainguard.dev/melange/pkg/logger"
 	"chainguard.dev/melange/pkg/util"
 )

@@ -78,14 +78,8 @@ github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chainguard-dev/go-apk v0.0.0-20231013182320-57b3bf0ffe36 h1:KrP0+lBNlfo4M4ibDT9ZAUNMEQycMP1nAHrUBa9rL+M=
-github.com/chainguard-dev/go-apk v0.0.0-20231013182320-57b3bf0ffe36/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
-github.com/chainguard-dev/go-apk v0.0.0-20231013212454-7a1fcf5f7b06 h1:UI87oVdoOfg+whBX6P2LxnAGNzcy8JoxfE7fQdZkMb8=
-github.com/chainguard-dev/go-apk v0.0.0-20231013212454-7a1fcf5f7b06/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
-github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927 h1:XLUyypdjL9gj21rLXfKEvJf7bdheqAGxpvgXwmbkapM=
-github.com/chainguard-dev/go-apk v0.0.0-20231013225635-ea30293b7927/go.mod h1:FLVA+cRnxViZTpVd4m10J5IRM3sl9NI7G1Ob4H1lVEg=
-github.com/chainguard-dev/go-apk v0.0.0-20231016174213-101841fc58cd h1:NdAKPtZ255GcwSl6fKYDm4Akuq/Ew/uCrp1DgXf/TKI=
-github.com/chainguard-dev/go-apk v0.0.0-20231016174213-101841fc58cd/go.mod h1:h9FJUalZlGXwus+ZXGD2rB8A9Ii4xdqgTH92S0KtVwg=
+github.com/chainguard-dev/go-apk v0.0.0-20231016212352-18086763089d h1:c63Ro6Q4tmWkBA4lQgJ0PRgPEH69rCWxj5VJWcr7GRM=
+github.com/chainguard-dev/go-apk v0.0.0-20231016212352-18086763089d/go.mod h1:WExlqJSBo0Kuzl+pbSFdy1ubQBohYLOT8tBFa/G78HI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3SY2sW8rUIxG9wXMxXlMN7sd9VNUSdZ+FnVqOrm2nI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
@@ -398,8 +392,6 @@ github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
-github.com/klauspost/compress v1.17.0 h1:Rnbp4K9EjcDuVuHtd0dgA4qNuv9yKDYKK1ulpJwgrqM=
-github.com/klauspost/compress v1.17.0/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
 github.com/klauspost/compress v1.17.1 h1:NE3C767s2ak2bweCZo3+rdP4U/HoyVXLv/X9f2gPS5g=
 github.com/klauspost/compress v1.17.1/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=

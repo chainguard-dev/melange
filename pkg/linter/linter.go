@@ -125,11 +125,7 @@ var isSbomPath = regexp.MustCompile("^var/lib/db/sbom/")
 // NOTE(Elizafox): This should be called from each linter, in case we want to
 // lint the SBOM someday.
 func isIgnoredPath(path string) bool {
-	if isSbomPath.MatchString(path) {
-		return true
-	}
-
-	return false
+	return isSbomPath.MatchString(path)
 }
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {

@@ -21,6 +21,7 @@ var DefaultLinters = []string{
 	"dev",
 	"empty",
 	"opt",
+	"pythonmultiple",
 	"srv",
 	"setuidgid",
 	"strip",

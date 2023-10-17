@@ -39,7 +39,7 @@ func Test_emptyLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"empty"},
-				Disabled: []string{"dev", "opt", "setuidgid", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "opt", "pythonmultiple", "setuidgid", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -67,7 +67,7 @@ func Test_usrLocalLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"usrlocal"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -100,7 +100,7 @@ func Test_varEmptyLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"varempty"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "worldwrite"},
 			},
 		},
 	}
@@ -134,7 +134,7 @@ func Test_devLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"dev"},
-				Disabled: []string{"empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -168,7 +168,7 @@ func Test_optLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"opt"},
-				Disabled: []string{"dev", "empty", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -190,6 +190,56 @@ func Test_optLinter(t *testing.T) {
 	assert.True(t, called)
 }
 
+func Test_pythonMultiplePackagesLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "testpythonmultiplepackages",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks: config.Checks{
+				Enabled:  []string{"pythonmultiple"},
+				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
+			},
+		},
+	}
+
+	// Base dir
+	pythonPathdir := filepath.Join(dir, "usr", "lib", "python-3.14", "site-packages")
+
+	// Make one "package"
+	packagedir := filepath.Join(pythonPathdir, "foo")
+	err = os.MkdirAll(packagedir, 0700)
+	assert.NoError(t, err)
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"pythonmultiple"})
+
+	fsys := os.DirFS(dir)
+	lctx := NewLinterContext(cfg.Package.Name, fsys)
+
+	// One package should not trip it
+	called := false
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// Make another "package"
+	packagedir = filepath.Join(pythonPathdir, "bar")
+	err = os.MkdirAll(packagedir, 0700)
+	assert.NoError(t, err)
+
+	// Two should trip it
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.True(t, called)
+}
+
 func Test_srvLinter(t *testing.T) {
 	dir, err := os.MkdirTemp("", "melange.XXXXX")
 	defer os.RemoveAll(dir)
@@ -202,7 +252,7 @@ func Test_srvLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"srv"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -236,7 +286,7 @@ func Test_tempDirLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"tempdir"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -301,7 +351,7 @@ func Test_setUidGidLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"setuidgid"},
-				Disabled: []string{"dev", "empty", "opt", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
+				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
 			},
 		},
 	}
@@ -341,7 +391,7 @@ func Test_worldWriteLinter(t *testing.T) {
 			Epoch:   0,
 			Checks: config.Checks{
 				Enabled:  []string{"worldwrite"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty"},
+				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty"},
 			},
 		},
 	}

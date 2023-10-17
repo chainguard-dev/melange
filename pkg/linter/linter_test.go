@@ -442,4 +442,9 @@ func Test_lintApk(t *testing.T) {
 		called = true
 	}, linter_defaults.DefaultLinters))
 	assert.False(t, called)
+
+	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), func(err error) {
+		called = true
+	}, linter_defaults.DefaultLinters))
+	assert.True(t, called)
 }

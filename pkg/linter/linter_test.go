@@ -15,6 +15,7 @@
 package linter
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"chainguard.dev/melange/pkg/config"
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
 func Test_emptyLinter(t *testing.T) {
@@ -431,4 +433,18 @@ func Test_disableDefaultLinter(t *testing.T) {
 		called = true
 	}, linters))
 	assert.False(t, called)
+}
+
+func Test_lintApk(t *testing.T) {
+	ctx := context.Background()
+	called := false
+	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
+		called = true
+	}, linter_defaults.DefaultLinters))
+	assert.False(t, called)
+
+	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), func(err error) {
+		called = true
+	}, linter_defaults.DefaultLinters))
+	assert.True(t, called)
 }

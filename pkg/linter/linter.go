@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 
@@ -118,6 +119,14 @@ var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
 var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isCompatPackageRegex = regexp.MustCompile("-compat$")
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
+var isSbomPath = regexp.MustCompile("^var/lib/db/sbom/")
+
+// Determine if a path should be ignored by a linter
+// NOTE(Elizafox): This should be called from each linter, in case we want to
+// lint the SBOM someday.
+func isIgnoredPath(path string) bool {
+	return isSbomPath.MatchString(path)
+}
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isDevRegex.MatchString(path) {
@@ -135,7 +144,11 @@ func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	return nil
 }
 
-func isSetUidOrGidLinter(_ LinterContext, _ string, d fs.DirEntry) error {
+func isSetUidOrGidLinter(_ LinterContext, path string, d fs.DirEntry) error {
+	if isIgnoredPath(path) {
+		return nil
+	}
+
 	info, err := d.Info()
 	if err != nil {
 		return err
@@ -184,6 +197,10 @@ func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 }
 
 func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
+	if isIgnoredPath(path) {
+		return nil
+	}
+
 	if !d.Type().IsRegular() {
 		// Don't worry about non-files
 		return nil
@@ -207,6 +224,10 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 }
 
 func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
+	if isIgnoredPath(path) {
+		return nil
+	}
+
 	if !d.Type().IsRegular() {
 		// Don't worry about non-files
 		return nil
@@ -267,13 +288,17 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 
 func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	foundfile := false
-	walkCb := func(path string, _ fs.DirEntry, err error) error {
+	walkCb := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if path == "." {
-			// Skip root
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		if d.IsDir() {
+			// Ignore directories
 			return nil
 		}
 
@@ -294,10 +319,36 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	return fmt.Errorf("Package is empty but no-provides is not set")
 }
 
+// Checks if the linters in the given slice are known linters
+// Returns an empty slice if all linters are known, otherwise a slice with all the bad linters
+func CheckValidLinters(check []string) []string {
+	linters := []string{}
+	for _, l := range check {
+		_, present := linterMap[l]
+		if present {
+			continue
+		}
+
+		// Check post-linter map too
+		_, present = postLinterMap[l]
+		if !present {
+			linters = append(linters, l)
+		}
+	}
+
+	return linters
+}
+
 func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []string) error {
 	// If this is a compat package, do nothing.
 	if isCompatPackageRegex.MatchString(lctx.pkgname) {
 		return nil
+	}
+
+	// Verify all linters are known
+	badLints := CheckValidLinters(linters)
+	if len(badLints) > 0 {
+		return fmt.Errorf("Unknown linter(s): %s", strings.Join(badLints, ", "))
 	}
 
 	postLinters := []string{}
@@ -309,12 +360,7 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 		for _, linterName := range linters {
 			linter, present := linterMap[linterName]
 			if !present {
-				// Check if it's a post linter instead
-				_, present = postLinterMap[linterName]
-				if !present {
-					return fmt.Errorf("Linter %s is unknown", linterName)
-				}
-
+				// We already checked that all linters are valid, so this must be a post linter
 				postLinters = append(postLinters, linterName)
 				continue
 			}
@@ -351,26 +397,26 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 }
 
 func LintApk(ctx context.Context, path string, warn func(error), linters []string) error {
-	apkfs, err := apkofs.NewAPKFS(ctx, path)
+	apkfsctrl, err := apkofs.NewAPKFS(ctx, path, apkofs.APKFSControl)
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not open APKFS: %w", err)
 	}
 
 	// Get the package name
-	f, err := apkfs.Open("./.PKGINFO")
+	f, err := apkfsctrl.Open("/.PKGINFO")
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not open .PKGINFO file: %w", err)
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not read from package: %w", err)
 	}
 
 	cfg, err := ini.Load(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not load .PKGINFO file: %w", err)
 	}
 
 	pkgname := cfg.Section("").Key("pkgname").MustString("")
@@ -378,7 +424,12 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 		return fmt.Errorf("pkgname is nonexistent")
 	}
 
-	lctx := NewLinterContext(pkgname, apkfs)
+	apkfspkg, err := apkofs.NewAPKFS(ctx, path, apkofs.APKFSPackage)
+	if err != nil {
+		return fmt.Errorf("Could not open APKFS: %w", err)
+	}
 
-	return lctx.LintPackageFs(apkfs, warn, linters)
+	lctx := NewLinterContext(pkgname, apkfspkg)
+
+	return lctx.LintPackageFs(apkfspkg, warn, linters)
 }

@@ -398,7 +398,18 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 			return pipeline, errors.New("could not find any sdist package in available releases")
 		}
 
-		artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, release.URL)
+		releaseURL := release.URL
+		uri := strings.ReplaceAll(releaseURL, version, "${{package.version}}")
+		readme := fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", releaseURL)
+		if strings.Contains(release.URL, "https://files.pythonhosted.org") {
+			packageName := strings.TrimPrefix(pack.Info.Name, fmt.Sprintf("py%s", release.PythonVersion))
+			releaseURL = fmt.Sprintf("https://files.pythonhosted.org/packages/source/%c/%s/%s-%s.tar.gz", packageName[0], packageName, packageName, version)
+			readme = fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", releaseURL)
+
+			uri = strings.ReplaceAll(releaseURL, version, "${{package.version}}")
+		}
+
+		artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, releaseURL)
 		if err != nil {
 			c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)
 			c.Logger.Printf("[%s]  Or try 'curl %s' to check out the API", pack.Info.Name, pack.Info.DownloadURL)
@@ -413,8 +424,8 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 		fetch := config.Pipeline{
 			Uses: "fetch",
 			With: map[string]string{
-				"uri":             strings.ReplaceAll(release.URL, version, "${{package.version}}"),
-				"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", release.URL),
+				"uri":             uri,
+				"README":          readme,
 				"expected-sha256": artifact256SHA,
 			},
 		}

@@ -146,13 +146,14 @@ pipeline:
 
 Melange provides the following default substitutions which can be referenced in the build file pipeline:
 
-| **Substitution**         | **Description**                                   |
-|--------------------------|---------------------------------------------------|
-| `${{package.name}}`      | Package name                                      |
-| `${{package.version}}`   | Package version                                   |
-| `${{package.epoch}}`     | Package epoch                                     |
-| `${{targets.destdir}}`   | Directory where targets will be stored            |
-| `${{targets.subpkgdir}}` | Directory where subpackage targets will be stored |
+| **Substitution**            | **Description**                                   |
+|-----------------------------|---------------------------------------------------|
+| `${{package.name}}`         | Package name                                      |
+| `${{package.version}}`      | Package version                                   |
+| `${{package.epoch}}`        | Package epoch                                     |
+| `${{package.full-version}}` | `${{package.version}}-r${{package-epoch}}`        |
+| `${{targets.destdir}}`      | Directory where targets will be stored            |
+| `${{targets.subpkgdir}}`    | Directory where subpackage targets will be stored |
 
 An example build file pipeline with substitutions:
 
@@ -161,6 +162,8 @@ pipeline:
   - name: 'Create tmp dir'
     runs: mkdir ${{targets.destdir}}/var/lib/${{package.name}}/tmp
 ```
+
+[More detailed documentation](./docs/)
 
 ## Usage with apko
 

@@ -190,10 +190,11 @@ func TestGenerateManifest(t *testing.T) {
 		assert.NotEmpty(t, release)
 		assert.Equal(t, "https://files.pythonhosted.org/packages/8f/34/d4bcefeabfb8e4b46157e84ea55c3ecc7399d5f9a3454728e1d0d5f9cb83/botocore-"+pythonctx.PackageVersion+".tar.gz", release.URL)
 
+		tempURI := fmt.Sprintf("https://files.pythonhosted.org/packages/source/%c/%s/%s-%s.tar.gz", pythonctx.PackageName[0], pythonctx.PackageName, pythonctx.PackageName, pythonctx.PackageVersion)
 		assert.Equal(t, got.Pipeline[0].With, map[string]string{
-			"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", release.URL),
+			"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", tempURI),
 			"expected-sha256": "2bee6ed037590ef1e4884d944486232871513915f12a8590c63e3bb6046479bf",
-			"uri":             strings.ReplaceAll(release.URL, pythonctx.PackageVersion, "${{package.version}}"),
+			"uri":             strings.ReplaceAll(tempURI, pythonctx.PackageVersion, "${{package.version}}"),
 		})
 
 		// Check Pipeline - runs

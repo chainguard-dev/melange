@@ -100,7 +100,7 @@ func (o LintOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 }
 
 func (o LintOpts) run(ctx context.Context, pkg string) error {
-	fmt.Printf("Linting apk: %s", pkg)
+	fmt.Printf("Linting apk: %s\n", pkg)
 
 	var innerErr error
 	err := linter.LintApk(ctx, pkg, func(err error) {

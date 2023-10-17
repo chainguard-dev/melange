@@ -119,6 +119,18 @@ var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
 var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isCompatPackageRegex = regexp.MustCompile("-compat$")
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
+var isSbomPath = regexp.MustCompile("^var/lib/db/sbom/")
+
+// Determine if a path should be ignored by a linter
+// NOTE(Elizafox): This should be called from each linter, in case we want to
+// lint the SBOM someday.
+func isIgnoredPath(path string) bool {
+	if isSbomPath.MatchString(path) {
+		return true
+	}
+
+	return false
+}
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isDevRegex.MatchString(path) {
@@ -136,7 +148,11 @@ func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	return nil
 }
 
-func isSetUidOrGidLinter(_ LinterContext, _ string, d fs.DirEntry) error {
+func isSetUidOrGidLinter(_ LinterContext, path string, d fs.DirEntry) error {
+	if isIgnoredPath(path) {
+		return nil
+	}
+
 	info, err := d.Info()
 	if err != nil {
 		return err
@@ -185,6 +201,10 @@ func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 }
 
 func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
+	if isIgnoredPath(path) {
+		return nil
+	}
+
 	if !d.Type().IsRegular() {
 		// Don't worry about non-files
 		return nil
@@ -208,6 +228,10 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 }
 
 func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
+	if isIgnoredPath(path) {
+		return nil
+	}
+
 	if !d.Type().IsRegular() {
 		// Don't worry about non-files
 		return nil
@@ -268,13 +292,17 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 
 func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	foundfile := false
-	walkCb := func(path string, _ fs.DirEntry, err error) error {
+	walkCb := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if path == "." {
-			// Skip root
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		if d.IsDir() {
+			// Ignore directories
 			return nil
 		}
 

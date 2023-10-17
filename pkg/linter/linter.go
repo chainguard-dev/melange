@@ -109,6 +109,11 @@ var postLinterMap = map[string]postLinter{
 		FailOnError: false,
 		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
+	"pythonmultiple": postLinter{
+		LinterFunc:  pythonMultiplePackagesPostLinter,
+		FailOnError: false,
+		Explain:     "Split this package up into multiple packages",
+	},
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
@@ -119,13 +124,13 @@ var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
 var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isCompatPackageRegex = regexp.MustCompile("-compat$")
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
-var isSbomPath = regexp.MustCompile("^var/lib/db/sbom/")
+var isSbomPathRegex = regexp.MustCompile("^var/lib/db/sbom/")
 
 // Determine if a path should be ignored by a linter
 // NOTE(Elizafox): This should be called from each linter, in case we want to
 // lint the SBOM someday.
 func isIgnoredPath(path string) bool {
-	return isSbomPath.MatchString(path)
+	return isSbomPathRegex.MatchString(path)
 }
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
@@ -317,6 +322,33 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	}
 
 	return fmt.Errorf("Package is empty but no-provides is not set")
+}
+
+func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
+	pythondirs, err := fs.Glob(fsys, filepath.Join("usr", "lib", "python-3.*"))
+	if err != nil {
+		// Shouldn't get here, per the Go docs.
+		return fmt.Errorf("Error checking for Python site directories: %w", err)
+	}
+
+	if len(pythondirs) == 0 {
+		// Nothing to do
+		return nil
+	} else if len(pythondirs) > 1 {
+		return fmt.Errorf("More than one Python version detected: %d found", len(pythondirs))
+	}
+
+	matches, err := fs.Glob(fsys, filepath.Join(pythondirs[0], "site-packages", "*"))
+	if err != nil {
+		// Shouldn't get here as well.
+		return fmt.Errorf("Error checking for Python packages: %w", err)
+	}
+
+	if len(matches) > 1 {
+		return fmt.Errorf("Multiple Python packages detected: %d found", len(matches))
+	}
+
+	return nil
 }
 
 // Checks if the linters in the given slice are known linters

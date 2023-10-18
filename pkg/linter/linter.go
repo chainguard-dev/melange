@@ -344,17 +344,20 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		return fmt.Errorf("Error checking for Python packages: %w", err)
 	}
 
-	// Exclude __pycache__
+	// Filter matches
 	pmatches := []string{}
 	for _, m := range matches {
-		if filepath.Base(m) == "__pycache__" {
+		base := filepath.Base(m)
+		if base == "__pycache__" || strings.HasSuffix(base, ".egg-info") {
+			// Exclude pycache and egg info
 			continue
 		}
-		pmatches = append(pmatches, m)
+		pmatches = append(pmatches, fmt.Sprintf("%q", base))
 	}
 
 	if len(pmatches) > 1 {
-		return fmt.Errorf("Multiple Python packages detected: %d found", len(matches))
+		smatches := strings.Join(pmatches, ", ")
+		return fmt.Errorf("Multiple Python packages detected: %d found (%s)", len(pmatches), smatches)
 	}
 
 	return nil

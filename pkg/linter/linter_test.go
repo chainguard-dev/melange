@@ -208,7 +208,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	}
 
 	// Base dir
-	pythonPathdir := filepath.Join(dir, "usr", "lib", "python-3.14", "site-packages")
+	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")

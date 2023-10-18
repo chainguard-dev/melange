@@ -325,7 +325,7 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 }
 
 func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
-	pythondirs, err := fs.Glob(fsys, filepath.Join("usr", "lib", "python-3.*"))
+	pythondirs, err := fs.Glob(fsys, filepath.Join("usr", "lib", "python3.*"))
 	if err != nil {
 		// Shouldn't get here, per the Go docs.
 		return fmt.Errorf("Error checking for Python site directories: %w", err)
@@ -344,7 +344,16 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		return fmt.Errorf("Error checking for Python packages: %w", err)
 	}
 
-	if len(matches) > 1 {
+	// Exclude __pycache__
+	pmatches := []string{}
+	for _, m := range matches {
+		if filepath.Base(m) == "__pycache__" {
+			continue
+		}
+		pmatches = append(pmatches, m)
+	}
+
+	if len(pmatches) > 1 {
 		return fmt.Errorf("Multiple Python packages detected: %d found", len(matches))
 	}
 

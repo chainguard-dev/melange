@@ -348,10 +348,18 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 	pmatches := []string{}
 	for _, m := range matches {
 		base := filepath.Base(m)
-		if base == "__pycache__" || strings.HasSuffix(base, ".egg-info") {
-			// Exclude pycache and egg info
+		if base == "__pycache__" {
+			// Exclude pycache
 			continue
 		}
+
+		ext := filepath.Ext(base)
+		if ext == ".egg-info" || ext == ".dist-info" || ext == ".pth" || ext == ".so" {
+			// Exclude various metadata files and .so files
+			// TODO(Elizafox): Smarter logic for .so files
+			continue
+		}
+
 		pmatches = append(pmatches, fmt.Sprintf("%q", base))
 	}
 

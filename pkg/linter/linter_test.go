@@ -228,6 +228,46 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	}, linters))
 	assert.False(t, called)
 
+	// Egg info files should not count
+	_, err = os.Create(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"))
+	assert.NoError(t, err)
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// dist info files should not count
+	_, err = os.Create(filepath.Join(pythonPathdir, "foodist-0.1-py3.14.dist-info"))
+	assert.NoError(t, err)
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// pth files should not count
+	_, err = os.Create(filepath.Join(pythonPathdir, "foopth-0.1-py3.14.pth"))
+	assert.NoError(t, err)
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// .so files should not count
+	_, err = os.Create(filepath.Join(pythonPathdir, "foopkg.so"))
+	assert.NoError(t, err)
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// __pycache__ dirs should not count
+	err = os.MkdirAll(filepath.Join(pythonPathdir, "__pycache__"), 0700)
+	assert.NoError(t, err)
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
 	// Make another "package"
 	packagedir = filepath.Join(pythonPathdir, "bar")
 	err = os.MkdirAll(packagedir, 0700)

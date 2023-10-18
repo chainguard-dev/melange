@@ -357,7 +357,7 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 			// Exclude tests
 			continue
 		}
-		
+
 		if base == "doc" || base == "docs" {
 			// Exclude docs
 			continue

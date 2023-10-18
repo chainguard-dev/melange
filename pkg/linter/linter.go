@@ -353,6 +353,11 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 			continue
 		}
 
+		if base == "test" || base == "tests" {
+			// Exclude tests
+			continue
+		}
+
 		ext := filepath.Ext(base)
 		if ext == ".egg-info" || ext == ".dist-info" || ext == ".pth" || ext == ".so" {
 			// Exclude various metadata files and .so files

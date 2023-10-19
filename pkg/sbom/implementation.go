@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +38,7 @@ import (
 	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/melange/pkg/util"
 )
 
 type generatorImplementation interface {
@@ -372,15 +372,9 @@ func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
 // buildDocumentSPDX creates an SPDX 2.3 document from our generic representation
 func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 	// Build the SBOM time, but respect SOURCE_DATE_EPOCH
-	sbomTime := time.Now().UTC().Format(time.RFC3339)
-	if v, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
-		sec, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
-		}
-
-		t := time.Unix(sec, 0)
-		sbomTime = t.UTC().Format(time.RFC3339)
+	sbomTime, err := util.SourceDateEpoch(time.Now().UTC())
+	if err != nil {
+		return nil, err
 	}
 
 	spdxDoc := spdx.Document{
@@ -388,7 +382,7 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 		Name:    fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion),
 		Version: "SPDX-2.3",
 		CreationInfo: spdx.CreationInfo{
-			Created: sbomTime,
+			Created: sbomTime.Format(time.RFC3339),
 			Creators: []string{
 				fmt.Sprintf("Tool: melange (%s)", version.GetVersionInfo().GitVersion),
 				"Organization: Chainguard, Inc",

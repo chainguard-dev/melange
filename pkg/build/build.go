@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -49,6 +48,7 @@ import (
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/linter"
 	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/melange/pkg/util"
 )
 
 type Build struct {
@@ -206,22 +206,12 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	}
 
 	// SOURCE_DATE_EPOCH will always overwrite the build flag
-	if v, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
-		if v == "" {
-			b.Logger.Warnf("SOURCE_DATE_EPOCH is specified but empty, setting it to 0")
-			v = "0"
-		}
-		// The value MUST be an ASCII representation of an integer
-		// with no fractional component, identical to the output
-		// format of date +%s.
-		sec, err := strconv.ParseInt(v, 10, 64)
+	if _, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
+		t, err := util.SourceDateEpochWithLogger(b.Logger, b.SourceDateEpoch)
 		if err != nil {
-			// If the value is malformed, the build process
-			// SHOULD exit with a non-zero error code.
-			return nil, fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
+			return nil, err
 		}
-
-		b.SourceDateEpoch = time.Unix(sec, 0)
+		b.SourceDateEpoch = t
 	}
 
 	// Check that we actually can run things in containers.

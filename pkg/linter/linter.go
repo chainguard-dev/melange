@@ -365,13 +365,18 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		}
 
 		ext := filepath.Ext(base)
-		base = base[:len(ext)]
-
 		if ext == ".egg-info" || ext == ".dist-info" || ext == ".pth" {
 			// Exclude various metadata files and .so files
 			continue
 		}
 
+		if len(ext) > 0 {
+			base = base[:len(ext)]
+			if base == "" {
+				// No empty strings
+				continue
+			}
+		}
 		pmatches[fmt.Sprintf("%q", base)] = struct{}{}
 	}
 
@@ -380,9 +385,10 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		slmatches := make([]string, len(pmatches))
 		for k := range pmatches {
 			slmatches[i] = k
+			i++
 		}
 		smatches := strings.Join(slmatches, ", ")
-		return fmt.Errorf("Multiple Python packages detected: %d found (%s)", len(pmatches), smatches)
+		return fmt.Errorf("Multiple Python packages detected: %d found (%s)", len(slmatches), smatches)
 	}
 
 	return nil

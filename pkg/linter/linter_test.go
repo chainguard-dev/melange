@@ -210,16 +210,16 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	// Base dir
 	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
 
-	// Make one "package"
-	packagedir := filepath.Join(pythonPathdir, "foo")
-	err = os.MkdirAll(packagedir, 0700)
-	assert.NoError(t, err)
-
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"pythonmultiple"})
 
 	fsys := os.DirFS(dir)
 	lctx := NewLinterContext(cfg.Package.Name, fsys)
+
+	// Make one "package"
+	packagedir := filepath.Join(pythonPathdir, "foo")
+	err = os.MkdirAll(packagedir, 0700)
+	assert.NoError(t, err)
 
 	// One package should not trip it
 	called := false
@@ -252,8 +252,8 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	}, linters))
 	assert.False(t, called)
 
-	// .so files should not count
-	_, err = os.Create(filepath.Join(pythonPathdir, "foopkg.so"))
+	// .so files duplicate with a dir should not count
+	_, err = os.Create(filepath.Join(pythonPathdir, "foo.so"))
 	assert.NoError(t, err)
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -268,7 +268,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	}, linters))
 	assert.False(t, called)
 
-	// Make another "package"
+	// Make another "package" (at this point we should have 2)
 	packagedir = filepath.Join(pythonPathdir, "bar")
 	err = os.MkdirAll(packagedir, 0700)
 	assert.NoError(t, err)

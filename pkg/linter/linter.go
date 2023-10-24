@@ -344,8 +344,8 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		return fmt.Errorf("Error checking for Python packages: %w", err)
 	}
 
-	// Filter matches
-	pmatches := []string{}
+	// Filter matches and ignore duplicates (.so vs directories for example)
+	pmatches := map[string]struct{}{}
 	for _, m := range matches {
 		base := filepath.Base(m)
 
@@ -365,17 +365,23 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		}
 
 		ext := filepath.Ext(base)
-		if ext == ".egg-info" || ext == ".dist-info" || ext == ".pth" || ext == ".so" {
+		base = base[:len(ext)]
+
+		if ext == ".egg-info" || ext == ".dist-info" || ext == ".pth" {
 			// Exclude various metadata files and .so files
-			// TODO(Elizafox): Smarter logic for .so files
 			continue
 		}
 
-		pmatches = append(pmatches, fmt.Sprintf("%q", base))
+		pmatches[fmt.Sprintf("%q", base)] = struct{}{}
 	}
 
 	if len(pmatches) > 1 {
-		smatches := strings.Join(pmatches, ", ")
+		i := 0
+		slmatches := make([]string, len(pmatches))
+		for k := range pmatches {
+			slmatches[i] = k
+		}
+		smatches := strings.Join(slmatches, ", ")
 		return fmt.Errorf("Multiple Python packages detected: %d found (%s)", len(pmatches), smatches)
 	}
 

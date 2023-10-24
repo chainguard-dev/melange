@@ -348,8 +348,9 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 	pmatches := []string{}
 	for _, m := range matches {
 		base := filepath.Base(m)
-		if base == "__pycache__" {
-			// Exclude pycache
+
+		if strings.HasPrefix(base, "_") {
+			// Ignore __pycache__ and internal packages
 			continue
 		}
 

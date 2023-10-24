@@ -204,10 +204,11 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 	}
 	defer cli.Close()
 
-	// TODO(kaniini): We want to use the build user here, but for now lets keep
-	// it simple.
+	// TODO(kaniini): We want to use the build user here, but for now lets keep it simple.
+	// TODO(epsilon-phase): building as the user "build" was removed from docker runner
+	// for consistency with other runners and to ensure that packages can be generated with files
+	// that have owners other than root. We should explore using fakeroot or similar tricks for these use-cases.
 	taskIDResp, err := cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
-		User:         "build",
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,

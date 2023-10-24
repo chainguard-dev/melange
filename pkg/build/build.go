@@ -1241,6 +1241,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// clean build environment
+	// TODO(epsilon-phase): implement a way to clean up files that are not owned by the user
+	// that is running melange. files created inside the build not owned by the build user are
+	// not be possible to delete with this strategy.
 	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
 		b.Logger.Printf("WARNING: unable to clean workspace: %s", err)
 	}

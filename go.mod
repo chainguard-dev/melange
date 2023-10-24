@@ -51,7 +51,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9
 	knative.dev/pkg v0.0.0-20230531073936-5671699f23d9
 	sigs.k8s.io/release-utils v0.7.5
-	sigs.k8s.io/yaml v1.3.0
+	sigs.k8s.io/yaml v1.4.0
 )
 
 require (

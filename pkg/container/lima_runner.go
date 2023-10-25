@@ -99,7 +99,10 @@ func (l *lima) Run(ctx context.Context, cfg *Config, args ...string) error {
 		return fmt.Errorf("pod not running")
 	}
 
-	baseargs := []string{"exec", "-u", "build", "-w", runnerWorkdir}
+	// TODO(epsilon-phase): building as the user "build" was removed from lima runner
+	// for consistency with other runners and to ensure that packages can be generated with files
+	// that have owners other than root. We should explore using fakeroot or similar tricks for these use-cases.
+	baseargs := []string{"exec", "-w", runnerWorkdir}
 	for k, v := range cfg.Environment {
 		baseargs = append(baseargs, "-e", fmt.Sprintf("%s=%s", k, v))
 	}

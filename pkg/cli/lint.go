@@ -107,9 +107,9 @@ func (o LintOpts) run(ctx context.Context, pkg string) error {
 		innerErr = err
 	}, o.linters)
 	if err != nil {
-		return fmt.Errorf("package linter error: %w", err)
+		return fmt.Errorf("package linter error in %s: %w\n", pkg, err)
 	} else if innerErr != nil {
-		fmt.Printf("package linter warning: %v", innerErr)
+		fmt.Printf("package linter warning in %s: %v\n", pkg, innerErr)
 	}
 	return nil
 }

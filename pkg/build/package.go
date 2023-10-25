@@ -313,8 +313,9 @@ func (pc *PackageBuild) GenerateDependencies() error {
 		generatePythonDeps,
 	}
 
+	fsys := readlinkFS(pc.WorkspaceSubdir())
 	for _, gen := range generators {
-		if err := gen(pc, &generated); err != nil {
+		if err := gen(pc, fsys, &generated); err != nil {
 			return err
 		}
 	}

@@ -27,12 +27,13 @@ import (
 	"sort"
 	"strings"
 
+	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
 )
 
-type DependencyGenerator func(*PackageBuild, *config.Dependencies) error
+type DependencyGenerator func(*PackageBuild, apkofs.ReadLinkFS, *config.Dependencies) error
 
 func dedup(in []string) []string {
 	sort.Strings(in)
@@ -62,14 +63,13 @@ func allowedPrefix(path string, prefixes []string) bool {
 
 var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
 
-func generateCmdProviders(pc *PackageBuild, generated *config.Dependencies) error {
+func generateCmdProviders(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
 	if pc.Options.NoCommands {
 		return nil
 	}
 
 	pc.Logger.Printf("scanning for commands...")
 
-	fsys := readlinkFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -123,7 +123,7 @@ func findInterpreter(bin *elf.File) (string, error) {
 
 // dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
 // directories.
-func (pc *PackageBuild) dereferenceCrossPackageSymlink(path string) (string, error) {
+func dereferenceCrossPackageSymlink(pc *PackageBuild, path string) (string, error) {
 	targetPackageNames := []string{pc.PackageName, pc.Build.Configuration.Package.Name}
 	realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
 	if err != nil {
@@ -151,12 +151,10 @@ func (pc *PackageBuild) dereferenceCrossPackageSymlink(path string) (string, err
 	return "", nil
 }
 
-func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependencies) error {
+func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
 	pc.Logger.Printf("scanning for shared object dependencies...")
 
 	depends := map[string][]string{}
-
-	fsys := readlinkFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -175,7 +173,7 @@ func generateSharedObjectNameDeps(pc *PackageBuild, generated *config.Dependenci
 				return nil
 			}
 
-			realPath, err := pc.dereferenceCrossPackageSymlink(path)
+			realPath, err := dereferenceCrossPackageSymlink(pc, path)
 			if err != nil {
 				return nil
 			}
@@ -311,10 +309,9 @@ var generateRuntimePkgConfigDeps = false
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
-func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) error {
+func generatePkgConfigDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
 	pc.Logger.Printf("scanning for pkg-config data...")
 
-	fsys := readlinkFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -377,11 +374,10 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 
 // generatePythonDeps generates a python3~$VERSION dependency for packages which ship
 // Python modules.
-func generatePythonDeps(pc *PackageBuild, generated *config.Dependencies) error {
+func generatePythonDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
 	var pythonModuleVer string
 	pc.Logger.Printf("scanning for python modules...")
 
-	fsys := readlinkFS(pc.WorkspaceSubdir())
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err

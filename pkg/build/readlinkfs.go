@@ -93,6 +93,7 @@ func stringsFromByteSlice(buf []byte) []string {
 var xattrIgnoreList = map[string]bool{
 	"com.apple.provenance": true,
 	"security.csm":         true,
+	"security.selinux":     true,
 }
 
 func (f *rlfs) ListXattrs(path string) (map[string][]byte, error) {

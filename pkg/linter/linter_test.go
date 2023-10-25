@@ -27,6 +27,19 @@ import (
 	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
+func checksOnly(onlyLint string) config.Checks {
+	checksDisabled := []string{}
+	for _, lint := range linter_defaults.DefaultLinters {
+		if lint != onlyLint {
+			checksDisabled = append(checksDisabled, lint)
+		}
+	}
+	return config.Checks{
+		Enabled:  []string{onlyLint},
+		Disabled: checksDisabled,
+	}
+}
+
 func Test_emptyLinter(t *testing.T) {
 	dir, err := os.MkdirTemp("", "melange.XXXXX")
 	defer os.RemoveAll(dir)
@@ -37,10 +50,7 @@ func Test_emptyLinter(t *testing.T) {
 			Name:    "testempty",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"empty"},
-				Disabled: []string{"dev", "opt", "pythonmultiple", "setuidgid", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("empty"),
 		},
 	}
 
@@ -65,10 +75,7 @@ func Test_usrLocalLinter(t *testing.T) {
 			Name:    "testusrlocal",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"usrlocal"},
-				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("usrlocal"),
 		},
 	}
 
@@ -98,10 +105,7 @@ func Test_varEmptyLinter(t *testing.T) {
 			Name:    "testvarempty",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"varempty"},
-				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "worldwrite"},
-			},
+			Checks:  checksOnly("varempty"),
 		},
 	}
 
@@ -132,10 +136,7 @@ func Test_devLinter(t *testing.T) {
 			Name:    "testdev",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"dev"},
-				Disabled: []string{"empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("dev"),
 		},
 	}
 
@@ -200,10 +201,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 			Name:    "testpythonmultiplepackages",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"pythonmultiple"},
-				Disabled: []string{"dev", "empty", "opt", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("pythonmultiple"),
 		},
 	}
 
@@ -290,10 +288,7 @@ func Test_srvLinter(t *testing.T) {
 			Name:    "testsrv",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"srv"},
-				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("srv"),
 		},
 	}
 
@@ -324,10 +319,7 @@ func Test_tempDirLinter(t *testing.T) {
 			Name:    "testtempdir",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"tempdir"},
-				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("tempdir"),
 		},
 	}
 
@@ -389,10 +381,7 @@ func Test_setUidGidLinter(t *testing.T) {
 			Name:    "testsetuidgid",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"setuidgid"},
-				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "srv", "strip", "tempdir", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("setuidgid"),
 		},
 	}
 
@@ -429,10 +418,7 @@ func Test_worldWriteLinter(t *testing.T) {
 			Name:    "testworldwrite",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"worldwrite"},
-				Disabled: []string{"dev", "empty", "opt", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty"},
-			},
+			Checks:  checksOnly("worldwrite"),
 		},
 	}
 

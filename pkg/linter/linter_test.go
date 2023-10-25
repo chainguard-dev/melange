@@ -167,10 +167,7 @@ func Test_optLinter(t *testing.T) {
 			Name:    "testopt",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
-				Enabled:  []string{"opt"},
-				Disabled: []string{"dev", "empty", "pythonmultiple", "setuidgid", "strip", "srv", "tempdir", "usrlocal", "varempty", "worldwrite"},
-			},
+			Checks:  checksOnly("opt"),
 		},
 	}
 
@@ -185,6 +182,53 @@ func Test_optLinter(t *testing.T) {
 	fsys := os.DirFS(dir)
 	lctx := NewLinterContext(cfg.Package.Name, fsys)
 	called := false
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.True(t, called)
+}
+
+func Test_pythonDocsLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "testpythondocs",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks:  checksOnly("pythondocs"),
+		},
+	}
+
+	// Base dir
+	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"pythondocs"})
+
+	fsys := os.DirFS(dir)
+	lctx := NewLinterContext(cfg.Package.Name, fsys)
+
+	// Make one "package"
+	packagedir := filepath.Join(pythonPathdir, "foo")
+	err = os.MkdirAll(packagedir, 0700)
+	assert.NoError(t, err)
+
+	// One package should not trip it
+	called := false
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// Create docs
+	docsdir := filepath.Join(pythonPathdir, "docs")
+	err = os.MkdirAll(docsdir, 0700)
+	assert.NoError(t, err)
+
+	// This should trip
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
 	}, linters))

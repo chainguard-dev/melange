@@ -109,10 +109,15 @@ var postLinterMap = map[string]postLinter{
 		FailOnError: false,
 		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
+	"pythondocs": postLinter{
+		LinterFunc:  pythonDocsPostLinter,
+		FailOnError: false,
+		Explain:     "Remove all docs directories from the package",
+	},
 	"pythonmultiple": postLinter{
 		LinterFunc:  pythonMultiplePackagesPostLinter,
 		FailOnError: false,
-		Explain:     "Split this package up into multiple packages",
+		Explain:     "Split this package up into multiple packages and verify you are not improperly using pip install",
 	},
 }
 
@@ -324,29 +329,57 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 	return fmt.Errorf("Package is empty but no-provides is not set")
 }
 
-func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
+func getPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 	pythondirs, err := fs.Glob(fsys, filepath.Join("usr", "lib", "python3.*"))
 	if err != nil {
 		// Shouldn't get here, per the Go docs.
-		return fmt.Errorf("Error checking for Python site directories: %w", err)
+		err = fmt.Errorf("Error checking for Python site directories: %w", err)
+		return
 	}
 
 	if len(pythondirs) == 0 {
 		// Nothing to do
-		return nil
+		return
 	} else if len(pythondirs) > 1 {
-		return fmt.Errorf("More than one Python version detected: %d found", len(pythondirs))
+		err = fmt.Errorf("More than one Python version detected: %d found", len(pythondirs))
+		return
 	}
 
-	matches, err := fs.Glob(fsys, filepath.Join(pythondirs[0], "site-packages", "*"))
+	matches, err = fs.Glob(fsys, filepath.Join(pythondirs[0], "site-packages", "*"))
 	if err != nil {
 		// Shouldn't get here as well.
-		return fmt.Errorf("Error checking for Python packages: %w", err)
+		err = fmt.Errorf("Error checking for Python packages: %w", err)
+		return
+	}
+
+	return
+}
+
+func pythonDocsPostLinter(_ LinterContext, fsys fs.FS) error {
+	packages, err := getPythonSitePackages(fsys)
+	if err != nil {
+		return err
+	}
+
+	for _, m := range packages {
+		base := filepath.Base(m)
+		if base == "doc" || base == "docs" {
+			return fmt.Errorf("Docs diretory encountered in Python directory")
+		}
+	}
+
+	return nil
+}
+
+func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
+	packages, err := getPythonSitePackages(fsys)
+	if err != nil {
+		return err
 	}
 
 	// Filter matches and ignore duplicates (.so vs directories for example)
 	pmatches := map[string]struct{}{}
-	for _, m := range matches {
+	for _, m := range packages {
 		base := filepath.Base(m)
 
 		if strings.HasPrefix(base, "_") {

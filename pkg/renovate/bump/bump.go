@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
@@ -73,7 +74,6 @@ func New(opts ...Option) renovate.Renovator {
 	return func(ctx context.Context, rc *renovate.RenovationContext) error {
 		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
 
-		// Find the package.version node first and change it.
 		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
 			return err
@@ -83,18 +83,28 @@ func New(opts ...Option) renovate.Renovator {
 		if err != nil {
 			return err
 		}
-		versionNode.Value = bcfg.TargetVersion
-		versionNode.Style = yaml.FlowStyle
-		versionNode.Tag = "!!str"
 
-		// Update the variable mapping with the target version
-		rc.Vars[config.SubstitutionPackageVersion] = bcfg.TargetVersion
-
+		// if the version is changing then reset the epoch to 0 else if the version is the same then increment the epoch by 1
 		epochNode, err := renovate.NodeFromMapping(packageNode, "epoch")
 		if err != nil {
 			return err
 		}
-		epochNode.Value = "0"
+
+		if versionNode.Value != bcfg.TargetVersion {
+			epochNode.Value = "0"
+		} else {
+			epoch, err := strconv.Atoi(epochNode.Value)
+			if err != nil {
+				return err
+			}
+			epochNode.Value = fmt.Sprintf("%d", epoch+1)
+		}
+
+		versionNode.Value = bcfg.TargetVersion
+		versionNode.Style = yaml.FlowStyle
+		versionNode.Tag = "!!str"
+
+		rc.Vars[config.SubstitutionPackageVersion] = bcfg.TargetVersion
 		rc.Vars[config.SubstitutionPackageEpoch] = epochNode.Value
 
 		// Recompute variable transforms

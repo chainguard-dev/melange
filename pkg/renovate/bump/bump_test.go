@@ -69,8 +69,13 @@ func TestBump_withExpectedCommit(t *testing.T) {
 		name           string
 		newVersion     string
 		expectedCommit string
+		expectedEpoch  uint64
 	}{
-		{name: "expected_commit.yaml", newVersion: "7.0.1", expectedCommit: "dbd7bc96fd6cd383b8e895dc4a928d808541bb17"},
+		{name: "expected_commit.yaml", newVersion: "7.0.1", expectedCommit: "dbd7bc96fd6cd383b8e895dc4a928d808541bb17", expectedEpoch: 0},
+		// sometimes upstream projects delete tags and re-use them with a different commit, so we need to bump the epoch
+		{name: "expected_commit.yaml", newVersion: "6.8", expectedCommit: "dbd7bc96fd6cd383b8e895dc4a928d808541bb17", expectedEpoch: 3},
+		// if there are no version or commit changes we still expect the epoch to be bumped
+		{name: "expected_commit.yaml", newVersion: "6.8", expectedCommit: "foo", expectedEpoch: 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -94,8 +99,9 @@ func TestBump_withExpectedCommit(t *testing.T) {
 
 			rs, err := config.ParseConfiguration(filepath.Join(dir, tt.name))
 			require.NoError(t, err)
-			assert.Contains(t, rs.Package.Version, tt.newVersion)
-			assert.Contains(t, rs.Pipeline[0].With["expected-commit"], tt.expectedCommit)
+			assert.Equal(t, rs.Package.Version, tt.newVersion)
+			assert.Equal(t, rs.Package.Epoch, tt.expectedEpoch)
+			assert.Equal(t, rs.Pipeline[0].With["expected-commit"], tt.expectedCommit)
 		})
 	}
 }

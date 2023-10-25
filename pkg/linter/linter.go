@@ -109,12 +109,12 @@ var postLinterMap = map[string]postLinter{
 		FailOnError: false,
 		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
-	"pythondocs": postLinter{
+	"python/docs": postLinter{
 		LinterFunc:  pythonDocsPostLinter,
 		FailOnError: false,
 		Explain:     "Remove all docs directories from the package",
 	},
-	"pythonmultiple": postLinter{
+	"python/multiple": postLinter{
 		LinterFunc:  pythonMultiplePackagesPostLinter,
 		FailOnError: false,
 		Explain:     "Split this package up into multiple packages and verify you are not improperly using pip install",

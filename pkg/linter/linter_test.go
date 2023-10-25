@@ -198,7 +198,7 @@ func Test_pythonDocsLinter(t *testing.T) {
 			Name:    "testpythondocs",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks:  checksOnly("pythondocs"),
+			Checks:  checksOnly("python/docs"),
 		},
 	}
 
@@ -206,7 +206,7 @@ func Test_pythonDocsLinter(t *testing.T) {
 	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
 
 	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"pythondocs"})
+	assert.Equal(t, linters, []string{"python/docs"})
 
 	fsys := os.DirFS(dir)
 	lctx := NewLinterContext(cfg.Package.Name, fsys)
@@ -245,7 +245,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 			Name:    "testpythonmultiplepackages",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks:  checksOnly("pythonmultiple"),
+			Checks:  checksOnly("python/multiple"),
 		},
 	}
 
@@ -253,7 +253,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
 
 	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"pythonmultiple"})
+	assert.Equal(t, linters, []string{"python/multiple"})
 
 	fsys := os.DirFS(dir)
 	lctx := NewLinterContext(cfg.Package.Name, fsys)

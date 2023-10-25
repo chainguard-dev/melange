@@ -423,15 +423,7 @@ func (c ApkConvertor) mapconvert() {
 func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyrings []string) {
 	// wolfi-os base environment
 	env := apkotypes.ImageConfiguration{
-		Contents: struct {
-			Repositories []string `yaml:"repositories,omitempty"`
-			Keyring      []string `yaml:"keyring,omitempty"`
-			Packages     []string `yaml:"packages,omitempty"`
-		}(struct {
-			Repositories []string
-			Keyring      []string
-			Packages     []string
-		}{
+		Contents: apkotypes.ImageContents{
 			Packages: []string{
 				"busybox",
 				"ca-certificates-bundle",
@@ -439,7 +431,7 @@ func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyring
 				"automake",
 				"autoconf",
 			},
-		}),
+		},
 	}
 
 	env.Contents.Repositories = append(env.Contents.Repositories, additionalRepositories...)

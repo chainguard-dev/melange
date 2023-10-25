@@ -31,6 +31,8 @@ import (
 
 	"golang.org/x/exp/slices"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
+
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
@@ -293,7 +295,7 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
 
-	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
+	if err := tarctx.WriteTar(ctx, zw, fsys, fsys); err != nil {
 		return nil, fmt.Errorf("unable to write control tarball: %w", err)
 	}
 	if err := zw.Close(); err != nil {
@@ -408,12 +410,11 @@ func (pc *PackageBuild) calculateInstalledSize(fsys fs.FS) error {
 	return nil
 }
 
-func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, w io.WriteSeeker) error {
+func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, userinfofs fs.FS, remapUIDs map[int]int, remapGIDs map[int]int, w io.WriteSeeker) error {
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
-		tarball.WithOverrideUIDGID(0, 0),
-		tarball.WithOverrideUname("root"),
-		tarball.WithOverrideGname("root"),
+		tarball.WithRemapUIDs(remapUIDs),
+		tarball.WithRemapGIDs(remapGIDs),
 		tarball.WithUseChecksums(true),
 	)
 	if err != nil {
@@ -427,7 +428,7 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, w io.Wr
 		return fmt.Errorf("tried to set pgzip concurrency to %d: %w", pgzipThreads, err)
 	}
 
-	if err := tarctx.WriteTar(ctx, zw, fsys); err != nil {
+	if err := tarctx.WriteTar(ctx, zw, fsys, userinfofs); err != nil {
 		return fmt.Errorf("unable to write data tarball: %w", err)
 	}
 
@@ -460,6 +461,9 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	// filesystem for the data package
 	fsys := readlinkFS(pc.WorkspaceSubdir())
 
+	// provide the tar writer etc/passwd and etc/group of guest filesystem
+	userinfofs := os.DirFS(pc.Build.GuestDir)
+
 	// generate so:/cmd: virtuals for the filesystem
 	if err := pc.GenerateDependencies(); err != nil {
 		return fmt.Errorf("unable to build final dependencies set: %w", err)
@@ -480,7 +484,39 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	defer dataTarGz.Close()
 	defer os.Remove(dataTarGz.Name())
 
-	if err := pc.emitDataSection(ctx, fsys, dataTarGz); err != nil {
+	// why remap UIDs and GIDs of build?
+	// the build user is not intended to be exposed as an owner of the contents of the package.
+	// in most cases, when build is used, it is meant to refer to root.
+	// in some previous versions of melange, the ownership of all files was root/root 0/0 but
+	// this meant that permissions changed inside the environment were not preserved.
+	// by remapping permissions here, we are ensuring that files owned by the build user
+	// will be owned as the correct owner of root, while also ensuring that permissions
+	// when writing the tar can be preserved for users other than root.
+	remapUIDs := make(map[int]int)
+	remapGIDs := make(map[int]int)
+
+	// extract the build user and build group from the apko environment
+	var buildUser apko_types.User
+	var buildGroup apko_types.Group
+
+	for _, user := range pc.Build.Configuration.Environment.Accounts.Users {
+		if user.UserName == "build" {
+			buildUser = user
+		}
+	}
+
+	for _, group := range pc.Build.Configuration.Environment.Accounts.Groups {
+		if group.GroupName == "build" {
+			buildGroup = group
+		}
+	}
+
+	// we can directly remap here since 0 is the default
+	// for unspecified int fields and remapping 0 to 0 is okay
+	remapUIDs[int(buildUser.UID)] = 0
+	remapGIDs[int(buildGroup.GID)] = 0
+
+	if err := pc.emitDataSection(ctx, fsys, userinfofs, remapUIDs, remapGIDs, dataTarGz); err != nil {
 		return err
 	}
 

@@ -653,6 +653,66 @@ func generatePkgConfigDeps(pc *PackageBuild, generated *config.Dependencies) err
 	return nil
 }
 
+// generatePythonDeps generates a python3~$VERSION dependency for packages which ship
+// Python modules.
+func generatePythonDeps(pc *PackageBuild, generated *config.Dependencies) error {
+	var pythonModuleVer string
+	pc.Logger.Printf("scanning for python modules...")
+
+	fsys := readlinkFS(pc.WorkspaceSubdir())
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Python modules are installed in paths such as /usr/lib/pythonX.Y/site-packages/...,
+		// so if we find a directory named site-packages, and its parent is a pythonX.Y directory,
+		// then we have a Python module directory.
+		basename := filepath.Base(path)
+		if basename != "site-packages" {
+			return nil
+		}
+
+		parent := filepath.Dir(path)
+		basename = filepath.Base(parent)
+		if !strings.HasPrefix(basename, "python") {
+			return nil
+		}
+
+		// This probably shouldn't ever happen, but lets check to make sure.
+		if !d.IsDir() {
+			return nil
+		}
+
+		// This takes the X.Y part of the pythonX.Y directory name as the version to pin against.
+		// If the X.Y part is not present, then pythonModuleVer will remain an empty string and
+		// no dependency will be generated.
+		pythonModuleVer = basename[6:]
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Nothing to do...
+	if pythonModuleVer == "" {
+		return nil
+	}
+
+	// Do not add a Python dependency if one already exists.
+	for _, dep := range pc.Dependencies.Runtime {
+		if strings.HasPrefix(dep, "python") {
+			pc.Logger.Warnf("%s: Python dependency %q already specified, consider removing it in favor of SCA-generated dependency", pc.PackageName, dep)
+			return nil
+		}
+	}
+
+	// We use the python3 name here instead of the python-3 name so that we can be
+	// compatible with Alpine and Adelie.  Only Wolfi provides the python-3 name.
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python3~%s", pythonModuleVer))
+
+	return nil
+}
+
 // removeSelfProvidedDeps removes dependencies which are provided by the package itself.
 func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 	providedDepsMap := map[string]bool{}
@@ -681,6 +741,7 @@ func (pc *PackageBuild) GenerateDependencies() error {
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
 		generatePkgConfigDeps,
+		generatePythonDeps,
 	}
 
 	for _, gen := range generators {

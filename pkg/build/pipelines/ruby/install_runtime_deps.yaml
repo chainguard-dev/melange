@@ -1,0 +1,62 @@
+name: Install a ruby gem runtime dependencies
+needs:
+  packages:
+    - busybox
+    - ca-certificates-bundle
+inputs:
+  dir:
+    description: |
+      The working directory
+    default: .
+  gem:
+    description: |
+      Gem name
+    required: false
+  gem-file:
+    description: |
+      The full filename of the gem to build
+    required: false
+  opts:
+    description: |
+      Options to pass to the gem install command
+    default: ''
+    required: false
+pipeline:
+  - name: Check ruby
+    runs: |
+      if ! [ -x "$(command -v ruby)" ]; then
+        echo 'ERROR: Ruby is not installed.'
+        exit 1
+      fi
+  - name: Ruby install runtime dependencies
+    runs: |
+      cd ${{inputs.dir}}
+
+      if [ -z "${{inputs.gem}}" ] && [ -z "${{inputs.gem-file}}" ]; then
+        echo "ERROR: You need to specify gem or gem-file"
+        exit 1
+      fi
+
+      [ -n '${{inputs.gem}}' ] && GEM=${{inputs.gem}}.gemspec
+
+       # Replace this with the actual path to your ${{inputs.gemspec}}.gemspec file
+      GEMSPEC_FILE="./${{inputs.gem}}.gemspec"
+
+      # This is your target directory for installing the gems
+      # I'm assuming it's an environment variable, change as needed
+      INSTALL_GEM_DIR=${{targets.contextdir}}$(ruby -e 'puts Gem.default_dir')/
+
+      TARGET_DIR_BIN="${{targets.contextdir}}/usr/bin"
+
+      # Use grep and sed to extract the lines containing runtime dependencies
+      grep 's.add_runtime_dependency' $GEMSPEC_FILE | sed -E 's/s.add_runtime_dependency[[:space:]]+"([^"]+)",[[:space:]]+"([^"]+)"/\1 \2/' | sed -e 's/~> //' -e 's/=> //' -e 's/= //' | while read -r GEM_NAME GEM_VERSION; do
+        # Run the gem install command
+        gem install $GEM_NAME
+          --version $GEM_VERSION \
+          --bindir ${TARGET_DIR_BIN} \
+          --install-dir $INSTALL_GEM_DIR --verbose \
+          --no-document \
+          --verbose \
+          --local \
+          ${{inputs.opts}}
+      done

@@ -307,20 +307,13 @@ func (pc *PackageBuild) SignatureName() string {
 
 func (pc *PackageBuild) GenerateDependencies() error {
 	generated := config.Dependencies{}
-	generators := []DependencyGenerator{
-		generateSharedObjectNameDeps,
-		generateCmdProviders,
-		generatePkgConfigDeps,
-		generatePythonDeps,
-	}
 
 	hdl := SCABuildInterface{
 		PackageBuild: pc,
 	}
-	for _, gen := range generators {
-		if err := gen(&hdl, &generated); err != nil {
-			return err
-		}
+
+	if err := Analyze(&hdl, &generated); err != nil {
+		return fmt.Errorf("analyzing package: %w", err)
 	}
 
 	if pc.Build.DependencyLog != "" {

@@ -541,3 +541,22 @@ func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 
 	return newRuntimeDeps
 }
+
+// Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
+// set as needed.
+func Analyze(hdl SCAHandle, generated *config.Dependencies) error {
+	generators := []DependencyGenerator{
+		generateSharedObjectNameDeps,
+		generateCmdProviders,
+		generatePkgConfigDeps,
+		generatePythonDeps,
+	}
+
+	for _, gen := range generators {
+		if err := gen(hdl, generated); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

@@ -17,7 +17,20 @@
 
 package defaults
 
-var DefaultLinters = []string{
+import (
+	"slices"
+)
+
+type LinterSet int
+
+const (
+	LintersDefault LinterSet = iota
+	LintersBuild   LinterSet = iota
+	LintersApk     LinterSet = iota
+)
+
+// Default linters run regardless of whether we are dealing with an APK or build
+var defaultLinters = []string{
 	"dev",
 	"empty",
 	"opt",
@@ -31,4 +44,27 @@ var DefaultLinters = []string{
 	"usrlocal",
 	"varempty",
 	"worldwrite",
+}
+
+// Linters run by default on builds but not on APKs
+var defaultBuildLinters = []string{}
+
+// Linters run by default on APKs but not during build
+var defaultApkLinters = []string{}
+
+// Get the set of default linters for a given task
+func GetDefaultLinters(linterSet LinterSet) (linters []string) {
+	linters = slices.Clone(defaultLinters)
+	switch linterSet {
+	case LintersDefault:
+		// Do nothing
+	case LintersBuild:
+		linters = append(linters, slices.Clone(defaultBuildLinters)...)
+	case LintersApk:
+		linters = append(linters, slices.Clone(defaultApkLinters)...)
+	default:
+		panic("Invalid linter set called")
+	}
+
+	return
 }

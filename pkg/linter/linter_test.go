@@ -29,7 +29,7 @@ import (
 
 func checksOnly(onlyLint string) config.Checks {
 	checksDisabled := []string{}
-	for _, lint := range linter_defaults.DefaultLinters {
+	for _, lint := range linter_defaults.GetDefaultLinters(linter_defaults.LintersBuild) {
 		if lint != onlyLint {
 			checksDisabled = append(checksDisabled, lint)
 		}
@@ -607,11 +607,11 @@ func Test_lintApk(t *testing.T) {
 	called := false
 	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
 		called = true
-	}, linter_defaults.DefaultLinters))
+	}, linter_defaults.GetDefaultLinters(linter_defaults.LintersApk)))
 	assert.False(t, called)
 
 	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), func(err error) {
 		called = true
-	}, linter_defaults.DefaultLinters))
+	}, linter_defaults.GetDefaultLinters(linter_defaults.LintersApk)))
 	assert.True(t, called)
 }

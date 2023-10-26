@@ -42,7 +42,7 @@ pipeline:
        # Replace this with the actual path to your ${{inputs.gemspec}}.gemspec file
       GEMSPEC_FILE="./${{inputs.gem}}.gemspec"
 
-      # This is your target directory for installing the gems
+      # This is your target directory for installing the dependecy of the gem
       # I'm assuming it's an environment variable, change as needed
       INSTALL_GEM_DIR=${{targets.contextdir}}$(ruby -e 'puts Gem.default_dir')/
 
@@ -51,12 +51,11 @@ pipeline:
       # Use grep and sed to extract the lines containing runtime dependencies
       grep 's.add_runtime_dependency' $GEMSPEC_FILE | sed -E 's/s.add_runtime_dependency[[:space:]]+"([^"]+)",[[:space:]]+"([^"]+)"/\1 \2/' | sed -e 's/~> //' -e 's/=> //' -e 's/= //' | while read -r GEM_NAME GEM_VERSION; do
         # Run the gem install command
-        gem install $GEM_NAME
+        gem install $GEM_NAME \
           --version $GEM_VERSION \
           --bindir ${TARGET_DIR_BIN} \
           --install-dir $INSTALL_GEM_DIR --verbose \
           --no-document \
           --verbose \
-          --local \
           ${{inputs.opts}}
       done

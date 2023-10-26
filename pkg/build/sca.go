@@ -17,23 +17,64 @@ package build
 import (
 	"bytes"
 	"debug/elf"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
+	"chainguard.dev/apko/pkg/log"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
 )
 
-type DependencyGenerator func(*PackageBuild, apkofs.ReadLinkFS, *config.Dependencies) error
+// SCAFS represents the minimum required filesystem accessors which are needed by
+// the SCA engine.
+type SCAFS interface {
+	apkofs.ReadLinkFS
+	apkofs.XattrFS
+
+	Stat(name string) (fs.FileInfo, error)
+}
+
+// SCAHandle represents all of the state necessary to analyze a package.
+type SCAHandle interface {
+	// PackageName returns the name of the current package being analyzed.
+	PackageName() string
+
+	// RelativeNames returns the name of other packages related to the current
+	// package being analyzed.
+	RelativeNames() []string
+
+	// Version returns the version and epoch of the package being analyzed.
+	Version() string
+
+	// FilesystemForRelative returns a usable filesystem representing the package
+	// contents for a given package name.
+	FilesystemForRelative(pkgName string) (SCAFS, error)
+
+	// Filesystem returns a usable filesystem representing the current package.
+	// It is equivalent to FilesystemForRelative(PackageName()).
+	Filesystem() (SCAFS, error)
+
+	// Logger returns a log.Logger.
+	Logger() log.Logger
+
+	// Options returns a config.PackageOption struct.
+	Options() config.PackageOption
+
+	// BaseDependencies returns the underlying set of declared dependencies before
+	// the SCA engine runs.
+	BaseDependencies() config.Dependencies
+}
+
+// DependencyGenerator takes an SCAHandle and config.Dependencies pointer and returns
+// findings based on analysis.
+type DependencyGenerator func(SCAHandle, *config.Dependencies) error
 
 func dedup(in []string) []string {
 	sort.Strings(in)
@@ -63,12 +104,16 @@ func allowedPrefix(path string, prefixes []string) bool {
 
 var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
 
-func generateCmdProviders(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
-	if pc.Options.NoCommands {
+func generateCmdProviders(hdl SCAHandle, generated *config.Dependencies) error {
+	if hdl.Options().NoCommands {
 		return nil
 	}
 
-	pc.Logger.Printf("scanning for commands...")
+	hdl.Logger().Printf("scanning for commands...")
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -88,7 +133,7 @@ func generateCmdProviders(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *c
 		if mode.Perm()&0555 == 0555 {
 			if allowedPrefix(path, cmdPrefixes) {
 				basename := filepath.Base(path)
-				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s-r%d", basename, pc.Origin.Package.Version, pc.Origin.Package.Epoch))
+				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
 			}
 		}
 
@@ -123,38 +168,48 @@ func findInterpreter(bin *elf.File) (string, error) {
 
 // dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
 // directories.
-func dereferenceCrossPackageSymlink(pc *PackageBuild, path string) (string, error) {
-	targetPackageNames := []string{pc.PackageName, pc.Build.Configuration.Package.Name}
-	realPath, err := os.Readlink(filepath.Join(pc.WorkspaceSubdir(), path))
+func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string, error) {
+	targetPackageNames := hdl.RelativeNames()
+
+	pkgFS, err := hdl.Filesystem()
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	realPath, err := pkgFS.Readlink(path)
+	if err != nil {
+		return "", "", err
 	}
 
 	realPath = filepath.Base(realPath)
 
-	for _, subPkg := range pc.Build.Configuration.Subpackages {
-		targetPackageNames = append(targetPackageNames, subPkg.Name)
-	}
-
 	for _, pkgName := range targetPackageNames {
-		basePath := filepath.Join(pc.Build.WorkspaceDir, "melange-out", pkgName)
+		baseFS, err := hdl.FilesystemForRelative(pkgName)
+		if err != nil {
+			return "", "", err
+		}
 
 		for _, libDir := range libDirs {
-			testPath := filepath.Join(basePath, libDir, realPath)
+			testPath := filepath.Join(libDir, realPath)
 
-			if _, err := os.Stat(testPath); err == nil {
-				return testPath, nil
+			if _, err := baseFS.Stat(testPath); err == nil {
+				return pkgName, testPath, nil
 			}
 		}
 	}
 
-	return "", nil
+	return "", "", nil
 }
 
-func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
-	pc.Logger.Printf("scanning for shared object dependencies...")
+func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies) error {
+	hdl.Logger().Printf("scanning for shared object dependencies...")
 
 	depends := map[string][]string{}
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -173,13 +228,29 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 				return nil
 			}
 
-			realPath, err := dereferenceCrossPackageSymlink(pc, path)
+			targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path)
+			if err != nil {
+				return nil
+			}
+
+			targetFS, err := hdl.FilesystemForRelative(targetPkg)
 			if err != nil {
 				return nil
 			}
 
 			if realPath != "" {
-				ef, err := elf.Open(realPath)
+				rawFile, err := targetFS.Open(realPath)
+				if err != nil {
+					return nil
+				}
+				defer rawFile.Close()
+
+				seekableFile, ok := rawFile.(io.ReaderAt)
+				if !ok {
+					return nil
+				}
+
+				ef, err := elf.NewFile(seekableFile)
 				if err != nil {
 					return nil
 				}
@@ -188,7 +259,7 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
-					pc.Logger.Warnf("library %s lacks SONAME", path)
+					hdl.Logger().Warnf("library %s lacks SONAME", path)
 					return nil
 				}
 
@@ -210,8 +281,18 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 
 			// most likely a shell script instead of an ELF, so treat any
 			// error as non-fatal.
-			// TODO(kaniini): use DirFS for this
-			ef, err := elf.Open(filepath.Join(pc.WorkspaceSubdir(), path))
+			rawFile, err := fsys.Open(path)
+			if err != nil {
+				return nil
+			}
+			defer rawFile.Close()
+
+			seekableFile, ok := rawFile.(io.ReaderAt)
+			if !ok {
+				return nil
+			}
+
+			ef, err := elf.NewFile(seekableFile)
 			if err != nil {
 				return nil
 			}
@@ -221,8 +302,8 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 			if err != nil {
 				return err
 			}
-			if interp != "" && !pc.Options.NoDepends {
-				pc.Logger.Printf("interpreter for %s => %s", basename, interp)
+			if interp != "" && !hdl.Options().NoDepends {
+				hdl.Logger().Printf("interpreter for %s => %s", basename, interp)
 
 				// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
 				// the dependency.
@@ -233,11 +314,11 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 
 			libs, err := ef.ImportedLibraries()
 			if err != nil {
-				pc.Logger.Warnf("WTF: ImportedLibraries() returned error: %v", err)
+				hdl.Logger().Warnf("WTF: ImportedLibraries() returned error: %v", err)
 				return nil
 			}
 
-			if !pc.Options.NoDepends {
+			if !hdl.Options().NoDepends {
 				for _, lib := range libs {
 					if strings.Contains(lib, ".so.") {
 						generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
@@ -252,11 +333,11 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 			//
 			// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
 			// functionality work.  So we always generate provides entries for libc.
-			if !pc.Options.NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
+			if !hdl.Options().NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
-					pc.Logger.Warnf("library %s lacks SONAME", path)
+					hdl.Logger().Warnf("library %s lacks SONAME", path)
 					return nil
 				}
 
@@ -284,21 +365,6 @@ func generateSharedObjectNameDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, gene
 		return err
 	}
 
-	if pc.Build.DependencyLog != "" {
-		pc.Logger.Printf("writing dependency log")
-
-		logFile, err := os.Create(fmt.Sprintf("%s.%s", pc.Build.DependencyLog, pc.Arch))
-		if err != nil {
-			pc.Logger.Warnf("Unable to open dependency log: %v", err)
-		}
-		defer logFile.Close()
-
-		je := json.NewEncoder(logFile)
-		if err := je.Encode(depends); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -309,8 +375,13 @@ var generateRuntimePkgConfigDeps = false
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
-func generatePkgConfigDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
-	pc.Logger.Printf("scanning for pkg-config data...")
+func generatePkgConfigDeps(hdl SCAHandle, generated *config.Dependencies) error {
+	hdl.Logger().Printf("scanning for pkg-config data...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -334,9 +405,22 @@ func generatePkgConfigDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *
 			return nil
 		}
 
-		pkg, err := pkgconfig.Load(filepath.Join(pc.WorkspaceSubdir(), path))
+		// TODO(kaniini): Sigh.  apkofs should have ReadFile by default.
+		dataFile, err := fsys.Open(path)
 		if err != nil {
-			pc.Logger.Warnf("Unable to load .pc file (%s) using pkgconfig: %v", path, err)
+			return nil
+		}
+		defer dataFile.Close()
+
+		data, err := io.ReadAll(dataFile)
+		if err != nil {
+			return nil
+		}
+
+		// TODO(kaniini): Sigh.  go-pkgconfig should support reading from any io.Reader.
+		pkg, err := pkgconfig.Parse(string(data))
+		if err != nil {
+			hdl.Logger().Warnf("Unable to load .pc file (%s) using pkgconfig: %v", path, err)
 			return nil
 		}
 
@@ -344,7 +428,7 @@ func generatePkgConfigDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *
 		pcName, _ = strings.CutSuffix(pcName, ".pc")
 
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
-		if !pc.Options.NoProvides {
+		if !hdl.Options().NoProvides {
 			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
 		}
 
@@ -374,9 +458,14 @@ func generatePkgConfigDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *
 
 // generatePythonDeps generates a python3~$VERSION dependency for packages which ship
 // Python modules.
-func generatePythonDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *config.Dependencies) error {
+func generatePythonDeps(hdl SCAHandle, generated *config.Dependencies) error {
 	var pythonModuleVer string
-	pc.Logger.Printf("scanning for python modules...")
+	hdl.Logger().Printf("scanning for python modules...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -417,9 +506,9 @@ func generatePythonDeps(pc *PackageBuild, fsys apkofs.ReadLinkFS, generated *con
 	}
 
 	// Do not add a Python dependency if one already exists.
-	for _, dep := range pc.Dependencies.Runtime {
+	for _, dep := range hdl.BaseDependencies().Runtime {
 		if strings.HasPrefix(dep, "python") {
-			pc.Logger.Warnf("%s: Python dependency %q already specified, consider removing it in favor of SCA-generated dependency", pc.PackageName, dep)
+			hdl.Logger().Warnf("%s: Python dependency %q already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName(), dep)
 			return nil
 		}
 	}

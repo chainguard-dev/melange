@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -313,9 +314,26 @@ func (pc *PackageBuild) GenerateDependencies() error {
 		generatePythonDeps,
 	}
 
-	fsys := readlinkFS(pc.WorkspaceSubdir())
+	hdl := SCABuildInterface{
+		PackageBuild: pc,
+	}
 	for _, gen := range generators {
-		if err := gen(pc, fsys, &generated); err != nil {
+		if err := gen(&hdl, &generated); err != nil {
+			return err
+		}
+	}
+
+	if pc.Build.DependencyLog != "" {
+		pc.Logger.Printf("writing dependency log")
+
+		logFile, err := os.Create(fmt.Sprintf("%s.%s", pc.Build.DependencyLog, pc.Arch))
+		if err != nil {
+			pc.Logger.Warnf("Unable to open dependency log: %v", err)
+		}
+		defer logFile.Close()
+
+		je := json.NewEncoder(logFile)
+		if err := je.Encode(&generated); err != nil {
 			return err
 		}
 	}

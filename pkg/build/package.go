@@ -29,12 +29,13 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
-	"chainguard.dev/melange/pkg/util"
 
 	"chainguard.dev/apko/pkg/log"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
@@ -361,10 +362,10 @@ func (pc *PackageBuild) GenerateDependencies() error {
 	unvendored := removeSelfProvidedDeps(generated.Runtime, generated.Vendored)
 
 	newruntime := append(pc.Dependencies.Runtime, unvendored...)
-	pc.Dependencies.Runtime = util.Dedup(newruntime)
+	pc.Dependencies.Runtime = slices.Compact(newruntime)
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
-	pc.Dependencies.Provides = util.Dedup(newprovides)
+	pc.Dependencies.Provides = slices.Compact(newprovides)
 
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 

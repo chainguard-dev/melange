@@ -26,6 +26,7 @@ jobs:
         - mbedtls.yaml
         - minimal.yaml
         - sshfs.yaml
+        - build-ruby-gitlab-exporter.yaml
 
     steps:
     - name: Fetch dependencies

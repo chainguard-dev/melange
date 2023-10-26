@@ -19,6 +19,10 @@ package:
 
 environment:
   contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
     packages:
       - bash
       - build-base
@@ -39,8 +43,6 @@ pipeline:
       repository: https://gitlab.com/gitlab-org/ruby/gems/gitlab-exporter.git
       tag: v${{package.version}}
       expected-commit: 590c4261bd09b341742ee5249225b3aaac421445
-
-  - uses: ruby/unlock-spec
 
   # GitLab-Exporter Runtime Dependencies
   - uses: ruby/install_runtime_deps

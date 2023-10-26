@@ -322,6 +322,53 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.True(t, called)
 }
 
+func Test_pythonTestLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "testpythontest",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks:  checksOnly("python/test"),
+		},
+	}
+
+	// Base dir
+	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"python/test"})
+
+	fsys := os.DirFS(dir)
+	lctx := NewLinterContext(cfg.Package.Name, fsys)
+
+	// Make one "package"
+	packagedir := filepath.Join(pythonPathdir, "foo")
+	err = os.MkdirAll(packagedir, 0700)
+	assert.NoError(t, err)
+
+	// One package should not trip it
+	called := false
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.False(t, called)
+
+	// Create docs
+	docsdir := filepath.Join(pythonPathdir, "test")
+	err = os.MkdirAll(docsdir, 0700)
+	assert.NoError(t, err)
+
+	// This should trip
+	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
+		called = true
+	}, linters))
+	assert.True(t, called)
+}
+
 func Test_srvLinter(t *testing.T) {
 	dir, err := os.MkdirTemp("", "melange.XXXXX")
 	defer os.RemoveAll(dir)

@@ -119,6 +119,11 @@ var postLinterMap = map[string]postLinter{
 		FailOnError: false,
 		Explain:     "Split this package up into multiple packages and verify you are not improperly using pip install",
 	},
+	"python/test": postLinter{
+		LinterFunc:  pythonTestPostLinter,
+		FailOnError: false,
+		Explain:     "Remove all test directories from the package",
+	},
 }
 
 var isDevRegex = regexp.MustCompile("^dev/")
@@ -364,7 +369,7 @@ func pythonDocsPostLinter(_ LinterContext, fsys fs.FS) error {
 	for _, m := range packages {
 		base := filepath.Base(m)
 		if base == "doc" || base == "docs" {
-			return fmt.Errorf("Docs diretory encountered in Python directory")
+			return fmt.Errorf("Docs directory encountered in Python site-packages directory")
 		}
 	}
 
@@ -422,6 +427,22 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 		}
 		smatches := strings.Join(slmatches, ", ")
 		return fmt.Errorf("Multiple Python packages detected: %d found (%s)", len(slmatches), smatches)
+	}
+
+	return nil
+}
+
+func pythonTestPostLinter(_ LinterContext, fsys fs.FS) error {
+	packages, err := getPythonSitePackages(fsys)
+	if err != nil {
+		return err
+	}
+
+	for _, m := range packages {
+		base := filepath.Base(m)
+		if base == "test" || base == "tests" {
+			return fmt.Errorf("Tests directory encountered in Python site-packages directory")
+		}
 	}
 
 	return nil

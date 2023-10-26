@@ -23,6 +23,7 @@ var DefaultLinters = []string{
 	"opt",
 	"python/docs",
 	"python/multiple",
+	"python/test",
 	"srv",
 	"setuidgid",
 	"strip",

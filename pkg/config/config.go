@@ -43,75 +43,75 @@ type Scriptlets struct {
 	// Optional: A script to run on a custom trigger
 	Trigger struct {
 		// Optional: The script to run
-		Script string
+		Script string `json:"script,omitempty"`
 		// Optional: The list of paths to monitor to trigger the script
-		Paths []string
-	} `yaml:"trigger,omitempty"`
+		Paths []string `json:"paths,omitempty"`
+	} `json:"trigger,omitempty" yaml:"trigger,omitempty"`
 
 	// Optional: The script to run pre install. The script should contain the
 	// shebang interpreter.
-	PreInstall string `yaml:"pre-install,omitempty"`
+	PreInstall string `json:"pre-install,omitempty" yaml:"pre-install,omitempty"`
 	// Optional: The script to run post install. The script should contain the
 	// shebang interpreter.
-	PostInstall string `yaml:"post-install,omitempty"`
+	PostInstall string `json:"post-install,omitempty" yaml:"post-install,omitempty"`
 	// Optional: The script to run before uninstalling. The script should contain
 	// the shebang interpreter.
-	PreDeinstall string `yaml:"pre-deinstall,omitempty"`
+	PreDeinstall string `json:"pre-deinstall,omitempty" yaml:"pre-deinstall,omitempty"`
 	// Optional: The script to run after uninstalling. The script should contain
 	// the shebang interpreter.
-	PostDeinstall string `yaml:"post-deinstall,omitempty"`
+	PostDeinstall string `json:"post-deinstall,omitempty" yaml:"post-deinstall,omitempty"`
 	// Optional: The script to run before upgrading. The script should contain
 	// the shebang interpreter.
-	PreUpgrade string `yaml:"pre-upgrade,omitempty"`
+	PreUpgrade string `json:"pre-upgrade,omitempty" yaml:"pre-upgrade,omitempty"`
 	// Optional: The script to run after upgrading. The script should contain the
 	// shebang interpreter.
-	PostUpgrade string `yaml:"post-upgrade,omitempty"`
+	PostUpgrade string `json:"post-upgrade,omitempty" yaml:"post-upgrade,omitempty"`
 }
 
 type PackageOption struct {
 	// Optional: Signify this package as a virtual package which does not provide
 	// any files, executables, libraries, etc... and is otherwise empty
-	NoProvides bool `yaml:"no-provides"`
+	NoProvides bool `json:"no-provides" yaml:"no-provides"`
 	// Optional: Mark this package as a self contained package that does not
 	// depend on any other package
-	NoDepends bool `yaml:"no-depends"`
+	NoDepends bool `json:"no-depends" yaml:"no-depends"`
 	// Optional: Mark this package as not providing any executables
-	NoCommands bool `yaml:"no-commands"`
+	NoCommands bool `json:"no-commands" yaml:"no-commands"`
 }
 
 type Checks struct {
 	// Optional: enable these linters that are not enabled by default.
-	Enabled []string `yaml:"enabled,omitempty"`
+	Enabled []string `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// Optional: disable these linters that are not enabled by default.
-	Disabled []string `yaml:"disabled,omitempty"`
+	Disabled []string `json:"disabled,omitempty" yaml:"disabled,omitempty"`
 }
 
 type Package struct {
 	// The name of the package
-	Name string `yaml:"name"`
+	Name string `json:"name" yaml:"name"`
 	// The version of the package
-	Version string `yaml:"version"`
+	Version string `json:"version" yaml:"version"`
 	// The monotone increasing epoch of the package
-	Epoch uint64 `yaml:"epoch"`
+	Epoch uint64 `json:"epoch" yaml:"epoch"`
 	// A human readable description of the package
-	Description string `yaml:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// The URL to the package's homepage
-	URL string `yaml:"url,omitempty"`
+	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the package build configuration
-	Commit string `yaml:"commit,omitempty"`
+	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// List of target architectures for which this package should be build for
-	TargetArchitecture []string `yaml:"target-architecture,omitempty"`
+	TargetArchitecture []string `json:"target-architecture,omitempty" yaml:"target-architecture,omitempty"`
 	// The list of copyrights for this package
-	Copyright []Copyright `yaml:"copyright,omitempty"`
+	Copyright []Copyright `json:"copyright,omitempty" yaml:"copyright,omitempty"`
 	// List of packages to depends on
-	Dependencies Dependencies `yaml:"dependencies,omitempty"`
+	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
-	Options PackageOption `yaml:"options,omitempty"`
+	Options PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
-	Scriptlets Scriptlets `yaml:"scriptlets,omitempty"`
+	Scriptlets Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the package. For more
@@ -172,11 +172,11 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 
 type Copyright struct {
 	// Optional: The license paths, typically '*'
-	Paths []string `yaml:"paths,omitempty"`
+	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
 	// Optional: Attestations of the license
-	Attestation string `yaml:"attestation,omitempty"`
+	Attestation string `json:"attestation,omitempty" yaml:"attestation,omitempty"`
 	// Required: The license for this package
-	License string `yaml:"license"`
+	License string `json:"license" yaml:"license"`
 }
 
 // LicenseExpression returns an SPDX license expression formed from the
@@ -232,71 +232,71 @@ type Needs struct {
 type PipelineAssertions struct {
 	// The number (an int) of required steps that must complete successfully
 	// within the asserted pipeline.
-	RequiredSteps int `yaml:"required-steps,omitempty"`
+	RequiredSteps int `json:"required-steps,omitempty" yaml:"required-steps,omitempty"`
 }
 
 type Pipeline struct {
 	// Optional: A user defined name for the pipeline
-	Name string `yaml:"name,omitempty"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Optional: A named reusable pipeline to run
 	//
 	// This can be either a pipeline builtin to melange, or a user defined named pipeline.
 	// For example, to use a builtin melange pipeline:
 	// 		uses: autoconf/make
-	Uses string `yaml:"uses,omitempty"`
+	Uses string `json:"uses,omitempty" yaml:"uses,omitempty"`
 	// Optional: Arguments passed to the reusable pipelines defined in `uses`
-	With map[string]string `yaml:"with,omitempty"`
+	With map[string]string `json:"with,omitempty" yaml:"with,omitempty"`
 	// Optional: The command to run using the builder's shell (/bin/sh)
-	Runs string `yaml:"runs,omitempty"`
+	Runs string `json:"runs,omitempty" yaml:"runs,omitempty"`
 	// Optional: The list of pipelines to run.
 	//
 	// Each pipeline runs in it's own context that is not shared between other
 	// pipelines. To share context between pipelines, nest a pipeline within an
 	// existing pipeline. This can be useful when you wish to share common
 	// configuration, such as an alternative `working-directory`.
-	Pipeline []Pipeline `yaml:"pipeline,omitempty"`
+	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: A map of inputs to the pipeline
-	Inputs map[string]Input `yaml:"inputs,omitempty"`
+	Inputs map[string]Input `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Optional: Configuration to determine any explicit dependencies this pipeline may have
-	Needs Needs `yaml:"needs,omitempty"`
+	Needs Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
 	// Optional: Labels to apply to the pipeline
-	Label string `yaml:"label,omitempty"`
+	Label string `json:"label,omitempty" yaml:"label,omitempty"`
 	// Optional: A condition to evaluate before running the pipeline
-	If string `yaml:"if,omitempty"`
+	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: Assertions to evaluate whether the pipeline was successful
-	Assertions PipelineAssertions `yaml:"assertions,omitempty"`
+	Assertions PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
 	// Optional: The working directory of the pipeline
 	//
 	// This defaults to the guests' build workspace (/home/build)
-	WorkDir string `yaml:"working-directory,omitempty"`
+	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
 	// Optional: Configuration for the generated SBOM
-	SBOM SBOM `yaml:"sbom,omitempty"`
+	SBOM SBOM `json:"sbom,omitempty" yaml:"sbom,omitempty"`
 	// Optional: environment variables to override the apko environment
-	Environment map[string]string `yaml:"environment,omitempty"`
+	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
 type Subpackage struct {
 	// Optional: A conditional statement to evaluate for the subpackage
-	If string `yaml:"if,omitempty"`
+	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: The iterable used to generate multiple subpackages
-	Range string `yaml:"range,omitempty"`
+	Range string `json:"range,omitempty" yaml:"range,omitempty"`
 	// Required: Name of the subpackage
-	Name string `yaml:"name"`
+	Name string `json:"name" yaml:"name"`
 	// Optional: The list of pipelines that produce subpackage.
-	Pipeline []Pipeline `yaml:"pipeline,omitempty"`
+	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: List of packages to depend on
-	Dependencies Dependencies `yaml:"dependencies,omitempty"`
+	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
-	Options    PackageOption `yaml:"options,omitempty"`
-	Scriptlets Scriptlets    `yaml:"scriptlets,omitempty"`
+	Options    PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
+	Scriptlets Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: The human readable description of the subpackage
-	Description string `yaml:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Optional: The URL to the package's homepage
-	URL string `yaml:"url,omitempty"`
+	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the subpackage build configuration
-	Commit string `yaml:"commit,omitempty"`
+	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the subpackage. For more
@@ -314,41 +314,41 @@ func (spkg Subpackage) PackageURL(distro, packageVersionWithRelease string) stri
 
 type SBOM struct {
 	// Optional: The language of the generated SBOM
-	Language string `yaml:"language"`
+	Language string `json:"language" yaml:"language"`
 }
 
 type Input struct {
 	// Optional: The human readable description of the input
-	Description string
+	Description string `json:"description,omitempty"`
 	// Optional: The default value of the input. Required when the input is.
-	Default string
+	Default string `json:"default,omitempty"`
 	// Optional: A toggle denoting whether the input is required or not
-	Required bool
+	Required bool `json:"required,omitempty"`
 }
 
 // The root melange configuration
 type Configuration struct {
 	// Package metadata
-	Package Package `yaml:"package"`
+	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
 	Environment apko_types.ImageConfiguration
 	// Required: The list of pipelines that produce the package.
-	Pipeline []Pipeline `yaml:"pipeline,omitempty"`
+	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.
-	Subpackages []Subpackage `yaml:"subpackages,omitempty"`
+	Subpackages []Subpackage `json:"subpackages,omitempty" yaml:"subpackages,omitempty"`
 	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline
-	Data []RangeData `yaml:"data,omitempty"`
+	Data []RangeData `json:"data,omitempty" yaml:"data,omitempty"`
 	// Optional: The update block determining how this package is auto updated
-	Update Update `yaml:"update,omitempty"`
+	Update Update `json:"update,omitempty" yaml:"update,omitempty"`
 	// Optional: A map of arbitrary variables that can be used via templating in
 	// the pipeline
-	Vars map[string]string `yaml:"vars,omitempty"`
+	Vars map[string]string `json:"vars,omitempty" yaml:"vars,omitempty"`
 	// Optional: A list of transformations to create for the builtin template
 	// variables
-	VarTransforms []VarTransforms `yaml:"var-transforms,omitempty"`
+	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
-	Options map[string]BuildOption `yaml:"options,omitempty"`
+	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Parsed AST for this configuration
 	root *yaml.Node
@@ -363,93 +363,93 @@ type VarTransforms struct {
 	// Required: The original template variable.
 	//
 	// Example: ${{package.version}}
-	From string `yaml:"from"`
+	From string `json:"from" yaml:"from"`
 	// Required: The regular expression to match against the `from` variable
-	Match string `yaml:"match"`
+	Match string `json:"match" yaml:"match"`
 	// Required: The repl to replace on all `match` matches
-	Replace string `yaml:"replace"`
+	Replace string `json:"replace" yaml:"replace"`
 	// Required: The name of the new variable to create
 	//
 	// Example: mangeled-package-version
-	To string `yaml:"to"`
+	To string `json:"to" yaml:"to"`
 }
 
 // Update provides information used to describe how to keep the package up to date
 type Update struct {
 	// Toggle if updates should occur
-	Enabled bool `yaml:"enabled"`
+	Enabled bool `json:"enabled" yaml:"enabled"`
 	// Indicates that this package should be manually updated, usually taking
 	// care over special version numbers
-	Manual bool `yaml:"manual"`
+	Manual bool `json:"manual" yaml:"manual"`
 	// Indicate that an update to this package requires an epoch bump of
 	// downstream dependencies, e.g. golang, java
-	Shared bool `yaml:"shared,omitempty"`
+	Shared bool `json:"shared,omitempty" yaml:"shared,omitempty"`
 	// Override the version separator if it is nonstandard
-	VersionSeparator string `yaml:"version-separator,omitempty"`
+	VersionSeparator string `json:"version-separator,omitempty" yaml:"version-separator,omitempty"`
 	// A slice of regex patterns to match an upstream version and ignore
-	IgnoreRegexPatterns []string `yaml:"ignore-regex-patterns,omitempty"`
+	IgnoreRegexPatterns []string `json:"ignore-regex-patterns,omitempty" yaml:"ignore-regex-patterns,omitempty"`
 	// The configuration block for updates tracked via release-monitoring.org
-	ReleaseMonitor *ReleaseMonitor `yaml:"release-monitor,omitempty"`
+	ReleaseMonitor *ReleaseMonitor `json:"release-monitor,omitempty" yaml:"release-monitor,omitempty"`
 	// The configuration block for updates tracked via the Github API
-	GitHubMonitor *GitHubMonitor `yaml:"github,omitempty"`
+	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
-	VersionTransform []VersionTransform `yaml:"version-transform,omitempty"`
+	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/
 type ReleaseMonitor struct {
 	// Required: ID number for release monitor
-	Identifier int `yaml:"identifier"`
+	Identifier int `json:"identifier" yaml:"identifier"`
 	// If the version in release monitor contains a prefix which should be ignored
-	StripPrefix string `yaml:"strip-prefix,omitempty"`
+	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
 	// If the version in release monitor contains a suffix which should be ignored
-	StripSuffix string `yaml:"strip-suffix,omitempty"`
+	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
 }
 
 // GitHubMonitor indicates using the GitHub API
 type GitHubMonitor struct {
 	// Org/repo for GitHub
-	Identifier string `yaml:"identifier"`
+	Identifier string `json:"identifier" yaml:"identifier"`
 	// If the version in GitHub contains a prefix which should be ignored
-	StripPrefix string `yaml:"strip-prefix,omitempty"`
+	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
 	// If the version in GitHub contains a suffix which should be ignored
-	StripSuffix string `yaml:"strip-suffix,omitempty"`
+	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
 	// Filter to apply when searching tags on a GitHub repository
-	TagFilter string `yaml:"tag-filter,omitempty"`
+	TagFilter string `json:"tag-filter,omitempty" yaml:"tag-filter,omitempty"`
 	// Override the default of using a GitHub release to identify related tag to
 	// fetch.  Not all projects use GitHub releases but just use tags
-	UseTags bool `yaml:"use-tag,omitempty"`
+	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`
 }
 
 // VersionTransform allows mapping the package version to an APK version
 type VersionTransform struct {
 	// Required: The regular expression to match against the `package.version` variable
-	Match string `yaml:"match"`
+	Match string `json:"match" yaml:"match"`
 	// Required: The repl to replace on all `match` matches
-	Replace string `yaml:"replace"`
+	Replace string `json:"replace" yaml:"replace"`
 }
 
 type RangeData struct {
-	Name  string    `yaml:"name"`
-	Items DataItems `yaml:"items"`
+	Name  string    `json:"name" yaml:"name"`
+	Items DataItems `json:"items" yaml:"items"`
 }
 
 type DataItems map[string]string
 
 type Dependencies struct {
 	// Optional: List of runtime dependencies
-	Runtime []string `yaml:"runtime,omitempty"`
+	Runtime []string `json:"runtime,omitempty" yaml:"runtime,omitempty"`
 	// Optional: List of packages provided
-	Provides []string `yaml:"provides,omitempty"`
+	Provides []string `json:"provides,omitempty" yaml:"provides,omitempty"`
 	// Optional: List of replace objectives
-	Replaces []string `yaml:"replaces,omitempty"`
+	Replaces []string `json:"replaces,omitempty" yaml:"replaces,omitempty"`
 	// Optional: An integer compared against other equal package provides used to
 	// determine priority
-	ProviderPriority int `yaml:"provider-priority,omitempty"`
+	ProviderPriority int `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
 
 	// List of self-provided dependencies found outside of lib directories
 	// ("lib", "usr/lib", "lib64", or "usr/lib64").
-	Vendored []string `yaml:"-"`
+	Vendored []string `json:"-" yaml:"-"`
 }
 
 type ConfigurationParsingOption func(*configOptions)

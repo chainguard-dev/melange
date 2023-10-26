@@ -476,7 +476,7 @@ func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 		}
 	}
 
-	ic.Contents.Packages = dedup(ic.Contents.Packages)
+	ic.Contents.Packages = util.Dedup(ic.Contents.Packages)
 
 	for _, sp := range pctx.Pipeline.Pipeline {
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)

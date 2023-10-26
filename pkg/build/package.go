@@ -26,12 +26,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"text/template"
 
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/sca"
+	"chainguard.dev/melange/pkg/util"
 
 	"chainguard.dev/apko/pkg/log"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
@@ -48,8 +51,6 @@ import (
 // This gives us near 100% utility on workstations, allows us to do ~8
 // concurrent builds on giant machines, and uses only 1 core on tiny machines.
 var pgzipThreads = min(runtime.GOMAXPROCS(0), 8)
-
-var libDirs = []string{"lib", "usr/lib", "lib64", "usr/lib64"}
 
 func min(l, r int) int {
 	if l < r {
@@ -305,6 +306,28 @@ func (pc *PackageBuild) SignatureName() string {
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Build.SigningKey))
 }
 
+// removeSelfProvidedDeps removes dependencies which are provided by the package itself.
+func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
+	providedDepsMap := map[string]bool{}
+
+	for _, versionedDep := range providedDeps {
+		dep := strings.Split(versionedDep, "=")[0]
+		providedDepsMap[dep] = true
+	}
+
+	newRuntimeDeps := []string{}
+	for _, dep := range runtimeDeps {
+		_, ok := providedDepsMap[dep]
+		if ok {
+			continue
+		}
+
+		newRuntimeDeps = append(newRuntimeDeps, dep)
+	}
+
+	return newRuntimeDeps
+}
+
 func (pc *PackageBuild) GenerateDependencies() error {
 	generated := config.Dependencies{}
 
@@ -312,7 +335,7 @@ func (pc *PackageBuild) GenerateDependencies() error {
 		PackageBuild: pc,
 	}
 
-	if err := Analyze(&hdl, &generated); err != nil {
+	if err := sca.Analyze(&hdl, &generated); err != nil {
 		return fmt.Errorf("analyzing package: %w", err)
 	}
 
@@ -338,10 +361,10 @@ func (pc *PackageBuild) GenerateDependencies() error {
 	unvendored := removeSelfProvidedDeps(generated.Runtime, generated.Vendored)
 
 	newruntime := append(pc.Dependencies.Runtime, unvendored...)
-	pc.Dependencies.Runtime = dedup(newruntime)
+	pc.Dependencies.Runtime = util.Dedup(newruntime)
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
-	pc.Dependencies.Provides = dedup(newprovides)
+	pc.Dependencies.Provides = util.Dedup(newprovides)
 
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 

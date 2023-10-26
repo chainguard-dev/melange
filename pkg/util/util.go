@@ -115,3 +115,20 @@ func Contains[T comparable](s []T, e T) bool {
 	}
 	return false
 }
+
+// TODO(kaniini): Rewrite to use generics.
+func Dedup(in []string) []string {
+	sort.Strings(in)
+	out := make([]string, 0, len(in))
+
+	var prev string
+	for _, cur := range in {
+		if cur == prev {
+			continue
+		}
+		out = append(out, cur)
+		prev = cur
+	}
+
+	return out
+}

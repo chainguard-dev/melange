@@ -20,6 +20,7 @@ import (
 
 	"chainguard.dev/apko/pkg/log"
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/sca"
 )
 
 // SCABuildInterface provides an implementation of SCAHandle which maps to
@@ -53,10 +54,10 @@ func (sca *SCABuildInterface) Version() string {
 
 // FilesystemForRelative implements an abstract filesystem for any of the packages being
 // built.
-func (sca *SCABuildInterface) FilesystemForRelative(pkgName string) (SCAFS, error) {
-	pkgDir := filepath.Join(sca.PackageBuild.Build.WorkspaceDir, "melange-out", pkgName)
+func (scabi *SCABuildInterface) FilesystemForRelative(pkgName string) (sca.SCAFS, error) {
+	pkgDir := filepath.Join(scabi.PackageBuild.Build.WorkspaceDir, "melange-out", pkgName)
 	rlFS := readlinkFS(pkgDir)
-	scaFS, ok := rlFS.(SCAFS)
+	scaFS, ok := rlFS.(sca.SCAFS)
 	if !ok {
 		return nil, fmt.Errorf("SCAFS not implemented")
 	}
@@ -65,7 +66,7 @@ func (sca *SCABuildInterface) FilesystemForRelative(pkgName string) (SCAFS, erro
 }
 
 // Filesystem implements an abstract filesystem providing access to a package filesystem.
-func (sca *SCABuildInterface) Filesystem() (SCAFS, error) {
+func (sca *SCABuildInterface) Filesystem() (sca.SCAFS, error) {
 	return sca.FilesystemForRelative(sca.PackageName())
 }
 

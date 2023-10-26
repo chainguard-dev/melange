@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package build
+package sca
 
 import (
 	"bytes"
@@ -22,7 +22,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"chainguard.dev/apko/pkg/log"
@@ -31,6 +30,8 @@ import (
 
 	"chainguard.dev/melange/pkg/config"
 )
+
+var libDirs = []string{"lib", "usr/lib", "lib64", "usr/lib64"}
 
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
@@ -75,22 +76,6 @@ type SCAHandle interface {
 // DependencyGenerator takes an SCAHandle and config.Dependencies pointer and returns
 // findings based on analysis.
 type DependencyGenerator func(SCAHandle, *config.Dependencies) error
-
-func dedup(in []string) []string {
-	sort.Strings(in)
-	out := make([]string, 0, len(in))
-
-	var prev string
-	for _, cur := range in {
-		if cur == prev {
-			continue
-		}
-		out = append(out, cur)
-		prev = cur
-	}
-
-	return out
-}
 
 func allowedPrefix(path string, prefixes []string) bool {
 	for _, pfx := range prefixes {
@@ -518,28 +503,6 @@ func generatePythonDeps(hdl SCAHandle, generated *config.Dependencies) error {
 	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python3~%s", pythonModuleVer))
 
 	return nil
-}
-
-// removeSelfProvidedDeps removes dependencies which are provided by the package itself.
-func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
-	providedDepsMap := map[string]bool{}
-
-	for _, versionedDep := range providedDeps {
-		dep := strings.Split(versionedDep, "=")[0]
-		providedDepsMap[dep] = true
-	}
-
-	newRuntimeDeps := []string{}
-	for _, dep := range runtimeDeps {
-		_, ok := providedDepsMap[dep]
-		if ok {
-			continue
-		}
-
-		newRuntimeDeps = append(newRuntimeDeps, dep)
-	}
-
-	return newRuntimeDeps
 }
 
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies

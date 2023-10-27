@@ -50,7 +50,7 @@ require (
 	k8s.io/client-go v0.28.3
 	k8s.io/kube-openapi v0.0.0-20230816210353-14e408962443
 	knative.dev/pkg v0.0.0-20230821102121-81e4ee140363
-	sigs.k8s.io/release-utils v0.7.5
+	sigs.k8s.io/release-utils v0.7.6
 	sigs.k8s.io/yaml v1.4.0
 )
 

@@ -50,7 +50,7 @@ func Lint() *cobra.Command {
 			linterSet := map[string]struct{}{}
 
 			// Get all default linters, ignoring disabled ones
-			for _, e := range linter_defaults.GetDefaultLinters(linter_defaults.LintersApk) {
+			for _, e := range linter_defaults.GetDefaultLinters(linter_defaults.LinterClassApk) {
 				if !slices.Contains(disabled, e) {
 					linterSet[e] = struct{}{}
 				}

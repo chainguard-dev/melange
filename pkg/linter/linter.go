@@ -32,19 +32,19 @@ import (
 )
 
 type LinterContext struct {
-	pkgname   string
-	fsys      fs.FS
-	linterSet linter_defaults.LinterSet
+	pkgname string
+	fsys    fs.FS
 }
 
-func NewLinterContext(name string, fsys fs.FS, linterSet linter_defaults.LinterSet) LinterContext {
-	return LinterContext{name, fsys, linterSet}
+func NewLinterContext(name string, fsys fs.FS) LinterContext {
+	return LinterContext{name, fsys}
 }
 
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
 
 type linter struct {
 	LinterFunc  linterFunc
+	LinterClass linter_defaults.LinterClass
 	FailOnError bool
 	Explain     string
 }
@@ -53,6 +53,7 @@ type postLinterFunc func(lctx LinterContext, fsys fs.FS) error
 
 type postLinter struct {
 	LinterFunc  postLinterFunc
+	LinterClass linter_defaults.LinterClass
 	FailOnError bool
 	Explain     string
 }
@@ -60,51 +61,61 @@ type postLinter struct {
 var linterMap = map[string]linter{
 	"dev": linter{
 		LinterFunc:  devLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
 	},
 	"opt": linter{
 		LinterFunc:  optLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
 	},
 	"sbom": linter{
 		LinterFunc:  sbomLinter,
+		LinterClass: linter_defaults.LinterClassBuild,
 		FailOnError: false,
 		Explain:     "Remove any files in /var/lib/db/sbom from the package",
 	},
 	"setuidgid": linter{
 		LinterFunc:  isSetUidOrGidLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Unset the setuid/setgid bit on the relevant files, or remove this linter",
 	},
 	"srv": linter{
 		LinterFunc:  srvLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
 	},
 	"tempdir": linter{
 		LinterFunc:  tempDirLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove any offending files in temporary dirs in the pipeline",
 	},
 	"usrlocal": linter{
 		LinterFunc:  usrLocalLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
 	},
 	"varempty": linter{
 		LinterFunc:  varEmptyLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove any offending files in /var/empty in the pipeline",
 	},
 	"worldwrite": linter{
 		LinterFunc:  worldWriteableLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
 	},
 	"strip": linter{
 		LinterFunc:  strippedLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Properly strip all binaries in the pipeline",
 	},
@@ -113,21 +124,25 @@ var linterMap = map[string]linter{
 var postLinterMap = map[string]postLinter{
 	"empty": postLinter{
 		LinterFunc:  emptyPostLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
 	"python/docs": postLinter{
 		LinterFunc:  pythonDocsPostLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove all docs directories from the package",
 	},
 	"python/multiple": postLinter{
 		LinterFunc:  pythonMultiplePackagesPostLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Split this package up into multiple packages and verify you are not improperly using pip install",
 	},
 	"python/test": postLinter{
 		LinterFunc:  pythonTestPostLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove all test directories from the package",
 	},
@@ -185,10 +200,6 @@ func isSetUidOrGidLinter(_ LinterContext, path string, d fs.DirEntry) error {
 }
 
 func sbomLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
-	if lctx.linterSet == linter_defaults.LintersApk {
-		return nil
-	}
-
 	if isSbomPathRegex.MatchString(path) {
 		return fmt.Errorf("Package writes to /var/lib/db/sbom")
 	}
@@ -485,7 +496,7 @@ func CheckValidLinters(check []string) []string {
 	return linters
 }
 
-func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []string) error {
+func (lctx LinterContext) lintPackageFs(warn func(error), linters []string, linterClass linter_defaults.LinterClass) error {
 	// If this is a compat package, do nothing.
 	if isCompatPackageRegex.MatchString(lctx.pkgname) {
 		return nil
@@ -511,6 +522,11 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 				continue
 			}
 
+			if linter.LinterClass&linterClass == 0 {
+				// Linter not in class, ignored
+				continue
+			}
+
 			err = linter.LinterFunc(lctx, path, d)
 			if err != nil {
 				if linter.FailOnError {
@@ -523,14 +539,20 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 		return nil
 	}
 
-	if err := fs.WalkDir(fsys, ".", walkCb); err != nil {
+	if err := fs.WalkDir(lctx.fsys, ".", walkCb); err != nil {
 		return err
 	}
 
 	// Run post-walking linters
 	for _, linterName := range postLinters {
 		linter := postLinterMap[linterName]
-		err := linter.LinterFunc(lctx, fsys)
+
+		if linter.LinterClass&linterClass == 0 {
+			// Linter not in class, ignored
+			continue
+		}
+
+		err := linter.LinterFunc(lctx, lctx.fsys)
 		if err != nil {
 			if linter.FailOnError {
 				return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
@@ -542,6 +564,16 @@ func (lctx LinterContext) LintPackageFs(fsys fs.FS, warn func(error), linters []
 	return nil
 }
 
+// Lint the given build directory at the given path
+func LintBuild(packageName string, path string, warn func(error), linters []string) error {
+	fsys := os.DirFS(path)
+
+	lctx := NewLinterContext(packageName, fsys)
+
+	return lctx.lintPackageFs(warn, linters, linter_defaults.LinterClassBuild)
+}
+
+// Lint the given APK at the given path
 func LintApk(ctx context.Context, path string, warn func(error), linters []string) error {
 	apkfsctrl, err := apkofs.NewAPKFS(ctx, path, apkofs.APKFSControl)
 	if err != nil {
@@ -575,7 +607,7 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 		return fmt.Errorf("Could not open APKFS: %w", err)
 	}
 
-	lctx := NewLinterContext(pkgname, apkfspkg, linter_defaults.LintersApk)
+	lctx := NewLinterContext(pkgname, apkfspkg)
 
-	return lctx.LintPackageFs(apkfspkg, warn, linters)
+	return lctx.lintPackageFs(warn, linters, linter_defaults.LinterClassApk)
 }

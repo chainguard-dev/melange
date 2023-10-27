@@ -21,12 +21,12 @@ import (
 	"slices"
 )
 
-type LinterSet int
+type LinterClass int
 
 const (
-	LintersDefault LinterSet = iota
-	LintersBuild   LinterSet = iota
-	LintersApk     LinterSet = iota
+	LinterClassDefault LinterClass = 1 << iota
+	LinterClassBuild
+	LinterClassApk
 )
 
 // Default linters run regardless of whether we are dealing with an APK or build
@@ -55,14 +55,14 @@ var defaultBuildLinters = []string{
 var defaultApkLinters = []string{}
 
 // Get the set of default linters for a given task
-func GetDefaultLinters(linterSet LinterSet) (linters []string) {
+func GetDefaultLinters(linterClass LinterClass) (linters []string) {
 	linters = slices.Clone(defaultLinters)
-	switch linterSet {
-	case LintersDefault:
+	switch linterClass {
+	case LinterClassDefault:
 		// Do nothing
-	case LintersBuild:
+	case LinterClassBuild:
 		linters = append(linters, slices.Clone(defaultBuildLinters)...)
-	case LintersApk:
+	case LinterClassApk:
 		linters = append(linters, slices.Clone(defaultApkLinters)...)
 	default:
 		panic("Invalid linter set called")

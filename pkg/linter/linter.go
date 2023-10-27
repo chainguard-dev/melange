@@ -25,18 +25,20 @@ import (
 	"regexp"
 	"strings"
 
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 
 	"gopkg.in/ini.v1"
 )
 
 type LinterContext struct {
-	pkgname string
-	fsys    fs.FS
+	pkgname   string
+	fsys      fs.FS
+	linterSet linter_defaults.LinterSet
 }
 
-func NewLinterContext(name string, fsys fs.FS) LinterContext {
-	return LinterContext{name, fsys}
+func NewLinterContext(name string, fsys fs.FS, linterSet linter_defaults.LinterSet) LinterContext {
+	return LinterContext{name, fsys, linterSet}
 }
 
 type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
@@ -65,6 +67,11 @@ var linterMap = map[string]linter{
 		LinterFunc:  optLinter,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
+	},
+	"sbom": linter{
+		LinterFunc:  sbomLinter,
+		FailOnError: false,
+		Explain:     "Remove any files in /var/lib/db/sbom from the package",
 	},
 	"setuidgid": linter{
 		LinterFunc:  isSetUidOrGidLinter,
@@ -137,8 +144,6 @@ var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 var isSbomPathRegex = regexp.MustCompile("^var/lib/db/sbom/")
 
 // Determine if a path should be ignored by a linter
-// NOTE(Elizafox): This should be called from each linter, in case we want to
-// lint the SBOM someday.
 func isIgnoredPath(path string) bool {
 	return isSbomPathRegex.MatchString(path)
 }
@@ -174,6 +179,18 @@ func isSetUidOrGidLinter(_ LinterContext, path string, d fs.DirEntry) error {
 		return fmt.Errorf("File is setuid")
 	} else if mode&fs.ModeSetgid != 0 {
 		return fmt.Errorf("File is setgid")
+	}
+
+	return nil
+}
+
+func sbomLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
+	if lctx.linterSet == linter_defaults.LintersApk {
+		return nil
+	}
+
+	if isSbomPathRegex.MatchString(path) {
+		return fmt.Errorf("Package writes to /var/lib/db/sbom")
 	}
 
 	return nil
@@ -558,7 +575,7 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 		return fmt.Errorf("Could not open APKFS: %w", err)
 	}
 
-	lctx := NewLinterContext(pkgname, apkfspkg)
+	lctx := NewLinterContext(pkgname, apkfspkg, linter_defaults.LintersApk)
 
 	return lctx.LintPackageFs(apkfspkg, warn, linters)
 }

@@ -57,7 +57,7 @@ func Test_emptyLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"empty"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -87,7 +87,7 @@ func Test_usrLocalLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"usrlocal"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -118,7 +118,7 @@ func Test_varEmptyLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"varempty"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -149,7 +149,7 @@ func Test_devLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"dev"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -180,7 +180,7 @@ func Test_optLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"opt"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -209,7 +209,7 @@ func Test_pythonDocsLinter(t *testing.T) {
 	assert.Equal(t, linters, []string{"python/docs"})
 
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
@@ -256,7 +256,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.Equal(t, linters, []string{"python/multiple"})
 
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
@@ -343,7 +343,7 @@ func Test_pythonTestLinter(t *testing.T) {
 	assert.Equal(t, linters, []string{"python/test"})
 
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
@@ -392,7 +392,7 @@ func Test_srvLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"srv"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -435,7 +435,7 @@ func Test_tempDirLinter(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = os.Create(filename)
 	assert.NoError(t, err)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -491,7 +491,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"setuidgid"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -521,7 +521,7 @@ func Test_worldWriteLinter(t *testing.T) {
 	linters := cfg.Package.Checks.GetLinters()
 	assert.Equal(t, linters, []string{"worldwrite"})
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true
@@ -594,7 +594,7 @@ func Test_disableDefaultLinter(t *testing.T) {
 
 	linters := cfg.Package.Checks.GetLinters()
 	fsys := os.DirFS(dir)
-	lctx := NewLinterContext(cfg.Package.Name, fsys)
+	lctx := NewLinterContext(cfg.Package.Name, fsys, linter_defaults.LintersBuild)
 	called := false
 	assert.NoError(t, lctx.LintPackageFs(fsys, func(err error) {
 		called = true

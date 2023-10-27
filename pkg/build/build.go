@@ -47,6 +47,7 @@ import (
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/linter"
+	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	"chainguard.dev/melange/pkg/sbom"
 	"chainguard.dev/melange/pkg/util"
 )
@@ -1127,7 +1128,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
 		fsys := os.DirFS(path)
-		lctx := linter.NewLinterContext(lt.pkgName, fsys)
+		lctx := linter.NewLinterContext(lt.pkgName, fsys, linter_defaults.LintersBuild)
 		linters := lt.checks.GetLinters()
 
 		var innerErr error

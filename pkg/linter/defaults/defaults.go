@@ -47,7 +47,9 @@ var defaultLinters = []string{
 }
 
 // Linters run by default on builds but not on APKs
-var defaultBuildLinters = []string{}
+var defaultBuildLinters = []string{
+	"sbom",
+}
 
 // Linters run by default on APKs but not during build
 var defaultApkLinters = []string{}

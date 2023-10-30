@@ -1,0 +1,74 @@
+name: Install a portable npm package.
+
+needs:
+  packages:
+    - nodejs
+    - busybox
+
+inputs:
+  package:
+    description: |
+      The name of the package to npm install.
+    required: true
+
+  version:
+    description: |
+      The version of the package to npm install.
+    required: true
+
+  prefix:
+    description: |
+      The -prefix argument to pass to npm install; where /bin and /lib will be copied to.
+    default: "${{targets.destdir}}/usr/local/"
+
+  overrides:
+    description: |
+      Space, comma or newline-separated list of package@version to use in npm overrides, e.g. "yargs@^17.0.0 get-stdin@^9.0.0".
+
+pipeline:
+  - runs: |
+      # Portable global install of the package.
+      # Simplest way to get both bin and lib directories installed.
+      # Does not support overrides; to be fixed below if needed.
+      npm install -g "${{inputs.package}}@${{inputs.version}}" -prefix "${{inputs.prefix}}"
+
+      if [ ! "${{inputs.overrides}}" == "" ]; then
+          # Move to /lib, which contains the node_modules folder.
+          cd "${{inputs.prefix}}/lib"
+
+          # Create a package.json with the dependency installed above, at which point
+          # `npm i --install-strategy=shallow .` will output the exact same content the install above did.
+          echo "{
+            \"dependencies\": {
+              \"${{inputs.package}}\": \"${{inputs.version}}\"
+            }
+          }" > package.json
+          
+          # However, we also add `overrides`, to override specific vulnerable libraries.
+          node -e "
+            const packageJson = require('./package.json');
+            const overrides = process.argv[1];
+            packageJson.overrides = overrides
+              // Remove comments
+              .replace(/\s*#.*/g, '')
+              // Space/Newline/Comma-separate value
+              .split(/,|\s/g)
+              // Split package & version
+              .map(override => override.split('@'))
+              // Set override values
+              .reduce((acc, [package, version]) => {
+                acc[package] = version;
+                return acc;
+              }, {});
+            fs.writeFileSync('./package.json', JSON.stringify(packageJson));
+          " "${{inputs.overrides}}"
+
+          # Delete vulnerable node_modules...
+          rm -rf node_modules
+
+          # ... to reinstall non-vulnerable node_modules.
+          npm i --install-strategy=shallow .
+
+          # Delete artifacts used for & generated from the override install.
+          rm -rf package.json package-lock.json node_modules/.package-lock.json
+      fi

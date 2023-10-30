@@ -65,11 +65,23 @@ var linterMap = map[string]linter{
 		FailOnError: false,
 		Explain:     "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
 	},
+	"documentation": linter{
+		LinterFunc:  documentationLinter,
+		LinterClass: linter_defaults.LinterClassApk | linter_defaults.LinterClassBuild,
+		FailOnError: false,
+		Explain:     "Place documentation into a separate package or remove it",
+	},
 	"opt": linter{
 		LinterFunc:  optLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
+	},
+	"object": linter{
+		LinterFunc:  objectLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
+		FailOnError: false,
+		Explain:     "This package contains intermediate object files",
 	},
 	"sbom": linter{
 		LinterFunc:  sbomLinter,
@@ -157,6 +169,7 @@ var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isCompatPackageRegex = regexp.MustCompile("-compat$")
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 var isSbomPathRegex = regexp.MustCompile("^var/lib/db/sbom/")
+var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 
 // Determine if a path should be ignored by a linter
 func isIgnoredPath(path string) bool {
@@ -176,6 +189,20 @@ func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 		return fmt.Errorf("Package writes to /opt")
 	}
 
+	return nil
+}
+func objectLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if filepath.Ext(path) == ".o" {
+		return fmt.Errorf("Package contains intermediate object file '%s'. This is usually wrong. In most cases they should be removed", path)
+	}
+
+	return nil
+}
+
+func documentationLinter(lc LinterContext, path string, _ fs.DirEntry) error {
+	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(lc.pkgname, "-doc") {
+		return fmt.Errorf("Package contains documentation files but is not a documentation package")
+	}
 	return nil
 }
 

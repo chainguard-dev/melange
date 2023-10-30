@@ -32,8 +32,10 @@ const (
 // Default linters run regardless of whether we are dealing with an APK or build
 var defaultLinters = []string{
 	"dev",
+	"documentation",
 	"empty",
 	"opt",
+	"object",
 	"python/docs",
 	"python/multiple",
 	"python/test",

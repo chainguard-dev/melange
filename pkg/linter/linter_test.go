@@ -178,6 +178,64 @@ func Test_optLinter(t *testing.T) {
 	assert.True(t, called)
 }
 
+func Test_objectLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "testobject",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks:  checksOnly("object"),
+		},
+	}
+
+	pathdir := filepath.Join(dir, "")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filepath.Join(pathdir, "test.o"))
+	assert.NoError(t, err)
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"object"})
+	called := false
+	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
+		called = true
+	}, linters))
+	assert.True(t, called)
+}
+
+func Test_documentationLinter(t *testing.T) {
+	dir, err := os.MkdirTemp("", "melange.XXXXX")
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	cfg := config.Configuration{
+		Package: config.Package{
+			Name:    "testobject",
+			Version: "4.2.0",
+			Epoch:   0,
+			Checks:  checksOnly("documentation"),
+		},
+	}
+
+	pathdir := filepath.Join(dir, "")
+	err = os.MkdirAll(pathdir, 0700)
+	assert.NoError(t, err)
+	_, err = os.Create(filepath.Join(pathdir, "test.md"))
+	assert.NoError(t, err)
+
+	linters := cfg.Package.Checks.GetLinters()
+	assert.Equal(t, linters, []string{"documentation"})
+	called := false
+	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
+		called = true
+	}, linters))
+	assert.True(t, called)
+}
+
 func Test_pythonDocsLinter(t *testing.T) {
 	dir, err := os.MkdirTemp("", "melange.XXXXX")
 	defer os.RemoveAll(dir)

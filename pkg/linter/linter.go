@@ -296,6 +296,16 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	}
 	defer reader.Close()
 
+	// Check magic
+	buf := make([]byte, 3)
+	if _, err = reader.Read(buf); err != nil {
+		return fmt.Errorf("Could not read from file: %v", err)
+	}
+	if string(buf) != "ELF" {
+		// This is probably just a script or something. Filter it for less noise.
+		return nil
+	}
+
 	// TODO(Elizafox) - .a object files, which needs archive handling support.
 
 	// XXX(Elizafox) - fs.Open doesn't support the ReaderAt interface so we copy it to a temp file.
@@ -319,13 +329,6 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 
 	file, err := elf.NewFile(tempfile)
 	if err != nil {
-		// XXX(Elizafox) - I hate Go's error handling and there's no better way.
-		// It literally gives us nothing but the string. Why Go... WHY...???
-		if strings.Contains(err.Error(), "bad magic number") {
-			// This is probably just a script or something. Filter it for less noise.
-			return nil
-		}
-
 		// We don't particularly care if this fails otherwise.
 		fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
 		return nil

@@ -155,7 +155,9 @@ var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
 var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
 var isCompatPackageRegex = regexp.MustCompile("-compat$")
-var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
+
+// XXX(Elizafox) - Go's ELF parser doesn't understand .a files, which is fair given they're just an archive.
+var isObjectFileRegex = regexp.MustCompile(`\.(so|dylib)(\..*)?`)
 var isSbomPathRegex = regexp.MustCompile("^var/lib/db/sbom/")
 
 // Determine if a path should be ignored by a linter
@@ -294,6 +296,8 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	}
 	defer reader.Close()
 
+	// TODO(Elizafox) - .a object files, which needs archive handling support.
+
 	// XXX(Elizafox) - fs.Open doesn't support the ReaderAt interface so we copy it to a temp file.
 	// This sucks but what can you do?
 	tempfile, err := os.CreateTemp("", "melange.XXXXX")
@@ -317,7 +321,7 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	if err != nil {
 		// XXX(Elizafox) - I hate Go's error handling and there's no better way.
 		// It literally gives us nothing but the string. Why Go... WHY...???
-		if strings.Contains(err.Error, "bad magic number") {
+		if strings.Contains(err.Error(), "bad magic number") {
 			// This is probably just a script or something. Filter it for less noise.
 			return nil
 		}

@@ -315,7 +315,14 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 
 	file, err := elf.NewFile(tempfile)
 	if err != nil {
-		// We don't particularly care if this fails, it means it's probably not an ELF file
+		// XXX(Elizafox) - I hate Go's error handling and there's no better way.
+		// It literally gives us nothing but the string. Why Go... WHY...???
+		if strings.Contains(err.Error, "bad magic number") {
+			// This is probably just a script or something. Filter it for less noise.
+			return nil
+		}
+
+		// We don't particularly care if this fails otherwise.
 		fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
 		return nil
 	}

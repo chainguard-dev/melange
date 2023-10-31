@@ -15,6 +15,7 @@
 package linter
 
 import (
+	"bytes"
 	"context"
 	"debug/elf"
 	"fmt"
@@ -293,6 +294,8 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 	return nil
 }
 
+var elfMagic = []byte{'\x7f', 'E', 'L', 'F'}
+
 func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	if isIgnoredPath(path) {
 		return nil
@@ -308,6 +311,11 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 		return err
 	}
 
+	if info.Size() < int64(len(elfMagic)) {
+		// This is definitely not an ELF file.
+		return nil
+	}
+
 	ext := filepath.Ext(path)
 	mode := info.Mode()
 	if mode&0111 == 0 && !isObjectFileRegex.MatchString(ext) {
@@ -317,7 +325,7 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 
 	f, err := lctx.fsys.Open(path)
 	if err != nil {
-		return fmt.Errorf("Could not open file for reading: %v", err)
+		return fmt.Errorf("opening file: %w", err)
 	}
 	defer f.Close()
 
@@ -325,20 +333,29 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	// We don't have any other callers, so this should never fail.
 	readerAt, ok := f.(io.ReaderAt)
 	if !ok {
-		return fmt.Errorf("file does not impl ReaderAt: %T", f)
+		return fmt.Errorf("fs.File does not impl ReaderAt: %T", f)
+	}
+
+	hdr := make([]byte, len(elfMagic))
+	if _, err := readerAt.ReadAt(hdr, 0); err != nil {
+		return fmt.Errorf("failed to read %d bytes for magic ELF header: %w", len(elfMagic), err)
+	}
+
+	if !bytes.Equal(elfMagic, hdr) {
+		// No magic header, definitely not ELF.
+		return nil
 	}
 
 	file, err := elf.NewFile(readerAt)
 	if err != nil {
-		// We don't particularly care if this fails, it means it's probably not an ELF file
+		// We don't particularly care if this fails otherwise.
 		fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
-		return nil
 	}
 	defer file.Close()
 
 	// No debug sections allowed
 	if file.Section(".debug") != nil || file.Section(".zdebug") != nil {
-		return fmt.Errorf("File is not stripped")
+		return fmt.Errorf("ELF file is not stripped")
 	}
 
 	return nil

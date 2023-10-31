@@ -71,6 +71,41 @@ subpackages:
 	}, cfg.Subpackages[0].Dependencies.Runtime)
 }
 
+func Test_rangeSubstitutions(t *testing.T) {
+	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: range-substitutions
+  version: 0.0.1
+  epoch: 7
+  description: example using a range in subpackages
+
+data:
+  - name: I-am-a-range
+    items:
+      a: A
+      b: B
+
+subpackages:
+  - range: I-am-a-range
+    name: ${{range.key}}
+    description: ${{range.value}}
+    options:
+      no-provides: true
+    dependencies:
+      runtime:
+        - wow-some-kinda-dynamically-linked-library-i-guess=1.0
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+	require.Equal(t, cfg.Subpackages[0].Dependencies.Runtime[0], "wow-some-kinda-dynamically-linked-library-i-guess=1.0")
+	require.True(t, cfg.Subpackages[0].Options.NoProvides)
+}
+
 func Test_propagatePipelines(t *testing.T) {
 	fp := filepath.Join(os.TempDir(), "melange-test-propagatePipelines")
 	if err := os.WriteFile(fp, []byte(`

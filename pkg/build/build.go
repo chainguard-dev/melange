@@ -873,7 +873,7 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 				return nil
 			}
 
-			b.Logger.Printf("  -> %s", path)
+			b.Logger.Debugf("  -> %s", path)
 
 			if err := copyFile(tmp, path, b.CacheDir, mode.Perm()); err != nil {
 				return err
@@ -922,7 +922,7 @@ func (b *Build) PopulateWorkspace(ctx context.Context) error {
 			return nil
 		}
 
-		b.Logger.Printf("  -> %s", path)
+		b.Logger.Debugf("  -> %s", path)
 
 		if err := copyFile(b.SourceDir, path, b.WorkspaceDir, mode.Perm()); err != nil {
 			return err

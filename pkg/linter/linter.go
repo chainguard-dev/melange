@@ -26,7 +26,7 @@ import (
 	"strings"
 
 	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 
 	"gopkg.in/ini.v1"
 )
@@ -59,73 +59,73 @@ type postLinter struct {
 }
 
 var linterMap = map[string]linter{
-	"dev": linter{
+	"dev": {
 		LinterFunc:  devLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
 	},
-	"documentation": linter{
+	"documentation": {
 		LinterFunc:  documentationLinter,
 		LinterClass: linter_defaults.LinterClassApk | linter_defaults.LinterClassBuild,
 		FailOnError: false,
 		Explain:     "Place documentation into a separate package or remove it",
 	},
-	"opt": linter{
+	"opt": {
 		LinterFunc:  optLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
 	},
-	"object": linter{
+	"object": {
 		LinterFunc:  objectLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package contains intermediate object files",
 	},
-	"sbom": linter{
+	"sbom": {
 		LinterFunc:  sbomLinter,
 		LinterClass: linter_defaults.LinterClassBuild,
 		FailOnError: false,
 		Explain:     "Remove any files in /var/lib/db/sbom from the package",
 	},
-	"setuidgid": linter{
+	"setuidgid": {
 		LinterFunc:  isSetUidOrGidLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Unset the setuid/setgid bit on the relevant files, or remove this linter",
 	},
-	"srv": linter{
+	"srv": {
 		LinterFunc:  srvLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
 	},
-	"tempdir": linter{
+	"tempdir": {
 		LinterFunc:  tempDirLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove any offending files in temporary dirs in the pipeline",
 	},
-	"usrlocal": linter{
+	"usrlocal": {
 		LinterFunc:  usrLocalLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "This package should be a -compat package",
 	},
-	"varempty": linter{
+	"varempty": {
 		LinterFunc:  varEmptyLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove any offending files in /var/empty in the pipeline",
 	},
-	"worldwrite": linter{
+	"worldwrite": {
 		LinterFunc:  worldWriteableLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
 	},
-	"strip": linter{
+	"strip": {
 		LinterFunc:  strippedLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
@@ -134,25 +134,25 @@ var linterMap = map[string]linter{
 }
 
 var postLinterMap = map[string]postLinter{
-	"empty": postLinter{
+	"empty": {
 		LinterFunc:  emptyPostLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
-	"python/docs": postLinter{
+	"python/docs": {
 		LinterFunc:  pythonDocsPostLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Remove all docs directories from the package",
 	},
-	"python/multiple": postLinter{
+	"python/multiple": {
 		LinterFunc:  pythonMultiplePackagesPostLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Split this package up into multiple packages and verify you are not improperly using pip install",
 	},
-	"python/test": postLinter{
+	"python/test": {
 		LinterFunc:  pythonTestPostLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
@@ -315,32 +315,20 @@ func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 		return nil
 	}
 
-	reader, err := lctx.fsys.Open(path)
+	f, err := lctx.fsys.Open(path)
 	if err != nil {
 		return fmt.Errorf("Could not open file for reading: %v", err)
 	}
-	defer reader.Close()
+	defer f.Close()
 
-	// XXX(Elizafox) - fs.Open doesn't support the ReaderAt interface so we copy it to a temp file.
-	// This sucks but what can you do?
-	tempfile, err := os.CreateTemp("", "melange.XXXXX")
-	if err != nil {
-		return fmt.Errorf("Could not create temporary file: %v", err)
-	}
-	defer tempfile.Close()
-	defer os.Remove(tempfile.Name())
-
-	_, err = io.Copy(tempfile, reader)
-	if err != nil {
-		return fmt.Errorf("Could not write to temporary file: %v", err)
+	// Both os.DirFS and go-apk return a file that implements ReaderAt.
+	// We don't have any other callers, so this should never fail.
+	readerAt, ok := f.(io.ReaderAt)
+	if !ok {
+		return fmt.Errorf("file does not impl ReaderAt: %T", f)
 	}
 
-	_, err = tempfile.Seek(0, 0)
-	if err != nil {
-		return fmt.Errorf("Could not rewind temporary file: %v", err)
-	}
-
-	file, err := elf.NewFile(tempfile)
+	file, err := elf.NewFile(readerAt)
 	if err != nil {
 		// We don't particularly care if this fails, it means it's probably not an ELF file
 		fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
@@ -602,13 +590,20 @@ func LintBuild(packageName string, path string, warn func(error), linters []stri
 
 // Lint the given APK at the given path
 func LintApk(ctx context.Context, path string, warn func(error), linters []string) error {
-	apkfsctrl, err := apkofs.NewAPKFS(ctx, path, apkofs.APKFSControl)
+	file, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("Could not open APKFS: %w", err)
+		return fmt.Errorf("linting apk %q: %w", path, err)
 	}
+	defer file.Close()
+
+	exp, err := expandapk.ExpandApk(ctx, file, "")
+	if err != nil {
+		return fmt.Errorf("expanding apk %q: %w", path, err)
+	}
+	defer exp.Close()
 
 	// Get the package name
-	f, err := apkfsctrl.Open("/.PKGINFO")
+	f, err := exp.ControlFS.Open(".PKGINFO")
 	if err != nil {
 		return fmt.Errorf("Could not open .PKGINFO file: %w", err)
 	}
@@ -629,12 +624,7 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 		return fmt.Errorf("pkgname is nonexistent")
 	}
 
-	apkfspkg, err := apkofs.NewAPKFS(ctx, path, apkofs.APKFSPackage)
-	if err != nil {
-		return fmt.Errorf("Could not open APKFS: %w", err)
-	}
-
-	lctx := NewLinterContext(pkgname, apkfspkg)
+	lctx := NewLinterContext(pkgname, exp.TarFS)
 
 	return lctx.lintPackageFs(warn, linters, linter_defaults.LinterClassApk)
 }

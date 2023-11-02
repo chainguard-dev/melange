@@ -23,8 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/slices"
-
 	"go.opentelemetry.io/otel"
 
 	"gopkg.in/yaml.v3"
@@ -478,7 +476,7 @@ func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 		}
 	}
 
-	ic.Contents.Packages = slices.Compact(ic.Contents.Packages)
+	ic.Contents.Packages = util.Dedup(ic.Contents.Packages)
 
 	for _, sp := range pctx.Pipeline.Pipeline {
 		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)

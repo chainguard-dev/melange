@@ -15,6 +15,7 @@
 package util
 
 import (
+	"cmp"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 )
 
@@ -114,4 +116,10 @@ func Contains[T comparable](s []T, e T) bool {
 		}
 	}
 	return false
+}
+
+// Dedup wraps slices.Sort and slices.Compact to deduplicate a slice.
+func Dedup[S ~[]E, E cmp.Ordered](s S) S {
+	slices.Sort(s)
+	return slices.Compact(s)
 }

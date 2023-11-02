@@ -135,9 +135,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 		},
 	}
 
-	log := logger.NopLogger{}
-	pctx, err := NewPipelineContext(p, log)
-	require.NoError(t, err)
+	pctx := NewPipelineContext(p, logger.NopLogger{})
 
 	pb := &PipelineBuild{
 		Package: pkgctx,
@@ -168,9 +166,7 @@ func Test_buildEvalRunCommand(t *testing.T) {
 		Environment: map[string]string{"FOO": "bar"},
 	}
 
-	log := logger.NopLogger{}
-	pctx, err := NewPipelineContext(p, log)
-	require.NoError(t, err)
+	pctx := NewPipelineContext(p, logger.NopLogger{})
 
 	debugOption := ' '
 	sysPath := "/foo"

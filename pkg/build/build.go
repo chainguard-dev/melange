@@ -974,10 +974,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	b.Logger.Printf("evaluating pipelines for package requirements")
 	for _, p := range b.Configuration.Pipeline {
-		pctx, err := NewPipelineContext(&p, b.Logger)
-		if err != nil {
-			return fmt.Errorf("unable to make pipeline context: %w", err)
-		}
+		pctx := NewPipelineContext(&p, b.Logger)
 
 		if err := pctx.ApplyNeeds(&pb); err != nil {
 			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
@@ -991,10 +988,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 		pb.Subpackage = spkgctx
 		for _, p := range spkgctx.Subpackage.Pipeline {
-			pctx, err := NewPipelineContext(&p, b.Logger)
-			if err != nil {
-				return fmt.Errorf("invalid pipeline context: %w", err)
-			}
+			pctx := NewPipelineContext(&p, b.Logger)
 			if err := pctx.ApplyNeeds(&pb); err != nil {
 				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 			}
@@ -1045,10 +1039,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// run the main pipeline
 		b.Logger.Printf("running the main pipeline")
 		for _, p := range b.Configuration.Pipeline {
-			pctx, err := NewPipelineContext(&p, b.Logger)
-			if err != nil {
-				return fmt.Errorf("invalid pipeline context: %w", err)
-			}
+			pctx := NewPipelineContext(&p, b.Logger)
 			if _, err := pctx.Run(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
@@ -1093,10 +1084,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 
 			for _, p := range spctx.Subpackage.Pipeline {
-				pctx, err := NewPipelineContext(&p, b.Logger)
-				if err != nil {
-					return fmt.Errorf("invalid pipeline context: %w", err)
-				}
+				pctx := NewPipelineContext(&p, b.Logger)
 				if _, err := pctx.Run(ctx, &pb); err != nil {
 					return fmt.Errorf("unable to run pipeline: %w", err)
 				}

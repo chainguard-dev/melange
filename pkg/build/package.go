@@ -66,10 +66,10 @@ type PackageContext struct {
 	Package *config.Package
 }
 
-func NewPackageContext(pkg *config.Package) (*PackageContext, error) {
+func NewPackageContext(pkg *config.Package) *PackageContext {
 	return &PackageContext{
 		Package: pkg,
-	}, nil
+	}
 }
 
 type SubpackageContext struct {
@@ -77,10 +77,10 @@ type SubpackageContext struct {
 }
 
 // Create a new subpackage context
-func NewSubpackageContext(pkg *config.Subpackage) (*SubpackageContext, error) {
+func NewSubpackageContext(pkg *config.Subpackage) *SubpackageContext {
 	return &SubpackageContext{
 		Subpackage: pkg,
-	}, nil
+	}
 }
 
 type PackageBuild struct {
@@ -121,10 +121,7 @@ func (pkg *PackageContext) Emit(ctx context.Context, pb *PipelineBuild) error {
 }
 
 func (spkg *SubpackageContext) Emit(ctx context.Context, pb *PipelineBuild) error {
-	pkgctx, err := NewPackageContext(&pb.Build.Configuration.Package)
-	if err != nil {
-		return err
-	}
+	pkgctx := NewPackageContext(&pb.Build.Configuration.Package)
 
 	pc := PackageBuild{
 		Build:        pb.Build,

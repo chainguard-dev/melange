@@ -56,15 +56,12 @@ func Test_removeSelfProvidedDeps_WithEmptyProvides(t *testing.T) {
 }
 
 func Test_GenerateControlData(t *testing.T) {
-	pkgctx, err := NewPackageContext(
+	pkgctx := NewPackageContext(
 		&config.Package{
 			Version: "1.2.3",
 			Epoch:   4,
 		},
 	)
-	if err != nil {
-		t.Fatalf("NewPackageContext() = %v", err)
-	}
 
 	tests := []struct {
 		name string

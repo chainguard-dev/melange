@@ -4,7 +4,7 @@
 #
 # This is a sample configuration file to demonstrate how to build a software
 # project using melange's built-in go/build pipeline.
-# 
+#
 # For more information about melange's built-in golang support check out:
 # https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-GO.md
 #
@@ -27,11 +27,16 @@ pipeline:
     with:
       repository: https://github.com/puerco/hello.git
       destination: build-dir
-  - runs: |
-      git checkout ${{package.version}}
+      tag: ${{package.version}}
+      expected-commit: fed9b28e2973bee65bcc503c6ab6522e8bfdd3d1
+  - uses: go/deps
+    with:
+      modroot: build-dir
+      deps: github.com/sirupsen/logrus@v1.9.1
   - uses: go/build
     with:
       modroot: build-dir
       tags: enterprise
       packages: ./main.go
       output: hello
+      deps: github.com/sirupsen/logrus@v1.9.3

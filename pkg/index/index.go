@@ -26,10 +26,10 @@ import (
 	"sync"
 
 	apko_log "chainguard.dev/apko/pkg/log"
+	apkrepo "github.com/chainguard-dev/go-apk/pkg/apk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/korovkin/limiter"
 	"github.com/sirupsen/logrus"
-	apkrepo "gitlab.alpinelinux.org/alpine/go/repository"
 	"go.opentelemetry.io/otel"
 )
 
@@ -41,7 +41,7 @@ type Index struct {
 	SigningKey         string
 	Logger             *logrus.Logger
 	ExpectedArch       string
-	Index              apkrepo.ApkIndex
+	Index              apkrepo.APKIndex
 }
 
 type Option func(*Index) error
@@ -154,7 +154,7 @@ func (idx *Index) LoadIndex(sourceFile string) error {
 	return nil
 }
 
-func (idx *Index) UpdateIndex() error {
+func (idx *Index) UpdateIndex(ctx context.Context) error {
 	packages := make([]*apkrepo.Package, len(idx.PackageFiles))
 	var mtx sync.Mutex
 
@@ -171,7 +171,7 @@ func (idx *Index) UpdateIndex() error {
 				return
 			}
 			defer f.Close()
-			pkg, err := apkrepo.ParsePackage(f)
+			pkg, err := apkrepo.ParsePackage(ctx, f)
 			if err != nil {
 				// nolint:errcheck
 				g.FirstErrorStore(fmt.Errorf("failed to parse package %s: %w", apkFile, err))
@@ -236,7 +236,7 @@ func (idx *Index) GenerateIndex(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "GenerateIndex")
 	defer span.End()
 
-	if err := idx.UpdateIndex(); err != nil {
+	if err := idx.UpdateIndex(ctx); err != nil {
 		return fmt.Errorf("updating index: %w", err)
 	}
 

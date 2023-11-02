@@ -4,6 +4,10 @@ go 1.21
 
 toolchain go1.21.1
 
+replace github.com/chainguard-dev/go-apk => ../go-apk
+
+replace chainguard.dev/apko => ../apko
+
 require (
 	chainguard.dev/apko v0.11.1
 	cloud.google.com/go/storage v1.33.0

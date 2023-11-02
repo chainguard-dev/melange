@@ -158,7 +158,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 
 	err = pctx.loadUse(pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
 	require.NoError(t, err)
-	require.Equal(t, "go-5.4.3", pb.Build.Configuration.Pipeline[0].With["go-package"])
+	require.Equal(t, "go-5.4.3", pctx.Pipeline.Needs.Packages[0])
 }
 
 func Test_buildEvalRunCommand(t *testing.T) {

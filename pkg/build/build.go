@@ -955,10 +955,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	b.Summarize()
 
-	pkg, err := NewPackageContext(&b.Configuration.Package)
-	if err != nil {
-		return err
-	}
+	pkg := NewPackageContext(&b.Configuration.Package)
 	pb := PipelineBuild{
 		Build:   b,
 		Package: pkg,
@@ -982,10 +979,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	for _, spkg := range b.Configuration.Subpackages {
-		spkgctx, err := NewSubpackageContext(&spkg)
-		if err != nil {
-			return fmt.Errorf("invalid subpackage: %w", err)
-		}
+		spkgctx := NewSubpackageContext(&spkg)
 		pb.Subpackage = spkgctx
 		for _, p := range spkgctx.Subpackage.Pipeline {
 			pctx := NewPipelineContext(&p, b.Logger)
@@ -1067,10 +1061,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		spctx, err := NewSubpackageContext(&sp)
-		if err != nil {
-			return fmt.Errorf("invalid subpackage context: %w", err)
-		}
+		spctx := NewSubpackageContext(&sp)
 		if !b.IsBuildLess() {
 			b.Logger.Printf("running pipeline for subpackage %s", sp.Name)
 			pb.Subpackage = spctx
@@ -1135,10 +1126,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	for _, sp := range b.Configuration.Subpackages {
 		langs := []string{}
 
-		spctx, err := NewSubpackageContext(&sp)
-		if err != nil {
-			return fmt.Errorf("invalid subpackage context: %w", err)
-		}
+		spctx := NewSubpackageContext(&sp)
 		if !b.IsBuildLess() {
 			b.Logger.Printf("generating SBOM for subpackage %s", sp.Name)
 			pb.Subpackage = spctx
@@ -1190,10 +1178,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// emit subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		spctx, err := NewSubpackageContext(&sp)
-		if err != nil {
-			return fmt.Errorf("invalid subpackage context: %w", err)
-		}
+		spctx := NewSubpackageContext(&sp)
 		pb.Subpackage = spctx
 
 		result, err := spctx.ShouldRun(&pb)
@@ -1234,10 +1219,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range b.Configuration.Subpackages {
-			spctx, err := NewSubpackageContext(&subpkg)
-			if err != nil {
-				return fmt.Errorf("invalid subpackage context: %w", err)
-			}
+			spctx := NewSubpackageContext(&subpkg)
 			pb.Subpackage = spctx
 
 			result, err := spctx.ShouldRun(&pb)

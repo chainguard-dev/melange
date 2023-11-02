@@ -51,15 +51,12 @@ func Test_substitutionMap(t *testing.T) {
 		{initialVersion: "1.2.3.9", match: `\.(\d+)$`, replace: "+$1", expected: "1.2.3+9"},
 	}
 	for _, tt := range tests {
-		pkgctx, err := NewPackageContext(
+		pkgctx := NewPackageContext(
 			&config.Package{
 				Name:    "foo",
 				Version: tt.initialVersion,
 			},
 		)
-		if err != nil {
-			t.Fatalf("NewPackageContext() = %v", err)
-		}
 
 		t.Run("sub", func(t *testing.T) {
 			pb := &PipelineBuild{
@@ -118,13 +115,12 @@ func Test_MutateWith(t *testing.T) {
 }
 
 func Test_substitutionNeedPackages(t *testing.T) {
-	pkgctx, err := NewPackageContext(
+	pkgctx := NewPackageContext(
 		&config.Package{
 			Name:    "foo",
 			Version: "1.2.3",
 		},
 	)
-	require.NoError(t, err)
 
 	p := &config.Pipeline{
 		Needs: struct{ Packages []string }{Packages: []string{"foo", "${{inputs.go-package}}"}},
@@ -156,7 +152,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 		},
 	}
 
-	err = pctx.loadUse(pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
+	err := pctx.loadUse(pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
 	require.NoError(t, err)
 	require.Equal(t, "go-5.4.3", pctx.Pipeline.Needs.Packages[0])
 }

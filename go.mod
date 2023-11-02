@@ -4,9 +4,9 @@ go 1.21
 
 toolchain go1.21.1
 
-replace github.com/chainguard-dev/go-apk => ../go-apk
+replace github.com/chainguard-dev/go-apk => github.com/imjasonh/go-apk v0.0.0-20231102173510-21faa78e6c46
 
-replace chainguard.dev/apko => ../apko
+replace chainguard.dev/apko => github.com/imjasonh/apko v0.4.1-0.20231102174823-df399c64931a
 
 require (
 	chainguard.dev/apko v0.11.1

@@ -41,12 +41,15 @@ type PipelineContext struct {
 	steps    int
 }
 
-func NewPipelineContext(p *config.Pipeline, logger apko_log.Logger) (*PipelineContext, error) {
+func NewPipelineContext(p *config.Pipeline, log apko_log.Logger) *PipelineContext {
+	if log == nil {
+		log = logger.NopLogger{}
+	}
 	return &PipelineContext{
 		Pipeline: p,
-		logger:   logger,
+		logger:   log,
 		steps:    0,
-	}, nil
+	}
 }
 
 type PipelineBuild struct {
@@ -230,10 +233,7 @@ func (pctx *PipelineContext) dumpWith() {
 }
 
 func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) error {
-	spctx, err := NewPipelineContextFromPipelineBuild(pb)
-	if err != nil {
-		return err
-	}
+	spctx := NewPipelineContext(&config.Pipeline{}, pb.Build.Logger)
 
 	if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 		return err
@@ -388,25 +388,16 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 		return false, fmt.Errorf("stopping execution at breakpoint: %s", pctx.Pipeline.Label)
 	}
 
-	if pctx.logger == nil {
-		if err := pctx.initializeFromPipelineBuild(pb); err != nil {
-			return false, err
-		}
-	}
-
-	if pctx.shouldEvaluateBranch(pb) {
-		if err := pctx.evaluateBranch(ctx, pb); err != nil {
-			return false, err
-		}
-	} else {
+	if !pctx.shouldEvaluateBranch(pb) {
 		return false, nil
 	}
 
+	if err := pctx.evaluateBranch(ctx, pb); err != nil {
+		return false, err
+	}
+
 	for _, sp := range pctx.Pipeline.Pipeline {
-		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
-		if err != nil {
-			return false, err
-		}
+		spctx := NewPipelineContext(&sp, pb.Build.Logger)
 		if spctx.Pipeline.WorkDir == "" {
 			spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 		}
@@ -429,28 +420,6 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 	return true, nil
 }
 
-func (pctx *PipelineContext) initializeFromPipelineBuild(pb *PipelineBuild) error {
-	if l := pb.Build.Logger; l != nil {
-		pctx.logger = pb.Build.Logger
-	} else {
-		pctx.logger = logger.NopLogger{}
-	}
-
-	pctx.Pipeline = &config.Pipeline{}
-
-	return nil
-}
-
-func NewPipelineContextFromPipelineBuild(pb *PipelineBuild) (*PipelineContext, error) {
-	pctx := PipelineContext{}
-
-	if err := pctx.initializeFromPipelineBuild(pb); err != nil {
-		return nil, err
-	}
-
-	return &pctx, nil
-}
-
 // TODO(kaniini): Precompile pipeline before running / evaluating its
 // needs.
 func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
@@ -462,10 +431,7 @@ func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 	}
 
 	if pctx.Pipeline.Uses != "" {
-		spctx, err := NewPipelineContextFromPipelineBuild(pb)
-		if err != nil {
-			return err
-		}
+		spctx := NewPipelineContext(nil, pb.Build.Logger)
 
 		if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 			return err
@@ -479,10 +445,7 @@ func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 	ic.Contents.Packages = util.Dedup(ic.Contents.Packages)
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		spctx, err := NewPipelineContext(&sp, pb.Build.Logger)
-		if err != nil {
-			return err
-		}
+		spctx := NewPipelineContext(&sp, pb.Build.Logger)
 
 		if err := spctx.ApplyNeeds(pb); err != nil {
 			return err

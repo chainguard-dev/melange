@@ -76,6 +76,8 @@ github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
+github.com/chainguard-dev/go-apk v0.0.0-20231103143312-fc2ccc06eae1 h1:rTOTV8vrKvQeMo+wJh+fk/KZCltbbpcTWBEL/dDgMLw=
+github.com/chainguard-dev/go-apk v0.0.0-20231103143312-fc2ccc06eae1/go.mod h1:AF2jAOzQkIWpF/RhuUV9tAIzKYCeYy66/aaFP4oC9c4=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3SY2sW8rUIxG9wXMxXlMN7sd9VNUSdZ+FnVqOrm2nI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
@@ -364,10 +366,8 @@ github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d h1:LFOmpWrSbtolg0YqY
 github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d/go.mod h1:112TOyA+aruNSUBlyBWlKBdLVYTdhjiO2CKD0j/URSU=
 github.com/imdario/mergo v0.3.16 h1:wwQJbIsHYGMUyLSPrEq1CT16AhnhNJQ51+4fdHUnCl4=
 github.com/imdario/mergo v0.3.16/go.mod h1:WBLT9ZmE3lPoWsEzCh9LPo3TiwVN+ZKEjmz+hD27ysY=
-github.com/imjasonh/apko v0.4.1-0.20231102174823-df399c64931a h1:aT8Q5nb3YzmSmcYO9ct8O5GmDkhI6K3OIKIKSDj+KVk=
-github.com/imjasonh/apko v0.4.1-0.20231102174823-df399c64931a/go.mod h1:G8P+Z+D/ornliyauu3nMs/7/7N0/v7eDgfsE0Jq+2Ks=
-github.com/imjasonh/go-apk v0.0.0-20231102173510-21faa78e6c46 h1:5yPGyjivhoDcZ/cZ1KyIRc+yLN5fGnKBVBwnxKi1o4Q=
-github.com/imjasonh/go-apk v0.0.0-20231102173510-21faa78e6c46/go.mod h1:AF2jAOzQkIWpF/RhuUV9tAIzKYCeYy66/aaFP4oC9c4=
+github.com/imjasonh/apko v0.4.1-0.20231103143425-d08a911a8d97 h1:4z1ZDLjvfc2wFobrYf0oP6fFMHoWb0shyaK3FXa/clI=
+github.com/imjasonh/apko v0.4.1-0.20231103143425-d08a911a8d97/go.mod h1:Jsr08yIPjG11TsIdD8UyIlXQRU/iyXGfEWXQMEeWwF4=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=

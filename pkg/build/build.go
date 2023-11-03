@@ -922,8 +922,8 @@ func (b *Build) PopulateWorkspace(ctx context.Context) error {
 	})
 }
 
-func (sp SubpackageContext) ShouldRun(pb *PipelineBuild) (bool, error) {
-	if sp.Subpackage.If == "" {
+func (pb *PipelineBuild) ShouldRun(sp config.Subpackage) (bool, error) {
+	if sp.If == "" {
 		return true, nil
 	}
 
@@ -936,7 +936,7 @@ func (sp SubpackageContext) ShouldRun(pb *PipelineBuild) (bool, error) {
 		return mutated[nk], nil
 	}
 
-	result, err := cond.Evaluate(sp.Subpackage.If, lookupWith)
+	result, err := cond.Evaluate(sp.If, lookupWith)
 	if err != nil {
 		return false, fmt.Errorf("evaluating subpackage if-conditional: %w", err)
 	}
@@ -955,7 +955,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	b.Summarize()
 
-	pkg := NewPackageContext(&b.Configuration.Package)
+	pkg := &b.Configuration.Package
+
 	pb := PipelineBuild{
 		Build:   b,
 		Package: pkg,
@@ -979,9 +980,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	for _, spkg := range b.Configuration.Subpackages {
-		spkgctx := NewSubpackageContext(&spkg)
-		pb.Subpackage = spkgctx
-		for _, p := range spkgctx.Subpackage.Pipeline {
+		spkg := spkg
+		pb.Subpackage = &spkg
+		for _, p := range spkg.Pipeline {
 			pctx := NewPipelineContext(&p, b.Logger)
 			if err := pctx.ApplyNeeds(&pb); err != nil {
 				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
@@ -1061,12 +1062,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		spctx := NewSubpackageContext(&sp)
+		sp := sp
 		if !b.IsBuildLess() {
 			b.Logger.Printf("running pipeline for subpackage %s", sp.Name)
-			pb.Subpackage = spctx
+			pb.Subpackage = &sp
 
-			result, err := spctx.ShouldRun(&pb)
+			result, err := pb.ShouldRun(sp)
 			if err != nil {
 				return err
 			}
@@ -1074,7 +1075,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 				continue
 			}
 
-			for _, p := range spctx.Subpackage.Pipeline {
+			for _, p := range sp.Pipeline {
 				pctx := NewPipelineContext(&p, b.Logger)
 				if _, err := pctx.Run(ctx, &pb); err != nil {
 					return fmt.Errorf("unable to run pipeline: %w", err)
@@ -1124,14 +1125,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// generate SBOMs for subpackages
 	for _, sp := range b.Configuration.Subpackages {
+		sp := sp
 		langs := []string{}
 
-		spctx := NewSubpackageContext(&sp)
 		if !b.IsBuildLess() {
 			b.Logger.Printf("generating SBOM for subpackage %s", sp.Name)
-			pb.Subpackage = spctx
+			pb.Subpackage = &sp
 
-			result, err := spctx.ShouldRun(&pb)
+			result, err := pb.ShouldRun(sp)
 			if err != nil {
 				return err
 			}
@@ -1172,16 +1173,16 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// emit main package
-	if err := pkg.Emit(ctx, &pb); err != nil {
+	if err := pb.Emit(ctx, pkg); err != nil {
 		return fmt.Errorf("unable to emit package: %w", err)
 	}
 
 	// emit subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		spctx := NewSubpackageContext(&sp)
-		pb.Subpackage = spctx
+		sp := sp
+		pb.Subpackage = &sp
 
-		result, err := spctx.ShouldRun(&pb)
+		result, err := pb.ShouldRun(sp)
 		if err != nil {
 			return err
 		}
@@ -1189,7 +1190,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			continue
 		}
 
-		if err := spctx.Emit(ctx, &pb); err != nil {
+		if err := pb.Emit(ctx, pkgFromSub(&sp)); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
 	}
@@ -1219,10 +1220,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range b.Configuration.Subpackages {
-			spctx := NewSubpackageContext(&subpkg)
-			pb.Subpackage = spctx
+			subpkg := subpkg
+			pb.Subpackage = &subpkg
 
-			result, err := spctx.ShouldRun(&pb)
+			result, err := pb.ShouldRun(subpkg)
 			if err != nil {
 				return err
 			}

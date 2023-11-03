@@ -51,16 +51,14 @@ func Test_substitutionMap(t *testing.T) {
 		{initialVersion: "1.2.3.9", match: `\.(\d+)$`, replace: "+$1", expected: "1.2.3+9"},
 	}
 	for _, tt := range tests {
-		pkgctx := NewPackageContext(
-			&config.Package{
-				Name:    "foo",
-				Version: tt.initialVersion,
-			},
-		)
+		pkg := &config.Package{
+			Name:    "foo",
+			Version: tt.initialVersion,
+		}
 
 		t.Run("sub", func(t *testing.T) {
 			pb := &PipelineBuild{
-				Package: pkgctx,
+				Package: pkg,
 				Build: &Build{
 					Configuration: config.Configuration{
 						VarTransforms: []config.VarTransforms{
@@ -95,11 +93,9 @@ func Test_MutateWith(t *testing.T) {
 		want:    "1.2.3-r3",
 	}} {
 		pb := &PipelineBuild{
-			Package: &PackageContext{
-				Package: &config.Package{
-					Version: tc.version,
-					Epoch:   tc.epoch,
-				},
+			Package: &config.Package{
+				Version: tc.version,
+				Epoch:   tc.epoch,
 			},
 			Build: &Build{},
 		}
@@ -115,12 +111,10 @@ func Test_MutateWith(t *testing.T) {
 }
 
 func Test_substitutionNeedPackages(t *testing.T) {
-	pkgctx := NewPackageContext(
-		&config.Package{
-			Name:    "foo",
-			Version: "1.2.3",
-		},
-	)
+	pkg := &config.Package{
+		Name:    "foo",
+		Version: "1.2.3",
+	}
 
 	p := &config.Pipeline{
 		Needs: struct{ Packages []string }{Packages: []string{"foo", "${{inputs.go-package}}"}},
@@ -134,7 +128,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 	pctx := NewPipelineContext(p, logger.NopLogger{})
 
 	pb := &PipelineBuild{
-		Package: pkgctx,
+		Package: pkg,
 		Build: &Build{
 			PipelineDir: "pipelines",
 			Configuration: config.Configuration{

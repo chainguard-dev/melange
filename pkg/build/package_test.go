@@ -56,12 +56,10 @@ func Test_removeSelfProvidedDeps_WithEmptyProvides(t *testing.T) {
 }
 
 func Test_GenerateControlData(t *testing.T) {
-	pkgctx := NewPackageContext(
-		&config.Package{
-			Version: "1.2.3",
-			Epoch:   4,
-		},
-	)
+	pkg := &config.Package{
+		Version: "1.2.3",
+		Epoch:   4,
+	}
 
 	tests := []struct {
 		name string
@@ -73,7 +71,7 @@ func Test_GenerateControlData(t *testing.T) {
 			Build: &Build{
 				SourceDateEpoch: time.Unix(0, 0),
 			},
-			Origin:        pkgctx,
+			Origin:        pkg,
 			PackageName:   "glibc",
 			Arch:          "aarch64",
 			InstalledSize: 666,
@@ -100,7 +98,7 @@ datahash = baadf00d
 			Build: &Build{
 				SourceDateEpoch: time.Unix(12345678, 0),
 			},
-			Origin:        pkgctx,
+			Origin:        pkg,
 			PackageName:   "glibc",
 			Arch:          "aarch64",
 			InstalledSize: 666,

@@ -54,8 +54,8 @@ func NewPipelineContext(p *config.Pipeline, log apko_log.Logger) *PipelineContex
 
 type PipelineBuild struct {
 	Build      *Build
-	Package    *PackageContext
-	Subpackage *SubpackageContext
+	Package    *config.Package
+	Subpackage *config.Subpackage
 }
 
 func (pctx *PipelineContext) Identity() string {
@@ -98,12 +98,12 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	nw := map[string]string{
-		config.SubstitutionPackageName:          pb.Package.Package.Name,
-		config.SubstitutionPackageVersion:       pb.Package.Package.Version,
-		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Package.Epoch, 10),
+		config.SubstitutionPackageName:          pb.Package.Name,
+		config.SubstitutionPackageVersion:       pb.Package.Version,
+		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Epoch, 10),
 		config.SubstitutionPackageFullVersion:   fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
-		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
-		config.SubstitutionTargetsContextdir:    fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Package.Name),
+		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
+		config.SubstitutionTargetsContextdir:    fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
 		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
 		config.SubstitutionHostTripletRust:      pb.Build.BuildTripletRust(),
 		config.SubstitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
@@ -128,11 +128,11 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	if pb.Subpackage != nil {
-		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Subpackage.Name)
+		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Name)
 		nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
 	}
 
-	packageNames := []string{pb.Package.Package.Name}
+	packageNames := []string{pb.Package.Name}
 	for _, sp := range pb.Build.Configuration.Subpackages {
 		packageNames = append(packageNames, sp.Name)
 	}

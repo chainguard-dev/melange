@@ -38,7 +38,7 @@ func (sca *SCABuildInterface) PackageName() string {
 // RelativeNames returns all the package names relating to the package being
 // built.
 func (sca *SCABuildInterface) RelativeNames() []string {
-	targets := []string{sca.PackageBuild.Origin.Package.Name}
+	targets := []string{sca.PackageBuild.Origin.Name}
 
 	for _, target := range sca.PackageBuild.Build.Configuration.Subpackages {
 		targets = append(targets, target.Name)
@@ -49,7 +49,7 @@ func (sca *SCABuildInterface) RelativeNames() []string {
 
 // Version returns the version of the package being built including epoch.
 func (sca *SCABuildInterface) Version() string {
-	return fmt.Sprintf("%s-r%d", sca.PackageBuild.Origin.Package.Version, sca.PackageBuild.Origin.Package.Epoch)
+	return fmt.Sprintf("%s-r%d", sca.PackageBuild.Origin.Version, sca.PackageBuild.Origin.Epoch)
 }
 
 // FilesystemForRelative implements an abstract filesystem for any of the packages being

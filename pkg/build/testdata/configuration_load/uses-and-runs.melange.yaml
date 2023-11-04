@@ -1,0 +1,9 @@
+package:
+  name: cosign
+  version: 2.0.0
+  epoch: 0
+
+pipeline:
+  - uses: go/build
+    runs: |
+      echo "Can't have both"

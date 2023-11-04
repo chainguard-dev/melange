@@ -164,6 +164,12 @@ func TestConfiguration_Load(t *testing.T) {
 			expected:            nil,
 		},
 		{
+			name:                "uses-and-runs",
+			skipConfigCleanStep: true,
+			requireErr:          requireErrInvalidConfiguration,
+			expected:            nil,
+		},
+		{
 			name:                "invalid-package-name",
 			skipConfigCleanStep: true,
 			requireErr:          requireErrInvalidConfiguration,

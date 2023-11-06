@@ -55,6 +55,10 @@ inputs:
     description:
       List of [pattern=]arg to pass to the go compiler with -ldflags
 
+  flags:
+    description: |
+      List of any aditional go build flags e.g: -mod=vendor -gcflags="-m=2",  etc.
+
   install-dir:
     description: |
       Directory where binaries will be installed
@@ -68,6 +72,7 @@ pipeline:
   - runs: |
       TAGS=""
       LDFLAGS=""
+      FLAGS=""
 
       if [ ! "${{inputs.tags}}" == "" ]; then
         TAGS="${{inputs.tags}}"
@@ -75,6 +80,10 @@ pipeline:
 
       if [ ! "${{inputs.ldflags}}" == "" ]; then
         LDFLAGS="${{inputs.ldflags}}"
+      fi
+
+      if [ ! "${{inputs.flags}}" == "" ]; then
+        FLAGS="${{inputs.flags}}"
       fi
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
@@ -90,4 +99,4 @@ pipeline:
         # If vendor is specified, update the vendor directory
         "${{inputs.vendor}}" && go mod vendor
       fi
-      go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
+      go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${FLAGS} -trimpath ${{inputs.packages}}

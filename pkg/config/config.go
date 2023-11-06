@@ -817,7 +817,7 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
 	if err = cfg.validate(); err != nil {
-		return nil, fmt.Errorf("validating configuration: %w", err)
+		return nil, fmt.Errorf("validating configuration %q: %w", cfg.Package.Name, err)
 	}
 
 	return &cfg, nil
@@ -872,7 +872,11 @@ func (cfg Configuration) validate() error {
 func validatePipelines(ps []Pipeline) error {
 	for _, p := range ps {
 		if p.Uses != "" && p.Runs != "" {
-			return fmt.Errorf("pipeline cannot contain both uses %q and runs %q", p.Uses, p.Runs)
+			return fmt.Errorf("pipeline cannot contain both uses %q and runs", p.Uses)
+		}
+
+		if len(p.With) > 0 && p.Runs != "" {
+			return fmt.Errorf("pipeline cannot contain both with and runs")
 		}
 
 		if err := validatePipelines(p.Pipeline); err != nil {

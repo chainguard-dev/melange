@@ -169,7 +169,3 @@ pipeline:
 
 To use a melange built apk in apko, either upload it to a package repository or use a "local" repository. Using a local repository allows a melange build and apko build to run in the same directory (or GitHub repo) without using external storage.
 An example of this approach can be seen in the [nginx-image-demo repo](https://github.com/chainguard-dev/nginx-image-demo/).
-
-### Coming soon: Keyless signatures
-
-We are working to enable keyless signatures using [Sigstore Fulcio](https://github.com/SigStore/fulcio), which can be used with traditional signed indices to remove the need to have sensitive key material inside the build environment.

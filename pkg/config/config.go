@@ -835,6 +835,10 @@ func (e ErrInvalidConfiguration) Error() string {
 	return fmt.Sprintf("build configuration is invalid: %v", e.Problem)
 }
 
+func (e ErrInvalidConfiguration) Unwrap() error {
+	return e.Problem
+}
+
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z\d][a-zA-Z\d+_.-]*$`)
 
 func (cfg Configuration) validate() error {
@@ -848,12 +852,33 @@ func (cfg Configuration) validate() error {
 
 	// TODO: try to validate value of .package.version
 
+	if err := validatePipelines(cfg.Pipeline); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
+
 	for i, sp := range cfg.Subpackages {
 		if !packageNameRegex.MatchString(sp.Name) {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}
+
+		if err := validatePipelines(sp.Pipeline); err != nil {
+			return ErrInvalidConfiguration{Problem: err}
+		}
 	}
 
+	return nil
+}
+
+func validatePipelines(ps []Pipeline) error {
+	for _, p := range ps {
+		if p.Uses != "" && p.Runs != "" {
+			return fmt.Errorf("pipeline cannot contain both uses %q and runs %q", p.Uses, p.Runs)
+		}
+
+		if err := validatePipelines(p.Pipeline); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

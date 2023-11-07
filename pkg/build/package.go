@@ -531,14 +531,8 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 }
 
 func (pc *PackageBuild) Signer() ApkSigner {
-	var signer ApkSigner
-	if pc.Build.SigningKey == "" {
-		signer = &FulcioApkSigner{}
-	} else {
-		signer = &KeyApkSigner{
-			KeyFile:       pc.Build.SigningKey,
-			KeyPassphrase: pc.Build.SigningPassphrase,
-		}
+	return &KeyApkSigner{
+		KeyFile:       pc.Build.SigningKey,
+		KeyPassphrase: pc.Build.SigningPassphrase,
 	}
-	return signer
 }

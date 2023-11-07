@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
-	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -86,27 +85,4 @@ func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
 
 func (s KeyApkSigner) SignatureName() string {
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(s.KeyFile))
-}
-
-// APKv2+Fulcio style signature is an SHA-256 hash on the control
-// digest.
-// TODO(kaniini): Emit fulcio signature if signing key not configured.
-type FulcioApkSigner struct{}
-
-// Sign implements ApkSigner.
-func (*FulcioApkSigner) Sign(control []byte) ([]byte, error) {
-	digest := sha256.New()
-
-	_, err := digest.Write(control)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Do the signing
-	return nil, fmt.Errorf("APKv2+Fulcio style signature is not yet supported")
-}
-
-// SignatureName implements ApkSigner.
-func (*FulcioApkSigner) SignatureName() string {
-	panic("unimplemented")
 }

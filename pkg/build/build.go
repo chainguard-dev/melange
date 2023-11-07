@@ -1047,14 +1047,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	// Run the SBOM generator
-	generator, err := sbom.NewGenerator()
-	if err != nil {
-		return fmt.Errorf("creating sbom generator: %w", err)
-	}
-
-	// Capture languages declared in pipelines
-	langs := []string{}
 	namespace := b.Namespace
 	if namespace == "" {
 		namespace = "unknown"
@@ -1109,24 +1101,25 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linters := lt.checks.GetLinters()
 
 		var innerErr error
-		err = linter.LintBuild(lt.pkgName, path, func(err error) {
+		if err := linter.LintBuild(lt.pkgName, path, func(err error) {
 			if b.FailOnLintWarning {
 				innerErr = err
 			} else {
 				b.Logger.Warnf("WARNING: %v", err)
 			}
-		}, linters)
-		if err != nil {
+		}, linters); err != nil {
 			return fmt.Errorf("package linter error: %w", err)
 		} else if innerErr != nil {
 			return fmt.Errorf("package linter warning: %w", err)
 		}
 	}
 
+	// Run the SBOM generator.
+	generator := sbom.NewGenerator()
+
 	// generate SBOMs for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
-		langs := []string{}
 
 		if !b.IsBuildLess() {
 			b.Logger.Printf("generating SBOM for subpackage %s", sp.Name)
@@ -1139,17 +1132,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if !result {
 				continue
 			}
-
-			for _, p := range sp.Pipeline {
-				langs = append(langs, p.SBOM.Language)
-			}
 		}
 
 		if err := generator.GenerateSBOM(ctx, &sbom.Spec{
 			Path:           filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
 			PackageName:    sp.Name,
 			PackageVersion: fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-			Languages:      langs,
 			License:        b.Configuration.Package.LicenseExpression(),
 			Copyright:      b.Configuration.Package.FullCopyright(),
 			Namespace:      namespace,
@@ -1163,7 +1151,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		Path:           filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
 		PackageName:    b.Configuration.Package.Name,
 		PackageVersion: fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-		Languages:      langs,
 		License:        b.Configuration.Package.LicenseExpression(),
 		Copyright:      b.Configuration.Package.FullCopyright(),
 		Namespace:      namespace,

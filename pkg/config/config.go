@@ -269,8 +269,6 @@ type Pipeline struct {
 	//
 	// This defaults to the guests' build workspace (/home/build)
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
-	// Optional: Configuration for the generated SBOM
-	SBOM SBOM `json:"sbom,omitempty" yaml:"sbom,omitempty"`
 	// Optional: environment variables to override the apko environment
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }

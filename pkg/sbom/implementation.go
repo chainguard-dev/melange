@@ -41,18 +41,6 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
-type generatorImplementation interface {
-	CheckEnvironment(*Spec) (bool, error)
-	GenerateDocument(*Spec) (*bom, error)
-	GenerateAPKPackage(*Spec) (pkg, error)
-	ScanFiles(*Spec, *pkg) error
-	ScanLicenses(*Spec, *bom) error
-	ReadDependencyData(*Spec, *bom, string) error
-	WriteSBOM(*Spec, *bom) error
-}
-
-type defaultGeneratorImplementation struct{}
-
 var validIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
 
 func stringToIdentifier(in string) (out string) {
@@ -68,7 +56,7 @@ func stringToIdentifier(in string) (out string) {
 	})
 }
 
-func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, error) {
+func CheckEnvironment(spec *Spec) (bool, error) {
 	dirPath, err := filepath.Abs(spec.Path)
 	if err != nil {
 		return false, fmt.Errorf("getting absolute directory path: %w", err)
@@ -77,7 +65,6 @@ func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, er
 	// Check if directory exists
 	if _, err := os.Stat(dirPath); err != nil {
 		if os.IsNotExist(err) {
-			spec.logger.Print("Warning: Working directory not found, probably apk is empty")
 			return false, nil
 		}
 		return false, fmt.Errorf("checking if workind directory exists: %w", err)
@@ -86,15 +73,8 @@ func (di *defaultGeneratorImplementation) CheckEnvironment(spec *Spec) (bool, er
 	return true, nil
 }
 
-func (di *defaultGeneratorImplementation) GenerateDocument(spec *Spec) (*bom, error) {
-	return &bom{
-		Packages: []pkg{},
-		Files:    []file{},
-	}, nil
-}
-
 // GenerateAPKPackage generates the sbom package representing the apk
-func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, error) {
+func GenerateAPKPackage(spec *Spec) (pkg, error) {
 	if spec.PackageName == "" {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
@@ -121,7 +101,7 @@ func (di *defaultGeneratorImplementation) GenerateAPKPackage(spec *Spec) (pkg, e
 
 // ScanFiles reads the files to be packaged in the apk and
 // extracts the required data for the SBOM.
-func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg) error {
+func ScanFiles(spec *Spec, dirPackage *pkg) error {
 	dirPath, err := filepath.Abs(spec.Path)
 	if err != nil {
 		return fmt.Errorf("getting absolute directory path: %w", err)
@@ -204,14 +184,6 @@ func (di *defaultGeneratorImplementation) ScanFiles(spec *Spec, dirPackage *pkg)
 
 		dirPackage.Relationships = append(dirPackage.Relationships, rel)
 	}
-	return nil
-}
-
-func (di *defaultGeneratorImplementation) ScanLicenses(spec *Spec, doc *bom) error {
-	return nil
-}
-
-func (di *defaultGeneratorImplementation) ReadDependencyData(spec *Spec, doc *bom, language string) error {
 	return nil
 }
 
@@ -411,7 +383,7 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 }
 
 // WriteSBOM writes the SBOM to the apk filesystem
-func (di *defaultGeneratorImplementation) WriteSBOM(spec *Spec, doc *bom) error {
+func WriteSBOM(spec *Spec, doc *bom) error {
 	spdxDoc, err := buildDocumentSPDX(spec, doc)
 	if err != nil {
 		return fmt.Errorf("building SPDX document: %w", err)

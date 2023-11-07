@@ -22,22 +22,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-func NewGenerator() (*Generator, error) {
+func NewGenerator() *Generator {
 	return &Generator{
-		impl:    &defaultGeneratorImplementation{},
-		logger:  log.New(log.Writer(), "melange-sbom: ", log.LstdFlags|log.Lmsgprefix),
-		Options: defaultOptions,
-	}, nil
-}
-
-var defaultOptions = Options{
-	ScanLicenses: true,
-	ScanFiles:    true,
-}
-
-type Options struct {
-	ScanLicenses bool
-	ScanFiles    bool
+		logger: log.New(log.Writer(), "melange-sbom: ", log.LstdFlags|log.Lmsgprefix),
+	}
 }
 
 type Spec struct {
@@ -48,14 +36,10 @@ type Spec struct {
 	Copyright      string
 	Namespace      string
 	Arch           string
-	logger         *log.Logger
-	Languages      []string
 }
 
 type Generator struct {
-	Options Options
-	logger  *log.Logger
-	impl    generatorImplementation
+	logger *log.Logger
 }
 
 // GenerateSBOM runs the main SBOM generation process
@@ -63,52 +47,35 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
 	defer span.End()
 
-	spec.logger = g.logger
-	shouldRun, err := g.impl.CheckEnvironment(spec)
+	shouldRun, err := CheckEnvironment(spec)
 	if err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)
 	}
 
 	if !shouldRun {
-		// log "Not generating SBOM"
+		g.logger.Print("Warning: Working directory not found, probably apk is empty")
 		return nil
 	}
 
-	sbomDoc, err := g.impl.GenerateDocument(spec)
-	if err != nil {
-		return fmt.Errorf("initializing new SBOM: %w", err)
+	sbomDoc := &bom{
+		Packages: []pkg{},
+		Files:    []file{},
 	}
 
-	pkg, err := g.impl.GenerateAPKPackage(spec)
+	pkg, err := GenerateAPKPackage(spec)
 	if err != nil {
 		return fmt.Errorf("generating main package: %w", err)
 	}
 
 	// Add file inventory to packages
-	if g.Options.ScanFiles {
-		if err := g.impl.ScanFiles(spec, &pkg); err != nil {
-			return fmt.Errorf("reading SBOM file inventory: %w", err)
-		}
+	if err := ScanFiles(spec, &pkg); err != nil {
+		return fmt.Errorf("reading SBOM file inventory: %w", err)
 	}
 
 	sbomDoc.Packages = append(sbomDoc.Packages, pkg)
 
-	// Scan files for licensing data
-	if g.Options.ScanLicenses {
-		if err := g.impl.ScanLicenses(spec, sbomDoc); err != nil {
-			return fmt.Errorf("reading SBOM file inventory: %w", err)
-		}
-	}
-
-	// Generate dependency data from each language specified in the opts
-	for _, lang := range spec.Languages {
-		if err := g.impl.ReadDependencyData(spec, sbomDoc, lang); err != nil {
-			return fmt.Errorf("reading %s dependecy data: %w", lang, err)
-		}
-	}
-
 	// Finally, write the SBOM data to disk
-	if err := g.impl.WriteSBOM(spec, sbomDoc); err != nil {
+	if err := WriteSBOM(spec, sbomDoc); err != nil {
 		return fmt.Errorf("writing sbom to disk: %w", err)
 	}
 

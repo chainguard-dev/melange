@@ -1043,6 +1043,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
 			pkgName: b.Configuration.Package.Name,
+			checks:  b.Configuration.Package.Checks,
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}
@@ -1082,6 +1083,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
 			pkgName: sp.Name,
+			checks:  sp.Checks,
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}

@@ -413,7 +413,12 @@ type GitHubMonitor struct {
 	// If the version in GitHub contains a suffix which should be ignored
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
 	// Filter to apply when searching tags on a GitHub repository
+	// Deprecated: Use TagFilterPrefix instead
 	TagFilter string `json:"tag-filter,omitempty" yaml:"tag-filter,omitempty"`
+	// Prefix filter to apply when searching tags on a GitHub repository
+	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
+	// Filter to apply when searching tags on a GitHub repository
+	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
 	// Override the default of using a GitHub release to identify related tag to
 	// fetch.  Not all projects use GitHub releases but just use tags
 	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`

@@ -415,7 +415,7 @@ type GitHubMonitor struct {
 	// Filter to apply when searching tags on a GitHub repository
 	// Deprecated: Use TagFilterPrefix instead
 	TagFilter string `json:"tag-filter,omitempty" yaml:"tag-filter,omitempty"`
-	// Filter to apply when searching tags on a GitHub repository
+	// Prefix filter to apply when searching tags on a GitHub repository
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
 	// Filter to search tags on the Github tag results
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`

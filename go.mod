@@ -60,36 +60,11 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.3 // indirect
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
-	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.11.29 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12 // indirect
-	github.com/Azure/go-autorest/autorest/azure/cli v0.4.6 // indirect
-	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
-	github.com/Azure/go-autorest/logger v0.2.1 // indirect
-	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.22.1 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.22.0 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.15.1 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.5.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.22.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.20.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.17.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.19.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.25.0 // indirect
-	github.com/aws/smithy-go v1.16.0 // indirect
-	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20231024185945-8841054dbdb8 // indirect
-	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 // indirect
 	github.com/cloudflare/circl v1.3.6 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/containerd v1.7.7 // indirect
@@ -97,7 +72,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/cli v24.0.7+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
@@ -126,13 +100,11 @@ require (
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/goccy/go-yaml v1.11.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/pprof v0.0.0-20231023181126-ff6d637d2a7b // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.4.0 // indirect
@@ -145,7 +117,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -176,12 +147,9 @@ require (
 	github.com/sigstore/rekor v1.3.3 // indirect
 	github.com/sigstore/sigstore v1.7.5 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
-	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/theupdateframework/go-tuf v0.6.1 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
-	github.com/tmc/dot v0.0.0-20210901225022-f9bc17da75c0 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/whilp/git-urls v1.0.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

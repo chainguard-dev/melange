@@ -20,6 +20,7 @@ package:
     runtime:
       - ${{package.name}}-config
       - ${{vars.bar}}
+      - other-package=${{package.version}}
     provides:
       - replacement-provides-version=${{package.version}}
       - replacement-provides-foo=${{vars.foo}}
@@ -36,6 +37,7 @@ subpackages:
       runtime:
         - ${{package.name}}-config-${{package.version}}
         - ${{vars.foo}}
+        - other-package=${{package.version}}
       provides:
         - subpackage-version=${{package.version}}
         - subpackage-foo=${{vars.foo}}
@@ -63,11 +65,13 @@ subpackages:
 	require.Equal(t, []string{
 		"replacement-provides-config",
 		"BAR",
+		"other-package=0.0.1",
 	}, cfg.Package.Dependencies.Runtime)
 
 	require.Equal(t, []string{
 		"replacement-provides-config-0.0.1",
 		"FOO",
+		"other-package=0.0.1",
 	}, cfg.Subpackages[0].Dependencies.Runtime)
 }
 

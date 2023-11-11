@@ -27,6 +27,11 @@ package:
       - replacement-provides-bar=${{vars.bar}}
       - replacement-provides=${{package.full-version}}
 
+environment:
+  contents:
+    packages:
+      - dep~${{package.version}}
+
 vars:
   foo: FOO
   bar: BAR
@@ -73,6 +78,10 @@ subpackages:
 		"FOO",
 		"other-package=0.0.1",
 	}, cfg.Subpackages[0].Dependencies.Runtime)
+
+	require.Equal(t, []string{
+		"dep~0.0.1",
+	}, cfg.Environment.Contents.Packages)
 }
 
 func Test_rangeSubstitutions(t *testing.T) {

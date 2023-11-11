@@ -155,7 +155,7 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 		var err error
 		cfg.Package.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", runtime, err)
+			return fmt.Errorf("failed to apply replacement to runtime %q: %w", runtime, err)
 		}
 	}
 	for _, srt := range cfg.Subpackages {
@@ -163,8 +163,20 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 			var err error
 			srt.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, prov)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
+				return fmt.Errorf("failed to apply replacement to runtime %q: %w", prov, err)
 			}
+		}
+	}
+	return nil
+}
+
+func (cfg *Configuration) applySubstitutionsForPackages() error {
+	nw := buildConfigMap(cfg)
+	for i, runtime := range cfg.Environment.Contents.Packages {
+		var err error
+		cfg.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to package %q: %w", runtime, err)
 		}
 	}
 	return nil
@@ -812,6 +824,9 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		return nil, err
 	}
 	if err := cfg.applySubstitutionsForRuntime(); err != nil {
+		return nil, err
+	}
+	if err := cfg.applySubstitutionsForPackages(); err != nil {
 		return nil, err
 	}
 

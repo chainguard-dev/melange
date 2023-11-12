@@ -1,0 +1,37 @@
+name: Run go mod tidy and vendor dependencies
+needs:
+  packages:
+    - "${{inputs.go-package}}"
+    - busybox
+    - ca-certificates-bundle
+inputs:
+  go-package:
+    description: |
+      The go package to install
+    default: go
+  vendor:
+    description: |
+      If true, the go mod command will also update the vendor directory
+    default: "false"
+  modroot:
+    default: "."
+    required: false
+    description: |
+      Top directory of the go module, this is where go.mod lives. Before buiding
+      the go pipeline wil cd into this directory.
+  deps:
+    description: |
+      space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
+pipeline:
+  - runs: |
+      cd "${{inputs.modroot}}"
+
+      # Install any specified dependencies
+      if [ ! "${{inputs.deps}}" == "" ]; then
+        for dep in ${{inputs.deps}}; do
+          go get $dep
+        done
+        go mod tidy
+        # If vendor is specified, update the vendor directory
+        "${{inputs.vendor}}" && go mod vendor
+      fi

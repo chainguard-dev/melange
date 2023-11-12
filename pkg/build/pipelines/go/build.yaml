@@ -1,70 +1,68 @@
 name: Run a build using the go compiler
-
 needs:
   packages:
     - ${{inputs.go-package}}
     - busybox
     - ca-certificates-bundle
-
 inputs:
   go-package:
     description: |
       The go package to install
     default: go
-
   packages:
     description: |
       List of space-separated packages to compile. Files con also be specified.
       This value is passed as an argument to go build. All paths are relative
       to inputs.modroot.
     required: true
-
   tags:
     description: |
       A comma-separated list of build tags to pass to the go compiler
-
   output:
     description: |
       Filename to use when writing the binary. The final install location inside
       the apk will be in prefix / install-dir / output
     required: true
-
   vendor:
     description: |
       If true, the go mod command will also update the vendor directory
     default: "false"
-
   subpackage:
     description: |
       Indicates that the build will write to a subpackage target folder
     default: "false"
-
   modroot:
     default: "."
     required: false
     description: |
       Top directory of the go module, this is where go.mod lives. Before buiding
       the go pipeline wil cd into this directory.
-
   prefix:
     description: |
       Prefix to relocate binaries
     default: usr
-
   ldflags:
-    description:
-      List of [pattern=]arg to pass to the go compiler with -ldflags
-
+    description: List of [pattern=]arg to pass to the go compiler with -ldflags
   install-dir:
     description: |
       Directory where binaries will be installed
     default: bin
-
   deps:
     description: |
       space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
-
 pipeline:
+  - runs: |
+      cd "${{inputs.modroot}}"
+
+      # Install any specified dependencies
+      if [ ! "${{inputs.deps}}" == "" ]; then
+        for dep in ${{inputs.deps}}; do
+          go get $dep
+        done
+        go mod tidy
+        # If vendor is specified, update the vendor directory
+        "${{inputs.vendor}}" && go mod vendor
+      fi
   - runs: |
       TAGS=""
       LDFLAGS=""
@@ -80,14 +78,4 @@ pipeline:
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 
       cd "${{inputs.modroot}}"
-
-      # Install any specified dependencies
-      if [ ! "${{inputs.deps}}" == "" ]; then
-        for dep in ${{inputs.deps}}; do
-          go get $dep
-        done
-        go mod tidy
-        # If vendor is specified, update the vendor directory
-        "${{inputs.vendor}}" && go mod vendor
-      fi
       go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}

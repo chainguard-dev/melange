@@ -41,7 +41,7 @@ require (
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.14.0
-	golang.org/x/time v0.3.0
+	golang.org/x/time v0.4.0
 	google.golang.org/api v0.150.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1

@@ -90,4 +90,9 @@ pipeline:
         # If vendor is specified, update the vendor directory
         "${{inputs.vendor}}" && go mod vendor
       fi
+
+      # Install go mod overlay if it exists.
+      [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
+      [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
+
       go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}

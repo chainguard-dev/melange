@@ -433,7 +433,6 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 			With: map[string]string{
 				"repository":      ghVersion.Repo,
 				"tag":             ghVersion.TagPrefix + "${{package.version}}",
-				"README":          fmt.Sprintf("for version %s, if you use this, update the package.version above to this version", ghVersion.Tag),
 				"expected-commit": ghVersion.SHA,
 			}})
 	}

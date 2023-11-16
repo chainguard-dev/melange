@@ -72,7 +72,7 @@ func Convert() *cobra.Command {
 
 	// Experimental flag to see if we can fetch github repo details and use that
 	// in pipeline to fetch instead of the ftp.
-	cmd.PersistentFlags().BoolVar(&c.useGithub, "use-github", false, "**experimental** if true, tries to use github to figure out the release commit details (python only for now). To prevent rate limiting, you can set the GITHUB_TOKEN env variable to a github token.")
+	cmd.PersistentFlags().BoolVar(&c.useGithub, "use-github", true, "**experimental** if true, tries to use github to figure out the release commit details (python only for now). To prevent rate limiting, you can set the GITHUB_TOKEN env variable to a github token.")
 
 	cmd.AddCommand(
 		ApkBuild(),

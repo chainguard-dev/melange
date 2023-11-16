@@ -48,6 +48,7 @@ func PythonBuild() *cobra.Command {
 convert python botocore`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			if len(args) != 1 {
 				return errors.New("too many arguments, expected only 1")
 			}
@@ -60,7 +61,7 @@ convert python botocore`,
 			if err != nil {
 				return err
 			}
-			o.ghClient, err = getGithubClient(context.TODO(), cmd)
+			o.ghClient, err = getGithubClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

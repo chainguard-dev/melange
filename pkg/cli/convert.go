@@ -51,7 +51,7 @@ func Convert() *cobra.Command {
 	}
 	// Add out-dir, as well as additional-repos and additiona-keyrings flag to
 	// all subcommands
-	cmd.PersistentFlags().StringVarP(&c.outDir, "out-dir", "o", "./generated", "directory where convert config will be output")
+	cmd.PersistentFlags().StringVarP(&c.outDir, "out-dir", "o", ".", "directory where convert config will be output")
 	cmd.PersistentFlags().StringArray(
 		"additional-repositories", []string{},
 		"additional repositories to be added to convert environment config",

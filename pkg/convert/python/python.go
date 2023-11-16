@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -113,8 +115,7 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 	c.ToCheck = append(c.ToCheck, p.Info.Name)
 
 	// download the package json metadata and find all it's deps
-	err = c.findDep(ctx)
-	if err != nil {
+	if err := c.findDep(ctx); err != nil {
 		return err
 	}
 
@@ -237,8 +238,16 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 		}
 	}
 
+	if _, err := os.Stat(filepath.Join(c.OutDir, "py3-"+p.Info.Name+".yaml")); err == nil {
+		// Package already exists, so skip it.
+		// We may still need to crawl its deps though.
+		c.Logger.Printf("[%s] Package already exists, skipping", p.Info.Name)
+	} else {
+		c.ToGenerate[p.Info.Name] = *p
+	}
+
 	c.Logger.Printf("[%s] %v Number of deps", p.Info.Name, len(p.Dependencies))
-	c.ToGenerate[p.Info.Name] = *p
+
 	// recursive call
 	return c.findDep(ctx)
 }

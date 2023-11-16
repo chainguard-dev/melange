@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
-
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 type GeneratedMelangeConfig struct {
@@ -54,16 +54,17 @@ func (m *GeneratedMelangeConfig) Write(dir string) error {
 	}
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("# Generated from %s\n", m.GeneratedFromComment))
-	if err != nil {
+	if _, err := f.WriteString(fmt.Sprintf("# Generated from %s\n", m.GeneratedFromComment)); err != nil {
 		return errors.Wrapf(err, "creating writing to file %s", manifestPath)
 	}
 
-	ye := yaml.NewEncoder(f)
-	defer ye.Close()
+	var n yaml.Node
+	if err := n.Encode(m); err != nil {
+		return errors.Wrapf(err, "encoding YAML to node %s", manifestPath)
+	}
 
-	if err := ye.Encode(m); err != nil {
-		return errors.Wrapf(err, "creating writing to file %s", manifestPath)
+	if err := formatted.NewEncoder(f).AutomaticConfig().Encode(&n); err != nil {
+		return errors.Wrapf(err, "encoding YAML to file %s", manifestPath)
 	}
 
 	if m.Logger != nil {

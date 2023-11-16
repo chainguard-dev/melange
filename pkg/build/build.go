@@ -94,6 +94,8 @@ type Build struct {
 	FailOnLintWarning  bool
 
 	EnabledBuildOptions []string
+
+	resolvedApkoConfig apko_types.ImageConfiguration
 }
 
 var ErrSkipThisArch = errors.New("error: skip this arch")
@@ -538,6 +540,26 @@ func WithPackageCacheDir(apkCacheDir string) Option {
 	}
 }
 
+func (b *Build) resolveConfig(ctx context.Context, bc *apko_build.Context) error {
+	ic := bc.ImageConfiguration()
+	pkgs, _, err := bc.BuildPackageList(ctx)
+	if err != nil {
+		return fmt.Errorf("resolving package versions: %w", err)
+	}
+	resolved := make([]string, 0, len(pkgs))
+	for _, pkg := range pkgs {
+		resolved = append(resolved, fmt.Sprintf("%s=%s", pkg.Name, pkg.Version))
+	}
+	ic.Contents.Packages = resolved
+	ic.Archs = []apko_types.Architecture{b.Arch}
+	ic.Contents.Repositories = append(ic.Contents.Repositories, b.ExtraRepos...)
+	ic.Contents.Keyring = append(ic.Contents.Keyring, b.ExtraKeys...)
+
+	b.resolvedApkoConfig = ic
+
+	return nil
+}
+
 // BuildGuest invokes apko to build the guest environment.
 func (b *Build) BuildGuest(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
@@ -570,6 +592,10 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 	}
 
 	bc.Summarize()
+
+	if err := b.resolveConfig(ctx, bc); err != nil {
+		return fmt.Errorf("locking apko config: %w", err)
+	}
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {

@@ -339,23 +339,12 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 		"wolfi-base",
 		"busybox",
 		"build-base",
-		"python-" + c.PythonVersion,            // Set the python version requested
-		"py" + c.PythonVersion + "-setuptools", // Set the specific python set up tools
-
 	}
 
 	env := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
 			Packages: pythonStandard,
 		},
-	}
-
-	if len(c.AdditionalRepositories) > 0 {
-		env.Contents.Repositories = append(env.Contents.Repositories, c.AdditionalRepositories...)
-	}
-
-	if len(c.AdditionalKeyrings) > 0 {
-		env.Contents.Keyring = append(env.Contents.Keyring, c.AdditionalKeyrings...)
 	}
 
 	return env
@@ -400,11 +389,9 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 
 		releaseURL := release.URL
 		uri := strings.ReplaceAll(releaseURL, version, "${{package.version}}")
-		readme := fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", releaseURL)
 		if strings.Contains(release.URL, "https://files.pythonhosted.org") {
 			packageName := strings.TrimPrefix(pack.Info.Name, fmt.Sprintf("py%s", release.PythonVersion))
 			releaseURL = fmt.Sprintf("https://files.pythonhosted.org/packages/source/%c/%s/%s-%s.tar.gz", packageName[0], packageName, packageName, version)
-			readme = fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", releaseURL)
 
 			uri = strings.ReplaceAll(releaseURL, version, "${{package.version}}")
 		}
@@ -425,7 +412,6 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 			Uses: "fetch",
 			With: map[string]string{
 				"uri":             uri,
-				"README":          readme,
 				"expected-sha256": artifact256SHA,
 			},
 		}

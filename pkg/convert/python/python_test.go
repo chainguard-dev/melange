@@ -159,15 +159,11 @@ func TestGenerateManifest(t *testing.T) {
 		assert.Equal(t, got.Package.Copyright[0].License, "Apache License 2.0")
 
 		// Check Environment
-		assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.Repositories)
-		assert.Equal(t, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}, got.Environment.Contents.Keyring)
 		assert.Equal(t, got.Environment.Contents.Packages, []string{
 			"ca-certificates-bundle",
 			"wolfi-base",
 			"busybox",
 			"build-base",
-			"python-" + pythonctx.PythonVersion,
-			"py" + pythonctx.PythonVersion + "-setuptools",
 		})
 
 		// Check Pipeline
@@ -192,7 +188,6 @@ func TestGenerateManifest(t *testing.T) {
 
 		tempURI := fmt.Sprintf("https://files.pythonhosted.org/packages/source/%c/%s/%s-%s.tar.gz", pythonctx.PackageName[0], pythonctx.PackageName, pythonctx.PackageName, pythonctx.PackageVersion)
 		assert.Equal(t, got.Pipeline[0].With, map[string]string{
-			"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", tempURI),
 			"expected-sha256": "2bee6ed037590ef1e4884d944486232871513915f12a8590c63e3bb6046479bf",
 			"uri":             strings.ReplaceAll(tempURI, pythonctx.PackageVersion, "${{package.version}}"),
 		})
@@ -316,15 +311,11 @@ func TestGenerateEnvironment(t *testing.T) {
 
 	expected310 := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
-			Repositories: []string{"https://packages.wolfi.dev/os"},
-			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages: []string{
 				"ca-certificates-bundle",
 				"wolfi-base",
 				"busybox",
 				"build-base",
-				"python-" + pythonctx.PythonVersion,
-				"py" + pythonctx.PythonVersion + "-setuptools",
 			},
 		},
 	}
@@ -343,15 +334,11 @@ func TestGenerateEnvironment(t *testing.T) {
 
 	expected311 := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
-			Repositories: []string{"https://packages.wolfi.dev/os"},
-			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
 			Packages: []string{
 				"ca-certificates-bundle",
 				"wolfi-base",
 				"busybox",
 				"build-base",
-				"python-" + pythonctx.PythonVersion,
-				"py" + pythonctx.PythonVersion + "-setuptools",
 			},
 		},
 	}

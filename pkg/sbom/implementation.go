@@ -19,6 +19,7 @@ package sbom
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +35,8 @@ import (
 
 	"github.com/korovkin/limiter"
 	purl "github.com/package-url/packageurl-go"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"sigs.k8s.io/release-utils/hash"
 	"sigs.k8s.io/release-utils/version"
 
@@ -90,6 +93,7 @@ func GenerateAPKPackage(spec *Spec) (pkg, error) {
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
+		Originator:       "Organization: " + cases.Upper(language.English).String(spec.Namespace),
 	}
 
 	if spec.License != "" {
@@ -122,7 +126,7 @@ func ScanFiles(spec *Spec, dirPackage *pkg) error {
 		g.Execute(func() {
 			f := file{
 				id:            stringToIdentifier(path),
-				Name:          path,
+				Name:          strings.TrimPrefix(path, "/"),
 				Checksums:     map[string]string{},
 				Relationships: []relationship{},
 			}
@@ -212,6 +216,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		CopyrightText:        p.Copyright,
 		Checksums:            []spdx.Checksum{},
 		ExternalRefs:         []spdx.ExternalRef{},
+		Originator:           p.Originator,
 	}
 
 	algos := []string{}
@@ -349,8 +354,11 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 		return nil, err
 	}
 
+	h := sha1.New()
+	h.Write([]byte(fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion)))
+
 	spdxDoc := spdx.Document{
-		ID:      fmt.Sprintf("SPDXRef-DOCUMENT-%s", fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion)),
+		ID:      "SPDXRef-DOCUMENT",
 		Name:    fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion),
 		Version: "SPDX-2.3",
 		CreationInfo: spdx.CreationInfo{
@@ -362,7 +370,7 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 			LicenseListVersion: "3.18",
 		},
 		DataLicense:          "CC0-1.0",
-		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/",
+		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/" + hex.EncodeToString(h.Sum(nil)),
 		DocumentDescribes:    []string{},
 		Files:                []spdx.File{},
 		Packages:             []spdx.Package{},

@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.1
 
 require (
-	chainguard.dev/apko v0.11.3-0.20231103184130-c376bfafbda0
+	chainguard.dev/apko v0.11.3
 	cloud.google.com/go/storage v1.35.1
 	github.com/chainguard-dev/go-apk v0.0.0-20231113174935-f86aaf233502
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
@@ -51,7 +51,7 @@ require (
 	k8s.io/client-go v0.28.3
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	knative.dev/pkg v0.0.0-20230821102121-81e4ee140363
-	sigs.k8s.io/release-utils v0.7.6
+	sigs.k8s.io/release-utils v0.7.7
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -164,7 +164,7 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/term v0.14.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

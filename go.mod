@@ -37,7 +37,7 @@ require (
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
 	gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b
-	go.opentelemetry.io/otel v1.20.0
+	go.opentelemetry.io/otel v1.21.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.14.0
@@ -157,8 +157,8 @@ require (
 	go.lsp.dev/uri v0.3.0 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/otel/metric v1.20.0 // indirect
-	go.opentelemetry.io/otel/trace v1.20.0 // indirect
+	go.opentelemetry.io/otel/metric v1.21.0 // indirect
+	go.opentelemetry.io/otel/trace v1.21.0 // indirect
 	golang.org/x/build v0.0.0-20231103135814-9e006d99e682 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect

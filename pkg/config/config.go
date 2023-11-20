@@ -341,7 +341,7 @@ type Configuration struct {
 	// Package metadata
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
-	Environment apko_types.ImageConfiguration
+	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.

@@ -20,6 +20,7 @@ require (
 	github.com/google/go-github/v54 v54.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/imdario/mergo v0.3.16
+	github.com/invopop/jsonschema v0.12.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.2
@@ -66,6 +67,8 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cloudflare/circl v1.3.6 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/containerd v1.7.7 // indirect
@@ -152,6 +155,7 @@ require (
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/whilp/git-urls v1.0.0 // indirect
+	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xorcare/pointer v1.2.2 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect

@@ -1,0 +1,985 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard.dev/melange/pkg/config/configuration",
+  "$ref": "#/$defs/Configuration",
+  "$defs": {
+    "AccountsOption": {
+      "properties": {
+        "RunAs": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "RunAs"
+      ]
+    },
+    "BuildOption": {
+      "properties": {
+        "Contents": {
+          "$ref": "#/$defs/ContentsOption"
+        },
+        "Accounts": {
+          "$ref": "#/$defs/AccountsOption"
+        },
+        "Environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "Entrypoint": {
+          "$ref": "#/$defs/ImageEntrypoint"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Contents",
+        "Accounts",
+        "Environment",
+        "Entrypoint"
+      ]
+    },
+    "Checks": {
+      "properties": {
+        "enabled": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: enable these linters that are not enabled by default."
+        },
+        "disabled": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: disable these linters that are not enabled by default."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Configuration": {
+      "properties": {
+        "package": {
+          "$ref": "#/$defs/Package",
+          "description": "Package metadata"
+        },
+        "environment": {
+          "$ref": "#/$defs/ImageConfiguration",
+          "description": "The specification for the packages build environment"
+        },
+        "pipeline": {
+          "items": {
+            "$ref": "#/$defs/Pipeline"
+          },
+          "type": "array",
+          "description": "Required: The list of pipelines that produce the package."
+        },
+        "subpackages": {
+          "items": {
+            "$ref": "#/$defs/Subpackage"
+          },
+          "type": "array",
+          "description": "Optional: The list of subpackages that this package also produces."
+        },
+        "data": {
+          "items": {
+            "$ref": "#/$defs/RangeData"
+          },
+          "type": "array",
+          "description": "Optional: An arbitrary list of data that can be used via templating in the\npipeline"
+        },
+        "update": {
+          "$ref": "#/$defs/Update",
+          "description": "Optional: The update block determining how this package is auto updated"
+        },
+        "vars": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Optional: A map of arbitrary variables that can be used via templating in\nthe pipeline"
+        },
+        "var-transforms": {
+          "items": {
+            "$ref": "#/$defs/VarTransforms"
+          },
+          "type": "array",
+          "description": "Optional: A list of transformations to create for the builtin template\nvariables"
+        },
+        "options": {
+          "additionalProperties": {
+            "$ref": "#/$defs/BuildOption"
+          },
+          "type": "object",
+          "description": "Optional: Deviations to the build"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "package",
+        "environment"
+      ],
+      "description": "The root melange configuration"
+    },
+    "ContentsOption": {
+      "properties": {
+        "Packages": {
+          "$ref": "#/$defs/ListOption"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Packages"
+      ]
+    },
+    "Copyright": {
+      "properties": {
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: The license paths, typically '*'"
+        },
+        "attestation": {
+          "type": "string",
+          "description": "Optional: Attestations of the license"
+        },
+        "license": {
+          "type": "string",
+          "description": "Required: The license for this package"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "license"
+      ]
+    },
+    "DataItems": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "Dependencies": {
+      "properties": {
+        "runtime": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: List of runtime dependencies"
+        },
+        "provides": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: List of packages provided"
+        },
+        "replaces": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: List of replace objectives"
+        },
+        "provider-priority": {
+          "type": "integer",
+          "description": "Optional: An integer compared against other equal package provides used to\ndetermine priority"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "GitHubMonitor": {
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Org/repo for GitHub"
+        },
+        "strip-prefix": {
+          "type": "string",
+          "description": "If the version in GitHub contains a prefix which should be ignored"
+        },
+        "strip-suffix": {
+          "type": "string",
+          "description": "If the version in GitHub contains a suffix which should be ignored"
+        },
+        "tag-filter": {
+          "type": "string",
+          "description": "Filter to apply when searching tags on a GitHub repository"
+        },
+        "use-tag": {
+          "type": "boolean",
+          "description": "Override the default of using a GitHub release to identify related tag to\nfetch.  Not all projects use GitHub releases but just use tags"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "description": "GitHubMonitor indicates using the GitHub API"
+    },
+    "Group": {
+      "properties": {
+        "GroupName": {
+          "type": "string"
+        },
+        "GID": {
+          "type": "integer"
+        },
+        "Members": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "GroupName",
+        "GID",
+        "Members"
+      ]
+    },
+    "ImageAccounts": {
+      "properties": {
+        "RunAs": {
+          "type": "string"
+        },
+        "Users": {
+          "items": {
+            "$ref": "#/$defs/User"
+          },
+          "type": "array"
+        },
+        "Groups": {
+          "items": {
+            "$ref": "#/$defs/Group"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "RunAs",
+        "Users",
+        "Groups"
+      ]
+    },
+    "ImageConfiguration": {
+      "properties": {
+        "Contents": {
+          "$ref": "#/$defs/ImageContents"
+        },
+        "Entrypoint": {
+          "$ref": "#/$defs/ImageEntrypoint"
+        },
+        "Cmd": {
+          "type": "string"
+        },
+        "StopSignal": {
+          "type": "string"
+        },
+        "WorkDir": {
+          "type": "string"
+        },
+        "Accounts": {
+          "$ref": "#/$defs/ImageAccounts"
+        },
+        "Archs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "Paths": {
+          "items": {
+            "$ref": "#/$defs/PathMutation"
+          },
+          "type": "array"
+        },
+        "OSRelease": {
+          "$ref": "#/$defs/OSRelease"
+        },
+        "VCSUrl": {
+          "type": "string"
+        },
+        "Annotations": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "Include": {
+          "type": "string"
+        },
+        "Options": {
+          "additionalProperties": {
+            "$ref": "#/$defs/BuildOption"
+          },
+          "type": "object"
+        },
+        "Volumes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Contents",
+        "Entrypoint",
+        "Cmd",
+        "StopSignal",
+        "WorkDir",
+        "Accounts",
+        "Archs",
+        "Environment",
+        "Paths",
+        "OSRelease",
+        "VCSUrl",
+        "Annotations",
+        "Include",
+        "Options",
+        "Volumes"
+      ]
+    },
+    "ImageContents": {
+      "properties": {
+        "Repositories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Keyring": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Packages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Repositories",
+        "Keyring",
+        "Packages"
+      ]
+    },
+    "ImageEntrypoint": {
+      "properties": {
+        "Type": {
+          "type": "string"
+        },
+        "Command": {
+          "type": "string"
+        },
+        "ShellFragment": {
+          "type": "string"
+        },
+        "Services": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Type",
+        "Command",
+        "ShellFragment",
+        "Services"
+      ]
+    },
+    "Input": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Optional: The human readable description of the input"
+        },
+        "default": {
+          "type": "string",
+          "description": "Optional: The default value of the input. Required when the input is."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Optional: A toggle denoting whether the input is required or not"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ListOption": {
+      "properties": {
+        "Add": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Remove": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Add",
+        "Remove"
+      ]
+    },
+    "Needs": {
+      "properties": {
+        "Packages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "A list of packages needed by this pipeline"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Packages"
+      ]
+    },
+    "OSRelease": {
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "VersionID": {
+          "type": "string"
+        },
+        "PrettyName": {
+          "type": "string"
+        },
+        "HomeURL": {
+          "type": "string"
+        },
+        "BugReportURL": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Name",
+        "ID",
+        "VersionID",
+        "PrettyName",
+        "HomeURL",
+        "BugReportURL"
+      ]
+    },
+    "Package": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the package"
+        },
+        "version": {
+          "type": "string",
+          "description": "The version of the package"
+        },
+        "epoch": {
+          "type": "integer",
+          "description": "The monotone increasing epoch of the package"
+        },
+        "description": {
+          "type": "string",
+          "description": "A human readable description of the package"
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL to the package's homepage"
+        },
+        "commit": {
+          "type": "string",
+          "description": "Optional: The git commit of the package build configuration"
+        },
+        "target-architecture": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "List of target architectures for which this package should be build for"
+        },
+        "copyright": {
+          "items": {
+            "$ref": "#/$defs/Copyright"
+          },
+          "type": "array",
+          "description": "The list of copyrights for this package"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/Dependencies",
+          "description": "List of packages to depends on"
+        },
+        "options": {
+          "$ref": "#/$defs/PackageOption",
+          "description": "Optional: Options that alter the packages behavior"
+        },
+        "scriptlets": {
+          "$ref": "#/$defs/Scriptlets",
+          "description": "Optional: Executable scripts that run at various stages of the package\nlifecycle, triggered by configurable events"
+        },
+        "checks": {
+          "$ref": "#/$defs/Checks",
+          "description": "Optional: enabling, disabling, and configuration of build checks"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "epoch"
+      ]
+    },
+    "PackageOption": {
+      "properties": {
+        "no-provides": {
+          "type": "boolean",
+          "description": "Optional: Signify this package as a virtual package which does not provide\nany files, executables, libraries, etc... and is otherwise empty"
+        },
+        "no-depends": {
+          "type": "boolean",
+          "description": "Optional: Mark this package as a self contained package that does not\ndepend on any other package"
+        },
+        "no-commands": {
+          "type": "boolean",
+          "description": "Optional: Mark this package as not providing any executables"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "no-provides",
+        "no-depends",
+        "no-commands"
+      ]
+    },
+    "PathMutation": {
+      "properties": {
+        "Path": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "UID": {
+          "type": "integer"
+        },
+        "GID": {
+          "type": "integer"
+        },
+        "Permissions": {
+          "type": "integer"
+        },
+        "Source": {
+          "type": "string"
+        },
+        "Recursive": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Path",
+        "Type",
+        "UID",
+        "GID",
+        "Permissions",
+        "Source",
+        "Recursive"
+      ]
+    },
+    "Pipeline": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional: A user defined name for the pipeline"
+        },
+        "uses": {
+          "type": "string",
+          "description": "Optional: A named reusable pipeline to run\n\nThis can be either a pipeline builtin to melange, or a user defined named pipeline.\nFor example, to use a builtin melange pipeline:\n\t\tuses: autoconf/make"
+        },
+        "with": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Optional: Arguments passed to the reusable pipelines defined in `uses`"
+        },
+        "runs": {
+          "type": "string",
+          "description": "Optional: The command to run using the builder's shell (/bin/sh)"
+        },
+        "pipeline": {
+          "items": {
+            "$ref": "#/$defs/Pipeline"
+          },
+          "type": "array",
+          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in it's own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
+        },
+        "inputs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Input"
+          },
+          "type": "object",
+          "description": "Optional: A map of inputs to the pipeline"
+        },
+        "needs": {
+          "$ref": "#/$defs/Needs",
+          "description": "Optional: Configuration to determine any explicit dependencies this pipeline may have"
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional: Labels to apply to the pipeline"
+        },
+        "if": {
+          "type": "string",
+          "description": "Optional: A condition to evaluate before running the pipeline"
+        },
+        "assertions": {
+          "$ref": "#/$defs/PipelineAssertions",
+          "description": "Optional: Assertions to evaluate whether the pipeline was successful"
+        },
+        "working-directory": {
+          "type": "string",
+          "description": "Optional: The working directory of the pipeline\n\nThis defaults to the guests' build workspace (/home/build)"
+        },
+        "sbom": {
+          "$ref": "#/$defs/SBOM",
+          "description": "Optional: Configuration for the generated SBOM"
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Optional: environment variables to override the apko environment"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "PipelineAssertions": {
+      "properties": {
+        "required-steps": {
+          "type": "integer",
+          "description": "The number (an int) of required steps that must complete successfully\nwithin the asserted pipeline."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "RangeData": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "items": {
+          "$ref": "#/$defs/DataItems"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "items"
+      ]
+    },
+    "ReleaseMonitor": {
+      "properties": {
+        "identifier": {
+          "type": "integer",
+          "description": "Required: ID number for release monitor"
+        },
+        "strip-prefix": {
+          "type": "string",
+          "description": "If the version in release monitor contains a prefix which should be ignored"
+        },
+        "strip-suffix": {
+          "type": "string",
+          "description": "If the version in release monitor contains a suffix which should be ignored"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "description": "ReleaseMonitor indicates using the API for https://release-monitoring.org/"
+    },
+    "SBOM": {
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "Optional: The language of the generated SBOM"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "language"
+      ]
+    },
+    "Scriptlets": {
+      "properties": {
+        "trigger": {
+          "properties": {
+            "script": {
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "description": "Optional: A script to run on a custom trigger"
+        },
+        "pre-install": {
+          "type": "string",
+          "description": "Optional: The script to run pre install. The script should contain the\nshebang interpreter."
+        },
+        "post-install": {
+          "type": "string",
+          "description": "Optional: The script to run post install. The script should contain the\nshebang interpreter."
+        },
+        "pre-deinstall": {
+          "type": "string",
+          "description": "Optional: The script to run before uninstalling. The script should contain\nthe shebang interpreter."
+        },
+        "post-deinstall": {
+          "type": "string",
+          "description": "Optional: The script to run after uninstalling. The script should contain\nthe shebang interpreter."
+        },
+        "pre-upgrade": {
+          "type": "string",
+          "description": "Optional: The script to run before upgrading. The script should contain\nthe shebang interpreter."
+        },
+        "post-upgrade": {
+          "type": "string",
+          "description": "Optional: The script to run after upgrading. The script should contain the\nshebang interpreter."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Subpackage": {
+      "properties": {
+        "if": {
+          "type": "string",
+          "description": "Optional: A conditional statement to evaluate for the subpackage"
+        },
+        "range": {
+          "type": "string",
+          "description": "Optional: The iterable used to generate multiple subpackages"
+        },
+        "name": {
+          "type": "string",
+          "description": "Required: Name of the subpackage"
+        },
+        "pipeline": {
+          "items": {
+            "$ref": "#/$defs/Pipeline"
+          },
+          "type": "array",
+          "description": "Optional: The list of pipelines that produce subpackage."
+        },
+        "dependencies": {
+          "$ref": "#/$defs/Dependencies",
+          "description": "Optional: List of packages to depend on"
+        },
+        "options": {
+          "$ref": "#/$defs/PackageOption",
+          "description": "Optional: Options that alter the packages behavior"
+        },
+        "scriptlets": {
+          "$ref": "#/$defs/Scriptlets"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional: The human readable description of the subpackage"
+        },
+        "url": {
+          "type": "string",
+          "description": "Optional: The URL to the package's homepage"
+        },
+        "commit": {
+          "type": "string",
+          "description": "Optional: The git commit of the subpackage build configuration"
+        },
+        "checks": {
+          "$ref": "#/$defs/Checks",
+          "description": "Optional: enabling, disabling, and configuration of build checks"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name"
+      ]
+    },
+    "Update": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Toggle if updates should occur"
+        },
+        "manual": {
+          "type": "boolean",
+          "description": "Indicates that this package should be manually updated, usually taking\ncare over special version numbers"
+        },
+        "shared": {
+          "type": "boolean",
+          "description": "Indicate that an update to this package requires an epoch bump of\ndownstream dependencies, e.g. golang, java"
+        },
+        "version-separator": {
+          "type": "string",
+          "description": "Override the version separator if it is nonstandard"
+        },
+        "ignore-regex-patterns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "A slice of regex patterns to match an upstream version and ignore"
+        },
+        "release-monitor": {
+          "$ref": "#/$defs/ReleaseMonitor",
+          "description": "The configuration block for updates tracked via release-monitoring.org"
+        },
+        "github": {
+          "$ref": "#/$defs/GitHubMonitor",
+          "description": "The configuration block for updates tracked via the Github API"
+        },
+        "version-transform": {
+          "items": {
+            "$ref": "#/$defs/VersionTransform"
+          },
+          "type": "array",
+          "description": "The configuration block for transforming the `package.version` into an APK version"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "enabled",
+        "manual"
+      ],
+      "description": "Update provides information used to describe how to keep the package up to date"
+    },
+    "User": {
+      "properties": {
+        "UserName": {
+          "type": "string"
+        },
+        "UID": {
+          "type": "integer"
+        },
+        "GID": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "UserName",
+        "UID",
+        "GID"
+      ]
+    },
+    "VarTransforms": {
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Required: The original template variable.\n\nExample: ${{package.version}}"
+        },
+        "match": {
+          "type": "string",
+          "description": "Required: The regular expression to match against the `from` variable"
+        },
+        "replace": {
+          "type": "string",
+          "description": "Required: The repl to replace on all `match` matches"
+        },
+        "to": {
+          "type": "string",
+          "description": "Required: The name of the new variable to create\n\nExample: mangeled-package-version"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "from",
+        "match",
+        "replace",
+        "to"
+      ]
+    },
+    "VersionTransform": {
+      "properties": {
+        "match": {
+          "type": "string",
+          "description": "Required: The regular expression to match against the `package.version` variable"
+        },
+        "replace": {
+          "type": "string",
+          "description": "Required: The repl to replace on all `match` matches"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "match",
+        "replace"
+      ],
+      "description": "VersionTransform allows mapping the package version to an APK version"
+    }
+  }
+}

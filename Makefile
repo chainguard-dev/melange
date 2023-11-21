@@ -84,6 +84,14 @@ ko-apply:  ## Build the image and apply the manifests
 		--recursive --filename config/
 
 ##########
+# codegen
+##########
+
+.PHONY: generate
+generate: ## Generates jsonschema for melange types.
+	go generate ./...
+
+##########
 # Build
 ##########
 

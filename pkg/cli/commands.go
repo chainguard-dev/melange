@@ -35,18 +35,19 @@ func New() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(Completion())
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())
-	cmd.AddCommand(Keygen())
-	cmd.AddCommand(Index())
-	cmd.AddCommand(Lint())
-	cmd.AddCommand(Sign())
-	cmd.AddCommand(SignIndex())
-	cmd.AddCommand(UpdateCache())
+	cmd.AddCommand(Completion())
 	cmd.AddCommand(Convert())
+	cmd.AddCommand(Index())
+	cmd.AddCommand(Keygen())
+	cmd.AddCommand(Lint())
 	cmd.AddCommand(PackageVersion())
 	cmd.AddCommand(Query())
+	cmd.AddCommand(Sign())
+	cmd.AddCommand(SignIndex())
+	cmd.AddCommand(Test())
+	cmd.AddCommand(UpdateCache())
 	cmd.AddCommand(version.Version())
 	return cmd
 }

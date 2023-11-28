@@ -35,11 +35,7 @@ func loadConfig(configFile string, rootNode *yaml.Node) error {
 		return err
 	}
 
-	if err := yaml.Unmarshal(configData, rootNode); err != nil {
-		return err
-	}
-
-	return nil
+	return yaml.Unmarshal(configData, rootNode)
 }
 
 // visitFetch processes a fetch node, updating the cache membership map.

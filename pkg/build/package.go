@@ -499,7 +499,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	if pc.wantSignature() {
 		signatureData, err := EmitSignature(ctx, pc.Signer(), controlSectionData, pc.Build.SourceDateEpoch)
 		if err != nil {
-			return fmt.Errorf("emitting signature: %v", err)
+			return fmt.Errorf("emitting signature: %w", err)
 		}
 
 		combinedParts = append([]io.Reader{bytes.NewReader(signatureData)}, combinedParts...)

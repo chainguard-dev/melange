@@ -2,20 +2,20 @@ package build
 
 import "runtime"
 
-type runner string
+type Runner string
 
 const (
-	runnerBubblewrap runner = "bubblewrap"
-	runnerDocker     runner = "docker"
-	runnerLima       runner = "lima"
-	runnerKubernetes runner = "kubernetes"
+	runnerBubblewrap Runner = "bubblewrap"
+	runnerDocker     Runner = "docker"
+	runnerLima       Runner = "lima"
+	runnerKubernetes Runner = "kubernetes"
 	// more to come
 )
 
 // GetDefaultRunner returns the default runner to use.
 // Currently, this is bubblewrap, but will be replaced with determining by platform.
-func GetDefaultRunner() runner {
-	var r runner
+func GetDefaultRunner() Runner {
+	var r Runner
 	switch runtime.GOOS {
 	case "linux":
 		r = runnerBubblewrap
@@ -29,8 +29,8 @@ func GetDefaultRunner() runner {
 }
 
 // GetAllRunners returns a list of all valid runners.
-func GetAllRunners() []runner {
-	return []runner{
+func GetAllRunners() []Runner {
+	return []Runner{
 		runnerBubblewrap,
 		runnerDocker,
 		runnerLima,

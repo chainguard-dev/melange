@@ -31,16 +31,16 @@ type SCABuildInterface struct {
 }
 
 // PackageName returns the currently built package name.
-func (sca *SCABuildInterface) PackageName() string {
-	return sca.PackageBuild.PackageName
+func (scabi *SCABuildInterface) PackageName() string {
+	return scabi.PackageBuild.PackageName
 }
 
 // RelativeNames returns all the package names relating to the package being
 // built.
-func (sca *SCABuildInterface) RelativeNames() []string {
-	targets := []string{sca.PackageBuild.Origin.Name}
+func (scabi *SCABuildInterface) RelativeNames() []string {
+	targets := []string{scabi.PackageBuild.Origin.Name}
 
-	for _, target := range sca.PackageBuild.Build.Configuration.Subpackages {
+	for _, target := range scabi.PackageBuild.Build.Configuration.Subpackages {
 		targets = append(targets, target.Name)
 	}
 
@@ -48,8 +48,8 @@ func (sca *SCABuildInterface) RelativeNames() []string {
 }
 
 // Version returns the version of the package being built including epoch.
-func (sca *SCABuildInterface) Version() string {
-	return fmt.Sprintf("%s-r%d", sca.PackageBuild.Origin.Version, sca.PackageBuild.Origin.Epoch)
+func (scabi *SCABuildInterface) Version() string {
+	return fmt.Sprintf("%s-r%d", scabi.PackageBuild.Origin.Version, scabi.PackageBuild.Origin.Epoch)
 }
 
 // FilesystemForRelative implements an abstract filesystem for any of the packages being
@@ -66,21 +66,21 @@ func (scabi *SCABuildInterface) FilesystemForRelative(pkgName string) (sca.SCAFS
 }
 
 // Filesystem implements an abstract filesystem providing access to a package filesystem.
-func (sca *SCABuildInterface) Filesystem() (sca.SCAFS, error) {
-	return sca.FilesystemForRelative(sca.PackageName())
+func (scabi *SCABuildInterface) Filesystem() (sca.SCAFS, error) {
+	return scabi.FilesystemForRelative(scabi.PackageName())
 }
 
 // Logger returns a logger for use by the SCA engine.
-func (sca *SCABuildInterface) Logger() log.Logger {
-	return sca.PackageBuild.Logger
+func (scabi *SCABuildInterface) Logger() log.Logger {
+	return scabi.PackageBuild.Logger
 }
 
 // Options returns the configured SCA engine options for the package being built.
-func (sca *SCABuildInterface) Options() config.PackageOption {
-	return sca.PackageBuild.Options
+func (scabi *SCABuildInterface) Options() config.PackageOption {
+	return scabi.PackageBuild.Options
 }
 
 // BaseDependencies returns the base dependencies for the package being built.
-func (sca *SCABuildInterface) BaseDependencies() config.Dependencies {
-	return sca.PackageBuild.Dependencies
+func (scabi *SCABuildInterface) BaseDependencies() config.Dependencies {
+	return scabi.PackageBuild.Dependencies
 }

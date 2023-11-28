@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+
+	//nolint:gosec
 	"crypto/sha1"
 	"fmt"
 	"os"
@@ -73,6 +75,7 @@ type KeyApkSigner struct {
 }
 
 func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
+	//nolint:gosec
 	digest := sha1.New()
 
 	_, err := digest.Write(control)

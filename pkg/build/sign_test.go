@@ -84,6 +84,7 @@ func TestEmitSignature(t *testing.T) {
 	}
 
 	_, err = tr.Next()
+	//nolint:errorlint
 	if err != io.EOF {
 		t.Fatalf("Expected tar EOF")
 	}

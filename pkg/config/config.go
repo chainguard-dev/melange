@@ -318,6 +318,8 @@ type Subpackage struct {
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	// Test section for the subpackage.
+	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the subpackage. For more
@@ -371,8 +373,22 @@ type Configuration struct {
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
+	// Test section for the main package.
+	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
+
 	// Parsed AST for this configuration
 	root *yaml.Node
+}
+
+type Test struct {
+	// Additional Environment necessary for test.
+	// Environment.Contents.Packages automatically get
+	// package.dependencies.runtime added to it. So, if your test needs
+	// no additional packages, you can leave it blank.
+	Environment apko_types.ImageConfiguration
+
+	// Required: The list of pipelines that test the produced package.
+	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
 }
 
 // Name returns a name for the configuration, using the package name.

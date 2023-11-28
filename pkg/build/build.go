@@ -52,49 +52,46 @@ import (
 )
 
 type Build struct {
-	Configuration      config.Configuration
-	ConfigFile         string
-	SourceDateEpoch    time.Time
-	WorkspaceDir       string
-	WorkspaceIgnore    string
-	PipelineDir        string
-	BuiltinPipelineDir string
-	SourceDir          string
-	GuestDir           string
-	SigningKey         string
-	SigningPassphrase  string
-	Namespace          string
-	GenerateIndex      bool
-	EmptyWorkspace     bool
-	OutDir             string
-	Logger             apko_log.Logger
-	Arch               apko_types.Architecture
-	ExtraKeys          []string
-	ExtraRepos         []string
-	DependencyLog      string
-	BinShOverlay       string
-	CreateBuildLog     bool
-	ignorePatterns     []*xignore.Pattern
-	CacheDir           string
-	ApkCacheDir        string
-	CacheSource        string
-	BreakpointLabel    string
-	ContinueLabel      string
-	foundContinuation  bool
-	StripOriginName    bool
-	EnvFile            string
-	VarsFile           string
-	Runner             container.Runner
-	RunnerName         string
-	imgRef             string
-	containerConfig    *container.Config
-	Debug              bool
-	DebugRunner        bool
-	LogPolicy          []string
-	FailOnLintWarning  bool
-	DefaultCPU         string
-	DefaultMemory      string
-	DefaultTimeout     time.Duration
+	Configuration   config.Configuration
+	ConfigFile      string
+	SourceDateEpoch time.Time
+	WorkspaceDir    string
+	WorkspaceIgnore string
+	// Ordered directories where to find 'uses' pipelines.
+	PipelineDirs      []string
+	SourceDir         string
+	GuestDir          string
+	SigningKey        string
+	SigningPassphrase string
+	Namespace         string
+	GenerateIndex     bool
+	EmptyWorkspace    bool
+	OutDir            string
+	Logger            apko_log.Logger
+	Arch              apko_types.Architecture
+	ExtraKeys         []string
+	ExtraRepos        []string
+	DependencyLog     string
+	BinShOverlay      string
+	CreateBuildLog    bool
+	ignorePatterns    []*xignore.Pattern
+	CacheDir          string
+	ApkCacheDir       string
+	CacheSource       string
+	BreakpointLabel   string
+	ContinueLabel     string
+	foundContinuation bool
+	StripOriginName   bool
+	EnvFile           string
+	VarsFile          string
+	Runner            container.Runner
+	RunnerName        string
+	imgRef            string
+	containerConfig   *container.Config
+	Debug             bool
+	DebugRunner       bool
+	LogPolicy         []string
+	FailOnLintWarning bool
 
 	EnabledBuildOptions []string
 }
@@ -312,18 +309,13 @@ func WithEmptyWorkspace(emptyWorkspace bool) Option {
 	}
 }
 
-// WithPipelineDir sets the pipeline directory to extend the built-in pipeline directory.
+// WithPipelineDir sets the pipeline directory to extend the built-in pipeline
+// directory. These are searched in order, so the first one found is used.
 func WithPipelineDir(pipelineDir string) Option {
 	return func(b *Build) error {
-		b.PipelineDir = pipelineDir
-		return nil
-	}
-}
-
-// WithBuiltinPipelineDirectory sets the pipeline directory to use.
-func WithBuiltinPipelineDirectory(builtinPipelineDir string) Option {
-	return func(b *Build) error {
-		b.BuiltinPipelineDir = builtinPipelineDir
+		if pipelineDir != "" {
+			b.PipelineDirs = append(b.PipelineDirs, pipelineDir)
+		}
 		return nil
 	}
 }
@@ -1007,7 +999,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	b.Logger.Printf("evaluating pipelines for package requirements")
 	for _, p := range b.Configuration.Pipeline {
-		pctx := NewPipelineContext(&p, b.Logger)
+		// fine to pass nil for config, since not running in container.
+		pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs, b.Logger)
 
 		if err := pctx.ApplyNeeds(&pb); err != nil {
 			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
@@ -1018,7 +1011,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		spkg := spkg
 		pb.Subpackage = &spkg
 		for _, p := range spkg.Pipeline {
-			pctx := NewPipelineContext(&p, b.Logger)
+			// fine to pass nil for config, since not running in container.
+			pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs, b.Logger)
 			if err := pctx.ApplyNeeds(&pb); err != nil {
 				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 			}
@@ -1069,7 +1063,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// run the main pipeline
 		b.Logger.Printf("running the main pipeline")
 		for _, p := range b.Configuration.Pipeline {
-			pctx := NewPipelineContext(&p, b.Logger)
+			pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs, b.Logger)
 			if _, err := pctx.Run(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
@@ -1104,7 +1098,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 
 			for _, p := range sp.Pipeline {
-				pctx := NewPipelineContext(&p, b.Logger)
+				pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs, b.Logger)
 				if _, err := pctx.Run(ctx, &pb); err != nil {
 					return fmt.Errorf("unable to run pipeline: %w", err)
 				}
@@ -1126,7 +1120,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Retrieve the post build workspace from the runner
 	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	if err := b.RetrieveWorkspace(ctx); err != nil {
-		return fmt.Errorf("retrieving workspace: %v", err)
+		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 

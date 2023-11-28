@@ -27,35 +27,63 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_log "chainguard.dev/apko/pkg/log"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/logger"
 	"chainguard.dev/melange/pkg/util"
 )
 
 type PipelineContext struct {
-	Pipeline *config.Pipeline
-	logger   apko_log.Logger
-	steps    int
+	Pipeline        *config.Pipeline
+	Environment     *apko_types.ImageConfiguration
+	WorkspaceConfig *container.Config
+	// Ordered list of pipeline directories to search for pipelines
+	PipelineDirs []string
+	logger       apko_log.Logger
+	steps        int
 }
 
-func NewPipelineContext(p *config.Pipeline, log apko_log.Logger) *PipelineContext {
+func NewPipelineContext(p *config.Pipeline, environment *apko_types.ImageConfiguration, config *container.Config, pipelineDirs []string, log apko_log.Logger) *PipelineContext {
 	if log == nil {
 		log = logger.NopLogger{}
 	}
 	return &PipelineContext{
-		Pipeline: p,
-		logger:   log,
-		steps:    0,
+		Pipeline:        p,
+		PipelineDirs:    pipelineDirs,
+		Environment:     environment,
+		WorkspaceConfig: config,
+		logger:          log,
+		steps:           0,
 	}
 }
 
 type PipelineBuild struct {
 	Build      *Build
+	Test       *Test
 	Package    *config.Package
 	Subpackage *config.Subpackage
+}
+
+// GetConfiguration returns the configuration for the current pipeline.
+// This is either for the Test or the Build
+func (pb *PipelineBuild) GetConfiguration() *config.Configuration {
+	if pb.Test != nil {
+		return &pb.Test.Configuration
+	}
+	return &pb.Build.Configuration
+}
+
+// GetRunner returns the runner for the current pipeline.
+// This is either for the Test or the Build
+func (pb *PipelineBuild) GetRunner() container.Runner {
+	if pb.Test != nil {
+		return pb.Test.Runner
+	}
+	return pb.Build.Runner
 }
 
 func (pctx *PipelineContext) Identity() string {
@@ -98,21 +126,25 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 
 func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	nw := map[string]string{
-		config.SubstitutionPackageName:          pb.Package.Name,
-		config.SubstitutionPackageVersion:       pb.Package.Version,
-		config.SubstitutionPackageEpoch:         strconv.FormatUint(pb.Package.Epoch, 10),
-		config.SubstitutionPackageFullVersion:   fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
-		config.SubstitutionTargetsDestdir:       fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
-		config.SubstitutionTargetsContextdir:    fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
-		config.SubstitutionHostTripletGnu:       pb.Build.BuildTripletGnu(),
-		config.SubstitutionHostTripletRust:      pb.Build.BuildTripletRust(),
-		config.SubstitutionCrossTripletGnuGlibc: pb.Build.Arch.ToTriplet("gnu"),
-		config.SubstitutionCrossTripletGnuMusl:  pb.Build.Arch.ToTriplet("musl"),
-		config.SubstitutionBuildArch:            pb.Build.Arch.ToAPK(),
+		config.SubstitutionPackageName:        pb.Package.Name,
+		config.SubstitutionPackageVersion:     pb.Package.Version,
+		config.SubstitutionPackageEpoch:       strconv.FormatUint(pb.Package.Epoch, 10),
+		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
+		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
+		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
+	}
+
+	// These are not really meaningful for Test, so only use them for build.
+	if pb.Build != nil {
+		nw[config.SubstitutionHostTripletGnu] = pb.Build.BuildTripletGnu()
+		nw[config.SubstitutionHostTripletRust] = pb.Build.BuildTripletRust()
+		nw[config.SubstitutionCrossTripletGnuGlibc] = pb.Build.Arch.ToTriplet("gnu")
+		nw[config.SubstitutionCrossTripletGnuMusl] = pb.Build.Arch.ToTriplet("musl")
+		nw[config.SubstitutionBuildArch] = pb.Build.Arch.ToAPK()
 	}
 
 	// Retrieve vars from config
-	subst_nw, err := pb.Build.Configuration.GetVarsFromConfig()
+	subst_nw, err := pb.GetConfiguration().GetVarsFromConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +154,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	// Perform substitutions on current map
-	err = pb.Build.Configuration.PerformVarSubstitutions(nw)
+	err = pb.GetConfiguration().PerformVarSubstitutions(nw)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +165,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	packageNames := []string{pb.Package.Name}
-	for _, sp := range pb.Build.Configuration.Subpackages {
+	for _, sp := range pb.GetConfiguration().Subpackages {
 		packageNames = append(packageNames, sp.Name)
 	}
 
@@ -142,14 +174,16 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
 	}
 
-	for k := range pb.Build.Configuration.Options {
+	for k := range pb.GetConfiguration().Options {
 		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
 		nw[nk] = "false"
 	}
 
-	for _, opt := range pb.Build.EnabledBuildOptions {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
-		nw[nk] = "true"
+	if pb.Build != nil {
+		for _, opt := range pb.Build.EnabledBuildOptions {
+			nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
+			nw[nk] = "true"
+		}
 	}
 
 	return nw, nil
@@ -187,14 +221,25 @@ func loadPipelineData(dir string, uses string) ([]byte, error) {
 }
 
 func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[string]string) error {
-	data, err := loadPipelineData(pb.Build.PipelineDir, uses)
+	var data []byte
+	// Set this to fail up front in case there are no pipeline dirs specified
+	// and we can't find them.
+	err := fmt.Errorf("could not find 'uses' pipeline %q", uses)
+	// See first if we can read from the specified pipeline dirs
+	// and if we can't, below we'll try from the embedded pipelines.
+	for _, pd := range pctx.PipelineDirs {
+		pctx.logger.Debugf("trying to load pipeline %q from %q", uses, pd)
+		data, err = loadPipelineData(pd, uses)
+		if err == nil {
+			pctx.logger.Printf("Found pipeline %s", string(data))
+			break
+		}
+	}
 	if err != nil {
-		data, err = loadPipelineData(pb.Build.BuiltinPipelineDir, uses)
+		pctx.logger.Debugf("trying to load pipeline %q from embedded fs pipelines/%q.yaml", uses, uses)
+		data, err = f.ReadFile("pipelines/" + uses + ".yaml")
 		if err != nil {
-			data, err = f.ReadFile("pipelines/" + uses + ".yaml")
-			if err != nil {
-				return fmt.Errorf("unable to load pipeline: %w", err)
-			}
+			return fmt.Errorf("unable to load pipeline: %w", err)
 		}
 	}
 
@@ -233,7 +278,7 @@ func (pctx *PipelineContext) dumpWith() {
 }
 
 func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) error {
-	spctx := NewPipelineContext(&config.Pipeline{}, pb.Build.Logger)
+	spctx := NewPipelineContext(&config.Pipeline{}, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
 
 	if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 		return err
@@ -282,7 +327,7 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 	pctx.dumpWith()
 
 	debugOption := ' '
-	if pb.Build.Debug {
+	if (pb.Build != nil && pb.Build.Debug) || (pb.Test != nil && pb.Test.Debug) {
 		debugOption = 'x'
 	}
 
@@ -302,8 +347,7 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 	}
 
 	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
-	config := pb.Build.WorkspaceConfig()
-	if err := pb.Build.Runner.Run(ctx, config, command...); err != nil {
+	if err := pb.GetRunner().Run(ctx, pctx.WorkspaceConfig, command...); err != nil {
 		return err
 	}
 
@@ -335,6 +379,9 @@ func (pctx *PipelineContext) evaluateBranchConditional(pb *PipelineBuild) bool {
 }
 
 func (pctx *PipelineContext) isContinuationPoint(pb *PipelineBuild) bool {
+	if pb.Build == nil {
+		return true
+	}
 	b := pb.Build
 
 	if b.ContinueLabel == "" {
@@ -397,7 +444,7 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 	}
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		spctx := NewPipelineContext(&sp, pb.Build.Logger)
+		spctx := NewPipelineContext(&sp, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
 		if spctx.Pipeline.WorkDir == "" {
 			spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 		}
@@ -423,15 +470,13 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 // TODO(kaniini): Precompile pipeline before running / evaluating its
 // needs.
 func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
-	ic := &pb.Build.Configuration.Environment
-
 	for _, pkg := range pctx.Pipeline.Needs.Packages {
 		pctx.logger.Printf("  adding package %q for pipeline %q", pkg, pctx.Identity())
-		ic.Contents.Packages = append(ic.Contents.Packages, pkg)
+		pctx.Environment.Contents.Packages = append(pctx.Environment.Contents.Packages, pkg)
 	}
 
 	if pctx.Pipeline.Uses != "" {
-		spctx := NewPipelineContext(nil, pb.Build.Logger)
+		spctx := NewPipelineContext(nil, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
 
 		if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 			return err
@@ -442,10 +487,10 @@ func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 		}
 	}
 
-	ic.Contents.Packages = util.Dedup(ic.Contents.Packages)
+	pctx.Environment.Contents.Packages = util.Dedup(pctx.Environment.Contents.Packages)
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		spctx := NewPipelineContext(&sp, pb.Build.Logger)
+		spctx := NewPipelineContext(&sp, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
 
 		if err := spctx.ApplyNeeds(pb); err != nil {
 			return err

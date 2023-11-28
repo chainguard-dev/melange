@@ -80,7 +80,10 @@ func Build() *cobra.Command {
 			options := []build.Option{
 				build.WithBuildDate(buildDate),
 				build.WithWorkspaceDir(workspaceDir),
+				// Order matters, so add any specified pipelineDir before
+				// builtin pipelines.
 				build.WithPipelineDir(pipelineDir),
+				build.WithPipelineDir(BuiltinPipelineDir),
 				build.WithCacheDir(cacheDir),
 				build.WithCacheSource(cacheSource),
 				build.WithPackageCacheDir(apkCacheDir),
@@ -180,7 +183,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Build{}
 	for _, arch := range archs {
-		opts := append(baseOpts, build.WithArch(arch), build.WithBuiltinPipelineDirectory(BuiltinPipelineDir))
+		opts := append(baseOpts, build.WithArch(arch))
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {

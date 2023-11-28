@@ -91,7 +91,7 @@ var linterMap = map[string]linter{
 		Explain:     "Remove any files in /var/lib/db/sbom from the package",
 	},
 	"setuidgid": {
-		LinterFunc:  isSetUidOrGidLinter,
+		LinterFunc:  isSetUIDOrGIDLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
 		FailOnError: false,
 		Explain:     "Unset the setuid/setgid bit on the relevant files, or remove this linter",
@@ -179,7 +179,7 @@ func isIgnoredPath(path string) bool {
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isDevRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to /dev")
+		return fmt.Errorf("package writes to /dev")
 	}
 
 	return nil
@@ -187,14 +187,14 @@ func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 
 func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isOptRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to /opt")
+		return fmt.Errorf("package writes to /opt")
 	}
 
 	return nil
 }
 func objectLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if filepath.Ext(path) == ".o" {
-		return fmt.Errorf("Package contains intermediate object file '%s'. This is usually wrong. In most cases they should be removed", path)
+		return fmt.Errorf("package contains intermediate object file '%s'. This is usually wrong. In most cases they should be removed", path)
 	}
 
 	return nil
@@ -202,12 +202,12 @@ func objectLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 
 func documentationLinter(lc LinterContext, path string, _ fs.DirEntry) error {
 	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(lc.pkgname, "-doc") {
-		return fmt.Errorf("Package contains documentation files but is not a documentation package")
+		return fmt.Errorf("package contains documentation files but is not a documentation package")
 	}
 	return nil
 }
 
-func isSetUidOrGidLinter(_ LinterContext, path string, d fs.DirEntry) error {
+func isSetUIDOrGIDLinter(_ LinterContext, path string, d fs.DirEntry) error {
 	if isIgnoredPath(path) {
 		return nil
 	}
@@ -219,17 +219,17 @@ func isSetUidOrGidLinter(_ LinterContext, path string, d fs.DirEntry) error {
 
 	mode := info.Mode()
 	if mode&fs.ModeSetuid != 0 {
-		return fmt.Errorf("File is setuid")
+		return fmt.Errorf("file is setuid")
 	} else if mode&fs.ModeSetgid != 0 {
-		return fmt.Errorf("File is setgid")
+		return fmt.Errorf("file is setgid")
 	}
 
 	return nil
 }
 
-func sbomLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
+func sbomLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isSbomPathRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to /var/lib/db/sbom")
+		return fmt.Errorf("package writes to /var/lib/db/sbom")
 	}
 
 	return nil
@@ -237,7 +237,7 @@ func sbomLinter(lctx LinterContext, path string, _ fs.DirEntry) error {
 
 func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isSrvRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to /srv")
+		return fmt.Errorf("package writes to /srv")
 	}
 
 	return nil
@@ -245,7 +245,7 @@ func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 
 func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isTempDirRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to a temp dir")
+		return fmt.Errorf("package writes to a temp dir")
 	}
 
 	return nil
@@ -261,7 +261,7 @@ func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 
 func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isVarEmptyRegex.MatchString(path) {
-		return fmt.Errorf("Package writes to /var/empty")
+		return fmt.Errorf("package writes to /var/empty")
 	}
 
 	return nil
@@ -285,10 +285,9 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 	mode := info.Mode()
 	if mode&0002 != 0 {
 		if mode&0111 != 0 {
-			return fmt.Errorf("World-writeable executable file found in package (security risk)")
-		} else {
-			return fmt.Errorf("World-writeable file found in package")
+			return fmt.Errorf("world-writeable executable file found in package (security risk)")
 		}
+		return fmt.Errorf("world-writeable file found in package")
 	}
 
 	return nil
@@ -391,14 +390,14 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 		return nil
 	}
 
-	return fmt.Errorf("Package is empty but no-provides is not set")
+	return fmt.Errorf("package is empty but no-provides is not set")
 }
 
 func getPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 	pythondirs, err := fs.Glob(fsys, filepath.Join("usr", "lib", "python3.*"))
 	if err != nil {
 		// Shouldn't get here, per the Go docs.
-		err = fmt.Errorf("Error checking for Python site directories: %w", err)
+		err = fmt.Errorf("error checking for Python site directories: %w", err)
 		return
 	}
 
@@ -406,14 +405,14 @@ func getPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 		// Nothing to do
 		return
 	} else if len(pythondirs) > 1 {
-		err = fmt.Errorf("More than one Python version detected: %d found", len(pythondirs))
+		err = fmt.Errorf("more than one Python version detected: %d found", len(pythondirs))
 		return
 	}
 
 	matches, err = fs.Glob(fsys, filepath.Join(pythondirs[0], "site-packages", "*"))
 	if err != nil {
 		// Shouldn't get here as well.
-		err = fmt.Errorf("Error checking for Python packages: %w", err)
+		err = fmt.Errorf("error checking for Python packages: %w", err)
 		return
 	}
 
@@ -429,7 +428,7 @@ func pythonDocsPostLinter(_ LinterContext, fsys fs.FS) error {
 	for _, m := range packages {
 		base := filepath.Base(m)
 		if base == "doc" || base == "docs" {
-			return fmt.Errorf("Docs directory encountered in Python site-packages directory")
+			return fmt.Errorf("docs directory encountered in Python site-packages directory")
 		}
 	}
 
@@ -486,7 +485,7 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 			i++
 		}
 		smatches := strings.Join(slmatches, ", ")
-		return fmt.Errorf("Multiple Python packages detected: %d found (%s)", len(slmatches), smatches)
+		return fmt.Errorf("multiple Python packages detected: %d found (%s)", len(slmatches), smatches)
 	}
 
 	return nil
@@ -501,7 +500,7 @@ func pythonTestPostLinter(_ LinterContext, fsys fs.FS) error {
 	for _, m := range packages {
 		base := filepath.Base(m)
 		if base == "test" || base == "tests" {
-			return fmt.Errorf("Tests directory encountered in Python site-packages directory")
+			return fmt.Errorf("tests directory encountered in Python site-packages directory")
 		}
 	}
 
@@ -537,13 +536,13 @@ func (lctx LinterContext) lintPackageFs(warn func(error), linters []string, lint
 	// Verify all linters are known
 	badLints := CheckValidLinters(linters)
 	if len(badLints) > 0 {
-		return fmt.Errorf("Unknown linter(s): %s", strings.Join(badLints, ", "))
+		return fmt.Errorf("unknown linter(s): %s", strings.Join(badLints, ", "))
 	}
 
 	postLinters := []string{}
 	walkCb := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("Error traversing tree at %s: %w", path, err)
+			return fmt.Errorf("error traversing tree at %s: %w", path, err)
 		}
 
 		for _, linterName := range linters {
@@ -562,7 +561,7 @@ func (lctx LinterContext) lintPackageFs(warn func(error), linters []string, lint
 			err = linter.LinterFunc(lctx, path, d)
 			if err != nil {
 				if linter.FailOnError {
-					return fmt.Errorf("Linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
+					return fmt.Errorf("linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
 				}
 				warn(err)
 			}
@@ -587,7 +586,7 @@ func (lctx LinterContext) lintPackageFs(warn func(error), linters []string, lint
 		err := linter.LinterFunc(lctx, lctx.fsys)
 		if err != nil {
 			if linter.FailOnError {
-				return fmt.Errorf("Linter %s failed; suggest: %s", linterName, linter.Explain)
+				return fmt.Errorf("linter %s failed; suggest: %s", linterName, linter.Explain)
 			}
 			warn(err)
 		}
@@ -622,18 +621,18 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 	// Get the package name
 	f, err := exp.ControlFS.Open(".PKGINFO")
 	if err != nil {
-		return fmt.Errorf("Could not open .PKGINFO file: %w", err)
+		return fmt.Errorf("could not open .PKGINFO file: %w", err)
 	}
 	defer f.Close()
 
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return fmt.Errorf("Could not read from package: %w", err)
+		return fmt.Errorf("could not read from package: %w", err)
 	}
 
 	cfg, err := ini.Load(data)
 	if err != nil {
-		return fmt.Errorf("Could not load .PKGINFO file: %w", err)
+		return fmt.Errorf("could not load .PKGINFO file: %w", err)
 	}
 
 	pkgname := cfg.Section("").Key("pkgname").MustString("")

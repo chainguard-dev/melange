@@ -516,7 +516,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	err = os.MkdirAll(usrLocalDirPath, 0770)
 	assert.NoError(t, err)
 
-	_, err = os.Create(filepath.Join(filePath))
+	_, err = os.Create(filePath)
 	assert.NoError(t, err)
 
 	err = os.Chmod(filePath, 0770|fs.ModeSetuid|fs.ModeSetgid)
@@ -560,7 +560,7 @@ func Test_worldWriteLinter(t *testing.T) {
 
 	// Create test file
 	filePath := filepath.Join(usrLocalDirPath, "test.txt")
-	_, err = os.Create(filepath.Join(filePath))
+	_, err = os.Create(filePath)
 	assert.NoError(t, err)
 
 	// Set writeable and executable bits for non-world
@@ -619,7 +619,7 @@ func Test_disableDefaultLinter(t *testing.T) {
 	err = os.MkdirAll(usrLocalDirPath, 0770)
 	assert.NoError(t, err)
 
-	_, err = os.Create(filepath.Join(filePath))
+	_, err = os.Create(filePath)
 	assert.NoError(t, err)
 
 	linters := cfg.Package.Checks.GetLinters()

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -458,7 +460,37 @@ type KubernetesRunnerConfig struct {
 	// Only set the requests, and not the limits
 	Resources corev1.ResourceList
 
+	Profiles map[string]KubernetesRunnerConfigProfile `json:"profiles,omitempty" yaml:"profiles,omitempty"`
+
 	baseConfigFile string
+}
+
+// KubernetesRunnerConfigProfile is a map of profiles that map to matched packages
+type KubernetesRunnerConfigProfile struct {
+	Matchers    KubernetesRunnerConfigProfileMatcher `json:"matchers,omitempty" yaml:"matchers,omitempty"`
+	PodTemplate *KubernetesRunnerConfigPodTemplate   `json:"podTemplate,omitempty" yaml:"podTemplate,omitempty"`
+	Resources   corev1.ResourceList                  `json:"resources,omitempty" yaml:"resources,omitempty"`
+}
+
+type KubernetesRunnerConfigProfileMatcher struct {
+	Regex []string `json:"regex,omitempty" yaml:"regex,omitempty"`
+	Glob  []string `json:"glob,omitempty" yaml:"glob,omitempty"`
+}
+
+func (p *KubernetesRunnerConfigProfile) Match(name string) bool {
+	for _, regex := range p.Matchers.Regex {
+		if matched, _ := regexp.MatchString(regex, name); matched {
+			return true
+		}
+	}
+
+	for _, glob := range p.Matchers.Glob {
+		if matched, _ := filepath.Match(glob, name); matched {
+			return true
+		}
+	}
+
+	return false
 }
 
 type KubernetesRunnerConfigPodTemplate struct {
@@ -469,6 +501,53 @@ type KubernetesRunnerConfigPodTemplate struct {
 	RuntimeClassName   *string              `json:"runtimeClassName,omitempty" yaml:"runtimeClassName,omitempty"`
 	Volumes            []corev1.Volume      `json:"volumes,omitempty" yaml:"volumes,omitempty"`
 	VolumeMounts       []corev1.VolumeMount `json:"volumeMounts,omitempty" yaml:"volumeMounts,omitempty"`
+}
+
+func (p KubernetesRunnerConfigPodTemplate) Merge(pod *corev1.Pod) *corev1.Pod {
+	npod := pod.DeepCopy()
+
+	if p.Volumes != nil {
+		// Replace volumes that already exist
+		for _, v := range p.Volumes {
+			replaced := false
+			for i, v2 := range npod.Spec.Volumes {
+				if v2.Name == v.Name {
+					npod.Spec.Volumes[i] = v
+					replaced = true
+				}
+			}
+			if !replaced {
+				npod.Spec.Volumes = append(npod.Spec.Volumes, v)
+			}
+		}
+	}
+
+	if p.VolumeMounts != nil {
+		// Only mount to the workspace container
+		npod.Spec.Containers[0].VolumeMounts = append(npod.Spec.Containers[0].VolumeMounts, p.VolumeMounts...)
+	}
+
+	for k, v := range p.NodeSelector {
+		npod.Spec.NodeSelector[k] = v
+	}
+
+	if p.Affinity != nil {
+		npod.Spec.Affinity = p.Affinity
+	}
+
+	if p.RuntimeClassName != nil {
+		npod.Spec.RuntimeClassName = p.RuntimeClassName
+	}
+
+	if p.Env != nil {
+		npod.Spec.Containers[0].Env = append(npod.Spec.Containers[0].Env, p.Env...)
+	}
+
+	if p.ServiceAccountName != "" {
+		npod.Spec.ServiceAccountName = p.ServiceAccountName
+	}
+
+	return npod
 }
 
 // NewKubernetesConfig returns a default Kubernetes runner config setup
@@ -482,6 +561,7 @@ func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) (*KubernetesRunne
 			corev1.ResourceCPU:    resource.MustParse("2"),
 			corev1.ResourceMemory: resource.MustParse("4Gi"),
 		},
+		Profiles: map[string]KubernetesRunnerConfigProfile{},
 
 		baseConfigFile: KubernetesConfigFileName,
 	}
@@ -560,7 +640,8 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
 			},
-			Volumes: []corev1.Volume{},
+			Volumes:  []corev1.Volume{},
+			Affinity: &corev1.Affinity{},
 		},
 	}
 
@@ -580,33 +661,23 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 	}
 
 	if pt := c.PodTemplate; pt != nil {
-		if pt.Volumes != nil {
-			pod.Spec.Volumes = append(pod.Spec.Volumes, pt.Volumes...)
+		pod = pt.Merge(pod)
+	}
+
+	// Handle any profiles
+	for _, profile := range c.Profiles {
+		if !profile.Match(cfg.PackageName) {
+			continue
 		}
 
-		if pt.VolumeMounts != nil {
-			// Only mount to the workspace container
-			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, pt.VolumeMounts...)
+		if pt := profile.PodTemplate; pt != nil {
+			pod = pt.Merge(pod)
 		}
 
-		for k, v := range pt.NodeSelector {
-			pod.Spec.NodeSelector[k] = v
-		}
-
-		if pt.Affinity != nil {
-			pod.Spec.Affinity = pt.Affinity
-		}
-
-		if pt.RuntimeClassName != nil {
-			pod.Spec.RuntimeClassName = pt.RuntimeClassName
-		}
-
-		if pt.Env != nil {
-			pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, pt.Env...)
-		}
-
-		if pt.ServiceAccountName != "" {
-			pod.Spec.ServiceAccountName = pt.ServiceAccountName
+		if r := profile.Resources; r != nil {
+			for k, v := range r {
+				pod.Spec.Containers[0].Resources.Requests[k] = v
+			}
 		}
 	}
 

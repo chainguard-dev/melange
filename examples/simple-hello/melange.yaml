@@ -23,7 +23,6 @@ environment:
       - ca-certificates-bundle
 
 pipeline:
-  - runs: sleep 60
   - uses: autoconf/make
   - uses: autoconf/make-install
   - uses: strip

@@ -93,7 +93,7 @@ func GenerateAPKPackage(spec *Spec) (pkg, error) {
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
-		Originator:       "Organization: " + cases.Upper(language.English).String(spec.Namespace),
+		Originator:       "Organization: " + cases.Title(language.English).String(spec.Namespace),
 	}
 
 	if spec.License != "" {

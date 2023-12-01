@@ -454,10 +454,6 @@ type KubernetesRunnerConfig struct {
 	// This field and everything below it is ignored by the environment variable parser
 	PodTemplate *KubernetesRunnerConfigPodTemplate `json:"podTemplate,omitempty" yaml:"podTemplate,omitempty" ignored:"true"`
 
-	// A "burstable" QOS is really the only thing that makes sense for ephemeral builder pods
-	// Only set the requests, and not the limits
-	Resources corev1.ResourceList
-
 	baseConfigFile string
 }
 
@@ -474,15 +470,10 @@ type KubernetesRunnerConfigPodTemplate struct {
 // NewKubernetesConfig returns a default Kubernetes runner config setup
 func NewKubernetesConfig(opt ...KubernetesRunnerConfigOptions) (*KubernetesRunnerConfig, error) {
 	cfg := &KubernetesRunnerConfig{
-		Provider:     "generic",
-		Namespace:    "default",
-		Repo:         "ttl.sh/melange",
-		StartTimeout: metav1.Duration{Duration: 10 * time.Minute},
-		Resources: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("2"),
-			corev1.ResourceMemory: resource.MustParse("4Gi"),
-		},
-
+		Provider:       "generic",
+		Namespace:      "default",
+		Repo:           "ttl.sh/melange",
+		StartTimeout:   metav1.Duration{Duration: 10 * time.Minute},
 		baseConfigFile: KubernetesConfigFileName,
 	}
 
@@ -524,6 +515,15 @@ func escapeRFC1123(name string) string {
 }
 
 func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
+	// Set some sane default resource requests if none are specified by flag or config.
+	// This is required for GKE Autopilot.
+	if cfg.CPU == "" {
+		cfg.CPU = "2"
+	}
+	if cfg.Memory == "" {
+		cfg.Memory = "4Gi"
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("melange-builder-%s-%s-", escapeRFC1123(cfg.PackageName), cfg.Arch.String()),
@@ -545,7 +545,10 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 				// ldconfig is run to prime ld.so.cache for glibc packages which require it.
 				Command: []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nsleep infinity"},
 				Resources: corev1.ResourceRequirements{
-					Requests: c.Resources,
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse(cfg.CPU),
+						corev1.ResourceMemory: resource.MustParse(cfg.Memory),
+					},
 				},
 				VolumeMounts: []corev1.VolumeMount{},
 			}},
@@ -562,6 +565,11 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
 			},
 			Volumes: []corev1.Volume{},
 		},
+	}
+
+	// This is needed for GKE Autopilot.
+	if cfg.Arch == apko_types.Architecture("arm64") {
+		pod.Spec.NodeSelector["cloud.google.com/compute-class"] = "Scale-Out"
 	}
 
 	for k, v := range cfg.Environment {

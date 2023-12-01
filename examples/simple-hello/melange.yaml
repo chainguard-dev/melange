@@ -4,13 +4,11 @@ package:
   epoch: 0
   description: "a hello world program"
   copyright:
-    - paths:
-      - "*"
-      attestation: |
-        This program is in the public domain.
+    - attestation: This program is in the public domain.
       license: CC-PDDC
-  dependencies:
-    runtime:
+  resources:
+    cpu: .5
+    memory: 128Mi
 
 environment:
   contents:
@@ -28,4 +26,3 @@ pipeline:
   - uses: autoconf/make
   - uses: autoconf/make-install
   - uses: strip
-

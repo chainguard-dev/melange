@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
@@ -61,6 +62,8 @@ func Build() *cobra.Command {
 	var debugRunner bool
 	var runner string
 	var failOnLintWarning bool
+	var cpu, memory string
+	var timeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:     "build",
@@ -103,6 +106,9 @@ func Build() *cobra.Command {
 				build.WithLogPolicy(logPolicy),
 				build.WithRunner(runner),
 				build.WithFailOnLintWarning(failOnLintWarning),
+				build.WithCPU(cpu),
+				build.WithMemory(memory),
+				build.WithTimeout(timeout),
 			}
 
 			if len(args) > 0 {
@@ -151,6 +157,9 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVar(&failOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
+	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
+	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
+	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
 
 	return cmd
 }

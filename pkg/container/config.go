@@ -15,6 +15,8 @@
 package container
 
 import (
+	"time"
+
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/log"
 )
@@ -46,4 +48,6 @@ type Config struct {
 	ImgRef       string
 	PodID        string
 	Arch         apko_types.Architecture
+	CPU, Memory  string
+	Timeout      time.Duration
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const DockerName = "docker"
@@ -73,7 +74,23 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 	}
 
 	hostConfig := &container.HostConfig{
-		Mounts: mounts,
+		Mounts:    mounts,
+		Resources: container.Resources{},
+	}
+
+	if cfg.CPU != "" {
+		res, err := resource.ParseQuantity(cfg.CPU)
+		if err != nil {
+			return fmt.Errorf("parsing CPU resource: %w", err)
+		}
+		hostConfig.Resources.NanoCPUs = int64(res.AsApproximateFloat64() * 1000000000)
+	}
+	if cfg.Memory != "" {
+		res, err := resource.ParseQuantity(cfg.Memory)
+		if err != nil {
+			return fmt.Errorf("parsing memory resource: %w", err)
+		}
+		hostConfig.Resources.Memory = res.Value()
 	}
 
 	platform := &image_spec.Platform{

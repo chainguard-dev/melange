@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_log "chainguard.dev/apko/pkg/log"
@@ -112,6 +113,16 @@ type Package struct {
 	Scriptlets Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+
+	// Optional: The amount of time to allow this build to take before timing out.
+	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	// Optional: Resources to allocate to the build.
+	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
+}
+
+type Resources struct {
+	CPU    string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty" yaml:"memory,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the package. For more
@@ -473,6 +484,8 @@ type configOptions struct {
 	filesystem  fs.FS
 	envFilePath string
 	logger      apko_log.Logger
+	cpu, memory string
+	timeout     time.Duration
 
 	varsFilePath string
 }
@@ -486,6 +499,24 @@ func (options *configOptions) include(opts ...ConfigurationParsingOption) {
 
 	if options.logger == nil {
 		options.logger = logger.NopLogger{}
+	}
+}
+
+func WithDefaultTimeout(timeout time.Duration) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.timeout = timeout
+	}
+}
+
+func WithDefaultCPU(cpu string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.cpu = cpu
+	}
+}
+
+func WithDefaultMemory(memory string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.memory = memory
 	}
 }
 
@@ -832,6 +863,16 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 
 	// Propagate all child pipelines
 	cfg.propagatePipelines()
+
+	if options.timeout != 0 {
+		cfg.Package.Timeout = options.timeout
+	}
+	if options.cpu != "" {
+		cfg.Package.Resources.CPU = options.cpu
+	}
+	if options.memory != "" {
+		cfg.Package.Resources.Memory = options.memory
+	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
 	if err = cfg.validate(); err != nil {

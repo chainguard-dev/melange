@@ -150,6 +150,13 @@ test:
         # Stuff goes here.
 ```
 
+## Using pipelines
+
+Not surprisingly you can also use predefined pipelines, just like in the build
+step by using `uses:` instead of `runs:`. You can specify the location of the
+predefined pipelines using the `--pipeline-dir` to point to the directory where
+the custom pipelines are located.
+
 ## Full example
 
 Here's a full example invocation, where I'm testing with my local mac, so just

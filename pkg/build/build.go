@@ -92,6 +92,9 @@ type Build struct {
 	DebugRunner        bool
 	LogPolicy          []string
 	FailOnLintWarning  bool
+	DefaultCPU         string
+	DefaultMemory      string
+	DefaultTimeout     time.Duration
 
 	EnabledBuildOptions []string
 }
@@ -190,7 +193,11 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		b.ConfigFile,
 		config.WithEnvFileForParsing(b.EnvFile),
 		config.WithLogger(b.Logger),
-		config.WithVarsFileForParsing(b.VarsFile))
+		config.WithVarsFileForParsing(b.VarsFile),
+		config.WithDefaultCPU(b.DefaultCPU),
+		config.WithDefaultMemory(b.DefaultMemory),
+		config.WithDefaultTimeout(b.DefaultTimeout),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -534,6 +541,27 @@ func WithRunner(runner string) Option {
 func WithPackageCacheDir(apkCacheDir string) Option {
 	return func(b *Build) error {
 		b.ApkCacheDir = apkCacheDir
+		return nil
+	}
+}
+
+func WithCPU(cpu string) Option {
+	return func(b *Build) error {
+		b.DefaultCPU = cpu
+		return nil
+	}
+}
+
+func WithMemory(memory string) Option {
+	return func(b *Build) error {
+		b.DefaultMemory = memory
+		return nil
+	}
+}
+
+func WithTimeout(dur time.Duration) Option {
+	return func(b *Build) error {
+		b.DefaultTimeout = dur
 		return nil
 	}
 }
@@ -955,6 +983,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	b.Summarize()
 
+	if to := b.Configuration.Package.Timeout; to > 0 {
+		tctx, cancel := context.WithTimeoutCause(ctx, to,
+			fmt.Errorf("build exceeded its timeout of %s", to))
+		defer cancel()
+		ctx = tctx
+	}
+
 	pkg := &b.Configuration.Package
 
 	pb := PipelineBuild{
@@ -1025,7 +1060,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 		if !b.DebugRunner {
 			defer func() {
-				if err := b.Runner.TerminatePod(ctx, cfg); err != nil {
+				if err := b.Runner.TerminatePod(context.WithoutCancel(ctx), cfg); err != nil {
 					b.Logger.Warnf("unable to terminate pod: %s", err)
 				}
 			}()
@@ -1322,6 +1357,12 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 		Environment: map[string]string{
 			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
 		},
+		Timeout: b.Configuration.Package.Timeout,
+	}
+
+	if b.Configuration.Package.Resources != nil {
+		cfg.CPU = b.Configuration.Package.Resources.CPU
+		cfg.Memory = b.Configuration.Package.Resources.Memory
 	}
 
 	for k, v := range b.Configuration.Environment.Environment {

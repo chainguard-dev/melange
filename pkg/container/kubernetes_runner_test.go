@@ -195,14 +195,14 @@ func Test_k8s_StartPod(t *testing.T) {
 			},
 		},
 		{
-			name:   "should override resources",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
-			k8sCfg: &KubernetesRunnerConfig{
-				Resources: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("9001"),
-				},
+			name: "should override resources",
+			pkgCfg: &Config{
+				PackageName: "donkey",
+				Arch:        types.Architecture("arm64"),
+				CPU:         "1",
+				Memory:      "9001",
 			},
+			k8sCfg: &KubernetesRunnerConfig{},
 			wanter: func(got corev1.Pod) bool {
 				return got.Spec.Containers[0].Resources.Requests.Cpu().Equal(resource.MustParse("1")) && got.Spec.Containers[0].Resources.Requests.Memory().Equal(resource.MustParse("9001"))
 			},

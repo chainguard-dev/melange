@@ -51,5 +51,5 @@ func SourceDateEpochWithLogger(l log.Logger, defaultTime time.Time) (time.Time, 
 		return defaultTime, fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
 	}
 
-	return time.Unix(sec, 0), nil
+	return time.Unix(sec, 0).UTC(), nil
 }

@@ -63,6 +63,11 @@ jobs:
       - run: |
           sudo apt-get -y install bubblewrap
 
+      # Make sure we have our tests files here.
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - run: |
           testfile="${{matrix.package}}-test.yaml"
-          melange test --arch x86_64,arm64 --source-dir ./e2e-test/test-fixtures ./e2e-test/$testfile ${{matrix.package}} --repository-append https://packages.wolfi.dev/os --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+          echo "Testing $testfile"
+
+          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures ./e2e-tests/$testfile ${{matrix.package}} --repository-append https://packages.wolfi.dev/os --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub

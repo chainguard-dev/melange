@@ -523,8 +523,13 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	}
 
 	t.Logger.Printf("evaluating main pipeline for package requirements")
-	// Append the main test package to be installed.
-	t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, pkg.Name)
+	// Append the main test package to be installed unless explicitly specified
+	// by the command line.
+	if t.Package != "" {
+		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, t.Package)
+	} else {
+		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, pkg.Name)
+	}
 	for i := range t.Configuration.Test.Pipeline {
 		p := &t.Configuration.Test.Pipeline[i]
 		// fine to pass nil for config, since not running in container.

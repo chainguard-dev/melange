@@ -157,6 +157,36 @@ step by using `uses:` instead of `runs:`. You can specify the location of the
 predefined pipelines using the `--pipeline-dir` to point to the directory where
 the custom pipelines are located.
 
+## Specifying package to test / reusing tests
+
+You can leave out the package name from the command line if you want, in which
+case the PUT is pulled from the package.Name. However, for versioned packages,
+say for example, php-8.1, php-8.2, php-8.3, it is beneficial to reuse some of
+the tests. In those cases, you can specify the testfile and also which package
+to use for testing by providing a second argument to the `test` command that is
+the name of the package used for the tests.
+
+Lastly, if you want to test a specific version of the package, you can specify
+the constraint in the argument. For example:
+
+ * Use package.Name
+
+ ```shell
+ melange test ./testfile.yaml
+ ```
+
+ * Use above testfile, but a different package to run tests against
+
+ ```shell
+ melange test ./testfile.yaml mypackage
+ ```
+
+ * Use above testfile, but specify a particular version of the package
+
+ ```shell
+ melange test ./testfile.yaml mypackage=2.2.0-r2
+ ```
+
 ## Full example
 
 Here's a full example invocation, where I'm testing with my local mac, so just

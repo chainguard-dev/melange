@@ -22,7 +22,7 @@ melange test [flags]
 ### Examples
 
 ```
-  melange test <test.yaml> <package-name>
+  melange test <test.yaml> [package-name]
 ```
 
 ### Options

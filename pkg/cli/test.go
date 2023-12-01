@@ -49,8 +49,8 @@ func Test() *cobra.Command {
 		Use:     "test",
 		Short:   "Test a package with a YAML configuration file",
 		Long:    `Test a package from a YAML configuration file containing a test pipeline.`,
-		Example: `  melange test <test.yaml> <package-name>`,
-		Args:    cobra.MinimumNArgs(2),
+		Example: `  melange test <test.yaml> [package-name]`,
+		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			archs := apko_types.ParseArchitectures(archstrs)
 			options := []build.TestOption{
@@ -69,6 +69,8 @@ func Test() *cobra.Command {
 
 			if len(args) > 0 {
 				options = append(options, build.WithTestConfig(args[0]))
+			}
+			if len(args) > 1 {
 				options = append(options, build.WithTestPackage(args[1]))
 			}
 

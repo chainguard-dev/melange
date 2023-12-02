@@ -92,6 +92,9 @@ type Build struct {
 	DebugRunner       bool
 	LogPolicy         []string
 	FailOnLintWarning bool
+	DefaultCPU        string
+	DefaultMemory     string
+	DefaultTimeout    time.Duration
 
 	EnabledBuildOptions []string
 }

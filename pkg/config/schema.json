@@ -216,6 +216,14 @@
         },
         "tag-filter": {
           "type": "string",
+          "description": "Filter to apply when searching tags on a GitHub repository\nDeprecated: Use TagFilterPrefix instead"
+        },
+        "tag-filter-prefix": {
+          "type": "string",
+          "description": "Prefix filter to apply when searching tags on a GitHub repository"
+        },
+        "tag-filter-contains": {
+          "type": "string",
           "description": "Filter to apply when searching tags on a GitHub repository"
         },
         "use-tag": {
@@ -232,13 +240,13 @@
     },
     "Group": {
       "properties": {
-        "GroupName": {
+        "groupname": {
           "type": "string"
         },
-        "GID": {
+        "gid": {
           "type": "integer"
         },
-        "Members": {
+        "members": {
           "items": {
             "type": "string"
           },
@@ -246,25 +254,20 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "GroupName",
-        "GID",
-        "Members"
-      ]
+      "type": "object"
     },
     "ImageAccounts": {
       "properties": {
-        "RunAs": {
+        "run-as": {
           "type": "string"
         },
-        "Users": {
+        "users": {
           "items": {
             "$ref": "#/$defs/User"
           },
           "type": "array"
         },
-        "Groups": {
+        "groups": {
           "items": {
             "$ref": "#/$defs/Group"
           },
@@ -272,73 +275,68 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "RunAs",
-        "Users",
-        "Groups"
-      ]
+      "type": "object"
     },
     "ImageConfiguration": {
       "properties": {
-        "Contents": {
+        "contents": {
           "$ref": "#/$defs/ImageContents"
         },
-        "Entrypoint": {
+        "entrypoint": {
           "$ref": "#/$defs/ImageEntrypoint"
         },
-        "Cmd": {
+        "cmd": {
           "type": "string"
         },
-        "StopSignal": {
+        "stop-signal": {
           "type": "string"
         },
-        "WorkDir": {
+        "work-dir": {
           "type": "string"
         },
-        "Accounts": {
+        "accounts": {
           "$ref": "#/$defs/ImageAccounts"
         },
-        "Archs": {
+        "archs": {
           "items": {
             "type": "string"
           },
           "type": "array"
         },
-        "Environment": {
+        "environment": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
         },
-        "Paths": {
+        "paths": {
           "items": {
             "$ref": "#/$defs/PathMutation"
           },
           "type": "array"
         },
-        "OSRelease": {
+        "os-release": {
           "$ref": "#/$defs/OSRelease"
         },
-        "VCSUrl": {
+        "vcs-url": {
           "type": "string"
         },
-        "Annotations": {
+        "annotations": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
         },
-        "Include": {
+        "include": {
           "type": "string"
         },
-        "Options": {
+        "options": {
           "additionalProperties": {
             "$ref": "#/$defs/BuildOption"
           },
           "type": "object"
         },
-        "Volumes": {
+        "volumes": {
           "items": {
             "type": "string"
           },
@@ -346,40 +344,23 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Contents",
-        "Entrypoint",
-        "Cmd",
-        "StopSignal",
-        "WorkDir",
-        "Accounts",
-        "Archs",
-        "Environment",
-        "Paths",
-        "OSRelease",
-        "VCSUrl",
-        "Annotations",
-        "Include",
-        "Options",
-        "Volumes"
-      ]
+      "type": "object"
     },
     "ImageContents": {
       "properties": {
-        "Repositories": {
+        "repositories": {
           "items": {
             "type": "string"
           },
           "type": "array"
         },
-        "Keyring": {
+        "keyring": {
           "items": {
             "type": "string"
           },
           "type": "array"
         },
-        "Packages": {
+        "packages": {
           "items": {
             "type": "string"
           },
@@ -387,25 +368,20 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Repositories",
-        "Keyring",
-        "Packages"
-      ]
+      "type": "object"
     },
     "ImageEntrypoint": {
       "properties": {
-        "Type": {
+        "type": {
           "type": "string"
         },
-        "Command": {
+        "command": {
           "type": "string"
         },
-        "ShellFragment": {
+        "shell-fragment": {
           "type": "string"
         },
-        "Services": {
+        "services": {
           "additionalProperties": {
             "type": "string"
           },
@@ -413,13 +389,7 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Type",
-        "Command",
-        "ShellFragment",
-        "Services"
-      ]
+      "type": "object"
     },
     "Input": {
       "properties": {
@@ -479,35 +449,27 @@
     },
     "OSRelease": {
       "properties": {
-        "Name": {
+        "name": {
           "type": "string"
         },
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "VersionID": {
+        "version-id": {
           "type": "string"
         },
-        "PrettyName": {
+        "pretty-name": {
           "type": "string"
         },
-        "HomeURL": {
+        "home-url": {
           "type": "string"
         },
-        "BugReportURL": {
+        "bug-report-url": {
           "type": "string"
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Name",
-        "ID",
-        "VersionID",
-        "PrettyName",
-        "HomeURL",
-        "BugReportURL"
-      ]
+      "type": "object"
     },
     "Package": {
       "properties": {
@@ -599,39 +561,30 @@
     },
     "PathMutation": {
       "properties": {
-        "Path": {
+        "path": {
           "type": "string"
         },
-        "Type": {
+        "type": {
           "type": "string"
         },
-        "UID": {
+        "uid": {
           "type": "integer"
         },
-        "GID": {
+        "gid": {
           "type": "integer"
         },
-        "Permissions": {
+        "permissions": {
           "type": "integer"
         },
-        "Source": {
+        "source": {
           "type": "string"
         },
-        "Recursive": {
+        "recursive": {
           "type": "boolean"
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Path",
-        "Type",
-        "UID",
-        "GID",
-        "Permissions",
-        "Source",
-        "Recursive"
-      ]
+      "type": "object"
     },
     "Pipeline": {
       "properties": {
@@ -687,10 +640,6 @@
         "working-directory": {
           "type": "string",
           "description": "Optional: The working directory of the pipeline\n\nThis defaults to the guests' build workspace (/home/build)"
-        },
-        "sbom": {
-          "$ref": "#/$defs/SBOM",
-          "description": "Optional: Configuration for the generated SBOM"
         },
         "environment": {
           "additionalProperties": {
@@ -750,19 +699,6 @@
         "identifier"
       ],
       "description": "ReleaseMonitor indicates using the API for https://release-monitoring.org/"
-    },
-    "SBOM": {
-      "properties": {
-        "language": {
-          "type": "string",
-          "description": "Optional: The language of the generated SBOM"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "language"
-      ]
     },
     "Scriptlets": {
       "properties": {
@@ -916,23 +852,18 @@
     },
     "User": {
       "properties": {
-        "UserName": {
+        "username": {
           "type": "string"
         },
-        "UID": {
+        "uid": {
           "type": "integer"
         },
-        "GID": {
+        "gid": {
           "type": "integer"
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "UserName",
-        "UID",
-        "GID"
-      ]
+      "type": "object"
     },
     "VarTransforms": {
       "properties": {

@@ -30,7 +30,6 @@ import (
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
 
-	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 )
 
@@ -195,29 +194,29 @@ func (c *GemContext) findDependencies(ctx context.Context) error {
 func (c *GemContext) getGemMeta(ctx context.Context, gemURI string) (GemMeta, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", gemURI, nil)
 	if err != nil {
-		return GemMeta{}, errors.Wrapf(err, "creating request for %s", gemURI)
+		return GemMeta{}, fmt.Errorf("creating request for %s: %w", gemURI, err)
 	}
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return GemMeta{}, errors.Wrapf(err, "getting %s", gemURI)
+		return GemMeta{}, fmt.Errorf("getting %s: %w", gemURI, err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return GemMeta{}, errors.Wrapf(err, "%d when getting %s", resp.StatusCode, gemURI)
+		return GemMeta{}, fmt.Errorf("%d when getting %s: %w", resp.StatusCode, gemURI, err)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return GemMeta{}, errors.Wrap(err, "reading body")
+		return GemMeta{}, fmt.Errorf("reading body: %w", err)
 	}
 
 	var g GemMeta
 	err = json.Unmarshal(body, &g)
 	if err != nil {
-		return GemMeta{}, errors.Wrap(err, "unmarshaling gem metadata")
+		return GemMeta{}, fmt.Errorf("unmarshaling gem metadata: %w", err)
 	}
 
 	// Try to set the right Uri to the repo, sometimes gems use homepage instead of source code.
@@ -365,12 +364,12 @@ func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []config.P
 func (c *GemContext) getGemArtifactSHA(ctx context.Context, artifactURI string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", artifactURI, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating request for %s", artifactURI)
+		return "", fmt.Errorf("creating request for %s: %w", artifactURI, err)
 	}
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return "", errors.Wrapf(err, "getting %s", artifactURI)
+		return "", fmt.Errorf("getting %s: %w", artifactURI, err)
 	}
 
 	defer resp.Body.Close()
@@ -381,7 +380,7 @@ func (c *GemContext) getGemArtifactSHA(ctx context.Context, artifactURI string) 
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "reading body")
+		return "", fmt.Errorf("reading body: %w", err)
 	}
 
 	h256 := sha256.New()

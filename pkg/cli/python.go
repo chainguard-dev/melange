@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
 	"chainguard.dev/melange/pkg/convert/python"
 	"chainguard.dev/melange/pkg/convert/relmon"
@@ -85,7 +86,7 @@ convert python botocore`,
 func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) error {
 	pythonContext, err := python.New(packageName)
 	if err != nil {
-		return errors.Wrap(err, "initialising python command")
+		return fmt.Errorf("initialising python command: %w", err)
 	}
 
 	pythonContext.AdditionalRepositories = o.additionalRepositories

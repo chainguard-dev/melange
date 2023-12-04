@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/time/rate"
 )
 
@@ -48,13 +46,13 @@ func NewClient(rl *rate.Limiter) *RLHTTPClient {
 func (c *RLHTTPClient) GetArtifactSHA256(ctx context.Context, artifactURI string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", artifactURI, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating request for %s", artifactURI)
+		return "", fmt.Errorf("creating request for %s: %w", artifactURI, err)
 	}
 	var client http.Client
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", errors.Wrapf(err, "getting %s", artifactURI)
+		return "", fmt.Errorf("getting %s: %w", artifactURI, err)
 	}
 
 	defer resp.Body.Close()
@@ -65,7 +63,7 @@ func (c *RLHTTPClient) GetArtifactSHA256(ctx context.Context, artifactURI string
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "reading body")
+		return "", fmt.Errorf("reading body: %w", err)
 	}
 
 	h256 := sha256.New()

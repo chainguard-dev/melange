@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/pkg/errors"
-
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -68,7 +66,7 @@ func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
 
 		re, err := regexp.Compile(v.Match)
 		if err != nil {
-			return errors.Wrapf(err, "match value: %s string does not compile into a regex", v.Match)
+			return fmt.Errorf("match value: %s string does not compile into a regex: %w: %w", v.Match, err)
 		}
 
 		output := re.ReplaceAllString(from, v.Replace)

@@ -22,7 +22,6 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/convert/wolfios"
 	"chainguard.dev/melange/pkg/util"
-	"github.com/pkg/errors"
 	"gitlab.alpinelinux.org/alpine/go/apkbuild"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
@@ -74,7 +73,7 @@ func New(ctx context.Context) (Context, error) {
 	wolfi := wolfios.New(http.DefaultClient, wolfios.PackageIndex)
 	context.WolfiOSPackages, err = wolfi.GetWolfiPackages(ctx)
 	if err != nil {
-		return context, errors.Wrapf(err, "failed to get packages from wolfi index")
+		return context, fmt.Errorf("failed to get packages from wolfi index: %w", err)
 	}
 
 	return context, nil
@@ -84,13 +83,13 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 	// get the contents of the APKBUILD file
 	err := c.getApkBuildFile(ctx, apkBuildURI, pkgName)
 	if err != nil {
-		return errors.Wrap(err, "getting apk build file")
+		return fmt.Errorf("getting apk build file: %w", err)
 	}
 
 	// build map of dependencies
 	err = c.buildMapOfDependencies(ctx, apkBuildURI, pkgName)
 	if err != nil {
-		return errors.Wrap(err, "building map of dependencies")
+		return fmt.Errorf("building map of dependencies: %w", err)
 	}
 
 	// reverse map order, so we generate the lowest transitive dependency first
@@ -116,7 +115,7 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 
 		err = apkConverter.write(strconv.Itoa(i), c.OutDir)
 		if err != nil {
-			return errors.Wrap(err, "writing convert config file")
+			return fmt.Errorf("writing convert config file: %w", err)
 		}
 	}
 
@@ -128,7 +127,7 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 	resp, err := c.Client.Do(req)
 
 	if err != nil {
-		return errors.Wrapf(err, "getting %s", apkbuildURL)
+		return fmt.Errorf("getting %s: %w", apkbuildURL, err)
 	}
 	defer resp.Body.Close()
 
@@ -140,7 +139,7 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 	parsedApkBuild, err := apkbuild.Parse(apkbuildFile, nil)
 
 	if err != nil {
-		return errors.Wrapf(err, "failed to parse apkbuild %s", apkbuildURL)
+		return fmt.Errorf("failed to parse apkbuild %s: %w", apkbuildURL, err)
 	}
 
 	c.ApkConvertors[packageName] = ApkConvertor{
@@ -218,7 +217,7 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 
 			err = c.buildMapOfDependencies(ctx, dependencyApkBuildURI, dep)
 			if err != nil {
-				return errors.Wrap(err, "building map of dependencies")
+				return fmt.Errorf("building map of dependencies: %w", err)
 			}
 		}
 	}
@@ -263,14 +262,14 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 		_, err := url.ParseRequestURI(location)
 		if err != nil {
-			return errors.Wrapf(err, "parsing URI %s", location)
+			return fmt.Errorf("parsing URI %s: %w", location, err)
 		}
 
 		req, _ := http.NewRequestWithContext(ctx, "GET", location, nil)
 		resp, err := c.Client.Do(req)
 
 		if err != nil {
-			return errors.Wrapf(err, "failed getting URI %s", location)
+			return fmt.Errorf("failed getting URI %s: %w", location, err)
 		}
 		defer resp.Body.Close()
 
@@ -282,7 +281,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return errors.Wrapf(err, "failed getting URI %s", location)
+			return fmt.Errorf("failed getting URI %s: %w", location, err)
 		}
 
 		var expectedSha string
@@ -478,13 +477,13 @@ func contains(s []string, str string) bool {
 func (c ApkConvertor) write(orderNumber, outdir string) error {
 	actual, err := yaml.Marshal(&c.GeneratedMelangeConfig)
 	if err != nil {
-		return errors.Wrapf(err, "marshalling mconvert configuration")
+		return fmt.Errorf("marshalling mconvert configuration: %w", err)
 	}
 
 	if _, err := os.Stat(outdir); os.IsNotExist(err) {
 		err = os.MkdirAll(outdir, os.ModePerm)
 		if err != nil {
-			return errors.Wrapf(err, "creating output directory %s", outdir)
+			return fmt.Errorf("creating output directory %s: %w", outdir, err)
 		}
 	}
 
@@ -492,18 +491,18 @@ func (c ApkConvertor) write(orderNumber, outdir string) error {
 	mconvertFile := filepath.Join(outdir, orderNumber+"0-"+c.Apkbuild.Pkgname+".yaml")
 	f, err := os.Create(mconvertFile)
 	if err != nil {
-		return errors.Wrapf(err, "creating file %s", mconvertFile)
+		return fmt.Errorf("creating file %s: %w", mconvertFile, err)
 	}
 	defer f.Close()
 
 	_, err = f.WriteString(fmt.Sprintf("# Generated from %s\n", c.GeneratedMelangeConfig.GeneratedFromComment))
 	if err != nil {
-		return errors.Wrapf(err, "creating writing to file %s", mconvertFile)
+		return fmt.Errorf("creating writing to file %s: %w", mconvertFile, err)
 	}
 
 	_, err = f.WriteString(string(actual))
 	if err != nil {
-		return errors.Wrapf(err, "creating writing to file %s", mconvertFile)
+		return fmt.Errorf("creating writing to file %s: %w", mconvertFile, err)
 	}
 
 	if c.Logger != nil {

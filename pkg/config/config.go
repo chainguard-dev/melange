@@ -318,6 +318,8 @@ type Subpackage struct {
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	// Test section for the subpackage.
+	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the subpackage. For more
@@ -371,8 +373,22 @@ type Configuration struct {
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
+	// Test section for the main package.
+	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
+
 	// Parsed AST for this configuration
 	root *yaml.Node
+}
+
+type Test struct {
+	// Additional Environment necessary for test.
+	// Environment.Contents.Packages automatically get
+	// package.dependencies.runtime added to it. So, if your test needs
+	// no additional packages, you can leave it blank.
+	Environment apko_types.ImageConfiguration
+
+	// Required: The list of pipelines that test the produced package.
+	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
 }
 
 // Name returns a name for the configuration, using the package name.
@@ -748,6 +764,29 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 				}
 
 				thingToAdd.Pipeline = append(thingToAdd.Pipeline, Pipeline{
+					Name:   p.Name,
+					Uses:   p.Uses,
+					With:   replacedWith,
+					Inputs: p.Inputs,
+					Needs:  p.Needs,
+					Label:  p.Label,
+					Runs:   replacer.Replace(p.Runs),
+					// TODO: p.Pipeline?
+				})
+			}
+			for _, p := range sp.Test.Pipeline {
+				// take a copy of the with map, so we can replace the values
+				replacedWith := make(map[string]string)
+				for key, value := range p.With {
+					replacedWith[key] = replacer.Replace(value)
+				}
+
+				// if the map is empty, set it to nil to avoid serializing an empty map
+				if len(replacedWith) == 0 {
+					replacedWith = nil
+				}
+
+				thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
 					Name:   p.Name,
 					Uses:   p.Uses,
 					With:   replacedWith,

@@ -1,0 +1,73 @@
+name: Test melange test command
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build-melange:
+    name: Build melange and add to artifact cache
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+        with:
+          go-version: '1.21'
+          check-latest: true
+
+      - name: build
+        run: |
+          make melange
+
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        with:
+          name: melange-${{github.run_id}}
+          path: ${{github.workspace}}/melange
+          retention-days: 1
+
+  test-packages:
+    name: Test packages
+    needs:
+      - build-melange
+    # TODO: Set up a larger runner for this.
+    runs-on: ubuntu-latest
+
+    # This is a list of packages which we want to test against.
+    # Feel free to add additional packages to this matrix which exercise
+    # Melange `test` in new ways (e.g. new pipelines, etc.)
+    # Each test file is of the form <package-name>-test.yaml and gets
+    # constructed from the package name.
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - php-8.2-msgpack
+          - py3-pandas
+
+    steps:
+      # Grab the melange we uploaded above, and install it.
+      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        with:
+          name: melange-${{github.run_id}}
+          path: ${{github.workspace}}/.melange-dir
+
+      - run: |
+          sudo mv ${{github.workspace}}/.melange-dir/melange /usr/bin/melange
+          sudo chmod a+x /usr/bin/melange
+          melange version
+
+      - run: |
+          sudo apt-get -y install bubblewrap
+
+      # Make sure we have our tests files here.
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - run: |
+          testfile="${{matrix.package}}-test.yaml"
+          echo "Testing $testfile"
+
+          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures ./e2e-tests/$testfile ${{matrix.package}} --repository-append https://packages.wolfi.dev/os --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub

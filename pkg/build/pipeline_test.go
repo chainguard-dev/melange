@@ -125,12 +125,12 @@ func Test_substitutionNeedPackages(t *testing.T) {
 		},
 	}
 
-	pctx := NewPipelineContext(p, logger.NopLogger{})
+	pctx := NewPipelineContext(p, nil, nil, []string{"pipelines"}, logger.NopLogger{})
 
 	pb := &PipelineBuild{
 		Package: pkg,
 		Build: &Build{
-			PipelineDir: "pipelines",
+			PipelineDirs: []string{"pipelines"},
 			Configuration: config.Configuration{
 				Pipeline: []config.Pipeline{
 					{
@@ -156,7 +156,7 @@ func Test_buildEvalRunCommand(t *testing.T) {
 		Environment: map[string]string{"FOO": "bar"},
 	}
 
-	pctx := NewPipelineContext(p, logger.NopLogger{})
+	pctx := NewPipelineContext(p, nil, nil, []string{}, logger.NopLogger{})
 
 	debugOption := ' '
 	sysPath := "/foo"

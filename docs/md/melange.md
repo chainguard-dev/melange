@@ -30,6 +30,7 @@ toc: true
 * [melange query](/docs/md/melange_query.md)	 - Query a Melange YAML file for information
 * [melange sign](/docs/md/melange_sign.md)	 - Sign an APK package
 * [melange sign-index](/docs/md/melange_sign-index.md)	 - Sign an APK index
+* [melange test](/docs/md/melange_test.md)	 - Test a package with a YAML configuration file
 * [melange update-cache](/docs/md/melange_update-cache.md)	 - Update a source artifact cache
 * [melange version](/docs/md/melange_version.md)	 - Prints the version
 

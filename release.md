@@ -37,3 +37,9 @@ A minor release should be cut shortly after a breaking change is made, so that r
 The process for cutting a release is exactly the same as above, except that you should pick a new minor version.
 
 For example, if the latest version is `v0.5.5`, create a minor release `v0.6.0`.
+
+## Homebrew
+
+Our release pipeline automate the process to update our [homebrew tap](https://github.com/chainguard-dev/homebrew-tap/blob/main/Formula/melange.rb),
+but it does not update the [Homebrew-core upstream repository](https://github.com/Homebrew/homebrew-core/blob/master/Formula/m/melange.rb) for that one
+we need to open a manual Pull Request.

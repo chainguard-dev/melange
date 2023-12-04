@@ -1,5 +1,5 @@
-chainguard.dev/apko v0.11.3-0.20231103184130-c376bfafbda0 h1:zTSLxMaytacGaZcBYR7+9F1QekMFZ+5JIHL3Or+opJY=
-chainguard.dev/apko v0.11.3-0.20231103184130-c376bfafbda0/go.mod h1:Jsr08yIPjG11TsIdD8UyIlXQRU/iyXGfEWXQMEeWwF4=
+chainguard.dev/apko v0.12.0 h1:smG4DL5HMmSsbO6/Buou+GpCWpUW4whnoEWNsoz/6To=
+chainguard.dev/apko v0.12.0/go.mod h1:KNMKxHVteLL3R4lfg0ICV5NaAFY6v/+q7/nYT7B/qug=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
@@ -82,8 +82,8 @@ github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chainguard-dev/go-apk v0.0.0-20231113174935-f86aaf233502 h1:xYYl90jArqY6gFWTNA+6hRlrtKqHJ0lsWPluieS/xO8=
-github.com/chainguard-dev/go-apk v0.0.0-20231113174935-f86aaf233502/go.mod h1:y0BbOQALsoi1T2Lt5KmFNn92G+fRFSUuogQI2171HS8=
+github.com/chainguard-dev/go-apk v0.0.0-20231120201550-7b08e8f3b0fc h1:Car7PYrE9RD5qBN7ScGuTnDyzg6s6HFFDeUf8cFHlVI=
+github.com/chainguard-dev/go-apk v0.0.0-20231120201550-7b08e8f3b0fc/go.mod h1:y0BbOQALsoi1T2Lt5KmFNn92G+fRFSUuogQI2171HS8=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3SY2sW8rUIxG9wXMxXlMN7sd9VNUSdZ+FnVqOrm2nI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
@@ -357,9 +357,8 @@ github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=
 github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
+github.com/hashicorp/go-hclog v0.9.2 h1:CG6TE5H9/JXsFWJCfoIVpKFIkFe6ysEuHirp4DxCsHI=
 github.com/hashicorp/go-hclog v0.9.2/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
-github.com/hashicorp/go-hclog v1.4.0 h1:ctuWFGrhFha8BnnzxqeRGidlEcQkDyL5u8J8t5eA11I=
-github.com/hashicorp/go-hclog v1.4.0/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-multierror v1.1.1 h1:H5DkEtf6CXdFp0N0Em5UCwQpXMWke8IA0+lD48awMYo=
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
 github.com/hashicorp/go-retryablehttp v0.7.4 h1:ZQgVdpTdAL7WpMIwLzCfbalOcSUdkDZnpUv3/+BxzFA=

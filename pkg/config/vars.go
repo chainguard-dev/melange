@@ -66,7 +66,7 @@ func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
 
 		re, err := regexp.Compile(v.Match)
 		if err != nil {
-			return fmt.Errorf("match value: %s string does not compile into a regex: %w: %w", v.Match, err)
+			return fmt.Errorf("match value: %s string does not compile into a regex: %w", v.Match, err)
 		}
 
 		output := re.ReplaceAllString(from, v.Replace)

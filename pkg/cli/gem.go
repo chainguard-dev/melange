@@ -78,7 +78,7 @@ convert gem fluentd`,
 func (o gemOptions) gemBuild(ctx context.Context, packageName string) error {
 	context, err := gem.New()
 	if err != nil {
-		return errors.Wrap(err, "initialising gem command")
+		return fmt.Errorf("initialising gem command: %w", err)
 	}
 
 	context.RubyVersion = o.rubyVersion

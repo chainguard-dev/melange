@@ -11,8 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 type Context struct {
@@ -35,7 +33,7 @@ func (c Context) GetWolfiPackages(ctx context.Context) (map[string]bool, error) 
 	req, _ := http.NewRequestWithContext(ctx, "GET", c.indexURL, nil)
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return wolfiPackages, errors.Wrapf(err, "failed getting URI %s", PackageIndex)
+		return wolfiPackages, fmt.Errorf("failed getting URI %s: %w", PackageIndex, err)
 	}
 	defer resp.Body.Close()
 
@@ -45,13 +43,13 @@ func (c Context) GetWolfiPackages(ctx context.Context) (map[string]bool, error) 
 
 	dir, err := os.MkdirTemp("", "wolfictl")
 	if err != nil {
-		return wolfiPackages, errors.Wrap(err, "failed creating temp dir")
+		return wolfiPackages, fmt.Errorf("failed creating temp dir: %w", err)
 	}
 	defer os.RemoveAll(dir)
 
 	err = Untar(dir, resp.Body)
 	if err != nil {
-		return wolfiPackages, errors.Wrap(err, "failed to untar wolfi index")
+		return wolfiPackages, fmt.Errorf("failed to untar wolfi index: %w", err)
 	}
 
 	return parseIndex(filepath.Join(dir, "APKINDEX"))
@@ -62,7 +60,7 @@ func parseIndex(indexFile string) (map[string]bool, error) {
 
 	f, err := os.OpenFile(indexFile, os.O_RDONLY, os.ModePerm)
 	if err != nil {
-		return wolfiPackages, errors.Wrapf(err, "failed to open index file %s", indexFile)
+		return wolfiPackages, fmt.Errorf("failed to open index file %s: %w", indexFile, err)
 	}
 	defer f.Close()
 
@@ -74,7 +72,7 @@ func parseIndex(indexFile string) (map[string]bool, error) {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return wolfiPackages, errors.Wrapf(err, "failed to scan index file %s", indexFile)
+		return wolfiPackages, fmt.Errorf("failed to scan index file %s: %w", indexFile, err)
 	}
 
 	return wolfiPackages, nil

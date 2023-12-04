@@ -152,7 +152,7 @@ func (p *PackageIndex) packageReq(ctx context.Context, endpoint string) (*Packag
 
 	if resp.StatusCode != http.StatusOK {
 		cause := errors.New("http status return was not 200")
-		err := errors.Wrapf(cause, "%d when getting %s", resp.StatusCode, url)
+		err := fmt.Errorf("%d when getting %s: %w", resp.StatusCode, url, cause)
 		return nil, err
 	}
 	data, err := io.ReadAll(resp.Body)

@@ -117,6 +117,10 @@
           },
           "type": "object",
           "description": "Optional: Deviations to the build"
+        },
+        "test": {
+          "$ref": "#/$defs/Test",
+          "description": "Test section for the main package."
         }
       },
       "additionalProperties": false,
@@ -526,6 +530,14 @@
         "checks": {
           "$ref": "#/$defs/Checks",
           "description": "Optional: enabling, disabling, and configuration of build checks"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Optional: The amount of time to allow this build to take before timing out."
+        },
+        "resources": {
+          "$ref": "#/$defs/Resources",
+          "description": "Optional: Resources to allocate to the build."
         }
       },
       "additionalProperties": false,
@@ -700,6 +712,18 @@
       ],
       "description": "ReleaseMonitor indicates using the API for https://release-monitoring.org/"
     },
+    "Resources": {
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "Scriptlets": {
       "properties": {
         "trigger": {
@@ -793,12 +817,37 @@
         "checks": {
           "$ref": "#/$defs/Checks",
           "description": "Optional: enabling, disabling, and configuration of build checks"
+        },
+        "test": {
+          "$ref": "#/$defs/Test",
+          "description": "Test section for the subpackage."
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "name"
+      ]
+    },
+    "Test": {
+      "properties": {
+        "Environment": {
+          "$ref": "#/$defs/ImageConfiguration",
+          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank."
+        },
+        "pipeline": {
+          "items": {
+            "$ref": "#/$defs/Pipeline"
+          },
+          "type": "array",
+          "description": "Required: The list of pipelines that test the produced package."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Environment",
+        "pipeline"
       ]
     },
     "Update": {

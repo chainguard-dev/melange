@@ -909,8 +909,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "enabled",
-        "manual"
+        "enabled"
       ],
       "description": "Update provides information used to describe how to keep the package up to date"
     },

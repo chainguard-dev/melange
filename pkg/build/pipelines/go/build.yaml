@@ -79,6 +79,9 @@ pipeline:
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 
+      # Take advantage of melange's buid cache for downloaded modules
+      export GOMODCACHE=/var/cache/melange/gomodcache
+
       cd "${{inputs.modroot}}"
 
       # Install any specified dependencies

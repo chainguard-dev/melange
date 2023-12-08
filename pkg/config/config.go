@@ -841,16 +841,20 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 	}
 
 	const (
-		defaultEnvVarHOME   = "/home/build"
-		defaultEnvVarGOPATH = "/home/build/.cache/go"
+		defaultEnvVarHOME       = "/home/build"
+		defaultEnvVarGOPATH     = "/home/build/.cache/go"
+		defaultEnvVarGOMODCACHE = "/var/cache/melange/gomodcache"
 	)
 
-	if cfg.Environment.Environment["HOME"] == "" {
-		cfg.Environment.Environment["HOME"] = defaultEnvVarHOME
+	var setIfEmpty = func(key, value string) {
+		if cfg.Environment.Environment[key] == "" {
+			cfg.Environment.Environment[key] = value
+		}
 	}
-	if cfg.Environment.Environment["GOPATH"] == "" {
-		cfg.Environment.Environment["GOPATH"] = defaultEnvVarGOPATH
-	}
+
+	setIfEmpty("HOME", defaultEnvVarHOME)
+	setIfEmpty("GOPATH", defaultEnvVarGOPATH)
+	setIfEmpty("GOMODCACHE", defaultEnvVarGOMODCACHE)
 
 	// If a variables file was defined, merge it into the variables block.
 	if varsFile := options.varsFilePath; varsFile != "" {

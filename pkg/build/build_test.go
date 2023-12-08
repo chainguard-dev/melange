@@ -193,8 +193,9 @@ func TestConfiguration_Load(t *testing.T) {
 				},
 				Environment: apko_types.ImageConfiguration{
 					Environment: map[string]string{
-						"HOME":   "/home/build/special-case",
-						"GOPATH": "/var/cache/melange/go",
+						"GOMODCACHE": "/var/cache/melange/gomodcache",
+						"HOME":       "/home/build/special-case",
+						"GOPATH":     "/var/cache/melange/go",
 					},
 					Accounts: apko_types.ImageAccounts{
 						Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: 1000}},
@@ -282,8 +283,9 @@ package:
 		Members:   []string{"build"},
 	}}
 	expected.Environment.Environment = map[string]string{
-		"HOME":   "/home/build",
-		"GOPATH": "/home/build/.cache/go",
+		"HOME":       "/home/build",
+		"GOPATH":     "/home/build/.cache/go",
+		"GOMODCACHE": "/var/cache/melange/gomodcache",
 	}
 
 	f := filepath.Join(t.TempDir(), "config")

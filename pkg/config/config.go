@@ -118,6 +118,13 @@ type Package struct {
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	// Optional: Resources to allocate to the build.
 	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	// Metadata can hold various types of information related to the package.
+	// It is flexible to accommodate different data structures:
+	// - It can be a slice of strings, often representing paths or identifiers.
+	// - Alternatively, it can hold custom structs or slices of pointers to represent more complex data.
+	// The exact type of Metadata should be determined at runtime using type assertions.
+	Metadata interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
 type Resources struct {

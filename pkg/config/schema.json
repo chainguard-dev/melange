@@ -538,6 +538,9 @@
         "resources": {
           "$ref": "#/$defs/Resources",
           "description": "Optional: Resources to allocate to the build."
+        },
+        "metadata": {
+          "description": "Metadata can hold various types of information related to the package.\nIt is flexible to accommodate different data structures:\n- It can be a slice of strings, often representing paths or identifiers.\n- Alternatively, it can hold custom structs or slices of pointers to represent more complex data.\nThe exact type of Metadata should be determined at runtime using type assertions."
         }
       },
       "additionalProperties": false,

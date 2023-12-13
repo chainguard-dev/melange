@@ -160,10 +160,10 @@ func TestGenerateManifest(t *testing.T) {
 
 		// Check Environment
 		assert.Equal(t, got.Environment.Contents.Packages, []string{
+			"build-base",
+			"busybox",
 			"ca-certificates-bundle",
 			"wolfi-base",
-			"busybox",
-			"build-base",
 		})
 
 		// Check Pipeline
@@ -312,10 +312,10 @@ func TestGenerateEnvironment(t *testing.T) {
 	expected310 := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
 			Packages: []string{
+				"build-base",
+				"busybox",
 				"ca-certificates-bundle",
 				"wolfi-base",
-				"busybox",
-				"build-base",
 			},
 		},
 	}
@@ -335,10 +335,10 @@ func TestGenerateEnvironment(t *testing.T) {
 	expected311 := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
 			Packages: []string{
+				"build-base",
+				"busybox",
 				"ca-certificates-bundle",
 				"wolfi-base",
-				"busybox",
-				"build-base",
 			},
 		},
 	}

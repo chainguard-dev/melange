@@ -283,12 +283,12 @@ func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 	env := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
 			Packages: []string{
-				"ca-certificates-bundle",
-				fmt.Sprintf("ruby-%s", c.RubyVersion),
-				fmt.Sprintf("ruby-%s-dev", c.RubyVersion),
 				"build-base",
 				"busybox",
+				"ca-certificates-bundle",
 				"git",
+				fmt.Sprintf("ruby-%s", c.RubyVersion),
+				fmt.Sprintf("ruby-%s-dev", c.RubyVersion),
 			},
 		},
 	}

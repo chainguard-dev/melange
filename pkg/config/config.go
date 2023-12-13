@@ -417,7 +417,7 @@ type Update struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 	// Indicates that this package should be manually updated, usually taking
 	// care over special version numbers
-	Manual bool `json:"manual" yaml:"manual"`
+	Manual bool `json:"manual,omitempty" yaml:"manual"`
 	// Indicate that an update to this package requires an epoch bump of
 	// downstream dependencies, e.g. golang, java
 	Shared bool `json:"shared,omitempty" yaml:"shared,omitempty"`

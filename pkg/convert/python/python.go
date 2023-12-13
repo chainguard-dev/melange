@@ -344,10 +344,10 @@ func (c *PythonContext) generatePackage(pack Package, version string) config.Pac
 func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfiguration {
 	c.Logger.Printf("[%s] Generate Environment", pack.Info.Name)
 	pythonStandard := []string{
+		"build-base",
+		"busybox",
 		"ca-certificates-bundle",
 		"wolfi-base",
-		"busybox",
-		"build-base",
 	}
 
 	env := apkotypes.ImageConfiguration{

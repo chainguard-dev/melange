@@ -424,11 +424,11 @@ func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyring
 	env := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
 			Packages: []string{
+				"autoconf",
+				"automake",
+				"build-base",
 				"busybox",
 				"ca-certificates-bundle",
-				"build-base",
-				"automake",
-				"autoconf",
 			},
 		},
 	}

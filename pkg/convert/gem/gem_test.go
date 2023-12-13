@@ -163,12 +163,12 @@ func TestGenerateManifest(t *testing.T) {
 	assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.Repositories)
 	assert.Equal(t, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}, got.Environment.Contents.Keyring)
 	assert.Equal(t, []string{
-		"ca-certificates-bundle",
-		fmt.Sprintf("ruby-%s", DefaultRubyVersion),
-		fmt.Sprintf("ruby-%s-dev", DefaultRubyVersion),
 		"build-base",
 		"busybox",
+		"ca-certificates-bundle",
 		"git",
+		fmt.Sprintf("ruby-%s", DefaultRubyVersion),
+		fmt.Sprintf("ruby-%s-dev", DefaultRubyVersion),
 	}, got.Environment.Contents.Packages)
 
 	// Check Pipeline
@@ -250,12 +250,12 @@ func TestGenerateEnvironment(t *testing.T) {
 			Repositories: []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"},
 			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"},
 			Packages: []string{
-				"ca-certificates-bundle",
-				fmt.Sprintf("ruby-%s", DefaultRubyVersion),
-				fmt.Sprintf("ruby-%s-dev", DefaultRubyVersion),
 				"build-base",
 				"busybox",
+				"ca-certificates-bundle",
 				"git",
+				fmt.Sprintf("ruby-%s", DefaultRubyVersion),
+				fmt.Sprintf("ruby-%s-dev", DefaultRubyVersion),
 			},
 		},
 	}

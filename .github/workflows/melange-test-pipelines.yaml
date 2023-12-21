@@ -23,10 +23,10 @@ jobs:
         run: |
           make melange
 
-      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+      - uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
         with:
-          name: melange-${{github.run_id}}
-          path: ${{github.workspace}}/melange
+          name: melange-${{ github.run_id }}
+          path: ${{ github.workspace }}/melange
           retention-days: 1
 
   test-packages:
@@ -50,13 +50,14 @@ jobs:
 
     steps:
       # Grab the melange we uploaded above, and install it.
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+      - uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4.1.0
         with:
-          name: melange-${{github.run_id}}
-          path: ${{github.workspace}}/.melange-dir
+          name: melange-${{ github.run_id }}
+          path: ${{ github.workspace }}/.melange-dir
+          run-id: ${{ github.run_id }}
 
       - run: |
-          sudo mv ${{github.workspace}}/.melange-dir/melange /usr/bin/melange
+          sudo mv ${{ github.workspace }}/.melange-dir/melange /usr/bin/melange
           sudo chmod a+x /usr/bin/melange
           melange version
 
@@ -67,7 +68,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - run: |
-          testfile="${{matrix.package}}-test.yaml"
+          testfile="${{ matrix.package }}-test.yaml"
           echo "Testing $testfile"
 
-          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures ./e2e-tests/$testfile ${{matrix.package}} --repository-append https://packages.wolfi.dev/os --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures ./e2e-tests/$testfile ${{ matrix.package }} --repository-append https://packages.wolfi.dev/os --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub

@@ -27,7 +27,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/korovkin/limiter v0.0.0-20230307205149-3d4b2b34c99d
 	github.com/kubescape/go-git-url v0.0.26
-	github.com/lima-vm/lima v0.18.0
+	github.com/lima-vm/lima v0.19.1
 	github.com/opencontainers/image-spec v1.1.0-rc5
 	github.com/package-url/packageurl-go v0.1.2
 	github.com/pkg/errors v0.9.1
@@ -73,6 +73,7 @@ require (
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/containerd v1.7.11 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
+	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -127,9 +128,7 @@ require (
 	github.com/lima-vm/go-qcow2reader v0.1.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/mdlayher/socket v0.4.1 // indirect
-	github.com/mdlayher/vsock v1.2.1 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
@@ -156,7 +155,6 @@ require (
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/xorcare/pointer v1.2.2 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.opencensus.io v0.24.0 // indirect

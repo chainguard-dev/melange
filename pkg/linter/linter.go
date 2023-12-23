@@ -141,6 +141,12 @@ var postLinterMap = map[string]postLinter{
 		FailOnError: false,
 		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
+	"danglingsymlink": {
+		LinterFunc:  danglingSymlinkLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
+		FailOnError: false,
+		Explain:     "Verify that this package has no dangling symlink",
+	},
 	"python/docs": {
 		LinterFunc:  pythonDocsPostLinter,
 		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
@@ -643,4 +649,52 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 	lctx := NewLinterContext(pkgname, exp.TarFS)
 
 	return lctx.lintPackageFs(warn, linters, linter_defaults.LinterClassApk)
+}
+
+func danglingSymlinkLinter(lctx LinterContext, fsys fs.FS) error {
+	founddanglingsymlink := false
+	walkCb := func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		if d.IsDir() {
+			// Ignore directories
+			return nil
+		}
+
+		if d.Type() == fs.ModeSymlink {
+			realpath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return err
+			}
+
+			f, err := lctx.fsys.Open(realpath)
+			if err != nil {
+				founddanglingsymlink = true
+				return fs.SkipAll
+			}
+
+			defer f.Close()
+
+			return nil
+		}
+
+		return nil
+	}
+
+	err := fs.WalkDir(fsys, ".", walkCb)
+	if err != nil {
+		return err
+	}
+
+	if founddanglingsymlink {
+		return fmt.Errorf("found dangling symlink %w", err)
+	}
+
+	return nil
 }

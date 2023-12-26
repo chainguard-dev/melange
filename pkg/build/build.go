@@ -988,7 +988,8 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
 	if b.IsBuildLess() {
 		return &container.Config{
-			Arch: b.Arch,
+			Arch:         b.Arch,
+			WorkspaceDir: b.WorkspaceDir,
 		}
 	}
 
@@ -1023,7 +1024,8 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		Environment: map[string]string{
 			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
 		},
-		Timeout: b.Configuration.Package.Timeout,
+		WorkspaceDir: b.WorkspaceDir,
+		Timeout:      b.Configuration.Package.Timeout,
 	}
 
 	if b.Configuration.Package.Resources != nil {

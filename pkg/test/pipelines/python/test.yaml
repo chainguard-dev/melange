@@ -1,0 +1,14 @@
+name: Test a python package
+
+needs:
+  packages:
+    - wolfi-base
+
+inputs:
+  command:
+    description: |
+      The command to run.
+    required: true
+
+pipeline:
+  - runs: ${{inputs.command}}

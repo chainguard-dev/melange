@@ -68,6 +68,7 @@ pipeline:
       if [ -z "${{inputs.expected-commit}}" ]; then
         echo "Warning (git-checkout): no expected-commit"
       elif [ -n '${{inputs.branch}}' ]; then
+        git config --global advice.detachedHead false
         remote_commit=$(git rev-parse --verify --end-of-options "refs/heads/${{inputs.branch}}")
         if [[ '${{inputs.expected-commit}}' != "$remote_commit" ]]; then
           echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got $remote_commit"

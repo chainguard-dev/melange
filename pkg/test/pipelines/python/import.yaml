@@ -1,0 +1,23 @@
+ name: Test a python package import, with optional from clause
+
+needs:
+  packages:
+    - wolfi-base
+
+inputs:
+  import:
+    description: |
+      The package to import.
+    required: true
+  from:
+    description: |
+      The package to import (from <from> import <import>).
+    required: false
+
+pipeline:
+  - runs: |
+      if [ -n "${{inputs.from}}" ]; then
+        python3 -c "from ${{inputs.from}} import ${{inputs.import}}"
+      else
+        python3 -c "import ${{inputs.import}}"
+      fi

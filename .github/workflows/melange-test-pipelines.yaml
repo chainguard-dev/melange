@@ -47,6 +47,7 @@ jobs:
         package:
           - php-8.2-msgpack
           - py3-pandas
+          - numpy
           # The ones with -nopkg are packages which do not specify test
           # packages, and they are added to the test environment by using flags.
           # They make sure the flag `--test-package-append` works.
@@ -84,6 +85,7 @@ jobs:
 
           melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures \
           ./e2e-tests/$testfile ${{ matrix.package }} \
+          --pipeline-dirs ./pkg/test/pipelines \
           --repository-append https://packages.wolfi.dev/os \
           --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
@@ -98,6 +100,7 @@ jobs:
 
           melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures \
           ./e2e-tests/$testfile \
+          --pipeline-dirs ./pkg/test/pipelines \
           --repository-append https://packages.wolfi.dev/os \
           --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
           --test-package-append wolfi-base \

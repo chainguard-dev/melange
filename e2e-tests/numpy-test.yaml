@@ -1,0 +1,28 @@
+package:
+  name: numpy
+  version: 2.1.3
+  epoch: 1
+  description: Tests for py3-pandas using python test pipelines
+
+pipeline:
+
+# Test python/import, and python/test pipelines
+test:
+  pipeline:
+    # Test import with command (python -c "import numpy")
+    - uses: python/test
+      with:
+        command: python -c "import numpy"
+    # Test import directly (python -c "import numpy")
+    - uses: python/import
+      with:
+        import: numpy
+    # Test import directly (python -c "import numpy.ma")
+    - uses: python/import
+      with:
+        import: numpy.ma
+    # Test import with from clause (python -c "from numpy import ma")
+    - uses: python/import
+      with:
+        import: ma
+        from: numpy

@@ -15,12 +15,12 @@ inputs:
       Compile options for the Meson build.
 
 pipeline:
+  # Don't download subprojects by default. We want to use only the source
+  # provided by the project, and if any subprojects are needed we should
+  # provide them ourselves.
+  # Ref: https://mesonbuild.com/Subprojects.html#commandline-options
   - runs: |
       meson setup . ${{inputs.output-dir}} \
         --prefix=/usr \
-        # Don't download subprojects by default. We want to use only the source
-        # provided by the project, and if any subprojects are needed we should
-        # provide them ourselves.
-        # Ref: https://mesonbuild.com/Subprojects.html#commandline-options
         --wrap-mode=nodownload \
         ${{inputs.opts}}

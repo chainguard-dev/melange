@@ -52,8 +52,8 @@ jobs:
           # They make sure the flag `--test-package-append` works.
           # We also do not specify the test package in the test file, so that
           # we test that the main package gets correctly pulled from the file.
-          - php-8.2-msgpack-test-nopkg
-          - py3-pandas-test-nopkg
+          - php-8.2-msgpack-nopkg
+          - py3-pandas-nopkg
 
     steps:
       # Grab the melange we uploaded above, and install it.

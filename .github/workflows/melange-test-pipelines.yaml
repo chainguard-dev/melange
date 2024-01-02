@@ -77,7 +77,7 @@ jobs:
       - name: Run without additional test packages.
         # Any package ending with -nopkg will fail if we do not add the
         # extra test packages to it, so test in a separate leg.
-        if: false == endsWith( ${{ matrix.package }}, '-nopkg' )
+        if: ${{ ! endsWith( matrix.package, '-nopkg' ) }}
         run: |
           testfile="${{ matrix.package }}-test.yaml"
           echo "Testing $testfile"
@@ -91,7 +91,7 @@ jobs:
         # Any package ending with -nopkg will need to have test packages
         # added to it. Note that we do not add a package to test either, pull
         # that from the test file.
-        if: endsWith( ${{ matrix.package }}, '-nopkg.yaml' )
+        if: endsWith( matrix.package, '-nopkg.yaml' )
         run: |
           testfile="${{ matrix.package }}-test.yaml"
           echo "Testing $testfile"

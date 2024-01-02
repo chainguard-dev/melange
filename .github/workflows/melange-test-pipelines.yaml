@@ -85,7 +85,6 @@ jobs:
 
           melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures \
           ./e2e-tests/$testfile ${{ matrix.package }} \
-          --pipeline-dirs ./pkg/test/pipelines \
           --repository-append https://packages.wolfi.dev/os \
           --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
@@ -100,10 +99,8 @@ jobs:
 
           melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures \
           ./e2e-tests/$testfile \
-          --pipeline-dirs ./pkg/test/pipelines \
           --repository-append https://packages.wolfi.dev/os \
           --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
-          --test-package-append wolfi-base \
           --test-package-append busybox \
           --test-package-append python-3
 

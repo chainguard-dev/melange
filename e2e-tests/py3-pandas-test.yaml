@@ -13,7 +13,6 @@ test:
     contents:
       packages:
         - busybox
-        - python-3
   pipeline:
     - runs: |
         python3 ./py3-pandas-test.py

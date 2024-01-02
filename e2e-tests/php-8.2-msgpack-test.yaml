@@ -19,7 +19,7 @@ test:
   environment:
     contents:
       packages:
-        - wolfi-base
+        - busybox
   pipeline:
     - runs: |
         # Make sure msgpack is correctly loaded and listed by modules
@@ -32,7 +32,6 @@ subpackages:
       environment:
         contents:
           packages:
-            - wolfi-base
             - busybox
       pipeline:
         - runs: |
@@ -44,7 +43,6 @@ subpackages:
       environment:
         contents:
           packages:
-            - wolfi-base
             - busybox
       pipeline:
         - runs: |

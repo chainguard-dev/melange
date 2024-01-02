@@ -44,6 +44,7 @@ func Test() *cobra.Command {
 	var debug bool
 	var debugRunner bool
 	var runner string
+	var extraTestPackages []string
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -61,6 +62,7 @@ func Test() *cobra.Command {
 				build.WithTestGuestDir(guestDir),
 				build.WithTestExtraKeys(extraKeys),
 				build.WithTestExtraRepos(extraRepos),
+				build.WithExtraTestPackages(extraTestPackages),
 				build.WithTestBinShOverlay(overlayBinSh),
 				build.WithTestRunner(runner),
 				build.WithTestDebug(debug),
@@ -103,6 +105,7 @@ func Test() *cobra.Command {
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
+	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 
 	return cmd
 }

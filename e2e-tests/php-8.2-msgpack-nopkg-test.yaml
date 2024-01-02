@@ -1,0 +1,38 @@
+# This is an example test file that shows how 'melange test' works.
+# It has been pulled into its own file, to try to clearly show what the
+# test file looks like.
+# Note, that these tests can also be baked into the package file itself.
+#
+package:
+  name: php-8.2-msgpack
+  version: 2.2.0
+  epoch: 0
+  description: "Tests for PHP extension msgpack"
+  copyright:
+    - license: BSD-3-Clause
+
+# This is mandatory, so just put an empty one there. Otherwise, config parsing
+# will fail.
+pipeline:
+
+test:
+  pipeline:
+    - runs: |
+        # Make sure msgpack is correctly loaded and listed by modules
+        php -m | grep msgpack
+
+subpackages:
+  - name: ${{package.name}}-config
+    description: PHP 8.2 msgpack tests
+    test:
+      pipeline:
+        - runs: |
+            grep msgpack.so /etc/php/conf.d/msgpack.ini
+
+  - name: ${{package.name}}-dev
+    description: PHP 8.2 msgpack development headers tests
+    test:
+      pipeline:
+        - runs: |
+            # Just make sure this define is there.
+            grep PHP_MSGPACK_VERSION /usr/include/php/ext/msgpack/php_msgpack.h

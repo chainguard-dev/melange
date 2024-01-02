@@ -47,6 +47,13 @@ jobs:
         package:
           - php-8.2-msgpack
           - py3-pandas
+          # The ones with -nopkg are packages which do not specify test
+          # packages, and they are added to the test environment by using flags.
+          # They make sure the flag `--test-package-append` works.
+          # We also do not specify the test package in the test file, so that
+          # we test that the main package gets correctly pulled from the file.
+          - php-8.2-msgpack-test-nopkg
+          - py3-pandas-test-nopkg
 
     steps:
       # Grab the melange we uploaded above, and install it.
@@ -67,8 +74,33 @@ jobs:
       # Make sure we have our tests files here.
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - run: |
+      - name: Run without additional test packages.
+        # Any package ending with -nopkg will fail if we do not add the
+        # extra test packages to it, so test in a separate leg.
+        if: ${{ !endsWith( ${{ matrix.package }}, '-nopkg' ) }}
+        run: |
           testfile="${{ matrix.package }}-test.yaml"
           echo "Testing $testfile"
 
-          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures ./e2e-tests/$testfile ${{ matrix.package }} --repository-append https://packages.wolfi.dev/os --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures \
+          ./e2e-tests/$testfile ${{ matrix.package }} \
+          --repository-append https://packages.wolfi.dev/os \
+          --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+
+      - name: Run with additional test packages (--test-package-append).
+        # Any package ending with -nopkg will need to have test packages
+        # added to it. Note that we do not add a package to test either, pull
+        # that from the test file.
+        if: endsWith( ${{ matrix.package }}, '-nopkg.yaml' )
+        run: |
+          testfile="${{ matrix.package }}-test.yaml"
+          echo "Testing $testfile"
+
+          melange test --arch x86_64 --source-dir ./e2e-tests/test-fixtures \
+          ./e2e-tests/$testfile \
+          --repository-append https://packages.wolfi.dev/os \
+          --keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+          --test-package-append wolfi-base \
+          --test-package-append busybox \
+          --test-package-append python-3
+

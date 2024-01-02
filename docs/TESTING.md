@@ -115,6 +115,14 @@ way (build a local copy, and it will be picked up by APK resolver). This is very
 similar to how we build/test images with local versions of packages, so again,
 this should feel very natural.
 
+### Execution environmnent, specifying extra test packages
+
+If you want to have a minimal test specification, and tests need a package, you
+can specify `--test-package-append` (you can specify multiple times), so that
+you don't need to include those in your `test.environment.contents.packages`.
+Note that these packages are added to each test environment (including
+subpackages).
+
 ### Where to define the tests?
 
 So, this is one open question, but the short answer is that you can add these

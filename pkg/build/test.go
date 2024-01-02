@@ -46,22 +46,23 @@ type Test struct {
 	WorkspaceDir    string
 	WorkspaceIgnore string
 	// Ordered directories where to find 'uses' pipelines.
-	PipelineDirs []string
-	SourceDir    string
-	GuestDir     string
-	Logger       apko_log.Logger
-	Arch         apko_types.Architecture
-	ExtraKeys    []string
-	ExtraRepos   []string
-	BinShOverlay string
-	CacheDir     string
-	ApkCacheDir  string
-	CacheSource  string
-	Runner       container.Runner
-	RunnerName   string
-	Debug        bool
-	DebugRunner  bool
-	LogPolicy    []string
+	PipelineDirs      []string
+	SourceDir         string
+	GuestDir          string
+	Logger            apko_log.Logger
+	Arch              apko_types.Architecture
+	ExtraKeys         []string
+	ExtraRepos        []string
+	ExtraTestPackages []string
+	BinShOverlay      string
+	CacheDir          string
+	ApkCacheDir       string
+	CacheSource       string
+	Runner            container.Runner
+	RunnerName        string
+	Debug             bool
+	DebugRunner       bool
+	LogPolicy         []string
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -289,6 +290,15 @@ func WithTestPackageCacheDir(apkCacheDir string) TestOption {
 	}
 }
 
+// WithExtraTestPackages specifies packages that are added to each test by
+// default.
+func WithExtraTestPackages(extraTestPackages []string) TestOption {
+	return func(t *Test) error {
+		t.ExtraTestPackages = extraTestPackages
+		return nil
+	}
+}
+
 // BuildGuest invokes apko to create the test image for the guest environment.
 // imgConfig specifies the environment for the test to run (e.g. packages to
 // install).
@@ -301,6 +311,9 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig *apko_types.ImageConfig
 	if err := os.MkdirAll(t.WorkspaceDir, 0755); err != nil {
 		return "", fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 	}
+
+	// Then add any extra packages specified by the command line.
+	imgConfig.Contents.Packages = append(imgConfig.Contents.Packages, t.ExtraTestPackages...)
 
 	// Prepare guest directory. Note that we customize this for each unique
 	// Test by having a suffix, so we get a clean guest directory for each of
@@ -530,6 +543,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	} else {
 		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, pkg.Name)
 	}
+
 	for i := range t.Configuration.Test.Pipeline {
 		p := &t.Configuration.Test.Pipeline[i]
 		// fine to pass nil for config, since not running in container.

@@ -831,7 +831,7 @@
     },
     "Test": {
       "properties": {
-        "Environment": {
+        "environment": {
           "$ref": "#/$defs/ImageConfiguration",
           "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank."
         },
@@ -846,7 +846,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Environment",
+        "environment",
         "pipeline"
       ]
     },

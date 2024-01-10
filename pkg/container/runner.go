@@ -59,6 +59,8 @@ func GetRunner(ctx context.Context, s string, log log.Logger) (Runner, error) {
 		return LimaRunner(ctx, log)
 	case KubernetesName:
 		return KubernetesRunner(ctx, log)
+	case DaggerName:
+		return DaggerRunner(ctx, log)
 	}
 	return nil, fmt.Errorf("unknown virtualizer %q", s)
 }

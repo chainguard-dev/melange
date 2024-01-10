@@ -1381,12 +1381,22 @@ func (b *Build) WorkspaceConfig() *container.Config {
 	return b.containerConfig
 }
 
+type WorkspaceRunner interface {
+	Export(context.Context, string) error
+}
+
 // RetrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
 func (b *Build) RetrieveWorkspace(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
 	defer span.End()
+
+	// Check if Runner is a WorkspaceRunner type
+	wr, ok := b.Runner.(WorkspaceRunner)
+	if ok {
+		return wr.Export(ctx, b.WorkspaceDir)
+	}
 
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
 	if err != nil {

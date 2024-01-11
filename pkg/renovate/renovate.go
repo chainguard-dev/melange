@@ -71,7 +71,7 @@ type Renovator func(ctx context.Context, rc *RenovationContext) error
 func (c *Context) Renovate(ctx context.Context, renovators ...Renovator) error {
 	rc := RenovationContext{Context: c}
 
-	if err := rc.LoadConfig(); err != nil {
+	if err := rc.LoadConfig(ctx); err != nil {
 		return err
 	}
 
@@ -89,8 +89,8 @@ func (c *Context) Renovate(ctx context.Context, renovators ...Renovator) error {
 }
 
 // LoadConfig loads the configuration data into an AST for renovation.
-func (rc *RenovationContext) LoadConfig() error {
-	cfg, err := config.ParseConfiguration(rc.Context.ConfigFile)
+func (rc *RenovationContext) LoadConfig(ctx context.Context) error {
+	cfg, err := config.ParseConfiguration(ctx, rc.Context.ConfigFile)
 	if err != nil {
 		return err
 	}

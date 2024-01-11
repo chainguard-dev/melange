@@ -14,7 +14,8 @@ toc: true
 ### Options
 
 ```
-  -h, --help   help for melange
+  -h, --help                 help for melange
+      --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
 ```
 
 ### SEE ALSO

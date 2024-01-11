@@ -19,10 +19,10 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
@@ -60,7 +60,8 @@ func WithExpectedCommit(expectedCommit string) Option {
 }
 
 // New returns a renovator which performs a version bump.
-func New(opts ...Option) renovate.Renovator {
+func New(ctx context.Context, opts ...Option) renovate.Renovator {
+	log := clog.FromContext(ctx)
 	bcfg := BumpConfig{}
 
 	for _, opt := range opts {
@@ -72,7 +73,7 @@ func New(opts ...Option) renovate.Renovator {
 	}
 
 	return func(ctx context.Context, rc *renovate.RenovationContext) error {
-		log.Printf("attempting to bump version to %s", bcfg.TargetVersion)
+		log.Infof("attempting to bump version to %s", bcfg.TargetVersion)
 
 		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
@@ -136,7 +137,7 @@ func New(opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("git-checkout"))
 
 		for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
-			if err := updateGitCheckout(gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
+			if err := updateGitCheckout(ctx, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
 				return err
 			}
 		}
@@ -146,6 +147,7 @@ func New(opts ...Option) renovate.Renovator {
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
 func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml.Node, targetVersion string) error {
+	log := clog.FromContext(ctx)
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -156,35 +158,35 @@ func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml
 		return err
 	}
 
-	log.Printf("processing fetch node:")
+	log.Infof("processing fetch node:")
 
 	// Fetch the new sources.
 	evaluatedURI, err := util.MutateStringFromMap(rc.Vars, uriNode.Value)
 	if err != nil {
 		return err
 	}
-	log.Printf("  uri: %s", uriNode.Value)
-	log.Printf("  evaluated: %s", evaluatedURI)
+	log.Infof("  uri: %s", uriNode.Value)
+	log.Infof("  evaluated: %s", evaluatedURI)
 
 	downloadedFile, err := util.DownloadFile(ctx, evaluatedURI)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(downloadedFile)
-	log.Printf("  fetched-as: %s", downloadedFile)
+	log.Infof("  fetched-as: %s", downloadedFile)
 
 	// Calculate SHA2-256 and SHA2-512 hashes.
 	fileSHA256, err := util.HashFile(downloadedFile, sha256.New())
 	if err != nil {
 		return err
 	}
-	log.Printf("  expected-sha256: %s", fileSHA256)
+	log.Infof("  expected-sha256: %s", fileSHA256)
 
 	fileSHA512, err := util.HashFile(downloadedFile, sha512.New())
 	if err != nil {
 		return err
 	}
-	log.Printf("  expected-sha512: %s", fileSHA512)
+	log.Infof("  expected-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.
 	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
@@ -201,20 +203,22 @@ func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml
 }
 
 // updateGitCheckout takes a "git-checkout" pipeline node and updates the parameters of it.
-func updateGitCheckout(node *yaml.Node, expectedGitSha string) error {
+func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha string) error {
+	log := clog.FromContext(ctx)
+
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
 	}
 
-	log.Printf("processing git-checkout node")
+	log.Infof("processing git-checkout node")
 
 	if expectedGitSha != "" {
 		// Update expected hash nodes.
 		nodeCommit, err := renovate.NodeFromMapping(withNode, "expected-commit")
 		if err == nil {
 			nodeCommit.Value = expectedGitSha
-			log.Printf("  expected-commit: %s", expectedGitSha)
+			log.Infof("  expected-commit: %s", expectedGitSha)
 		}
 	}
 

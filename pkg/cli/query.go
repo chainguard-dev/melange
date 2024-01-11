@@ -40,8 +40,8 @@ func Query() *cobra.Command {
 	return cmd
 }
 
-func QueryCmd(_ context.Context, configFile, pattern string) error {
-	config, err := config.ParseConfiguration(configFile)
+func QueryCmd(ctx context.Context, configFile, pattern string) error {
+	config, err := config.ParseConfiguration(ctx, configFile)
 	if err != nil {
 		return err
 	}

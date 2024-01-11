@@ -18,10 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
+	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -53,6 +53,10 @@ func Test() *cobra.Command {
 		Example: `  melange test <test.yaml> [package-name]`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if runner == "" {
+				runner = string(build.GetDefaultRunner())
+			}
+
 			archs := apko_types.ParseArchitectures(archstrs)
 			options := []build.TestOption{
 				build.WithTestWorkspaceDir(workspaceDir),
@@ -100,7 +104,7 @@ func Test() *cobra.Command {
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&testOption, "test-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
-	cmd.Flags().StringVar(&runner, "runner", string(build.GetDefaultRunner()), fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
+	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
@@ -111,6 +115,7 @@ func Test() *cobra.Command {
 }
 
 func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...build.TestOption) error {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "TestCmd")
 	defer span.End()
 
@@ -131,7 +136,7 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 
 		bc, err := build.NewTest(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
-			log.Printf("skipping arch %s", arch)
+			log.Infof("skipping arch %s", arch)
 			continue
 		} else if err != nil {
 			return err
@@ -141,7 +146,7 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 	}
 
 	if len(bcs) == 0 {
-		log.Printf("WARNING: target-architecture and --arch do not overlap, nothing to test")
+		log.Warnf("target-architecture and --arch do not overlap, nothing to test")
 		return nil
 	}
 
@@ -151,8 +156,8 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 
 		errg.Go(func() error {
 			if err := bc.TestPackage(ctx); err != nil {
-				log.Printf("ERROR: failed to test package. the test environment has been preserved:")
-				bc.SummarizePaths()
+				log.Infof("ERROR: failed to test package. the test environment has been preserved:")
+				bc.SummarizePaths(ctx)
 
 				return fmt.Errorf("failed to build package: %w", err)
 			}

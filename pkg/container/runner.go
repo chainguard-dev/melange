@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
@@ -49,23 +49,23 @@ type Loader interface {
 }
 
 // GetRunner returns the requested runner implementation.
-func GetRunner(ctx context.Context, s string, log log.Logger) (Runner, error) {
+func GetRunner(ctx context.Context, s string) (Runner, error) {
 	switch s {
 	case BubblewrapName:
-		return BubblewrapRunner(log), nil
+		return BubblewrapRunner(), nil
 	case DockerName:
-		return DockerRunner(log), nil
+		return DockerRunner(), nil
 	case LimaName:
-		return LimaRunner(ctx, log)
+		return LimaRunner(ctx)
 	case KubernetesName:
-		return KubernetesRunner(ctx, log)
+		return KubernetesRunner(ctx)
 	}
 	return nil, fmt.Errorf("unknown virtualizer %q", s)
 }
 
 // monitorCmd sets up the stdout/stderr pipes and then supervises
 // execution of an exec.Cmd.
-func monitorCmd(cfg *Config, cmd *exec.Cmd) error {
+func monitorCmd(ctx context.Context, cfg *Config, cmd *exec.Cmd) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -83,8 +83,8 @@ func monitorCmd(cfg *Config, cmd *exec.Cmd) error {
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, log.InfoLevel, stdout, finishStdout)
-	go monitorPipe(cfg.Logger, log.WarnLevel, stderr, finishStderr)
+	go monitorPipe(ctx, slog.LevelInfo, stdout, finishStdout)
+	go monitorPipe(ctx, slog.LevelWarn, stderr, finishStderr)
 
 	if err := cmd.Wait(); err != nil {
 		return err

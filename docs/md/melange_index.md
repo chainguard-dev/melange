@@ -36,6 +36,12 @@ melange index [flags]
   -s, --source string        Source FILE to use for pre-existing index entries (default "APKINDEX.tar.gz")
 ```
 
+### Options inherited from parent commands
+
+```
+      --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
+```
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

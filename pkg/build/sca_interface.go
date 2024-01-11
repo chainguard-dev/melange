@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"chainguard.dev/apko/pkg/log"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
 )
@@ -68,11 +67,6 @@ func (scabi *SCABuildInterface) FilesystemForRelative(pkgName string) (sca.SCAFS
 // Filesystem implements an abstract filesystem providing access to a package filesystem.
 func (scabi *SCABuildInterface) Filesystem() (sca.SCAFS, error) {
 	return scabi.FilesystemForRelative(scabi.PackageName())
-}
-
-// Logger returns a logger for use by the SCA engine.
-func (scabi *SCABuildInterface) Logger() log.Logger {
-	return scabi.PackageBuild.Logger
 }
 
 // Options returns the configured SCA engine options for the package being built.

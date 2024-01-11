@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -29,6 +28,7 @@ import (
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,11 +82,14 @@ func TestGetPythonMeta(t *testing.T) {
 }
 
 func TestFindDependencies(t *testing.T) {
+	ctx := context.Background()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		log := clog.FromContext(ctx)
 		latestVersion, err := removeVersionsFromURL(req.URL.String())
 		assert.NoError(t, err)
 		path := filepath.Join(pypiMetaDir, latestVersion)
-		log.Printf("convert:test:server: %s", path)
+		log.Infof("convert:test:server: %s", path)
 
 		data, err := os.ReadFile(path)
 		assert.NoError(t, err)
@@ -117,7 +120,7 @@ func TestFindDependencies(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotEmpty(t, pythonPackages)
 
-			log.Printf("[%s] Generating %v files", pythonctx.PackageName, len(pythonctx.ToGenerate))
+			clog.FromContext(ctx).Infof("[%s] Generating %v files", pythonctx.PackageName, len(pythonctx.ToGenerate))
 			for _, packName := range pythonPackages {
 				_, ok := pythonctx.ToGenerate[packName]
 				assert.True(t, ok)

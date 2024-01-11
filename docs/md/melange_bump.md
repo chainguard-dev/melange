@@ -32,6 +32,12 @@ melange bump [flags]
   -h, --help                     help for bump
 ```
 
+### Options inherited from parent commands
+
+```
+      --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
+```
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

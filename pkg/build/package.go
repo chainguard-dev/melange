@@ -38,7 +38,7 @@ import (
 	"chainguard.dev/melange/pkg/sca"
 	"chainguard.dev/melange/pkg/util"
 
-	"chainguard.dev/apko/pkg/log"
+	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/go-apk/pkg/tarball"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
@@ -70,7 +70,6 @@ type PackageBuild struct {
 	InstalledSize int64
 	DataHash      string
 	OutDir        string
-	Logger        log.Logger
 	Dependencies  config.Dependencies
 	Arch          string
 	Options       config.PackageOption
@@ -99,7 +98,6 @@ func (pb *PipelineBuild) Emit(ctx context.Context, pkg *config.Package) error {
 		PackageName:  pkg.Name,
 		OriginName:   pkg.Name,
 		OutDir:       filepath.Join(pb.Build.OutDir, pb.Build.Arch.ToAPK()),
-		Logger:       pb.Build.Logger,
 		Dependencies: pkg.Dependencies,
 		Arch:         pb.Build.Arch.ToAPK(),
 		Options:      pkg.Options,
@@ -297,23 +295,24 @@ func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 	return newRuntimeDeps
 }
 
-func (pc *PackageBuild) GenerateDependencies() error {
+func (pc *PackageBuild) GenerateDependencies(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	generated := config.Dependencies{}
 
 	hdl := SCABuildInterface{
 		PackageBuild: pc,
 	}
 
-	if err := sca.Analyze(&hdl, &generated); err != nil {
+	if err := sca.Analyze(ctx, &hdl, &generated); err != nil {
 		return fmt.Errorf("analyzing package: %w", err)
 	}
 
 	if pc.Build.DependencyLog != "" {
-		pc.Logger.Printf("writing dependency log")
+		log.Info("writing dependency log")
 
 		logFile, err := os.Create(fmt.Sprintf("%s.%s", pc.Build.DependencyLog, pc.Arch))
 		if err != nil {
-			pc.Logger.Warnf("Unable to open dependency log: %v", err)
+			log.Warnf("Unable to open dependency log: %v", err)
 		}
 		defer logFile.Close()
 
@@ -340,7 +339,7 @@ func (pc *PackageBuild) GenerateDependencies() error {
 	// Sets .PKGINFO `# vendored = ...` comments; does not affect resolution.
 	pc.Dependencies.Vendored = generated.Vendored
 
-	pc.Dependencies.Summarize(pc.Logger)
+	pc.Dependencies.Summarize(ctx)
 
 	return nil
 }
@@ -377,6 +376,7 @@ func (pc *PackageBuild) calculateInstalledSize(fsys fs.FS) error {
 }
 
 func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, userinfofs fs.FS, remapUIDs map[int]int, remapGIDs map[int]int, w io.WriteSeeker) error {
+	log := clog.FromContext(ctx)
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
 		tarball.WithRemapUIDs(remapUIDs),
@@ -403,7 +403,7 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, userinf
 	}
 
 	pc.DataHash = hex.EncodeToString(digest.Sum(nil))
-	pc.Logger.Printf("  data.tar.gz digest: %s", pc.DataHash)
+	log.Infof("  data.tar.gz digest: %s", pc.DataHash)
 
 	if _, err := w.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("unable to rewind data tarball: %w", err)
@@ -417,6 +417,7 @@ func (pc *PackageBuild) wantSignature() bool {
 }
 
 func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "EmitPackage")
 	defer span.End()
 
@@ -425,7 +426,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to ensure workspace exists: %w", err)
 	}
 
-	pc.Logger.Printf("generating package %s", pc.Identity())
+	log.Info("generating package " + pc.Identity())
 
 	// filesystem for the data package
 	fsys := readlinkFS(pc.WorkspaceSubdir())
@@ -434,7 +435,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	userinfofs := os.DirFS(pc.Build.GuestDir)
 
 	// generate so:/cmd: virtuals for the filesystem
-	if err := pc.GenerateDependencies(); err != nil {
+	if err := pc.GenerateDependencies(ctx); err != nil {
 		return fmt.Errorf("unable to build final dependencies set: %w", err)
 	}
 
@@ -443,7 +444,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 		return err
 	}
 
-	pc.Logger.Printf("  installed-size: %d", pc.InstalledSize)
+	log.Infof("  installed-size: %d", pc.InstalledSize)
 
 	// prepare data.tar.gz
 	dataTarGz, err := os.CreateTemp("", "melange-data-*.tar.gz")
@@ -520,11 +521,11 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to write apk file: %w", err)
 	}
 
-	pc.Logger.Printf("wrote %s", outFile.Name())
+	log.Infof("wrote %s", outFile.Name())
 
 	// add the package to the build log if requested
 	if err := pc.AppendBuildLog(""); err != nil {
-		pc.Logger.Warnf("unable to append package log: %s", err)
+		log.Warnf("unable to append package log: %s", err)
 	}
 
 	return nil

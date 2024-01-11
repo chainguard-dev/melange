@@ -31,6 +31,7 @@ func TestBump_versions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			err, server := setupTestServer(t)
 			assert.NoError(t, err)
 
@@ -44,14 +45,14 @@ func TestBump_versions(t *testing.T) {
 			err = os.WriteFile(filepath.Join(dir, tt.name), []byte(melangConfig), 0755)
 			assert.NoError(t, err)
 
-			ctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
 			assert.NoError(t, err)
 
-			bumpRenovator := New(
+			bumpRenovator := New(ctx,
 				WithTargetVersion(tt.newVersion),
 			)
 
-			err = ctx.Renovate(context.Background(), bumpRenovator)
+			err = rctx.Renovate(context.Background(), bumpRenovator)
 			assert.NoError(t, err)
 
 			resultData, err := os.ReadFile(filepath.Join(dir, tt.name))
@@ -79,6 +80,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
 			assert.NoError(t, err)
 
@@ -86,18 +88,18 @@ func TestBump_withExpectedCommit(t *testing.T) {
 			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
 			assert.NoError(t, err)
 
-			ctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
 			assert.NoError(t, err)
 
-			bumpRenovator := New(
+			bumpRenovator := New(ctx,
 				WithTargetVersion(tt.newVersion),
 				WithExpectedCommit(tt.expectedCommit),
 			)
 
-			err = ctx.Renovate(context.Background(), bumpRenovator)
+			err = rctx.Renovate(context.Background(), bumpRenovator)
 			assert.NoError(t, err)
 
-			rs, err := config.ParseConfiguration(filepath.Join(dir, tt.name))
+			rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, tt.name))
 			require.NoError(t, err)
 			assert.Equal(t, rs.Package.Version, tt.newVersion)
 			assert.Equal(t, rs.Package.Epoch, tt.expectedEpoch)

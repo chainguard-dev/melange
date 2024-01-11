@@ -23,17 +23,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
 
 	"gopkg.in/yaml.v3"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apko_log "chainguard.dev/apko/pkg/log"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/logger"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -43,20 +42,15 @@ type PipelineContext struct {
 	WorkspaceConfig *container.Config
 	// Ordered list of pipeline directories to search for pipelines
 	PipelineDirs []string
-	logger       apko_log.Logger
 	steps        int
 }
 
-func NewPipelineContext(p *config.Pipeline, environment *apko_types.ImageConfiguration, config *container.Config, pipelineDirs []string, log apko_log.Logger) *PipelineContext {
-	if log == nil {
-		log = logger.NopLogger{}
-	}
+func NewPipelineContext(p *config.Pipeline, environment *apko_types.ImageConfiguration, config *container.Config, pipelineDirs []string) *PipelineContext {
 	return &PipelineContext{
 		Pipeline:        p,
 		PipelineDirs:    pipelineDirs,
 		Environment:     environment,
 		WorkspaceConfig: config,
-		logger:          log,
 		steps:           0,
 	}
 }
@@ -220,7 +214,8 @@ func loadPipelineData(dir string, uses string) ([]byte, error) {
 	return data, nil
 }
 
-func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[string]string) error {
+func (pctx *PipelineContext) loadUse(ctx context.Context, pb *PipelineBuild, uses string, with map[string]string) error {
+	log := clog.FromContext(ctx)
 	var data []byte
 	// Set this to fail up front in case there are no pipeline dirs specified
 	// and we can't find them.
@@ -228,15 +223,15 @@ func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[st
 	// See first if we can read from the specified pipeline dirs
 	// and if we can't, below we'll try from the embedded pipelines.
 	for _, pd := range pctx.PipelineDirs {
-		pctx.logger.Debugf("trying to load pipeline %q from %q", uses, pd)
+		log.Debugf("trying to load pipeline %q from %q", uses, pd)
 		data, err = loadPipelineData(pd, uses)
 		if err == nil {
-			pctx.logger.Printf("Found pipeline %s", string(data))
+			log.Infof("Found pipeline %s", string(data))
 			break
 		}
 	}
 	if err != nil {
-		pctx.logger.Debugf("trying to load pipeline %q from embedded fs pipelines/%q.yaml", uses, uses)
+		log.Debugf("trying to load pipeline %q from embedded fs pipelines/%q.yaml", uses, uses)
 		data, err = f.ReadFile("pipelines/" + uses + ".yaml")
 		if err != nil {
 			return fmt.Errorf("unable to load pipeline: %w", err)
@@ -271,22 +266,24 @@ func (pctx *PipelineContext) loadUse(pb *PipelineBuild, uses string, with map[st
 	return nil
 }
 
-func (pctx *PipelineContext) dumpWith() {
+func (pctx *PipelineContext) dumpWith(ctx context.Context) {
+	log := clog.FromContext(ctx)
 	for k, v := range pctx.Pipeline.With {
-		pctx.logger.Debugf("    %s: %s", k, v)
+		log.Debug("    " + k + ": " + v)
 	}
 }
 
 func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) error {
-	spctx := NewPipelineContext(&config.Pipeline{}, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
+	log := clog.FromContext(ctx)
+	spctx := NewPipelineContext(&config.Pipeline{}, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs)
 
-	if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
+	if err := spctx.loadUse(ctx, pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 		return err
 	}
 	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
-	pctx.logger.Printf("  using %s", pctx.Pipeline.Uses)
-	spctx.dumpWith()
+	log.Info("  using " + pctx.Pipeline.Uses)
+	spctx.dumpWith(ctx)
 
 	ran, err := spctx.Run(ctx, pb)
 	if err != nil {
@@ -324,7 +321,7 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 	if err != nil {
 		return err
 	}
-	pctx.dumpWith()
+	pctx.dumpWith(ctx)
 
 	debugOption := ' '
 	if (pb.Build != nil && pb.Build.Debug) || (pb.Test != nil && pb.Test.Debug) {
@@ -354,7 +351,8 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 	return nil
 }
 
-func (pctx *PipelineContext) evaluateBranchConditional(pb *PipelineBuild) bool {
+func (pctx *PipelineContext) evaluateBranchConditional(ctx context.Context, pb *PipelineBuild) bool {
+	log := clog.FromContext(ctx)
 	if pctx.Pipeline.If == "" {
 		return true
 	}
@@ -373,7 +371,7 @@ func (pctx *PipelineContext) evaluateBranchConditional(pb *PipelineBuild) bool {
 		panic(fmt.Errorf("could not evaluate if-conditional '%s': %w", pctx.Pipeline.If, err))
 	}
 
-	pctx.logger.Printf("evaluating if-conditional '%s' --> %t", pctx.Pipeline.If, result)
+	log.Infof("evaluating if-conditional '%s' --> %t", pctx.Pipeline.If, result)
 
 	return result
 }
@@ -395,17 +393,18 @@ func (pctx *PipelineContext) isContinuationPoint(pb *PipelineBuild) bool {
 	return b.foundContinuation
 }
 
-func (pctx *PipelineContext) shouldEvaluateBranch(pb *PipelineBuild) bool {
+func (pctx *PipelineContext) shouldEvaluateBranch(ctx context.Context, pb *PipelineBuild) bool {
 	if !pctx.isContinuationPoint(pb) {
 		return false
 	}
 
-	return pctx.evaluateBranchConditional(pb)
+	return pctx.evaluateBranchConditional(ctx, pb)
 }
 
 func (pctx *PipelineContext) evaluateBranch(ctx context.Context, pb *PipelineBuild) error {
+	log := clog.FromContext(ctx)
 	if pctx.Identity() != "???" {
-		pctx.logger.Printf("running step %s", pctx.Identity())
+		log.Infof("running step %s", pctx.Identity())
 	}
 
 	if pctx.Pipeline.Uses != "" {
@@ -435,7 +434,7 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 		return false, fmt.Errorf("stopping execution at breakpoint: %s", pctx.Pipeline.Label)
 	}
 
-	if !pctx.shouldEvaluateBranch(pb) {
+	if !pctx.shouldEvaluateBranch(ctx, pb) {
 		return false, nil
 	}
 
@@ -444,7 +443,7 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 	}
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		spctx := NewPipelineContext(&sp, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
+		spctx := NewPipelineContext(&sp, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs)
 		if spctx.Pipeline.WorkDir == "" {
 			spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 		}
@@ -469,20 +468,21 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 
 // TODO(kaniini): Precompile pipeline before running / evaluating its
 // needs.
-func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
+func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) error {
+	log := clog.FromContext(ctx)
 	for _, pkg := range pctx.Pipeline.Needs.Packages {
-		pctx.logger.Printf("  adding package %q for pipeline %q", pkg, pctx.Identity())
+		log.Infof("  adding package %q for pipeline %q", pkg, pctx.Identity())
 		pctx.Environment.Contents.Packages = append(pctx.Environment.Contents.Packages, pkg)
 	}
 
 	if pctx.Pipeline.Uses != "" {
-		spctx := NewPipelineContext(nil, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
+		spctx := NewPipelineContext(nil, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs)
 
-		if err := spctx.loadUse(pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
+		if err := spctx.loadUse(ctx, pb, pctx.Pipeline.Uses, pctx.Pipeline.With); err != nil {
 			return err
 		}
 
-		if err := spctx.ApplyNeeds(pb); err != nil {
+		if err := spctx.ApplyNeeds(ctx, pb); err != nil {
 			return err
 		}
 	}
@@ -490,9 +490,9 @@ func (pctx *PipelineContext) ApplyNeeds(pb *PipelineBuild) error {
 	pctx.Environment.Contents.Packages = util.Dedup(pctx.Environment.Contents.Packages)
 
 	for _, sp := range pctx.Pipeline.Pipeline {
-		spctx := NewPipelineContext(&sp, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs, pctx.logger)
+		spctx := NewPipelineContext(&sp, pctx.Environment, pctx.WorkspaceConfig, pctx.PipelineDirs)
 
-		if err := spctx.ApplyNeeds(pb); err != nil {
+		if err := spctx.ApplyNeeds(ctx, pb); err != nil {
 			return err
 		}
 	}

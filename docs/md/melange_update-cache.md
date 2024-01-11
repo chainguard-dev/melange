@@ -32,6 +32,12 @@ melange update-cache [flags]
   -h, --help               help for update-cache
 ```
 
+### Options inherited from parent commands
+
+```
+      --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
+```
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

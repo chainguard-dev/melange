@@ -16,6 +16,7 @@ package sca
 
 import (
 	"bytes"
+	"context"
 	"debug/elf"
 	"fmt"
 	"io"
@@ -24,7 +25,7 @@ import (
 	"regexp"
 	"strings"
 
-	"chainguard.dev/apko/pkg/log"
+	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/chainguard-dev/go-pkgconfig"
 
@@ -61,9 +62,6 @@ type SCAHandle interface {
 	// It is equivalent to FilesystemForRelative(PackageName()).
 	Filesystem() (SCAFS, error)
 
-	// Logger returns a log.Logger.
-	Logger() log.Logger
-
 	// Options returns a config.PackageOption struct.
 	Options() config.PackageOption
 
@@ -74,7 +72,7 @@ type SCAHandle interface {
 
 // DependencyGenerator takes an SCAHandle and config.Dependencies pointer and returns
 // findings based on analysis.
-type DependencyGenerator func(SCAHandle, *config.Dependencies) error
+type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies) error
 
 func allowedPrefix(path string, prefixes []string) bool {
 	for _, pfx := range prefixes {
@@ -88,12 +86,13 @@ func allowedPrefix(path string, prefixes []string) bool {
 
 var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
 
-func generateCmdProviders(hdl SCAHandle, generated *config.Dependencies) error {
+func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
 	if hdl.Options().NoCommands {
 		return nil
 	}
 
-	hdl.Logger().Printf("scanning for commands...")
+	log.Info("scanning for commands...")
 	fsys, err := hdl.Filesystem()
 	if err != nil {
 		return err
@@ -185,8 +184,9 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string,
 	return "", "", nil
 }
 
-func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies) error {
-	hdl.Logger().Printf("scanning for shared object dependencies...")
+func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for shared object dependencies...")
 
 	depends := map[string][]string{}
 	fsys, err := hdl.Filesystem()
@@ -243,7 +243,7 @@ func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies)
 				sonames, err := ef.DynString(elf.DT_SONAME)
 				// most likely SONAME is not set on this object
 				if err != nil {
-					hdl.Logger().Warnf("library %s lacks SONAME", path)
+					log.Warnf("library %s lacks SONAME", path)
 					return nil
 				}
 
@@ -290,7 +290,7 @@ func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies)
 			return err
 		}
 		if interp != "" && !hdl.Options().NoDepends {
-			hdl.Logger().Printf("interpreter for %s => %s", basename, interp)
+			log.Infof("interpreter for %s => %s", basename, interp)
 
 			// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
 			// the dependency.
@@ -301,7 +301,7 @@ func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies)
 
 		libs, err := ef.ImportedLibraries()
 		if err != nil {
-			hdl.Logger().Warnf("WTF: ImportedLibraries() returned error: %v", err)
+			log.Warnf("WTF: ImportedLibraries() returned error: %v", err)
 			return nil
 		}
 
@@ -328,7 +328,7 @@ func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies)
 			sonames, err := ef.DynString(elf.DT_SONAME)
 			// most likely SONAME is not set on this object
 			if err != nil {
-				hdl.Logger().Warnf("library %s lacks SONAME", path)
+				log.Warnf("library %s lacks SONAME", path)
 				return nil
 			}
 
@@ -365,8 +365,9 @@ var generateRuntimePkgConfigDeps = false
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
-func generatePkgConfigDeps(hdl SCAHandle, generated *config.Dependencies) error {
-	hdl.Logger().Printf("scanning for pkg-config data...")
+func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for pkg-config data...")
 
 	fsys, err := hdl.Filesystem()
 	if err != nil {
@@ -410,7 +411,7 @@ func generatePkgConfigDeps(hdl SCAHandle, generated *config.Dependencies) error 
 		// TODO(kaniini): Sigh.  go-pkgconfig should support reading from any io.Reader.
 		pkg, err := pkgconfig.Parse(string(data))
 		if err != nil {
-			hdl.Logger().Warnf("Unable to load .pc file (%s) using pkgconfig: %v", path, err)
+			log.Warnf("Unable to load .pc file (%s) using pkgconfig: %v", path, err)
 			return nil
 		}
 
@@ -448,15 +449,16 @@ func generatePkgConfigDeps(hdl SCAHandle, generated *config.Dependencies) error 
 
 // generatePythonDeps generates a python3~$VERSION dependency for packages which ship
 // Python modules.
-func generatePythonDeps(hdl SCAHandle, generated *config.Dependencies) error {
-	var pythonModuleVer string
-	hdl.Logger().Printf("scanning for python modules...")
+func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for python modules...")
 
 	fsys, err := hdl.Filesystem()
 	if err != nil {
 		return err
 	}
 
+	var pythonModuleVer string
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -498,7 +500,7 @@ func generatePythonDeps(hdl SCAHandle, generated *config.Dependencies) error {
 	// Do not add a Python dependency if one already exists.
 	for _, dep := range hdl.BaseDependencies().Runtime {
 		if strings.HasPrefix(dep, "python") {
-			hdl.Logger().Warnf("%s: Python dependency %q already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName(), dep)
+			log.Warnf("%s: Python dependency %q already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName(), dep)
 			return nil
 		}
 	}
@@ -512,7 +514,7 @@ func generatePythonDeps(hdl SCAHandle, generated *config.Dependencies) error {
 
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
-func Analyze(hdl SCAHandle, generated *config.Dependencies) error {
+func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
@@ -521,7 +523,7 @@ func Analyze(hdl SCAHandle, generated *config.Dependencies) error {
 	}
 
 	for _, gen := range generators {
-		if err := gen(hdl, generated); err != nil {
+		if err := gen(ctx, hdl, generated); err != nil {
 			return err
 		}
 	}

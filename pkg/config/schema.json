@@ -3,44 +3,25 @@
   "$id": "https://chainguard.dev/melange/pkg/config/configuration",
   "$ref": "#/$defs/Configuration",
   "$defs": {
-    "AccountsOption": {
-      "properties": {
-        "RunAs": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "RunAs"
-      ]
-    },
     "BuildOption": {
       "properties": {
-        "Contents": {
-          "$ref": "#/$defs/ContentsOption"
-        },
-        "Accounts": {
-          "$ref": "#/$defs/AccountsOption"
-        },
-        "Environment": {
+        "Vars": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
         },
-        "Entrypoint": {
-          "$ref": "#/$defs/ImageEntrypoint"
+        "Environment": {
+          "$ref": "#/$defs/EnvironmentOption"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "Contents",
-        "Accounts",
-        "Environment",
-        "Entrypoint"
-      ]
+        "Vars",
+        "Environment"
+      ],
+      "description": "BuildOption describes an optional deviation to a package build."
     },
     "Checks": {
       "properties": {
@@ -141,7 +122,8 @@
       "type": "object",
       "required": [
         "Packages"
-      ]
+      ],
+      "description": "ContentsOption describes an optional deviation to an apko environment's contents block."
     },
     "Copyright": {
       "properties": {
@@ -203,6 +185,19 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "EnvironmentOption": {
+      "properties": {
+        "Contents": {
+          "$ref": "#/$defs/ContentsOption"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Contents"
+      ],
+      "description": "EnvironmentOption describes an optional deviation to an apko environment."
     },
     "GitHubMonitor": {
       "properties": {
@@ -334,12 +329,6 @@
         "include": {
           "type": "string"
         },
-        "options": {
-          "additionalProperties": {
-            "$ref": "#/$defs/BuildOption"
-          },
-          "type": "object"
-        },
         "volumes": {
           "items": {
             "type": "string"
@@ -433,7 +422,8 @@
       "required": [
         "Add",
         "Remove"
-      ]
+      ],
+      "description": "ListOption describes an optional deviation to a list, for example, a list of packages."
     },
     "Needs": {
       "properties": {

@@ -22,6 +22,12 @@ melange version [flags]
       --json   print JSON instead of text
 ```
 
+### Options inherited from parent commands
+
+```
+      --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
+```
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

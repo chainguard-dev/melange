@@ -16,22 +16,24 @@ package container
 
 import (
 	"bufio"
+	"context"
 	"io"
+	"log/slog"
 
-	"chainguard.dev/apko/pkg/log"
+	"github.com/chainguard-dev/clog"
 )
 
-func monitorPipe(logger log.Logger, level log.Level, pipe io.ReadCloser, finish chan struct{}) {
+func monitorPipe(ctx context.Context, level slog.Level, pipe io.ReadCloser, finish chan struct{}) {
+	log := clog.FromContext(ctx)
 	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
-		// TODO(kaniini): Add Logf to log.Logger.
 		switch level {
-		case log.InfoLevel:
-			logger.Infof("%s", scanner.Text())
-		case log.WarnLevel:
-			logger.Warnf("%s", scanner.Text())
+		case slog.LevelInfo:
+			log.Info(scanner.Text())
+		case slog.LevelWarn:
+			log.Warn(scanner.Text())
 		default:
 		}
 	}

@@ -18,7 +18,6 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/log"
 )
 
 const (
@@ -43,7 +42,6 @@ type Config struct {
 	PackageName  string
 	Mounts       []BindMount
 	Capabilities Capabilities
-	Logger       log.Logger
 	Environment  map[string]string
 	ImgRef       string
 	PodID        string

@@ -18,14 +18,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
-	"chainguard.dev/apko/pkg/log"
 	"go.opentelemetry.io/otel"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"github.com/chainguard-dev/clog"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -40,12 +41,11 @@ const DockerName = "docker"
 
 // docker is a Runner implementation that uses the docker library.
 type docker struct {
-	logger log.Logger
 }
 
 // DockerRunner returns a Docker Runner implementation.
-func DockerRunner(logger log.Logger) Runner {
-	return &docker{logger}
+func DockerRunner() Runner {
+	return &docker{}
 }
 
 func (dk *docker) Name() string {
@@ -55,6 +55,8 @@ func (dk *docker) Name() string {
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.
 func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
+	log := clog.FromContext(ctx)
+
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.StartPod")
 	defer span.End()
 
@@ -113,7 +115,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 	}
 
 	cfg.PodID = resp.ID
-	cfg.Logger.Printf("pod %s started.", cfg.PodID)
+	log.Info(fmt.Sprintf("pod %s started.", cfg.PodID))
 
 	return nil
 }
@@ -121,6 +123,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 // TerminatePod terminates a pod for supporting a Docker task,
 // if necessary.
 func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.TerminatePod")
 	defer span.End()
 
@@ -140,7 +143,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	cfg.Logger.Printf("pod %s terminated.", cfg.PodID)
+	log.Info(fmt.Sprintf("pod %s terminated.", cfg.PodID))
 
 	return nil
 }
@@ -148,16 +151,17 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 // TestUsability determines if the Docker runner can be used
 // as a container runner.
 func (dk *docker) TestUsability(ctx context.Context) bool {
+	log := clog.FromContext(ctx)
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		dk.logger.Printf("cannot use docker for containers: %v", err)
+		log.Infof("cannot use docker for containers: %v", err)
 		return false
 	}
 	defer cli.Close()
 
 	_, err = cli.Ping(ctx)
 	if err != nil {
-		dk.logger.Printf("cannot use docker for containers: %v", err)
+		log.Infof("cannot use docker for containers: %v", err)
 		return false
 	}
 
@@ -190,8 +194,8 @@ func (dk *docker) waitForCommand(cfg *Config, ctx context.Context, attachResp ty
 	finishStdout := make(chan struct{})
 	finishStderr := make(chan struct{})
 
-	go monitorPipe(cfg.Logger, log.InfoLevel, stdoutPipeR, finishStdout)
-	go monitorPipe(cfg.Logger, log.WarnLevel, stderrPipeR, finishStderr)
+	go monitorPipe(ctx, slog.LevelInfo, stdoutPipeR, finishStdout)
+	go monitorPipe(ctx, slog.LevelWarn, stderrPipeR, finishStderr)
 	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
 
 	stdoutPipeW.Close()
@@ -278,12 +282,12 @@ func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_t
 		return "", err
 	}
 
-	img, err := apko_oci.BuildImageFromLayer(layer, bc.ImageConfiguration(), creationTime, arch, bc.Logger())
+	img, err := apko_oci.BuildImageFromLayer(ctx, layer, bc.ImageConfiguration(), creationTime, arch)
 	if err != nil {
 		return "", err
 	}
 
-	ref, err := apko_oci.LoadImage(ctx, img, bc.Logger(), []string{"melange:latest"})
+	ref, err := apko_oci.LoadImage(ctx, img, []string{"melange:latest"})
 	if err != nil {
 		return "", err
 	}

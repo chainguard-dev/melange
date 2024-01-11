@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/log"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/imdario/mergo"
@@ -293,7 +292,6 @@ func Test_k8s_StartPod(t *testing.T) {
 
 			r := &k8s{
 				Config:    gotCfg,
-				logger:    log.NewLogger(os.Stdout),
 				clientset: fc,
 			}
 

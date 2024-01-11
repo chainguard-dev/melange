@@ -20,8 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"chainguard.dev/apko/pkg/log"
-	"chainguard.dev/melange/pkg/logger"
+	"github.com/chainguard-dev/clog"
 )
 
 // SourceDateEpoch parses the SOURCE_DATE_EPOCH environment variable.
@@ -29,15 +28,9 @@ import (
 // If it is set, it MUST be an ASCII representation of an integer.
 // If it is malformed, it returns an error.
 func SourceDateEpoch(defaultTime time.Time) (time.Time, error) {
-	return SourceDateEpochWithLogger(logger.NopLogger{}, defaultTime)
-}
-
-// SourceDateEpochWithLogger is the same as SourceDateEpoch but will log warning messages
-// to the provided logger.
-func SourceDateEpochWithLogger(l log.Logger, defaultTime time.Time) (time.Time, error) {
 	v := strings.TrimSpace(os.Getenv("SOURCE_DATE_EPOCH"))
 	if v == "" {
-		l.Warnf("SOURCE_DATE_EPOCH is specified but empty, setting it to %v", defaultTime)
+		clog.DefaultLogger().Warnf("SOURCE_DATE_EPOCH is specified but empty, setting it to %v", defaultTime)
 		return defaultTime, nil
 	}
 

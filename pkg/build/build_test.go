@@ -15,13 +15,13 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/logger"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/google/go-cmp/cmp"
@@ -209,17 +209,15 @@ func TestConfiguration_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			log := logger.NopLogger{}
-			ctx := Build{
+			ctx := context.Background()
+			bctx := Build{
 				ConfigFile: filepath.Join("testdata", "configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
-				Logger:     log,
 			}
 
-			cfg, err := config.ParseConfiguration(
-				ctx.ConfigFile,
-				config.WithEnvFileForParsing(ctx.EnvFile),
-				config.WithLogger(ctx.Logger),
-				config.WithVarsFileForParsing(ctx.VarsFile))
+			cfg, err := config.ParseConfiguration(ctx,
+				bctx.ConfigFile,
+				config.WithEnvFileForParsing(bctx.EnvFile),
+				config.WithVarsFileForParsing(bctx.VarsFile))
 			tt.requireErr(t, err)
 
 			if !tt.skipConfigCleanStep {
@@ -260,6 +258,7 @@ func cleanTestConfig(cfg *config.Configuration) {
 // TestConfiguration_Load_Raw tests loading a configuration file with raw
 // resolved values for fields not specified by the input YAML file.
 func TestConfiguration_Load_Raw(t *testing.T) {
+	ctx := context.Background()
 	contents := `
 package:
   name: nginx
@@ -293,16 +292,13 @@ package:
 		t.Fatal(err)
 	}
 
-	log := logger.NopLogger{}
-	ctx := Build{
+	bctx := Build{
 		ConfigFile: f,
-		Logger:     log,
 	}
-	cfg, err := config.ParseConfiguration(
-		ctx.ConfigFile,
-		config.WithEnvFileForParsing(ctx.EnvFile),
-		config.WithLogger(ctx.Logger),
-		config.WithVarsFileForParsing(ctx.VarsFile))
+	cfg, err := config.ParseConfiguration(ctx,
+		bctx.ConfigFile,
+		config.WithEnvFileForParsing(bctx.EnvFile),
+		config.WithVarsFileForParsing(bctx.VarsFile))
 	if err != nil {
 		t.Fatal(err)
 	}

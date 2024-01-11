@@ -32,6 +32,12 @@ melange keygen [flags]
       --key-size int   the size of the prime to calculate (in bits) (default 4096)
 ```
 
+### Options inherited from parent commands
+
+```
+      --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
+```
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

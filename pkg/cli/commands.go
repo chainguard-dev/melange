@@ -16,24 +16,50 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 
-	apko_log "chainguard.dev/apko/pkg/log"
-	"github.com/sirupsen/logrus"
+	"chainguard.dev/apko/pkg/log"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/release-utils/version"
 )
 
 func New() *cobra.Command {
+	var logPolicy []string
+	var logLevel string
 	cmd := &cobra.Command{
 		Use:               "melange",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		SilenceErrors:     true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			http.DefaultTransport = userAgentTransport{http.DefaultTransport}
+
+			// Enable printing warnings and progress from GGCR.
+			//logs.Warn.SetOutput(writer)
+			//logs.Progress.SetOutput(writer)
+
+			var level slog.Level
+			switch logLevel {
+			case "debug":
+				level = slog.LevelDebug
+			case "info":
+				level = slog.LevelInfo
+			case "warn":
+				level = slog.LevelWarn
+			case "error":
+				level = slog.LevelError
+			default:
+				return fmt.Errorf("invalid log level: %s", logLevel)
+			}
+
+			slog.SetDefault(slog.New(log.Handler(logPolicy, level)))
+
+			return nil
 		},
 	}
+	cmd.PersistentFlags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "log policy (e.g. builtin:stderr, /tmp/log/foo)")
+	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "log level (e.g. debug, info, warn, error)")
 
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())
@@ -57,13 +83,4 @@ type userAgentTransport struct{ t http.RoundTripper }
 func (u userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("User-Agent", fmt.Sprintf("melange/%s", version.GetVersionInfo().GitVersion))
 	return u.t.RoundTrip(req)
-}
-
-func LogDefault() *logrus.Logger {
-	return &logrus.Logger{
-		Out:       os.Stderr,
-		Formatter: &apko_log.Formatter{},
-		Hooks:     make(logrus.LevelHooks),
-		Level:     logrus.InfoLevel,
-	}
 }

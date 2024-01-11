@@ -20,12 +20,12 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
@@ -72,6 +72,8 @@ func New(opts ...Option) renovate.Renovator {
 	}
 
 	return func(ctx context.Context, rc *renovate.RenovationContext) error {
+		log := clog.FromContext(ctx)
+
 		// Find the package.name and package.version nodes.
 		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
@@ -90,7 +92,7 @@ func New(opts ...Option) renovate.Renovator {
 		}
 		cfg.packageVersion = versionNode.Value
 
-		log.Printf("fetching artifacts relating to %s-%s", cfg.packageName, cfg.packageVersion)
+		log.Infof("fetching artifacts relating to %s-%s", cfg.packageName, cfg.packageVersion)
 
 		// Find our main pipeline YAML node.
 		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")
@@ -115,6 +117,7 @@ func New(opts ...Option) renovate.Renovator {
 
 // visitFetch takes a "fetch" pipeline node
 func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
+	log := clog.FromContext(ctx)
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
@@ -125,33 +128,33 @@ func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 		return err
 	}
 
-	log.Printf("processing fetch node:")
+	log.Infof("processing fetch node:")
 
 	// Fetch the new sources.
 	evaluatedURI := strings.ReplaceAll(uriNode.Value, "${{package.version}}", cfg.packageVersion)
 	evaluatedURI = strings.ReplaceAll(evaluatedURI, "${{package.name}}", cfg.packageName)
-	log.Printf("  uri: %s", uriNode.Value)
-	log.Printf("  evaluated: %s", evaluatedURI)
+	log.Infof("  uri: %s", uriNode.Value)
+	log.Infof("  evaluated: %s", evaluatedURI)
 
 	downloadedFile, err := util.DownloadFile(ctx, evaluatedURI)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(downloadedFile)
-	log.Printf("  fetched-as: %s", downloadedFile)
+	log.Infof("  fetched-as: %s", downloadedFile)
 
 	// Calculate SHA2-256 and SHA2-512 hashes.
 	fileSHA256, err := util.HashFile(downloadedFile, sha256.New())
 	if err != nil {
 		return err
 	}
-	log.Printf("  actual-sha256: %s", fileSHA256)
+	log.Infof("  actual-sha256: %s", fileSHA256)
 
 	fileSHA512, err := util.HashFile(downloadedFile, sha512.New())
 	if err != nil {
 		return err
 	}
-	log.Printf("  actual-sha512: %s", fileSHA512)
+	log.Infof("  actual-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.
 	nodeSHA256, err := renovate.NodeFromMapping(withNode, "expected-sha256")
@@ -173,6 +176,7 @@ func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 
 // addFileToCache adds a file to the CacheDir.
 func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string, compHash string, cfgHash string, hashFamily string) error {
+	log := clog.FromContext(ctx)
 	if compHash != cfgHash {
 		return fmt.Errorf("%s mismatch: %s != %s", hashFamily, compHash, cfgHash)
 	}
@@ -207,7 +211,7 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 		return err
 	}
 
-	log.Printf("  wrote: %s", destinationPath)
+	log.Infof("  wrote: %s", destinationPath)
 
 	return nil
 }

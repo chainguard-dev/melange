@@ -261,86 +261,92 @@ func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies)
 			return nil
 		}
 
-		if mode.Perm()&0555 == 0555 {
-			basename := filepath.Base(path)
+		if mode.Perm()&0555 != 0555 {
+			return nil
+		}
 
-			// most likely a shell script instead of an ELF, so treat any
-			// error as non-fatal.
-			rawFile, err := fsys.Open(path)
-			if err != nil {
-				return nil
-			}
-			defer rawFile.Close()
+		basename := filepath.Base(path)
 
-			seekableFile, ok := rawFile.(io.ReaderAt)
-			if !ok {
-				return nil
-			}
+		// most likely a shell script instead of an ELF, so treat any
+		// error as non-fatal.
+		rawFile, err := fsys.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer rawFile.Close()
 
-			ef, err := elf.NewFile(seekableFile)
-			if err != nil {
-				return nil
-			}
-			defer ef.Close()
+		seekableFile, ok := rawFile.(io.ReaderAt)
+		if !ok {
+			return nil
+		}
 
-			interp, err := findInterpreter(ef)
-			if err != nil {
-				return err
-			}
-			if interp != "" && !hdl.Options().NoDepends {
-				hdl.Logger().Printf("interpreter for %s => %s", basename, interp)
+		ef, err := elf.NewFile(seekableFile)
+		if err != nil {
+			return nil
+		}
+		defer ef.Close()
 
-				// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
-				// the dependency.
-				interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
-				interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
-				generated.Runtime = append(generated.Runtime, interpName)
-			}
+		interp, err := findInterpreter(ef)
+		if err != nil {
+			return err
+		}
+		if interp != "" && !hdl.Options().NoDepends {
+			hdl.Logger().Printf("interpreter for %s => %s", basename, interp)
 
-			libs, err := ef.ImportedLibraries()
-			if err != nil {
-				hdl.Logger().Warnf("WTF: ImportedLibraries() returned error: %v", err)
-				return nil
-			}
+			// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
+			// the dependency.
+			interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
+			interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
+			generated.Runtime = append(generated.Runtime, interpName)
+		}
 
-			if !hdl.Options().NoDepends {
-				for _, lib := range libs {
-					if strings.Contains(lib, ".so.") {
-						generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-						depends[lib] = append(depends[lib], path)
-					}
+		libs, err := ef.ImportedLibraries()
+		if err != nil {
+			hdl.Logger().Warnf("WTF: ImportedLibraries() returned error: %v", err)
+			return nil
+		}
+
+		if !hdl.Options().NoDepends {
+			for _, lib := range libs {
+				if strings.Contains(lib, ".so.") {
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+					depends[lib] = append(depends[lib], path)
 				}
 			}
+		}
 
-			// An executable program should never have a SONAME, but apparently binaries built
-			// with some versions of jlink do.  Thus, if an interpreter is set (meaning it is an
-			// executable program), we do not scan the object for SONAMEs.
-			//
-			// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
-			// functionality work.  So we always generate provides entries for libc.
-			if !hdl.Options().NoProvides && (interp == "" || strings.HasPrefix(basename, "libc")) {
-				sonames, err := ef.DynString(elf.DT_SONAME)
-				// most likely SONAME is not set on this object
-				if err != nil {
-					hdl.Logger().Warnf("library %s lacks SONAME", path)
-					return nil
+		if hdl.Options().NoProvides {
+			return nil
+		}
+
+		// An executable program should never have a SONAME, but apparently binaries built
+		// with some versions of jlink do.  Thus, if an interpreter is set (meaning it is an
+		// executable program), we do not scan the object for SONAMEs.
+		//
+		// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
+		// functionality work.  So we always generate provides entries for libc.
+		if interp == "" || strings.HasPrefix(basename, "libc") {
+			sonames, err := ef.DynString(elf.DT_SONAME)
+			// most likely SONAME is not set on this object
+			if err != nil {
+				hdl.Logger().Warnf("library %s lacks SONAME", path)
+				return nil
+			}
+
+			for _, soname := range sonames {
+				parts := strings.Split(soname, ".so.")
+
+				var libver string
+				if len(parts) > 1 {
+					libver = parts[1]
+				} else {
+					libver = "0"
 				}
 
-				for _, soname := range sonames {
-					parts := strings.Split(soname, ".so.")
-
-					var libver string
-					if len(parts) > 1 {
-						libver = parts[1]
-					} else {
-						libver = "0"
-					}
-
-					if allowedPrefix(path, libDirs) {
-						generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
-					} else {
-						generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
-					}
+				if allowedPrefix(path, libDirs) {
+					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+				} else {
+					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
 				}
 			}
 		}

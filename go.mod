@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.1
 
 require (
-	chainguard.dev/apko v0.12.0
+	chainguard.dev/apko v0.13.3
 	cloud.google.com/go/storage v1.36.0
 	github.com/chainguard-dev/go-apk v0.0.0-20240115184838-1c022784a5ed
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
@@ -115,9 +115,7 @@ require (
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect

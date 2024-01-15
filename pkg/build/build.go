@@ -1122,7 +1122,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// Retrieve the post build workspace from the runner
 	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
-	if err := b.RetrieveWorkspace(ctx); err != nil {
+	fs := apkofs.DirFS(b.WorkspaceDir)
+	if err := b.RetrieveWorkspace(ctx, fs); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
@@ -1384,7 +1385,7 @@ func (b *Build) WorkspaceConfig() *container.Config {
 // RetrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
-func (b *Build) RetrieveWorkspace(ctx context.Context) error {
+func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
 	defer span.End()
 
@@ -1403,7 +1404,6 @@ func (b *Build) RetrieveWorkspace(ctx context.Context) error {
 	defer gr.Close()
 	tr := tar.NewReader(gr)
 
-	fs := apkofs.DirFS(b.WorkspaceDir)
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {

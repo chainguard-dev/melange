@@ -37,7 +37,6 @@ var libDirs = []string{"lib", "usr/lib", "lib64", "usr/lib64"}
 // the SCA engine.
 type SCAFS interface {
 	apkofs.ReadLinkFS
-	apkofs.XattrFS
 
 	Stat(name string) (fs.FileInfo, error)
 }

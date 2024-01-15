@@ -7,7 +7,7 @@ toolchain go1.21.1
 require (
 	chainguard.dev/apko v0.12.0
 	cloud.google.com/go/storage v1.36.0
-	github.com/chainguard-dev/go-apk v0.0.0-20231206041704-bec618e956a2
+	github.com/chainguard-dev/go-apk v0.0.0-20240115184838-1c022784a5ed
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0
 	github.com/chainguard-dev/yam v0.0.0-20230807153807-4de7c531f3e1
@@ -40,8 +40,8 @@ require (
 	gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b
 	go.opentelemetry.io/otel v1.21.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	golang.org/x/sync v0.5.0
-	golang.org/x/sys v0.15.0
+	golang.org/x/sync v0.6.0
+	golang.org/x/sys v0.16.0
 	golang.org/x/text v0.14.0
 	golang.org/x/time v0.5.0
 	google.golang.org/api v0.154.0
@@ -163,7 +163,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 // indirect
 	go.opentelemetry.io/otel/metric v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
-	golang.org/x/build v0.0.0-20231103135814-9e006d99e682 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.19.0 // indirect

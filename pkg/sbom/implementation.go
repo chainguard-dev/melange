@@ -29,12 +29,12 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
-	"github.com/korovkin/limiter"
 	purl "github.com/package-url/packageurl-go"
+	"golang.org/x/exp/slices"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"sigs.k8s.io/release-utils/hash"
@@ -117,13 +117,14 @@ func ScanFiles(spec *Spec, dirPackage *pkg) error {
 
 	dirPackage.FilesAnalyzed = true
 
-	g := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
-	files := sync.Map{}
-	for _, path := range fileList {
-		path := path
+	var g errgroup.Group
+	g.SetLimit(4)
 
-		// nolint:errcheck
-		g.Execute(func() {
+	files := make([]file, len(fileList))
+	for i, path := range fileList {
+		i, path := i, path
+
+		g.Go(func() error {
 			f := file{
 				id:            stringToIdentifier(path),
 				Name:          strings.TrimPrefix(path, "/"),
@@ -139,52 +140,34 @@ func ScanFiles(spec *Spec, dirPackage *pkg) error {
 			} {
 				csum, err := fn(filepath.Join(dirPath, path))
 				if err != nil {
-					// nolint:errcheck
-					g.FirstErrorStore(fmt.Errorf("hashing %s file %s: %w", algo, path, err))
+					return fmt.Errorf("hashing %s file %s: %w", algo, path, err)
 				}
 				f.Checksums[algo] = csum
 			}
 
-			files.Store(path, f)
+			files[i] = f
+			return nil
 		})
 	}
 
-	if err := g.WaitAndClose(); err != nil {
-		return fmt.Errorf("waiting for limiter to finish: %w", err)
-	}
-
-	if err := g.FirstErrorGet(); err != nil {
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
 	// Sort the resulting dataset to ensure deterministic order
 	// to ensure builds are reproducible.
-	pathList := []string{}
-	files.Range(func(key, _ any) bool {
-		pathList = append(pathList, key.(string))
-		return true
+	slices.SortFunc(files, func(a, b file) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 
-	sort.Strings(pathList)
-
 	// Add files into the package
-	for _, path := range pathList {
+	for _, f := range files {
 		rel := relationship{
 			Source: dirPackage,
 			Type:   "CONTAINS",
 		}
 
-		f, ok := files.Load(path)
-		if !ok {
-			continue
-		}
-
-		switch v := f.(type) {
-		case file:
-			rel.Target = &v
-		case pkg:
-			rel.Target = &v
-		}
+		rel.Target = &f
 
 		dirPackage.Relationships = append(dirPackage.Relationships, rel)
 	}

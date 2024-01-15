@@ -23,14 +23,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	apko_log "chainguard.dev/apko/pkg/log"
 	apkrepo "github.com/chainguard-dev/go-apk/pkg/apk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
-	"github.com/korovkin/limiter"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 )
 
 type Index struct {
@@ -156,46 +155,34 @@ func (idx *Index) LoadIndex(sourceFile string) error {
 
 func (idx *Index) UpdateIndex(ctx context.Context) error {
 	packages := make([]*apkrepo.Package, len(idx.PackageFiles))
-	var mtx sync.Mutex
-
-	g := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
-
+	var g errgroup.Group
+	g.SetLimit(4)
 	for i, apkFile := range idx.PackageFiles {
 		i, apkFile := i, apkFile // capture the loop variables
-		if _, err := g.Execute(func() {
+		g.Go(func() error {
 			idx.Logger.Printf("processing package %s", apkFile)
 			f, err := os.Open(apkFile)
 			if err != nil {
-				// nolint:errcheck
-				g.FirstErrorStore(fmt.Errorf("failed to open package %s: %w", apkFile, err))
-				return
+				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
 			}
 			defer f.Close()
 			pkg, err := apkrepo.ParsePackage(ctx, f)
 			if err != nil {
-				// nolint:errcheck
-				g.FirstErrorStore(fmt.Errorf("failed to parse package %s: %w", apkFile, err))
-				return
+				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
 			}
 
 			if idx.ExpectedArch != "" && pkg.Arch != idx.ExpectedArch {
 				idx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
 					pkg.Name, pkg.Version, pkg.Arch, idx.ExpectedArch)
-				return
+				return nil
 			}
 
-			mtx.Lock()
 			packages[i] = pkg
-			mtx.Unlock()
-		}); err != nil {
-			return fmt.Errorf("executing processor function: %w", err)
-		}
-	}
-	if err := g.WaitAndClose(); err != nil {
-		return err
-	}
 
-	if err := g.FirstErrorGet(); err != nil {
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
 		return err
 	}
 

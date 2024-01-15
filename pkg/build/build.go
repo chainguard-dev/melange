@@ -85,7 +85,6 @@ type Build struct {
 	VarsFile          string
 	Runner            container.Runner
 	RunnerName        string
-	imgRef            string
 	containerConfig   *container.Config
 	Debug             bool
 	DebugRunner       bool
@@ -560,24 +559,12 @@ func WithTimeout(dur time.Duration) Option {
 	}
 }
 
-// BuildGuest invokes apko to build the guest environment.
-func (b *Build) BuildGuest(ctx context.Context) error {
+// BuildGuest invokes apko to build the guest environment, returning a reference to the image
+// loaded by the OCI Image loader.
+func (b *Build) BuildGuest(ctx context.Context, guestFS apkofs.FullFS) (string, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
 	defer span.End()
 
-	// Prepare workspace directory
-	if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
-		return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
-	}
-
-	// Prepare guest directory
-	if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
-		return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
-	}
-
-	b.Logger.Printf("building workspace in '%s' with apko", b.GuestDir)
-
-	guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(b.Configuration.Environment),
 		apko_build.WithArch(b.Arch),
@@ -588,23 +575,23 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 	)
 	if err != nil {
-		return fmt.Errorf("unable to create build context: %w", err)
+		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
 
 	bc.Summarize()
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {
-		return fmt.Errorf("unable to generate image: %w", err)
+		return "", fmt.Errorf("unable to generate image: %w", err)
 	}
 	// if the runner needs an image, create an OCI image from the directory and load it.
 	loader := b.Runner.OCIImageLoader()
 	if loader == nil {
-		return fmt.Errorf("runner %s does not support OCI image loading", b.Runner.Name())
+		return "", fmt.Errorf("runner %s does not support OCI image loading", b.Runner.Name())
 	}
 	layerTarGZ, layer, err := bc.ImageLayoutToLayer(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer os.Remove(layerTarGZ)
 
@@ -612,15 +599,14 @@ func (b *Build) BuildGuest(ctx context.Context) error {
 
 	ref, err := loader.LoadImage(ctx, layer, b.Arch, bc)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	b.Logger.Printf("pushed %s as %v", layerTarGZ, ref)
-	b.imgRef = ref
 
 	b.Logger.Printf("successfully built workspace with apko")
 
-	return nil
+	return ref, nil
 }
 
 func copyFile(base, src, dest string, perm fs.FileMode) error {
@@ -1008,25 +994,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	pb.Subpackage = nil
 
-	if !b.IsBuildLess() {
-		if err := b.BuildGuest(ctx); err != nil {
-			return fmt.Errorf("unable to build guest: %w", err)
-		}
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := b.OverlayBinSh(); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-
-		if err := b.PopulateCache(ctx); err != nil {
-			return fmt.Errorf("unable to populate cache: %w", err)
-		}
-	}
-
 	if b.EmptyWorkspace {
 		b.Logger.Printf("empty workspace requested")
 	} else {
+		// Prepare workspace directory
+		if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
+			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
+		}
+
 		b.Logger.Printf("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
 		if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
@@ -1038,9 +1013,35 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	linterQueue := []linterTarget{}
-
 	cfg := b.WorkspaceConfig()
+
 	if !b.IsBuildLess() {
+		// Prepare guest directory
+		if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
+			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
+		}
+
+		b.Logger.Printf("building workspace in '%s' with apko", b.GuestDir)
+
+		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
+		imgRef, err := b.BuildGuest(ctx, guestFS)
+		if err != nil {
+			return fmt.Errorf("unable to build guest: %w", err)
+		}
+
+		cfg.ImgRef = imgRef
+		b.Logger.Printf("ImgRef = %s", cfg.ImgRef)
+
+		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
+		// Probably needs help from apko.
+		if err := b.OverlayBinSh(); err != nil {
+			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
+		}
+
+		if err := b.PopulateCache(ctx); err != nil {
+			return fmt.Errorf("unable to populate cache: %w", err)
+		}
+
 		cfg.Arch = b.Arch
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
@@ -1356,9 +1357,6 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 	for k, v := range b.Configuration.Environment.Environment {
 		cfg.Environment[k] = v
 	}
-
-	cfg.ImgRef = b.imgRef
-	b.Logger.Printf("ImgRef = %s", cfg.ImgRef)
 
 	return &cfg
 }

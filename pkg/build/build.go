@@ -74,7 +74,6 @@ type Build struct {
 	DependencyLog     string
 	BinShOverlay      string
 	CreateBuildLog    bool
-	ignorePatterns    []*xignore.Pattern
 	CacheDir          string
 	ApkCacheDir       string
 	CacheSource       string
@@ -687,51 +686,43 @@ func (b *Build) ApplyBuildOption(bo config.BuildOption) error {
 	return nil
 }
 
-func (b *Build) LoadIgnoreRules() error {
+func (b *Build) loadIgnoreRules() ([]*xignore.Pattern, error) {
 	ignorePath := filepath.Join(b.SourceDir, b.WorkspaceIgnore)
+
+	ignorePatterns := []*xignore.Pattern{}
 
 	if _, err := os.Stat(ignorePath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil
+			return ignorePatterns, nil
 		}
 
-		return err
+		return nil, err
 	}
 
 	b.Logger.Printf("loading ignore rules from %s", ignorePath)
 
 	inF, err := os.Open(ignorePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer inF.Close()
 
 	ignF := xignore.Ignorefile{}
 	if err := ignF.FromReader(inF); err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, rule := range ignF.Patterns {
 		pattern := xignore.NewPattern(rule)
 
 		if err := pattern.Prepare(); err != nil {
-			return err
+			return nil, err
 		}
 
-		b.ignorePatterns = append(b.ignorePatterns, pattern)
+		ignorePatterns = append(ignorePatterns, pattern)
 	}
 
-	return nil
-}
-
-func (b *Build) matchesIgnorePattern(path string) bool {
-	for _, pat := range b.ignorePatterns {
-		if pat.Match(path) {
-			return true
-		}
-	}
-
-	return false
+	return ignorePatterns, nil
 }
 
 func (b *Build) OverlayBinSh() error {
@@ -899,24 +890,16 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 	return nil
 }
 
-func (b *Build) PopulateWorkspace(ctx context.Context) error {
+func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
 	defer span.End()
 
-	if b.EmptyWorkspace {
-		b.Logger.Printf("empty workspace requested")
-		return nil
-	}
-
-	if err := b.LoadIgnoreRules(); err != nil {
+	ignorePatterns, err := b.loadIgnoreRules()
+	if err != nil {
 		return err
 	}
 
-	b.Logger.Printf("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-
-	fsys := os.DirFS(b.SourceDir)
-
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -931,8 +914,10 @@ func (b *Build) PopulateWorkspace(ctx context.Context) error {
 			return nil
 		}
 
-		if b.matchesIgnorePattern(path) {
-			return nil
+		for _, pat := range ignorePatterns {
+			if pat.Match(path) {
+				return nil
+			}
 		}
 
 		b.Logger.Debugf("  -> %s", path)
@@ -1039,8 +1024,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	if err := b.PopulateWorkspace(ctx); err != nil {
-		return fmt.Errorf("unable to populate workspace: %w", err)
+	if b.EmptyWorkspace {
+		b.Logger.Printf("empty workspace requested")
+	} else {
+		b.Logger.Printf("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
+		if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
+			return fmt.Errorf("unable to populate workspace: %w", err)
+		}
 	}
 
 	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {

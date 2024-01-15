@@ -561,12 +561,12 @@ func WithTimeout(dur time.Duration) Option {
 
 // BuildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
-func (b *Build) BuildGuest(ctx context.Context, guestFS apkofs.FullFS) (string, error) {
+func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
 	defer span.End()
 
 	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(b.Configuration.Environment),
+		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraRepos(b.ExtraRepos),
@@ -1024,7 +1024,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		b.Logger.Printf("building workspace in '%s' with apko", b.GuestDir)
 
 		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
-		imgRef, err := b.BuildGuest(ctx, guestFS)
+		imgRef, err := b.BuildGuest(ctx, b.Configuration.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}

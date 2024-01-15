@@ -303,32 +303,15 @@ func WithExtraTestPackages(extraTestPackages []string) TestOption {
 // imgConfig specifies the environment for the test to run (e.g. packages to
 // install).
 // Returns the imgRef for the created image, or error.
-func (t *Test) BuildGuest(ctx context.Context, imgConfig *apko_types.ImageConfiguration, suffix string) (string, error) {
+func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
 	defer span.End()
-
-	// Prepare workspace directory
-	if err := os.MkdirAll(t.WorkspaceDir, 0755); err != nil {
-		return "", fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
-	}
 
 	// Then add any extra packages specified by the command line.
 	imgConfig.Contents.Packages = append(imgConfig.Contents.Packages, t.ExtraTestPackages...)
 
-	// Prepare guest directory. Note that we customize this for each unique
-	// Test by having a suffix, so we get a clean guest directory for each of
-	// them.
-	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-	if err := os.MkdirAll(guestDir, 0755); err != nil {
-		return "", fmt.Errorf("mkdir -p %s: %w", guestDir, err)
-	}
-
-	t.Logger.Printf("building test workspace in: '%s' with apko", guestDir)
-
-	guestFS := apkofs.DirFS(guestDir, apkofs.WithCreateDir())
-
 	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(*imgConfig),
+		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(t.Arch),
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraRepos(t.ExtraRepos),
@@ -482,20 +465,11 @@ func (t *Test) PopulateCache(ctx context.Context) error {
 	return nil
 }
 
-func (t *Test) PopulateWorkspace(ctx context.Context) error {
+func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
 	defer span.End()
 
-	if t.SourceDir == "" {
-		t.Logger.Printf("No source directory specified, skipping workspace population")
-		return nil
-	}
-
-	t.Logger.Printf("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
-
-	fsys := os.DirFS(t.SourceDir)
-
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -557,9 +531,14 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	imgRef := ""
 	var err error
 
+	guestFS, err := t.guestFS("main")
+	if err != nil {
+		return err
+	}
+
 	// If there are no 'main' test pipelines, we can skip building the guest.
 	if !t.IsTestless() {
-		imgRef, err = t.BuildGuest(ctx, &t.Configuration.Test.Environment, "main")
+		imgRef, err = t.BuildGuest(ctx, t.Configuration.Test.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
@@ -575,14 +554,25 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		}
 	}
 
-	if err := t.PopulateWorkspace(ctx); err != nil {
-		return fmt.Errorf("unable to populate workspace: %w", err)
+	if t.SourceDir == "" {
+		t.Logger.Printf("No source directory specified, skipping workspace population")
+	} else {
+		// Prepare workspace directory
+		if err := os.MkdirAll(t.WorkspaceDir, 0755); err != nil {
+			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
+		}
+
+		t.Logger.Printf("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
+		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
+			return fmt.Errorf("unable to populate workspace: %w", err)
+		}
 	}
 
 	cfg, err := t.buildWorkspaceConfig(imgRef, pkg.Name, t.Configuration.Environment.Environment)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
+
 	if !t.IsTestless() {
 		cfg.Arch = t.Arch
 		if err := t.Runner.StartPod(ctx, cfg); err != nil {
@@ -631,7 +621,12 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			t.Logger.Printf("running test pipeline for subpackage %s", sp.Name)
 			pb.Subpackage = sp
 
-			spImgRef, err := t.BuildGuest(ctx, &sp.Test.Environment, sp.Name)
+			guestFS, err := t.guestFS(sp.Name)
+			if err != nil {
+				return err
+			}
+
+			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
 			if err != nil {
 				return fmt.Errorf("unable to build guest: %w", err)
 			}
@@ -738,4 +733,18 @@ func (t *Test) buildWorkspaceConfig(imgRef, pkgName string, env map[string]strin
 	t.Logger.Printf("ImgRef = %s", cfg.ImgRef)
 
 	return &cfg, nil
+}
+
+func (t *Test) guestFS(suffix string) (apkofs.FullFS, error) {
+	// Prepare guest directory. Note that we customize this for each unique
+	// Test by having a suffix, so we get a clean guest directory for each of
+	// them.
+	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
+	if err := os.MkdirAll(guestDir, 0755); err != nil {
+		return nil, fmt.Errorf("mkdir -p %s: %w", guestDir, err)
+	}
+
+	t.Logger.Printf("building test workspace in: '%s' with apko", guestDir)
+
+	return apkofs.DirFS(guestDir, apkofs.WithCreateDir()), nil
 }

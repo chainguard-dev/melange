@@ -1042,7 +1042,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to populate cache: %w", err)
 		}
 
-		cfg.Arch = b.Arch
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
 		}
@@ -1255,16 +1254,16 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),
 		}
 
-		b, err := index.New(opts...)
+		idx, err := index.New(opts...)
 		if err != nil {
-			return fmt.Errorf("unable to create index b: %w", err)
+			return fmt.Errorf("unable to create index: %w", err)
 		}
 
-		if err := b.GenerateIndex(ctx); err != nil {
+		if err := idx.GenerateIndex(ctx); err != nil {
 			return fmt.Errorf("unable to generate index: %w", err)
 		}
 
-		if err := b.WriteJSONIndex(filepath.Join(packageDir, "APKINDEX.json")); err != nil {
+		if err := idx.WriteJSONIndex(filepath.Join(packageDir, "APKINDEX.json")); err != nil {
 			return fmt.Errorf("unable to generate JSON index: %w", err)
 		}
 	}
@@ -1312,7 +1311,9 @@ func (b *Build) BuildTripletRust() string {
 
 func (b *Build) buildWorkspaceConfig() *container.Config {
 	if b.IsBuildLess() {
-		return &container.Config{}
+		return &container.Config{
+			Arch: b.Arch,
+		}
 	}
 
 	mounts := []container.BindMount{
@@ -1339,6 +1340,7 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 	}
 
 	cfg := container.Config{
+		Arch:         b.Arch,
 		PackageName:  b.Configuration.Package.Name,
 		Mounts:       mounts,
 		Capabilities: caps,
@@ -1362,11 +1364,10 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 }
 
 func (b *Build) WorkspaceConfig() *container.Config {
-	if b.containerConfig != nil {
-		return b.containerConfig
+	if b.containerConfig == nil {
+		b.containerConfig = b.buildWorkspaceConfig()
 	}
 
-	b.containerConfig = b.buildWorkspaceConfig()
 	return b.containerConfig
 }
 

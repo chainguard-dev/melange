@@ -162,12 +162,15 @@ func ScanFiles(spec *Spec, dirPackage *pkg) error {
 
 	// Add files into the package
 	for _, f := range files {
+		// TODO: Remove me when loopvar stuff lands.
+		target := f
+
 		rel := relationship{
 			Source: dirPackage,
 			Type:   "CONTAINS",
 		}
 
-		rel.Target = &f
+		rel.Target = &target
 
 		dirPackage.Relationships = append(dirPackage.Relationships, rel)
 	}

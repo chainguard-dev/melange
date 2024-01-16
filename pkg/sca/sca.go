@@ -322,9 +322,17 @@ func generateSharedObjectNameDeps(hdl SCAHandle, generated *config.Dependencies)
 		// with some versions of jlink do.  Thus, if an interpreter is set (meaning it is an
 		// executable program), we do not scan the object for SONAMEs.
 		//
-		// Ugh: libc.so.6 has an PT_INTERP set on itself to make the `/lib/libc.so.6 --about`
-		// functionality work.  So we always generate provides entries for libc.
-		if interp == "" || strings.HasPrefix(basename, "libc") {
+		// Unfortunately, some shared objects are intentionally also executables.
+		//
+		// For example:
+		// - libc has an PT_INTERP set on itself to make `/lib/libc.so.6 --about` work.
+		// - libcap does this to make `/usr/lib/libcap.so.2 --summary` work.
+		//
+		// See https://stackoverflow.com/a/68339111/14760867 for some more context.
+		//
+		// As a rough heuristic, we assume that if the filename contains ".so.",
+		// it is meant to be used as a shared object.
+		if interp == "" || strings.Contains(basename, ".so.") {
 			sonames, err := ef.DynString(elf.DT_SONAME)
 			// most likely SONAME is not set on this object
 			if err != nil {

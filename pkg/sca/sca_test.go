@@ -135,11 +135,11 @@ func TestAnalyze(t *testing.T) {
 			"so:ld-linux-aarch64.so.1",
 			"so:libc.so.6",
 			"so:libcap.so.2",
-			// TODO: This is wrong but we want the test to pass before we fix it.
 			"so:libpsx.so.2",
 		},
 		Provides: []string{
 			"so:libcap.so.2=2",
+			"so:libpsx.so.2=2",
 		},
 	}
 

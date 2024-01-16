@@ -583,7 +583,6 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 
 	log.Infof("pushed %s as %v", layerTarGZ, ref)
-	b.imgRef = ref
 
 	log.Infof("successfully built workspace with apko")
 
@@ -865,20 +864,12 @@ func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
 	defer span.End()
 
-	if b.EmptyWorkspace {
-		log.Infof("empty workspace requested")
-		return nil
-	}
-
-	if err := b.loadIgnoreRules(ctx); err != nil {
+	ignorePatterns, err := b.loadIgnoreRules(ctx)
+	if err != nil {
 		return err
 	}
 
-	log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-
-	fsys := os.DirFS(b.SourceDir)
-
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -989,7 +980,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	pb.Subpackage = nil
 
 	if b.EmptyWorkspace {
-		log.Info("empty workspace requested")
+		log.Infof("empty workspace requested")
 	} else {
 		// Prepare workspace directory
 		if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
@@ -1035,14 +1026,33 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := b.PopulateCache(ctx); err != nil {
 			return fmt.Errorf("unable to populate cache: %w", err)
 		}
-	}
 
-	if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
-		return fmt.Errorf("unable to populate workspace: %w", err)
-	}
+		if err := b.Runner.StartPod(ctx, cfg); err != nil {
+			return fmt.Errorf("unable to start pod: %w", err)
+		}
+		if !b.DebugRunner {
+			defer func() {
+				if err := b.Runner.TerminatePod(context.WithoutCancel(ctx), cfg); err != nil {
+					log.Warnf("unable to terminate pod: %s", err)
+				}
+			}()
+		}
 
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
-		return err
+		// run the main pipeline
+		log.Infof("running the main pipeline")
+		for _, p := range b.Configuration.Pipeline {
+			pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs)
+			if _, err := pctx.Run(ctx, &pb); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
+		}
+
+		// add the main package to the linter queue
+		lintTarget := linterTarget{
+			pkgName: b.Configuration.Package.Name,
+			checks:  b.Configuration.Package.Checks,
+		}
+		linterQueue = append(linterQueue, lintTarget)
 	}
 
 	namespace := b.Namespace
@@ -1248,17 +1258,17 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 func (b *Build) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: " + b.WorkspaceDir)
+	log.Infof("  workspace dir: %s", b.WorkspaceDir)
 
 	if b.GuestDir != "" {
-		log.Infof("  guest dir: " + b.GuestDir)
+		log.Infof("  guest dir: %s", b.GuestDir)
 	}
 }
 
 func (b *Build) Summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange is building:")
-	log.Infof("  configuration file: " + b.ConfigFile)
+	log.Infof("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
 
@@ -1337,9 +1347,6 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.Environment[k] = v
 	}
 
-	cfg.ImgRef = b.imgRef
-	log.Infof("ImgRef = %s", cfg.ImgRef)
-
 	return &cfg
 }
 
@@ -1348,7 +1355,6 @@ func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
 		b.containerConfig = b.buildWorkspaceConfig(ctx)
 	}
 
-	b.containerConfig = b.buildWorkspaceConfig(ctx)
 	return b.containerConfig
 }
 

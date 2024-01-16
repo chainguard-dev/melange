@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"chainguard.dev/apko/pkg/log"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/go-apk/pkg/apk"
@@ -32,10 +31,9 @@ import (
 )
 
 type testHandle struct {
-	logger log.Logger
-	pkg    apk.Package
-	exp    *expandapk.APKExpanded
-	cfg    *config.Configuration
+	pkg apk.Package
+	exp *expandapk.APKExpanded
+	cfg *config.Configuration
 }
 
 func (th *testHandle) PackageName() string {
@@ -57,10 +55,6 @@ func (th *testHandle) FilesystemForRelative(pkgName string) (SCAFS, error) {
 	}
 
 	return th.exp.TarFS, nil
-}
-
-func (th *testHandle) Logger() log.Logger {
-	return th.logger
 }
 
 func (th *testHandle) Filesystem() (SCAFS, error) {
@@ -109,24 +103,24 @@ func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile strin
 	pkg.Size = uint64(exp.Size)
 	pkg.Checksum = exp.ControlHash
 
-	pkgcfg, err := config.ParseConfiguration(filepath.Join("testdata", melangefile))
+	pkgcfg, err := config.ParseConfiguration(ctx, filepath.Join("testdata", melangefile))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &testHandle{
-		logger: &testLogger{t},
-		pkg:    pkg,
-		exp:    exp,
-		cfg:    pkgcfg,
+		pkg: pkg,
+		exp: exp,
+		cfg: pkgcfg,
 	}
 }
 
 func TestAnalyze(t *testing.T) {
+	ctx := context.Background()
 	th := handleFromApk(context.Background(), t, "libcap-2.69-r0.apk", "libcap.yaml")
 
 	got := config.Dependencies{}
-	if err := Analyze(th, &got); err != nil {
+	if err := Analyze(ctx, th, &got); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,16 +144,3 @@ func TestAnalyze(t *testing.T) {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}
 }
-
-type testLogger struct {
-	t *testing.T
-}
-
-func (t *testLogger) Debugf(fmt string, args ...interface{})  { t.t.Logf(fmt, args...) }
-func (t *testLogger) Fatalf(fmt string, args ...interface{})  { t.t.Logf(fmt, args...) }
-func (t *testLogger) Errorf(fmt string, args ...interface{})  { t.t.Logf(fmt, args...) }
-func (t *testLogger) Printf(fmt string, args ...interface{})  { t.t.Logf(fmt, args...) }
-func (t *testLogger) Infof(fmt string, args ...interface{})   { t.t.Logf(fmt, args...) }
-func (t *testLogger) Warnf(fmt string, args ...interface{})   { t.t.Logf(fmt, args...) }
-func (t *testLogger) SetLevel(level log.Level)                {}
-func (t *testLogger) WithFields(fields log.Fields) log.Logger { return t }

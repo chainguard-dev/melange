@@ -33,6 +33,7 @@ Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild 
 ### Options inherited from parent commands
 
 ```
+      --log-level string     log level (e.g. debug, info, warn, error) (default "info")
       --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
 ```
 

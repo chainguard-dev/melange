@@ -48,6 +48,12 @@ melange test [flags]
       --workspace-dir string          directory used for the workspace at /home/build
 ```
 
+### Options inherited from parent commands
+
+```
+      --log-level string   log level (e.g. debug, info, warn, error) (default "info")
+```
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

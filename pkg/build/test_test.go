@@ -15,6 +15,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,6 @@ import (
 	"chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/logger"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
@@ -46,18 +46,15 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	logger := logger.NopLogger{}
 	// Just define the base stuff here that we can then
 	// modify in the tests.
 	baseTest := Test{
 		WorkspaceDir: testWorkspaceDir,
-		Logger:       logger,
 	}
 
 	// Just define the base stuff here that we can then
 	// modify in the tests.
 	wantBase := container.Config{
-		Logger:       logger,
 		Environment:  map[string]string{},
 		PackageName:  testPkgName,
 		ImgRef:       testImgRef,
@@ -120,7 +117,8 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := tt.t.buildWorkspaceConfig(testImgRef, testPkgName, tt.env)
+			ctx := context.Background()
+			got, gotErr := tt.t.buildWorkspaceConfig(ctx, testImgRef, testPkgName, tt.env)
 			if gotErr != nil {
 				if tt.wantErr == "" {
 					t.Fatalf("unexpected error: %v", gotErr)
@@ -266,15 +264,12 @@ func TestConfigurationLoad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			log := logger.NopLogger{}
-			ctx := Test{
+			ctx := context.Background()
+			tctx := Test{
 				ConfigFile: filepath.Join("testdata", "test_configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
-				Logger:     log,
 			}
 
-			cfg, err := config.ParseConfiguration(
-				ctx.ConfigFile,
-				config.WithLogger(ctx.Logger))
+			cfg, err := config.ParseConfiguration(ctx, tctx.ConfigFile)
 			tt.requireErr(t, err)
 
 			if !tt.skipConfigCleanStep {

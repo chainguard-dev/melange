@@ -18,12 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"path/filepath"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
+	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -168,6 +169,7 @@ func Build() *cobra.Command {
 }
 
 func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...build.Option) error {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildCmd")
 	defer span.End()
 
@@ -187,7 +189,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
-			log.Printf("skipping arch %s", arch)
+			log.Warn(fmt.Sprintf("skipping arch %s", arch))
 			continue
 		} else if err != nil {
 			return err
@@ -197,7 +199,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	}
 
 	if len(bcs) == 0 {
-		log.Printf("WARNING: target-architecture and --arch do not overlap, nothing to build")
+		log.Warn("WARNING: target-architecture and --arch do not overlap, nothing to build")
 		return nil
 	}
 
@@ -206,9 +208,12 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		bc := bc
 
 		errg.Go(func() error {
+			log := clog.New(slog.Default().Handler()).With("arch", bc.Arch.ToAPK())
+			ctx := clog.WithLogger(ctx, log)
+
 			if err := bc.BuildPackage(ctx); err != nil {
-				log.Printf("ERROR: failed to build package. the build environment has been preserved:")
-				bc.SummarizePaths()
+				log.Error("ERROR: failed to build package. the build environment has been preserved:")
+				bc.SummarizePaths(ctx)
 
 				return fmt.Errorf("failed to build package: %w", err)
 			}

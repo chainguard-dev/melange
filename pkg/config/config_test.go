@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,8 @@ import (
 )
 
 func Test_applySubstitutionsInProvides(t *testing.T) {
+	ctx := context.Background()
+
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -50,7 +53,7 @@ subpackages:
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := ParseConfiguration(fp)
+	cfg, err := ParseConfiguration(ctx, fp)
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)
 	}
@@ -85,6 +88,8 @@ subpackages:
 }
 
 func Test_rangeSubstitutions(t *testing.T) {
+	ctx := context.Background()
+
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -111,7 +116,7 @@ subpackages:
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := ParseConfiguration(fp)
+	cfg, err := ParseConfiguration(ctx, fp)
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)
 	}
@@ -120,6 +125,8 @@ subpackages:
 }
 
 func Test_propagatePipelines(t *testing.T) {
+	ctx := context.Background()
+
 	fp := filepath.Join(os.TempDir(), "melange-test-propagatePipelines")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -150,7 +157,7 @@ subpackages:
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := ParseConfiguration(fp)
+	cfg, err := ParseConfiguration(ctx, fp)
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)
 	}
@@ -162,6 +169,7 @@ subpackages:
 }
 
 func Test_propagateWorkingDirectory(t *testing.T) {
+	ctx := context.Background()
 	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -184,7 +192,7 @@ pipeline:
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := ParseConfiguration(fp)
+	cfg, err := ParseConfiguration(ctx, fp)
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)
 	}
@@ -198,6 +206,7 @@ pipeline:
 }
 
 func Test_propagateWorkingDirectoryToUsesNodes(t *testing.T) {
+	ctx := context.Background()
 	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -224,7 +233,7 @@ pipeline:
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := ParseConfiguration(fp)
+	cfg, err := ParseConfiguration(ctx, fp)
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)
 	}

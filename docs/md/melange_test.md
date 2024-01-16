@@ -41,11 +41,17 @@ melange test [flags]
       --overlay-binsh string          use specified file as /bin/sh overlay in build environment
       --pipeline-dirs strings         directories used to extend defined built-in pipelines
   -r, --repository-append strings     path to extra repositories to include in the build environment
-      --runner string                 which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "lima" "kubernetes"] (default "bubblewrap")
+      --runner string                 which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "lima" "kubernetes"]
       --source-dir string             directory used for included sources
       --test-option strings           build options to enable
       --test-package-append strings   extra packages to install for each of the test environments
       --workspace-dir string          directory used for the workspace at /home/build
+```
+
+### Options inherited from parent commands
+
+```
+      --log-level string   log level (e.g. debug, info, warn, error) (default "info")
 ```
 
 ### SEE ALSO

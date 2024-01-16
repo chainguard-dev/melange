@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/clog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,8 +25,11 @@ const (
 
 func TestGetGemMeta(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		log := clog.FromContext(ctx)
+
 		path := filepath.Join(gemMetaDir, req.URL.String())
-		log.Printf("convert:test:server: %s", path)
+		log.Infof("convert:test:server: %s", path)
 
 		data, err := os.ReadFile(path)
 		assert.NoError(t, err)
@@ -73,8 +76,9 @@ func TestGetGemMeta(t *testing.T) {
 
 func TestFindDependencies(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := clog.FromContext(req.Context())
 		path := filepath.Join(gemMetaDir, req.URL.String())
-		log.Printf("convert:test:server: %s", path)
+		log.Infof("convert:test:server: %s", path)
 
 		data, err := os.ReadFile(path)
 		assert.NoError(t, err)
@@ -114,9 +118,10 @@ func TestFindDependencies(t *testing.T) {
 func TestGenerateManifest(t *testing.T) {
 	// Serve up testdata/archive
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := clog.FromContext(req.Context())
 		// req.URL.String() will include /archive/refs/tags/ which we want to remove
 		path := filepath.Join(archiveDir, strings.ReplaceAll(req.URL.String(), "/archive/refs/tags/", "/"))
-		log.Printf("convert:test:server: %s", path)
+		log.Infof("convert:test:server: %s", path)
 
 		data, err := os.ReadFile(path)
 		assert.NoError(t, err)

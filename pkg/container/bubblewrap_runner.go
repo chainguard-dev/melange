@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,7 +27,7 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/log"
+	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"go.opentelemetry.io/otel"
 )
@@ -34,12 +35,11 @@ import (
 const BubblewrapName = "bubblewrap"
 
 type bubblewrap struct {
-	logger log.Logger
 }
 
 // BubblewrapRunner returns a Bubblewrap Runner implementation.
-func BubblewrapRunner(logger log.Logger) Runner {
-	return &bubblewrap{logger}
+func BubblewrapRunner() Runner {
+	return &bubblewrap{}
 }
 
 // Name name of the runner
@@ -76,17 +76,17 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) erro
 
 	args = append(baseargs, args...)
 	execCmd := exec.CommandContext(ctx, "bwrap", args...)
-	bw.logger.Printf("executing: %s", strings.Join(execCmd.Args, " "))
+	slog.InfoContext(ctx, fmt.Sprintf("executing: %s", strings.Join(execCmd.Args, " ")))
 
-	return monitorCmd(cfg, execCmd)
+	return monitorCmd(ctx, cfg, execCmd)
 }
 
 // TestUsability determines if the Bubblewrap runner can be used
 // as a container runner.
 func (bw *bubblewrap) TestUsability(ctx context.Context) bool {
-	_, err := exec.LookPath("bwrap")
-	if err != nil {
-		bw.logger.Warnf("cannot use bubblewrap for containers: bwrap not found on $PATH")
+	log := clog.FromContext(ctx)
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		log.Warnf("cannot use bubblewrap for containers: bwrap not found on $PATH")
 		return false
 	}
 

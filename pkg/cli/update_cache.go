@@ -32,21 +32,23 @@ func UpdateCache() *cobra.Command {
 		Example: `  melange update-cache --cache-dir <cache-dir> <config.yaml>`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := renovate.New(renovate.WithConfig(args[0]))
+			ctx := cmd.Context()
+
+			rctx, err := renovate.New(renovate.WithConfig(args[0]))
 			if err != nil {
 				return err
 			}
 
-			rc := renovate.RenovationContext{Context: ctx}
+			rc := renovate.RenovationContext{Context: rctx}
 
 			cacheRenovator := cache.New(
 				cache.WithCacheDir(cacheDir),
 			)
 
-			if err := rc.LoadConfig(); err != nil {
+			if err := rc.LoadConfig(ctx); err != nil {
 				return err
 			}
-			return cacheRenovator(cmd.Context(), &rc)
+			return cacheRenovator(ctx, &rc)
 		},
 	}
 

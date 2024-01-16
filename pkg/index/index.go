@@ -24,10 +24,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	apko_log "chainguard.dev/apko/pkg/log"
+	"github.com/chainguard-dev/clog"
 	apkrepo "github.com/chainguard-dev/go-apk/pkg/apk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
-	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
@@ -38,7 +37,6 @@ type Index struct {
 	SourceIndexFile    string
 	MergeIndexFileFlag bool
 	SigningKey         string
-	Logger             *logrus.Logger
 	ExpectedArch       string
 	Index              apkrepo.APKIndex
 }
@@ -112,12 +110,6 @@ func WithExpectedArch(expectedArch string) Option {
 func New(opts ...Option) (*Index, error) {
 	idx := Index{
 		PackageFiles: []string{},
-		Logger: &logrus.Logger{
-			Out:       os.Stderr,
-			Formatter: &apko_log.Formatter{},
-			Hooks:     make(logrus.LevelHooks),
-			Level:     logrus.InfoLevel,
-		},
 	}
 
 	for _, opt := range opts {
@@ -129,7 +121,8 @@ func New(opts ...Option) (*Index, error) {
 	return &idx, nil
 }
 
-func (idx *Index) LoadIndex(sourceFile string) error {
+func (idx *Index) LoadIndex(ctx context.Context, sourceFile string) error {
+	log := clog.FromContext(ctx)
 	f, err := os.Open(sourceFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -148,19 +141,20 @@ func (idx *Index) LoadIndex(sourceFile string) error {
 	idx.Index.Description = index.Description
 	idx.Index.Packages = append(idx.Index.Packages, index.Packages...)
 
-	idx.Logger.Printf("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), sourceFile)
+	log.Infof("loaded %d/%d packages from index %s", len(idx.Index.Packages), len(index.Packages), sourceFile)
 
 	return nil
 }
 
 func (idx *Index) UpdateIndex(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	packages := make([]*apkrepo.Package, len(idx.PackageFiles))
 	var g errgroup.Group
 	g.SetLimit(4)
 	for i, apkFile := range idx.PackageFiles {
 		i, apkFile := i, apkFile // capture the loop variables
 		g.Go(func() error {
-			idx.Logger.Printf("processing package %s", apkFile)
+			log.Infof("processing package %s", apkFile)
 			f, err := os.Open(apkFile)
 			if err != nil {
 				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
@@ -172,7 +166,7 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 			}
 
 			if idx.ExpectedArch != "" && pkg.Arch != idx.ExpectedArch {
-				idx.Logger.Printf("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+				log.Infof("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
 					pkg.Name, pkg.Version, pkg.Arch, idx.ExpectedArch)
 				return nil
 			}
@@ -187,7 +181,7 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 	}
 
 	if idx.MergeIndexFileFlag {
-		if err := idx.LoadIndex(idx.SourceIndexFile); err != nil {
+		if err := idx.LoadIndex(ctx, idx.SourceIndexFile); err != nil {
 			return err
 		}
 	}
@@ -215,7 +209,7 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 		}
 	}
 
-	idx.Logger.Printf("updating index at %s with new packages: %v", idx.IndexFile, pkgNames)
+	log.Infof("updating index at %s with new packages: %v", idx.IndexFile, pkgNames)
 
 	return nil
 }
@@ -236,6 +230,7 @@ func (idx *Index) GenerateIndex(ctx context.Context) error {
 }
 
 func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string) error {
+	log := clog.FromContext(ctx)
 	archive, err := apkrepo.ArchiveFromIndex(&idx.Index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
@@ -250,8 +245,8 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 	}
 
 	if idx.SigningKey != "" {
-		idx.Logger.Printf("signing apk index at %s", idx.IndexFile)
-		if err := sign.SignIndex(ctx, idx.Logger, idx.SigningKey, idx.IndexFile); err != nil {
+		log.Infof("signing apk index at %s", idx.IndexFile)
+		if err := sign.SignIndex(ctx, idx.SigningKey, idx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
 	}

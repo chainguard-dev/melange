@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,11 +31,9 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apko_iocomb "chainguard.dev/apko/pkg/iocomb"
-	apko_log "chainguard.dev/apko/pkg/log"
 	"cloud.google.com/go/storage"
+	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
-	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
@@ -67,7 +66,6 @@ type Build struct {
 	GenerateIndex     bool
 	EmptyWorkspace    bool
 	OutDir            string
-	Logger            apko_log.Logger
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
@@ -115,27 +113,11 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 	}
 
-	writer, err := apko_iocomb.Combine(b.LogPolicy)
-	if err != nil {
-		return nil, err
-	}
-
-	// Enable printing warnings and progress from GGCR.
-	logs.Warn.SetOutput(writer)
-	logs.Progress.SetOutput(writer)
-
-	logger := &apko_log.Adapter{
-		Out:   writer,
-		Level: apko_log.InfoLevel,
-	}
-
-	fields := apko_log.Fields{
-		"arch": b.Arch.ToAPK(),
-	}
-	b.Logger = logger.WithFields(fields)
+	log := clog.New(slog.Default().Handler()).With("arch", b.Arch.ToAPK())
+	ctx = clog.WithLogger(ctx, log)
 
 	// try to get the runner
-	runner, err := container.GetRunner(ctx, b.RunnerName, b.Logger)
+	runner, err := container.GetRunner(ctx, b.RunnerName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get runner %s: %w", b.RunnerName, err)
 	}
@@ -175,7 +157,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.ConfigFile == "" {
 		for _, chk := range checks {
 			if _, err := os.Stat(chk); err == nil {
-				b.Logger.Printf("no configuration file provided -- using %s", chk)
+				log.Infof("no configuration file provided -- using %s", chk)
 				b.ConfigFile = chk
 				break
 			}
@@ -187,10 +169,9 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 
-	parsedCfg, err := config.ParseConfiguration(
+	parsedCfg, err := config.ParseConfiguration(ctx,
 		b.ConfigFile,
 		config.WithEnvFileForParsing(b.EnvFile),
-		config.WithLogger(b.Logger),
 		config.WithVarsFileForParsing(b.VarsFile),
 		config.WithDefaultCPU(b.DefaultCPU),
 		config.WithDefaultMemory(b.DefaultMemory),
@@ -204,7 +185,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	if len(b.Configuration.Package.TargetArchitecture) == 1 &&
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
-		b.Logger.Printf("WARNING: target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
+		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
 	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
 		!sets.NewString(b.Configuration.Package.TargetArchitecture...).Has(b.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
@@ -212,7 +193,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	// SOURCE_DATE_EPOCH will always overwrite the build flag
 	if _, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
-		t, err := util.SourceDateEpochWithLogger(b.Logger, b.SourceDateEpoch)
+		t, err := util.SourceDateEpoch(b.SourceDateEpoch)
 		if err != nil {
 			return nil, err
 		}
@@ -226,7 +207,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	// Apply build options to the context.
 	for _, optName := range b.EnabledBuildOptions {
-		b.Logger.Printf("applying configuration patches for build option %s", optName)
+		log.Infof("applying configuration patches for build option %s", optName)
 
 		if opt, ok := b.Configuration.Options[optName]; ok {
 			if err := b.ApplyBuildOption(opt); err != nil {
@@ -562,6 +543,7 @@ func WithTimeout(dur time.Duration) Option {
 // BuildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
 func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
 	defer span.End()
 
@@ -570,15 +552,13 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraRepos(b.ExtraRepos),
-		apko_build.WithLogger(b.Logger),
-		apko_build.WithDebugLogging(true),
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
 
-	bc.Summarize()
+	bc.Summarize(ctx)
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {
@@ -595,16 +575,16 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.Remove(layerTarGZ)
 
-	b.Logger.Printf("using %s for image layer", layerTarGZ)
+	log.Infof("using %s for image layer", layerTarGZ)
 
 	ref, err := loader.LoadImage(ctx, layer, b.Arch, bc)
 	if err != nil {
 		return "", err
 	}
 
-	b.Logger.Printf("pushed %s as %v", layerTarGZ, ref)
+	log.Infof("pushed %s as %v", layerTarGZ, ref)
 
-	b.Logger.Printf("successfully built workspace with apko")
+	log.Infof("successfully built workspace with apko")
 
 	return ref, nil
 }
@@ -672,7 +652,8 @@ func (b *Build) ApplyBuildOption(bo config.BuildOption) error {
 	return nil
 }
 
-func (b *Build) loadIgnoreRules() ([]*xignore.Pattern, error) {
+func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error) {
+	log := clog.FromContext(ctx)
 	ignorePath := filepath.Join(b.SourceDir, b.WorkspaceIgnore)
 
 	ignorePatterns := []*xignore.Pattern{}
@@ -685,7 +666,7 @@ func (b *Build) loadIgnoreRules() ([]*xignore.Pattern, error) {
 		return nil, err
 	}
 
-	b.Logger.Printf("loading ignore rules from %s", ignorePath)
+	log.Infof("loading ignore rules from %s", ignorePath)
 
 	inF, err := os.Open(ignorePath)
 	if err != nil {
@@ -746,7 +727,8 @@ func (b *Build) OverlayBinSh() error {
 	return nil
 }
 
-func fetchBucket(ctx context.Context, cacheSource string, logger apko_log.Logger, cmm CacheMembershipMap) (string, error) {
+func fetchBucket(ctx context.Context, cacheSource string, cmm CacheMembershipMap) (string, error) {
+	log := clog.FromContext(ctx)
 	tmp, err := os.MkdirTemp("", "melange-cache")
 	if err != nil {
 		return "", err
@@ -755,7 +737,7 @@ func fetchBucket(ctx context.Context, cacheSource string, logger apko_log.Logger
 
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		logger.Printf("downgrading to anonymous mode: %s", err)
+		log.Infof("downgrading to anonymous mode: %s", err)
 
 		client, err = storage.NewClient(ctx, option.WithoutAuthentication())
 		if err != nil {
@@ -790,7 +772,7 @@ func fetchBucket(ctx context.Context, cacheSource string, logger apko_log.Logger
 		if err := rc.Close(); err != nil {
 			return tmp, fmt.Errorf("failed to close remote cache object %s: %w", on, err)
 		}
-		logger.Printf("cached gs://%s/%s -> %s", bucket, on, w.Name())
+		log.Infof("cached gs://%s/%s -> %s", bucket, on, w.Name())
 	}
 
 	return tmp, nil
@@ -804,6 +786,7 @@ func (b *Build) IsBuildLess() bool {
 }
 
 func (b *Build) PopulateCache(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
 	defer span.End()
 
@@ -816,17 +799,17 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
 
-	b.Logger.Printf("populating cache from %s", b.CacheSource)
+	log.Infof("populating cache from %s", b.CacheSource)
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
 	if strings.HasPrefix(b.CacheSource, "gs://") {
-		tmp, err := fetchBucket(ctx, b.CacheSource, b.Logger, cmm)
+		tmp, err := fetchBucket(ctx, b.CacheSource, cmm)
 		if err != nil {
 			return err
 		}
 		defer os.RemoveAll(tmp)
-		b.Logger.Printf("cache bucket copied to %s", tmp)
+		log.Infof("cache bucket copied to %s", tmp)
 
 		fsys := os.DirFS(tmp)
 
@@ -863,7 +846,7 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 				return nil
 			}
 
-			b.Logger.Debugf("  -> %s", path)
+			log.Debugf("  -> %s", path)
 
 			if err := copyFile(tmp, path, b.CacheDir, mode.Perm()); err != nil {
 				return err
@@ -877,10 +860,11 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 }
 
 func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
+	log := clog.FromContext(ctx)
 	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
 	defer span.End()
 
-	ignorePatterns, err := b.loadIgnoreRules()
+	ignorePatterns, err := b.loadIgnoreRules(ctx)
 	if err != nil {
 		return err
 	}
@@ -906,7 +890,7 @@ func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 			}
 		}
 
-		b.Logger.Debugf("  -> %s", path)
+		log.Debugf("  -> %s", path)
 
 		if err := copyFile(b.SourceDir, path, b.WorkspaceDir, mode.Perm()); err != nil {
 			return err
@@ -944,10 +928,11 @@ type linterTarget struct {
 }
 
 func (b *Build) BuildPackage(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
 
-	b.Summarize()
+	b.Summarize(ctx)
 
 	if to := b.Configuration.Package.Timeout; to > 0 {
 		tctx, cancel := context.WithTimeoutCause(ctx, to,
@@ -971,12 +956,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		b.GuestDir = guestDir
 	}
 
-	b.Logger.Printf("evaluating pipelines for package requirements")
+	log.Infof("evaluating pipelines for package requirements")
 	for _, p := range b.Configuration.Pipeline {
 		// fine to pass nil for config, since not running in container.
-		pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs, b.Logger)
+		pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs)
 
-		if err := pctx.ApplyNeeds(&pb); err != nil {
+		if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
 			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 		}
 	}
@@ -986,8 +971,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		pb.Subpackage = &spkg
 		for _, p := range spkg.Pipeline {
 			// fine to pass nil for config, since not running in container.
-			pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs, b.Logger)
-			if err := pctx.ApplyNeeds(&pb); err != nil {
+			pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs)
+			if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 			}
 		}
@@ -995,14 +980,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	pb.Subpackage = nil
 
 	if b.EmptyWorkspace {
-		b.Logger.Printf("empty workspace requested")
+		log.Infof("empty workspace requested")
 	} else {
 		// Prepare workspace directory
 		if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		b.Logger.Printf("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
+		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
 		if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
@@ -1013,7 +998,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	linterQueue := []linterTarget{}
-	cfg := b.WorkspaceConfig()
+	cfg := b.WorkspaceConfig(ctx)
 
 	if !b.IsBuildLess() {
 		// Prepare guest directory
@@ -1021,7 +1006,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
 		}
 
-		b.Logger.Printf("building workspace in '%s' with apko", b.GuestDir)
+		log.Infof("building workspace in '%s' with apko", b.GuestDir)
 
 		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
 		imgRef, err := b.BuildGuest(ctx, b.Configuration.Environment, guestFS)
@@ -1030,7 +1015,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		cfg.ImgRef = imgRef
-		b.Logger.Printf("ImgRef = %s", cfg.ImgRef)
+		log.Infof("ImgRef = %s", cfg.ImgRef)
 
 		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
 		// Probably needs help from apko.
@@ -1048,15 +1033,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if !b.DebugRunner {
 			defer func() {
 				if err := b.Runner.TerminatePod(context.WithoutCancel(ctx), cfg); err != nil {
-					b.Logger.Warnf("unable to terminate pod: %s", err)
+					log.Warnf("unable to terminate pod: %s", err)
 				}
 			}()
 		}
 
 		// run the main pipeline
-		b.Logger.Printf("running the main pipeline")
+		log.Infof("running the main pipeline")
 		for _, p := range b.Configuration.Pipeline {
-			pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs, b.Logger)
+			pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs)
 			if _, err := pctx.Run(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
@@ -1079,7 +1064,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
 		if !b.IsBuildLess() {
-			b.Logger.Printf("running pipeline for subpackage %s", sp.Name)
+			log.Infof("running pipeline for subpackage %s", sp.Name)
 			pb.Subpackage = &sp
 
 			result, err := pb.ShouldRun(sp)
@@ -1091,7 +1076,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 
 			for _, p := range sp.Pipeline {
-				pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs, b.Logger)
+				pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs)
 				if _, err := pctx.Run(ctx, &pb); err != nil {
 					return fmt.Errorf("unable to run pipeline: %w", err)
 				}
@@ -1111,16 +1096,16 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// Retrieve the post build workspace from the runner
-	b.Logger.Infof("retrieving workspace from builder: %s", cfg.PodID)
+	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	fs := apkofs.DirFS(b.WorkspaceDir)
 	if err := b.RetrieveWorkspace(ctx, fs); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
-	b.Logger.Printf("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
+	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
 	// perform package linting
 	for _, lt := range linterQueue {
-		b.Logger.Printf("running package linters for %s", lt.pkgName)
+		log.Infof("running package linters for %s", lt.pkgName)
 
 		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
 		linters := lt.checks.GetLinters()
@@ -1130,7 +1115,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if b.FailOnLintWarning {
 				innerErr = err
 			} else {
-				b.Logger.Warnf("WARNING: %v", err)
+				log.Warnf("WARNING: %v", err)
 			}
 		}, linters); err != nil {
 			return fmt.Errorf("package linter error: %w", err)
@@ -1147,7 +1132,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		sp := sp
 
 		if !b.IsBuildLess() {
-			b.Logger.Printf("generating SBOM for subpackage %s", sp.Name)
+			log.Infof("generating SBOM for subpackage %s", sp.Name)
 			pb.Subpackage = &sp
 
 			result, err := pb.ShouldRun(sp)
@@ -1210,7 +1195,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	if !b.IsBuildLess() {
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
-			b.Logger.Printf("WARNING: unable to clean guest container: %s", err)
+			log.Infof("WARNING: unable to clean guest container: %s", err)
 		}
 	}
 
@@ -1219,13 +1204,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// that is running melange. files created inside the build not owned by the build user are
 	// not be possible to delete with this strategy.
 	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
-		b.Logger.Printf("WARNING: unable to clean workspace: %s", err)
+		log.Infof("WARNING: unable to clean workspace: %s", err)
 	}
 
 	// generate APKINDEX.tar.gz and sign it
 	if b.GenerateIndex {
 		packageDir := filepath.Join(pb.Build.OutDir, pb.Build.Arch.ToAPK())
-		b.Logger.Printf("generating apk index from packages in %s", packageDir)
+		log.Infof("generating apk index from packages in %s", packageDir)
 
 		var apkFiles []string
 		pkgFileName := fmt.Sprintf("%s-%s-r%d.apk", b.Configuration.Package.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
@@ -1271,18 +1256,20 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	return nil
 }
 
-func (b *Build) SummarizePaths() {
-	b.Logger.Printf("  workspace dir: %s", b.WorkspaceDir)
+func (b *Build) SummarizePaths(ctx context.Context) {
+	log := clog.FromContext(ctx)
+	log.Infof("  workspace dir: %s", b.WorkspaceDir)
 
 	if b.GuestDir != "" {
-		b.Logger.Printf("  guest dir: %s", b.GuestDir)
+		log.Infof("  guest dir: %s", b.GuestDir)
 	}
 }
 
-func (b *Build) Summarize() {
-	b.Logger.Printf("melange is building:")
-	b.Logger.Printf("  configuration file: %s", b.ConfigFile)
-	b.SummarizePaths()
+func (b *Build) Summarize(ctx context.Context) {
+	log := clog.FromContext(ctx)
+	log.Infof("melange is building:")
+	log.Infof("  configuration file: %s", b.ConfigFile)
+	b.SummarizePaths(ctx)
 }
 
 // BuildFlavor determines if a build context uses glibc or musl, it returns
@@ -1309,7 +1296,8 @@ func (b *Build) BuildTripletRust() string {
 	return b.Arch.ToRustTriplet(b.BuildFlavor())
 }
 
-func (b *Build) buildWorkspaceConfig() *container.Config {
+func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
+	log := clog.FromContext(ctx)
 	if b.IsBuildLess() {
 		return &container.Config{
 			Arch: b.Arch,
@@ -1325,12 +1313,12 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 		if fi, err := os.Stat(b.CacheDir); err == nil && fi.IsDir() {
 			mountSource, err := realpath.Realpath(b.CacheDir)
 			if err != nil {
-				b.Logger.Printf("could not resolve path for --cache-dir: %s", err)
+				log.Infof("could not resolve path for --cache-dir: %s", err)
 			}
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
-			b.Logger.Printf("--cache-dir %s not a dir; skipping", b.CacheDir)
+			log.Infof("--cache-dir %s not a dir; skipping", b.CacheDir)
 		}
 	}
 
@@ -1344,7 +1332,6 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 		PackageName:  b.Configuration.Package.Name,
 		Mounts:       mounts,
 		Capabilities: caps,
-		Logger:       b.Logger,
 		Environment: map[string]string{
 			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
 		},
@@ -1363,9 +1350,9 @@ func (b *Build) buildWorkspaceConfig() *container.Config {
 	return &cfg
 }
 
-func (b *Build) WorkspaceConfig() *container.Config {
+func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
 	if b.containerConfig == nil {
-		b.containerConfig = b.buildWorkspaceConfig()
+		b.containerConfig = b.buildWorkspaceConfig(ctx)
 	}
 
 	return b.containerConfig

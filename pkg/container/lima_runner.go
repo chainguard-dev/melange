@@ -31,8 +31,8 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/log"
 	"chainguard.dev/apko/pkg/options"
+	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	limastore "github.com/lima-vm/lima/pkg/store"
@@ -54,7 +54,6 @@ var config []byte
 var nerdctlLoadRE = regexp.MustCompile(`unpacking (\S+) \((sha256:[a-f0-9]+)\)`)
 
 type lima struct {
-	logger log.Logger
 }
 
 // LimaRunner returns a lima with nerdctl Runner implementation.
@@ -64,8 +63,8 @@ type lima struct {
 // For now, most commands that we use - limactl start, limactl stop, limactl delete,
 // limactl list, lima nerctl run - are implemented as logic in github.com/lima-vm/lima/cmd
 // rather than as a library surface.
-func LimaRunner(ctx context.Context, logger log.Logger) (Runner, error) {
-	l := &lima{logger}
+func LimaRunner(ctx context.Context) (Runner, error) {
+	l := &lima{}
 	// make sure our VM is running
 	if err := l.startVM(ctx); err != nil {
 		return nil, err
@@ -275,8 +274,10 @@ func (l *lima) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, er
 
 // limactl issues limactl commands to work with VMs
 func (l *lima) limactl(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer, args ...string) error {
+	log := clog.FromContext(ctx)
+
 	baseargs := args
-	l.logger.Printf("limactl %v", baseargs)
+	log.Infof("limactl %v", baseargs)
 	cmd := exec.CommandContext(ctx, "limactl", baseargs...)
 	if stdin != nil {
 		cmd.Stdin = stdin
@@ -457,8 +458,8 @@ func (l limaOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		Arch:            arch,
 	}
 
-	if err := apko_oci.BuildImageTarballFromLayer(
-		containerImageName, layer, outputTarGZ, bc.ImageConfiguration(), bc.Logger(), bopt); err != nil {
+	if err := apko_oci.BuildImageTarballFromLayer(ctx,
+		containerImageName, layer, outputTarGZ, bc.ImageConfiguration(), bopt); err != nil {
 		return ref, fmt.Errorf("failed to build OCI image: %w", err)
 	}
 	f, err := os.Open(outputTarGZ)

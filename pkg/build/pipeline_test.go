@@ -15,11 +15,11 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"chainguard.dev/melange/pkg/logger"
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/config"
@@ -111,6 +111,7 @@ func Test_MutateWith(t *testing.T) {
 }
 
 func Test_substitutionNeedPackages(t *testing.T) {
+	ctx := context.Background()
 	pkg := &config.Package{
 		Name:    "foo",
 		Version: "1.2.3",
@@ -125,7 +126,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 		},
 	}
 
-	pctx := NewPipelineContext(p, nil, nil, []string{"pipelines"}, logger.NopLogger{})
+	pctx := NewPipelineContext(p, nil, nil, []string{"pipelines"})
 
 	pb := &PipelineBuild{
 		Package: pkg,
@@ -146,7 +147,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 		},
 	}
 
-	err := pctx.loadUse(pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
+	err := pctx.loadUse(ctx, pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
 	require.NoError(t, err)
 	require.Equal(t, "go-5.4.3", pctx.Pipeline.Needs.Packages[0])
 }
@@ -156,14 +157,14 @@ func Test_buildEvalRunCommand(t *testing.T) {
 		Environment: map[string]string{"FOO": "bar"},
 	}
 
-	pctx := NewPipelineContext(p, nil, nil, []string{}, logger.NopLogger{})
+	pctx := NewPipelineContext(p, nil, nil, []string{})
 
-	debugOption := ' '
+	debugOption := 'x'
 	sysPath := "/foo"
 	workdir := "/bar"
 	fragment := "baz"
 	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
-	expected := []string{"/bin/sh", "-c", `set -e 
+	expected := []string{"/bin/sh", "-c", `set -ex
 export PATH='/foo'
 export FOO='bar'
 [ -d '/bar' ] || mkdir -p '/bar'

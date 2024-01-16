@@ -16,6 +16,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -29,14 +30,13 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	apko_log "chainguard.dev/apko/pkg/log"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/go-git/go-git/v5"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
 	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
-	"chainguard.dev/melange/pkg/logger"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -499,7 +499,6 @@ type ConfigurationParsingOption func(*configOptions)
 type configOptions struct {
 	filesystem  fs.FS
 	envFilePath string
-	logger      apko_log.Logger
 	cpu, memory string
 	timeout     time.Duration
 
@@ -511,10 +510,6 @@ type configOptions struct {
 func (options *configOptions) include(opts ...ConfigurationParsingOption) {
 	for _, fn := range opts {
 		fn(options)
-	}
-
-	if options.logger == nil {
-		options.logger = logger.NopLogger{}
 	}
 }
 
@@ -552,14 +547,6 @@ func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 	}
 }
 
-// WithLogger sets the logger to use during configuration parsing. This is
-// optional, and if not supplied, a no-op logger will be used.
-func WithLogger(logger apko_log.Logger) ConfigurationParsingOption {
-	return func(options *configOptions) {
-		options.logger = logger
-	}
-}
-
 // WithVarsFileForParsing sets the path to the vars file to use if the user wishes to
 // populate the variables block from an external file.
 func WithVarsFileForParsing(path string) ConfigurationParsingOption {
@@ -568,13 +555,14 @@ func WithVarsFileForParsing(path string) ConfigurationParsingOption {
 	}
 }
 
-func detectCommit(dirPath string, logger apko_log.Logger) string {
+func detectCommit(ctx context.Context, dirPath string) string {
+	log := clog.FromContext(ctx)
 	// Best-effort detection of current commit, to be used when not specified in the config file
 
 	// TODO: figure out how to use an abstract FS
 	repo, err := git.PlainOpen(dirPath)
 	if err != nil {
-		logger.Printf("unable to detect git commit for build configuration: %v", err)
+		log.Warnf("unable to detect git commit for build configuration: %v", err)
 		return ""
 	}
 
@@ -584,7 +572,7 @@ func detectCommit(dirPath string, logger apko_log.Logger) string {
 	}
 
 	commit := head.Hash().String()
-	logger.Printf("detected git commit for build configuration: %s", commit)
+	log.Infof("detected git commit for build configuration: %s", commit)
 	return commit
 }
 
@@ -653,7 +641,7 @@ func (cfg *Configuration) propagatePipelines() {
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
-func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
+func ParseConfiguration(ctx context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
 	configurationDirPath := filepath.Dir(configurationFilePath)
 	options.include(opts...)
@@ -701,7 +689,7 @@ func ParseConfiguration(configurationFilePath string, opts ...ConfigurationParsi
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
 
-	detectedCommit := detectCommit(configurationDirPath, options.logger)
+	detectedCommit := detectCommit(ctx, configurationDirPath)
 	if cfg.Package.Commit == "" {
 		cfg.Package.Commit = detectedCommit
 	}
@@ -1007,20 +995,21 @@ func (cfg Configuration) PackageURLs(distro string) []string {
 }
 
 // Summarize lists the dependencies that are configured in a dependency set.
-func (dep *Dependencies) Summarize(logger apko_log.Logger) {
+func (dep *Dependencies) Summarize(ctx context.Context) {
+	log := clog.FromContext(ctx)
 	if len(dep.Runtime) > 0 {
-		logger.Printf("  runtime:")
+		log.Info("  runtime:")
 
 		for _, dep := range dep.Runtime {
-			logger.Printf("    %s", dep)
+			log.Info("    " + dep)
 		}
 	}
 
 	if len(dep.Provides) > 0 {
-		logger.Printf("  provides:")
+		log.Info("  provides:")
 
 		for _, dep := range dep.Provides {
-			logger.Printf("    %s", dep)
+			log.Info("    " + dep)
 		}
 	}
 }

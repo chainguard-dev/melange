@@ -30,12 +30,13 @@ func Bump() *cobra.Command {
 		Example: `  melange bump <config.yaml> <1.2.3.4>`,
 		Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			rc, err := renovate.New(renovate.WithConfig(args[0]))
 			if err != nil {
 				return err
 			}
 
-			bumpRenovator := bump.New(
+			bumpRenovator := bump.New(ctx,
 				bump.WithTargetVersion(args[1]),
 				bump.WithExpectedCommit(expectedCommit),
 			)

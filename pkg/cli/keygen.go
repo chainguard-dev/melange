@@ -21,9 +21,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 )
 
@@ -100,13 +100,14 @@ func Keygen() *cobra.Command {
 	return cmd
 }
 
-func KeygenCmd(_ context.Context, opts ...KeygenOption) error {
+func KeygenCmd(ctx context.Context, opts ...KeygenOption) error {
+	log := clog.FromContext(ctx)
 	kc, err := newKeygenContext(opts...)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("generating keypair with a %d bit prime, please wait...", kc.BitSize)
+	log.Infof("generating keypair with a %d bit prime, please wait...", kc.BitSize)
 
 	privkey, pubkey, err := kc.GenerateKeypair()
 	if err != nil {
@@ -128,7 +129,7 @@ func KeygenCmd(_ context.Context, opts ...KeygenOption) error {
 		return fmt.Errorf("unable to encode private key: %w", err)
 	}
 
-	log.Printf("wrote private key to %s", privatePem.Name())
+	log.Infof("wrote private key to %s", privatePem.Name())
 
 	publicKeyData, err := x509.MarshalPKIXPublicKey(pubkey)
 	if err != nil {
@@ -148,7 +149,7 @@ func KeygenCmd(_ context.Context, opts ...KeygenOption) error {
 		return fmt.Errorf("unable to encode public key: %w", err)
 	}
 
-	log.Printf("wrote public key to %s", publicPem.Name())
+	log.Infof("wrote public key to %s", publicPem.Name())
 
 	return nil
 }

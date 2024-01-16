@@ -208,10 +208,11 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 	for _, pkg := range packages {
 		found := false
 
-		for _, p := range idx.Index.Packages {
+		for i, p := range idx.Index.Packages {
 			if pkg.Name == p.Name && pkg.Version == p.Version {
 				found = true
-				p = pkg
+				idx.Index.Packages[i] = pkg
+				break
 			}
 		}
 

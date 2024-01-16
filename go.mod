@@ -4,10 +4,8 @@ go 1.21.2
 
 toolchain go1.21.5
 
-replace chainguard.dev/apko => github.com/imjasonh/apko v0.4.1-0.20240116194345-849423256020
-
 require (
-	chainguard.dev/apko v0.12.0
+	chainguard.dev/apko v0.13.4-0.20240116200834-c10dc551b827
 	cloud.google.com/go/storage v1.36.0
 	github.com/chainguard-dev/clog v1.2.3-0.20240116182827-04bee692f7a8
 	github.com/chainguard-dev/go-apk v0.0.0-20240116193855-4c76fbe27ad7

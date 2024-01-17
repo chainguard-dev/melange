@@ -371,6 +371,8 @@ var pkgConfigVersionRegexp = regexp.MustCompile("-(alpha|beta|rc|pre)")
 // TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
 var generateRuntimePkgConfigDeps = false
 
+var pcDirs = []string{"lib/pkgconfig", "usr/lib/pkgconfig", "lib64/pkgconfig", "usr/lib64/pkgconfig"}
+
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
 func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
@@ -428,7 +430,11 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
 		if !hdl.Options().NoProvides {
-			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+			if allowedPrefix(path, pcDirs) {
+				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+			} else {
+				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+			}
 		}
 
 		if generateRuntimePkgConfigDeps {

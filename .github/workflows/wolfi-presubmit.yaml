@@ -1,15 +1,18 @@
 name: ci
 
 on:
-  pull_request:
   push:
-    branches:
-      - 'main'
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build-melange:
     name: Build melange and add to artifact cache
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -35,6 +38,9 @@ jobs:
       - build-melange
     # TODO: Set up a larger runner for this.
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     # This is a list of packages which covers basic and exotic uses of
     # the built-in pipelines.  Goal is to balance efficiency while also

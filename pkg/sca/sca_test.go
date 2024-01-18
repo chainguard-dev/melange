@@ -115,9 +115,10 @@ func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile strin
 	}
 }
 
-func TestAnalyze(t *testing.T) {
+func TestExecableSharedObjects(t *testing.T) {
 	ctx := context.Background()
-	th := handleFromApk(context.Background(), t, "libcap-2.69-r0.apk", "libcap.yaml")
+	th := handleFromApk(context.Background(), t, "libcap-2.69-r0.apk", "neon.yaml")
+	defer th.exp.Close()
 
 	got := config.Dependencies{}
 	if err := Analyze(ctx, th, &got); err != nil {
@@ -139,6 +140,34 @@ func TestAnalyze(t *testing.T) {
 
 	got.Runtime = util.Dedup(got.Runtime)
 	got.Provides = util.Dedup(got.Provides)
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestVendoredPkgConfig(t *testing.T) {
+	ctx := context.Background()
+	th := handleFromApk(context.Background(), t, "neon-4604-r0.apk", "neon.yaml")
+	defer th.exp.Close()
+
+	got := config.Dependencies{}
+	if err := Analyze(ctx, th, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	want := config.Dependencies{
+		Vendored: []string{
+			"pc:libecpg=14.10",
+			"pc:libecpg_compat=14.10",
+			"pc:libpgtypes=14.10",
+			"pc:libpq=14.10",
+			"pc:libecpg=15.5",
+			"pc:libecpg_compat=15.5",
+			"pc:libpgtypes=15.5",
+			"pc:libpq=15.5",
+		},
+	}
 
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)

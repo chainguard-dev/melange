@@ -562,7 +562,7 @@ func detectCommit(ctx context.Context, dirPath string) string {
 	// TODO: figure out how to use an abstract FS
 	repo, err := git.PlainOpen(dirPath)
 	if err != nil {
-		log.Warnf("unable to detect git commit for build configuration: %v", err)
+		log.Debugf("unable to detect git commit for build configuration: %v", err)
 		return ""
 	}
 

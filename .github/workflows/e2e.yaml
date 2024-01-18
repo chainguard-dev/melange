@@ -2,9 +2,9 @@ name: e2e melange bootstrap + build
 
 on:
   push:
-    branches:
-      - 'main'
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
 
 env:
   SOURCE_DATE_EPOCH: 1669683910
@@ -13,6 +13,9 @@ jobs:
   examples:
     name: build examples
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     strategy:
       fail-fast: false
@@ -53,6 +56,9 @@ jobs:
     name: build example on kubernetes
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -90,6 +96,10 @@ jobs:
   bootstrap:
     name: bootstrap package
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     container:
       image: alpine:latest
       options: |

@@ -337,7 +337,7 @@ func (pc *PackageBuild) GenerateDependencies(ctx context.Context) error {
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 
 	// Sets .PKGINFO `# vendored = ...` comments; does not affect resolution.
-	pc.Dependencies.Vendored = generated.Vendored
+	pc.Dependencies.Vendored = util.Dedup(generated.Vendored)
 
 	pc.Dependencies.Summarize(ctx)
 

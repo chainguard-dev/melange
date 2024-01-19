@@ -189,7 +189,7 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	}
 
 	for k, v := range inputs {
-		if data[k] == "" && v.Default != "" {
+		if data[k] == "" {
 			data[k] = v.Default
 		}
 

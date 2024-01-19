@@ -16,6 +16,11 @@ inputs:
       The GNU triplet which describes the build system.
     default: ${{host.triplet.gnu}}
 
+  opts:
+    description: |
+      Options to pass to the ./configure command.
+    default: ''
+
 pipeline:
   - runs: |
       cd ${{inputs.dir}}

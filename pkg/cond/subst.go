@@ -15,6 +15,7 @@
 package cond
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -30,11 +31,13 @@ func Subst(inputExpr string, lookupFns ...VariableLookupFunction) (string, error
 
 	whiteSpace := goparsify.Many(goparsify.Exact(" "))
 	variableName := goparsify.Chars("a-zA-Z0-9.\\-_")
+	errs := []error{}
 	variable := goparsify.Seq("${{", whiteSpace, variableName, whiteSpace, "}}").Map(func(n *goparsify.Result) {
 		if resolved, err := lookupFn(n.Child[2].Token); err == nil {
 			n.Token = resolved
 			n.Result = resolved
 		} else {
+			errs = append(errs, err)
 			n.Token = ""
 			n.Result = ""
 		}
@@ -42,6 +45,7 @@ func Subst(inputExpr string, lookupFns ...VariableLookupFunction) (string, error
 
 	text := goparsify.Until("${{")
 	node := goparsify.Any(text, variable)
+
 	document := goparsify.Many(node).Map(func(n *goparsify.Result) {
 		tokens := []string{}
 		for _, tok := range n.Child {
@@ -53,6 +57,10 @@ func Subst(inputExpr string, lookupFns ...VariableLookupFunction) (string, error
 	result, _, err := goparsify.Run(document, inputExpr, goparsify.NoWhitespace)
 	if err != nil {
 		return "", fmt.Errorf("parser error: %w", err)
+	}
+
+	if err := errors.Join(errs...); err != nil {
+		return "", err
 	}
 
 	if rstr, ok := result.(string); ok {

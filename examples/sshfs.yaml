@@ -4,9 +4,7 @@ package:
   epoch: 0
   description: "FUSE client based on the SSH File Transfer Protocol"
   copyright:
-    - paths:
-      - "*"
-      attestation: |
+    - attestation: |
         Copyright (C) 2004 Miklos Szeredi <miklos@szeredi.hu>
       license: GPL-2.0-or-later
   dependencies:
@@ -19,24 +17,24 @@ environment:
     keyring:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
-      - wolfi-baselayout
-      - busybox
       - build-base
-      - scanelf
-      - ssl_client
-      - ca-certificates-bundle
+      - busybox
+      - coreutils
       - fuse3-dev
       - glib-dev
-      - coreutils
       - py3-docutils
 
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/libfuse/sshfs
+
   - uses: meson/configure
+
   - uses: meson/compile
+
   - uses: meson/install
+
   - uses: strip
 
 subpackages:

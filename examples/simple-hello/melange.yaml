@@ -18,6 +18,7 @@ environment:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
       - busybox
+      - build-base
 
 pipeline:
   - uses: autoconf/make

@@ -10,8 +10,8 @@ environment:
     keyring:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
-      - wolfi-base
       - build-base
+      - wolfi-base
 
 # transform the version 1.2.3.4 to 1.2.3+4
 var-transforms:
@@ -25,4 +25,3 @@ pipeline:
   - uses: fetch
     with:
       uri: https://github.com/foo/bar/archive/refs/tags/${{vars.mangled-package-version}}.tar.gz
-

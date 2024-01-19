@@ -52,6 +52,13 @@ jobs:
           docker run --rm -v $(pwd)/sbom.json:/sbom.json cgr.dev/chainguard/ntia-conformance-checker --file /sbom.json
         done
 
+    - name: Check packages can be installed with apk
+      run: |
+        set -euxo pipefail
+        for f in packages/x86_64/*.apk; do
+          docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
+        done
+
   runner-kubernetes:
     name: build example on kubernetes
     runs-on: ubuntu-latest

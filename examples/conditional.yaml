@@ -4,20 +4,18 @@ package:
   epoch: 0
   description: "an example of how conditionals influence build behavior"
   copyright:
-    - paths:
-      - "*"
-      license: Not-Applicable
+    - license: Not-Applicable
   dependencies:
     runtime:
 
 environment:
   contents:
     repositories:
-      - https://dl-cdn.alpinelinux.org/alpine/edge/main
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
-      - alpine-baselayout-data
       - busybox
-      - ca-certificates-bundle
 
 pipeline:
   # at least one of the steps in the sub-pipeline below
@@ -31,19 +29,23 @@ pipeline:
       - if: ${{build.arch}} == 'aarch64'
         runs: |
           echo "build arch is aarch64!"
+
   # this should print "package name matches 'hello'!"
   - if: ${{package.name}} == 'hello'
     runs: |
       echo "package name matches 'hello'!"
+
   # this shouldn't print anything.
   - if: ${{package.name}} != 'hello'
     runs: |
       echo "package name doesn't match hello!"
+
   # likewise, this shouldn't fetch
   - uses: fetch
     if: ${{package.name}} != 'hello'
     with:
       uri: https://ftp.gnu.org/gnu/hello/hello-${{package.version}}.tar.gz
       expected-sha256: cf04af86dc085268c5f4470fbae49b18afbc221b78096aab842d934a76bad0ab
+
   - runs: |
       mkdir -p "${{targets.destdir}}"

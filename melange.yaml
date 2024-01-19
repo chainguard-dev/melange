@@ -4,9 +4,7 @@ package:
   epoch: 0
   description: "a cloud-native packaging build system"
   copyright:
-    - paths:
-      - "*"
-      attestation: |
+    - attestation: |
         Copyright 2022 Chainguard, Inc.
       license: Apache-2.0
   dependencies:

@@ -4,9 +4,7 @@ package:
   epoch: 0
   description: "WEBrick is an HTTP server toolkit that can be configured as an HTTPS server, a proxy server, and a virtual-host server."
   copyright:
-    - paths:
-        - "*"
-      license: BSD 2-Clause
+    - license: BSD 2-Clause
 
 environment:
   contents:
@@ -15,20 +13,23 @@ environment:
     keyring:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
-      - wolfi-base
       - build-base
       - ruby-3.2
+      - wolfi-base
 
 pipeline:
   - uses: fetch
     with:
       uri: https://github.com/ruby/webrick/archive/refs/tags/v${{package.version}}.tar.gz
       expected-sha256: 7a479503b02e1351a7b3fc6814a57e986d94f4ea32796d3067ed89c342aefdcb
+
   - uses: ruby/build
     with:
       gem: ${{package.name}}
+
   - uses: ruby/install
     with:
       gem: webrick
       version: ${{package.version}}
+
   - uses: ruby/clean

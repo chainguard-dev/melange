@@ -85,4 +85,9 @@ jobs:
           sudo apt-get -y install bubblewrap
 
       - run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" BUILDWORLD="no" package/${{ matrix.package }}
+          make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
+
+      - run: |
+          for f in packages/x86_64/${{ matrix.package }}-*.apk; do
+            docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
+          done

@@ -4,25 +4,22 @@ package:
   epoch: 0
   description: "an example of how conditionals influence build behavior"
   copyright:
-    - paths:
-      - "*"
-      license: Not-Applicable
-  dependencies:
-    runtime:
+    - license: Not-Applicable
 
 environment:
   contents:
     repositories:
-      - https://dl-cdn.alpinelinux.org/alpine/edge/main
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
-      - alpine-baselayout-data
       - busybox
-      - ca-certificates-bundle
 
 pipeline:
   - working-directory: /home/build/foo
     runs: |
       echo "current working directory: $(pwd)"
+
   - working-directory: /home/build/bar
     pipeline:
       - runs: |
@@ -30,5 +27,6 @@ pipeline:
       - working-directory: /home/build/baz
         runs: |
           echo "current working directory: $(pwd)"
+
   - runs: |
       mkdir -p "${{targets.destdir}}"

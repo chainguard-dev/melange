@@ -67,9 +67,7 @@ package:
   epoch: 0
   description: "the GNU hello world program"
   copyright:
-    - paths:
-      - "*"
-      attestation: |
+    - attestation: |
         Copyright 1992, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2005,
         2006, 2007, 2008, 2010, 2011, 2013, 2014, 2022 Free Software Foundation,
         Inc.

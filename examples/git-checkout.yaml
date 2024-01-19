@@ -1,7 +1,5 @@
----
 # SPDX-FileCopyrightText: 2023 Chainguard, Inc
 # SPDX-License-Identifier: Apache-2.0
-
 package:
   name: git-checkout
   version: v0.0.1
@@ -10,6 +8,7 @@ package:
   checks:
     disabled:
       - empty
+
 environment:
   contents:
     keyring:
@@ -18,22 +17,26 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - wolfi-base
+
 pipeline:
   - uses: git-checkout
     with:
       repository: https://github.com/puerco/hello.git
       destination: default
+
   - uses: git-checkout
     with:
       repository: https://github.com/puerco/hello.git
       destination: branch
       branch: main
+
   - uses: git-checkout
     with:
       repository: https://github.com/puerco/hello.git
       destination: tag
       tag: v0.0.1
       expected-commit: a73c4feb284dc6ed1e5758740f717f99dcd4c9d7
+
   - uses: git-checkout
     with:
       repository: https://github.com/puerco/hello.git

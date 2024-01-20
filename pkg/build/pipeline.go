@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/exp/maps"
 
 	"gopkg.in/yaml.v3"
 
@@ -268,8 +270,10 @@ func (pctx *PipelineContext) loadUse(ctx context.Context, pb *PipelineBuild, use
 
 func (pctx *PipelineContext) dumpWith(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	for k, v := range pctx.Pipeline.With {
-		log.Debug("    " + k + ": " + v)
+	ks := maps.Keys(pctx.Pipeline.With)
+	sort.Strings(ks)
+	for _, k := range ks {
+		log.Debugf("    %s: %s", k, pctx.Pipeline.With[k])
 	}
 }
 

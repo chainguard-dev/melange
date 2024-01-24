@@ -21,6 +21,10 @@ import (
 )
 
 const (
+	runnerWorkdir = "/home/build"
+)
+
+const (
 	// DefaultWorkspaceDir is the default path to the workspace directory in the runner's environment.
 	DefaultWorkspaceDir = "/home/build"
 	// DefaultCacheDir is the default path to the cache directory in the runner's environment.

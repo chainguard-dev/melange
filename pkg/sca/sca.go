@@ -32,7 +32,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 )
 
-var libDirs = []string{"lib", "usr/lib", "lib64", "usr/lib64"}
+var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
 
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
@@ -84,7 +84,7 @@ func allowedPrefix(path string, prefixes []string) bool {
 	return false
 }
 
-var cmdPrefixes = []string{"bin", "sbin", "usr/bin", "usr/sbin"}
+var cmdPrefixes = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
 
 func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -371,7 +371,7 @@ var pkgConfigVersionRegexp = regexp.MustCompile("-(alpha|beta|rc|pre)")
 // TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
 var generateRuntimePkgConfigDeps = false
 
-var pcDirs = []string{"lib/pkgconfig", "usr/lib/pkgconfig", "lib64/pkgconfig", "usr/lib64/pkgconfig"}
+var pcDirs = []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.

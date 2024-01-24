@@ -378,6 +378,9 @@ type Configuration struct {
 
 	// Parsed AST for this configuration
 	root *yaml.Node
+
+	// Original path of the file this configuration was parsed from.
+	configFilePath string
 }
 
 type Test struct {

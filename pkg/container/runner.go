@@ -55,8 +55,6 @@ func GetRunner(ctx context.Context, s string) (Runner, error) {
 		return BubblewrapRunner(), nil
 	case DockerName:
 		return DockerRunner(), nil
-	case LimaName:
-		return LimaRunner(ctx)
 	case KubernetesName:
 		return KubernetesRunner(ctx)
 	}

@@ -117,6 +117,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		if mode.Perm()&0555 == 0555 {
 			if allowedPrefix(path, cmdPrefixes) {
 				basename := filepath.Base(path)
+				log.Infof("  found command %s", path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
 			}
 		}
@@ -249,6 +250,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 				}
 
 				for _, soname := range sonames {
+					log.Infof("  found soname %s for %s", soname, path)
 					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
 				}
 			}
@@ -309,14 +311,11 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		if !hdl.Options().NoDepends {
 			for _, lib := range libs {
 				if strings.Contains(lib, ".so.") {
+					log.Infof("  found lib %s for %s", lib, path)
 					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
 					depends[lib] = append(depends[lib], path)
 				}
 			}
-		}
-
-		if hdl.Options().NoProvides {
-			return nil
 		}
 
 		// An executable program should never have a SONAME, but apparently binaries built
@@ -425,8 +424,10 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
 		if !hdl.Options().NoProvides {
 			if allowedPrefix(path, pcDirs) {
+				log.Infof("  found pkg-config %s for %s", pcName, path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
 			} else {
+				log.Infof("  found vendored pkg-config %s for %s", pcName, path)
 				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
 			}
 		}
@@ -435,14 +436,17 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 			// TODO(kaniini): Capture version relationships here too.  In practice, this does not matter
 			// so much though for us.
 			for _, dep := range pkg.Requires {
+				log.Infof("  found pkg-config dependency (requires) %s for %s", dep.Identifier, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
 			}
 
 			for _, dep := range pkg.RequiresPrivate {
+				log.Infof("  found pkg-config dependency (requires private) %s for %s", dep.Identifier, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
 			}
 
 			for _, dep := range pkg.RequiresInternal {
+				log.Infof("  found pkg-config dependency (requires internal) %s for %s", dep.Identifier, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
 			}
 		}
@@ -515,6 +519,7 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 
 	// We use the python3 name here instead of the python-3 name so that we can be
 	// compatible with Alpine and Adelie.  Only Wolfi provides the python-3 name.
+	log.Infof("  found python module, generating python3~%s dependency", pythonModuleVer)
 	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python3~%s", pythonModuleVer))
 
 	return nil
@@ -541,6 +546,9 @@ func sonameLibver(soname string) string {
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	if hdl.Options().NoProvides {
+		return nil
+	}
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,

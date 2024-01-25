@@ -75,7 +75,7 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 	sbomDoc.Packages = append(sbomDoc.Packages, pkg)
 
 	// Finally, write the SBOM data to disk
-	if err := writeSBOM(spec, sbomDoc); err != nil {
+	if err := writeSBOM(ctx, spec, sbomDoc); err != nil {
 		return fmt.Errorf("writing sbom to disk: %w", err)
 	}
 

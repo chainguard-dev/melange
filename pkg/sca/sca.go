@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
@@ -341,14 +342,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 
 			for _, soname := range sonames {
-				parts := strings.Split(soname, ".so.")
-
-				var libver string
-				if len(parts) > 1 {
-					libver = parts[1]
-				} else {
-					libver = "0"
-				}
+				libver := sonameLibver(soname)
 
 				if allowedPrefix(path, libDirs) {
 					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
@@ -524,6 +518,24 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python3~%s", pythonModuleVer))
 
 	return nil
+}
+
+func sonameLibver(soname string) string {
+	parts := strings.Split(soname, ".so.")
+	if len(parts) < 2 {
+		return "0"
+	}
+
+	libver := parts[1]
+	for _, r := range libver {
+		if r != '.' && !unicode.IsDigit(r) {
+			// Not a number, 0 should be fine?
+			// TODO: Consider looking at filename?
+			return "0"
+		}
+	}
+
+	return libver
 }
 
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies

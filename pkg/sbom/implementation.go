@@ -59,7 +59,7 @@ func stringToIdentifier(in string) (out string) {
 	})
 }
 
-func CheckEnvironment(spec *Spec) (bool, error) {
+func checkEnvironment(spec *Spec) (bool, error) {
 	dirPath, err := filepath.Abs(spec.Path)
 	if err != nil {
 		return false, fmt.Errorf("getting absolute directory path: %w", err)
@@ -76,8 +76,8 @@ func CheckEnvironment(spec *Spec) (bool, error) {
 	return true, nil
 }
 
-// GenerateAPKPackage generates the sbom package representing the apk
-func GenerateAPKPackage(spec *Spec) (pkg, error) {
+// generateAPKPackage generates the sbom package representing the apk
+func generateAPKPackage(spec *Spec) (pkg, error) {
 	if spec.PackageName == "" {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
@@ -103,9 +103,9 @@ func GenerateAPKPackage(spec *Spec) (pkg, error) {
 	return newPackage, nil
 }
 
-// ScanFiles reads the files to be packaged in the apk and
+// scanFiles reads the files to be packaged in the apk and
 // extracts the required data for the SBOM.
-func ScanFiles(spec *Spec, dirPackage *pkg) error {
+func scanFiles(spec *Spec, dirPackage *pkg) error {
 	dirPath, err := filepath.Abs(spec.Path)
 	if err != nil {
 		return fmt.Errorf("getting absolute directory path: %w", err)
@@ -376,8 +376,8 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 	return &spdxDoc, nil
 }
 
-// WriteSBOM writes the SBOM to the apk filesystem
-func WriteSBOM(spec *Spec, doc *bom) error {
+// writeSBOM writes the SBOM to the apk filesystem
+func writeSBOM(spec *Spec, doc *bom) error {
 	spdxDoc, err := buildDocumentSPDX(spec, doc)
 	if err != nil {
 		return fmt.Errorf("building SPDX document: %w", err)

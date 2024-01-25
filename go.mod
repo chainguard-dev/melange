@@ -15,6 +15,7 @@ require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/dustin/go-humanize v1.0.1
+	github.com/github/go-spdx/v2 v2.2.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.17.0

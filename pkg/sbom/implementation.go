@@ -18,6 +18,7 @@
 package sbom
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -32,6 +33,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/chainguard-dev/clog"
+	"github.com/github/go-spdx/v2/spdxexp"
 	purl "github.com/package-url/packageurl-go"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
@@ -333,7 +336,9 @@ func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
 }
 
 // buildDocumentSPDX creates an SPDX 2.3 document from our generic representation
-func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
+func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Document, error) {
+	log := clog.FromContext(ctx)
+
 	// Build the SBOM time, but respect SOURCE_DATE_EPOCH
 	sbomTime, err := util.SourceDateEpoch(time.Now().UTC())
 	if err != nil {
@@ -353,7 +358,7 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 				fmt.Sprintf("Tool: melange (%s)", version.GetVersionInfo().GitVersion),
 				"Organization: Chainguard, Inc",
 			},
-			LicenseListVersion: "3.18",
+			LicenseListVersion: "3.22", // https://spdx.org/licenses/
 		},
 		DataLicense:          "CC0-1.0",
 		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/" + hex.EncodeToString(h.Sum(nil)),
@@ -362,6 +367,15 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 		Packages:             []spdx.Package{},
 		Relationships:        []spdx.Relationship{},
 		ExternalDocumentRefs: []spdx.ExternalDocumentRef{},
+	}
+
+	if spec.License == "" {
+		log.Warnf("no license specified, defaulting to %s", spdx.NOASSERTION)
+	} else {
+		valid, bad := spdxexp.ValidateLicenses([]string{spec.License})
+		if !valid {
+			log.Warnf("invalid license: %s", strings.Join(bad, ", "))
+		}
 	}
 
 	for _, p := range doc.Packages {
@@ -377,8 +391,8 @@ func buildDocumentSPDX(spec *Spec, doc *bom) (*spdx.Document, error) {
 }
 
 // writeSBOM writes the SBOM to the apk filesystem
-func writeSBOM(spec *Spec, doc *bom) error {
-	spdxDoc, err := buildDocumentSPDX(spec, doc)
+func writeSBOM(ctx context.Context, spec *Spec, doc *bom) error {
+	spdxDoc, err := buildDocumentSPDX(ctx, spec, doc)
 	if err != nil {
 		return fmt.Errorf("building SPDX document: %w", err)
 	}

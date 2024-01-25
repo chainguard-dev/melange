@@ -47,7 +47,7 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
 	defer span.End()
 
-	shouldRun, err := CheckEnvironment(spec)
+	shouldRun, err := checkEnvironment(spec)
 	if err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)
 	}
@@ -62,20 +62,20 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 		Files:    []file{},
 	}
 
-	pkg, err := GenerateAPKPackage(spec)
+	pkg, err := generateAPKPackage(spec)
 	if err != nil {
 		return fmt.Errorf("generating main package: %w", err)
 	}
 
 	// Add file inventory to packages
-	if err := ScanFiles(spec, &pkg); err != nil {
+	if err := scanFiles(spec, &pkg); err != nil {
 		return fmt.Errorf("reading SBOM file inventory: %w", err)
 	}
 
 	sbomDoc.Packages = append(sbomDoc.Packages, pkg)
 
 	// Finally, write the SBOM data to disk
-	if err := WriteSBOM(spec, sbomDoc); err != nil {
+	if err := writeSBOM(spec, sbomDoc); err != nil {
 		return fmt.Errorf("writing sbom to disk: %w", err)
 	}
 

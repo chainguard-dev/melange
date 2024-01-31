@@ -27,7 +27,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.5
 	github.com/klauspost/pgzip v1.2.6
-	github.com/kubescape/go-git-url v0.0.26
+	github.com/kubescape/go-git-url v0.0.27
 	github.com/opencontainers/image-spec v1.1.0-rc6
 	github.com/package-url/packageurl-go v0.1.2
 	github.com/pkg/errors v0.9.1

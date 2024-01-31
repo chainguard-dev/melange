@@ -110,7 +110,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -137,7 +137,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 	}
 	defer cli.Close()
 
-	if err := cli.ContainerRemove(ctx, cfg.PodID, types.ContainerRemoveOptions{
+	if err := cli.ContainerRemove(ctx, cfg.PodID, container.RemoveOptions{
 		Force: true,
 	}); err != nil {
 		return err

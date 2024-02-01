@@ -73,10 +73,31 @@ update:
 
 Some projects create tags than are not compliance with apk format. You can manipulate this with regex on `version-transform` section.
 
+Example:
+
+```patch
+ package:
+   name: owfs
+-  version: 3.2.3
++  version: 3.2p4
+   epoch: 0
+```
+
+With this version
 ```yaml
 update:
   enabled: true
   version-transform:
-    - match: \+(\d+)$
-      replace: -${1}
+    - match: p(\d+)$
+      replace: .${1}
+```
+
+the next update pr will be like:
+
+```patch
+ package:
+   name: owfs
+-  version: 3.2.3
++  version: 3.2.4
+   epoch: 0
 ```

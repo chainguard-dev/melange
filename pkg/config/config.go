@@ -572,7 +572,6 @@ func detectCommit(ctx context.Context, dirPath string) string {
 	}
 
 	commit := head.Hash().String()
-	log.Infof("detected git commit for build configuration: %s", commit)
 	return commit
 }
 

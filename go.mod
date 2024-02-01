@@ -11,7 +11,7 @@ require (
 	github.com/chainguard-dev/go-apk v0.0.0-20240130195846-91a06ffe6715
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0
-	github.com/chainguard-dev/yam v0.0.0-20230807153807-4de7c531f3e1
+	github.com/chainguard-dev/yam v0.0.1
 	github.com/docker/docker v25.0.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/dustin/go-humanize v1.0.1

@@ -89,8 +89,8 @@ github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3S
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=
 github.com/chainguard-dev/kontext v0.1.0/go.mod h1:hdyG5Sia0niCW8HN8MDXcDh/nL0sgcWQYSjPRFZOX/w=
-github.com/chainguard-dev/yam v0.0.0-20230807153807-4de7c531f3e1 h1:DognYXAUXsGd53ieS7GMCayC98zGvl0TBAomnwBWO0Q=
-github.com/chainguard-dev/yam v0.0.0-20230807153807-4de7c531f3e1/go.mod h1:okUhPc01MlA/ss50BH6m4pYGs13ErgelZYP1a0LEHTk=
+github.com/chainguard-dev/yam v0.0.1 h1:c1hPfBc8aI/lm/iTc3/DNaTEE/HIOEovDObc7X1hNxs=
+github.com/chainguard-dev/yam v0.0.1/go.mod h1:CU1XgPmRuuFNq7q/INjrlAHgAMiDMhECboDQREn6rMo=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=

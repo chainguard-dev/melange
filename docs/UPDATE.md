@@ -68,3 +68,15 @@ update:
     - "ignore_me*"
     - "*ignore_me"
 ```
+
+## Version Transform
+
+Some projects create tags than are not compliance with apk format. You can manipulate this with regex on `version-transform` section.
+
+```yaml
+update:
+  enabled: true
+  version-transform:
+    - match: \+(\d+)$
+      replace: -${1}
+```

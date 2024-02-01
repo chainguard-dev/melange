@@ -251,7 +251,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 
 				for _, soname := range sonames {
 					log.Infof("  found soname %s for %s", soname, path)
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+
+					if !hdl.Options().NoDepends {
+						generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+					}
 				}
 			}
 

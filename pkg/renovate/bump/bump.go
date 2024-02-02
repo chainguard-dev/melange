@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
@@ -209,6 +210,17 @@ func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha stri
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
+	}
+
+	// If the tag does not contain a version substitution then we assume it is not the main checkout so we skip updating the expected-commit sha.
+	tag, err := renovate.NodeFromMapping(withNode, "tag")
+	if err != nil {
+		log.Infof("git-checkout node does not contain a tag, assume we need to update the expected-commit sha")
+	} else {
+		if !strings.Contains(tag.Value, "${{package.version}}") {
+			log.Infof("Skipping git-checkout node as it does not contain a version substitution so assuming it is not the main checkout")
+			return nil
+		}
 	}
 
 	log.Infof("processing git-checkout node")

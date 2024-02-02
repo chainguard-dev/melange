@@ -1,0 +1,17 @@
+package:
+  name: cheese
+  version: 6.8
+  epoch: 2
+  description: "a cheesy library"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: cheese/crisps
+      expected-commit: foo
+      tag: v${{package.version}}
+  - uses: git-checkout
+    with:
+      repository: cheese/cheese
+      expected-commit: bar
+      tag: crackers

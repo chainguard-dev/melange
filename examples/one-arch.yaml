@@ -1,0 +1,39 @@
+package:
+  name: one-arch
+  version: 0.0.1
+  epoch: 0
+  description: "an example of how target-architecture works"
+  copyright:
+    - license: Not-Applicable
+  target-architecture:
+    - x86_64
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - busybox
+
+pipeline:
+  - runs: echo hello package
+
+test:
+  environment:
+    contents:
+      repositories:
+        - https://packages.wolfi.dev/os
+      keyring:
+        - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+      packages:
+        - busybox
+  pipeline:
+    - if: ${{targets.architecture == "x86_64"}}
+      runs: |
+        echo hello test
+    - if: ${{targets.architecture == "arm64"}}
+      runs: |
+        echo "BAD ARCHITECTURE"
+        exit 1

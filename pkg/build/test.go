@@ -572,7 +572,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		}
 	}
 
-	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Environment.Environment)
+	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Test.Environment.Environment)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}

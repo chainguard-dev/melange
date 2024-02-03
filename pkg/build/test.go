@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	apko_build "chainguard.dev/apko/pkg/build"
+	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
@@ -492,6 +493,18 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		Package: pkg,
 	}
 
+	inarchs := false
+	for _, ta := range pkg.TargetArchitecture {
+		if types.ParseArchitecture(ta) == t.Arch {
+			inarchs = true
+			break
+		}
+	}
+	if !inarchs {
+		log.Warnf("skipping test for %s on %s", pkg.Name, t.Arch)
+		return nil
+	}
+
 	if t.GuestDir == "" {
 		guestDir, err := os.MkdirTemp(t.Runner.TempDir(), "melange-guest-*")
 		if err != nil {
@@ -566,6 +579,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	if !t.IsTestless() {
 		cfg.Arch = t.Arch
+
 		if err := t.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
 		}

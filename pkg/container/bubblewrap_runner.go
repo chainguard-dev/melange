@@ -82,7 +82,14 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) erro
 	execCmd := exec.CommandContext(ctx, "bwrap", args...)
 	slog.InfoContext(ctx, fmt.Sprintf("executing: %s", strings.Join(execCmd.Args, " ")))
 
-	return monitorCmd(ctx, cfg, execCmd)
+	stdout, stderr := logWriters(ctx)
+	defer stdout.Close()
+	defer stderr.Close()
+
+	execCmd.Stdout = stdout
+	execCmd.Stderr = stderr
+
+	return execCmd.Run()
 }
 
 // TestUsability determines if the Bubblewrap runner can be used

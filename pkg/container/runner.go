@@ -16,6 +16,7 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,6 +25,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"golang.org/x/sync/errgroup"
 )
 
 type Runner interface {
@@ -78,18 +80,13 @@ func monitorCmd(ctx context.Context, cfg *Config, cmd *exec.Cmd) error {
 		return err
 	}
 
-	finishStdout := make(chan struct{})
-	finishStderr := make(chan struct{})
+	var g errgroup.Group
+	g.Go(func() error {
+		return monitorPipe(ctx, slog.LevelInfo, stdout)
+	})
+	g.Go(func() error {
+		return monitorPipe(ctx, slog.LevelWarn, stderr)
+	})
 
-	go monitorPipe(ctx, slog.LevelInfo, stdout, finishStdout)
-	go monitorPipe(ctx, slog.LevelWarn, stderr, finishStderr)
-
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
-
-	<-finishStdout
-	<-finishStderr
-
-	return nil
+	return errors.Join(g.Wait(), cmd.Wait())
 }

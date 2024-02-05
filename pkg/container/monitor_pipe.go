@@ -23,9 +23,8 @@ import (
 	"github.com/chainguard-dev/clog"
 )
 
-func monitorPipe(ctx context.Context, level slog.Level, pipe io.ReadCloser, finish chan struct{}) {
+func monitorPipe(ctx context.Context, level slog.Level, pipe io.Reader) error {
 	log := clog.FromContext(ctx)
-	defer pipe.Close()
 
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
@@ -38,5 +37,5 @@ func monitorPipe(ctx context.Context, level slog.Level, pipe io.ReadCloser, fini
 		}
 	}
 
-	finish <- struct{}{}
+	return scanner.Err()
 }

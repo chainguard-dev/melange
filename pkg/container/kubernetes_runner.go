@@ -36,6 +36,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -171,32 +172,28 @@ func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
 		return fmt.Errorf("pod isn't running")
 	}
 
-	stdoutPipeR, stdoutPipeW, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-	stderrPipeR, stderrPipeW, err := os.Pipe()
-	if err != nil {
-		return err
-	}
-	finishStdout := make(chan struct{})
-	finishStderr := make(chan struct{})
+	stdoutPipeR, stdoutPipeW := io.Pipe()
+	stderrPipeR, stderrPipeW := io.Pipe()
 
-	go monitorPipe(ctx, slog.LevelInfo, stdoutPipeR, finishStdout)
-	go monitorPipe(ctx, slog.LevelWarn, stderrPipeR, finishStderr)
+	var g errgroup.Group
+	g.Go(func() error {
+		return monitorPipe(ctx, slog.LevelInfo, stdoutPipeR)
+	})
+	g.Go(func() error {
+		return monitorPipe(ctx, slog.LevelWarn, stderrPipeR)
+	})
 
-	if err := k.Exec(ctx, cfg.PodID, cmd, remotecommand.StreamOptions{
+	err := k.Exec(ctx, cfg.PodID, cmd, remotecommand.StreamOptions{
 		Stdout: stdoutPipeW,
 		Stderr: stderrPipeW,
-	}); err != nil {
+	})
+
+	stdoutPipeW.CloseWithError(err)
+	stderrPipeW.CloseWithError(err)
+
+	if err != nil {
 		return fmt.Errorf("running remote command: %w", err)
 	}
-
-	stdoutPipeW.Close()
-	stderrPipeW.Close()
-
-	<-finishStdout
-	<-finishStderr
 	return nil
 }
 

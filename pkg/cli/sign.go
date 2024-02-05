@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/chainguard-dev/clog"
@@ -153,14 +152,10 @@ func parseIndexWithoutSignature(_ context.Context, indexFile string) ([]byte, er
 
 type signOpts struct {
 	Key string
-
-	logger *log.Logger
 }
 
 func Sign() *cobra.Command {
-	o := &signOpts{
-		logger: log.New(log.Writer(), "melange-sign: ", log.LstdFlags|log.Lmsgprefix),
-	}
+	o := &signOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "sign",
@@ -197,7 +192,7 @@ func (o signOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 }
 
 func (o signOpts) run(ctx context.Context, pkg string) error {
-	o.logger.Printf("Processing apk %s", pkg)
+	clog.FromContext(ctx).Infof("Processing apk %s", pkg)
 
 	apkr, err := os.Open(pkg)
 	if err != nil {

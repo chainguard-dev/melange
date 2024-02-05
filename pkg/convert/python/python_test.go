@@ -29,6 +29,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 
 	"github.com/chainguard-dev/clog"
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,7 +77,6 @@ func TestGetPythonMeta(t *testing.T) {
 
 	// Ensure expected == got
 	got, err := pythonctx.PackageIndex.Get(context.Background(), "botocore", pythonctx.PackageVersion)
-	fmt.Printf("Comparing GOT %s to Expected %s\n", got.Info.Name, expected.Info.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, expected.Info.Name, got.Info.Name)
 }
@@ -209,7 +209,7 @@ func TestGeneratePackage(t *testing.T) {
 
 		// botocore ctx
 		pythonctx := pythonctxs[0]
-		got := pythonctx.generatePackage(pythonctx.Package, pythonctx.PackageVersion)
+		got := pythonctx.generatePackage(slogtest.TestContextWithLogger(t), pythonctx.Package, pythonctx.PackageVersion)
 
 		expected := config.Package{
 			Name:        "py" + versions[i] + "-botocore",
@@ -310,7 +310,7 @@ func TestGenerateEnvironment(t *testing.T) {
 	// Add additionalReposities and additionalKeyrings
 	pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
 	pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
-	got310 := pythonctx.generateEnvironment(pythonctx.Package)
+	got310 := pythonctx.generateEnvironment(slogtest.TestContextWithLogger(t), pythonctx.Package)
 
 	expected310 := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
@@ -333,7 +333,7 @@ func TestGenerateEnvironment(t *testing.T) {
 	pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
 	pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
 
-	got311 := pythonctx.generateEnvironment(pythonctx.Package)
+	got311 := pythonctx.generateEnvironment(slogtest.TestContextWithLogger(t), pythonctx.Package)
 
 	expected311 := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{

@@ -1,21 +1,21 @@
 package manifest
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 	"gopkg.in/yaml.v3"
 )
 
 type GeneratedMelangeConfig struct {
 	config.Configuration `yaml:",inline"`
-	GeneratedFromComment string      `yaml:"-"`
-	Logger               *log.Logger `yaml:"-"`
+	GeneratedFromComment string `yaml:"-"`
 }
 
 func (m *GeneratedMelangeConfig) SetPackage(pkg config.Package) {
@@ -38,7 +38,7 @@ func (m *GeneratedMelangeConfig) SetGeneratedFromComment(comment string) {
 	m.GeneratedFromComment = comment
 }
 
-func (m *GeneratedMelangeConfig) Write(dir string) error {
+func (m *GeneratedMelangeConfig) Write(ctx context.Context, dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, os.ModePerm)
 		if err != nil {
@@ -66,8 +66,6 @@ func (m *GeneratedMelangeConfig) Write(dir string) error {
 		return fmt.Errorf("encoding YAML to file %s: %w", manifestPath, err)
 	}
 
-	if m.Logger != nil {
-		m.Logger.Printf("Generated melange config: %s", manifestPath)
-	}
+	clog.FromContext(ctx).Infof("Generated melange config: %s", manifestPath)
 	return nil
 }

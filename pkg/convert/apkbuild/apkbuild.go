@@ -6,7 +6,6 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +16,7 @@ import (
 
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
+	"github.com/chainguard-dev/clog"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
@@ -35,7 +35,6 @@ type Context struct {
 	AdditionalKeyrings     []string
 	ExcludePackages        []string
 	Client                 *rlhttp.RLHTTPClient
-	Logger                 *log.Logger
 	WolfiOSPackages        map[string]bool
 }
 type NavigationMap struct {
@@ -66,7 +65,6 @@ func New(ctx context.Context) (Context, error) {
 			// 1 request every second to avoid DOS'ing server
 			Ratelimiter: rate.NewLimiter(rate.Every(1*time.Second), 1),
 		},
-		Logger: log.New(log.Writer(), "convert:apk: ", log.LstdFlags|log.Lmsgprefix),
 	}
 
 	var err error
@@ -80,6 +78,7 @@ func New(ctx context.Context) (Context, error) {
 }
 
 func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) error {
+	log := clog.FromContext(ctx)
 	// get the contents of the APKBUILD file
 	err := c.getApkBuildFile(ctx, apkBuildURI, pkgName)
 	if err != nil {
@@ -104,7 +103,7 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 		err = c.buildFetchStep(ctx, apkConverter)
 		if err != nil {
 			// lets not error if we can't automatically add the fetch step
-			c.Logger.Printf("skipping fetch step for %s", err.Error())
+			log.Infof("skipping fetch step for %s", err.Error())
 		}
 
 		// maps the APKBUILD values to convert config
@@ -113,7 +112,7 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 		// builds the convert environment configuration
 		apkConverter.buildEnvironment(c.AdditionalRepositories, c.AdditionalKeyrings)
 
-		err = apkConverter.write(strconv.Itoa(i), c.OutDir)
+		err = apkConverter.write(ctx, strconv.Itoa(i), c.OutDir)
 		if err != nil {
 			return fmt.Errorf("writing convert config file: %w", err)
 		}
@@ -145,7 +144,6 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 	c.ApkConvertors[packageName] = ApkConvertor{
 		Apkbuild: &parsedApkBuild,
 		GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{
-			Logger:               c.Logger,
 			GeneratedFromComment: apkbuildURL,
 		},
 	}
@@ -158,6 +156,7 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 
 // recursively add dependencies, and their dependencies to our map
 func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgName string) error {
+	log := clog.FromContext(ctx)
 	convertor, exists := c.ApkConvertors[pkgName]
 	if !exists {
 		return fmt.Errorf("no top level apk convertor found for URI %s", apkBuildURI)
@@ -176,16 +175,16 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 		dep = strings.TrimSuffix(dep, "-static")
 
 		// skip if we already have a package in wolfi-os repository
-		c.Logger.Printf("checking if %s is all ready in wolfi os", dep)
+		log.Infof("checking if %s is all ready in wolfi os", dep)
 		if c.WolfiOSPackages[dep] {
-			c.Logger.Printf("yes it is, skipping...")
+			log.Infof("yes it is, skipping...")
 			continue
 		}
 
 		// if dependency is in the list of packages configured one the CLI to exclude, let's skip
-		c.Logger.Printf("checking if %s is in %s", dep, strings.Join(c.ExcludePackages, " "))
+		log.Infof("checking if %s is in %s", dep, strings.Join(c.ExcludePackages, " "))
 		if contains(c.ExcludePackages, dep) {
-			c.Logger.Printf("yes it is, skipping...")
+			log.Infof("yes it is, skipping...")
 			continue
 		}
 
@@ -211,7 +210,7 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 			err := c.getApkBuildFile(ctx, dependencyApkBuildURI, dep)
 			if err != nil {
 				// log and skip this dependency if there's an issue getting the APKBUILD as we are guessing the location of the APKBUILD
-				c.Logger.Printf("failed to get APKBUILD %s", dependencyApkBuildURI)
+				log.Infof("failed to get APKBUILD %s", dependencyApkBuildURI)
 				continue
 			}
 
@@ -246,10 +245,12 @@ func (c Context) transitiveDependencyList(convertor ApkConvertor) []string {
 
 // add pipeline fetch steps, validate checksums and generate mconvert expected sha
 func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) error {
+	log := clog.FromContext(ctx)
+
 	apkBuild := converter.Apkbuild
 
 	if len(apkBuild.Source) == 0 {
-		c.Logger.Printf("skip adding pipeline for package %s, no source URL found", converter.Pkgname)
+		log.Infof("skip adding pipeline for package %s, no source URL found", converter.Pkgname)
 		return nil
 	}
 	if apkBuild.Pkgver == "" {
@@ -275,7 +276,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 		failed := false
 		if resp.StatusCode != http.StatusOK {
-			c.Logger.Printf("non ok http response for URI %s code: %v", location, resp.StatusCode)
+			log.Infof("non ok http response for URI %s code: %v", location, resp.StatusCode)
 			failed = true
 		}
 
@@ -302,7 +303,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 			// now generate the 256 sha we need for a mconvert config
 			if !validated {
 				expectedSha = "SHA512 DOES NOT MATCH SOURCE - VALIDATE MANUALLY"
-				c.Logger.Printf("source %s expected sha512 do not match!", source.Filename)
+				log.Infof("source %s expected sha512 do not match!", source.Filename)
 			} else {
 				h256 := sha256.New()
 				h256.Write(b)
@@ -474,7 +475,7 @@ func contains(s []string, str string) bool {
 	return false
 }
 
-func (c ApkConvertor) write(orderNumber, outdir string) error {
+func (c ApkConvertor) write(ctx context.Context, orderNumber, outdir string) error {
 	actual, err := yaml.Marshal(&c.GeneratedMelangeConfig)
 	if err != nil {
 		return fmt.Errorf("marshalling mconvert configuration: %w", err)
@@ -505,9 +506,6 @@ func (c ApkConvertor) write(orderNumber, outdir string) error {
 		return fmt.Errorf("creating writing to file %s: %w", mconvertFile, err)
 	}
 
-	if c.Logger != nil {
-		c.Logger.Printf("Generated melange config: %s", mconvertFile)
-	}
-
+	clog.FromContext(ctx).Infof("Generated melange config: %s", mconvertFile)
 	return nil
 }

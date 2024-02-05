@@ -3,10 +3,10 @@ package github
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/google/go-github/v54/github"
 	giturl "github.com/kubescape/go-git-url"
 )
@@ -25,8 +25,6 @@ func NewGithubRepoClient(client *github.Client, owner, repo string) *GithubRepoC
 		client: client,
 		owner:  owner,
 		repo:   repo,
-		// Just a placeholder so there's always a logger.
-		Logger: log.Default(),
 	}
 }
 
@@ -34,7 +32,6 @@ type GithubRepoClient struct {
 	client *github.Client
 	owner  string
 	repo   string
-	Logger *log.Logger
 }
 
 func (grc *GithubRepoClient) Repo() string {
@@ -77,6 +74,7 @@ type TagData struct {
 // by timestamp. This is useful for example packages that don't have a
 // releases, but just tags for example (github.com/eliben/pycparser)
 func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[string]*TagData, error) {
+	log := clog.FromContext(ctx)
 	repo := grc.Repo()
 	ret := map[string]*TagData{}
 	// Populate the map with the tags we want to find, so they are easier
@@ -95,7 +93,7 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 	// call as we can.
 	tagListOptions := &github.ListOptions{PerPage: 500}
 	for {
-		grc.Logger.Printf("[%s] Getting tags page %d", repo, tagListOptions.Page)
+		log.Infof("[%s] Getting tags page %d", repo, tagListOptions.Page)
 		repoTags, res, err := grc.client.Repositories.ListTags(context.Background(), grc.owner, grc.repo, tagListOptions)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tags for %s: %v", repo, err)
@@ -103,7 +101,7 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 		for _, tag := range repoTags {
 			if _, ok := ret[*tag.Name]; ok {
 				// We're looking for this, so fill in the SHA for it.
-				grc.Logger.Printf("[%s] found tag %s we're looking for with sha %s", repo, *tag.Name, *tag.Commit.SHA)
+				log.Infof("[%s] found tag %s we're looking for with sha %s", repo, *tag.Name, *tag.Commit.SHA)
 				ret[*tag.Name] = &TagData{
 					Repo:    repo,
 					Version: *tag.Name,
@@ -117,7 +115,7 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 				// This can also happen if the version is v2.21 but the tag is 2.21
 				for tagSuffix := range ret {
 					if strings.HasSuffix(*tag.Name, tagSuffix) {
-						grc.Logger.Printf("[%s] found tag %s with suffix %s", repo, *tag.Name, tagSuffix)
+						log.Infof("[%s] found tag %s with suffix %s", repo, *tag.Name, tagSuffix)
 						ret[tagSuffix] = &TagData{
 							Repo:      repo,
 							Version:   tagSuffix,
@@ -167,6 +165,7 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 // don't, and they just have tags, and so forth.
 // I reckon there will be more heuristics coming as we learn.
 func (grc *GithubRepoClient) GetVersions(ctx context.Context, version string) ([]TagData, error) {
+	log := clog.FromContext(ctx)
 	repo := grc.Repo()
 	versions := []TagData{}
 	// First, try to see if there's a latest release that is different
@@ -185,20 +184,20 @@ func (grc *GithubRepoClient) GetVersions(ctx context.Context, version string) ([
 	switch {
 	case err != nil:
 		// This is not a fatal error, we don't give up that easy...
-		grc.Logger.Printf("[%s] failed to get latest release (this is fine there might be not be releases): %v", repo, err)
+		log.Infof("[%s] failed to get latest release (this is fine there might be not be releases): %v", repo, err)
 	case latestRelease != nil:
 		// If latest is different from the version to look for, then add that in
 		// here.
 		latestReleaseVersion = *latestRelease.TagName
 		if version != *latestRelease.Name {
-			grc.Logger.Printf("[%s] latest release is different from pypi, so fetching that too: %s", repo, *latestRelease.Name)
+			log.Infof("[%s] latest release is different from pypi, so fetching that too: %s", repo, *latestRelease.Name)
 			tagsToLook = append(tagsToLook, *latestRelease.TagName)
 		}
 	default:
 		// Lastly, if there is no latest release, look for the special "highest"
 		// which is for cases like github.com/eliben/pycparser, where there are
 		// no releases, but just tags.
-		grc.Logger.Printf("[%s] looks like there's no latest release so find the newest tag", repo)
+		log.Infof("[%s] looks like there's no latest release so find the newest tag", repo)
 		tagsToLook = append(tagsToLook, "highest")
 
 	}
@@ -209,7 +208,7 @@ func (grc *GithubRepoClient) GetVersions(ctx context.Context, version string) ([
 
 	// Now that we have the tags, let's see what we got.
 	for _, d := range tagData {
-		grc.Logger.Printf("[%s] got version %s with tag: %s commit %s and prefix %s", repo, d.Version, d.Tag, d.SHA, d.TagPrefix)
+		log.Infof("[%s] got version %s with tag: %s commit %s and prefix %s", repo, d.Version, d.Tag, d.SHA, d.TagPrefix)
 		if d.Version == latestReleaseVersion {
 			d.IsLatest = true
 		}

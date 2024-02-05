@@ -3,7 +3,6 @@ package apkbuild
 import (
 	"bytes"
 	"context"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -317,7 +316,6 @@ func getTestContext(t *testing.T, server *httptest.Server) Context {
 			// for unit tests we don't need to rate limit requests
 			Ratelimiter: rate.NewLimiter(rate.Every(1*time.Second), 20), // 10 request every 10 seconds
 		},
-		Logger: log.New(log.Writer(), "test: ", log.LstdFlags|log.Lmsgprefix),
 		OutDir: t.TempDir(),
 	}
 }

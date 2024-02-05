@@ -20,6 +20,7 @@ import (
 
 	"chainguard.dev/melange/pkg/convert/gem"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +89,7 @@ func (o gemOptions) gemBuild(ctx context.Context, packageName string) error {
 	context.BaseURIFormat = o.baseURIFormat
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 
-	context.Logger.Printf("generating convert config files for gem %s", configFilename)
+	clog.FromContext(ctx).Infof("generating convert config files for gem %s", configFilename)
 
 	return context.Generate(ctx, packageName)
 }

@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
+	"github.com/chainguard-dev/clog"
 
 	"golang.org/x/time/rate"
 )
@@ -60,9 +60,6 @@ type GemContext struct {
 
 	// Client is a rate limited client used to make http calls
 	Client *rlhttp.RLHTTPClient
-
-	// Logger is self-explanatory
-	Logger *log.Logger
 
 	// ToGenerate is the map of dependencies that have been visited when the
 	// transitive dependency list is being calculated.
@@ -111,7 +108,6 @@ func New() (GemContext, error) {
 			// 1 request every second to avoid DOS'ing server
 			Ratelimiter: rate.NewLimiter(rate.Every(1*time.Second), 1),
 		},
-		Logger:     log.New(log.Writer(), "mconvert:gem: ", log.LstdFlags|log.Lmsgprefix),
 		ToGenerate: make(map[string]GemMeta),
 	}
 	return context, nil
@@ -121,6 +117,7 @@ func New() (GemContext, error) {
 // recursively finding all dependencies for a gem and generating a melange file
 // for each.
 func (c *GemContext) Generate(ctx context.Context, packageName string) error {
+	log := clog.FromContext(ctx)
 	c.ToCheck = []string{packageName}
 
 	err := c.findDependencies(ctx)
@@ -129,15 +126,15 @@ func (c *GemContext) Generate(ctx context.Context, packageName string) error {
 	}
 
 	for _, meta := range c.ToGenerate {
-		c.Logger.Printf("[%s] Create manifest", meta.Name)
+		log.Infof("[%s] Create manifest", meta.Name)
 		generated, err := c.generateManifest(ctx, meta)
 		if err != nil {
-			c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", meta.Name, err)
+			log.Infof("[%s] FAILED TO CREATE MANIFEST %v", meta.Name, err)
 		}
 
-		err = generated.Write(c.OutDir)
+		err = generated.Write(ctx, c.OutDir)
 		if err != nil {
-			c.Logger.Printf("[%s] FAILED TO WRITE MANIFEST %v", meta.Name, err)
+			log.Infof("[%s] FAILED TO WRITE MANIFEST %v", meta.Name, err)
 		}
 	}
 
@@ -158,23 +155,24 @@ func (c *GemContext) Generate(ctx context.Context, packageName string) error {
 //
 // TODO: Interpret the Version and use to query for gem
 func (c *GemContext) findDependencies(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	if len(c.ToCheck) < 1 {
 		return nil
 	}
 
-	c.Logger.Printf("Dependency list: %v", c.ToCheck)
+	log.Infof("Dependency list: %v", c.ToCheck)
 
-	c.Logger.Printf("[%s] Fetch metadata", c.ToCheck[0])
+	log.Infof("[%s] Fetch metadata", c.ToCheck[0])
 	url := fmt.Sprintf(c.BaseURIFormat, c.ToCheck[0])
 	g, err := c.getGemMeta(ctx, url)
 	if err != nil {
 		return err
 	}
-	c.Logger.Printf("[%s] Add to generate list", c.ToCheck[0])
+	log.Infof("[%s] Add to generate list", c.ToCheck[0])
 	c.ToGenerate[c.ToCheck[0]] = g
 	c.ToCheck = c.ToCheck[1:]
 
-	c.Logger.Printf("[%s] Check for dependencies", g.Name)
+	log.Infof("[%s] Check for dependencies", g.Name)
 	for _, dep := range g.Dependencies.Runtime {
 		// if dep is not already visited then check if it has deps
 		_, found := c.ToGenerate[dep.Name]
@@ -237,7 +235,7 @@ func (c *GemContext) getGemMeta(ctx context.Context, gemURI string) (GemMeta, er
 // can continue and discrepancies can be handled later.
 func (c *GemContext) generateManifest(ctx context.Context, g GemMeta) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
-	generated := manifest.GeneratedMelangeConfig{Logger: c.Logger}
+	generated := manifest.GeneratedMelangeConfig{}
 
 	// Generate each field in the manifest
 	generated.GeneratedFromComment = g.RepoURI
@@ -315,13 +313,14 @@ func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
 func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []config.Pipeline {
+	log := clog.FromContext(ctx)
 	artifactURI := fmt.Sprintf("%s/archive/refs/tags/%s", g.RepoURI, fmt.Sprintf("v%s.tar.gz", g.Version))
 
 	artifactSHA, err := c.getGemArtifactSHA(ctx, artifactURI)
 	if err != nil {
-		c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", g.Name, err)
-		c.Logger.Printf("[%s]  Investigate by going to https://rubygems.org/gems/%s", g.Name, g.Name)
-		c.Logger.Printf("[%s]  Or try 'curl %s' to check out the API", g.Name, fmt.Sprintf(c.BaseURIFormat, g.Name))
+		log.Infof("[%s] SHA256 Generation FAILED. %v", g.Name, err)
+		log.Infof("[%s]  Investigate by going to https://rubygems.org/gems/%s", g.Name, g.Name)
+		log.Infof("[%s]  Or try 'curl %s' to check out the API", g.Name, fmt.Sprintf(c.BaseURIFormat, g.Name))
 		artifactSHA = fmt.Sprintf("FAILED GENERATION. Investigate by going to https://rubygems.org/gems/%s", g.Name)
 	}
 

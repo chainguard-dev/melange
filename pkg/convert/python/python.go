@@ -17,7 +17,6 @@ package python
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -28,6 +27,7 @@ import (
 	githubpkg "chainguard.dev/melange/pkg/convert/github"
 	"chainguard.dev/melange/pkg/convert/relmon"
 	"chainguard.dev/melange/pkg/manifest"
+	"github.com/chainguard-dev/clog"
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 )
@@ -62,9 +62,6 @@ type PythonContext struct {
 	// to the manifest.
 	AdditionalKeyrings []string
 
-	// Logger is self-explanatory
-	Logger *log.Logger
-
 	// ToGenerate is the map of dependencies that have been visited when the
 	// transitive dependency list is being calculated.
 	ToGenerate map[string]Package
@@ -89,7 +86,6 @@ type PythonContext struct {
 func New(packageName string) (PythonContext, error) {
 	context := PythonContext{
 		PackageName: packageName,
-		Logger:      log.New(log.Writer(), "convert:python: ", log.LstdFlags|log.Lmsgprefix),
 		ToGenerate:  make(map[string]Package),
 	}
 	return context, nil
@@ -99,15 +95,17 @@ func New(packageName string) (PythonContext, error) {
 // recursively finding all dependencies for a pypi package and generating a melange file
 // for each.
 func (c *PythonContext) Generate(ctx context.Context) error {
-	c.Logger.Printf("[%s] Generating manifests", c.PackageName)
+	log := clog.FromContext(ctx)
+
+	log.Infof("[%s] Generating manifests", c.PackageName)
 
 	c.PackageIndex = NewPackageIndex(c.BaseURIFormat)
 
-	c.Logger.Printf("[%s] Retrieving Package information from %s", c.PackageName, c.PackageIndex.url)
+	log.Infof("[%s] Retrieving Package information from %s", c.PackageName, c.PackageIndex.url)
 
 	p, err := c.PackageIndex.Get(ctx, c.PackageName, c.PackageVersion)
 	if err != nil {
-		c.Logger.Printf("error getting latest for package %s - %s ", c.PackageName, err)
+		log.Infof("error getting latest for package %s - %s ", c.PackageName, err)
 		return err
 	}
 	c.Package = *p
@@ -119,12 +117,12 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 		return err
 	}
 
-	c.Logger.Printf("[%s] Generating %v files", c.PackageName, len(c.ToGenerate))
+	log.Infof("[%s] Generating %v files", c.PackageName, len(c.ToGenerate))
 
 	// generate melange files for all dependencies
 	for m, pack := range c.ToGenerate {
-		c.Logger.Printf("[%s] Index %v Package %v ", pack.Info.Name, m, pack.Info.Name)
-		c.Logger.Printf("[%s] Create manifest", pack.Info.Name)
+		log.Infof("[%s] Index %v Package %v ", pack.Info.Name, m, pack.Info.Name)
+		log.Infof("[%s] Create manifest", pack.Info.Name)
 		version := pack.Info.Version
 		// if were generating the package asked for , check the version wasn't specified
 		if c.PackageName == pack.Info.Name && c.PackageVersion != "" {
@@ -134,24 +132,23 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 		ghVersions := []githubpkg.TagData{}
 		var relmon *relmon.Item
 		if c.GithubClient != nil {
-			c.Logger.Printf("Trying to get commit data for %s", pack.Info.Name)
+			log.Infof("Trying to get commit data for %s", pack.Info.Name)
 			// If we have a github client, then try to get the commit data.
 			githubURL := pack.Info.GetSourceURL()
 			if githubURL != "" {
-				c.Logger.Printf("[%s] Using github URL %s for %s", pack.Info.Name, githubURL, pack.Info.Name)
+				log.Infof("[%s] Using github URL %s for %s", pack.Info.Name, githubURL, pack.Info.Name)
 				owner, repo, err := githubpkg.ParseGithubURL(githubURL)
 				if err != nil {
-					c.Logger.Printf("error parsing github url %s - %s ", githubURL, err)
+					log.Infof("error parsing github url %s - %s ", githubURL, err)
 				} else {
 					client := githubpkg.NewGithubRepoClient(c.GithubClient, owner, repo)
-					client.Logger = c.Logger
 					versions, err := client.GetVersions(ctx, version)
 					if err != nil {
-						c.Logger.Printf("error getting versions for %s - %s ", pack.Info.Name, err)
+						log.Infof("error getting versions for %s - %s ", pack.Info.Name, err)
 					}
 					// This is fine in error case, since it's nothing.
 					for _, version := range versions {
-						c.Logger.Printf("[%s] got github version: %+v\n", pack.Info.Name, version)
+						log.Infof("[%s] got github version: %+v\n", pack.Info.Name, version)
 					}
 					ghVersions = versions
 				}
@@ -163,22 +160,23 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 		if c.MonitoringClient != nil {
 			monitoring, err := c.MonitoringClient.FindMonitor(ctx, pack.Info.Name)
 			if err != nil {
-				fmt.Printf("Failed to find monitoring: %v\n", err)
+				log.Errorf("Failed to find monitoring: %v\n", err)
+				return err
 			} else {
-				fmt.Printf("Found monitoring: %+v\n", monitoring)
+				log.Errorf("Found monitoring: %+v\n", monitoring)
 				relmon = monitoring
 			}
 		}
 
 		generated, err := c.generateManifest(ctx, pack, version, ghVersions, relmon)
 		if err != nil {
-			c.Logger.Printf("[%s] FAILED TO CREATE MANIFEST %v", pack.Info.Name, err)
+			log.Infof("[%s] FAILED TO CREATE MANIFEST %v", pack.Info.Name, err)
 			return err
 		}
 
-		err = generated.Write(c.OutDir)
+		err = generated.Write(ctx, c.OutDir)
 		if err != nil {
-			c.Logger.Printf("[%s] FAILED TO WRITE MANIFEST %v", pack.Info.Name, err)
+			log.Infof("[%s] FAILED TO WRITE MANIFEST %v", pack.Info.Name, err)
 			return err
 		}
 	}
@@ -196,24 +194,25 @@ func stripDep(dep string) (string, error) {
 
 // FindDep - given a python package retrieve all its dependencies
 func (c *PythonContext) findDep(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	if len(c.ToCheck) == 0 {
 		return nil
 	}
 
-	c.Logger.Printf("[%s] Check Dependency list: %v", c.PackageName, c.ToCheck)
-	c.Logger.Printf("[%s] Fetch Package Data", c.ToCheck[0])
+	log.Infof("[%s] Check Dependency list: %v", c.PackageName, c.ToCheck)
+	log.Infof("[%s] Fetch Package Data", c.ToCheck[0])
 
 	p, err := c.PackageIndex.GetLatest(ctx, c.ToCheck[0])
 	if err != nil {
 		return err
 	}
 
-	c.Logger.Printf("[%s] %s Add to generate list", c.ToCheck[0], p.Info.Name)
+	log.Infof("[%s] %s Add to generate list", c.ToCheck[0], p.Info.Name)
 	c.ToCheck = c.ToCheck[1:]
 
-	c.Logger.Printf("[%s] Check for dependencies", p.Info.Name)
+	log.Infof("[%s] Check for dependencies", p.Info.Name)
 	if len(p.Info.RequiresDist) == 0 {
-		c.Logger.Printf("[%s] Searching source for dependencies", p.Info.Name)
+		log.Infof("[%s] Searching source for dependencies", p.Info.Name)
 		err := c.PackageIndex.CheckSourceDeps(p.Info.Name)
 		if err != nil {
 			return err
@@ -241,12 +240,12 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 	if _, err := os.Stat(filepath.Join(c.OutDir, "py3-"+p.Info.Name+".yaml")); err == nil {
 		// Package already exists, so skip it.
 		// We may still need to crawl its deps though.
-		c.Logger.Printf("[%s] Package already exists, skipping", p.Info.Name)
+		log.Infof("[%s] Package already exists, skipping", p.Info.Name)
 	} else {
 		c.ToGenerate[p.Info.Name] = *p
 	}
 
-	c.Logger.Printf("[%s] %v Number of deps", p.Info.Name, len(p.Dependencies))
+	log.Infof("[%s] %v Number of deps", p.Info.Name, len(p.Dependencies))
 
 	// recursive call
 	return c.findDep(ctx)
@@ -254,12 +253,12 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 
 func (c *PythonContext) generateManifest(ctx context.Context, pack Package, version string, ghVersions []githubpkg.TagData, monitorInfo *relmon.Item) (manifest.GeneratedMelangeConfig, error) {
 	// The actual generated manifest struct
-	generated := manifest.GeneratedMelangeConfig{Logger: c.Logger}
+	generated := manifest.GeneratedMelangeConfig{}
 
 	// Generate each field in the manifest
 	generated.GeneratedFromComment = pack.Info.ProjectURL
-	generated.Package = c.generatePackage(pack, version)
-	generated.Environment = c.generateEnvironment(pack)
+	generated.Package = c.generatePackage(ctx, pack, version)
+	generated.Environment = c.generateEnvironment(ctx, pack)
 
 	pipelines, err := c.generatePipeline(ctx, pack, version, ghVersions)
 	if err != nil {
@@ -313,10 +312,11 @@ func (c *PythonContext) generateManifest(ctx context.Context, pack Package, vers
 //
 // It will iterate through all licenses returned by rubygems.org and place them
 // under the copyright section.
-func (c *PythonContext) generatePackage(pack Package, version string) config.Package {
-	c.Logger.Printf("[%s] Generate Package", pack.Info.Name)
+func (c *PythonContext) generatePackage(ctx context.Context, pack Package, version string) config.Package {
+	log := clog.FromContext(ctx)
+	log.Infof("[%s] Generate Package", pack.Info.Name)
 
-	c.Logger.Printf("[%s] Run time Deps %v", pack.Info.Name, pack.Dependencies)
+	log.Infof("[%s] Run time Deps %v", pack.Info.Name, pack.Dependencies)
 
 	pack.Dependencies = append(pack.Dependencies, "python-"+c.PythonVersion)
 
@@ -341,8 +341,9 @@ func (c *PythonContext) generatePackage(pack Package, version string) config.Pac
 // generateEnvironment handles generating the Environment field of the melange manifest
 //
 // It will handle adding any extra repositories and keyrings to the manifest.
-func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfiguration {
-	c.Logger.Printf("[%s] Generate Environment", pack.Info.Name)
+func (c *PythonContext) generateEnvironment(ctx context.Context, pack Package) apkotypes.ImageConfiguration {
+	log := clog.FromContext(ctx)
+	log.Infof("[%s] Generate Environment", pack.Info.Name)
 	pythonStandard := []string{
 		"build-base",
 		"busybox",
@@ -372,9 +373,10 @@ func (c *PythonContext) generateEnvironment(pack Package) apkotypes.ImageConfigu
 // generation fails for any reason it will spit logs and place a default string
 // in the manifest and move on.
 func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, version string, ghVersions []githubpkg.TagData) ([]config.Pipeline, error) {
+	log := clog.FromContext(ctx)
 	var pipeline []config.Pipeline
 
-	c.Logger.Printf("[%s] Generate Pipeline for version %s", pack.Info.Name, version)
+	log.Infof("[%s] Generate Pipeline for version %s", pack.Info.Name, version)
 
 	// This uses the ftp method to get the package, but if we were configured
 	// and able to fetch GitHub versions, then we should use those instead.
@@ -407,8 +409,8 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 
 		artifact256SHA, err := c.PackageIndex.Client.GetArtifactSHA256(ctx, releaseURL)
 		if err != nil {
-			c.Logger.Printf("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)
-			c.Logger.Printf("[%s]  Or try 'curl %s' to check out the API", pack.Info.Name, pack.Info.DownloadURL)
+			log.Infof("[%s] SHA256 Generation FAILED. %v", pack.Info.Name, err)
+			log.Infof("[%s]  Or try 'curl %s' to check out the API", pack.Info.Name, pack.Info.DownloadURL)
 			artifact256SHA = fmt.Sprintf("FAILED GENERATION. Investigate by going to %s", pack.Info.ProjectURL)
 		}
 

@@ -65,7 +65,7 @@ func main() {
 		log.Fatalf("error creating directory %#v: %#v", pathout, err)
 	}
 
-	fmt.Printf("Generating Markdown documentation into directory %#v\n", pathout)
+	log.Printf("Generating Markdown documentation into directory %#v\n", pathout)
 	err := doc.GenMarkdownTreeCustom(melange, pathout, filePrepender, linkHandler)
 	if err != nil {
 		log.Fatalf("error creating documentation: %#v", err)

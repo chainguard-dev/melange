@@ -4,13 +4,13 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"io"
 	"os"
 	"testing"
 	"time"
 
 	"chainguard.dev/melange/pkg/build"
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -18,7 +18,7 @@ import (
 const MockName = "mockiavelli"
 
 func TestEmitSignature(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	sde := time.Unix(12345678, 0)
 
 	controlData := []byte("donkey")

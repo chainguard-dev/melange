@@ -1,13 +1,13 @@
 package container
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"chainguard.dev/apko/pkg/build/types"
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/imdario/mergo"
@@ -106,7 +106,7 @@ repo: somewhere
 func Test_k8s_StartPod(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 
 	tests := []struct {
 		name   string

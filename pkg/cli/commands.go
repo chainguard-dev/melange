@@ -35,10 +35,6 @@ func New() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			http.DefaultTransport = userAgentTransport{http.DefaultTransport}
 
-			// Enable printing warnings and progress from GGCR.
-			//logs.Warn.SetOutput(writer)
-			//logs.Progress.SetOutput(writer)
-
 			var level slog.Level
 			switch logLevel {
 			case "debug":

@@ -15,7 +15,6 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,6 +23,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
@@ -209,7 +209,7 @@ func TestConfiguration_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := slogtest.TestContextWithLogger(t)
 			bctx := Build{
 				ConfigFile: filepath.Join("testdata", "configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
 			}
@@ -258,7 +258,7 @@ func cleanTestConfig(cfg *config.Configuration) {
 // TestConfiguration_Load_Raw tests loading a configuration file with raw
 // resolved values for fields not specified by the input YAML file.
 func TestConfiguration_Load_Raw(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	contents := `
 package:
   name: nginx

@@ -17,15 +17,13 @@ package sbom
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
 )
 
 func NewGenerator() *Generator {
-	return &Generator{
-		logger: log.New(log.Writer(), "melange-sbom: ", log.LstdFlags|log.Lmsgprefix),
-	}
+	return &Generator{}
 }
 
 type Spec struct {
@@ -38,14 +36,13 @@ type Spec struct {
 	Arch           string
 }
 
-type Generator struct {
-	logger *log.Logger
-}
+type Generator struct{}
 
 // GenerateSBOM runs the main SBOM generation process
 func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
 	defer span.End()
+	log := clog.FromContext(ctx)
 
 	shouldRun, err := checkEnvironment(spec)
 	if err != nil {
@@ -53,7 +50,7 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 	}
 
 	if !shouldRun {
-		g.logger.Print("Warning: Working directory not found, probably apk is empty")
+		log.Infof("Warning: Working directory not found, probably apk is empty")
 		return nil
 	}
 

@@ -15,12 +15,12 @@
 package linter
 
 import (
-	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
 
 	"chainguard.dev/melange/pkg/config"
@@ -631,7 +631,7 @@ func Test_disableDefaultLinter(t *testing.T) {
 }
 
 func Test_lintApk(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	called := false
 	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
 		called = true

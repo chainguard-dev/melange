@@ -1,10 +1,10 @@
 package wolfios
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
 
 	"os"
@@ -27,7 +27,7 @@ func Test_getWolfiPackages(t *testing.T) {
 	}))
 
 	c := New(server.Client(), server.URL+"/APKINDEX.tar.gz")
-	wolfiPackages, err := c.GetWolfiPackages(context.Background())
+	wolfiPackages, err := c.GetWolfiPackages(slogtest.TestContextWithLogger(t))
 	assert.NoError(t, err)
 	assert.True(t, wolfiPackages["pkgconf-doc"])
 	assert.True(t, wolfiPackages["wolfi-baselayout"])

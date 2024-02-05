@@ -21,6 +21,7 @@ import (
 	"chainguard.dev/melange/pkg/convert/python"
 	"chainguard.dev/melange/pkg/convert/relmon"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -101,7 +102,7 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	pythonContext.GithubClient = o.ghClient
 	pythonContext.MonitoringClient = o.mf
 
-	pythonContext.Logger.Printf("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
+	clog.FromContext(ctx).Infof("generating convert config files for python package %s version: %s on python version: %s", pythonContext.PackageName, pythonContext.PythonVersion, pythonContext.PackageVersion)
 
 	return pythonContext.Generate(ctx)
 }

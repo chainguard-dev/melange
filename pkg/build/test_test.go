@@ -15,7 +15,6 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -24,6 +23,7 @@ import (
 	"chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
@@ -117,7 +117,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := slogtest.TestContextWithLogger(t)
 			got, gotErr := tt.t.buildWorkspaceConfig(ctx, testImgRef, testPkgName, tt.env)
 			if gotErr != nil {
 				if tt.wantErr == "" {
@@ -264,7 +264,7 @@ func TestConfigurationLoad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := slogtest.TestContextWithLogger(t)
 			tctx := Test{
 				ConfigFile: filepath.Join("testdata", "test_configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
 			}

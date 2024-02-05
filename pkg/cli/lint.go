@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 
 	"golang.org/x/sync/errgroup"
@@ -100,7 +101,8 @@ func (o LintOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 }
 
 func (o LintOpts) run(ctx context.Context, pkg string) error {
-	fmt.Printf("Linting apk: %s\n", pkg)
+	log := clog.FromContext(ctx)
+	log.Infof("Linting apk: %s\n", pkg)
 
 	var innerErr error
 	err := linter.LintApk(ctx, pkg, func(err error) {
@@ -109,7 +111,7 @@ func (o LintOpts) run(ctx context.Context, pkg string) error {
 	if err != nil {
 		return fmt.Errorf("package linter error in %s: %w\n", pkg, err)
 	} else if innerErr != nil {
-		fmt.Printf("package linter warning in %s: %v\n", pkg, innerErr)
+		log.Infof("package linter warning in %s: %v\n", pkg, innerErr)
 	}
 	return nil
 }

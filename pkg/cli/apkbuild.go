@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/pkg/errors"
 
 	"chainguard.dev/melange/pkg/convert/apkbuild"
@@ -76,10 +77,9 @@ func (o apkbuildOptions) ApkBuildCmd(ctx context.Context, packageName string) er
 	context.ExcludePackages = o.excludePackages
 	configFilename := fmt.Sprintf(o.baseURIFormat, packageName)
 
-	context.Logger.Printf("generating convert config files for APKBUILD %s", configFilename)
+	clog.FromContext(ctx).Infof("generating convert config files for APKBUILD %s", configFilename)
 
-	err = context.Generate(ctx, configFilename, packageName)
-	if err != nil {
+	if err := context.Generate(ctx, configFilename, packageName); err != nil {
 		return fmt.Errorf("generating convert configuration: %w", err)
 	}
 

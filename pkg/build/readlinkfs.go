@@ -91,9 +91,10 @@ func stringsFromByteSlice(buf []byte) []string {
 // ignore these xattrs because they require special permissions to be
 // set when the underlying security features are in use.
 var xattrIgnoreList = map[string]bool{
-	"com.apple.provenance": true,
-	"security.csm":         true,
-	"security.selinux":     true,
+	"com.apple.provenance":          true,
+	"security.csm":                  true,
+	"security.selinux":              true,
+	"com.docker.grpcfuse.ownership": true,
 }
 
 func (f *rlfs) ListXattrs(path string) (map[string][]byte, error) {

@@ -16,12 +16,13 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
@@ -181,30 +182,25 @@ func (dk *docker) TempDir() string {
 
 // waitForCommand waits for a command to complete in the pod.
 func (dk *docker) waitForCommand(cfg *Config, ctx context.Context, attachResp types.HijackedResponse, taskIDResp types.IDResponse) error {
-	stdoutPipeR, stdoutPipeW, err := os.Pipe()
-	if err != nil {
-		return err
-	}
+	// log := clog.FromContext(ctx)
+	ctx, span := otel.Tracer("melange").Start(ctx, "waitForCommand")
+	defer span.End()
 
-	stderrPipeR, stderrPipeW, err := os.Pipe()
-	if err != nil {
-		return err
-	}
+	stdoutPipeR, stdoutPipeW := io.Pipe()
+	stderrPipeR, stderrPipeW := io.Pipe()
 
-	finishStdout := make(chan struct{})
-	finishStderr := make(chan struct{})
+	var g errgroup.Group
+	g.Go(func() error {
+		return monitorPipe(ctx, slog.LevelInfo, stdoutPipeR)
+	})
+	g.Go(func() error {
+		return monitorPipe(ctx, slog.LevelWarn, stderrPipeR)
+	})
+	_, err := stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
+	stdoutPipeW.CloseWithError(err)
+	stderrPipeW.CloseWithError(err)
 
-	go monitorPipe(ctx, slog.LevelInfo, stdoutPipeR, finishStdout)
-	go monitorPipe(ctx, slog.LevelWarn, stderrPipeR, finishStderr)
-	_, err = stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
-
-	stdoutPipeW.Close()
-	stderrPipeW.Close()
-
-	<-finishStdout
-	<-finishStderr
-
-	return err
+	return errors.Join(err, g.Wait())
 }
 
 // Run runs a Docker task given a Config and command string.

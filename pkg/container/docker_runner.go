@@ -42,15 +42,27 @@ const DockerName = "docker"
 
 // docker is a Runner implementation that uses the docker library.
 type docker struct {
+	cli *client.Client
 }
 
 // DockerRunner returns a Docker Runner implementation.
-func DockerRunner() Runner {
-	return &docker{}
+func DockerRunner(ctx context.Context) (Runner, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+
+	return &docker{
+		cli: cli,
+	}, nil
 }
 
 func (dk *docker) Name() string {
 	return DockerName
+}
+
+func (dk *docker) Close() error {
+	return dk.cli.Close()
 }
 
 // StartPod starts a pod for supporting a Docker task, if
@@ -60,12 +72,6 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.StartPod")
 	defer span.End()
-
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	defer cli.Close()
 
 	mounts := []mount.Mount{}
 	for _, bind := range cfg.Mounts {
@@ -102,7 +108,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 	}
 
 	// ldconfig is run to prime ld.so.cache for glibc packages which require it.
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
+	resp, err := dk.cli.ContainerCreate(ctx, &container.Config{
 		Image: cfg.ImgRef,
 		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
 		Tty:   false,
@@ -111,7 +117,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := dk.cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -132,13 +138,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("pod not running")
 	}
 
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	defer cli.Close()
-
-	if err := cli.ContainerRemove(ctx, cfg.PodID, container.RemoveOptions{
+	if err := dk.cli.ContainerRemove(ctx, cfg.PodID, container.RemoveOptions{
 		Force: true,
 	}); err != nil {
 		return err
@@ -153,15 +153,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 // as a container runner.
 func (dk *docker) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		log.Infof("cannot use docker for containers: %v", err)
-		return false
-	}
-	defer cli.Close()
-
-	_, err = cli.Ping(ctx)
-	if err != nil {
+	if _, err := dk.cli.Ping(ctx); err != nil {
 		log.Infof("cannot use docker for containers: %v", err)
 		return false
 	}
@@ -215,17 +207,11 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	defer cli.Close()
-
 	// TODO(kaniini): We want to use the build user here, but for now lets keep it simple.
 	// TODO(epsilon-phase): building as the user "build" was removed from docker runner
 	// for consistency with other runners and to ensure that packages can be generated with files
 	// that have owners other than root. We should explore using fakeroot or similar tricks for these use-cases.
-	taskIDResp, err := cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -237,7 +223,7 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 		return fmt.Errorf("failed to create exec task inside pod: %w", err)
 	}
 
-	attachResp, err := cli.ContainerExecAttach(ctx, taskIDResp.ID, types.ExecStartCheck{
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, types.ExecStartCheck{
 		Tty: false,
 	})
 	if err != nil {
@@ -248,7 +234,7 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 		return err
 	}
 
-	inspectResp, err := cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get exit code from task: %w", err)
 	}

@@ -100,6 +100,10 @@ func KubernetesRunner(ctx context.Context) (Runner, error) {
 	return runner, nil
 }
 
+func (*k8s) Close() error {
+	return nil
+}
+
 // Name implements Runner
 func (*k8s) Name() string {
 	return KubernetesName

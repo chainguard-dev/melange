@@ -29,6 +29,7 @@ import (
 )
 
 type Runner interface {
+	Close() error
 	Name() string
 	TestUsability(ctx context.Context) bool
 	// OCIImageLoader returns a Loader that will load an OCI image from a stream.
@@ -56,7 +57,7 @@ func GetRunner(ctx context.Context, s string) (Runner, error) {
 	case BubblewrapName:
 		return BubblewrapRunner(), nil
 	case DockerName:
-		return DockerRunner(), nil
+		return DockerRunner(ctx)
 	case KubernetesName:
 		return KubernetesRunner(ctx)
 	}

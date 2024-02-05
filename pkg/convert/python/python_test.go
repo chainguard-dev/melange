@@ -14,7 +14,6 @@
 package python
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -76,13 +75,13 @@ func TestGetPythonMeta(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Ensure expected == got
-	got, err := pythonctx.PackageIndex.Get(context.Background(), "botocore", pythonctx.PackageVersion)
+	got, err := pythonctx.PackageIndex.Get(slogtest.TestContextWithLogger(t), "botocore", pythonctx.PackageVersion)
 	assert.NoError(t, err)
 	assert.Equal(t, expected.Info.Name, got.Info.Name)
 }
 
 func TestFindDependencies(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		log := clog.FromContext(ctx)
@@ -107,12 +106,12 @@ func TestFindDependencies(t *testing.T) {
 
 		for _, pythonctx := range pythonctxs {
 			pythonctx.PackageIndex.url = server.URL
-			p, err := pythonctx.PackageIndex.Get(context.Background(), pythonctx.PackageName, pythonctx.PackageVersion)
+			p, err := pythonctx.PackageIndex.Get(slogtest.TestContextWithLogger(t), pythonctx.PackageName, pythonctx.PackageVersion)
 			assert.NoError(t, err)
 			pythonctx.ToCheck = append(pythonctx.ToCheck, p.Info.Name)
 
 			// Build list of dependencies
-			err = pythonctx.findDep(context.Background())
+			err = pythonctx.findDep(slogtest.TestContextWithLogger(t))
 			assert.NoError(t, err)
 
 			// get specific python packages for package
@@ -135,7 +134,7 @@ func TestFindDependencies(t *testing.T) {
 }
 
 func TestGenerateManifest(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 
 	for i := range versions {
 		pythonctxs, err := SetupContext(versions[i])

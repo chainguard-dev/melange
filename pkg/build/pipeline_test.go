@@ -15,7 +15,6 @@
 package build
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,6 +24,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,7 +110,7 @@ func Test_MutateWith(t *testing.T) {
 }
 
 func Test_substitutionNeedPackages(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	pkg := &config.Package{
 		Name:    "foo",
 		Version: "1.2.3",

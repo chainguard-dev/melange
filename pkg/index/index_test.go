@@ -4,20 +4,20 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/chainguard-dev/go-apk/pkg/apk"
 	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestUpdateIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 
 	filename := filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk")
 
@@ -65,7 +65,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 		t.Fatal(err)
 	}
 
-	exp, err := expandapk.ExpandApk(context.Background(), file, "")
+	exp, err := expandapk.ExpandApk(slogtest.TestContextWithLogger(t), file, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 }
 
 func TestMergeIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	newDesc := "This should replace the existing description"
 
 	filename := filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk")

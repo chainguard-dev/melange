@@ -2,7 +2,6 @@ package apkbuild
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"chainguard.dev/melange/pkg/manifest"
 
 	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
 	"gitlab.alpinelinux.org/alpine/go/apkbuild"
 	"golang.org/x/time/rate"
@@ -52,7 +52,7 @@ func TestGetApkDependencies(t *testing.T) {
 	tctx := getTestContext(t, server)
 
 	// the top level APKBUILD is cheese
-	err = tctx.Generate(context.Background(), server.URL+"/"+"cheese", "cheese")
+	err = tctx.Generate(slogtest.TestContextWithLogger(t), server.URL+"/"+"cheese", "cheese")
 	assert.NoError(t, err)
 
 	// assert all dependencies were found
@@ -95,7 +95,7 @@ func TestGetApkBuildFile(t *testing.T) {
 	tctx := getTestContext(t, server)
 
 	tctx.Client.Client = server.Client()
-	err = tctx.getApkBuildFile(context.Background(), server.URL+"/"+pkgName, pkgName)
+	err = tctx.getApkBuildFile(slogtest.TestContextWithLogger(t), server.URL+"/"+pkgName, pkgName)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(tctx.ApkConvertors), "apk converter not found")
@@ -217,7 +217,7 @@ func TestContext_getSourceSha(t *testing.T) {
 			}
 			pipeline := config.Pipeline{Uses: "fetch", With: with}
 
-			assert.NoError(t, c.buildFetchStep(context.Background(), c.ApkConvertors[tt.name]))
+			assert.NoError(t, c.buildFetchStep(slogtest.TestContextWithLogger(t), c.ApkConvertors[tt.name]))
 			assert.Equalf(t, pipeline, c.ApkConvertors[tt.name].GeneratedMelangeConfig.Pipeline[0], "expected sha incorrect")
 		})
 	}

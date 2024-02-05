@@ -1,16 +1,16 @@
 package config
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_applySubstitutionsInProvides(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`
@@ -88,7 +88,7 @@ subpackages:
 }
 
 func Test_rangeSubstitutions(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`
@@ -125,7 +125,7 @@ subpackages:
 }
 
 func Test_propagatePipelines(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-propagatePipelines")
 	if err := os.WriteFile(fp, []byte(`
@@ -169,7 +169,7 @@ subpackages:
 }
 
 func Test_propagateWorkingDirectory(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -206,7 +206,7 @@ pipeline:
 }
 
 func Test_propagateWorkingDirectoryToUsesNodes(t *testing.T) {
-	ctx := context.Background()
+	ctx := slogtest.TestContextWithLogger(t)
 	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
 	if err := os.WriteFile(fp, []byte(`
 package:

@@ -497,7 +497,8 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		Package: pkg,
 	}
 
-	inarchs := false
+	// Unless a specific architecture is requests, we run the test for all.
+	inarchs := len(pkg.TargetArchitecture) == 0
 	for _, ta := range pkg.TargetArchitecture {
 		if types.ParseArchitecture(ta) == t.Arch {
 			inarchs = true

@@ -16,13 +16,10 @@ package container
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 
 	"go.opentelemetry.io/otel"
-	"golang.org/x/sync/errgroup"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
@@ -173,26 +170,17 @@ func (dk *docker) TempDir() string {
 }
 
 // waitForCommand waits for a command to complete in the pod.
-func (dk *docker) waitForCommand(cfg *Config, ctx context.Context, attachResp types.HijackedResponse, taskIDResp types.IDResponse) error {
+func (dk *docker) waitForCommand(ctx context.Context, r io.Reader) error {
 	// log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "waitForCommand")
 	defer span.End()
 
-	stdoutPipeR, stdoutPipeW := io.Pipe()
-	stderrPipeR, stderrPipeW := io.Pipe()
+	stdout, stderr := logWriters(ctx)
+	defer stdout.Close()
+	defer stderr.Close()
 
-	var g errgroup.Group
-	g.Go(func() error {
-		return monitorPipe(ctx, slog.LevelInfo, stdoutPipeR)
-	})
-	g.Go(func() error {
-		return monitorPipe(ctx, slog.LevelWarn, stderrPipeR)
-	})
-	_, err := stdcopy.StdCopy(stdoutPipeW, stderrPipeW, attachResp.Reader)
-	stdoutPipeW.CloseWithError(err)
-	stderrPipeW.CloseWithError(err)
-
-	return errors.Join(err, g.Wait())
+	_, err := stdcopy.StdCopy(stdout, stderr, r)
+	return err
 }
 
 // Run runs a Docker task given a Config and command string.
@@ -230,7 +218,7 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 		return fmt.Errorf("failed to attach to exec task: %w", err)
 	}
 
-	if err := dk.waitForCommand(cfg, ctx, attachResp, taskIDResp); err != nil {
+	if err := dk.waitForCommand(ctx, attachResp.Reader); err != nil {
 		return err
 	}
 

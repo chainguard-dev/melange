@@ -15,7 +15,7 @@
 package container
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -23,19 +23,44 @@ import (
 	"github.com/chainguard-dev/clog"
 )
 
-func monitorPipe(ctx context.Context, level slog.Level, pipe io.Reader) error {
-	log := clog.FromContext(ctx)
+func logWriters(ctx context.Context) (stdout, stderr io.WriteCloser) {
+	return logWriter(ctx, slog.LevelInfo), logWriter(ctx, slog.LevelWarn)
+}
 
-	scanner := bufio.NewScanner(pipe)
-	for scanner.Scan() {
-		switch level {
-		case slog.LevelInfo:
-			log.Info(scanner.Text())
-		case slog.LevelWarn:
-			log.Warn(scanner.Text())
-		default:
+func logWriter(ctx context.Context, level slog.Level) io.WriteCloser {
+	log := clog.FromContext(ctx)
+	f := log.Info
+	if level == slog.LevelWarn {
+		f = log.Warn
+	}
+	buf := new(bytes.Buffer)
+	return &levelWriter{f, buf}
+}
+
+type levelWriter struct {
+	log func(string, ...any)
+	buf *bytes.Buffer
+}
+
+func (l *levelWriter) Write(p []byte) (int, error) {
+	n, err := l.buf.Write(p)
+
+	for {
+		line, lerr := l.buf.ReadString('\n')
+		if lerr != nil {
+			l.buf.WriteString(line)
+			break
 		}
+		line = line[:len(line)-1] // trim the newline at the end
+		l.log(line)
 	}
 
-	return scanner.Err()
+	return n, err
+}
+
+func (l *levelWriter) Close() error {
+	if l.buf.Len() != 0 {
+		l.log(l.buf.String())
+	}
+	return nil
 }

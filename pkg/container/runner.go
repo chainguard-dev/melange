@@ -16,16 +16,12 @@ package container
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"log/slog"
-	"os/exec"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"golang.org/x/sync/errgroup"
 )
 
 type Runner interface {
@@ -62,32 +58,4 @@ func GetRunner(ctx context.Context, s string) (Runner, error) {
 		return KubernetesRunner(ctx)
 	}
 	return nil, fmt.Errorf("unknown virtualizer %q", s)
-}
-
-// monitorCmd sets up the stdout/stderr pipes and then supervises
-// execution of an exec.Cmd.
-func monitorCmd(ctx context.Context, cfg *Config, cmd *exec.Cmd) error {
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	var g errgroup.Group
-	g.Go(func() error {
-		return monitorPipe(ctx, slog.LevelInfo, stdout)
-	})
-	g.Go(func() error {
-		return monitorPipe(ctx, slog.LevelWarn, stderr)
-	})
-
-	return errors.Join(g.Wait(), cmd.Wait())
 }

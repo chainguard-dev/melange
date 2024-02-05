@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -36,7 +35,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
 	"go.opentelemetry.io/otel"
-	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -176,24 +174,14 @@ func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
 		return fmt.Errorf("pod isn't running")
 	}
 
-	stdoutPipeR, stdoutPipeW := io.Pipe()
-	stderrPipeR, stderrPipeW := io.Pipe()
-
-	var g errgroup.Group
-	g.Go(func() error {
-		return monitorPipe(ctx, slog.LevelInfo, stdoutPipeR)
-	})
-	g.Go(func() error {
-		return monitorPipe(ctx, slog.LevelWarn, stderrPipeR)
-	})
+	stdout, stderr := logWriters(ctx)
+	defer stdout.Close()
+	defer stderr.Close()
 
 	err := k.Exec(ctx, cfg.PodID, cmd, remotecommand.StreamOptions{
-		Stdout: stdoutPipeW,
-		Stderr: stderrPipeW,
+		Stdout: stdout,
+		Stderr: stderr,
 	})
-
-	stdoutPipeW.CloseWithError(err)
-	stderrPipeW.CloseWithError(err)
 
 	if err != nil {
 		return fmt.Errorf("running remote command: %w", err)

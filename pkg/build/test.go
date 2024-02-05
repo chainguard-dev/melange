@@ -124,6 +124,10 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	return &t, nil
 }
 
+func (t *Test) Close() error {
+	return t.Runner.Close()
+}
+
 type TestOption func(*Test) error
 
 // WithTestConfig sets the configuration file used for the package test context.

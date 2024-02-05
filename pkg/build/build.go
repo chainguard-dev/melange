@@ -219,6 +219,10 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	return &b, nil
 }
 
+func (b *Build) Close() error {
+	return b.Runner.Close()
+}
+
 type Option func(*Build) error
 
 // WithConfig sets the configuration file used for the package build context.

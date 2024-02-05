@@ -194,6 +194,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		} else if err != nil {
 			return err
 		}
+		defer bc.Close()
 
 		bcs = append(bcs, bc)
 	}

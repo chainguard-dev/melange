@@ -160,7 +160,9 @@ func (dk *docker) TestUsability(ctx context.Context) bool {
 
 // OCIImageLoader create a loader to load an OCI image into the docker daemon.
 func (dk *docker) OCIImageLoader() Loader {
-	return &dockerLoader{}
+	return &dockerLoader{
+		cli: dk.cli,
+	}
 }
 
 // TempDir returns the base for temporary directory. For docker
@@ -241,9 +243,11 @@ func (dk *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser,
 	return nil, nil
 }
 
-type dockerLoader struct{}
+type dockerLoader struct {
+	cli *client.Client
+}
 
-func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (string, error) {
+func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (string, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.LoadImage")
 	defer span.End()
 
@@ -262,4 +266,27 @@ func (d dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_t
 		return "", err
 	}
 	return ref.String(), nil
+}
+
+func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
+	log := clog.FromContext(ctx)
+	log.Infof("deleting image %q", ref)
+	resps, err := d.cli.ImageRemove(ctx, ref, types.ImageRemoveOptions{
+		Force:         true,
+		PruneChildren: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, resp := range resps {
+		if resp.Untagged != "" {
+			log.Infof("untagged %q", resp.Untagged)
+		}
+		if resp.Deleted != "" {
+			log.Infof("deleted %q", resp.Deleted)
+		}
+	}
+
+	return nil
 }

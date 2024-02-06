@@ -680,6 +680,14 @@ func (k *k8sLoader) LoadImage(ctx context.Context, layer ggcrv1.Layer, arch apko
 	return ref.String(), nil
 }
 
+func (k *k8sLoader) RemoveImage(ctx context.Context, str string) error {
+	ref, err := name.ParseReference(str)
+	if err != nil {
+		return err
+	}
+	return remote.Delete(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx))
+}
+
 type k8sTarFetcher struct {
 	client     kubernetes.Interface
 	restconfig *rest.Config

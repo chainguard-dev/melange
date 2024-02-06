@@ -45,6 +45,7 @@ type Runner interface {
 
 type Loader interface {
 	LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
+	RemoveImage(ctx context.Context, ref string) error
 }
 
 // GetRunner returns the requested runner implementation.

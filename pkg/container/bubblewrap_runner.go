@@ -191,3 +191,7 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 	}
 	return guestDir, nil
 }
+
+func (b bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
+	return os.RemoveAll(ref)
+}

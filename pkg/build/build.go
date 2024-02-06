@@ -86,6 +86,7 @@ type Build struct {
 	containerConfig   *container.Config
 	Debug             bool
 	DebugRunner       bool
+	Remove            bool
 	LogPolicy         []string
 	FailOnLintWarning bool
 	DefaultCPU        string
@@ -220,6 +221,11 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 }
 
 func (b *Build) Close() error {
+	if b.Remove {
+		if err := b.Runner.OCIImageLoader().RemoveImage(context.TODO(), b.containerConfig.ImgRef); err != nil {
+			return err
+		}
+	}
 	return b.Runner.Close()
 }
 
@@ -495,6 +501,15 @@ func WithDebug(debug bool) Option {
 func WithDebugRunner(debug bool) Option {
 	return func(b *Build) error {
 		b.DebugRunner = debug
+		return nil
+	}
+}
+
+// WithRemove indicates whether the the build will clean up after itself.
+// This includes deleting any intermediate artifacts like container images.
+func WithRemove(remove bool) Option {
+	return func(b *Build) error {
+		b.Remove = remove
 		return nil
 	}
 }

@@ -64,3 +64,16 @@ func (l *levelWriter) Close() error {
 	}
 	return nil
 }
+
+type contextReader struct {
+	r   io.Reader
+	ctx context.Context
+}
+
+func (c *contextReader) Read(p []byte) (int, error) {
+	if err := c.ctx.Err(); err != nil {
+		return 0, err
+	}
+	n, err := c.r.Read(p)
+	return n, err
+}

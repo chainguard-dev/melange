@@ -192,7 +192,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
-			log.Warn(fmt.Sprintf("skipping arch %s", arch))
+			log.Warnf("skipping arch %s", arch)
 			continue
 		} else if err != nil {
 			return err

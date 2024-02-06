@@ -1,0 +1,173 @@
+// Copyright 2023 Chainguard, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package build
+
+import apko_types "chainguard.dev/apko/pkg/build/types"
+
+type TestOption func(*Test) error
+
+// WithTestConfig sets the configuration file used for the package test context.
+func WithTestConfig(configFile string) TestOption {
+	return func(t *Test) error {
+		t.ConfigFile = configFile
+		return nil
+	}
+}
+
+// WithWorkspaceDir sets the workspace directory to use.
+func WithTestWorkspaceDir(workspaceDir string) TestOption {
+	return func(t *Test) error {
+		t.WorkspaceDir = workspaceDir
+		return nil
+	}
+}
+
+// WithGuestDir sets the guest directory to use.
+func WithTestGuestDir(guestDir string) TestOption {
+	return func(t *Test) error {
+		t.GuestDir = guestDir
+		return nil
+	}
+}
+
+// WithWorkspaceIgnore sets the workspace ignore rules file to use.
+func WithTestWorkspaceIgnore(workspaceIgnore string) TestOption {
+	return func(t *Test) error {
+		t.WorkspaceIgnore = workspaceIgnore
+		return nil
+	}
+}
+
+// WithPipelineDir sets the pipeline directory to extend the built-in pipeline directory.
+func WithTestPipelineDir(pipelineDir string) TestOption {
+	return func(t *Test) error {
+		t.PipelineDirs = append(t.PipelineDirs, pipelineDir)
+		return nil
+	}
+}
+
+// WithSourceDir sets the source directory to use.
+func WithTestSourceDir(sourceDir string) TestOption {
+	return func(t *Test) error {
+		t.SourceDir = sourceDir
+		return nil
+	}
+}
+
+// WithCacheDir sets the cache directory to use.
+func WithTestCacheDir(cacheDir string) TestOption {
+	return func(t *Test) error {
+		t.CacheDir = cacheDir
+		return nil
+	}
+}
+
+// WithCacheSource sets the cache source directory to use.  The cache will be
+// pre-populated from this source directory.
+func WithTestCacheSource(sourceDir string) TestOption {
+	return func(t *Test) error {
+		t.CacheSource = sourceDir
+		return nil
+	}
+}
+
+// WithTestArch sets the build architecture to use for this test context.
+func WithTestArch(arch apko_types.Architecture) TestOption {
+	return func(t *Test) error {
+		t.Arch = arch
+		return nil
+	}
+}
+
+// WithTestExtraKeys adds a set of extra keys to the test context.
+func WithTestExtraKeys(extraKeys []string) TestOption {
+	return func(t *Test) error {
+		t.ExtraKeys = extraKeys
+		return nil
+	}
+}
+
+// WithTestDebug indicates whether debug logging of pipelines should be enabled.
+func WithTestDebug(debug bool) TestOption {
+	return func(t *Test) error {
+		t.Debug = debug
+		return nil
+	}
+}
+
+func WithTestDebugRunner(debugRunner bool) TestOption {
+	return func(t *Test) error {
+		t.DebugRunner = debugRunner
+		return nil
+	}
+}
+
+// WithTestExtraRepos adds a set of extra repos to the test context.
+func WithTestExtraRepos(extraRepos []string) TestOption {
+	return func(t *Test) error {
+		t.ExtraRepos = extraRepos
+		return nil
+	}
+}
+
+// WithTestBinShOverlay sets a filename to copy from when installing /bin/sh
+// into a test environment.
+func WithTestBinShOverlay(binShOverlay string) TestOption {
+	return func(t *Test) error {
+		t.BinShOverlay = binShOverlay
+		return nil
+	}
+}
+
+// WithTestLogPolicy sets the logging policy to use during tests.
+func WithTestLogPolicy(policy []string) TestOption {
+	return func(t *Test) error {
+		t.LogPolicy = policy
+		return nil
+	}
+}
+
+// WithTestRunner specifies what runner to use to wrap
+// the test environment.
+func WithTestRunner(runner string) TestOption {
+	return func(t *Test) error {
+		t.RunnerName = runner
+		return nil
+	}
+}
+
+// WithTestPackage specifies the package to test.
+func WithTestPackage(pkg string) TestOption {
+	return func(t *Test) error {
+		t.Package = pkg
+		return nil
+	}
+}
+
+func WithTestPackageCacheDir(apkCacheDir string) TestOption {
+	return func(t *Test) error {
+		t.ApkCacheDir = apkCacheDir
+		return nil
+	}
+}
+
+// WithExtraTestPackages specifies packages that are added to each test by
+// default.
+func WithExtraTestPackages(extraTestPackages []string) TestOption {
+	return func(t *Test) error {
+		t.ExtraTestPackages = extraTestPackages
+		return nil
+	}
+}

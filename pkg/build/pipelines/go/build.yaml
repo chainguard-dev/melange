@@ -29,6 +29,12 @@ inputs:
       the apk will be in prefix / install-dir / output
     required: true
 
+  experiments:
+    description: |
+      A comma-separated list of Golang experiment names (ex: loopvar) to use
+      when building the binary.
+    default: ""
+
   vendor:
     description: |
       If true, the go mod command will also update the vendor directory
@@ -81,6 +87,8 @@ pipeline:
 
       # Take advantage of melange's buid cache for downloaded modules
       export GOMODCACHE=/var/cache/melange/gomodcache
+
+      export GOEXPERIMENT="${{inputs.experiments}}"
 
       cd "${{inputs.modroot}}"
 

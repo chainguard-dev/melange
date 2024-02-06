@@ -1,3 +1,5 @@
+chainguard.dev/apko v0.14.1-0.20240206202751-84eea7366c4f h1:nlGj63CO5Znr45zOhDYgpT+S2sTcOdEcfvIhyCtT9DI=
+chainguard.dev/apko v0.14.1-0.20240206202751-84eea7366c4f/go.mod h1:HRIjc83QXHjusopq8ZmBxFfPrBA+ZjBZZXNs3v+ydAo=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.112.0 h1:tpFCD7hpHFlQ8yPwT3x+QeXqc2T6+n6T+hmABHfDUSM=
 cloud.google.com/go v0.112.0/go.mod h1:3jEEVwZ/MHU4djK5t5RHuKOA/GbLddgTdVubX1qnPD4=
@@ -250,8 +252,6 @@ github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d h1:LFOmpWrSbtolg0YqY
 github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d/go.mod h1:112TOyA+aruNSUBlyBWlKBdLVYTdhjiO2CKD0j/URSU=
 github.com/imdario/mergo v0.3.16 h1:wwQJbIsHYGMUyLSPrEq1CT16AhnhNJQ51+4fdHUnCl4=
 github.com/imdario/mergo v0.3.16/go.mod h1:WBLT9ZmE3lPoWsEzCh9LPo3TiwVN+ZKEjmz+hD27ysY=
-github.com/imjasonh/apko v0.4.1-0.20240206002825-cf3359952d53 h1:8EIS7G+3gDHwY13uXQui+fI0TMkkHvhQ7DimufitdvQ=
-github.com/imjasonh/apko v0.4.1-0.20240206002825-cf3359952d53/go.mod h1:HRIjc83QXHjusopq8ZmBxFfPrBA+ZjBZZXNs3v+ydAo=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/invopop/jsonschema v0.12.0 h1:6ovsNSuvn9wEQVOyc72aycBMVQFKz7cPdMJn10CvzRI=

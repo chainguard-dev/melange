@@ -41,6 +41,12 @@ inputs:
     description: |
       A comma-separated list of build tags to pass to the go compiler
 
+  experiments:
+    description: |
+      A comma-separated list of Golang experiment names (ex: loopvar) to use
+      when building the binary.
+    default: ""
+
 pipeline:
   - runs: |
       TAGS=""
@@ -62,8 +68,9 @@ pipeline:
         VERSION="@${{inputs.version}}"
       fi
 
+
       # Run go install
-      go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.package}}${VERSION}
+      GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.package}}${VERSION}
       mkdir -p ${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}
 
       # Move all resulting files to the target dir

@@ -64,6 +64,12 @@ inputs:
     description: |
       space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
 
+  experiments:
+    description: |
+      A comma-separated list of Golang experiment names (ex: loopvar) to use
+      when building the binary.
+    default: ""
+
 pipeline:
   - runs: |
       TAGS=""
@@ -98,4 +104,4 @@ pipeline:
       [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
       [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
 
-      go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
+      GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}

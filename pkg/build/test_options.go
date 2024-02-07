@@ -14,7 +14,10 @@
 
 package build
 
-import apko_types "chainguard.dev/apko/pkg/build/types"
+import (
+	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/pkg/container"
+)
 
 type TestOption func(*Test) error
 
@@ -149,9 +152,9 @@ func WithTestLogPolicy(policy []string) TestOption {
 
 // WithTestRunner specifies what runner to use to wrap
 // the test environment.
-func WithTestRunner(runner string) TestOption {
+func WithTestRunner(runner container.Runner) TestOption {
 	return func(t *Test) error {
-		t.RunnerName = runner
+		t.Runner = runner
 		return nil
 	}
 }

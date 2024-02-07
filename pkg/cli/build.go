@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -75,8 +77,10 @@ func Build() *cobra.Command {
 		Example: `  melange build [config.yaml]`,
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if runner == "" {
-				runner = string(build.GetDefaultRunner())
+			ctx := cmd.Context()
+			r, err := getRunner(ctx, runner)
+			if err != nil {
+				return err
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -112,7 +116,7 @@ func Build() *cobra.Command {
 				build.WithInteractive(interactive),
 				build.WithRemove(remove),
 				build.WithLogPolicy(logPolicy),
-				build.WithRunner(runner),
+				build.WithRunner(r),
 				build.WithFailOnLintWarning(failOnLintWarning),
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
@@ -172,6 +176,31 @@ func Build() *cobra.Command {
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
 
 	return cmd
+}
+
+func getRunner(ctx context.Context, runner string) (container.Runner, error) {
+	if runner != "" {
+		switch runner {
+		case "bubblewrap":
+			return container.BubblewrapRunner(), nil
+		case "docker":
+			return container.DockerRunner(ctx)
+		case "kubernetes":
+			return container.KubernetesRunner(ctx)
+		default:
+			return nil, fmt.Errorf("unknown runner: %s", runner)
+		}
+	}
+
+	switch runtime.GOOS {
+	case "linux":
+		return container.BubblewrapRunner(), nil
+	case "darwin":
+		// darwin is the same as default, but we want to keep it explicit
+		fallthrough
+	default:
+		return container.DockerRunner(ctx)
+	}
 }
 
 func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...build.Option) error {

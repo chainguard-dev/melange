@@ -119,7 +119,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 	}
 
 	cfg.PodID = resp.ID
-	log.Info(fmt.Sprintf("pod %s started.", cfg.PodID))
+	log.Debugf("pod %s started", cfg.PodID)
 
 	return nil
 }
@@ -141,7 +141,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("pod %s terminated.", cfg.PodID))
+	log.Infof("pod %s terminated", cfg.PodID)
 
 	return nil
 }

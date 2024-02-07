@@ -685,6 +685,7 @@ func (k *k8sLoader) RemoveImage(ctx context.Context, str string) error {
 	if err != nil {
 		return err
 	}
+	clog.FromContext(ctx).Infof("deleting image %s", str)
 	return remote.Delete(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx))
 }
 

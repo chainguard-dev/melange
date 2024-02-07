@@ -88,6 +88,7 @@ type Build struct {
 	containerConfig   *container.Config
 	Debug             bool
 	DebugRunner       bool
+	Interactive       bool
 	Remove            bool
 	LogPolicy         []string
 	FailOnLintWarning bool
@@ -220,13 +221,16 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	return &b, nil
 }
 
-func (b *Build) Close() error {
+func (b *Build) Close(ctx context.Context) error {
+	errs := []error{}
 	if b.Remove {
-		if err := b.Runner.OCIImageLoader().RemoveImage(context.TODO(), b.containerConfig.ImgRef); err != nil {
-			return err
-		}
+		clog.FromContext(ctx).Infof("deleting guest dir %s", b.GuestDir)
+		errs = append(errs, os.RemoveAll(b.GuestDir))
+		errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(ctx, b.containerConfig.ImgRef))
 	}
-	return b.Runner.Close()
+	errs = append(errs, b.Runner.Close())
+
+	return errors.Join(errs...)
 }
 
 // BuildGuest invokes apko to build the guest environment, returning a reference to the image

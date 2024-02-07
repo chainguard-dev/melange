@@ -61,6 +61,7 @@ type Test struct {
 	RunnerName        string
 	Debug             bool
 	DebugRunner       bool
+	Interactive       bool
 	LogPolicy         []string
 }
 

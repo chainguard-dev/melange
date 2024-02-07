@@ -18,13 +18,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
+	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -34,6 +37,8 @@ import (
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
+
+var _ Debugger = (*docker)(nil)
 
 const DockerName = "docker"
 
@@ -182,7 +187,7 @@ func (dk *docker) waitForCommand(ctx context.Context, r io.Reader) error {
 	defer stderr.Close()
 
 	// Wrap this in a contextReader so we respond to cancel.
-	ctxr := &contextReader{r: r, ctx: ctx}
+	ctxr := newContextReader(ctx, r)
 
 	_, err := stdcopy.StdCopy(stdout, stderr, ctxr)
 	return err
@@ -222,6 +227,7 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 	if err != nil {
 		return fmt.Errorf("failed to attach to exec task: %w", err)
 	}
+	defer attachResp.Close()
 
 	if err := dk.waitForCommand(ctx, attachResp.Reader); err != nil {
 		return err
@@ -232,6 +238,102 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 		return fmt.Errorf("failed to get exit code from task: %w", err)
 	}
 
+	switch inspectResp.ExitCode {
+	case 0:
+		return nil
+	default:
+		return fmt.Errorf("task exited with code %d", inspectResp.ExitCode)
+	}
+}
+
+func (dk *docker) Debug(ctx context.Context, cfg *Config, args ...string) error {
+	if cfg.PodID == "" {
+		return fmt.Errorf("pod not running")
+	}
+
+	environ := []string{}
+	for k, v := range cfg.Environment {
+		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	outterm := streams.NewOut(os.Stdout)
+	h, w := outterm.GetTtySize()
+	size := [2]uint{h, w}
+
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
+		Cmd:          args,
+		WorkingDir:   runnerWorkdir,
+		Env:          environ,
+		Tty:          true,
+		ConsoleSize:  &size,
+		AttachStdin:  true,
+		AttachStderr: true,
+		AttachStdout: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create debug exec task inside pod: %w", err)
+	}
+
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, types.ExecStartCheck{
+		ConsoleSize: &size,
+		Tty:         true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to attach to exec task: %w", err)
+	}
+	defer attachResp.Close()
+
+	if err := outterm.SetRawTerminal(); err != nil {
+		return fmt.Errorf("set raw out: %w", err)
+	}
+	defer outterm.RestoreTerminal()
+
+	// When the container exits, we call cancelin() to stop Copy()ing from stdin.
+	inctx, cancelin := context.WithCancel(ctx)
+
+	var g errgroup.Group
+
+	// Wire up stdin to into a tty into the Attach connection.
+	g.Go(func() error {
+		interm := streams.NewIn(os.Stdin)
+		if err := interm.SetRawTerminal(); err != nil {
+			return fmt.Errorf("set raw in: %w", err)
+		}
+		defer interm.RestoreTerminal()
+
+		// Allows us to cancel the Read().
+		ctxr := newContextReader(inctx, interm)
+
+		if _, err := io.Copy(attachResp.Conn, ctxr); err != nil {
+			return fmt.Errorf("copy in : %w", err)
+		}
+
+		return nil
+	})
+
+	// Copy from the Attach reader to stdout tty.
+	g.Go(func() error {
+		defer cancelin()
+
+		if _, err := io.Copy(outterm, attachResp.Reader); err != nil {
+			return fmt.Errorf("copy out: %w", err)
+		}
+
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	// Poll docker once per second to see if the container has exited yet.
+	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get exit code from task: %w", err)
+	}
+	if inspectResp.Running {
+		return fmt.Errorf("container still running")
+	}
 	switch inspectResp.ExitCode {
 	case 0:
 		return nil
@@ -273,7 +375,7 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 
 func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 	log := clog.FromContext(ctx)
-	log.Infof("deleting image %q", ref)
+	log.Infof("deleting image %s", ref)
 	resps, err := d.cli.ImageRemove(ctx, ref, types.ImageRemoveOptions{
 		Force:         true,
 		PruneChildren: true,
@@ -284,10 +386,10 @@ func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 
 	for _, resp := range resps {
 		if resp.Untagged != "" {
-			log.Infof("untagged %q", resp.Untagged)
+			log.Infof("untagged %s", resp.Untagged)
 		}
 		if resp.Deleted != "" {
-			log.Infof("deleted %q", resp.Deleted)
+			log.Infof("deleted %s", resp.Deleted)
 		}
 	}
 

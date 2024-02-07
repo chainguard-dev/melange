@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +31,8 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"go.opentelemetry.io/otel"
 )
+
+var _ Debugger = (*bubblewrap)(nil)
 
 const BubblewrapName = "bubblewrap"
 
@@ -54,6 +55,19 @@ func (bw *bubblewrap) Name() string {
 
 // Run runs a Bubblewrap task given a Config and command string.
 func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) error {
+	execCmd := bw.cmd(ctx, cfg, args...)
+
+	stdout, stderr := logWriters(ctx)
+	defer stdout.Close()
+	defer stderr.Close()
+
+	execCmd.Stdout = stdout
+	execCmd.Stderr = stderr
+
+	return execCmd.Run()
+}
+
+func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, args ...string) *exec.Cmd {
 	baseargs := []string{}
 
 	// always be sure to mount the / first!
@@ -81,19 +95,23 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) erro
 
 	args = append(baseargs, args...)
 	execCmd := exec.CommandContext(ctx, "bwrap", args...)
-	slog.InfoContext(ctx, fmt.Sprintf("executing: %s", strings.Join(execCmd.Args, " ")))
-
-	stdout, stderr := logWriters(ctx)
-	defer stdout.Close()
-	defer stderr.Close()
-
-	execCmd.Stdout = stdout
-	execCmd.Stderr = stderr
 
 	// If you fork a child process in bubblewrap, Run will never return.
 	// WaitDelay gives children 1 second to behave before orphaning them.
 	// TODO: Remove bubblewrap runner or get someone at redhat to merge something.
 	execCmd.WaitDelay = 1 * time.Second
+
+	clog.FromContext(ctx).InfoContext(ctx, fmt.Sprintf("executing: %s", strings.Join(execCmd.Args, " ")))
+
+	return execCmd
+}
+
+func (bw *bubblewrap) Debug(ctx context.Context, cfg *Config, args ...string) error {
+	execCmd := bw.cmd(ctx, cfg, args...)
+
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+	execCmd.Stdin = os.Stdin
 
 	return execCmd.Run()
 }
@@ -199,5 +217,6 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 }
 
 func (b bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
+	clog.FromContext(ctx).Infof("removing image path %s", ref)
 	return os.RemoveAll(ref)
 }

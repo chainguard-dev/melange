@@ -24,6 +24,10 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
+type Debugger interface {
+	Debug(context.Context, *Config, ...string) error
+}
+
 type Runner interface {
 	Close() error
 	Name() string

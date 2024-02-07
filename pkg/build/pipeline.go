@@ -477,6 +477,7 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 
 	if pctx.Pipeline.Needs.Packages != nil {
 		log.Infof("  adding packages %s for pipeline %q", pctx.Pipeline.Needs.Packages, pctx.Identity())
+		pctx.Environment.Contents.Packages = append(pctx.Environment.Contents.Packages, pctx.Pipeline.Needs.Packages...)
 	}
 
 	if pctx.Pipeline.Uses != "" {

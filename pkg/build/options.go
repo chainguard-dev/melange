@@ -20,6 +20,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/pkg/container"
 )
 
 type Option func(*Build) error
@@ -317,9 +318,9 @@ func WithLogPolicy(policy []string) Option {
 
 // WithRunner specifies what runner to use to wrap
 // the build environment.
-func WithRunner(runner string) Option {
+func WithRunner(runner container.Runner) Option {
 	return func(b *Build) error {
-		b.RunnerName = runner
+		b.Runner = runner
 		return nil
 	}
 }

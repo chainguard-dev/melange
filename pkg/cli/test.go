@@ -53,8 +53,10 @@ func Test() *cobra.Command {
 		Example: `  melange test <test.yaml> [package-name]`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if runner == "" {
-				runner = string(build.GetDefaultRunner())
+			ctx := cmd.Context()
+			r, err := getRunner(ctx, runner)
+			if err != nil {
+				return err
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -68,7 +70,7 @@ func Test() *cobra.Command {
 				build.WithTestExtraRepos(extraRepos),
 				build.WithExtraTestPackages(extraTestPackages),
 				build.WithTestBinShOverlay(overlayBinSh),
-				build.WithTestRunner(runner),
+				build.WithTestRunner(r),
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 			}

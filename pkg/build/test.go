@@ -58,7 +58,6 @@ type Test struct {
 	ApkCacheDir       string
 	CacheSource       string
 	Runner            container.Runner
-	RunnerName        string
 	Debug             bool
 	DebugRunner       bool
 	LogPolicy         []string
@@ -79,13 +78,6 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 
 	log := clog.New(slog.Default().Handler()).With("arch", t.Arch)
 	ctx = clog.WithLogger(ctx, log)
-
-	// try to get the runner
-	runner, err := container.GetRunner(ctx, t.RunnerName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get runner %s: %w", t.RunnerName, err)
-	}
-	t.Runner = runner
 
 	// If no workspace directory is explicitly requested, create a
 	// temporary directory for it.  Otherwise, ensure we are in a
@@ -117,8 +109,8 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t.Configuration = *parsedCfg
 
 	// Check that we actually can run things in containers.
-	if !runner.TestUsability(ctx) {
-		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", runner.Name(), GetAllRunners())
+	if !t.Runner.TestUsability(ctx) {
+		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", t.Runner.Name(), GetAllRunners())
 	}
 
 	return &t, nil

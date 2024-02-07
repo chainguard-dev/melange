@@ -84,7 +84,6 @@ type Build struct {
 	EnvFile           string
 	VarsFile          string
 	Runner            container.Runner
-	RunnerName        string
 	containerConfig   *container.Config
 	Debug             bool
 	DebugRunner       bool
@@ -116,13 +115,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	log := clog.New(slog.Default().Handler()).With("arch", b.Arch.ToAPK())
 	ctx = clog.WithLogger(ctx, log)
-
-	// try to get the runner
-	runner, err := container.GetRunner(ctx, b.RunnerName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get runner %s: %w", b.RunnerName, err)
-	}
-	b.Runner = runner
 
 	// If no workspace directory is explicitly requested, create a
 	// temporary directory for it.  Otherwise, ensure we are in a
@@ -202,8 +194,8 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	}
 
 	// Check that we actually can run things in containers.
-	if !runner.TestUsability(ctx) {
-		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", runner.Name(), GetAllRunners())
+	if !b.Runner.TestUsability(ctx) {
+		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), GetAllRunners())
 	}
 
 	// Apply build options to the context.

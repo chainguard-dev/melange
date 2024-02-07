@@ -64,7 +64,7 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) erro
 	}
 	// add the ref of the directory
 
-	baseargs = append(baseargs, "--unshare-pid",
+	baseargs = append(baseargs, "--unshare-pid", "--die-with-parent",
 		"--dev", "/dev",
 		"--proc", "/proc",
 		"--chdir", runnerWorkdir,

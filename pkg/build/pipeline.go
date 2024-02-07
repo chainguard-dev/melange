@@ -286,7 +286,7 @@ func (pctx *PipelineContext) evalUse(ctx context.Context, pb *PipelineBuild) err
 	}
 	spctx.Pipeline.WorkDir = pctx.Pipeline.WorkDir
 
-	log.Info("  using " + pctx.Pipeline.Uses)
+	log.Debugf("  using %s", pctx.Pipeline.Uses)
 	spctx.dumpWith(ctx)
 
 	ran, err := spctx.Run(ctx, pb)
@@ -408,7 +408,7 @@ func (pctx *PipelineContext) shouldEvaluateBranch(ctx context.Context, pb *Pipel
 func (pctx *PipelineContext) evaluateBranch(ctx context.Context, pb *PipelineBuild) error {
 	log := clog.FromContext(ctx)
 	if pctx.Identity() != "???" {
-		log.Infof("running step %s", pctx.Identity())
+		log.Infof("running step %q", pctx.Identity())
 	}
 
 	if pctx.Pipeline.Uses != "" {
@@ -474,9 +474,10 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 // needs.
 func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) error {
 	log := clog.FromContext(ctx)
-	for _, pkg := range pctx.Pipeline.Needs.Packages {
-		log.Infof("  adding package %q for pipeline %q", pkg, pctx.Identity())
-		pctx.Environment.Contents.Packages = append(pctx.Environment.Contents.Packages, pkg)
+
+	if pctx.Pipeline.Needs.Packages != nil {
+		log.Infof("  adding packages %s for pipeline %q", pctx.Pipeline.Needs.Packages, pctx.Identity())
+		pctx.Environment.Contents.Packages = append(pctx.Environment.Contents.Packages, pctx.Pipeline.Needs.Packages...)
 	}
 
 	if pctx.Pipeline.Uses != "" {

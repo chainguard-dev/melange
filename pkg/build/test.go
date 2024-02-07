@@ -175,9 +175,8 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		return "", err
 	}
 
-	log.Infof("pushed %s as %v", layerTarGZ, ref)
-	log.Infof("successfully built workspace with apko")
-
+	log.Debugf("pushed %s as %v", layerTarGZ, ref)
+	log.Debug("successfully built workspace with apko")
 	return ref, nil
 }
 
@@ -238,8 +237,9 @@ func (t *Test) PopulateCache(ctx context.Context) error {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
 
-	log.Infof("populating cache from %s", t.CacheSource)
-
+	if t.CacheSource != "" {
+		log.Debugf("populating cache from %s", t.CacheSource)
+	}
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
 	if strings.HasPrefix(t.CacheSource, "gs://") {

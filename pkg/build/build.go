@@ -271,10 +271,8 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		return "", err
 	}
 
-	log.Infof("pushed %s as %v", layerTarGZ, ref)
-
-	log.Infof("successfully built workspace with apko")
-
+	log.Debugf("pushed %s as %v", layerTarGZ, ref)
+	log.Debug("successfully built workspace with apko")
 	return ref, nil
 }
 
@@ -488,7 +486,9 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
 
-	log.Infof("populating cache from %s", b.CacheSource)
+	if b.CacheSource != "" {
+		log.Debugf("populating cache from %s", b.CacheSource)
+	}
 
 	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
 	// tmp dir which is subsequently used as the cache.
@@ -728,7 +728,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		// run the main pipeline
-		log.Infof("running the main pipeline")
+		log.Debug("running the main pipeline")
 		for _, p := range b.Configuration.Pipeline {
 			pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs)
 			if _, err := pctx.Run(ctx, &pb); err != nil {

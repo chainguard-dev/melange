@@ -19,6 +19,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"sync"
 
 	"github.com/chainguard-dev/clog"
 )
@@ -66,14 +67,56 @@ func (l *levelWriter) Close() error {
 }
 
 type contextReader struct {
-	r   io.Reader
-	ctx context.Context
+	ctx  context.Context
+	r    io.Reader
+	once sync.Once
+
+	n   int
+	err error
+
+	in   chan []byte
+	done chan struct{}
+}
+
+func newContextReader(ctx context.Context, r io.Reader) *contextReader {
+	return &contextReader{
+		ctx:  ctx,
+		r:    r,
+		in:   make(chan []byte),
+		done: make(chan struct{}),
+	}
+}
+
+func (c *contextReader) init() {
+	go func() {
+		for {
+			select {
+			case p := <-c.in:
+				c.n, c.err = c.r.Read(p)
+				c.done <- struct{}{}
+			case <-c.ctx.Done():
+				break
+			}
+		}
+	}()
 }
 
 func (c *contextReader) Read(p []byte) (int, error) {
+	c.once.Do(c.init)
 	if err := c.ctx.Err(); err != nil {
 		return 0, err
 	}
-	n, err := c.r.Read(p)
-	return n, err
+
+	select {
+	case c.in <- p:
+	case <-c.ctx.Done():
+		return 0, io.EOF
+	}
+
+	select {
+	case <-c.done:
+		return c.n, c.err
+	case <-c.ctx.Done():
+		return 0, io.EOF
+	}
 }

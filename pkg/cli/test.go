@@ -43,6 +43,7 @@ func Test() *cobra.Command {
 	var logPolicy []string
 	var debug bool
 	var debugRunner bool
+	var interactive bool
 	var runner string
 	var extraTestPackages []string
 
@@ -71,6 +72,7 @@ func Test() *cobra.Command {
 				build.WithTestRunner(runner),
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
+				build.WithTestInteractive(interactive),
 			}
 
 			if len(args) > 0 {
@@ -108,6 +110,7 @@ func Test() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
+	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 
@@ -152,6 +155,12 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 	}
 
 	var errg errgroup.Group
+
+	if bcs[0].Interactive {
+		// Concurrent interactive debugging will break your terminal.
+		errg.SetLimit(1)
+	}
+
 	for _, bc := range bcs {
 		bc := bc
 

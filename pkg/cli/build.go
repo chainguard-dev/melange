@@ -61,6 +61,7 @@ func Build() *cobra.Command {
 	var createBuildLog bool
 	var debug bool
 	var debugRunner bool
+	var interactive bool
 	var remove bool
 	var runner string
 	var failOnLintWarning bool
@@ -108,6 +109,7 @@ func Build() *cobra.Command {
 				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),
+				build.WithInteractive(interactive),
 				build.WithRemove(remove),
 				build.WithLogPolicy(logPolicy),
 				build.WithRunner(runner),
@@ -162,6 +164,7 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
+	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
 	cmd.Flags().BoolVar(&failOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
@@ -197,7 +200,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		} else if err != nil {
 			return err
 		}
-		defer bc.Close()
+		defer bc.Close(ctx)
 
 		bcs = append(bcs, bc)
 	}
@@ -208,6 +211,12 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	}
 
 	var errg errgroup.Group
+
+	if bcs[0].Interactive {
+		// Concurrent interactive debugging will break your terminal.
+		errg.SetLimit(1)
+	}
+
 	for _, bc := range bcs {
 		bc := bc
 
@@ -216,8 +225,10 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 			ctx := clog.WithLogger(ctx, log)
 
 			if err := bc.BuildPackage(ctx); err != nil {
-				log.Error("ERROR: failed to build package. the build environment has been preserved:")
-				bc.SummarizePaths(ctx)
+				if !bc.Remove {
+					log.Error("ERROR: failed to build package. the build environment has been preserved:")
+					bc.SummarizePaths(ctx)
+				}
 
 				return fmt.Errorf("failed to build package: %w", err)
 			}

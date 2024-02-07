@@ -298,6 +298,14 @@ func WithDebugRunner(debug bool) Option {
 	}
 }
 
+// WithInteractive indicates whether to attach stdin and a tty to the runner on failures
+func WithInteractive(interactive bool) Option {
+	return func(b *Build) error {
+		b.Interactive = interactive
+		return nil
+	}
+}
+
 // WithRemove indicates whether the the build will clean up after itself.
 // This includes deleting any intermediate artifacts like container images.
 func WithRemove(remove bool) Option {

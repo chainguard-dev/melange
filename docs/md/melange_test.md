@@ -36,6 +36,7 @@ melange test [flags]
       --debug-runner                  when enabled, the builder pod will persist after the build succeeds or fails
       --guest-dir string              directory used for the build environment guest
   -h, --help                          help for test
+  -i, --interactive                   when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings        path to extra keys to include in the build environment keyring
       --log-policy strings            logging policy to use (default [builtin:stderr])
       --overlay-binsh string          use specified file as /bin/sh overlay in build environment

@@ -114,6 +114,14 @@ func WithTestDebugRunner(debugRunner bool) TestOption {
 	}
 }
 
+// WithTestInteractive indicates whether to attach stdin and a tty to the runner on failures
+func WithTestInteractive(interactive bool) TestOption {
+	return func(t *Test) error {
+		t.Interactive = interactive
+		return nil
+	}
+}
+
 // WithTestExtraRepos adds a set of extra repos to the test context.
 func WithTestExtraRepos(extraRepos []string) TestOption {
 	return func(t *Test) error {

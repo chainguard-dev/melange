@@ -64,6 +64,13 @@ type PipelineBuild struct {
 	Subpackage *config.Subpackage
 }
 
+func (pb *PipelineBuild) Interactive() bool {
+	if pb.Test != nil {
+		return pb.Test.Interactive
+	}
+	return pb.Build.Interactive
+}
+
 // GetConfiguration returns the configuration for the current pipeline.
 // This is either for the Test or the Build
 func (pb *PipelineBuild) GetConfiguration() *config.Configuration {
@@ -349,10 +356,33 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 
 	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
 	if err := pb.GetRunner().Run(ctx, pctx.WorkspaceConfig, command...); err != nil {
-		return err
+		return pctx.maybeDebug(ctx, pb, command, err)
 	}
 
 	return nil
+}
+
+func (pctx *PipelineContext) maybeDebug(ctx context.Context, pb *PipelineBuild, cmd []string, runErr error) error {
+	if !pb.Interactive() {
+		return runErr
+	}
+
+	log := clog.FromContext(ctx)
+
+	dbg, ok := pb.GetRunner().(container.Debugger)
+	if !ok {
+		log.Errorf("TODO: Implement Debug() for Runner: %T", pb.GetRunner())
+		return runErr
+	}
+
+	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
+	log.Infof("Execing into %q to debug", pctx.WorkspaceConfig.PodID)
+
+	if dbgErr := dbg.Debug(ctx, pctx.WorkspaceConfig, "/bin/sh"); dbgErr != nil {
+		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
+	}
+
+	return runErr
 }
 
 func (pctx *PipelineContext) evaluateBranchConditional(ctx context.Context, pb *PipelineBuild) bool {

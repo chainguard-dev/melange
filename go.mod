@@ -7,6 +7,7 @@ toolchain go1.21.5
 require (
 	chainguard.dev/apko v0.14.1-0.20240207151428-faf3e41d1a71
 	cloud.google.com/go/storage v1.37.0
+	dario.cat/mergo v1.0.0
 	github.com/chainguard-dev/clog v1.3.1
 	github.com/chainguard-dev/go-apk v0.0.0-20240207141231-4a3a18e598d6
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
@@ -23,7 +24,6 @@ require (
 	github.com/google/go-containerregistry v0.19.0
 	github.com/google/go-github/v54 v54.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
-	github.com/imdario/mergo v0.3.16
 	github.com/invopop/jsonschema v0.12.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -62,7 +62,6 @@ require (
 	cloud.google.com/go/compute v1.23.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.5 // indirect
-	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
@@ -121,6 +120,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.5 // indirect
+	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect

@@ -24,6 +24,7 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"dario.cat/mergo"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/kontext"
 	"github.com/dustin/go-humanize"
@@ -32,7 +33,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
 	"go.opentelemetry.io/otel"
 	"k8s.io/client-go/kubernetes"

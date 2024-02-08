@@ -28,7 +28,9 @@ jobs:
           version: v1.54
           args: --timeout=5m
 
-      - run: make docs-repo
+      - run: |
+          make docs-repo
+          git diff --exit-code
 
       - run: |
           make generate

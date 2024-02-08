@@ -376,13 +376,16 @@ func (pctx *PipelineContext) maybeDebug(ctx context.Context, pb *PipelineBuild, 
 	}
 
 	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
-	log.Infof("Execing into %q to debug", pctx.WorkspaceConfig.PodID)
+	log.Infof("Execing into pod %q to debug interactively.", pctx.WorkspaceConfig.PodID)
+	log.Infof("Type 'exit 0' to continue the next pipeline step or 'exit 1' to abort.")
+	log.Warnf("NOTE: ctrl+C will cause melange to exit, see: https://github.com/chainguard-dev/melange/issues/1004")
 
 	if dbgErr := dbg.Debug(ctx, pctx.WorkspaceConfig, "/bin/sh"); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 
-	return runErr
+	// If Debug() returns succesfully (via exit 0), it is a signal to continue execution.
+	return nil
 }
 
 func (pctx *PipelineContext) evaluateBranchConditional(ctx context.Context, pb *PipelineBuild) bool {

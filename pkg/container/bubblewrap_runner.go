@@ -101,7 +101,7 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, args ...string) *exe
 	// TODO: Remove bubblewrap runner or get someone at redhat to merge something.
 	execCmd.WaitDelay = 1 * time.Second
 
-	clog.FromContext(ctx).InfoContext(ctx, fmt.Sprintf("executing: %s", strings.Join(execCmd.Args, " ")))
+	clog.FromContext(ctx).Infof("executing: %s", strings.Join(execCmd.Args, " "))
 
 	return execCmd
 }

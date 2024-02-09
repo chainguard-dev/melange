@@ -218,7 +218,10 @@ func (b *Build) Close(ctx context.Context) error {
 	if b.Remove {
 		clog.FromContext(ctx).Infof("deleting guest dir %s", b.GuestDir)
 		errs = append(errs, os.RemoveAll(b.GuestDir))
-		errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(ctx, b.containerConfig.ImgRef))
+		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
+		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
+			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(ctx, b.containerConfig.ImgRef))
+		}
 	}
 	errs = append(errs, b.Runner.Close())
 

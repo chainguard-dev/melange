@@ -19,6 +19,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -354,6 +355,11 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 		return err
 	}
 
+	// We might have called signal.Ignore(os.Interrupt) as part of a previous debug step,
+	// so create a new context to make it possible to cancel the Run.
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	defer stop()
+
 	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
 	if err := pb.GetRunner().Run(ctx, pctx.WorkspaceConfig, command...); err != nil {
 		return pctx.maybeDebug(ctx, pb, command, err)
@@ -378,11 +384,21 @@ func (pctx *PipelineContext) maybeDebug(ctx context.Context, pb *PipelineBuild, 
 	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
 	log.Infof("Execing into pod %q to debug interactively.", pctx.WorkspaceConfig.PodID)
 	log.Infof("Type 'exit 0' to continue the next pipeline step or 'exit 1' to abort.")
-	log.Warnf("NOTE: ctrl+C will cause melange to exit, see: https://github.com/chainguard-dev/melange/issues/1004")
+
+	// If the context has already been cancelled, return before we mess with it.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	// Don't cancel the context if we hit ctrl+C while debugging.
+	signal.Ignore(os.Interrupt)
 
 	if dbgErr := dbg.Debug(ctx, pctx.WorkspaceConfig, "/bin/sh"); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
+
+	// Reset to the default signal handling.
+	signal.Reset(os.Interrupt)
 
 	// If Debug() returns succesfully (via exit 0), it is a signal to continue execution.
 	return nil

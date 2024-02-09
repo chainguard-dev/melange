@@ -1,4 +1,4 @@
-package container
+package k8s
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/pkg/container"
 	"dario.cat/mergo"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
@@ -110,14 +111,14 @@ func Test_k8s_StartPod(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		pkgCfg *Config
+		pkgCfg *container.Config
 		envs   map[string]string
 		k8sCfg *KubernetesRunnerConfig
 		wanter func(got corev1.Pod) bool
 	}{
 		{
 			name:   "should have a default namespace",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{},
 			wanter: func(got corev1.Pod) bool {
 				return got.Namespace == "default"
@@ -125,7 +126,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should load global configs from yaml",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{Namespace: "not-default"},
 			wanter: func(got corev1.Pod) bool {
 				return got.Namespace == "not-default"
@@ -133,7 +134,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should prioritize environment configs",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{Namespace: "not-default"},
 			envs: map[string]string{
 				"MELANGE_NAMESPACE": "from-env",
@@ -145,7 +146,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should skip environment configs for certain fields",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{PodTemplate: &KubernetesRunnerConfigPodTemplate{ServiceAccountName: "foo"}},
 			envs: map[string]string{
 				"MELANGE_SERVICE_ACCOUNT_NAME": "bar",
@@ -159,7 +160,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should support additional labels",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{Labels: map[string]string{"foo": "bar"}},
 			wanter: func(got corev1.Pod) bool {
 				return got.Labels["foo"] == "bar"
@@ -167,7 +168,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should support additional annotations",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("amd64")},
 			k8sCfg: &KubernetesRunnerConfig{Annotations: map[string]string{"foo": "bar"}},
 			wanter: func(got corev1.Pod) bool {
 				return got.Annotations["foo"] == "bar"
@@ -175,7 +176,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should default nodeselector to package arch",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{Namespace: "not-default"},
 			wanter: func(got corev1.Pod) bool {
 				return got.Labels["kubernetes.io/arch"] == "arm64"
@@ -183,7 +184,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should append nodeselectors",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				PodTemplate: &KubernetesRunnerConfigPodTemplate{
 					NodeSelector: map[string]string{"foo": "bar"},
@@ -195,7 +196,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name: "should override resources",
-			pkgCfg: &Config{
+			pkgCfg: &container.Config{
 				PackageName: "donkey",
 				Arch:        types.Architecture("arm64"),
 				CPU:         "1",
@@ -208,7 +209,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should support custom volumes",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				PodTemplate: &KubernetesRunnerConfigPodTemplate{
 					Volumes: []corev1.Volume{{
@@ -227,7 +228,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should pass additional environment variables to workspace pod",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				PodTemplate: &KubernetesRunnerConfigPodTemplate{
 					Env: []corev1.EnvVar{{
@@ -242,7 +243,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should appropriately handle gke provider",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				Provider: "gke",
 			},
@@ -252,7 +253,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should support custom service account names",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				PodTemplate: &KubernetesRunnerConfigPodTemplate{
 					ServiceAccountName: "foo",
@@ -264,7 +265,7 @@ func Test_k8s_StartPod(t *testing.T) {
 		},
 		{
 			name:   "should support custom runtime classes",
-			pkgCfg: &Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
+			pkgCfg: &container.Config{PackageName: "donkey", Arch: types.Architecture("arm64")},
 			k8sCfg: &KubernetesRunnerConfig{
 				PodTemplate: &KubernetesRunnerConfigPodTemplate{
 					RuntimeClassName: ptr.String("foo"),
@@ -315,7 +316,7 @@ func Test_k8s_StartPod(t *testing.T) {
 	}
 }
 
-func podDefaulterAction(t *testing.T, cfg *Config, k8sCfg *KubernetesRunnerConfig) ktesting.ReactionFunc {
+func podDefaulterAction(t *testing.T, cfg *container.Config, k8sCfg *KubernetesRunnerConfig) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		create, ok := action.(ktesting.CreateAction)
 		if !ok {

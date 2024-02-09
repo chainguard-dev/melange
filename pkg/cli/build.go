@@ -26,6 +26,8 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/pkg/container/k8s"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -184,9 +186,9 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 		case "bubblewrap":
 			return container.BubblewrapRunner(), nil
 		case "docker":
-			return container.DockerRunner(ctx)
+			return docker.NewRunner(ctx)
 		case "kubernetes":
-			return container.KubernetesRunner(ctx)
+			return k8s.NewRunner(ctx)
 		default:
 			return nil, fmt.Errorf("unknown runner: %s", runner)
 		}
@@ -199,7 +201,7 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 		// darwin is the same as default, but we want to keep it explicit
 		fallthrough
 	default:
-		return container.DockerRunner(ctx)
+		return docker.NewRunner(ctx)
 	}
 }
 

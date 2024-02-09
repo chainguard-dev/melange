@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package container
+package k8s
 
 import (
 	"context"
@@ -24,6 +24,8 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/container"
 	"dario.cat/mergo"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/kontext"
@@ -66,9 +68,11 @@ type k8s struct {
 	clientset  kubernetes.Interface
 	restConfig *rest.Config
 	pod        *corev1.Pod
+
+	workdir string
 }
 
-func KubernetesRunner(ctx context.Context) (Runner, error) {
+func NewRunner(ctx context.Context) (container.Runner, error) {
 	log := clog.FromContext(ctx)
 	cfg, err := NewKubernetesConfig()
 	if err != nil {
@@ -76,7 +80,8 @@ func KubernetesRunner(ctx context.Context) (Runner, error) {
 	}
 
 	runner := &k8s{
-		Config: cfg,
+		Config:  cfg,
+		workdir: "/home/build",
 	}
 	override := &clientcmd.ConfigOverrides{}
 	if cfg.Context != "" {
@@ -108,7 +113,7 @@ func (*k8s) Name() string {
 }
 
 // StartPod implements Runner
-func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
+func (k *k8s) StartPod(ctx context.Context, cfg *container.Config) error {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.StartPod")
 	defer span.End()
@@ -166,7 +171,7 @@ func (k *k8s) StartPod(ctx context.Context, cfg *Config) error {
 }
 
 // Run implements Runner
-func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
+func (k *k8s) Run(ctx context.Context, cfg *container.Config, cmd ...string) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.Run")
 	defer span.End()
 
@@ -174,7 +179,9 @@ func (k *k8s) Run(ctx context.Context, cfg *Config, cmd ...string) error {
 		return fmt.Errorf("pod isn't running")
 	}
 
-	stdout, stderr := logWriters(ctx)
+	log := clog.FromContext(ctx)
+
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
 
@@ -195,7 +202,7 @@ func (*k8s) TempDir() string {
 }
 
 // TerminatePod implements Runner
-func (k *k8s) TerminatePod(ctx context.Context, cfg *Config) error {
+func (k *k8s) TerminatePod(ctx context.Context, cfg *container.Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.TerminatePod")
 	defer span.End()
 
@@ -236,7 +243,7 @@ func (k *k8s) TestUsability(ctx context.Context) bool {
 }
 
 // WorkspaceTar implements Runner
-func (k *k8s) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+func (k *k8s) WorkspaceTar(ctx context.Context, cfg *container.Config) (io.ReadCloser, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.WorkspaceTar")
 	defer span.End()
 
@@ -248,7 +255,7 @@ func (k *k8s) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, err
 }
 
 // OCIImageLoader implements Runner
-func (k *k8s) OCIImageLoader() Loader {
+func (k *k8s) OCIImageLoader() container.Loader {
 	return &k8sLoader{repo: k.Config.Repo}
 }
 
@@ -267,7 +274,7 @@ func (k *k8s) Exec(ctx context.Context, podName string, cmd []string, streamOpts
 	} else {
 		cmd[2] = fmt.Sprintf(`[ -d '%s' ] || mkdir -p '%s'
 cd '%s'
-%s`, runnerWorkdir, runnerWorkdir, runnerWorkdir, cmd[2])
+%s`, k.workdir, k.workdir, k.workdir, cmd[2])
 	}
 
 	req := k.clientset.
@@ -321,7 +328,7 @@ cd '%s'
 	return nil
 }
 
-func (k *k8s) NewBuildPod(ctx context.Context, cfg *Config) (*corev1.Pod, error) {
+func (k *k8s) NewBuildPod(ctx context.Context, cfg *container.Config) (*corev1.Pod, error) {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "k8s.NewBuildPod")
 	defer span.End()
@@ -409,14 +416,14 @@ func (k *k8s) bundle(ctx context.Context, path string, tag name.Tag) (name.Diges
 }
 
 // filterMounts filters mounts that are not supported by the k8s runner
-func (k *k8s) filterMounts(ctx context.Context, mount BindMount) bool {
+func (k *k8s) filterMounts(ctx context.Context, mount container.BindMount) bool {
 	log := clog.FromContext(ctx)
 	// the kubelet handles this
-	if mount.Source == DefaultResolvConfPath {
+	if mount.Source == container.DefaultResolvConfPath {
 		return true
 	}
 
-	if mount.Destination == DefaultCacheDir {
+	if mount.Destination == container.DefaultCacheDir {
 		log.Warnf("skipping k8s runner irrelevant cache mount %s -> %s", mount.Source, mount.Destination)
 		return true
 	}
@@ -508,7 +515,7 @@ func escapeRFC1123(name string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(name, ".", "-"), "_", "-")
 }
 
-func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *Config) *corev1.Pod {
+func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *container.Config) *corev1.Pod {
 	// Set some sane default resource requests if none are specified by flag or config.
 	// This is required for GKE Autopilot.
 	if cfg.CPU == "" {
@@ -693,6 +700,7 @@ type k8sTarFetcher struct {
 	client     kubernetes.Interface
 	restconfig *rest.Config
 	pod        metav1.Object
+	workdir    string
 }
 
 func newK8sTarFetcher(restconfig *rest.Config, pod metav1.Object) (*k8sTarFetcher, error) {
@@ -705,6 +713,7 @@ func newK8sTarFetcher(restconfig *rest.Config, pod metav1.Object) (*k8sTarFetche
 		client:     client,
 		restconfig: restconfig,
 		pod:        pod,
+		workdir:    "/home/build",
 	}, nil
 }
 
@@ -718,7 +727,7 @@ func (f *k8sTarFetcher) Fetch(ctx context.Context) (io.ReadCloser, error) {
 			Command: []string{
 				"/bin/sh", "-c",
 				// Write a gzip compressed tar stream to stdout, starting at the given offset (n)
-				fmt.Sprintf("([ -f /tmp/melange-out.tar.gz ] || tar -czf /tmp/melange-out.tar.gz -C %s melange-out) && cat /tmp/melange-out.tar.gz | tail -c+%d", runnerWorkdir, offset),
+				fmt.Sprintf("([ -f /tmp/melange-out.tar.gz ] || tar -czf /tmp/melange-out.tar.gz -C %s melange-out) && cat /tmp/melange-out.tar.gz | tail -c+%d", f.workdir, offset),
 			},
 			Stdout: true,
 			Stderr: true,

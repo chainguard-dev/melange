@@ -16,7 +16,6 @@ package container
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -50,17 +49,4 @@ type Runner interface {
 type Loader interface {
 	LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
 	RemoveImage(ctx context.Context, ref string) error
-}
-
-// GetRunner returns the requested runner implementation.
-func GetRunner(ctx context.Context, s string) (Runner, error) {
-	switch s {
-	case BubblewrapName:
-		return BubblewrapRunner(), nil
-	case DockerName:
-		return DockerRunner(ctx)
-	case KubernetesName:
-		return KubernetesRunner(ctx)
-	}
-	return nil, fmt.Errorf("unknown virtualizer %q", s)
 }

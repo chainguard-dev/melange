@@ -27,6 +27,7 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/internal/logwriter"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"go.opentelemetry.io/otel"
@@ -57,7 +58,8 @@ func (bw *bubblewrap) Name() string {
 func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) error {
 	execCmd := bw.cmd(ctx, cfg, args...)
 
-	stdout, stderr := logWriters(ctx)
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
 

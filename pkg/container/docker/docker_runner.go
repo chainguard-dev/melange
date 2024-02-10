@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package container
+package docker
 
 import (
 	"context"
@@ -26,6 +26,9 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/internal/contextreader"
+	"chainguard.dev/melange/internal/logwriter"
+	mcontainer "chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types"
@@ -38,17 +41,21 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-var _ Debugger = (*docker)(nil)
+var _ mcontainer.Debugger = (*docker)(nil)
 
-const DockerName = "docker"
+const (
+	DockerName = "docker"
+
+	runnerWorkdir = "/home/build"
+)
 
 // docker is a Runner implementation that uses the docker library.
 type docker struct {
 	cli *client.Client
 }
 
-// DockerRunner returns a Docker Runner implementation.
-func DockerRunner(ctx context.Context) (Runner, error) {
+// NewRunner returns a Docker Runner implementation.
+func NewRunner(ctx context.Context) (mcontainer.Runner, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
@@ -69,7 +76,7 @@ func (dk *docker) Close() error {
 
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.
-func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
+func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	log := clog.FromContext(ctx)
 
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.StartPod")
@@ -131,7 +138,7 @@ func (dk *docker) StartPod(ctx context.Context, cfg *Config) error {
 
 // TerminatePod terminates a pod for supporting a Docker task,
 // if necessary.
-func (dk *docker) TerminatePod(ctx context.Context, cfg *Config) error {
+func (dk *docker) TerminatePod(ctx context.Context, cfg *mcontainer.Config) error {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.TerminatePod")
 	defer span.End()
@@ -164,7 +171,7 @@ func (dk *docker) TestUsability(ctx context.Context) bool {
 }
 
 // OCIImageLoader create a loader to load an OCI image into the docker daemon.
-func (dk *docker) OCIImageLoader() Loader {
+func (dk *docker) OCIImageLoader() mcontainer.Loader {
 	return &dockerLoader{
 		cli: dk.cli,
 	}
@@ -182,12 +189,13 @@ func (dk *docker) waitForCommand(ctx context.Context, r io.Reader) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "waitForCommand")
 	defer span.End()
 
-	stdout, stderr := logWriters(ctx)
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
 
 	// Wrap this in a contextReader so we respond to cancel.
-	ctxr := newContextReader(ctx, r)
+	ctxr := contextreader.New(ctx, r)
 
 	_, err := stdcopy.StdCopy(stdout, stderr, ctxr)
 	return err
@@ -195,7 +203,7 @@ func (dk *docker) waitForCommand(ctx context.Context, r io.Reader) error {
 
 // Run runs a Docker task given a Config and command string.
 // The resultant filesystem can be read from the io.ReadCloser
-func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
+func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...string) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -246,7 +254,7 @@ func (dk *docker) Run(ctx context.Context, cfg *Config, args ...string) error {
 	}
 }
 
-func (dk *docker) Debug(ctx context.Context, cfg *Config, args ...string) error {
+func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, args ...string) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
@@ -302,7 +310,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *Config, args ...string) error 
 		defer interm.RestoreTerminal()
 
 		// Allows us to cancel the Read().
-		ctxr := newContextReader(inctx, interm)
+		ctxr := contextreader.New(inctx, interm)
 
 		if _, err := io.Copy(attachResp.Conn, ctxr); err != nil {
 			return fmt.Errorf("copy in : %w", err)
@@ -344,7 +352,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *Config, args ...string) error 
 
 // WorkspaceTar implements Runner
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
-func (dk *docker) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config) (io.ReadCloser, error) {
 	return nil, nil
 }
 

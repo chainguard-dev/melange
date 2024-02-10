@@ -170,11 +170,32 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 		}
 	}
 	for _, srt := range cfg.Subpackages {
-		for i, prov := range srt.Dependencies.Runtime {
+		for i, runtime := range srt.Dependencies.Runtime {
 			var err error
-			srt.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, prov)
+			srt.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to runtime %q: %w", prov, err)
+				return fmt.Errorf("failed to apply replacement to runtime %q: %w", runtime, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (cfg *Configuration) applySubstitutionsForReplaces() error {
+	nw := buildConfigMap(cfg)
+	for i, replaces := range cfg.Package.Dependencies.Replaces {
+		var err error
+		cfg.Package.Dependencies.Replaces[i], err = util.MutateStringFromMap(nw, replaces)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to replaces %q: %w", replaces, err)
+		}
+	}
+	for _, srt := range cfg.Subpackages {
+		for i, replaces := range srt.Dependencies.Replaces {
+			var err error
+			srt.Dependencies.Replaces[i], err = util.MutateStringFromMap(nw, replaces)
+			if err != nil {
+				return fmt.Errorf("failed to apply replacement to replaces %q: %w", replaces, err)
 			}
 		}
 	}
@@ -885,6 +906,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		return nil, err
 	}
 	if err := cfg.applySubstitutionsForRuntime(); err != nil {
+		return nil, err
+	}
+	if err := cfg.applySubstitutionsForReplaces(); err != nil {
 		return nil, err
 	}
 	if err := cfg.applySubstitutionsForPackages(); err != nil {

@@ -50,6 +50,8 @@ subpackages:
         - subpackage-version=${{package.version}}
         - subpackage-foo=${{vars.foo}}
         - subpackage-bar=${{vars.bar}}
+      replaces:
+        - james=${{package.name}}
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +83,10 @@ subpackages:
 		"FOO",
 		"other-package=0.0.1",
 	}, cfg.Subpackages[0].Dependencies.Runtime)
+
+	require.Equal(t, []string{
+		"james=replacement-provides",
+	}, cfg.Subpackages[0].Dependencies.Replaces)
 
 	require.Equal(t, []string{
 		"dep~0.0.1",

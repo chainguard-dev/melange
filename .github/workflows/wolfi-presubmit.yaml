@@ -88,6 +88,20 @@ jobs:
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
 
       - run: |
-          for f in packages/x86_64/${{ matrix.package }}-*.apk; do
-            docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
-          done
+          # glibc has tons of subpackages such that fetching the APKINDEX over and over again adds almost 3 minutes to CI time.
+          # To mitigate this, instead of running a separate docker container for each package, we do them all in one script.
+          # However, because we no longer have an isolated container for each run, we use the --simulate flag to avoid conflicts.
+          # This means we miss out on some coverage for glibc (e.g. actually installing the packages), but that's too slow.
+          if [ "${{ matrix.package }}" = "glibc" ]; then
+            echo "#!/bin/sh" >> entrypoint.sh
+            for f in packages/x86_64/${{ matrix.package }}-*.apk; do
+              echo "apk add --simulate --allow-untrusted /work/$f" >> entrypoint.sh
+            done
+
+            chmod +x entrypoint.sh
+            docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base /work/entrypoint.sh
+          else
+            for f in packages/x86_64/${{ matrix.package }}-*.apk; do
+              docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
+            done
+          fi

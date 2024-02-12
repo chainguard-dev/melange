@@ -39,7 +39,7 @@ require (
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
 	gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b
-	go.opentelemetry.io/otel v1.23.0
+	go.opentelemetry.io/otel v1.23.1
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
@@ -169,8 +169,8 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.47.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.22.0 // indirect
-	go.opentelemetry.io/otel/metric v1.23.0 // indirect
-	go.opentelemetry.io/otel/trace v1.23.0 // indirect
+	go.opentelemetry.io/otel/metric v1.23.1 // indirect
+	go.opentelemetry.io/otel/trace v1.23.1 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/net v0.20.0 // indirect

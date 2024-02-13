@@ -237,12 +237,19 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
 	defer span.End()
 
+	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
+	if err != nil {
+		return "", fmt.Errorf("creating apko tempdir: %w", err)
+	}
+	defer os.RemoveAll(tmp)
+
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraRepos(b.ExtraRepos),
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithTempDir(tmp),
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)

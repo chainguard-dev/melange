@@ -214,13 +214,15 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 }
 
 func (b *Build) Close(ctx context.Context) error {
+	log := clog.FromContext(ctx)
 	errs := []error{}
 	if b.Remove {
-		clog.FromContext(ctx).Infof("deleting guest dir %s", b.GuestDir)
+		log.Infof("deleting guest dir %s", b.GuestDir)
 		errs = append(errs, os.RemoveAll(b.GuestDir))
+		log.Infof("deleting workspace dir %s", b.WorkspaceDir)
 		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
 		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
-			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(ctx, b.containerConfig.ImgRef))
+			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(context.WithoutCancel(ctx), b.containerConfig.ImgRef))
 		}
 	}
 	errs = append(errs, b.Runner.Close())

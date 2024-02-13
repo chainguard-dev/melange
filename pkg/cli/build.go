@@ -55,8 +55,6 @@ func Build() *cobra.Command {
 	var extraRepos []string
 	var dependencyLog string
 	var overlayBinSh string
-	var breakpointLabel string
-	var continueLabel string
 	var envFile string
 	var varsFile string
 	var purlNamespace string
@@ -105,8 +103,6 @@ func Build() *cobra.Command {
 				build.WithExtraRepos(extraRepos),
 				build.WithDependencyLog(dependencyLog),
 				build.WithBinShOverlay(overlayBinSh),
-				build.WithBreakpointLabel(breakpointLabel),
-				build.WithContinueLabel(continueLabel),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
@@ -158,8 +154,6 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
-	cmd.Flags().StringVar(&breakpointLabel, "breakpoint-label", "", "stop build execution at the specified label")
-	cmd.Flags().StringVar(&continueLabel, "continue-label", "", "continue build execution at the specified label")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")

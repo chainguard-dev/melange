@@ -30,12 +30,10 @@ melange build [flags]
 ```
       --apk-cache-dir string        directory used for cached apk packages (default is system-defined cache directory)
       --arch strings                architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
-      --breakpoint-label string     stop build execution at the specified label
       --build-date string           date used for the timestamps of the files inside the image
       --build-option strings        build options to enable
       --cache-dir string            directory used for cached inputs (default "./melange-cache/")
       --cache-source string         directory or bucket used for preloading the cache
-      --continue-label string       continue build execution at the specified label
       --cpu string                  default CPU resources to use for builds
       --create-build-log            creates a package.log file containing a list of packages that were built by the command
       --debug                       enables debug logging of build pipelines

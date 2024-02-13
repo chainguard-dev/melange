@@ -94,7 +94,7 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 	tagListOptions := &github.ListOptions{PerPage: 500}
 	for {
 		log.Infof("[%s] Getting tags page %d", repo, tagListOptions.Page)
-		repoTags, res, err := grc.client.Repositories.ListTags(context.Background(), grc.owner, grc.repo, tagListOptions)
+		repoTags, res, err := grc.client.Repositories.ListTags(ctx, grc.owner, grc.repo, tagListOptions)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tags for %s: %v", repo, err)
 		}

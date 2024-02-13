@@ -130,6 +130,12 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
 	defer span.End()
 
+	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
+	if err != nil {
+		return "", fmt.Errorf("creating apko tempdir: %w", err)
+	}
+	defer os.RemoveAll(tmp)
+
 	// Then add any extra packages specified by the command line.
 	imgConfig.Contents.Packages = append(imgConfig.Contents.Packages, t.ExtraTestPackages...)
 
@@ -139,6 +145,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraRepos(t.ExtraRepos),
 		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithTempDir(tmp),
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)

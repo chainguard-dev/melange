@@ -357,8 +357,11 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 
 	// We might have called signal.Ignore(os.Interrupt) as part of a previous debug step,
 	// so create a new context to make it possible to cancel the Run.
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
-	defer stop()
+	if pb.Interactive() {
+		var stop context.CancelFunc
+		ctx, stop = signal.NotifyContext(ctx, os.Interrupt)
+		defer stop()
+	}
 
 	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
 	if err := pb.GetRunner().Run(ctx, pctx.WorkspaceConfig, command...); err != nil {

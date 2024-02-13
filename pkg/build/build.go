@@ -77,9 +77,6 @@ type Build struct {
 	CacheDir          string
 	ApkCacheDir       string
 	CacheSource       string
-	BreakpointLabel   string
-	ContinueLabel     string
-	foundContinuation bool
 	StripOriginName   bool
 	EnvFile           string
 	VarsFile          string
@@ -121,13 +118,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	// temporary directory for it.  Otherwise, ensure we are in a
 	// subdir for this specific build context.
 	if b.WorkspaceDir != "" {
-		// If we are continuing the build, do not modify the workspace
-		// directory path.
-		// TODO(kaniini): Clean up the logic for this, perhaps by signalling
-		// multi-arch builds to the build context.
-		if b.ContinueLabel == "" {
-			b.WorkspaceDir = filepath.Join(b.WorkspaceDir, b.Arch.ToAPK())
-		}
+		b.WorkspaceDir = filepath.Join(b.WorkspaceDir, b.Arch.ToAPK())
 
 		// Get the absolute path to the workspace dir, which is needed for bind
 		// mounts.

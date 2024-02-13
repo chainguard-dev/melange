@@ -407,7 +407,7 @@ func (pctx *PipelineContext) maybeDebug(ctx context.Context, pb *PipelineBuild, 
 	return nil
 }
 
-func (pctx *PipelineContext) evaluateBranchConditional(ctx context.Context, pb *PipelineBuild) bool {
+func (pctx *PipelineContext) shouldEvaluateBranch(ctx context.Context, pb *PipelineBuild) bool {
 	log := clog.FromContext(ctx)
 	if pctx.Pipeline.If == "" {
 		return true
@@ -430,31 +430,6 @@ func (pctx *PipelineContext) evaluateBranchConditional(ctx context.Context, pb *
 	log.Infof("evaluating if-conditional '%s' --> %t", pctx.Pipeline.If, result)
 
 	return result
-}
-
-func (pctx *PipelineContext) isContinuationPoint(pb *PipelineBuild) bool {
-	if pb.Build == nil {
-		return true
-	}
-	b := pb.Build
-
-	if b.ContinueLabel == "" {
-		return true
-	}
-
-	if b.ContinueLabel == pctx.Pipeline.Label {
-		b.foundContinuation = true
-	}
-
-	return b.foundContinuation
-}
-
-func (pctx *PipelineContext) shouldEvaluateBranch(ctx context.Context, pb *PipelineBuild) bool {
-	if !pctx.isContinuationPoint(pb) {
-		return false
-	}
-
-	return pctx.evaluateBranchConditional(ctx, pb)
 }
 
 func (pctx *PipelineContext) evaluateBranch(ctx context.Context, pb *PipelineBuild) error {
@@ -485,10 +460,6 @@ func (pctx *PipelineContext) checkAssertions(pb *PipelineBuild) error {
 func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "Pipeline.Run")
 	defer span.End()
-
-	if pctx.Pipeline.Label != "" && pctx.Pipeline.Label == pb.Build.BreakpointLabel {
-		return false, fmt.Errorf("stopping execution at breakpoint: %s", pctx.Pipeline.Label)
-	}
 
 	if !pctx.shouldEvaluateBranch(ctx, pb) {
 		return false, nil

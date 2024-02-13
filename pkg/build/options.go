@@ -202,24 +202,6 @@ func WithBinShOverlay(binShOverlay string) Option {
 	}
 }
 
-// WithBreakpointLabel sets a label to stop build execution at.  The build
-// environment and workspace are preserved.
-func WithBreakpointLabel(breakpointLabel string) Option {
-	return func(b *Build) error {
-		b.BreakpointLabel = breakpointLabel
-		return nil
-	}
-}
-
-// WithContinueLabel sets a label to continue build execution from.  This
-// requires a preserved build environment and workspace.
-func WithContinueLabel(continueLabel string) Option {
-	return func(b *Build) error {
-		b.ContinueLabel = continueLabel
-		return nil
-	}
-}
-
 // WithStripOriginName determines whether the origin name should be stripped
 // from generated packages.  The APK solver uses origin names to flatten
 // possible dependency nodes when solving for a DAG, which means that they

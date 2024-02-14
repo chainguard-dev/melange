@@ -246,13 +246,16 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		bc := bc
 
 		errg.Go(func() error {
-			log := clog.New(slog.Default().Handler()).With("arch", bc.Arch.ToAPK())
-			ctx := clog.WithLogger(ctx, log)
+			lctx := ctx
+			if len(bcs) != 1 {
+				log := clog.New(slog.Default().Handler()).With("arch", bc.Arch.ToAPK())
+				lctx = clog.WithLogger(ctx, log)
+			}
 
-			if err := bc.BuildPackage(ctx); err != nil {
+			if err := bc.BuildPackage(lctx); err != nil {
 				if !bc.Remove {
 					log.Error("ERROR: failed to build package. the build environment has been preserved:")
-					bc.SummarizePaths(ctx)
+					bc.SummarizePaths(lctx)
 				}
 
 				return fmt.Errorf("failed to build package: %w", err)

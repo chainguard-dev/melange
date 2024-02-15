@@ -60,6 +60,7 @@ melange build [flags]
       --source-dir string           directory used for included sources
       --strip-origin-name           whether origin names should be stripped (for bootstrap)
       --timeout duration            default timeout for builds
+      --trace string                where to write trace output
       --vars-file string            file to use for preloaded build configuration variables
       --workspace-dir string        directory used for the workspace at /home/build
 ```

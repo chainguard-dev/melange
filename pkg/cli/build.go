@@ -26,6 +26,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/container/dagger"
 	"chainguard.dev/melange/pkg/container/docker"
 	"chainguard.dev/melange/pkg/container/k8s"
 	"github.com/chainguard-dev/clog"
@@ -183,6 +184,8 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 			return docker.NewRunner(ctx)
 		case "kubernetes":
 			return k8s.NewRunner(ctx)
+		case "experimentaldagger":
+			return dagger.NewRunner(ctx)
 		default:
 			return nil, fmt.Errorf("unknown runner: %s", runner)
 		}

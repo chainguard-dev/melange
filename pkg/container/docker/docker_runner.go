@@ -121,6 +121,9 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 		Image: cfg.ImgRef,
 		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
 		Tty:   false,
+		Labels: map[string]string{
+			"melange": "true",
+		},
 	}, hostConfig, nil, platform, "")
 	if err != nil {
 		return err

@@ -122,7 +122,8 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
 		Tty:   false,
 		Labels: map[string]string{
-			"melange": "true",
+			"dev.chainguard.melange":         "true",
+			"dev.chainguard.melange.package": cfg.PackageName,
 		},
 	}, hostConfig, nil, platform, "")
 	if err != nil {

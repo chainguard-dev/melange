@@ -71,6 +71,7 @@ type Build struct {
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
+	ExtraPackages     []string
 	DependencyLog     string
 	BinShOverlay      string
 	CreateBuildLog    bool
@@ -239,6 +240,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraRepos(b.ExtraRepos),
+		apko_build.WithExtraPackages(b.ExtraPackages),
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 		apko_build.WithTempDir(tmp),
 	)

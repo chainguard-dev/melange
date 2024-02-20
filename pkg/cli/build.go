@@ -73,6 +73,7 @@ func Build() *cobra.Command {
 	var failOnLintWarning bool
 	var cpu, memory string
 	var timeout time.Duration
+	var extraPackages []string
 
 	var traceFile string
 
@@ -132,6 +133,7 @@ func Build() *cobra.Command {
 				build.WithOutDir(outDir),
 				build.WithExtraKeys(extraKeys),
 				build.WithExtraRepos(extraRepos),
+				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
 				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
@@ -192,6 +194,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
+	cmd.Flags().StringSliceVar(&extraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")

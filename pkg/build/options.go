@@ -342,3 +342,11 @@ func WithTimeout(dur time.Duration) Option {
 		return nil
 	}
 }
+
+// WithExtraPackages specifies packages that are added to each build by default.
+func WithExtraPackages(extraPackages []string) Option {
+	return func(b *Build) error {
+		b.ExtraPackages = extraPackages
+		return nil
+	}
+}

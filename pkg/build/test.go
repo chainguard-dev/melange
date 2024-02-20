@@ -136,14 +136,12 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.RemoveAll(tmp)
 
-	// Then add any extra packages specified by the command line.
-	imgConfig.Contents.Packages = append(imgConfig.Contents.Packages, t.ExtraTestPackages...)
-
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(t.Arch),
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraRepos(t.ExtraRepos),
+		apko_build.WithExtraPackages(t.ExtraTestPackages),
 		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 		apko_build.WithTempDir(tmp),
 	)

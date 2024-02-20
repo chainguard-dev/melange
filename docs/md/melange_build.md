@@ -52,6 +52,7 @@ melange build [flags]
       --namespace string            namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string              directory where packages will be output (default "./packages/")
       --overlay-binsh string        use specified file as /bin/sh overlay in build environment
+      --package-append strings      extra packages to install for each of the build environments
       --pipeline-dir string         directory used to extend defined built-in pipelines
   -r, --repository-append strings   path to extra repositories to include in the build environment
       --rm                          clean up intermediate artifacts (e.g. container images)

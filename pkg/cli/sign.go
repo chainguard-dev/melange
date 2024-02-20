@@ -214,6 +214,7 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 	if err != nil {
 		return err
 	}
+	defer cf.Close()
 
 	// Use the control sections ModTime (set to SDE) for the signature
 	cfinfo, err := os.Stat(eapk.ControlFile)
@@ -242,26 +243,7 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 	if err != nil {
 		return err
 	}
-
-	tf, err := os.CreateTemp("", "melange-signer")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tf.Name())
-
-	for _, fp := range []io.Reader{bytes.NewBuffer(sigData), cf, df} {
-		if _, err := io.Copy(tf, fp); err != nil {
-			return err
-		}
-	}
-
-	if err := tf.Sync(); err != nil {
-		return err
-	}
-
-	if _, err := tf.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
+	defer df.Close()
 
 	// Replace the package file with the new one
 	f, err := os.Create(pkg)
@@ -270,8 +252,10 @@ func (o signOpts) run(ctx context.Context, pkg string) error {
 	}
 	defer f.Close()
 
-	if _, err := io.Copy(f, tf); err != nil {
-		return err
+	for _, fp := range []io.Reader{bytes.NewBuffer(sigData), cf, df} {
+		if _, err := io.Copy(f, fp); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -211,6 +211,13 @@ func (cfg *Configuration) applySubstitutionsForPackages() error {
 			return fmt.Errorf("failed to apply replacement to package %q: %w", runtime, err)
 		}
 	}
+	for i, runtime := range cfg.Test.Environment.Contents.Packages {
+		var err error
+		cfg.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to test package %q: %w", runtime, err)
+		}
+	}
 	return nil
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_applySubstitutionsInProvides(t *testing.T) {
+func Test_applySubstitution(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
@@ -52,6 +52,12 @@ subpackages:
         - subpackage-bar=${{vars.bar}}
       replaces:
         - james=${{package.name}}
+
+test:
+  environment:
+    contents:
+      packages:
+        - ${{package.name}}-config
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +97,10 @@ subpackages:
 	require.Equal(t, []string{
 		"dep~0.0.1",
 	}, cfg.Environment.Contents.Packages)
+
+	require.Equal(t, []string{
+		"replacement-provides-config",
+	}, cfg.Test.Environment.Contents.Packages)
 }
 
 func Test_rangeSubstitutions(t *testing.T) {

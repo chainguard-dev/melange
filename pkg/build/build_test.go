@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"chainguard.dev/melange/pkg/config"
 
@@ -304,5 +305,67 @@ package:
 	}
 	if d := cmp.Diff(expected, cfg, cmpopts.IgnoreUnexported(config.Configuration{})); d != "" {
 		t.Fatalf("actual didn't match expected: %s", d)
+	}
+}
+
+func TestSourceDateEpoch(t *testing.T) {
+	tests := []struct {
+		name            string
+		sourceDateEpoch string
+		defaultTime     time.Time
+		want            time.Time
+		wantErr         bool
+	}{
+		{
+			name:        "empty",
+			defaultTime: time.Time{},
+			want:        time.Time{},
+		},
+		{
+			name:            "strings",
+			sourceDateEpoch: "    ",
+			defaultTime:     time.Time{},
+			want:            time.Time{},
+		},
+		{
+			name:        "defaultTime",
+			defaultTime: time.Unix(1234567890, 0),
+			want:        time.Unix(1234567890, 0),
+		},
+		{
+			name:            "0",
+			sourceDateEpoch: "0",
+			defaultTime:     time.Unix(1234567890, 0),
+			want:            time.Unix(0, 0),
+		},
+		{
+			name:            "1234567890",
+			sourceDateEpoch: "1234567890",
+			defaultTime:     time.Unix(0, 0),
+			want:            time.Unix(1234567890, 0),
+		},
+		{
+			name:            "invalid date",
+			sourceDateEpoch: "tacocat",
+			defaultTime:     time.Unix(0, 0),
+			wantErr:         true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.sourceDateEpoch != "" {
+				t.Setenv("SOURCE_DATE_EPOCH", tt.sourceDateEpoch)
+			}
+			got, err := sourceDateEpoch(tt.defaultTime)
+			if err != nil {
+				if !tt.wantErr {
+					t.Fatalf("SourceDateEpoch() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				return
+			}
+			if !got.Equal(tt.want) {
+				t.Errorf("SourceDateEpoch() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,7 +48,6 @@ import (
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/linter"
 	"chainguard.dev/melange/pkg/sbom"
-	"chainguard.dev/melange/pkg/util"
 )
 
 var ErrSkipThisArch = errors.New("error: skip this arch")
@@ -179,7 +179,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	// SOURCE_DATE_EPOCH will always overwrite the build flag
 	if _, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
-		t, err := util.SourceDateEpoch(b.SourceDateEpoch)
+		t, err := sourceDateEpoch(b.SourceDateEpoch)
 		if err != nil {
 			return nil, err
 		}
@@ -835,26 +835,28 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		if err := generator.GenerateSBOM(ctx, &sbom.Spec{
-			Path:           filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
-			PackageName:    sp.Name,
-			PackageVersion: fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-			License:        b.Configuration.Package.LicenseExpression(),
-			Copyright:      b.Configuration.Package.FullCopyright(),
-			Namespace:      namespace,
-			Arch:           b.Arch.ToAPK(),
+			Path:            filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
+			PackageName:     sp.Name,
+			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
+			License:         b.Configuration.Package.LicenseExpression(),
+			Copyright:       b.Configuration.Package.FullCopyright(),
+			Namespace:       namespace,
+			Arch:            b.Arch.ToAPK(),
+			SourceDateEpoch: b.SourceDateEpoch,
 		}); err != nil {
 			return fmt.Errorf("writing SBOMs: %w", err)
 		}
 	}
 
 	if err := generator.GenerateSBOM(ctx, &sbom.Spec{
-		Path:           filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
-		PackageName:    b.Configuration.Package.Name,
-		PackageVersion: fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-		License:        b.Configuration.Package.LicenseExpression(),
-		Copyright:      b.Configuration.Package.FullCopyright(),
-		Namespace:      namespace,
-		Arch:           b.Arch.ToAPK(),
+		Path:            filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
+		PackageName:     b.Configuration.Package.Name,
+		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
+		License:         b.Configuration.Package.LicenseExpression(),
+		Copyright:       b.Configuration.Package.FullCopyright(),
+		Namespace:       namespace,
+		Arch:            b.Arch.ToAPK(),
+		SourceDateEpoch: b.SourceDateEpoch,
 	}); err != nil {
 		return fmt.Errorf("writing SBOMs: %w", err)
 	}
@@ -1140,4 +1142,28 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	}
 
 	return nil
+}
+
+// sourceDateEpoch parses the SOURCE_DATE_EPOCH environment variable.
+// If it is not set, it returns the defaultTime.
+// If it is set, it MUST be an ASCII representation of an integer.
+// If it is malformed, it returns an error.
+func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
+	v := strings.TrimSpace(os.Getenv("SOURCE_DATE_EPOCH"))
+	if v == "" {
+		clog.DefaultLogger().Warnf("SOURCE_DATE_EPOCH is specified but empty, setting it to %v", defaultTime)
+		return defaultTime, nil
+	}
+
+	// The value MUST be an ASCII representation of an integer
+	// with no fractional component, identical to the output
+	// format of date +%s.
+	sec, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		// If the value is malformed, the build process
+		// SHOULD exit with a non-zero error code.
+		return defaultTime, fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
+	}
+
+	return time.Unix(sec, 0).UTC(), nil
 }

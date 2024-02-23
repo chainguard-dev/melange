@@ -17,6 +17,7 @@ package sbom
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
@@ -27,13 +28,14 @@ func NewGenerator() *Generator {
 }
 
 type Spec struct {
-	Path           string
-	PackageName    string
-	PackageVersion string
-	License        string // Full SPDX license expression
-	Copyright      string
-	Namespace      string
-	Arch           string
+	Path            string
+	PackageName     string
+	PackageVersion  string
+	License         string // Full SPDX license expression
+	Copyright       string
+	Namespace       string
+	Arch            string
+	SourceDateEpoch time.Time
 }
 
 type Generator struct{}

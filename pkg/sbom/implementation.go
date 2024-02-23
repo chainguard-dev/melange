@@ -44,7 +44,6 @@ import (
 	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
-	"chainguard.dev/melange/pkg/util"
 )
 
 var validIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
@@ -339,12 +338,6 @@ func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
 func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Document, error) {
 	log := clog.FromContext(ctx)
 
-	// Build the SBOM time, but respect SOURCE_DATE_EPOCH
-	sbomTime, err := util.SourceDateEpoch(time.Now().UTC())
-	if err != nil {
-		return nil, err
-	}
-
 	h := sha1.New()
 	h.Write([]byte(fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion)))
 
@@ -353,7 +346,7 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		Name:    fmt.Sprintf("apk-%s-%s", spec.PackageName, spec.PackageVersion),
 		Version: "SPDX-2.3",
 		CreationInfo: spdx.CreationInfo{
-			Created: sbomTime.Format(time.RFC3339),
+			Created: spec.SourceDateEpoch.Format(time.RFC3339),
 			Creators: []string{
 				fmt.Sprintf("Tool: melange (%s)", version.GetVersionInfo().GitVersion),
 				"Organization: Chainguard, Inc",

@@ -1,4 +1,4 @@
- name: Test a python package import, with optional from clause
+name: Test a python package import, with optional from clause
 
 needs:
   packages:

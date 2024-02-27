@@ -446,8 +446,8 @@ github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9dec
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zealic/xignore v0.3.3 h1:EpLXUgZY/JEzFkTc+Y/VYypzXtNz+MSOMVCGW5Q4CKQ=
 github.com/zealic/xignore v0.3.3/go.mod h1:lhS8V7fuSOtJOKsvKI7WfsZE276/7AYEqokv3UiqEAU=
-gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b h1:VxuNSxH3voth15SPX4nHV8DSFLP/u3Od82juHw7+pLo=
-gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b/go.mod h1:F2JLVqRezwY1mhf7X/sPkQ/u+X550PHOL4OpCFyuOVU=
+gitlab.alpinelinux.org/alpine/go v0.9.0 h1:iOuE0Rcnv73eDvURbWBK+710AsTU7T9LQE/5A5NzK+k=
+gitlab.alpinelinux.org/alpine/go v0.9.0/go.mod h1:xtWRMSFi7DK43eMNirDFAJG2fEQCstIKI19rWjJB8Tg=
 go.lsp.dev/uri v0.3.0 h1:KcZJmh6nFIBeJzTugn5JTU6OOyG0lDOo3R9KwTxTYbo=
 go.lsp.dev/uri v0.3.0/go.mod h1:P5sbO1IQR+qySTWOCnhnK7phBx+W3zbLqSMDJNTw88I=
 go.mongodb.org/mongo-driver v1.14.0 h1:P98w8egYRjYe3XDjxhYJagTokP/H6HzlsnojRgZRd80=

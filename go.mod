@@ -13,7 +13,7 @@ require (
 	github.com/chainguard-dev/go-apk v0.0.0-20240226195449-7ea5a3036268
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0
-	github.com/chainguard-dev/yam v0.0.1
+	github.com/chainguard-dev/yam v0.0.2
 	github.com/charmbracelet/log v0.3.2-0.20240205220859-7a3834f9b367
 	github.com/docker/cli v25.0.3+incompatible
 	github.com/docker/docker v25.0.3+incompatible

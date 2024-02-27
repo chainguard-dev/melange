@@ -72,7 +72,7 @@ func checkEnvironment(spec *Spec) (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("checking if workind directory exists: %w", err)
+		return false, fmt.Errorf("checking if working directory exists: %w", err)
 	}
 
 	return true, nil

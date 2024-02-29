@@ -56,7 +56,7 @@ func (bw *bubblewrap) Name() string {
 
 // Run runs a Bubblewrap task given a Config and command string.
 func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) error {
-	execCmd := bw.cmd(ctx, cfg, args...)
+	execCmd := bw.cmd(ctx, cfg, false, args...)
 
 	log := clog.FromContext(ctx)
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
@@ -69,7 +69,7 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) erro
 	return execCmd.Run()
 }
 
-func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, args ...string) *exec.Cmd {
+func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...string) *exec.Cmd {
 	baseargs := []string{}
 
 	// always be sure to mount the / first!
@@ -84,8 +84,13 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, args ...string) *exe
 		"--dev", "/dev",
 		"--proc", "/proc",
 		"--chdir", runnerWorkdir,
-		"--clearenv",
-		"--new-session")
+		"--clearenv")
+
+	if !debug {
+		// This flag breaks job control, which we only care about for --interactive debugging.
+		// So we usually include it, but if we're about to debug, don't set it.
+		baseargs = append(baseargs, "--new-session")
+	}
 
 	if !cfg.Capabilities.Networking {
 		baseargs = append(baseargs, "--unshare-net")
@@ -109,7 +114,7 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, args ...string) *exe
 }
 
 func (bw *bubblewrap) Debug(ctx context.Context, cfg *Config, args ...string) error {
-	execCmd := bw.cmd(ctx, cfg, args...)
+	execCmd := bw.cmd(ctx, cfg, true, args...)
 
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr

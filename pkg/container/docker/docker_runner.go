@@ -199,6 +199,8 @@ func (dk *docker) waitForCommand(ctx context.Context, r io.Reader) error {
 	defer stderr.Close()
 
 	// Wrap this in a contextReader so we respond to cancel.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	ctxr := contextreader.New(ctx, r)
 
 	_, err := stdcopy.StdCopy(stdout, stderr, ctxr)

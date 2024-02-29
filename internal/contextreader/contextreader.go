@@ -49,7 +49,7 @@ func (c *contextReader) init() {
 				c.n, c.err = c.r.Read(p)
 				c.done <- struct{}{}
 			case <-c.ctx.Done():
-				break
+				return
 			}
 		}
 	}()

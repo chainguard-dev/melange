@@ -1,0 +1,57 @@
+name: Run pombump tool to update versions and properties in a Maven POM file
+needs:
+  packages:
+    - busybox
+    - pombump
+
+inputs:
+  patch-file:
+    description: |
+      Patches file to use for updating the POM file
+    default: ./patches.yaml
+  properties-file:
+    description: |
+      Properties file to be used for updating the POM file
+    default: ./properties.yaml
+  dependencies:
+    description: |
+      Dependencies to be used for updating the POM file via command line flag
+  properties:
+    description: |
+      Properties to update / add the POM file via command line flag
+  debug:
+    description: |
+      Enable debug mode, which will print out the diffs of the pom.xml file after running pombump
+    default: false
+
+
+pipeline:
+  - runs: |
+      PATCH_FILE_FLAG=""
+      PROPERTIES_FILE_FLAG=""
+      DEPENDENCIES_FLAG=""
+      PROPERTIES_FLAG=""
+
+      if [ -f"${{inputs.patch-file}}" ]; then
+        PATCH_FILE_FLAG="--patch-file ${{inputs.patch-file}}"
+      fi
+
+      if [ -f "${{inputs.properties-file}}" ]; then
+        PROPERTIES_FILE_FLAG="--properties-file ${{inputs.properties-file}}"
+      fi
+
+      if [ -n "${{inputs.dependencies}}" ]; then
+        DEPENDENCIES_FLAG="--dependencies ${{inputs.dependencies}}"
+      fi
+
+      if [ -n "${{inputs.properties}}" ]; then
+        PROPERTIES_FLAG="--properties ${{inputs.properties}}"
+      fi
+
+      pombump pom.xml $PATCH_FILE_FLAG $PROPERTIES_FILE_FLAG $DEPENDENCIES_FLAG $PROPERTIES_FLAG > pom.xml.new
+
+      if [ "${{inputs.debug}}" = "true" ]; then
+        # If there are any differences, it will return a non-zero exit code, so we use `|| true` to ignore that
+        diff -w pom.xml pom.xml.new || true
+      fi
+      mv pom.xml.new pom.xml

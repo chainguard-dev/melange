@@ -22,19 +22,21 @@ import (
 )
 
 const (
-	SubstitutionPackageName          = "${{package.name}}"
-	SubstitutionPackageVersion       = "${{package.version}}"
-	SubstitutionPackageFullVersion   = "${{package.full-version}}"
-	SubstitutionPackageEpoch         = "${{package.epoch}}"
-	SubstitutionPackageDescription   = "${{package.description}}"
-	SubstitutionTargetsDestdir       = "${{targets.destdir}}"
-	SubstitutionTargetsContextdir    = "${{targets.contextdir}}"
-	SubstitutionSubPkgDir            = "${{targets.subpkgdir}}"
-	SubstitutionHostTripletGnu       = "${{host.triplet.gnu}}"
-	SubstitutionHostTripletRust      = "${{host.triplet.rust}}"
-	SubstitutionCrossTripletGnuGlibc = "${{cross.triplet.gnu.glibc}}"
-	SubstitutionCrossTripletGnuMusl  = "${{cross.triplet.gnu.musl}}"
-	SubstitutionBuildArch            = "${{build.arch}}"
+	SubstitutionPackageName           = "${{package.name}}"
+	SubstitutionPackageVersion        = "${{package.version}}"
+	SubstitutionPackageFullVersion    = "${{package.full-version}}"
+	SubstitutionPackageEpoch          = "${{package.epoch}}"
+	SubstitutionPackageDescription    = "${{package.description}}"
+	SubstitutionTargetsDestdir        = "${{targets.destdir}}"
+	SubstitutionTargetsContextdir     = "${{targets.contextdir}}"
+	SubstitutionSubPkgDir             = "${{targets.subpkgdir}}"
+	SubstitutionHostTripletGnu        = "${{host.triplet.gnu}}"
+	SubstitutionHostTripletRust       = "${{host.triplet.rust}}"
+	SubstitutionCrossTripletGnuGlibc  = "${{cross.triplet.gnu.glibc}}"
+	SubstitutionCrossTripletGnuMusl   = "${{cross.triplet.gnu.musl}}"
+	SubstitutionCrossTripletRustGlibc = "${{cross.triplet.rust.glibc}}"
+	SubstitutionCrossTripletRustMusl  = "${{cross.triplet.rust.musl}}"
+	SubstitutionBuildArch             = "${{build.arch}}"
 )
 
 // Get variables from configuration and return them in a map

@@ -36,7 +36,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20230130182539-4dbf7e3e865e
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
 	gitlab.alpinelinux.org/alpine/go v0.8.1-0.20230928153721-5381bfaecf9b

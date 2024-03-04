@@ -136,7 +136,6 @@ func scanFiles(spec *Spec, dirPackage *pkg) error {
 
 			// Hash the file contents
 			for algo, fn := range map[string]func(string) (string, error){
-				"SHA1":   hash.SHA1ForFile,
 				"SHA256": hash.SHA256ForFile,
 				"SHA512": hash.SHA512ForFile,
 			} {
@@ -228,7 +227,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	for _, rel := range p.Relationships {
 		if f, ok := rel.Target.(*file); ok {
 			spdxPkg.HasFiles = append(spdxPkg.HasFiles, f.ID())
-			if h, ok := f.Checksums["SHA1"]; ok {
+			if h, ok := f.Checksums["SHA256"]; ok {
 				hashList = append(hashList, h)
 			} else {
 				excluded = append(excluded, f.ID())

@@ -8,7 +8,7 @@ inputs:
   patch-file:
     description: |
       Patches file to use for updating the POM file
-    default: ./patches.yaml
+    default: ./pombump.yaml
   properties-file:
     description: |
       Properties file to be used for updating the POM file

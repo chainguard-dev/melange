@@ -23,7 +23,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -102,11 +101,6 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...
 
 	args = append(baseargs, args...)
 	execCmd := exec.CommandContext(ctx, "bwrap", args...)
-
-	// If you fork a child process in bubblewrap, Run will never return.
-	// WaitDelay gives children 1 second to behave before orphaning them.
-	// TODO: Remove bubblewrap runner or get someone at redhat to merge something.
-	execCmd.WaitDelay = 1 * time.Second
 
 	clog.FromContext(ctx).Infof("executing: %s", strings.Join(execCmd.Args, " "))
 

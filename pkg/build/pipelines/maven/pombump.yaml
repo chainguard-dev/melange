@@ -8,11 +8,11 @@ inputs:
   patch-file:
     description: |
       Patches file to use for updating the POM file
-    default: ./pombump.yaml
+    default: ./pombump-deps.yaml
   properties-file:
     description: |
       Properties file to be used for updating the POM file
-    default: ./properties.yaml
+    default: ./pombump-properties.yaml
   dependencies:
     description: |
       Dependencies to be used for updating the POM file via command line flag

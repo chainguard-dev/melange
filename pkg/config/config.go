@@ -413,7 +413,7 @@ type Test struct {
 	// Environment.Contents.Packages automatically get
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
-	Environment apko_types.ImageConfiguration
+	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
@@ -861,7 +861,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		defaultEnvVarGOMODCACHE = "/var/cache/melange/gomodcache"
 	)
 
-	var setIfEmpty = func(key, value string) {
+	setIfEmpty := func(key, value string) {
 		if cfg.Environment.Environment[key] == "" {
 			cfg.Environment.Environment[key] = value
 		}

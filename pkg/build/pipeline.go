@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,6 +39,8 @@ import (
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 )
+
+var majorMinorMicroRegex = regexp.MustCompile(`^(?P<major>[0-9]+)[.](?P<minor>[0-9]+)[.]{0,1}(?P<micro>[0-9]+){0,1}.*`)
 
 type PipelineContext struct {
 	Pipeline        *config.Pipeline
@@ -136,6 +139,10 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
 		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
 		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
+	}
+
+	if majorMinorMicroRegex.MatchString(pb.Package.Version) {
+		nw[config.SubstitutionPackageMajorMinor] = majorMinorMicroRegex.ReplaceAllString(pb.Package.Version, "${major}.${minor}")
 	}
 
 	// These are not really meaningful for Test, so only use them for build.

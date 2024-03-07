@@ -144,14 +144,16 @@ pipeline:
 
 Melange provides the following default substitutions which can be referenced in the build file pipeline:
 
-| **Substitution**            | **Description**                                   |
-|-----------------------------|---------------------------------------------------|
-| `${{package.name}}`         | Package name                                      |
-| `${{package.version}}`      | Package version                                   |
-| `${{package.epoch}}`        | Package epoch                                     |
-| `${{package.full-version}}` | `${{package.version}}-r${{package-epoch}}`        |
-| `${{targets.destdir}}`      | Directory where targets will be stored            |
-| `${{targets.subpkgdir}}`    | Directory where subpackage targets will be stored |
+| **Substitution**            | **Description**                                                          |
+|-----------------------------|--------------------------------------------------------------------------|
+| `${{package.name}}`         | Package name                                                             |
+| `${{package.version}}`      | Package version                                                          |
+| `${{package.epoch}}`        | Package epoch                                                            |
+| `${{package.full-version}}` | `${{package.version}}-r${{package-epoch}}`                               |
+| `${{package.description}}`  | Package description                                                      |
+| `${{package.contextdir}}`   | Directory where targets will be stored for main packages and subpackages |
+| `${{targets.destdir}}`      | Directory where targets will be stored for main                          |
+| `${{targets.subpkgdir}}`    | Directory where targets will be stored for subpackages                   |
 
 An example build file pipeline with substitutions:
 

@@ -73,7 +73,7 @@ inputs:
   amd64:
     description: |
       GOAMD64 microarchitecture level to use
-    default: "v1"
+    default: "v2"
 
   arm64:
     description: |

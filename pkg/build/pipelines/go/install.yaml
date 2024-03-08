@@ -47,6 +47,16 @@ inputs:
       when building the binary.
     default: ""
 
+  amd64:
+    description: |
+      GOAMD64 microarchitecture level to use
+    default: "v1"
+
+  arm64:
+    description: |
+      GOARM64 microarchitecture level to use
+    default: "v8.0"
+
 pipeline:
   - runs: |
       TAGS=""
@@ -70,7 +80,7 @@ pipeline:
 
 
       # Run go install
-      GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.package}}${VERSION}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" "GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.package}}${VERSION}
       mkdir -p ${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}
 
       # Move all resulting files to the target dir

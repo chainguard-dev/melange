@@ -70,6 +70,16 @@ inputs:
       when building the binary.
     default: ""
 
+  amd64:
+    description: |
+      GOAMD64 microarchitecture level to use
+    default: "v1"
+
+  arm64:
+    description: |
+      GOARM64 microarchitecture level to use
+    default: "v8.0"
+
 pipeline:
   - runs: |
       TAGS=""
@@ -104,4 +114,4 @@ pipeline:
       [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
       [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
 
-      GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}

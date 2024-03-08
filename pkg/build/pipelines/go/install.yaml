@@ -35,7 +35,12 @@ inputs:
 
   ldflags:
     description:
-      List of [pattern=]arg to pass to the go compiler with -ldflags
+      List of [pattern=]arg to append to the go compiler with -ldflags
+
+  strip:
+    description:
+      Set of strip ldflags passed to the go compiler
+    default: "-s -w"
 
   tags:
     description: |
@@ -60,7 +65,7 @@ inputs:
 pipeline:
   - runs: |
       TAGS=""
-      LDFLAGS=""
+      LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
       VERSION=""
 
       # Installed binaries will be stored in a tmp dir
@@ -70,14 +75,9 @@ pipeline:
         TAGS="${{inputs.tags}}"
       fi
 
-      if [ ! "${{inputs.ldflags}}" == "" ]; then
-        LDFLAGS="${{inputs.ldflags}}"
-      fi
-
       if [ ! "${{inputs.version}}" == "" ]; then
         VERSION="@${{inputs.version}}"
       fi
-
 
       # Run go install
       GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" "GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" ${{inputs.package}}${VERSION}

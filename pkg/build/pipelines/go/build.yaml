@@ -53,7 +53,12 @@ inputs:
 
   ldflags:
     description:
-      List of [pattern=]arg to pass to the go compiler with -ldflags
+      List of [pattern=]arg to append to the go compiler with -ldflags
+
+  strip:
+    description:
+      Set of strip ldflags passed to the go compiler
+    default: "-s -w"
 
   install-dir:
     description: |
@@ -83,14 +88,10 @@ inputs:
 pipeline:
   - runs: |
       TAGS=""
-      LDFLAGS=""
+      LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
 
       if [ ! "${{inputs.tags}}" == "" ]; then
         TAGS="${{inputs.tags}}"
-      fi
-
-      if [ ! "${{inputs.ldflags}}" == "" ]; then
-        LDFLAGS="${{inputs.ldflags}}"
       fi
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"

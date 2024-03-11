@@ -462,7 +462,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 	return nil
 }
 
-var pythonNamesRegexp = regexp.MustCompile(`^python-3.[0-9]*$`)
+var pythonNamesRegexp = regexp.MustCompile(`^python-3\.\d+$`)
 
 // generatePythonDeps generates a python3~$VERSION dependency for packages which ship
 // Python modules.

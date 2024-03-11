@@ -462,6 +462,8 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 	return nil
 }
 
+var pythonNamesRegexp = regexp.MustCompile(`^python-3.[0-9]*$`)
+
 // generatePythonDeps generates a python3~$VERSION dependency for packages which ship
 // Python modules.
 func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
@@ -471,6 +473,12 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	fsys, err := hdl.Filesystem()
 	if err != nil {
 		return err
+	}
+
+	// Skip streamed python-3.11 generating dependency on
+	// python-3.11-default, thus allowing co-install
+	if pythonNamesRegexp.MatchString(hdl.PackageName()) {
+		return nil
 	}
 
 	var pythonModuleVer string

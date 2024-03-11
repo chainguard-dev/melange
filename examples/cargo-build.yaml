@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2024 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+#
+# This is a sample configuration file to demonstrate how to build a software
+# project using melange's built-in cargo/build pipeline.
+#
+# For more information about melange's built-in rust support check out:
+# https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-CARGO.md
+package:
+  name: eza
+  version: 0.18.6
+  epoch: 1
+  description: "A modern, maintained replacement for ls"
+  copyright:
+    - license: MIT
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - libgit2-dev
+      - zlib-dev
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/eza-community/eza
+      tag: v${{package.version}}
+      expected-commit: 1918eb866840486f3ad00a2d89d45f051072b2a9
+
+  - uses: cargo/build
+    with:
+      output: ${{package.name}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: eza-community/eza
+    strip-prefix: v
+    tag-filter-prefix: v
+
+test:
+  pipeline:
+    - runs: |
+        eza
+        eza --version

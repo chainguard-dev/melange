@@ -103,16 +103,6 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 	return newPackage, nil
 }
 
-func computeVerificationCode(hashList []string) string {
-	// Sort the strings:
-	sort.Strings(hashList)
-	h := sha1.New()
-	if _, err := h.Write([]byte(strings.Join(hashList, ""))); err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
 	spdxPkg := spdx.Package{

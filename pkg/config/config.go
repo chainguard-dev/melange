@@ -459,6 +459,8 @@ type Update struct {
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
+	// Prefix filter to apply when searching releases
+	FilterPrefix string `json:"filter-prefix,omitempty" yaml:"filter-prefix,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/

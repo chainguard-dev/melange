@@ -533,9 +533,8 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 
 // pipelineStepWorkDir returns the workdir for the current pipeline step.
 func (pctx *PipelineContext) pipelineStepWorkDir() (string, error) {
-	workdir := "/home/build"
 	if pctx.Pipeline.WorkDir == "" {
-		return workdir, nil
+		return "/home/build", nil
 	}
 
 	return util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)

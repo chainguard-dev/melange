@@ -44,7 +44,12 @@ inputs:
 
   tags:
     description: |
-      A comma-separated list of build tags to pass to the go compiler
+      A comma-separated list of build tags to append to the go compiler
+
+  toolchaintags:
+    description: |
+      A comma-separated list of default toolchain go build tags
+    default: "netgo,osusergo"
 
   experiments:
     description: |
@@ -64,23 +69,18 @@ inputs:
 
 pipeline:
   - runs: |
-      TAGS=""
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
       VERSION=""
 
       # Installed binaries will be stored in a tmp dir
       export GOBIN=$(mktemp -d)
 
-      if [ ! "${{inputs.tags}}" == "" ]; then
-        TAGS="${{inputs.tags}}"
-      fi
-
       if [ ! "${{inputs.version}}" == "" ]; then
         VERSION="@${{inputs.version}}"
       fi
 
       # Run go install
-      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" "GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.package}}${VERSION}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" "GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.package}}${VERSION}
       mkdir -p ${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}
 
       # Move all resulting files to the target dir

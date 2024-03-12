@@ -21,7 +21,12 @@ inputs:
 
   tags:
     description: |
-      A comma-separated list of build tags to pass to the go compiler
+      A comma-separated list of build tags to append to the go compiler
+
+  toolchaintags:
+    description: |
+      A comma-separated list of default toolchain go build tags
+    default: "netgo,osusergo"
 
   output:
     description: |
@@ -87,12 +92,7 @@ inputs:
 
 pipeline:
   - runs: |
-      TAGS=""
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
-
-      if [ ! "${{inputs.tags}}" == "" ]; then
-        TAGS="${{inputs.tags}}"
-      fi
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 
@@ -115,4 +115,4 @@ pipeline:
       [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
       [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
 
-      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${TAGS}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.packages}}

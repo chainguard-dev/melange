@@ -80,7 +80,7 @@ pipeline:
       fi
 
       # Run go install
-      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" "GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.package}}${VERSION}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go install ${DEST_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath ${{inputs.package}}${VERSION}
       mkdir -p ${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}
 
       # Move all resulting files to the target dir

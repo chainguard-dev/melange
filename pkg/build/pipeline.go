@@ -344,12 +344,9 @@ func (pctx *PipelineContext) evalRun(ctx context.Context, pb *PipelineBuild) err
 
 	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-	workdir := "/home/build"
-	if pctx.Pipeline.WorkDir != "" {
-		workdir, err = util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
-		if err != nil {
-			return err
-		}
+	workdir, err := pctx.pipelineStepWorkDir()
+	if err != nil {
+		return err
 	}
 
 	fragment, err := util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.Runs)
@@ -386,8 +383,13 @@ func (pctx *PipelineContext) maybeDebug(ctx context.Context, pb *PipelineBuild, 
 		return runErr
 	}
 
+	workdir, err := pctx.pipelineStepWorkDir()
+	if err != nil {
+		return err
+	}
+
 	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
-	log.Infof("Execing into pod %q to debug interactively.", pctx.WorkspaceConfig.PodID)
+	log.Info(fmt.Sprintf("Execing into pod %q to debug interactively.", pctx.WorkspaceConfig.PodID), "workdir", workdir)
 	log.Infof("Type 'exit 0' to continue the next pipeline step or 'exit 1' to abort.")
 
 	// If the context has already been cancelled, return before we mess with it.
@@ -398,7 +400,7 @@ func (pctx *PipelineContext) maybeDebug(ctx context.Context, pb *PipelineBuild, 
 	// Don't cancel the context if we hit ctrl+C while debugging.
 	signal.Ignore(os.Interrupt)
 
-	if dbgErr := dbg.Debug(ctx, pctx.WorkspaceConfig, "/bin/sh"); dbgErr != nil {
+	if dbgErr := dbg.Debug(ctx, pctx.WorkspaceConfig, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 
@@ -478,7 +480,6 @@ func (pctx *PipelineContext) Run(ctx context.Context, pb *PipelineBuild) (bool, 
 		}
 
 		ran, err := spctx.Run(ctx, pb)
-
 		if err != nil {
 			return false, err
 		}
@@ -528,6 +529,15 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 	}
 
 	return nil
+}
+
+// pipelineStepWorkDir returns the workdir for the current pipeline step.
+func (pctx *PipelineContext) pipelineStepWorkDir() (string, error) {
+	if pctx.Pipeline.WorkDir == "" {
+		return "/home/build", nil
+	}
+
+	return util.MutateStringFromMap(pctx.Pipeline.With, pctx.Pipeline.WorkDir)
 }
 
 //go:embed pipelines/*

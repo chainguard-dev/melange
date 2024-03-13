@@ -94,6 +94,13 @@ pipeline:
   - runs: |
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
 
+      # Make fips binaries have symbols table by default
+      case "${{inputs.go-package}}" in
+      *-fips*)
+        LDFLAGS="$(echo $LDFLAGS | sed 's/-s //g')"
+        ;;
+      esac
+
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 
       # Take advantage of melange's buid cache for downloaded modules

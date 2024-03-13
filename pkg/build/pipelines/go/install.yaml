@@ -72,6 +72,13 @@ pipeline:
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
       VERSION=""
 
+      # Make fips binaries have symbols table by default
+      case "${{inputs.go-package}}" in
+      *-fips*)
+        LDFLAGS="$(echo $LDFLAGS | sed 's/-s //g')"
+        ;;
+      esac
+
       # Installed binaries will be stored in a tmp dir
       export GOBIN=$(mktemp -d)
 

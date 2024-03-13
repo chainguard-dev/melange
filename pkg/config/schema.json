@@ -879,6 +879,10 @@
           },
           "type": "array",
           "description": "The configuration block for transforming the `package.version` into an APK version"
+        },
+        "filter-prefix": {
+          "type": "string",
+          "description": "Prefix filter to apply when searching releases"
         }
       },
       "additionalProperties": false,

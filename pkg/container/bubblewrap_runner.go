@@ -102,7 +102,7 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...
 	args = append(baseargs, args...)
 	execCmd := exec.CommandContext(ctx, "bwrap", args...)
 
-	clog.FromContext(ctx).Infof("executing: %s", strings.Join(execCmd.Args, " "))
+	clog.FromContext(ctx).Debugf("executing: %s", strings.Join(execCmd.Args, " "))
 
 	return execCmd
 }

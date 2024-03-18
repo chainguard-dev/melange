@@ -30,7 +30,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.7
 	github.com/klauspost/pgzip v1.2.6
-	github.com/kubescape/go-git-url v0.0.28
+	github.com/kubescape/go-git-url v0.0.30
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/package-url/packageurl-go v0.1.2
 	github.com/pkg/errors v0.9.1

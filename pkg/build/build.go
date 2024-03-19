@@ -1030,6 +1030,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		},
 		WorkspaceDir: b.WorkspaceDir,
 		Timeout:      b.Configuration.Package.Timeout,
+		RunAs:        b.Configuration.Environment.Accounts.RunAs,
 	}
 
 	if b.Configuration.Package.Resources != nil {

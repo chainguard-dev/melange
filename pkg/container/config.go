@@ -50,6 +50,7 @@ type Config struct {
 	ImgRef       string
 	PodID        string
 	Arch         apko_types.Architecture
+	RunAs        string
 	WorkspaceDir string
 	CPU, Memory  string
 	Timeout      time.Duration

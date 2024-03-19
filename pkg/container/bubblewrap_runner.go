@@ -85,6 +85,11 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...
 		"--chdir", runnerWorkdir,
 		"--clearenv")
 
+	if cfg.RunAs != "" {
+		baseargs = append(baseargs, "--unshare-user")
+		baseargs = append(baseargs, "--uid", cfg.RunAs)
+	}
+
 	if !debug {
 		// This flag breaks job control, which we only care about for --interactive debugging.
 		// So we usually include it, but if we're about to debug, don't set it.

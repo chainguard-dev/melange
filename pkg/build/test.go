@@ -419,7 +419,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		}
 	}
 
-	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Test.Environment.Environment)
+	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Test.Environment)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
@@ -485,7 +485,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			if err := t.OverlayBinSh(sp.Name); err != nil {
 				return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 			}
-			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment.Environment)
+			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
 			if err != nil {
 				return fmt.Errorf("unable to build workspace config: %w", err)
 			}
@@ -547,7 +547,7 @@ func (t *Test) Summarize(ctx context.Context) {
 	t.SummarizePaths(ctx)
 }
 
-func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string, env map[string]string) (*container.Config, error) {
+func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string, imgcfg apko_types.ImageConfiguration) (*container.Config, error) {
 	log := clog.FromContext(ctx)
 	mounts := []container.BindMount{
 		{Source: t.WorkspaceDir, Destination: container.DefaultWorkspaceDir},
@@ -577,9 +577,10 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Mounts:       mounts,
 		Capabilities: caps,
 		Environment:  map[string]string{},
+		RunAs:        imgcfg.Accounts.RunAs,
 	}
 
-	for k, v := range env {
+	for k, v := range imgcfg.Environment {
 		cfg.Environment[k] = v
 	}
 

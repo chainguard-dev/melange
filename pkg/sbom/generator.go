@@ -58,17 +58,11 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 
 	sbomDoc := &bom{
 		Packages: []pkg{},
-		Files:    []file{},
 	}
 
 	pkg, err := generateAPKPackage(spec)
 	if err != nil {
 		return fmt.Errorf("generating main package: %w", err)
-	}
-
-	// Add file inventory to packages
-	if err := scanFiles(spec, &pkg); err != nil {
-		return fmt.Errorf("reading SBOM file inventory: %w", err)
 	}
 
 	sbomDoc.Packages = append(sbomDoc.Packages, pkg)

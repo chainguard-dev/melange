@@ -84,6 +84,11 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 
 	mounts := []mount.Mount{}
 	for _, bind := range cfg.Mounts {
+		// We skip mounting in some files that we don't need in this mode
+		if bind.Source == mcontainer.DefaultResolvConfPath {
+			continue
+		}
+
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
 			Source: bind.Source,

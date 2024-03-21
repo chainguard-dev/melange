@@ -35,8 +35,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const DaggerName = "dagger"
-const imageTarName = "image.tar"
+const (
+	DaggerName   = "dagger"
+	imageTarName = "image.tar"
+)
 
 type daggerRunner struct {
 	client    *dagger.Client
@@ -126,7 +128,7 @@ func (d *daggerRunner) StartPod(ctx context.Context, cfg *container.Config) erro
 	for _, mnt := range cfg.Mounts {
 
 		// We skip mounting in some files that we don't need in this mode
-		if mnt.Source == "/etc/resolv.conf" {
+		if mnt.Source == container.DefaultResolvConfPath {
 			continue
 		}
 

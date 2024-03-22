@@ -462,7 +462,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 	return nil
 }
 
-// generatePythonDeps generates a python3~$VERSION dependency for packages which ship
+// generatePythonDeps generates a python-3.X-base dependency for packages which ship
 // Python modules.
 func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -546,6 +546,88 @@ func sonameLibver(soname string) string {
 	return libver
 }
 
+func getShbang(fp fs.File) (string, error) {
+	// python3 and sh are symlinks and generateCmdProviders currently only considers
+	// regular files. Since nothing will fulfill such a depend, do not generate one.
+	ignores := map[string]bool{"python3": true, "sh": true}
+
+	buf := make([]byte, 80)
+	blen, err := io.ReadFull(fp, buf)
+	if err == io.EOF {
+		return "", nil
+	} else if err == io.ErrUnexpectedEOF {
+		if blen < 2 {
+			return "", nil
+		}
+	} else if err != nil {
+		return "", err
+	}
+
+	if buf[0] != '#' && buf[1] != '!' {
+		return "", nil
+	}
+
+	toks := strings.Fields(string(buf[2 : blen-2]))
+	bin := toks[0]
+
+	// if #! is '/usr/bin/env foo', then use next arg as the dep
+	if bin == "/usr/bin/env" {
+		if len(toks) == 1 {
+			return "", fmt.Errorf("a shbang of only '/usr/bin/env'")
+		}
+		bin = toks[1]
+	}
+
+	if isIgnored := ignores[filepath.Base(bin)]; isIgnored {
+		return "", nil
+	}
+
+	return bin, nil
+}
+
+func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for shbang deps...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
+	cmds := map[string]string{}
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasPrefix(path, "usr/bin/") && !strings.HasPrefix(path, "bin/") {
+			return nil
+		}
+
+		if fp, err := fsys.Open(path); err == nil {
+			shbang, err := getShbang(fp)
+			if err != nil {
+				log.Warnf("Error reading shbang from %s: %v", path, err)
+			} else if shbang != "" {
+				cmds[filepath.Base(shbang)] = path
+			}
+			fp.Close()
+		} else {
+			log.Infof("Failed to open %s: %v", path, err)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	for base, path := range cmds {
+		log.Infof("Added shbang dep cmd:%s for %s", base, path)
+		generated.Runtime = append(generated.Runtime, "cmd:"+base)
+	}
+
+	return nil
+}
+
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
@@ -557,6 +639,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generateCmdProviders,
 		generatePkgConfigDeps,
 		generatePythonDeps,
+		generateShbangDeps,
 	}
 
 	for _, gen := range generators {

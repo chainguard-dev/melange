@@ -216,3 +216,26 @@ func TestUnstableSonames(t *testing.T) {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}
 }
+
+func TestShbangDeps(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+	th := handleFromApk(ctx, t, "shbang-test-1-r0.apk", "shbang-test.yaml")
+	defer th.exp.Close()
+
+	want := config.Dependencies{
+		Runtime: []string{
+			"cmd:bash",
+			"cmd:python3.12",
+		},
+		Provides: nil,
+	}
+
+	got := config.Dependencies{}
+	if err := generateShbangDeps(ctx, th, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}

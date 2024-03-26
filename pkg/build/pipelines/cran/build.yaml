@@ -29,7 +29,7 @@ pipeline:
       mkdir -p ${{targets.contextdir}}/usr/lib/R/library
 
       # Build R package from source
-      Rscript -e 'install.packages("${{inputs.path}}/${{inputs.package}}_${{inputs.version}}.tar.gz", repos = NULL, type = "source")'
+      Rscript -e 'install.packages("${{inputs.path}}", repos = NULL, type = "source")'
 
       # Install package
       mv /usr/lib/R/library/${{inputs.package}} ${{targets.contextdir}}/usr/lib/R/library/

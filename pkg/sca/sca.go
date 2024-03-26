@@ -520,10 +520,8 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 		}
 	}
 
-	// We use the python3 name here instead of the python-3 name so that we can be
-	// compatible with Alpine and Adelie.  Only Wolfi provides the python-3 name.
-	log.Infof("  found python module, generating python3~%s dependency", pythonModuleVer)
-	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python3~%s", pythonModuleVer))
+	log.Infof("  found python module, generating python-%s-base dependency", pythonModuleVer)
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python-%s-base", pythonModuleVer))
 
 	return nil
 }

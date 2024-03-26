@@ -14,13 +14,13 @@ inputs:
 
   path:
     description: |
-      Path to R package source tarball
+      Path to R package source or source tarball
     default: "."
 
   version:
     description: |
       The R package version
-    default: "."
+    required: true
 
 pipeline:
   - runs: |

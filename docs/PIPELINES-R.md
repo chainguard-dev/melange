@@ -1,13 +1,13 @@
-# Built-in CRAN pipeline
+# Built-in R pipeline
 
-Melange includes a built-in pipeline to compile R packages from CRAN.
+Melange includes a built-in pipeline to compile R packages.
 
-To get started quickly, checkout the `cran/build` pipeline:
-[cran-build.yaml](https://github.com/chainguard-dev/melange/blob/main/examples/cran-build.yaml)
+To get started quickly, checkout the `R/build` pipeline:
+[cran-build.yaml](https://github.com/chainguard-dev/melange/blob/main/examples/R-build.yaml)
 
-## Building R packages with `cran/build`
+## Building R packages with `R/build`
 
-The `cran/build` pipeline is a declarative interface that leverages the R package
+The `R/build` pipeline is a declarative interface that leverages the R package
 manager. This pipeline builds an R package from source and installs it to the
 standard R library directory.
 
@@ -43,7 +43,7 @@ pipeline:
       tag: ${{vars.mangled-package-version}}
       expected-commit: 311a8569a534460ef04473ffa442dc7b72ba9a41
 
-  - uses: cran/build
+  - uses: R/build
     with:
       package: proxy
       version: ${{vars.mangled-package-version}}
@@ -61,12 +61,12 @@ update:
 ```
 
 (:bulb: Experiment with this code, 
-[download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/cran-build.yaml))
+[download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/R-build.yaml))
 
 ## Build Parameters
 
-The `cran/build` pipeline supports passing a few parameters the R package manager
-by setting them in the melange configuration file. As of this writing, you can define
+The `R/build` pipeline supports passing a few parameters the R package manager by
+setting them in the melange configuration file. As of this writing, you can define
 the following values:
 
 ```yaml
@@ -87,7 +87,7 @@ the following values:
 ```
 
 For the most up to date supported features check the
-[build](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/cran/build.yaml)
+[build](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/R/build.yaml)
 pipeline.
 
 Feel free to request more features in the built-in pipelines by

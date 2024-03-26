@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # This is a sample configuration file to demonstrate how to build a software
-# project using melange's built-in cargo/build pipeline.
+# project using melange's built-in R/build pipeline.
 #
 # For more information about melange's built-in rust support check out:
-# https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-CARGO.md
+# https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-R.md
 package:
   name: cran-proxy
   version: 0.4_27
@@ -34,7 +34,7 @@ pipeline:
       tag: ${{vars.mangled-package-version}}
       expected-commit: 311a8569a534460ef04473ffa442dc7b72ba9a41
 
-  - uses: cran/build
+  - uses: R/build
     with:
       package: proxy
       version: ${{vars.mangled-package-version}}

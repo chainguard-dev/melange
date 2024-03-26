@@ -1,0 +1,60 @@
+name: Fetch and extract R package source tarball into workspace
+
+needs:
+  packages:
+    - R
+    - R-dev
+    - wget
+
+inputs:
+  package:
+    description: |
+      The R package to fetch.
+    required: true
+
+  version:
+    description: |
+      The version of the R package to fetch.
+    required: true
+
+  timeout:
+    description: |
+      The timeout (in seconds) to use for connecting and reading.
+      The fetch will fail if the timeout is hit.
+    default: 5
+
+  dns-timeout:
+    description: |
+      The timeout (in seconds) to use for DNS lookups.
+      The fetch will fail if the timeout is hit.
+    default: 20
+
+  retry-limit:
+    description: |
+      The number of times to retry fetching before failing.
+    default: 5
+
+pipeline:
+  - runs: |
+      bn=$(basename ${{inputs.package}}_${{inputs.version}}.tar.gz)
+
+      if [ ! -f $bn ]; then
+        if ! wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue "https://cran.r-project.org/src/contrib/${bn}"; then
+          printf "Could not find package, trying CRAN archive..."
+          # Fallback to CRAN archive
+          if ! wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue "https://cran.r-project.org/src/contrib/Archive/${{inputs.package}}/${bn}"; then
+            printf "Failed to retrieve package from CRAN archive"
+            exit 1
+          fi
+        fi
+      fi
+
+      # Use default R library path
+      mkdir -p /usr/lib/R/library
+      mkdir -p ${{targets.contextdir}}/usr/lib/R/library
+
+      # Build R package from source
+      Rscript -e 'install.packages("'$bn'", repos = NULL, type = "source")'
+
+      # Install package
+      mv /usr/lib/R/library/${{inputs.package}} ${{targets.contextdir}}/usr/lib/R/library/

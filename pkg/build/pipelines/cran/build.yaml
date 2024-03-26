@@ -1,0 +1,35 @@
+name: Run a build using the R package manager
+
+needs:
+  packages:
+    - R
+    - R-dev
+    - busybox
+
+inputs:
+  package:
+    description: |
+      The R package to install
+    required: true
+
+  path:
+    description: |
+      Path to R package source tarball
+    default: "."
+
+  version:
+    description: |
+      The R package version
+    default: "."
+
+pipeline:
+  - runs: |
+      # Use default R library path
+      mkdir -p /usr/lib/R/library
+      mkdir -p ${{targets.contextdir}}/usr/lib/R/library
+
+      # Build R package from source
+      Rscript -e 'install.packages("${{inputs.path}}/${{inputs.package}}_${{inputs.version}}.tar.gz", repos = NULL, type = "source")'
+
+      # Install package
+      mv /usr/lib/R/library/${{inputs.package}} ${{targets.contextdir}}/usr/lib/R/library/

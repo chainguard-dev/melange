@@ -10,7 +10,7 @@ require (
 	dagger.io/dagger v0.10.2
 	dario.cat/mergo v1.0.0
 	github.com/chainguard-dev/clog v1.3.1
-	github.com/chainguard-dev/go-apk v0.0.0-20240308000330-c3465ca40e90
+	github.com/chainguard-dev/go-apk v0.0.0-20240325215049-99e4bcb34a7d
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce
 	github.com/chainguard-dev/kontext v0.1.0
 	github.com/chainguard-dev/yam v0.0.2

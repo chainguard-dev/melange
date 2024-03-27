@@ -103,10 +103,56 @@ you can define the following values:
       space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
 ```
 
+## Updating dependencies with `go/bump`
+
+The `go/bump` pipeline is a declarative interface to the `GoBump` 
+[package](https://github.com/chainguard-dev/gobump). GoBump is a simple 
+command-line tool written in Go that allows you to update the versions 
+of your Go dependencies.
+
+Here's a sample melange configuration file cloning and running the same
+sample project as above:
+
+```yaml
+package:
+  name: hello
+  version: 0.0.1
+  epoch: 0
+  description: "A project that will greet the world infinitely"
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/puerco/hello.git
+      expected-commit: a73c4feb284dc6ed1e5758740f717f99dcd4c9d7
+      tag: v${{package.version}}
+
+  - uses: go/bump
+    with:
+      deps: github.com/sirupsen/logrus@1.9.3
+
+  - uses: go/build
+    with:
+      tags: enterprise
+      packages: .
+      output: hello
+```
+
+(:bulb: Experiment with this code, 
+[download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/go-bump.yaml))
+
 For the most up to date supported features check the
-[build](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/build.yaml)
+[build](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/build.yaml),
+[install](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/install.yaml),
 and
-[install](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/install.yaml)
+[bump](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/bump.yaml),
 pipeline definitions. Feel free to request more features in
 the built-in pipelines by
 [filing a new issue](https://github.com/chainguard-dev/melange/issues/new) in 

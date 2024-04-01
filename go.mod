@@ -7,7 +7,7 @@ toolchain go1.21.5
 require (
 	chainguard.dev/apko v0.14.1-0.20240308000904-c510767a86aa
 	cloud.google.com/go/storage v1.39.1
-	dagger.io/dagger v0.10.2
+	dagger.io/dagger v0.10.3
 	dario.cat/mergo v1.0.0
 	github.com/chainguard-dev/clog v1.3.1
 	github.com/chainguard-dev/go-apk v0.0.0-20240308000330-c3465ca40e90

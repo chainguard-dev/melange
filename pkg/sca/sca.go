@@ -17,6 +17,7 @@ package sca
 import (
 	"bytes"
 	"context"
+	"debug/buildinfo"
 	"debug/elf"
 	"fmt"
 	"io"
@@ -352,6 +353,27 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
 				}
 			}
+		}
+
+		// check if it is a go binary
+		buildinfo, err := buildinfo.Read(seekableFile)
+		if err != nil {
+			return nil
+		}
+		var cgo, boringcrypto bool
+		for _, setting := range buildinfo.Settings {
+			if setting.Key == "CGO_ENABLED" && setting.Value == "1" {
+				cgo = true
+			}
+			if setting.Key == "GOEXPERIMENT" && setting.Value == "boringcrypto" {
+				boringcrypto = true
+			}
+		}
+		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
+		if !hdl.Options().NoDepends && cgo && boringcrypto {
+			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
+			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
+			generated.Runtime = append(generated.Runtime, "so:libssl.so.3")
 		}
 
 		return nil

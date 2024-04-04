@@ -689,6 +689,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	root := yaml.Node{}
 

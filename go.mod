@@ -6,7 +6,7 @@ toolchain go1.21.5
 
 require (
 	chainguard.dev/apko v0.14.1-0.20240308000904-c510767a86aa
-	cloud.google.com/go/storage v1.39.1
+	cloud.google.com/go/storage v1.40.0
 	dagger.io/dagger v0.10.2
 	dario.cat/mergo v1.0.0
 	github.com/chainguard-dev/clog v1.3.1
@@ -64,7 +64,7 @@ require (
 	cloud.google.com/go v0.112.1 // indirect
 	cloud.google.com/go/compute v1.24.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/iam v1.1.6 // indirect
+	cloud.google.com/go/iam v1.1.7 // indirect
 	github.com/99designs/gqlgen v0.17.41 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Khan/genqlient v0.6.0 // indirect
@@ -113,7 +113,7 @@ require (
 	github.com/go-openapi/validate v0.23.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -189,7 +189,7 @@ require (
 	golang.org/x/tools v0.19.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240314234333-6e1732d8331c // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.62.1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect

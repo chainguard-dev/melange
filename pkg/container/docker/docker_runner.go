@@ -33,6 +33,7 @@ import (
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -392,7 +393,7 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("deleting image %s", ref)
-	resps, err := d.cli.ImageRemove(ctx, ref, types.ImageRemoveOptions{
+	resps, err := d.cli.ImageRemove(ctx, ref, image.RemoveOptions{
 		Force:         true,
 		PruneChildren: true,
 	})

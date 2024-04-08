@@ -30,6 +30,7 @@ melange index [flags]
 ```
   -a, --arch string          Index only packages which match the expected architecture
   -h, --help                 help for index
+  -j, --jsonoutput string    Output generated JSON index to FILE
   -m, --merge                Merge pre-existing index entries
   -o, --output string        Output generated index to FILE (default "APKINDEX.tar.gz")
       --signing-key string   Key to use for signing the index (optional)

@@ -34,6 +34,7 @@ import (
 type Index struct {
 	PackageFiles       []string
 	IndexFile          string
+	IndexJsonFile      string
 	SourceIndexFile    string
 	MergeIndexFileFlag bool
 	SigningKey         string
@@ -54,6 +55,13 @@ func WithIndexFile(indexFile string) Option {
 	return func(idx *Index) error {
 		idx.IndexFile = indexFile
 		idx.SourceIndexFile = indexFile
+		return nil
+	}
+}
+
+func WithIndexJsonFile(indexJsonFile string) Option {
+	return func(idx *Index) error {
+		idx.IndexJsonFile = indexJsonFile
 		return nil
 	}
 }
@@ -224,6 +232,11 @@ func (idx *Index) GenerateIndex(ctx context.Context) error {
 
 	if err := idx.WriteArchiveIndex(ctx, idx.IndexFile); err != nil {
 		return fmt.Errorf("writing index: %w", err)
+	}
+	if idx.IndexJsonFile != "" {
+		if err := idx.WriteJSONIndex(idx.IndexJsonFile); err != nil {
+			return fmt.Errorf("unable to generate JSON index: %w", err)
+		}
 	}
 
 	return nil

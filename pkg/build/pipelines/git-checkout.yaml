@@ -54,11 +54,20 @@ pipeline:
       workdir=$(mktemp -d)
       mkdir -p '${{inputs.destination}}'
       clone_fullpath=$(realpath '${{inputs.destination}}')
+      referenceRepo="/var/cache/melange/${{package.name}}.git"
 
       git config --global --add safe.directory $workdir
       git config --global --add safe.directory $clone_fullpath
+      git config --global --add safe.directory $referenceRepo
       git config --global advice.detachedHead false
-      git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+      git config --global init.defaultBranch main
+
+      # Init or re-init
+      git init --bare $referenceRepo
+      # Populate or update cache
+      git -C $referenceRepo fetch $git_clone_flags --depth '${{inputs.depth}}' '${{inputs.repository}}' '${{inputs.branch}}' '${{inputs.tag}}'
+      # Do clone like before, but with reference
+      git clone --reference $referenceRepo $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
 
       cd $workdir
       tar -c . | (cd $clone_fullpath && tar -x)

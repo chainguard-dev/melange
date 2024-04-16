@@ -39,6 +39,7 @@ inputs:
 
 pipeline:
   - runs: |
+      set -x
       if [ -z "${{inputs.branch}}" ] && [ -z "${{inputs.tag}}" ]; then
         echo "Warning (git-checkout): you have not specified a branch or tag."
       fi
@@ -65,15 +66,20 @@ pipeline:
       # Init or re-init
       git init --bare $referenceRepo
       # Populate or update cache
-      git -C $referenceRepo fetch $git_clone_flags --depth '${{inputs.depth}}' '${{inputs.repository}}' '${{inputs.branch}}' '${{inputs.tag}}'
+      if [ -n '${{inputs.tag}}' ]; then
+        git -C $referenceRepo fetch --progress $git_clone_flags --depth '${{inputs.depth}}' '${{inputs.repository}}' tag '${{inputs.tag}}'
+      elif [ -n '${{inputs.branch}}' ]; then
+        git -C $referenceRepo fetch --progress $git_clone_flags --depth '${{inputs.depth}}' '${{inputs.repository}}' '${{inputs.branch}}:${{inputs.branch}}'
+      elif
+        git -C $referenceRepo fetch --progress $git_clone_flags --depth '${{inputs.depth}}' '${{inputs.repository}}' HEAD:main
+      fi
       # Do clone like before, but with reference
-      git clone --reference $referenceRepo $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+      
 
       cd $workdir
       tar -c . | (cd $clone_fullpath && tar -x)
       rm -rf $workdir
       cd $clone_fullpath
-      git config --global --add safe.directory $clone_fullpath
 
       if [ -z "${{inputs.expected-commit}}" ]; then
         echo "Warning (git-checkout): no expected-commit"

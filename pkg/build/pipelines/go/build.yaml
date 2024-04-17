@@ -63,7 +63,8 @@ inputs:
   strip:
     description:
       Set of strip ldflags passed to the go compiler
-    default: "-s -w"
+    # Note symbols tables are useful for cryptography audits and govulncheck
+    default: "-w"
 
   install-dir:
     description: |
@@ -93,13 +94,6 @@ inputs:
 pipeline:
   - runs: |
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
-
-      # Make fips binaries have symbols table by default
-      case "${{inputs.go-package}}" in
-      *-fips*)
-        LDFLAGS="$(echo $LDFLAGS | sed 's/-s //g')"
-        ;;
-      esac
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 

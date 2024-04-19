@@ -54,6 +54,9 @@ jobs:
           cat sbom.json
           echo ::endgroup::
           docker run --rm -v $(pwd)/sbom.json:/sbom.json cgr.dev/chainguard/ntia-conformance-checker --file /sbom.json
+
+          # TODO: Make this an image.
+          docker run --rm -v $(pwd)/sbom.json:/sbom.json cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
         done
 
     - name: Check packages can be installed with apk

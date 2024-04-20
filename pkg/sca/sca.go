@@ -594,8 +594,11 @@ func getShbang(fp fs.File) (string, error) {
 	if bin == "/usr/bin/env" {
 		if len(toks) == 1 {
 			return "", fmt.Errorf("a shbang of only '/usr/bin/env'")
+		} else if len(toks) == 2 {
+			bin = toks[1]
+		} else {
+			return "", fmt.Errorf("a shbang of only '/usr/bin/env' with multiple arguments")
 		}
-		bin = toks[1]
 	}
 
 	if isIgnored := ignores[filepath.Base(bin)]; isIgnored {

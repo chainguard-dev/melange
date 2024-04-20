@@ -57,6 +57,11 @@ pipeline:
       print("hello world")
       EOF
 
+      wbin "python-via-env" <<"EOF"
+      #!/usr/bin/env -S python3 foo
+      print("hello world")
+      EOF
+
       wbin "python-straight" <<"EOF"
       #!/usr/bin/python3.12
       print("hello world")

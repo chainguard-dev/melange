@@ -60,6 +60,7 @@ jobs:
           - tini
           - lzo
           - bubblewrap
+          - gdk-pixbuf
           - gitsign
           - guac
           - mdbook

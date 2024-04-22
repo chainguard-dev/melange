@@ -569,7 +569,7 @@ func sonameLibver(soname string) string {
 func getShbang(fp fs.File) (string, error) {
 	// python3 and sh are symlinks and generateCmdProviders currently only considers
 	// regular files. Since nothing will fulfill such a depend, do not generate one.
-	ignores := map[string]bool{"python3": true, "sh": true}
+	ignores := map[string]bool{"python3": true, "python": true, "sh": true}
 
 	buf := make([]byte, 80)
 	blen, err := io.ReadFull(fp, buf)
@@ -596,8 +596,12 @@ func getShbang(fp fs.File) (string, error) {
 			return "", fmt.Errorf("a shbang of only '/usr/bin/env'")
 		} else if len(toks) == 2 {
 			bin = toks[1]
+		} else if len(toks) >= 3 && toks[1] == "-S" && !strings.HasPrefix(toks[2], "-") {
+			// we really need a env argument parser to figure out what the next cmd is.
+			// special case handle /usr/bin/env -S prog [arg1 [arg2 [...]]]
+			bin = toks[2]
 		} else {
-			return "", fmt.Errorf("a shbang of only '/usr/bin/env' with multiple arguments")
+			return "", fmt.Errorf("a shbang of only '/usr/bin/env' with multiple arguments (%d %s)", len(toks), strings.Join(toks, " "))
 		}
 	}
 

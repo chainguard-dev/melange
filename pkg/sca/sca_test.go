@@ -265,14 +265,15 @@ func TestUnstableSonames(t *testing.T) {
 
 func TestShbangDeps(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
-	th := handleFromApk(ctx, t, "shbang-test-1-r0.apk", "shbang-test.yaml")
+	th := handleFromApk(ctx, t, "shbang-test-1-r1.apk", "shbang-test.yaml")
 	defer th.exp.Close()
 
 	want := config.Dependencies{
-		Runtime: []string{
+		Runtime: util.Dedup([]string{
 			"cmd:bash",
+			"cmd:envDashSCmd",
 			"cmd:python3.12",
-		},
+		}),
 		Provides: nil,
 	}
 
@@ -281,6 +282,7 @@ func TestShbangDeps(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	got.Runtime = util.Dedup(got.Runtime)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}

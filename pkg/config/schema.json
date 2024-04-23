@@ -717,19 +717,7 @@
     "Scriptlets": {
       "properties": {
         "trigger": {
-          "properties": {
-            "script": {
-              "type": "string"
-            },
-            "paths": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "additionalProperties": false,
-          "type": "object",
+          "$ref": "#/$defs/Trigger",
           "description": "Optional: A script to run on a custom trigger"
         },
         "pre-install": {
@@ -839,6 +827,23 @@
         "environment",
         "pipeline"
       ]
+    },
+    "Trigger": {
+      "properties": {
+        "script": {
+          "type": "string",
+          "description": "Optional: The script to run"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Optional: The list of paths to monitor to trigger the script"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "Update": {
       "properties": {

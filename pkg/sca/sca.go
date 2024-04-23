@@ -86,7 +86,17 @@ func allowedPrefix(path string, prefixes []string) bool {
 	return false
 }
 
-var cmdPrefixes = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
+func isInDir(path string, dirs []string) bool {
+	mydir := filepath.Dir(path)
+	for _, d := range dirs {
+		if mydir == d || mydir+"/" == d {
+			return true
+		}
+	}
+	return false
+}
+
+var pathBinDirs = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
 
 func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -116,7 +126,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		if mode.Perm()&0555 == 0555 {
-			if allowedPrefix(path, cmdPrefixes) {
+			if isInDir(path, pathBinDirs) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))

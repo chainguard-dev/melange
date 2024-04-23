@@ -74,6 +74,26 @@ pipeline:
       }
       EOF
 
+      wbin "ignore1" <<"EOF"
+      ## Ingore1
+      EOF
+
+      wbin "ignore5" <<"EOF"
+      !! Ignore5
+      EOF
+
+      wbin "ignore2" <<"EOF"
+      !# Ignore2
+      EOF
+
+      wbin "ignore3" <<"EOF"
+      ! Ignore3
+      EOF
+
+      wbin "ignore4" <<"EOF"
+      # Ignore4
+      EOF
+
       gcc -o hello hello.c && strip hello && cp hello "$BD/usr/bin/hello"
 
 update:

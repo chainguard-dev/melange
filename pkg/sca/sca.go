@@ -583,7 +583,7 @@ func getShbang(fp fs.File) (string, error) {
 		return "", err
 	}
 
-	if buf[0] != '#' && buf[1] != '!' {
+	if !bytes.HasPrefix(buf, []byte("#!")) {
 		return "", nil
 	}
 
@@ -628,6 +628,10 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 		}
 
 		if !strings.HasPrefix(path, "usr/bin/") && !strings.HasPrefix(path, "bin/") {
+			return nil
+		}
+
+		if d.Type().IsDir() {
 			return nil
 		}
 

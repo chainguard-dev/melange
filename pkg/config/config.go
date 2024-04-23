@@ -161,6 +161,30 @@ func (cfg *Configuration) applySubstitutionsForProvides() error {
 	return nil
 }
 
+func (cfg *Configuration) applySubstitutionsForPriorities() error {
+	nw := buildConfigMap(cfg)
+	var err error
+	cfg.Package.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ProviderPriority)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
+	}
+	cfg.Package.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ReplacesPriority)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
+	}
+	for _, sp := range cfg.Subpackages {
+		sp.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ProviderPriority)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ProviderPriority, err)
+		}
+		sp.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ReplacesPriority)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ReplacesPriority, err)
+		}
+	}
+	return nil
+}
+
 func (cfg *Configuration) applySubstitutionsForRuntime() error {
 	nw := buildConfigMap(cfg)
 	for i, runtime := range cfg.Package.Dependencies.Runtime {
@@ -515,8 +539,11 @@ type Dependencies struct {
 	// Optional: List of replace objectives
 	Replaces []string `json:"replaces,omitempty" yaml:"replaces,omitempty"`
 	// Optional: An integer compared against other equal package provides used to
-	// determine priority
-	ProviderPriority int `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
+	// determine priority of provides
+	ProviderPriority string `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
+	// Optional: An integer compared against other equal package provides used to
+	// determine priority of file replacements
+	ReplacesPriority string `json:"replaces-priority,omitempty" yaml:"replaces-priority,omitempty"`
 
 	// List of self-provided dependencies found outside of lib directories
 	// ("lib", "usr/lib", "lib64", or "usr/lib64").
@@ -762,7 +789,8 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
 					Provides:         replaceAll(replacer, sp.Dependencies.Provides),
 					Replaces:         replaceAll(replacer, sp.Dependencies.Replaces),
-					ProviderPriority: sp.Dependencies.ProviderPriority,
+					ProviderPriority: replacer.Replace(sp.Dependencies.ProviderPriority),
+					ReplacesPriority: replacer.Replace(sp.Dependencies.ReplacesPriority),
 				},
 				Options: sp.Options,
 				Scriptlets: Scriptlets{
@@ -933,6 +961,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		return nil, err
 	}
 	if err := cfg.applySubstitutionsForPackages(); err != nil {
+		return nil, err
+	}
+	if err := cfg.applySubstitutionsForPriorities(); err != nil {
 		return nil, err
 	}
 

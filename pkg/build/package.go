@@ -177,6 +177,9 @@ replaces = {{ $dep }}
 {{- if .Dependencies.ProviderPriority }}
 provider_priority = {{ .Dependencies.ProviderPriority }}
 {{- end }}
+{{- if .Dependencies.ReplacesPriority }}
+replaces_priority = {{ .Dependencies.ReplacesPriority }}
+{{- end }}
 {{- if .Scriptlets.Trigger.Paths }}
 triggers = {{ range $item := .Scriptlets.Trigger.Paths }}{{ $item }} {{ end }}
 {{- end }}

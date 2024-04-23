@@ -583,7 +583,7 @@ func getShbang(fp fs.File) (string, error) {
 		return "", err
 	}
 
-	if buf[0] != '#' && buf[1] != '!' {
+	if buf[0] != '#' || buf[1] != '!' {
 		return "", nil
 	}
 

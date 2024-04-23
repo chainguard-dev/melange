@@ -568,11 +568,6 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *container.Config) *corev1
 		},
 	}
 
-	// This is needed for GKE Autopilot.
-	if cfg.Arch == apko_types.Architecture("arm64") {
-		pod.Spec.NodeSelector["cloud.google.com/compute-class"] = "Scale-Out"
-	}
-
 	for k, v := range cfg.Environment {
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:  k,
@@ -621,6 +616,7 @@ func (c KubernetesRunnerConfig) defaultBuilderPod(cfg *container.Config) *corev1
 
 	switch c.Provider {
 	case "gke":
+		// This is needed for GKE Autopilot.
 		// Be specific here, since not all regions support all compute classes
 		// Ref: https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-compute-classes
 		if cfg.Arch == apko_types.Architecture("arm64") {

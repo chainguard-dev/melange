@@ -40,15 +40,16 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
+type Trigger struct {
+	// Optional: The script to run
+	Script string `json:"script,omitempty"`
+	// Optional: The list of paths to monitor to trigger the script
+	Paths []string `json:"paths,omitempty"`
+}
+
 type Scriptlets struct {
 	// Optional: A script to run on a custom trigger
-	Trigger struct {
-		// Optional: The script to run
-		Script string `json:"script,omitempty"`
-		// Optional: The list of paths to monitor to trigger the script
-		Paths []string `json:"paths,omitempty"`
-	} `json:"trigger,omitempty" yaml:"trigger,omitempty"`
-
+	Trigger Trigger `json:"trigger,omitempty" yaml:"trigger,omitempty"`
 	// Optional: The script to run pre install. The script should contain the
 	// shebang interpreter.
 	PreInstall string `json:"pre-install,omitempty" yaml:"pre-install,omitempty"`
@@ -764,8 +765,20 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					ProviderPriority: sp.Dependencies.ProviderPriority,
 				},
 				Options: sp.Options,
-				URL:     replacer.Replace(sp.URL),
-				If:      replacer.Replace(sp.If),
+				Scriptlets: Scriptlets{
+					Trigger: Trigger{
+						Script: replacer.Replace(sp.Scriptlets.Trigger.Script),
+						Paths:  replaceAll(replacer, sp.Scriptlets.Trigger.Paths),
+					},
+					PreInstall:    replacer.Replace(sp.Scriptlets.PreInstall),
+					PostInstall:   replacer.Replace(sp.Scriptlets.PostInstall),
+					PreDeinstall:  replacer.Replace(sp.Scriptlets.PreDeinstall),
+					PostDeinstall: replacer.Replace(sp.Scriptlets.PostDeinstall),
+					PreUpgrade:    replacer.Replace(sp.Scriptlets.PreUpgrade),
+					PostUpgrade:   replacer.Replace(sp.Scriptlets.PostUpgrade),
+				},
+				URL: replacer.Replace(sp.URL),
+				If:  replacer.Replace(sp.If),
 			}
 			for _, p := range sp.Pipeline {
 				// take a copy of the with map, so we can replace the values

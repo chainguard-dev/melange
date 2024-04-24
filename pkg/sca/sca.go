@@ -446,14 +446,19 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		pcName := filepath.Base(path)
 		pcName, _ = strings.CutSuffix(pcName, ".pc")
 
+		// TODO: https://github.com/chainguard-dev/melange/issues/1172
+		sigh := func(ver string) string {
+			return strings.TrimSuffix(ver, "-release")
+		}
+
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
 		if !hdl.Options().NoProvides {
 			if allowedPrefix(path, pcDirs) {
 				log.Infof("  found pkg-config %s for %s", pcName, path)
-				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
 			} else {
 				log.Infof("  found vendored pkg-config %s for %s", pcName, path)
-				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
 			}
 		}
 

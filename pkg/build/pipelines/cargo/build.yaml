@@ -10,7 +10,6 @@ inputs:
     description: |
       Filename to use when writing the binary. The final install location inside
       the apk will be in prefix / install-dir / output
-    required: true
 
   opts:
     default: "--release"
@@ -33,12 +32,16 @@ inputs:
 pipeline:
   - runs: |
       # Installation directory should always be bin as we are producing a binary
-      INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/bin/${{inputs.output}}"
-      OUTPUT_PATH="target/release/${{inputs.output}}"
+      INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/bin"
+      OUTPUT_PATH="target/release"
 
       # Enter target package directory
       cd "${{inputs.modroot}}"
 
-      # Build and install package
+      # Build and install package(s)
       cargo auditable build "${{inputs.opts}}"
-      install -Dm755 "${OUTPUT_PATH}" "${INSTALL_PATH}"
+      if [[ -z "${{inputs.output}}" ]]; then
+        install -Dm755 "${OUTPUT_PATH}/${{inputs.output}}" "${INSTALL_PATH}/${{inputs.output}}"
+      else
+        install -Dm755 "${OUTPUT_PATH}"/* -t "${INSTALL_PATH}"
+      fi

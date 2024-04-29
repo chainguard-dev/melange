@@ -538,10 +538,10 @@ type Dependencies struct {
 	Provides []string `json:"provides,omitempty" yaml:"provides,omitempty"`
 	// Optional: List of replace objectives
 	Replaces []string `json:"replaces,omitempty" yaml:"replaces,omitempty"`
-	// Optional: An integer compared against other equal package provides used to
+	// Optional: An integer string compared against other equal package provides used to
 	// determine priority of provides
 	ProviderPriority string `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
-	// Optional: An integer compared against other equal package provides used to
+	// Optional: An integer string compared against other equal package provides used to
 	// determine priority of file replacements
 	ReplacesPriority string `json:"replaces-priority,omitempty" yaml:"replaces-priority,omitempty"`
 
@@ -1017,6 +1017,9 @@ func (cfg Configuration) validate() error {
 
 	// TODO: try to validate value of .package.version
 
+	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
+		return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+	}
 	if err := validatePipelines(cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
@@ -1025,7 +1028,9 @@ func (cfg Configuration) validate() error {
 		if !packageNameRegex.MatchString(sp.Name) {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}
-
+		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
+			return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+		}
 		if err := validatePipelines(sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
@@ -1045,6 +1050,20 @@ func validatePipelines(ps []Pipeline) error {
 		}
 
 		if err := validatePipelines(p.Pipeline); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDependenciesPriorities(deps Dependencies) error {
+	priorities := []string{deps.ProviderPriority, deps.ProviderPriority}
+	for _, priority := range priorities {
+		if priority == "" {
+			continue
+		}
+		_, err := strconv.Atoi(priority)
+		if err != nil {
 			return err
 		}
 	}

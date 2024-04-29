@@ -81,6 +81,7 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 
+	supplier := "Organization: " + cases.Title(language.English).String(spec.Namespace)
 	newPackage := pkg{
 		id:               stringToIdentifier(fmt.Sprintf("%s-%s", spec.PackageName, spec.PackageVersion)),
 		FilesAnalyzed:    false,
@@ -92,7 +93,8 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
-		Originator:       "Organization: " + cases.Title(language.English).String(spec.Namespace),
+		Originator:       supplier,
+		Supplier:         supplier,
 	}
 
 	if spec.License != "" {
@@ -118,6 +120,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 		Checksums:            []spdx.Checksum{},
 		ExternalRefs:         []spdx.ExternalRef{},
 		Originator:           p.Originator,
+		Supplier:             p.Supplier,
 	}
 
 	algos := []string{}

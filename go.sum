@@ -59,8 +59,8 @@ github.com/chainguard-dev/clog v1.3.1 h1:CDNCty5WKQhJzoOPubk0GdXt+bPQyargmfClqeb
 github.com/chainguard-dev/clog v1.3.1/go.mod h1:cV516KZWqYc/phZsCNwF36u/KMGS+Gj5Uqeb8Hlp95Y=
 github.com/chainguard-dev/git-urls v1.0.2 h1:pSpT7ifrpc5X55n4aTTm7FFUE+ZQHKiqpiwNkJrVcKQ=
 github.com/chainguard-dev/git-urls v1.0.2/go.mod h1:rbGgj10OS7UgZlbzdUQIQpT0k/D4+An04HJY7Ol+Y/o=
-github.com/chainguard-dev/go-apk v0.0.0-20240430184206-4999c730e69e h1:Ut61h/ZsMnK9dgPu5Hz+16kDin1b/CvKc2klPRl6kl4=
-github.com/chainguard-dev/go-apk v0.0.0-20240430184206-4999c730e69e/go.mod h1:ktcgE+WYkJuQV6ooQWjSq6jQJQPt5w7BUG6Hx+0l844=
+github.com/chainguard-dev/go-apk v0.0.0-20240430200504-6b01e99a4dd3 h1:M2RATMXQOrTBgRssUW9XTYQnRazTq2bFTso4SjUAG5U=
+github.com/chainguard-dev/go-apk v0.0.0-20240430200504-6b01e99a4dd3/go.mod h1:ktcgE+WYkJuQV6ooQWjSq6jQJQPt5w7BUG6Hx+0l844=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce h1:v3SY2sW8rUIxG9wXMxXlMN7sd9VNUSdZ+FnVqOrm2nI=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20230818193557-bee0072057ce/go.mod h1:obzGv2cx3tkRgkLQADSPaRl3OEsYmyfSv7t2Wu60tZw=
 github.com/chainguard-dev/kontext v0.1.0 h1:GFnDRZiqa+anUi7tzZMECXr0nwt4Eo/zMzTQPLRXUIs=

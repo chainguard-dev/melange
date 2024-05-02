@@ -109,32 +109,35 @@ func TestBump_withExpectedCommit(t *testing.T) {
 
 func TestBump_withMultipleCheckouts(t *testing.T) {
 	dir := t.TempDir()
-	filename := "multiple_checkouts.yaml"
+	filenames := []string{"multiple_checkouts.yaml", "multiple_checkouts_transforms.yaml"}
 
-	data, err := os.ReadFile(filepath.Join("testdata", filename))
-	assert.NoError(t, err)
+	for _, filename := range filenames {
+		data, err := os.ReadFile(filepath.Join("testdata", filename))
+		assert.NoError(t, err)
 
-	// write the modified melange config to our working temp folder
-	err = os.WriteFile(filepath.Join(dir, filename), data, 0755)
-	assert.NoError(t, err)
+		// write the modified melange config to our working temp folder
+		err = os.WriteFile(filepath.Join(dir, filename), data, 0755)
+		assert.NoError(t, err)
 
-	rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, filename)))
-	assert.NoError(t, err)
+		rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, filename)))
+		assert.NoError(t, err)
 
-	ctx := slogtest.TestContextWithLogger(t)
+		ctx := slogtest.TestContextWithLogger(t)
 
-	bumpRenovator := New(ctx,
-		WithTargetVersion("6.8"),
-		WithExpectedCommit("1234abcd"),
-	)
+		bumpRenovator := New(ctx,
+			WithTargetVersion("6.8"),
+			WithExpectedCommit("1234abcd"),
+		)
 
-	err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
-	assert.NoError(t, err)
+		err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
+		assert.NoError(t, err)
 
-	rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, filename))
-	require.NoError(t, err)
-	assert.Equal(t, rs.Pipeline[0].With["expected-commit"], "1234abcd")
-	assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")
+		rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, filename))
+		require.NoError(t, err)
+		assert.Equal(t, rs.Pipeline[0].With["expected-commit"], "1234abcd") // this is the only commit we expect to change
+		assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")      // should not change as it is not the main checkout
+	}
+
 }
 
 func setupTestServer(t *testing.T) (error, *httptest.Server) {

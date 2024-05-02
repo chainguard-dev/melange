@@ -54,7 +54,7 @@ func New() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "log policy (e.g. builtin:stderr, /tmp/log/foo)")
 	cmd.PersistentFlags().Var(&level, "log-level", "log level (e.g. debug, info, warn, error)")
 	cmd.PersistentFlags().BoolVar(&gcplog, "gcplog", false, "use GCP logging")
-	cmd.PersistentFlags().MarkHidden("gcplog")
+	_ = cmd.PersistentFlags().MarkHidden("gcplog")
 
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())

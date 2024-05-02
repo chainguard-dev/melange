@@ -40,7 +40,8 @@ inputs:
   strip:
     description:
       Set of strip ldflags passed to the go compiler
-    default: "-s -w"
+    # Note symbols tables are useful for cryptography audits and govulncheck
+    default: "-w"
 
   tags:
     description: |
@@ -71,13 +72,6 @@ pipeline:
   - runs: |
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
       VERSION=""
-
-      # Make fips binaries have symbols table by default
-      case "${{inputs.go-package}}" in
-      *-fips*)
-        LDFLAGS="$(echo $LDFLAGS | sed 's/-s //g')"
-        ;;
-      esac
 
       # Installed binaries will be stored in a tmp dir
       export GOBIN=$(mktemp -d)

@@ -69,6 +69,7 @@ melange build [flags]
 ### Options inherited from parent commands
 
 ```
+      --gcplog             use GCP logging
       --log-level string   log level (e.g. debug, info, warn, error) (default "info")
 ```
 

@@ -41,6 +41,7 @@ convert python botocore
 ```
       --additional-keyrings stringArray       additional repositories to be added to convert environment config
       --additional-repositories stringArray   additional repositories to be added to convert environment config
+      --gcplog                                use GCP logging
       --log-level string                      log level (e.g. debug, info, warn, error) (default "info")
       --log-policy strings                    log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])
   -o, --out-dir string                        directory where convert config will be output (default ".")

@@ -14,6 +14,7 @@ toc: true
 ### Options
 
 ```
+      --gcplog               use GCP logging
   -h, --help                 help for melange
       --log-level string     log level (e.g. debug, info, warn, error) (default "info")
       --log-policy strings   log policy (e.g. builtin:stderr, /tmp/log/foo) (default [builtin:stderr])

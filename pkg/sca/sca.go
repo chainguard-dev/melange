@@ -76,6 +76,16 @@ type SCAHandle interface {
 // findings based on analysis.
 type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies) error
 
+func isInDir(path string, paths []string) bool {
+	dir := filepath.Dir(path)
+	for _, p := range paths {
+		if dir+"/" == p {
+			return true
+		}
+	}
+	return false
+}
+
 func allowedPrefix(path string, prefixes []string) bool {
 	for _, pfx := range prefixes {
 		if strings.HasPrefix(path, pfx) {
@@ -116,7 +126,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		if mode.Perm()&0555 == 0555 {
-			if allowedPrefix(path, cmdPrefixes) {
+			if isInDir(path, cmdPrefixes) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))

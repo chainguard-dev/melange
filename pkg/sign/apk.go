@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package apk
+package sign
 
 import (
 	"bytes"
@@ -24,9 +24,9 @@ import (
 	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 )
 
-// Sign() signs an APK file with the provided key. The existing APK file is
+// APK() signs an APK file with the provided key. The existing APK file is
 // replaced with the signed APK file.
-func Sign(ctx context.Context, apkPath string, keyPath string) error {
+func APK(ctx context.Context, apkPath string, keyPath string) error {
 	apkr, err := os.Open(apkPath)
 	if err != nil {
 		return err

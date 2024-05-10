@@ -49,9 +49,9 @@ require (
 	google.golang.org/api v0.177.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.29.1
+	k8s.io/api v0.30.0
 	k8s.io/apimachinery v0.30.0
-	k8s.io/client-go v0.29.1
+	k8s.io/client-go v0.30.0
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
 	knative.dev/pkg v0.0.0-20230821102121-81e4ee140363
 	sigs.k8s.io/release-utils v0.8.2

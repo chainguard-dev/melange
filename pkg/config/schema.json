@@ -3,6 +3,18 @@
   "$id": "https://chainguard.dev/melange/pkg/config/configuration",
   "$ref": "#/$defs/Configuration",
   "$defs": {
+    "BaseImageDescriptor": {
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "apkindex": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "BuildOption": {
       "properties": {
         "Vars": {
@@ -358,6 +370,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "baseimage": {
+          "$ref": "#/$defs/BaseImageDescriptor"
         }
       },
       "additionalProperties": false,
@@ -903,6 +918,9 @@
         },
         "gid": {
           "type": "integer"
+        },
+        "shell": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

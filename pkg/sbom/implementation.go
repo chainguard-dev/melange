@@ -107,20 +107,18 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
 	spdxPkg := spdx.Package{
-		ID:                   p.ID(),
-		Name:                 p.Name,
-		Version:              p.Version,
-		FilesAnalyzed:        false,
-		HasFiles:             []string{},
-		LicenseConcluded:     p.LicenseConcluded,
-		LicenseDeclared:      p.LicenseDeclared,
-		DownloadLocation:     spdx.NOASSERTION,
-		LicenseInfoFromFiles: []string{},
-		CopyrightText:        p.Copyright,
-		Checksums:            []spdx.Checksum{},
-		ExternalRefs:         []spdx.ExternalRef{},
-		Originator:           p.Originator,
-		Supplier:             p.Supplier,
+		ID:               p.ID(),
+		Name:             p.Name,
+		Version:          p.Version,
+		FilesAnalyzed:    false,
+		LicenseConcluded: p.LicenseConcluded,
+		LicenseDeclared:  p.LicenseDeclared,
+		DownloadLocation: spdx.NOASSERTION,
+		CopyrightText:    p.Copyright,
+		Checksums:        []spdx.Checksum{},
+		ExternalRefs:     []spdx.ExternalRef{},
+		Originator:       p.Originator,
+		Supplier:         p.Supplier,
 	}
 
 	algos := []string{}

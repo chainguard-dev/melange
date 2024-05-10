@@ -121,6 +121,10 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		mode := fi.Mode()
+		if !mode.IsRegular() {
+			return nil
+		}
+
 		if mode.Perm()&0555 == 0555 {
 			if isInDir(path, pathBinDirs) {
 				basename := filepath.Base(path)
@@ -578,10 +582,8 @@ func sonameLibver(soname string) string {
 }
 
 func getShbang(fp fs.File) (string, error) {
-	// Lots of programs have shbangs with python3 or sh which are symlinks.
-	// generateCmdProviders did not previously add a provides for symlinks
-	// that means we cannot let packages *depend* on python3, python or sh
-	// until we have packages that *provide* them.
+	// python3 and sh are symlinks and generateCmdProviders currently only considers
+	// regular files. Since nothing will fulfill such a depend, do not generate one.
 	ignores := map[string]bool{"python3": true, "python": true, "sh": true}
 
 	buf := make([]byte, 80)

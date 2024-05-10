@@ -49,7 +49,7 @@ require (
 	google.golang.org/api v0.177.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.29.1
+	k8s.io/api v0.30.0
 	k8s.io/apimachinery v0.30.0
 	k8s.io/client-go v0.29.1
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340

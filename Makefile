@@ -149,7 +149,7 @@ lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
 test: melange ## Run go test
 	# build test package
 	 ./melange build --generate-index=false pkg/sca/testdata/go-fips-bin/go-fips-bin.yaml --arch=`uname -m` --source-dir=pkg/sca/testdata/go-fips-bin/ --out-dir pkg/sca/testdata/go-fips-bin/packages/ --log-level error
-	go test ./... -race
+	go test -tags e2e ./... -race
 
 .PHONY: clean
 clean: ## Clean the workspace

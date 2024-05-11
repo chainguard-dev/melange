@@ -206,15 +206,9 @@ func (c *GemContext) getGemMeta(ctx context.Context, gemURI string) (GemMeta, er
 		return GemMeta{}, fmt.Errorf("%d when getting %s: %w", resp.StatusCode, gemURI, err)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return GemMeta{}, fmt.Errorf("reading body: %w", err)
-	}
-
 	var g GemMeta
-	err = json.Unmarshal(body, &g)
-	if err != nil {
-		return GemMeta{}, fmt.Errorf("unmarshaling gem metadata: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(&g); err != nil {
+		return GemMeta{}, fmt.Errorf("decoding gem metadata: %w", err)
 	}
 
 	// Try to set the right Uri to the repo, sometimes gems use homepage instead of source code.
@@ -377,13 +371,11 @@ func (c *GemContext) getGemArtifactSHA(ctx context.Context, artifactURI string) 
 		return "", fmt.Errorf("%d when getting %s", resp.StatusCode, artifactURI)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("reading body: %w", err)
+	h256 := sha256.New()
+	if _, err := io.Copy(h256, resp.Body); err != nil {
+		return "", fmt.Errorf("hashing %s: %w", artifactURI, err)
 	}
 
-	h256 := sha256.New()
-	h256.Write(body)
 	return fmt.Sprintf("%x", h256.Sum(nil)), nil
 }
 

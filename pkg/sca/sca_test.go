@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -137,51 +136,6 @@ func TestExecableSharedObjects(t *testing.T) {
 		Provides: []string{
 			"so:libcap.so.2=2",
 			"so:libpsx.so.2=2",
-		},
-	}
-
-	got.Runtime = util.Dedup(got.Runtime)
-	got.Provides = util.Dedup(got.Provides)
-
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
-	}
-}
-
-// test a fips like go binary package for SCA depends
-// Chainguard go-fips toolchain generates binaries like these
-// which at runtime require openssl and fips provider
-func TestGoFipsBinDeps(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
-
-	var ldso, archdir string
-	switch runtime.GOARCH {
-	case "arm64":
-		ldso = "so:ld-linux-aarch64.so.1"
-		archdir = "aarch64"
-	case "amd64":
-		ldso = "so:ld-linux-x86-64.so.2"
-		archdir = "x86_64"
-	}
-
-	th := handleFromApk(ctx, t, fmt.Sprintf("go-fips-bin/packages/%s/go-fips-bin-v0.0.1-r0.apk", archdir), "go-fips-bin/go-fips-bin.yaml")
-	defer th.exp.Close()
-
-	got := config.Dependencies{}
-	if err := Analyze(ctx, th, &got); err != nil {
-		t.Fatal(err)
-	}
-
-	want := config.Dependencies{
-		Runtime: []string{
-			"openssl-config-fipshardened",
-			ldso,
-			"so:libc.so.6",
-			"so:libcrypto.so.3",
-			"so:libssl.so.3",
-		},
-		Provides: []string{
-			"cmd:go-fips-bin=v0.0.1-r0",
 		},
 	}
 

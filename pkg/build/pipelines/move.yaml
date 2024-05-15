@@ -1,0 +1,43 @@
+name: Move files and folders
+
+inputs:
+  src:
+    required: true
+    description: |
+      Space separated files or folders to move.
+
+  dest:
+    required: false
+    description: |
+      Destination for file or folder.
+
+  opts:
+    required: false
+    description: |
+      The option flags to pass to the move command.
+
+  modroot:
+    default: "."
+    required: false
+    description: |
+      Top directory. The pipeline will cd into this directory.
+
+pipeline:
+  - runs: |
+      # Enter modroot
+      cd "${{inputs.modroot}}"
+
+      # Determine dest
+      if [[ -z "${{inputs.dest}}" ]]; then
+        # Find installed path
+        INSTALLED_PATH=$(echo "${{inputs.src}}" | sed "s|/home/build/.*/||")
+        # Move to installed path in contextdir
+        DEST="${{targets.contextdir}}/${INSTALLED_PATH}"
+      else
+        DEST="${{inputs.dest}}"
+      fi
+
+      # Move src to dest
+      for src in "${{inputs.src}}"; do
+        mv "${{inputs.opts}}" "${src}" "${DEST}"
+      done

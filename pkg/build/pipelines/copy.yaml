@@ -38,6 +38,9 @@ pipeline:
         DEST="${{inputs.dest}}"
       fi
 
+      # Create destdir
+      mkdir -p "${DEST//$(basename ${DEST})}"
+
       # Move src to dest
       for src in "${{inputs.src}}"; do
         cp "${{inputs.opts}}" "${src}" "${DEST}"

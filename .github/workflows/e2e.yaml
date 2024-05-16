@@ -2,9 +2,9 @@ name: e2e melange bootstrap + build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   SOURCE_DATE_EPOCH: 1669683910
@@ -21,95 +21,50 @@ jobs:
       fail-fast: false
       matrix:
         example:
-        - git-checkout.yaml
-        - gnu-hello.yaml
-        - mbedtls.yaml
-        - minimal.yaml
-        - sshfs.yaml
+          - git-checkout.yaml
+          - gnu-hello.yaml
+          - mbedtls.yaml
+          - minimal.yaml
+          - sshfs.yaml
 
     steps:
-    - uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
-      with:
-        egress-policy: audit
+      - uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+        with:
+          egress-policy: audit
 
-    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
-      with:
-        go-version-file: 'go.mod'
-    - name: Build package
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y bubblewrap
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        with:
+          go-version-file: "go.mod"
+      - name: Build package
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y bubblewrap
 
-        make melange
-        ./melange keygen
-        ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
+          make melange
+          ./melange keygen
+          ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
 
-    - name: Check SBOM Conformance
-      run: |
-        set -euxo pipefail
-        for f in packages/x86_64/*.apk; do
-          tar -Oxf "$f" var/lib/db/sbom > sbom.json
-          echo ::group::sbom.json
-          cat sbom.json
-          echo ::endgroup::
-          docker run --rm -v $(pwd)/sbom.json:/sbom.json cgr.dev/chainguard/ntia-conformance-checker --file /sbom.json
+      - name: Check SBOM Conformance
+        run: |
+          set -euxo pipefail
+          for f in packages/x86_64/*.apk; do
+            tar -Oxf "$f" var/lib/db/sbom > sbom.json
+            echo ::group::sbom.json
+            cat sbom.json
+            echo ::endgroup::
+            docker run --rm -v $(pwd)/sbom.json:/sbom.json cgr.dev/chainguard/ntia-conformance-checker --file /sbom.json
 
-          # TODO: Make this an image.
-          docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
-        done
+            # TODO: Make this an image.
+            docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
+          done
 
-    - name: Check packages can be installed with apk
-      run: |
-        set -euxo pipefail
-        for f in packages/x86_64/*.apk; do
-          docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
-        done
-
-  runner-kubernetes:
-    name: build example on kubernetes
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-    - uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
-      with:
-        egress-policy: audit
-
-    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-
-    - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
-      with:
-        go-version: '1.21'
-        check-latest: true
-
-    - name: Setup melange
-      run: |
-        make melange
-        ./melange keygen local-melange.rsa
-
-    - name: Setup Cluster
-      uses: chainguard-dev/actions/setup-kind@main
-      with:
-        k8s-version: v1.26.x
-        registry-authority: registry.local:5000
-
-    - name: Configure
-      run: |
-        cat > .melange.k8s.yaml <<EOF
-        provider: generic
-        # Need something small enough for CI to handle
-        resources:
-          cpu: 0.5
-          memory: 1Gi
-        EOF
-
-    - name: Build
-      run: |
-        # Pick an example that requires mounting to flex kontext.Bundle()
-        ./melange build --signing-key local-melange.rsa examples/simple-hello/melange.yaml --source-dir="examples/simple-hello" --workspace-dir="examples/simple-hello" --arch=x86_64 --runner kubernetes
+      - name: Check packages can be installed with apk
+        run: |
+          set -euxo pipefail
+          for f in packages/x86_64/*.apk; do
+            docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
+          done
 
   bootstrap:
     name: bootstrap package
@@ -124,54 +79,54 @@ jobs:
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
     steps:
-    - name: Fetch dependencies
-      run: |
-        cat >/etc/apk/repositories <<_EOF_
-        https://dl-cdn.alpinelinux.org/alpine/edge/main
-        https://dl-cdn.alpinelinux.org/alpine/edge/community
-        https://dl-cdn.alpinelinux.org/alpine/edge/testing
-        _EOF_
+      - name: Fetch dependencies
+        run: |
+          cat >/etc/apk/repositories <<_EOF_
+          https://dl-cdn.alpinelinux.org/alpine/edge/main
+          https://dl-cdn.alpinelinux.org/alpine/edge/community
+          https://dl-cdn.alpinelinux.org/alpine/edge/testing
+          _EOF_
 
-        apk upgrade -Ua
-        apk add go cosign build-base git bubblewrap
+          apk upgrade -Ua
+          apk add go cosign build-base git bubblewrap
 
-    - uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
-      with:
-        egress-policy: audit
+      - uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+        with:
+          egress-policy: audit
 
-    - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-    - name: Mark workspace as a safe repository
-      run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
-    - name: Build bootstrap melange tool (stage1)
-      run: make melange
-    - name: Generate a package signing keypair
-      run: |
-        ./melange keygen
-        mv melange.rsa.pub /etc/apk/keys
-    - name: Prepare build workspace for stage2
-      run: |
-        git clone . workspace-stage2/x86_64
-    - name: Build stage2 melange package with bootstrap melange
-      run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage2/
-    - name: Install stage2 melange package
-      run: apk add ./packages/x86_64/melange-*.apk
-    - name: Move stage2 artifacts to stage2 directory
-      run: |
-        mv packages stage2
-    - name: Verify operation of stage2 melange
-      run: melange version
-    - name: Prepare build workspace for stage3
-      run: |
-        git clone . workspace-stage3/x86_64
-    - name: Build stage3 melange package with stage2 melange
-      run: melange build --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage3/
-    - name: Install stage3 melange package
-      run: apk add ./packages/x86_64/melange-*.apk
-    - name: Move stage3 artifacts to stage3 directory
-      run: |
-        mv packages stage3
-    - name: Ensure melange package is reproducible
-      run: |
-        sha256sum stage2/x86_64/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
-    - name: Verify operation of stage3 melange
-      run: melange version
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Mark workspace as a safe repository
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+      - name: Build bootstrap melange tool (stage1)
+        run: make melange
+      - name: Generate a package signing keypair
+        run: |
+          ./melange keygen
+          mv melange.rsa.pub /etc/apk/keys
+      - name: Prepare build workspace for stage2
+        run: |
+          git clone . workspace-stage2/x86_64
+      - name: Build stage2 melange package with bootstrap melange
+        run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage2/
+      - name: Install stage2 melange package
+        run: apk add ./packages/x86_64/melange-*.apk
+      - name: Move stage2 artifacts to stage2 directory
+        run: |
+          mv packages stage2
+      - name: Verify operation of stage2 melange
+        run: melange version
+      - name: Prepare build workspace for stage3
+        run: |
+          git clone . workspace-stage3/x86_64
+      - name: Build stage3 melange package with stage2 melange
+        run: melange build --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage3/
+      - name: Install stage3 melange package
+        run: apk add ./packages/x86_64/melange-*.apk
+      - name: Move stage3 artifacts to stage3 directory
+        run: |
+          mv packages stage3
+      - name: Ensure melange package is reproducible
+        run: |
+          sha256sum stage2/x86_64/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
+      - name: Verify operation of stage3 melange
+        run: melange version

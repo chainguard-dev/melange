@@ -156,7 +156,7 @@
         },
         "license-path": {
           "type": "string",
-          "description": "Optional: Custom licenses to generate LicenseRefs from"
+          "description": "Optional: Path to text of the custom License Ref"
         }
       },
       "additionalProperties": false,

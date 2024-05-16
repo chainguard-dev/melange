@@ -817,6 +817,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Run the SBOM generator.
 	generator := sbom.NewGenerator()
 
+	licensinginfos, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
+	if err != nil {
+		return err
+	}
+
 	// generate SBOMs for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
@@ -839,6 +844,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			PackageName:     sp.Name,
 			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 			License:         b.Configuration.Package.LicenseExpression(),
+			LicensingInfos:  licensinginfos,
 			Copyright:       b.Configuration.Package.FullCopyright(),
 			Namespace:       namespace,
 			Arch:            b.Arch.ToAPK(),
@@ -853,6 +859,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		PackageName:     b.Configuration.Package.Name,
 		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 		License:         b.Configuration.Package.LicenseExpression(),
+		LicensingInfos:  licensinginfos,
 		Copyright:       b.Configuration.Package.FullCopyright(),
 		Namespace:       namespace,
 		Arch:            b.Arch.ToAPK(),

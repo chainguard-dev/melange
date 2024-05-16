@@ -32,6 +32,7 @@ type Spec struct {
 	PackageName     string
 	PackageVersion  string
 	License         string // Full SPDX license expression
+	LicensingInfos  map[string]string
 	Copyright       string
 	Namespace       string
 	Arch            string

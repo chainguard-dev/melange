@@ -252,17 +252,17 @@ func (p *Package) LicenseExpression() string {
 // Returns array of ExtractedLicensingInfos formed from the data in
 // the copyright structs found in the conf.
 func (p *Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
-        licenseInfos := make(map[string]string)
-        for _, cp := range p.Copyright {
-                if cp.LicensePath != "" {
-                        content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
-                        if err != nil {
-                                return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
-                        }
-                        licenseInfos[cp.License] = string(content)
-                }
-        }
-        return licenseInfos, nil
+	licenseInfos := make(map[string]string)
+	for _, cp := range p.Copyright {
+		if cp.LicensePath != "" {
+			content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
+			}
+			licenseInfos[cp.License] = string(content)
+		}
+	}
+	return licenseInfos, nil
 }
 
 // FullCopyright returns the concatenated copyright expressions defined

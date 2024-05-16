@@ -211,7 +211,7 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 	for licenseID, extractedText := range spec.LicensingInfos {
 		spdxDoc.LicensingInfos = append(spdxDoc.LicensingInfos,
 			spdx.LicensingInfo{
-				LicenseID: licenseID,
+				LicenseID:     licenseID,
 				ExtractedText: extractedText,
 			})
 	}

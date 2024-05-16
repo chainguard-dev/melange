@@ -20,12 +20,14 @@
 package sca
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -273,5 +275,43 @@ func TestShbangDeps(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestGetShbang(t *testing.T) {
+	for i, td := range []struct {
+		content string
+		want    string
+		wantErr string
+	}{
+		{"#!/usr/bin/env bash\n", "bash", ""},
+		{"#!/usr/bin/env python3.12\nwith open...\n", "python3.12", ""},
+		// /bin/sh is explicitly ignored.
+		{"#!/bin/sh\necho hi world\n", "", ""},
+		{"#!/bin/dash\necho hi world\n", "/bin/dash", ""},
+		{"#!/usr/bin/env -S bash -x\necho hi world\n", "bash", ""},
+		{"#!/usr/bin/env bash -x\necho hi world\n", "bash", "multiple arguments"},
+		{"cs101 assignment", "", ""},
+		// no carriage return in file
+		{"#!/usr/bin/perl", "/usr/bin/perl", ""},
+	} {
+		got, gotErr := getShbang(bytes.NewReader([]byte(td.content)))
+		if td.wantErr != "" {
+			if gotErr == nil {
+				t.Errorf("%d - expected err, got %s", i, got)
+			} else if matched, err := regexp.MatchString(td.wantErr, fmt.Sprintf("%v", gotErr)); err != nil {
+				t.Errorf("%d - bad test, failed regexp.Match(%s)", i, td.wantErr)
+			} else if !matched {
+				t.Errorf("%d - expected err '%s', got '%s'", i, td.wantErr, gotErr)
+			}
+		} else {
+			if gotErr != nil {
+				t.Errorf("%d - unexpected err %v", i, gotErr)
+				continue
+			}
+			if td.want != got {
+				t.Errorf("%d - got %d '%s', expected %d '%s'", i, len(got), got, len(td.want), td.want)
+			}
+		}
 	}
 }

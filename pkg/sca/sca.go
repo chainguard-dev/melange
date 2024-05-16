@@ -601,7 +601,7 @@ func sonameLibver(soname string) string {
 	return libver
 }
 
-func getShbang(fp fs.File) (string, error) {
+func getShbang(fp io.Reader) (string, error) {
 	// python3 and sh are symlinks and generateCmdProviders currently only considers
 	// regular files. Since nothing will fulfill such a depend, do not generate one.
 	ignores := map[string]bool{"python3": true, "python": true, "sh": true}
@@ -622,7 +622,12 @@ func getShbang(fp fs.File) (string, error) {
 		return "", nil
 	}
 
-	toks := strings.Fields(string(buf[2 : blen-2]))
+	line1 := string(buf[2:blen])
+	endl := strings.Index(line1, "\n")
+	if endl >= 0 {
+		line1 = line1[:endl]
+	}
+	toks := strings.Fields(line1)
 	bin := toks[0]
 
 	// if #! is '/usr/bin/env foo', then use next arg as the dep

@@ -153,6 +153,10 @@
         "license": {
           "type": "string",
           "description": "Required: The license for this package"
+        },
+        "license-path": {
+          "type": "string",
+          "description": "Optional: Custom licenses to generate LicenseRefs from"
         }
       },
       "additionalProperties": false,

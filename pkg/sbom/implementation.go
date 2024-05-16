@@ -205,6 +205,15 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		Packages:             []spdx.Package{},
 		Relationships:        []spdx.Relationship{},
 		ExternalDocumentRefs: []spdx.ExternalDocumentRef{},
+		LicensingInfos:       []spdx.LicensingInfo{},
+	}
+
+	for licenseId, extractedText := range spec.LicensingInfos {
+		spdxDoc.LicensingInfos = append(spdxDoc.LicensingInfos,
+			spdx.LicensingInfo{
+				LicenseId: licenseId,
+				ExtractedText: extractedText,
+			})
 	}
 
 	if spec.License == "" {

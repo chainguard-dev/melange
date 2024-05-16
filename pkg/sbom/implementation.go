@@ -208,10 +208,10 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		LicensingInfos:       []spdx.LicensingInfo{},
 	}
 
-	for licenseId, extractedText := range spec.LicensingInfos {
+	for licenseID, extractedText := range spec.LicensingInfos {
 		spdxDoc.LicensingInfos = append(spdxDoc.LicensingInfos,
 			spdx.LicensingInfo{
-				LicenseId: licenseId,
+				LicenseID: licenseID,
 				ExtractedText: extractedText,
 			})
 	}

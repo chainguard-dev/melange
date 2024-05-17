@@ -35,14 +35,13 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"k8s.io/kube-openapi/pkg/util/sets"
-
-	purl "github.com/package-url/packageurl-go"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
@@ -648,7 +647,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		b.GuestDir = guestDir
 	}
 
-	var externalrefs []purl.PackageURL
+	var externalRefs []purl.PackageURL
 
 	log.Infof("evaluating pipelines for package requirements")
 	for _, p := range b.Configuration.Pipeline {
@@ -658,7 +657,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
 			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 		}
-		externalrefs = append(externalrefs, pctx.ExternalRefs...)
+		externalRefs = append(externalRefs, pctx.ExternalRefs...)
 	}
 
 	for _, spkg := range b.Configuration.Subpackages {
@@ -670,7 +669,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 			}
-			externalrefs = append(externalrefs, pctx.ExternalRefs...)
+			externalRefs = append(externalRefs, pctx.ExternalRefs...)
 		}
 	}
 	pb.Subpackage = nil
@@ -823,7 +822,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Run the SBOM generator.
 	generator := sbom.NewGenerator()
 
-	externalrefs, err := normalizeExternalRefs(externalrefs, b.Configuration.Package.Name, b.Configuration.Package.Version)
+	externalRefs, err := normalizeExternalRefs(externalRefs, b.Configuration.Package.Name, b.Configuration.Package.Version)
 	if err != nil {
 		return err
 	}
@@ -856,7 +855,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 			License:         b.Configuration.Package.LicenseExpression(),
 			LicensingInfos:  licensinginfos,
-			ExternalRefs:    externalrefs,
+			ExternalRefs:    externalRefs,
 			Copyright:       b.Configuration.Package.FullCopyright(),
 			Namespace:       namespace,
 			Arch:            b.Arch.ToAPK(),
@@ -872,7 +871,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 		License:         b.Configuration.Package.LicenseExpression(),
 		LicensingInfos:  licensinginfos,
-		ExternalRefs:    externalrefs,
+		ExternalRefs:    externalRefs,
 		Copyright:       b.Configuration.Package.FullCopyright(),
 		Namespace:       namespace,
 		Arch:            b.Arch.ToAPK(),
@@ -1192,17 +1191,17 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 // When pipelines are processed they don't have access to package
 // metadata. For "generic" external PURLs one has to declare
 // "upstream" name and version.
-func normalizeExternalRefs(externalrefs []purl.PackageURL, name string, version string) ([]purl.PackageURL, error) {
-	for idx, ref := range externalrefs {
+func normalizeExternalRefs(externalRefs []purl.PackageURL, name string, version string) ([]purl.PackageURL, error) {
+	for idx, ref := range externalRefs {
 		if ref.Name == "" {
-			externalrefs[idx].Name = name
+			externalRefs[idx].Name = name
 		}
 		if ref.Version == "" {
-			externalrefs[idx].Version = version
+			externalRefs[idx].Version = version
 		}
-		if err := externalrefs[idx].Normalize(); err != nil {
+		if err := externalRefs[idx].Normalize(); err != nil {
 			return nil, err
 		}
 	}
-	return externalrefs, nil
+	return externalRefs, nil
 }

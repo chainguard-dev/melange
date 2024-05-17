@@ -17,9 +17,11 @@
 // data) designed to be transcoded to specific formats.
 package sbom
 
-import purl "github.com/package-url/packageurl-go"
+import (
+	"fmt"
 
-import "fmt"
+	purl "github.com/package-url/packageurl-go"
+)
 
 type bom struct {
 	Packages []pkg

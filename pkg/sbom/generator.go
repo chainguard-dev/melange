@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/chainguard-dev/clog"
-	"go.opentelemetry.io/otel"
 	purl "github.com/package-url/packageurl-go"
+	"go.opentelemetry.io/otel"
 )
 
 func NewGenerator() *Generator {

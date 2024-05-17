@@ -515,10 +515,10 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 			return err
 		}
 
-		externalrefs := pctx.computeExternalRefs(spctx)
-		if externalrefs != nil {
-			log.Infof("  adding external refs %s for pipeline %q", externalrefs, pctx.Identity())
-			pctx.ExternalRefs = append(pctx.ExternalRefs, externalrefs...)
+		externalRefs := pctx.computeExternalRefs(spctx)
+		if externalRefs != nil {
+			log.Infof("  adding external refs %s for pipeline %q", externalRefs, pctx.Identity())
+			pctx.ExternalRefs = append(pctx.ExternalRefs, externalRefs...)
 		}
 
 		if err := spctx.ApplyNeeds(ctx, pb); err != nil {

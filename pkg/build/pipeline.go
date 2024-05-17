@@ -515,7 +515,10 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 			return err
 		}
 
-		externalRefs := pctx.computeExternalRefs(spctx)
+		externalRefs, err := pctx.computeExternalRefs(spctx)
+		if err != nil {
+			return err
+		}
 		if externalRefs != nil {
 			log.Infof("  adding external refs %s for pipeline %q", externalRefs, pctx.Identity())
 			pctx.ExternalRefs = append(pctx.ExternalRefs, externalRefs...)
@@ -540,8 +543,9 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 }
 
 // computeExternalRefs generates PURLs for subpipelines
-func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) []purl.PackageURL {
+func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) ([]purl.PackageURL, error) {
 	var purls []purl.PackageURL
+	var newpurl purl.PackageURL
 
 	switch pctx.Pipeline.Uses {
 	case "fetch":
@@ -553,16 +557,43 @@ func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) []purl.
 		if len(spctx.Pipeline.With["${{inputs.expected-sha512}}"]) > 0 {
 			args["checksum"] = "sha512:" + spctx.Pipeline.With["${{inputs.expected-sha512}}"]
 		}
-		newpurl := purl.PackageURL{
+		newpurl = purl.PackageURL{
 			Type:       "generic",
 			Name:       spctx.Pipeline.With["${{inputs.purl-name}}"],
 			Version:    spctx.Pipeline.With["${{inputs.purl-version}}"],
 			Qualifiers: purl.QualifiersFromMap(args),
 		}
-		newpurl.Normalize()
+		if err := newpurl.Normalize(); err != nil {
+			return nil, err
+		}
 		purls = append(purls, newpurl)
+
+	case "git-checkout":
+		repository := spctx.Pipeline.With["${{inputs.repository}}"]
+		if strings.HasPrefix(repository, "https://github.com/") {
+			namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
+			versions := []string{
+				spctx.Pipeline.With["${{inputs.tag}}"],
+				spctx.Pipeline.With["${{inputs.expected-commit}}"],
+			}
+			for _, version := range versions {
+				if version != "" {
+					newpurl = purl.PackageURL{
+						Type:      "github",
+						Namespace: namespace,
+						Name:      name,
+						Version:   version,
+					}
+					newpurl.Normalize()
+					if err := newpurl.Normalize(); err != nil {
+						return nil, err
+					}
+					purls = append(purls, newpurl)
+				}
+			}
+		}
 	}
-	return purls
+	return purls, nil
 }
 
 // pipelineStepWorkDir returns the workdir for the current pipeline step.

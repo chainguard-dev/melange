@@ -23,6 +23,16 @@ inputs:
     description: |
       The expected SHA512 of the downloaded artifact.
 
+  purl-name:
+    description: |
+      package-URL (PURL) name for use in SPDX SBOM External References
+    default: ${{package.name}}
+
+  purl-version:
+    description: |
+      package-URL (PURL) version for use in SPDX SBOM External References
+    default: ${{package.version}}
+
   uri:
     description: |
       The URI to fetch as an artifact.

@@ -553,11 +553,16 @@ func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) []purl.
 		if len(spctx.Pipeline.With["${{inputs.expected-sha512}}"]) > 0 {
 			args["checksum"] = "sha512:" + spctx.Pipeline.With["${{inputs.expected-sha512}}"]
 		}
-		purls = append(purls, purl.PackageURL{Type: "generic", Qualifiers: purl.QualifiersFromMap(args)})
+		newpurl := purl.PackageURL{
+			Type:       "generic",
+			Name:       spctx.Pipeline.With["${{inputs.purl-name}}"],
+			Version:    spctx.Pipeline.With["${{inputs.purl-version}}"],
+			Qualifiers: purl.QualifiersFromMap(args),
+		}
+		newpurl.Normalize()
+		purls = append(purls, newpurl)
 	}
-
 	return purls
-
 }
 
 // pipelineStepWorkDir returns the workdir for the current pipeline step.

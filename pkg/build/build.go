@@ -822,11 +822,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Run the SBOM generator.
 	generator := sbom.NewGenerator()
 
-	externalRefs, err := normalizeExternalRefs(externalRefs, b.Configuration.Package.Name, b.Configuration.Package.Version)
-	if err != nil {
-		return err
-	}
-
 	licensinginfos, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
 	if err != nil {
 		return err
@@ -1186,22 +1181,4 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 	}
 
 	return time.Unix(sec, 0).UTC(), nil
-}
-
-// When pipelines are processed they don't have access to package
-// metadata. For "generic" external PURLs one has to declare
-// "upstream" name and version.
-func normalizeExternalRefs(externalRefs []purl.PackageURL, name string, version string) ([]purl.PackageURL, error) {
-	for idx, ref := range externalRefs {
-		if ref.Name == "" {
-			externalRefs[idx].Name = name
-		}
-		if ref.Version == "" {
-			externalRefs[idx].Version = version
-		}
-		if err := externalRefs[idx].Normalize(); err != nil {
-			return nil, err
-		}
-	}
-	return externalRefs, nil
 }

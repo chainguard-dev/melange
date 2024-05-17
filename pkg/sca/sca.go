@@ -598,11 +598,16 @@ func getShbang(fp fs.File) (string, error) {
 		return "", err
 	}
 
-	if !bytes.HasPrefix(buf, []byte("#!")) {
+	buf, found := bytes.CutPrefix(buf[:blen], []byte("#!"))
+	if !found {
 		return "", nil
 	}
 
-	toks := strings.Fields(string(buf[2 : blen-2]))
+	if eol := bytes.IndexByte(buf[:blen], '\n'); eol != -1 {
+		buf = buf[:eol]
+	}
+
+	toks := strings.Fields(string(buf))
 	bin := toks[0]
 
 	// if #! is '/usr/bin/env foo', then use next arg as the dep

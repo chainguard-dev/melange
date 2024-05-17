@@ -21,6 +21,7 @@ import (
 
 	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
+	purl "github.com/package-url/packageurl-go"
 )
 
 func NewGenerator() *Generator {
@@ -33,6 +34,7 @@ type Spec struct {
 	PackageVersion  string
 	License         string // Full SPDX license expression
 	LicensingInfos  map[string]string
+	ExternalRefs    []purl.PackageURL
 	Copyright       string
 	Namespace       string
 	Arch            string

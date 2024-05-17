@@ -32,6 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	purl "github.com/package-url/packageurl-go"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
@@ -46,6 +47,7 @@ type PipelineContext struct {
 	// Ordered list of pipeline directories to search for pipelines
 	PipelineDirs []string
 	steps        int
+	ExternalRefs []purl.PackageURL
 }
 
 func NewPipelineContext(p *config.Pipeline, environment *apko_types.ImageConfiguration, config *container.Config, pipelineDirs []string) *PipelineContext {
@@ -513,6 +515,12 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 			return err
 		}
 
+		externalrefs := pctx.computeExternalRefs(spctx)
+		if externalrefs != nil {
+			log.Infof("  adding external refs %s for pipeline %q", externalrefs, pctx.Identity())
+			pctx.ExternalRefs = append(pctx.ExternalRefs, externalrefs...)
+		}
+
 		if err := spctx.ApplyNeeds(ctx, pb); err != nil {
 			return err
 		}
@@ -529,6 +537,27 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 	}
 
 	return nil
+}
+
+// computeExternalRefs generates PURLs for subpipelines
+func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) []purl.PackageURL {
+	var purls []purl.PackageURL
+
+	switch pctx.Pipeline.Uses {
+	case "fetch":
+		args := make(map[string]string)
+		args["download_url"] = spctx.Pipeline.With["${{inputs.uri}}"]
+		if len(spctx.Pipeline.With["${{inputs.expected-sha256}}"]) > 0 {
+			args["checksum"] = "sha256:" + spctx.Pipeline.With["${{inputs.expected-sha256}}"]
+		}
+		if len(spctx.Pipeline.With["${{inputs.expected-sha512}}"]) > 0 {
+			args["checksum"] = "sha512:" + spctx.Pipeline.With["${{inputs.expected-sha512}}"]
+		}
+		purls = append(purls, purl.PackageURL{Type: "generic", Qualifiers: purl.QualifiersFromMap(args)})
+	}
+
+	return purls
+
 }
 
 // pipelineStepWorkDir returns the workdir for the current pipeline step.

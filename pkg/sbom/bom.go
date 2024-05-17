@@ -17,6 +17,8 @@
 // data) designed to be transcoded to specific formats.
 package sbom
 
+import purl "github.com/package-url/packageurl-go"
+
 import "fmt"
 
 type bom struct {
@@ -42,6 +44,7 @@ type pkg struct {
 	Arch             string
 	Checksums        map[string]string
 	Relationships    []relationship
+	ExternalRefs     []purl.PackageURL
 }
 
 func (p *pkg) ID() string {

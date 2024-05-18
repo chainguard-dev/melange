@@ -584,7 +584,6 @@ func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) ([]purl
 						Name:      name,
 						Version:   version,
 					}
-					newpurl.Normalize()
 					if err := newpurl.Normalize(); err != nil {
 						return nil, err
 					}

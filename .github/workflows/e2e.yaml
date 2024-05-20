@@ -78,7 +78,7 @@ jobs:
           grep '"pkg:generic/hello@v0.0.1?vcs_url=git%2Bhttps%3A%2F%2Fgitlab.com%2Fxnox%2Fhello.git%40a73c4feb284dc6ed1e5758740f717f99dcd4c9d7"' git-checkout.sbom.json
 
           # Verify ConfigFile ref
-          grep '"pkg:github/chainguard-dev/melange@8fc050fc9d85752332c2b09c64b06c69b95501ed#examples/git-checkout.yaml"' git-checkout.sbom.json
+          grep '"pkg:github/chainguard-dev/melange@${{github.sha}}#examples/git-checkout.yaml"' git-checkout.sbom.json
 
       - name: Verify SBOM External Refs (gnu-hello)
         if: matrix.example == 'gnu-hello.yaml'

@@ -590,6 +590,29 @@ func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) ([]purl
 					purls = append(purls, newpurl)
 				}
 			}
+		} else {
+			// Create nice looking package name, last component of uri, without .git
+			name := strings.TrimSuffix(filepath.Base(repository), ".git")
+			// Encode vcs_url with git+ prefix and @commit suffix
+			vcsUrl := "git+" + repository
+			if len(spctx.Pipeline.With["${{inputs.expected-commit}}"]) > 0 {
+				vcsUrl = vcsUrl + "@" + spctx.Pipeline.With["${{inputs.expected-commit}}"]
+			}
+			// Use tag as version
+			version := ""
+			if len(spctx.Pipeline.With["${{inputs.tag}}"]) > 0 {
+				version = spctx.Pipeline.With["${{inputs.tag}}"]
+			}
+			newpurl = purl.PackageURL{
+				Type:       "generic",
+				Name:       name,
+				Version:    version,
+				Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
+			}
+			if err := newpurl.Normalize(); err != nil {
+				return nil, err
+			}
+			purls = append(purls, newpurl)
 		}
 	}
 	return purls, nil

@@ -59,6 +59,33 @@ jobs:
             docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
           done
 
+      - name: Verify SBOM External Refs (git-checkout)
+        if: matrix.example == 'git-checkout.yaml'
+        run: |
+          set -euxo pipefail
+          tar -Oxf packages/x86_64/git-checkout*.apk var/lib/db/sbom > git-checkout.sbom.json
+
+          # Verify APK ref
+          grep '"pkg:apk/unknown/git-checkout@v0.0.1-r0?arch=x86_64"' git-checkout.sbom.json
+
+          # Verify github tag ref
+          grep '"pkg:github/puerco/hello.git@v0.0.1"' sbom.json git-checkout.sbom.json
+
+          # Verify github sha ref
+          grep '"pkg:github/puerco/hello.git@a73c4feb284dc6ed1e5758740f717f99dcd4c9d7"' git-checkout.sbom.json
+
+          # Verify ConfigFile ref
+          grep '"pkg:github/chainguard-dev/melange@8fc050fc9d85752332c2b09c64b06c69b95501ed#examples/git-checkout.yaml"' git-checkout.sbom.json
+
+      - name: Verify SBOM External Refs (gnu-hello)
+        if: matrix.example == 'gnu-hello.yaml'
+        run: |
+          set -euxo pipefail
+          tar -Oxf packages/x86_64/hello-2*.apk var/lib/db/sbom > hello.sbom.json
+
+          # Verify generic fetch ref
+          grep '"pkg:generic/hello@2.12?checksum=sha256%3Acf04af86dc085268c5f4470fbae49b18afbc221b78096aab842d934a76bad0ab\\u0026download_url=https%3A%2F%2Fftp.gnu.org%2Fgnu%2Fhello%2Fhello-2.12.tar.gz"' hello.sbom.json
+
       - name: Check packages can be installed with apk
         run: |
           set -euxo pipefail

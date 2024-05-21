@@ -570,6 +570,10 @@
         "no-commands": {
           "type": "boolean",
           "description": "Optional: Mark this package as not providing any executables"
+        },
+        "no-versioned-commands": {
+          "type": "boolean",
+          "description": "Optional: Mark this package as providing executables without full version"
         }
       },
       "additionalProperties": false,
@@ -577,7 +581,8 @@
       "required": [
         "no-provides",
         "no-depends",
-        "no-commands"
+        "no-commands",
+        "no-versioned-commands"
       ]
     },
     "PathMutation": {

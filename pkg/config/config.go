@@ -79,6 +79,8 @@ type PackageOption struct {
 	NoDepends bool `json:"no-depends" yaml:"no-depends"`
 	// Optional: Mark this package as not providing any executables
 	NoCommands bool `json:"no-commands" yaml:"no-commands"`
+	// Optional: Mark this package as providing executables without full version
+	NoVersionedCommands bool `json:"no-versioned-commands" yaml:"no-versioned-commands"`
 }
 
 type Checks struct {

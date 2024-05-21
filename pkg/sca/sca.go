@@ -129,7 +129,12 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 			if isInDir(path, pathBinDirs) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
-				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
+				if hdl.Options().NoVersionedCommands {
+					generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s", basename))
+				} else {
+					generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
+				}
+
 			}
 		}
 

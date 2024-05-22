@@ -146,7 +146,7 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 		} else if err != nil {
 			return err
 		}
-		defer bc.Close()
+		defer bc.Close(ctx)
 
 		bcs = append(bcs, bc)
 	}

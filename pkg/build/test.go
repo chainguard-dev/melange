@@ -62,13 +62,16 @@ type Test struct {
 	DebugRunner       bool
 	Interactive       bool
 	LogPolicy         []string
+	Remove            bool
+	containerConfigs  []*container.Config
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t := Test{
-		WorkspaceIgnore: ".melangeignore",
-		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
-		LogPolicy:       []string{"builtin:stderr"},
+		WorkspaceIgnore:  ".melangeignore",
+		Arch:             apko_types.ParseArchitecture(runtime.GOARCH),
+		LogPolicy:        []string{"builtin:stderr"},
+		containerConfigs: []*container.Config{},
 	}
 
 	for _, opt := range opts {
@@ -117,8 +120,21 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	return &t, nil
 }
 
-func (t *Test) Close() error {
-	return t.Runner.Close()
+func (t *Test) Close(ctx context.Context) error {
+	log := clog.FromContext(ctx)
+	errs := []error{}
+	if t.Remove {
+		log.Infof("deleting guest dir %s", t.GuestDir)
+		errs = append(errs, os.RemoveAll(t.GuestDir))
+		log.Infof("deleting workspace dir %s", t.WorkspaceDir)
+		errs = append(errs, os.RemoveAll(t.WorkspaceDir))
+		for _, cfg := range t.containerConfigs {
+			errs = append(errs, t.Runner.OCIImageLoader().RemoveImage(context.WithoutCancel(ctx), cfg.ImgRef))
+		}
+	}
+	errs = append(errs, t.Runner.Close())
+
+	return errors.Join(errs...)
 }
 
 // BuildGuest invokes apko to create the test image for the guest environment.
@@ -423,6 +439,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
+	t.containerConfigs = append(t.containerConfigs, cfg)
 
 	if !t.IsTestless() {
 		cfg.Arch = t.Arch
@@ -489,6 +506,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("unable to build workspace config: %w", err)
 			}
+			t.containerConfigs = append(t.containerConfigs, subCfg)
 			subCfg.Arch = t.Arch
 			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
 				return fmt.Errorf("unable to start subpackage test pod: %w", err)

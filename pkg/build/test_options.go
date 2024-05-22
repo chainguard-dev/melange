@@ -182,3 +182,12 @@ func WithExtraTestPackages(extraTestPackages []string) TestOption {
 		return nil
 	}
 }
+
+// WithRemove indicates whether the the test will clean up after itself.
+// This includes deleting any intermediate artifacts like container images.
+func WithTestRemove(remove bool) TestOption {
+	return func(b *Test) error {
+		b.Remove = remove
+		return nil
+	}
+}

@@ -602,7 +602,8 @@ func getShbang(fp fs.File) (string, error) {
 		return "", nil
 	}
 
-	toks := strings.Fields(string(buf[2 : blen-2]))
+	line1 := strings.Split(string(buf[2:blen-2]), "\n")[0]
+	toks := strings.Fields(line1)
 	bin := toks[0]
 
 	// if #! is '/usr/bin/env foo', then use next arg as the dep

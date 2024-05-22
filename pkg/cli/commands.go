@@ -15,21 +15,38 @@
 package cli
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
+	"time"
 
 	"chainguard.dev/apko/pkg/log"
+	gtrace "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"github.com/chainguard-dev/clog/gcp"
 	charmlog "github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"sigs.k8s.io/release-utils/version"
 )
 
 func New() *cobra.Command {
 	var level log.CharmLogLevel
 	var gcplog bool
+	var gcptrace bool
+	var traceFile string
+
+	// Approximate calling defer() across Persistent[Pre/Post]RunE method calls.
+	stack := []func(context.Context) error{}
+	deferred := func(f func(context.Context) error) {
+		stack = append(stack, f)
+	}
+
 	cmd := &cobra.Command{
 		Use:               "melange",
 		DisableAutoGenTag: true,
@@ -44,12 +61,77 @@ func New() *cobra.Command {
 				slog.SetDefault(slog.New(charmlog.NewWithOptions(os.Stderr, charmlog.Options{ReportTimestamp: true, Level: charmlog.Level(level)})))
 			}
 
+			var (
+				err error
+				exp sdktrace.SpanExporter
+			)
+
+			if gcptrace {
+				exp, err = gtrace.New()
+				if err != nil {
+					return fmt.Errorf("creating gcp trace exporter: %w", err)
+				}
+			} else if traceFile != "" {
+				w, err := os.Create(traceFile)
+				if err != nil {
+					return fmt.Errorf("creating trace file: %w", err)
+				}
+
+				deferred(func(context.Context) error {
+					return w.Close()
+				})
+
+				exp, err = stdouttrace.New(stdouttrace.WithWriter(w))
+				if err != nil {
+					return fmt.Errorf("creating stdout exporter: %w", err)
+				}
+			}
+
+			if exp != nil {
+				tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(exp))
+				otel.SetTracerProvider(tp)
+
+				deferred(func(ctx context.Context) error {
+					return tp.Shutdown(ctx)
+				})
+
+				deferred(func(ctx context.Context) error {
+					return tp.ForceFlush(ctx)
+				})
+
+				ctx, span := otel.Tracer("melange").Start(cmd.Context(), cmd.CalledAs())
+				cmd.SetContext(ctx)
+
+				deferred(func(context.Context) error {
+					span.End()
+					return nil
+				})
+			}
+
 			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			// It shouldn't take very long to flush spans but we don't want the whole build to fail if it takes a few seconds.
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			slices.Reverse(stack)
+
+			errs := []error{}
+			for _, f := range stack {
+				errs = append(errs, f(ctx))
+			}
+
+			return errors.Join(errs...)
 		},
 	}
 	cmd.PersistentFlags().Var(&level, "log-level", "log level (e.g. debug, info, warn, error)")
 	cmd.PersistentFlags().BoolVar(&gcplog, "gcplog", false, "use GCP logging")
 	_ = cmd.PersistentFlags().MarkHidden("gcplog")
+	cmd.PersistentFlags().BoolVar(&gcptrace, "gcptrace", false, "use GCP tracing")
+	_ = cmd.PersistentFlags().MarkHidden("gcptrace")
+	cmd.PersistentFlags().StringVar(&traceFile, "trace", "", "where to write trace output")
+	_ = cmd.PersistentFlags().MarkHidden("trace")
 
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())

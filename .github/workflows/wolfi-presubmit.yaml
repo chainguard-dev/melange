@@ -95,7 +95,23 @@ jobs:
       - run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
 
-      - run: |
+      - name: "Retrieve Wolfi advisory data"
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          repository: "wolfi-dev/advisories"
+          path: "data/wolfi-advisories"
+
+      # this need to point to main to always get the latest action
+      - uses: wolfi-dev/actions/install-wolfictl@main # main
+
+      - name: Test installable and Scan for CVEs
+        run: |
           for f in packages/x86_64/${{ matrix.package }}-*.apk; do
             docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
+            wolfictl scan \
+            --advisories-repo-dir 'data/wolfi-advisories' \
+            --advisory-filter 'resolved' \
+            --require-zero \
+            $f \
+            2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.
           done

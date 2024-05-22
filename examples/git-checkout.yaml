@@ -43,3 +43,10 @@ pipeline:
       destination: tag-unpeeled
       tag: v0.0.1
       expected-commit: fed9b28e2973bee65bcc503c6ab6522e8bfdd3d1
+
+  - uses: git-checkout
+    with:
+      repository: https://gitlab.com/xnox/hello.git
+      destination: gitlab
+      tag: v0.0.1
+      expected-commit: a73c4feb284dc6ed1e5758740f717f99dcd4c9d7

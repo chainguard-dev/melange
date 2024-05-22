@@ -90,6 +90,7 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		Relationships:    []relationship{},
 		LicenseDeclared:  spdx.NOASSERTION,
 		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
+		ExternalRefs:     spec.ExternalRefs,
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
@@ -147,6 +148,13 @@ func addPackage(doc *spdx.Document, p *pkg) {
 				"apk", p.Namespace, p.Name, p.Version, q, "",
 			).ToString(),
 			Type: "purl",
+		})
+	}
+	for _, purl := range p.ExternalRefs {
+		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
+			Category: "PACKAGE_MANAGER",
+			Locator:  purl.ToString(),
+			Type:     "purl",
 		})
 	}
 

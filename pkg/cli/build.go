@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -32,8 +31,6 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -74,8 +71,6 @@ func Build() *cobra.Command {
 	var timeout time.Duration
 	var extraPackages []string
 
-	var traceFile string
-
 	cmd := &cobra.Command{
 		Use:     "build",
 		Short:   "Build a package from a YAML configuration file",
@@ -84,30 +79,6 @@ func Build() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-
-			if traceFile != "" {
-				w, err := os.Create(traceFile)
-				if err != nil {
-					return fmt.Errorf("creating trace file: %w", err)
-				}
-				defer w.Close()
-				exporter, err := stdouttrace.New(stdouttrace.WithWriter(w))
-				if err != nil {
-					return fmt.Errorf("creating stdout exporter: %w", err)
-				}
-				tp := trace.NewTracerProvider(trace.WithBatcher(exporter))
-				otel.SetTracerProvider(tp)
-
-				defer func() {
-					if err := tp.Shutdown(context.WithoutCancel(ctx)); err != nil {
-						clog.FromContext(ctx).Errorf("shutting down trace provider: %v", err)
-					}
-				}()
-
-				tctx, span := otel.Tracer("melange").Start(ctx, "build")
-				defer span.End()
-				ctx = tctx
-			}
 
 			r, err := getRunner(ctx, runner)
 			if err != nil {
@@ -203,7 +174,6 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
-	cmd.Flags().StringVar(&traceFile, "trace", "", "where to write trace output")
 
 	return cmd
 }

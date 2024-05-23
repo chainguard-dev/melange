@@ -32,6 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	purl "github.com/package-url/packageurl-go"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
@@ -46,6 +47,7 @@ type PipelineContext struct {
 	// Ordered list of pipeline directories to search for pipelines
 	PipelineDirs []string
 	steps        int
+	ExternalRefs []purl.PackageURL
 }
 
 func NewPipelineContext(p *config.Pipeline, environment *apko_types.ImageConfiguration, config *container.Config, pipelineDirs []string) *PipelineContext {
@@ -513,6 +515,15 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 			return err
 		}
 
+		externalRefs, err := pctx.computeExternalRefs(spctx)
+		if err != nil {
+			return err
+		}
+		if externalRefs != nil {
+			log.Infof("  adding external refs %s for pipeline %q", externalRefs, pctx.Identity())
+			pctx.ExternalRefs = append(pctx.ExternalRefs, externalRefs...)
+		}
+
 		if err := spctx.ApplyNeeds(ctx, pb); err != nil {
 			return err
 		}
@@ -529,6 +540,82 @@ func (pctx *PipelineContext) ApplyNeeds(ctx context.Context, pb *PipelineBuild) 
 	}
 
 	return nil
+}
+
+// computeExternalRefs generates PURLs for subpipelines
+func (pctx *PipelineContext) computeExternalRefs(spctx *PipelineContext) ([]purl.PackageURL, error) {
+	var purls []purl.PackageURL
+	var newpurl purl.PackageURL
+
+	switch pctx.Pipeline.Uses {
+	case "fetch":
+		args := make(map[string]string)
+		args["download_url"] = spctx.Pipeline.With["${{inputs.uri}}"]
+		if len(spctx.Pipeline.With["${{inputs.expected-sha256}}"]) > 0 {
+			args["checksum"] = "sha256:" + spctx.Pipeline.With["${{inputs.expected-sha256}}"]
+		}
+		if len(spctx.Pipeline.With["${{inputs.expected-sha512}}"]) > 0 {
+			args["checksum"] = "sha512:" + spctx.Pipeline.With["${{inputs.expected-sha512}}"]
+		}
+		newpurl = purl.PackageURL{
+			Type:       "generic",
+			Name:       spctx.Pipeline.With["${{inputs.purl-name}}"],
+			Version:    spctx.Pipeline.With["${{inputs.purl-version}}"],
+			Qualifiers: purl.QualifiersFromMap(args),
+		}
+		if err := newpurl.Normalize(); err != nil {
+			return nil, err
+		}
+		purls = append(purls, newpurl)
+
+	case "git-checkout":
+		repository := spctx.Pipeline.With["${{inputs.repository}}"]
+		if strings.HasPrefix(repository, "https://github.com/") {
+			namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
+			versions := []string{
+				spctx.Pipeline.With["${{inputs.tag}}"],
+				spctx.Pipeline.With["${{inputs.expected-commit}}"],
+			}
+			for _, version := range versions {
+				if version != "" {
+					newpurl = purl.PackageURL{
+						Type:      "github",
+						Namespace: namespace,
+						Name:      name,
+						Version:   version,
+					}
+					if err := newpurl.Normalize(); err != nil {
+						return nil, err
+					}
+					purls = append(purls, newpurl)
+				}
+			}
+		} else {
+			// Create nice looking package name, last component of uri, without .git
+			name := strings.TrimSuffix(filepath.Base(repository), ".git")
+			// Encode vcs_url with git+ prefix and @commit suffix
+			vcsUrl := "git+" + repository
+			if len(spctx.Pipeline.With["${{inputs.expected-commit}}"]) > 0 {
+				vcsUrl = vcsUrl + "@" + spctx.Pipeline.With["${{inputs.expected-commit}}"]
+			}
+			// Use tag as version
+			version := ""
+			if len(spctx.Pipeline.With["${{inputs.tag}}"]) > 0 {
+				version = spctx.Pipeline.With["${{inputs.tag}}"]
+			}
+			newpurl = purl.PackageURL{
+				Type:       "generic",
+				Name:       name,
+				Version:    version,
+				Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
+			}
+			if err := newpurl.Normalize(); err != nil {
+				return nil, err
+			}
+			purls = append(purls, newpurl)
+		}
+	}
+	return purls, nil
 }
 
 // pipelineStepWorkDir returns the workdir for the current pipeline step.

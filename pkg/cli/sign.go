@@ -22,14 +22,12 @@ import (
 	"io"
 	"os"
 
+	pkgsign "chainguard.dev/melange/pkg/sign"
 	"github.com/chainguard-dev/clog"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-
-	"chainguard.dev/melange/pkg/build"
 )
 
 type signIndexOpts struct {
@@ -193,70 +191,5 @@ func (o signOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 
 func (o signOpts) run(ctx context.Context, pkg string) error {
 	clog.FromContext(ctx).Infof("Processing apk %s", pkg)
-
-	apkr, err := os.Open(pkg)
-	if err != nil {
-		return err
-	}
-
-	eapk, err := expandapk.ExpandApk(ctx, apkr, "")
-	if err != nil {
-		return fmt.Errorf("expanding apk: %w", err)
-	}
-	defer eapk.Close()
-
-	if err := apkr.Close(); err != nil {
-		return err
-	}
-
-	// Split the streams and then rebuild
-	cf, err := os.Open(eapk.ControlFile)
-	if err != nil {
-		return err
-	}
-	defer cf.Close()
-
-	// Use the control sections ModTime (set to SDE) for the signature
-	cfinfo, err := os.Stat(eapk.ControlFile)
-	if err != nil {
-		return err
-	}
-
-	pc := &build.PackageBuild{
-		Build: &build.Build{
-			SigningKey:        o.Key,
-			SigningPassphrase: "",
-		},
-	}
-
-	cdata, err := os.ReadFile(eapk.ControlFile)
-	if err != nil {
-		return err
-	}
-
-	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata, cfinfo.ModTime())
-	if err != nil {
-		return err
-	}
-
-	df, err := os.Open(eapk.PackageFile)
-	if err != nil {
-		return err
-	}
-	defer df.Close()
-
-	// Replace the package file with the new one
-	f, err := os.Create(pkg)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	for _, fp := range []io.Reader{bytes.NewBuffer(sigData), cf, df} {
-		if _, err := io.Copy(f, fp); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return pkgsign.APK(ctx, pkg, o.Key)
 }

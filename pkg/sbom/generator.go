@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/chainguard-dev/clog"
+	purl "github.com/package-url/packageurl-go"
 	"go.opentelemetry.io/otel"
 )
 
@@ -32,6 +33,8 @@ type Spec struct {
 	PackageName     string
 	PackageVersion  string
 	License         string // Full SPDX license expression
+	LicensingInfos  map[string]string
+	ExternalRefs    []purl.PackageURL
 	Copyright       string
 	Namespace       string
 	Arch            string

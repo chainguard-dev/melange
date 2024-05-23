@@ -38,6 +38,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -378,7 +379,7 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
-	img, err := apko_oci.BuildImageFromLayer(ctx, layer, bc.ImageConfiguration(), creationTime, arch)
+	img, err := apko_oci.BuildImageFromLayer(ctx, empty.Image, layer, bc.ImageConfiguration(), creationTime, arch)
 	if err != nil {
 		return "", err
 	}

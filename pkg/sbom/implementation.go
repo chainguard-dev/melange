@@ -81,6 +81,7 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 
+	supplier := "Organization: " + cases.Title(language.English).String(spec.Namespace)
 	newPackage := pkg{
 		id:               stringToIdentifier(fmt.Sprintf("%s-%s", spec.PackageName, spec.PackageVersion)),
 		FilesAnalyzed:    false,
@@ -89,10 +90,12 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		Relationships:    []relationship{},
 		LicenseDeclared:  spdx.NOASSERTION,
 		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
+		ExternalRefs:     spec.ExternalRefs,
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
-		Originator:       "Organization: " + cases.Title(language.English).String(spec.Namespace),
+		Originator:       supplier,
+		Supplier:         supplier,
 	}
 
 	if spec.License != "" {
@@ -105,19 +108,18 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
 	spdxPkg := spdx.Package{
-		ID:                   p.ID(),
-		Name:                 p.Name,
-		Version:              p.Version,
-		FilesAnalyzed:        false,
-		HasFiles:             []string{},
-		LicenseConcluded:     p.LicenseConcluded,
-		LicenseDeclared:      p.LicenseDeclared,
-		DownloadLocation:     spdx.NOASSERTION,
-		LicenseInfoFromFiles: []string{},
-		CopyrightText:        p.Copyright,
-		Checksums:            []spdx.Checksum{},
-		ExternalRefs:         []spdx.ExternalRef{},
-		Originator:           p.Originator,
+		ID:               p.ID(),
+		Name:             p.Name,
+		Version:          p.Version,
+		FilesAnalyzed:    false,
+		LicenseConcluded: p.LicenseConcluded,
+		LicenseDeclared:  p.LicenseDeclared,
+		DownloadLocation: spdx.NOASSERTION,
+		CopyrightText:    p.Copyright,
+		Checksums:        []spdx.Checksum{},
+		ExternalRefs:     []spdx.ExternalRef{},
+		Originator:       p.Originator,
+		Supplier:         p.Supplier,
 	}
 
 	algos := []string{}
@@ -146,6 +148,13 @@ func addPackage(doc *spdx.Document, p *pkg) {
 				"apk", p.Namespace, p.Name, p.Version, q, "",
 			).ToString(),
 			Type: "purl",
+		})
+	}
+	for _, purl := range p.ExternalRefs {
+		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
+			Category: "PACKAGE_MANAGER",
+			Locator:  purl.ToString(),
+			Type:     "purl",
 		})
 	}
 
@@ -204,6 +213,15 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		Packages:             []spdx.Package{},
 		Relationships:        []spdx.Relationship{},
 		ExternalDocumentRefs: []spdx.ExternalDocumentRef{},
+		LicensingInfos:       []spdx.LicensingInfo{},
+	}
+
+	for licenseID, extractedText := range spec.LicensingInfos {
+		spdxDoc.LicensingInfos = append(spdxDoc.LicensingInfos,
+			spdx.LicensingInfo{
+				LicenseID:     licenseID,
+				ExtractedText: extractedText,
+			})
 	}
 
 	if spec.License == "" {

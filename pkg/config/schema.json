@@ -3,6 +3,18 @@
   "$id": "https://chainguard.dev/melange/pkg/config/configuration",
   "$ref": "#/$defs/Configuration",
   "$defs": {
+    "BaseImageDescriptor": {
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "apkindex": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "BuildOption": {
       "properties": {
         "Vars": {
@@ -141,6 +153,10 @@
         "license": {
           "type": "string",
           "description": "Required: The license for this package"
+        },
+        "license-path": {
+          "type": "string",
+          "description": "Optional: Path to text of the custom License Ref"
         }
       },
       "additionalProperties": false,
@@ -362,6 +378,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "baseimage": {
+          "$ref": "#/$defs/BaseImageDescriptor"
         }
       },
       "additionalProperties": false,
@@ -907,6 +926,9 @@
         },
         "gid": {
           "type": "integer"
+        },
+        "shell": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

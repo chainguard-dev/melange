@@ -35,6 +35,9 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/storage/filesystem"
+	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
@@ -473,6 +476,62 @@ func (b *Build) IsBuildLess() bool {
 	return len(b.Configuration.Pipeline) == 0
 }
 
+// ConfigFileExternalRef calculates ExternalRef for the melange config
+// file itself.
+func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
+	// configFile must exist
+	configpath, err := filepath.Abs(b.ConfigFile)
+	if err != nil {
+		return nil, err
+	}
+	// If not a git repository, skip
+	opt := &git.PlainOpenOptions{DetectDotGit: true}
+	r, err := git.PlainOpenWithOptions(configpath, opt)
+	if err != nil {
+		return nil, nil
+	}
+	// If no remote origin, skip (local git repo)
+	remote, err := r.Remote("origin")
+	if err != nil {
+		return nil, nil
+	}
+	repository := remote.Config().URLs[0]
+	// Only supports github-actions style https github checkouts
+	if !strings.HasPrefix(repository, "https://github.com/") {
+		return nil, nil
+	}
+	namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
+
+	// Head must exist
+	ref, err := r.Head()
+	if err != nil {
+		return nil, err
+	}
+	version := ref.Hash()
+
+	// Try to get configfile as subpath in the repository
+	s, ok := r.Storer.(*filesystem.Storage)
+	if !ok {
+		return nil, errors.New("Repository storage is not filesystem.Storage")
+	}
+	base := filepath.Dir(s.Filesystem().Root())
+	subpath, err := filepath.Rel(base, configpath)
+	if err != nil {
+		return nil, err
+	}
+	newpurl := &purl.PackageURL{
+		Type:      "github",
+		Namespace: namespace,
+		Name:      name,
+		Version:   version.String(),
+		Subpath:   subpath,
+	}
+	if err := newpurl.Normalize(); err != nil {
+		return nil, err
+	}
+	return newpurl, nil
+}
+
 func (b *Build) PopulateCache(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
@@ -646,6 +705,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		b.GuestDir = guestDir
 	}
 
+	var externalRefs []purl.PackageURL
+
 	log.Infof("evaluating pipelines for package requirements")
 	for _, p := range b.Configuration.Pipeline {
 		// fine to pass nil for config, since not running in container.
@@ -654,6 +715,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
 			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 		}
+		externalRefs = append(externalRefs, pctx.ExternalRefs...)
 	}
 
 	for _, spkg := range b.Configuration.Subpackages {
@@ -665,9 +727,22 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
 				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
 			}
+			externalRefs = append(externalRefs, pctx.ExternalRefs...)
 		}
 	}
 	pb.Subpackage = nil
+
+	configFileRef, err := b.ConfigFileExternalRef()
+	if err != nil {
+		return fmt.Errorf("failed to create ExternalRef for configfile: %w", err)
+	}
+
+	if configFileRef != nil {
+		// In SPDX v3 there is dedicate field for this
+		// https://spdx.github.io/spdx-spec/v3.0/model/Build/Properties/configSourceUri/
+		log.Infof("adding external ref %s for ConfigFile", configFileRef)
+		externalRefs = append(externalRefs, *configFileRef)
+	}
 
 	if b.EmptyWorkspace {
 		log.Infof("empty workspace requested")
@@ -817,6 +892,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Run the SBOM generator.
 	generator := sbom.NewGenerator()
 
+	licensinginfos, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
+	if err != nil {
+		return err
+	}
+
 	// generate SBOMs for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
@@ -839,6 +919,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			PackageName:     sp.Name,
 			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 			License:         b.Configuration.Package.LicenseExpression(),
+			LicensingInfos:  licensinginfos,
+			ExternalRefs:    externalRefs,
 			Copyright:       b.Configuration.Package.FullCopyright(),
 			Namespace:       namespace,
 			Arch:            b.Arch.ToAPK(),
@@ -853,6 +935,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		PackageName:     b.Configuration.Package.Name,
 		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 		License:         b.Configuration.Package.LicenseExpression(),
+		LicensingInfos:  licensinginfos,
+		ExternalRefs:    externalRefs,
 		Copyright:       b.Configuration.Package.FullCopyright(),
 		Namespace:       namespace,
 		Arch:            b.Arch.ToAPK(),

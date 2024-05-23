@@ -301,15 +301,11 @@ func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 	return newRuntimeDeps
 }
 
-func (pc *PackageBuild) GenerateDependencies(ctx context.Context) error {
+func (pc *PackageBuild) GenerateDependencies(ctx context.Context, hdl sca.SCAHandle) error {
 	log := clog.FromContext(ctx)
 	generated := config.Dependencies{}
 
-	hdl := SCABuildInterface{
-		PackageBuild: pc,
-	}
-
-	if err := sca.Analyze(ctx, &hdl, &generated); err != nil {
+	if err := sca.Analyze(ctx, hdl, &generated); err != nil {
 		return fmt.Errorf("analyzing package: %w", err)
 	}
 
@@ -440,8 +436,12 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	// provide the tar writer etc/passwd and etc/group of guest filesystem
 	userinfofs := os.DirFS(pc.Build.GuestDir)
 
+	hdl := &SCABuildInterface{
+		PackageBuild: pc,
+	}
+
 	// generate so:/cmd: virtuals for the filesystem
-	if err := pc.GenerateDependencies(ctx); err != nil {
+	if err := pc.GenerateDependencies(ctx, hdl); err != nil {
 		return fmt.Errorf("unable to build final dependencies set: %w", err)
 	}
 

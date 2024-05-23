@@ -253,6 +253,8 @@ type Copyright struct {
 	Attestation string `json:"attestation,omitempty" yaml:"attestation,omitempty"`
 	// Required: The license for this package
 	License string `json:"license" yaml:"license"`
+	// Optional: Path to text of the custom License Ref
+	LicensePath string `json:"license-path,omitempty" yaml:"license-path,omitempty"`
 }
 
 // LicenseExpression returns an SPDX license expression formed from the
@@ -269,6 +271,22 @@ func (p *Package) LicenseExpression() string {
 		licenseExpression += cp.License
 	}
 	return licenseExpression
+}
+
+// Returns array of ExtractedLicensingInfos formed from the data in
+// the copyright structs found in the conf.
+func (p *Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
+	licenseInfos := make(map[string]string)
+	for _, cp := range p.Copyright {
+		if cp.LicensePath != "" {
+			content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
+			}
+			licenseInfos[cp.License] = string(content)
+		}
+	}
+	return licenseInfos, nil
 }
 
 // FullCopyright returns the concatenated copyright expressions defined

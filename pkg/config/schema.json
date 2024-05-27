@@ -250,6 +250,40 @@
       ],
       "description": "GitHubMonitor indicates using the GitHub API"
     },
+    "GitLabMonitor": {
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Org/Subgroup/repo for GitLab"
+        },
+        "strip-prefix": {
+          "type": "string",
+          "description": "If the version in GitLab contains a prefix which should be ignored"
+        },
+        "strip-suffix": {
+          "type": "string",
+          "description": "If the version in GitLab contains a suffix which should be ignored"
+        },
+        "tag-filter-prefix": {
+          "type": "string",
+          "description": "Prefix filter to apply when searching tags on a GitHub repository"
+        },
+        "tag-filter-contains": {
+          "type": "string",
+          "description": "Filter to apply when searching tags on a GitHub repository"
+        },
+        "use-tag": {
+          "type": "boolean",
+          "description": "Override the default of using a GitHub release to identify related tag to\nfetch.  Not all projects use GitHub releases but just use tags"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "description": "GitLabMonitor indicates using the GitLab API"
+    },
     "Group": {
       "properties": {
         "groupname": {
@@ -899,6 +933,10 @@
         "github": {
           "$ref": "#/$defs/GitHubMonitor",
           "description": "The configuration block for updates tracked via the Github API"
+        },
+        "gitlab": {
+          "$ref": "#/$defs/GitLabMonitor",
+          "description": "The configuration block for updates tracked via the GitLab rest API"
         },
         "version-transform": {
           "items": {

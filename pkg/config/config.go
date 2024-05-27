@@ -479,6 +479,8 @@ type Update struct {
 	ReleaseMonitor *ReleaseMonitor `json:"release-monitor,omitempty" yaml:"release-monitor,omitempty"`
 	// The configuration block for updates tracked via the Github API
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
+	// The configuration block for updates tracked via the GitLab rest API
+	GitLabMonitor *GitLabMonitor `json:"gitlab,omitempty" yaml:"gitlab,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
 }
@@ -504,6 +506,23 @@ type GitHubMonitor struct {
 	// Filter to apply when searching tags on a GitHub repository
 	// Deprecated: Use TagFilterPrefix instead
 	TagFilter string `json:"tag-filter,omitempty" yaml:"tag-filter,omitempty"`
+	// Prefix filter to apply when searching tags on a GitHub repository
+	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
+	// Filter to apply when searching tags on a GitHub repository
+	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+	// Override the default of using a GitHub release to identify related tag to
+	// fetch.  Not all projects use GitHub releases but just use tags
+	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`
+}
+
+// GitLabMonitor indicates using the GitLab API
+type GitLabMonitor struct {
+	// Org/Subgroup/repo for GitLab
+	Identifier string `json:"identifier" yaml:"identifier"`
+	// If the version in GitLab contains a prefix which should be ignored
+	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
+	// If the version in GitLab contains a suffix which should be ignored
+	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
 	// Prefix filter to apply when searching tags on a GitHub repository
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
 	// Filter to apply when searching tags on a GitHub repository

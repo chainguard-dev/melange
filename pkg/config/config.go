@@ -523,12 +523,12 @@ type GitLabMonitor struct {
 	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
 	// If the version in GitLab contains a suffix which should be ignored
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
-	// Prefix filter to apply when searching tags on a GitHub repository
+	// Prefix filter to apply when searching tags on a GitLab repository
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
-	// Filter to apply when searching tags on a GitHub repository
+	// Filter to apply when searching tags on a GitLab repository
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
-	// Override the default of using a GitHub release to identify related tag to
-	// fetch.  Not all projects use GitHub releases but just use tags
+	// Override the default of using a GitLab release to identify related tag to
+	// fetch.  Not all projects use GitLab releases but just use tags
 	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`
 }
 

@@ -266,15 +266,15 @@
         },
         "tag-filter-prefix": {
           "type": "string",
-          "description": "Prefix filter to apply when searching tags on a GitHub repository"
+          "description": "Prefix filter to apply when searching tags on a GitLab repository"
         },
         "tag-filter-contains": {
           "type": "string",
-          "description": "Filter to apply when searching tags on a GitHub repository"
+          "description": "Filter to apply when searching tags on a GitLab repository"
         },
         "use-tag": {
           "type": "boolean",
-          "description": "Override the default of using a GitHub release to identify related tag to\nfetch.  Not all projects use GitHub releases but just use tags"
+          "description": "Override the default of using a GitLab release to identify related tag to\nfetch.  Not all projects use GitLab releases but just use tags"
         }
       },
       "additionalProperties": false,

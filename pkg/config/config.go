@@ -161,6 +161,30 @@ func (cfg *Configuration) applySubstitutionsForProvides() error {
 	return nil
 }
 
+func (cfg *Configuration) applySubstitutionsForPriorities() error {
+	nw := buildConfigMap(cfg)
+	var err error
+	cfg.Package.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ProviderPriority)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
+	}
+	cfg.Package.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ReplacesPriority)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
+	}
+	for _, sp := range cfg.Subpackages {
+		sp.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ProviderPriority)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ProviderPriority, err)
+		}
+		sp.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ReplacesPriority)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ReplacesPriority, err)
+		}
+	}
+	return nil
+}
+
 func (cfg *Configuration) applySubstitutionsForRuntime() error {
 	nw := buildConfigMap(cfg)
 	for i, runtime := range cfg.Package.Dependencies.Runtime {
@@ -532,9 +556,12 @@ type Dependencies struct {
 	Provides []string `json:"provides,omitempty" yaml:"provides,omitempty"`
 	// Optional: List of replace objectives
 	Replaces []string `json:"replaces,omitempty" yaml:"replaces,omitempty"`
-	// Optional: An integer compared against other equal package provides used to
-	// determine priority
-	ProviderPriority int `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
+	// Optional: An integer string compared against other equal package provides used to
+	// determine priority of provides
+	ProviderPriority string `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
+	// Optional: An integer string compared against other equal package provides used to
+	// determine priority of file replacements
+	ReplacesPriority string `json:"replaces-priority,omitempty" yaml:"replaces-priority,omitempty"`
 
 	// List of self-provided dependencies found outside of lib directories
 	// ("lib", "usr/lib", "lib64", or "usr/lib64").
@@ -780,7 +807,8 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
 					Provides:         replaceAll(replacer, sp.Dependencies.Provides),
 					Replaces:         replaceAll(replacer, sp.Dependencies.Replaces),
-					ProviderPriority: sp.Dependencies.ProviderPriority,
+					ProviderPriority: replacer.Replace(sp.Dependencies.ProviderPriority),
+					ReplacesPriority: replacer.Replace(sp.Dependencies.ReplacesPriority),
 				},
 				Options: sp.Options,
 				Scriptlets: Scriptlets{
@@ -953,6 +981,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if err := cfg.applySubstitutionsForPackages(); err != nil {
 		return nil, err
 	}
+	if err := cfg.applySubstitutionsForPriorities(); err != nil {
+		return nil, err
+	}
 
 	// Propagate all child pipelines
 	cfg.propagatePipelines()
@@ -1004,6 +1035,9 @@ func (cfg Configuration) validate() error {
 
 	// TODO: try to validate value of .package.version
 
+	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
+		return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+	}
 	if err := validatePipelines(cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
@@ -1012,7 +1046,9 @@ func (cfg Configuration) validate() error {
 		if !packageNameRegex.MatchString(sp.Name) {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}
-
+		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
+			return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+		}
 		if err := validatePipelines(sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
@@ -1032,6 +1068,20 @@ func validatePipelines(ps []Pipeline) error {
 		}
 
 		if err := validatePipelines(p.Pipeline); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDependenciesPriorities(deps Dependencies) error {
+	priorities := []string{deps.ProviderPriority, deps.ProviderPriority}
+	for _, priority := range priorities {
+		if priority == "" {
+			continue
+		}
+		_, err := strconv.Atoi(priority)
+		if err != nil {
 			return err
 		}
 	}

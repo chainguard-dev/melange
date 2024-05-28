@@ -195,8 +195,12 @@
           "description": "Optional: List of replace objectives"
         },
         "provider-priority": {
-          "type": "integer",
-          "description": "Optional: An integer compared against other equal package provides used to\ndetermine priority"
+          "type": "string",
+          "description": "Optional: An integer string compared against other equal package provides used to\ndetermine priority of provides"
+        },
+        "replaces-priority": {
+          "type": "string",
+          "description": "Optional: An integer string compared against other equal package provides used to\ndetermine priority of file replacements"
         }
       },
       "additionalProperties": false,

@@ -140,6 +140,43 @@ subpackages:
 	require.True(t, cfg.Subpackages[0].Options.NoProvides)
 }
 
+func Test_rangeSubstitutionsPriorities(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+
+	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInRangePriorities")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: range-substitutions
+  version: 0.0.1
+  epoch: 7
+  description: example using a range in subpackages
+
+data:
+  - name: I-am-a-range
+    items:
+      a: 10
+      b: 20
+
+subpackages:
+  - range: I-am-a-range
+    name: ${{range.key}}
+    description: Check priorities are ${{range.value}}
+    dependencies:
+      provider-priority: ${{range.value}}
+      replaces-priority: ${{range.value}}
+      runtime:
+        - wow-some-kinda-dynamically-linked-library-i-guess=1.0
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+	require.Equal(t, cfg.Subpackages[0].Dependencies.ProviderPriority, "10")
+	require.Equal(t, cfg.Subpackages[0].Dependencies.ReplacesPriority, "10")
+}
+
 func Test_propagatePipelines(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
 

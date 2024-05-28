@@ -1042,7 +1042,13 @@ func (cfg Configuration) validate() error {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 
+	saw := map[string]int{}
 	for i, sp := range cfg.Subpackages {
+		if extant, ok := saw[sp.Name]; ok {
+			return fmt.Errorf("saw duplicate subpackage name %q (subpackages index: %d and %d)", sp.Name, extant, i)
+		}
+		saw[sp.Name] = i
+
 		if !packageNameRegex.MatchString(sp.Name) {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}

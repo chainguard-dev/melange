@@ -299,3 +299,33 @@ pipeline:
 	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[1].WorkDir)
 	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[2].WorkDir)
 }
+
+func TestDuplicateSubpackage(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+
+	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: dupe-subpackage
+  version: 0.0.1
+  epoch: 8
+  description: example using a two subpackages with same name
+
+data:
+  - name: I-am-a-range
+    items:
+      a: ""
+      b: ""
+
+subpackages:
+  - name: subpackage
+    range: I-am-a-range
+    pipeline:
+      - runs: echo "I am a subpackage for ${{range.key}"
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseConfiguration(ctx, fp); err == nil {
+		t.Errorf("configuration should have failed to validate, got: %v", err)
+	}
+}

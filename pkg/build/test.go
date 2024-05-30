@@ -57,6 +57,7 @@ type Test struct {
 	CacheDir          string
 	ApkCacheDir       string
 	CacheSource       string
+	EnvFile           string
 	Runner            container.Runner
 	Debug             bool
 	DebugRunner       bool
@@ -102,7 +103,9 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		t.WorkspaceDir = tmpdir
 	}
 
-	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile)
+	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
+		config.WithEnvFileForParsing(t.EnvFile),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}

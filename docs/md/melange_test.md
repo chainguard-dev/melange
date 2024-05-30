@@ -34,6 +34,7 @@ melange test [flags]
       --cache-source string           directory or bucket used for preloading the cache
       --debug                         enables debug logging of test pipelines (sets -x for steps)
       --debug-runner                  when enabled, the builder pod will persist after the build succeeds or fails
+      --env-file string               file to use for preloaded environment variables
       --guest-dir string              directory used for the build environment guest
   -h, --help                          help for test
   -i, --interactive                   when enabled, attaches stdin with a tty to the pod on failure

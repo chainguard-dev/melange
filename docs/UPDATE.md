@@ -65,8 +65,8 @@ To achieve this you can specify a list of regex patterns to identify versions th
 update:
   enabled: true
   ignore-regex-patterns:
-    - "ignore_me*"
-    - "*ignore_me"
+    - "ignore_me.*"
+    - ".*ignore_me"
 ```
 
 ## Version Transform

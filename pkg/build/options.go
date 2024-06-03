@@ -20,6 +20,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -347,6 +348,16 @@ func WithTimeout(dur time.Duration) Option {
 func WithExtraPackages(extraPackages []string) Option {
 	return func(b *Build) error {
 		b.ExtraPackages = extraPackages
+		return nil
+	}
+}
+
+func WithAuth(domain, user, pass string) Option {
+	return func(b *Build) error {
+		if b.Auth == nil {
+			b.Auth = make(map[string]options.Auth)
+		}
+		b.Auth[domain] = options.Auth{User: user, Pass: pass}
 		return nil
 	}
 }

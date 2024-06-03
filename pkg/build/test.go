@@ -29,6 +29,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/yookoala/realpath"
@@ -63,6 +64,7 @@ type Test struct {
 	DebugRunner       bool
 	Interactive       bool
 	LogPolicy         []string
+	Auth              map[string]options.Auth
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -139,14 +141,20 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.RemoveAll(tmp)
 
+	authOpts := make([]apko_build.Option, 0, len(t.Auth))
+	for domain, auth := range t.Auth {
+		authOpts = append(authOpts, apko_build.WithAuth(domain, auth.User, auth.Pass))
+	}
+
 	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(imgConfig),
-		apko_build.WithArch(t.Arch),
-		apko_build.WithExtraKeys(t.ExtraKeys),
-		apko_build.WithExtraRepos(t.ExtraRepos),
-		apko_build.WithExtraPackages(t.ExtraTestPackages),
-		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
-		apko_build.WithTempDir(tmp),
+		append(authOpts,
+			apko_build.WithImageConfiguration(imgConfig),
+			apko_build.WithArch(t.Arch),
+			apko_build.WithExtraKeys(t.ExtraKeys),
+			apko_build.WithExtraRepos(t.ExtraRepos),
+			apko_build.WithExtraPackages(t.ExtraTestPackages),
+			apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+			apko_build.WithTempDir(tmp))...,
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)

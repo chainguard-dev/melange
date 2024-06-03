@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -163,6 +164,17 @@ func Build() *cobra.Command {
 
 			if sourceDir != "" {
 				options = append(options, build.WithSourceDir(sourceDir))
+			}
+
+			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
+				// Fine, no auth.
+			} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
+				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
+			} else if parts[0] != "basic" {
+				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
+			} else {
+				domain, user, pass := parts[1], parts[2], parts[3]
+				options = append(options, build.WithAuth(domain, user, pass))
 			}
 
 			return BuildCmd(ctx, archs, options...)

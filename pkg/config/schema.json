@@ -929,6 +929,9 @@
         },
         "shell": {
           "type": "string"
+        },
+        "homedir": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

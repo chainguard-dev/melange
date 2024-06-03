@@ -16,6 +16,7 @@ package build
 
 import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -190,6 +191,16 @@ func WithExtraTestPackages(extraTestPackages []string) TestOption {
 func WithTestEnvFile(envFile string) TestOption {
 	return func(t *Test) error {
 		t.EnvFile = envFile
+		return nil
+	}
+}
+
+func WithTestAuth(domain, user, pass string) TestOption {
+	return func(t *Test) error {
+		if t.Auth == nil {
+			t.Auth = make(map[string]options.Auth)
+		}
+		t.Auth[domain] = options.Auth{User: user, Pass: pass}
 		return nil
 	}
 }

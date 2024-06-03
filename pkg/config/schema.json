@@ -927,10 +927,10 @@
         "gid": {
           "type": "integer"
         },
-        "homedir": {
+        "shell": {
           "type": "string"
         },
-        "shell": {
+        "homedir": {
           "type": "string"
         }
       },

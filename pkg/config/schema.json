@@ -927,6 +927,9 @@
         "gid": {
           "type": "integer"
         },
+        "homedir": {
+          "type": "string"
+        },
         "shell": {
           "type": "string"
         }

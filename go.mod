@@ -1,6 +1,7 @@
 module chainguard.dev/melange
 
-go 1.22.0
+go 1.22.3
+
 require (
 	chainguard.dev/apko v0.14.7
 	cloud.google.com/go/storage v1.41.0

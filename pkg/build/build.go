@@ -32,6 +32,7 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
 	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
@@ -41,6 +42,7 @@ import (
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/exp/maps"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"k8s.io/kube-openapi/pkg/util/sets"
@@ -95,6 +97,7 @@ type Build struct {
 	DefaultCPU        string
 	DefaultMemory     string
 	DefaultTimeout    time.Duration
+	Auth              map[string]options.Auth
 
 	EnabledBuildOptions []string
 }
@@ -238,20 +241,27 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.RemoveAll(tmp)
 
+	authOpts := make([]apko_build.Option, 0, len(b.Auth))
+	for domain, auth := range b.Auth {
+		authOpts = append(authOpts, apko_build.WithAuth(domain, auth.User, auth.Pass))
+	}
+
 	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(imgConfig),
-		apko_build.WithArch(b.Arch),
-		apko_build.WithExtraKeys(b.ExtraKeys),
-		apko_build.WithExtraRepos(b.ExtraRepos),
-		apko_build.WithExtraPackages(b.ExtraPackages),
-		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
-		apko_build.WithTempDir(tmp),
+		append(authOpts,
+			apko_build.WithImageConfiguration(imgConfig),
+			apko_build.WithArch(b.Arch),
+			apko_build.WithExtraKeys(b.ExtraKeys),
+			apko_build.WithExtraRepos(b.ExtraRepos),
+			apko_build.WithExtraPackages(b.ExtraPackages),
+			apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+			apko_build.WithTempDir(tmp))...,
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
 
 	bc.Summarize(ctx)
+	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to Summarize
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {

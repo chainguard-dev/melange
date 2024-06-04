@@ -117,7 +117,7 @@ GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
 	set -e ;
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0;
 
 .PHONY: fmt
 fmt: ## Format all go files
@@ -143,7 +143,7 @@ log-%:
 
 .PHONY: lint
 lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
-	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --deadline 3m0s  --skip-dirs .modcache ./...
+	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --skip-dirs .modcache ./...
 
 .PHONY: test
 test: melange ## Run go test

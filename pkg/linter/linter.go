@@ -26,8 +26,8 @@ import (
 	"regexp"
 	"strings"
 
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 
 	"gopkg.in/ini.v1"
 )

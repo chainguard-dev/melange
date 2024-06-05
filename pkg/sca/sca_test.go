@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog/slogtest"
-	"github.com/chainguard-dev/go-apk/pkg/apk"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/ini.v1"
 )

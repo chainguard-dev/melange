@@ -22,9 +22,9 @@ import (
 	"io"
 	"os"
 
+	sign "chainguard.dev/apko/pkg/apk/signature"
 	pkgsign "chainguard.dev/melange/pkg/sign"
 	"github.com/chainguard-dev/clog"
-	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"

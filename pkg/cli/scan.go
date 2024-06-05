@@ -28,11 +28,11 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
 	"github.com/chainguard-dev/clog"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 )

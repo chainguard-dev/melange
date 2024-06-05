@@ -26,8 +26,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
-	"github.com/chainguard-dev/go-apk/pkg/signature"
+	"chainguard.dev/apko/pkg/apk/expandapk"
+	"chainguard.dev/apko/pkg/apk/signature"
 )
 
 const (

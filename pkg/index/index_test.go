@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	"github.com/chainguard-dev/clog/slogtest"
-	"github.com/chainguard-dev/go-apk/pkg/apk"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	"github.com/google/go-cmp/cmp"
 )
 

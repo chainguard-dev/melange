@@ -26,12 +26,12 @@ import (
 	"runtime"
 	"strings"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"github.com/chainguard-dev/clog"
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
 

@@ -14,45 +14,36 @@
 package sign
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"os"
 
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/build"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 )
 
 // APK() signs an APK file with the provided key. The existing APK file is
 // replaced with the signed APK file.
 func APK(ctx context.Context, apkPath string, keyPath string) error {
-	apkr, err := os.Open(apkPath)
+	f, err := os.Open(apkPath)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	eapk, err := expandapk.ExpandApk(ctx, apkr, "")
+	split, err := expandapk.Split(f)
 	if err != nil {
-		return fmt.Errorf("expanding apk: %w", err)
-	}
-	defer eapk.Close()
-
-	if err := apkr.Close(); err != nil {
-		return err
+		return fmt.Errorf("splitting apk: %w", err)
 	}
 
-	// Split the streams and then rebuild
-	cf, err := os.Open(eapk.ControlFile)
-	if err != nil {
-		return err
-	}
-	defer cf.Close()
-
-	// Use the control sections ModTime (set to SDE) for the signature
-	cfinfo, err := os.Stat(eapk.ControlFile)
-	if err != nil {
-		return err
+	cf, df := split[0], split[1]
+	if len(split) == 3 {
+		// signature section is present
+		cf, df = split[1], split[2]
 	}
 
 	pc := &build.PackageBuild{
@@ -62,34 +53,56 @@ func APK(ctx context.Context, apkPath string, keyPath string) error {
 		},
 	}
 
-	cdata, err := os.ReadFile(eapk.ControlFile)
+	cdata, err := io.ReadAll(cf)
 	if err != nil {
 		return err
 	}
 
-	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata, cfinfo.ModTime())
+	// Reading and writing to the same file seems risky, so we create a temp file.
+	tmpData, err := os.CreateTemp("", "melange-sign-data-section-tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmpData.Name())
+
+	if _, err := io.Copy(tmpData, df); err != nil {
+		return err
+	}
+	if _, err := tmpData.Seek(0, 0); err != nil {
+		return err
+	}
+
+	// Pull the modtime out of the .PKGINFO
+	r := bytes.NewReader(cdata)
+	zr, err := gzip.NewReader(r)
+	if err != nil {
+		return err
+	}
+	tr := tar.NewReader(zr)
+	hdr, err := tr.Next()
+	if err != nil {
+		return err
+	}
+	if hdr.Name != ".PKGINFO" {
+		return fmt.Errorf("unexpected file in control section: %s", hdr.Name)
+	}
+
+	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata, hdr.ModTime)
 	if err != nil {
 		return err
 	}
 
-	df, err := os.Open(eapk.PackageFile)
+	w, err := os.Create(apkPath)
 	if err != nil {
 		return err
 	}
-	defer df.Close()
 
 	// Replace the package file with the new one
-	f, err := os.Create(apkPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	for _, fp := range []io.Reader{bytes.NewBuffer(sigData), cf, df} {
-		if _, err := io.Copy(f, fp); err != nil {
+	for _, fp := range []io.Reader{bytes.NewReader(sigData), bytes.NewReader(cdata), tmpData} {
+		if _, err := io.Copy(w, fp); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return w.Close()
 }

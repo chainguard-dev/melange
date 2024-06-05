@@ -30,12 +30,12 @@ import (
 	"strings"
 	"time"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/filesystem"
 	purl "github.com/package-url/packageurl-go"

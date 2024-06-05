@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"golang.org/x/sys/unix"
 )
 

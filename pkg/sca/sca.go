@@ -27,8 +27,8 @@ import (
 	"strings"
 	"unicode"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"github.com/chainguard-dev/clog"
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"

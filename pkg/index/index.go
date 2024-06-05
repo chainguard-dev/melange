@@ -24,9 +24,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"chainguard.dev/apko/pkg/apk/apk"
+	sign "chainguard.dev/apko/pkg/apk/signature"
 	"github.com/chainguard-dev/clog"
-	apkrepo "github.com/chainguard-dev/go-apk/pkg/apk"
-	sign "github.com/chainguard-dev/go-apk/pkg/signature"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
@@ -38,7 +38,7 @@ type Index struct {
 	MergeIndexFileFlag bool
 	SigningKey         string
 	ExpectedArch       string
-	Index              apkrepo.APKIndex
+	Index              apk.APKIndex
 }
 
 type Option func(*Index) error
@@ -133,7 +133,7 @@ func (idx *Index) LoadIndex(ctx context.Context, sourceFile string) error {
 	}
 	defer f.Close()
 
-	index, err := apkrepo.IndexFromArchive(f)
+	index, err := apk.IndexFromArchive(f)
 	if err != nil {
 		return fmt.Errorf("failed to read apkindex from archive file: %w", err)
 	}
@@ -148,7 +148,7 @@ func (idx *Index) LoadIndex(ctx context.Context, sourceFile string) error {
 
 func (idx *Index) UpdateIndex(ctx context.Context) error {
 	log := clog.FromContext(ctx)
-	packages := make([]*apkrepo.Package, len(idx.PackageFiles))
+	packages := make([]*apk.Package, len(idx.PackageFiles))
 	var g errgroup.Group
 	g.SetLimit(4)
 	for i, apkFile := range idx.PackageFiles {
@@ -160,7 +160,13 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
 			}
 			defer f.Close()
-			pkg, err := apkrepo.ParsePackage(ctx, f)
+
+			stat, err := f.Stat()
+			if err != nil {
+				return err
+			}
+
+			pkg, err := apk.ParsePackage(ctx, f, uint64(stat.Size()))
 			if err != nil {
 				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
 			}
@@ -231,7 +237,7 @@ func (idx *Index) GenerateIndex(ctx context.Context) error {
 
 func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string) error {
 	log := clog.FromContext(ctx)
-	archive, err := apkrepo.ArchiveFromIndex(&idx.Index)
+	archive, err := apk.ArchiveFromIndex(&idx.Index)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
 	}

@@ -19,6 +19,10 @@ inputs:
   properties:
     description: |
       Properties to update / add the POM file via command line flag
+  pom:
+    description: |
+      Path to pom.xml
+    default: pom.xml
   debug:
     description: |
       Enable debug mode, which will print out the diffs of the pom.xml file after running pombump
@@ -32,7 +36,7 @@ pipeline:
       DEPENDENCIES_FLAG=""
       PROPERTIES_FLAG=""
 
-      if [ -f"${{inputs.patch-file}}" ]; then
+      if [ -f "${{inputs.patch-file}}" ]; then
         PATCH_FILE_FLAG="--patch-file ${{inputs.patch-file}}"
       fi
 
@@ -48,10 +52,11 @@ pipeline:
         PROPERTIES_FLAG="--properties ${{inputs.properties}}"
       fi
 
-      pombump pom.xml $PATCH_FILE_FLAG $PROPERTIES_FILE_FLAG $DEPENDENCIES_FLAG $PROPERTIES_FLAG > pom.xml.new
+      pombump ${{inputs.pom}} $PATCH_FILE_FLAG $PROPERTIES_FILE_FLAG $DEPENDENCIES_FLAG $PROPERTIES_FLAG > "${{inputs.pom}}.new"
 
       if [ "${{inputs.debug}}" = "true" ]; then
         # If there are any differences, it will return a non-zero exit code, so we use `|| true` to ignore that
-        diff -w pom.xml pom.xml.new || true
+        diff -w "${{inputs.pom}}" "${{inputs.pom}}.new" || true
       fi
-      mv pom.xml.new pom.xml
+
+      mv "${{inputs.pom}}.new" ${{inputs.pom}} 

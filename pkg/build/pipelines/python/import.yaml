@@ -17,7 +17,9 @@ inputs:
 pipeline:
   - runs: |
       if [ -n "${{inputs.from}}" ]; then
-        python3 -c "from ${{inputs.from}} import ${{inputs.import}}"
+        python3 -c "from ${{inputs.from}} import ${{inputs.import}}" || echo "Failed to import ${{inputs.import}} from ${{inputs.from}}" && exit 1;
+        echo "Library ${{inputs.import}} was successfully imported from ${{inputs.from}}"
       else
-        python3 -c "import ${{inputs.import}}"
+        python3 -c "import ${{inputs.import}}" || echo "Failed to import Library ${{inputs.import}}" && exit 1;
+        echo "Library ${{inputs.import}} was successfully imported"
       fi

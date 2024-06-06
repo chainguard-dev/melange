@@ -39,11 +39,6 @@ inputs:
       If true, the go mod command will also update the vendor directory
     default: "false"
 
-  subpackage:
-    description: |
-      Indicates that the build will write to a subpackage target folder
-    default: "false"
-
   modroot:
     default: "."
     required: false

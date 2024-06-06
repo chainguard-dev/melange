@@ -17,7 +17,7 @@ inputs:
 
   depth:
     description: |
-      The depth to use when cloning.
+      The depth to use when cloning. Set to -1 to not specify depth when cloning.
     default: 1
 
   branch:
@@ -57,7 +57,11 @@ pipeline:
 
       git config --global --add safe.directory $workdir
       git config --global --add safe.directory $clone_fullpath
-      git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+      if [ '${{inputs.depth}}' == -1 ]; then
+        git clone $git_clone_flags $clone_target '${{inputs.repository}}' $workdir
+      else
+        git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+      fi
 
       cd $workdir
       tar -c . | (cd $clone_fullpath && tar -x)

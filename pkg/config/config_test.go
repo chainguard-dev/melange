@@ -329,3 +329,49 @@ subpackages:
 		t.Errorf("configuration should have failed to validate, got: %v", err)
 	}
 }
+
+func TestValidatePipelines(t *testing.T) {
+	tests := []struct {
+		name    string
+		p       []Pipeline
+		wantErr bool
+	}{
+		{
+			name: "valid pipeline with uses",
+			p: []Pipeline{
+				{Uses: "build", With: map[string]string{"param": "value"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid pipeline with with but no uses",
+			p: []Pipeline{
+				{With: map[string]string{"param": "value"}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid pipeline with both uses and runs",
+			p: []Pipeline{
+				{Uses: "deploy", Runs: "somescript.sh"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid pipeline with both with and runs",
+			p: []Pipeline{
+				{Runs: "somescript.sh", With: map[string]string{"param": "value"}},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePipelines(tt.p)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePipelines() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

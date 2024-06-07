@@ -1065,6 +1065,10 @@ func (cfg Configuration) validate() error {
 
 func validatePipelines(ps []Pipeline) error {
 	for _, p := range ps {
+		if p.With != nil && p.Uses == "" {
+			return fmt.Errorf("pipeline contains with but no uses")
+		}
+
 		if p.Uses != "" && p.Runs != "" {
 			return fmt.Errorf("pipeline cannot contain both uses %q and runs", p.Uses)
 		}

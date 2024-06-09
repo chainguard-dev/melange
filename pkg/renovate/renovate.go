@@ -106,6 +106,7 @@ func (rc *RenovationContext) LoadConfig(ctx context.Context) error {
 	vars[config.SubstitutionPackageVersion] = cfg.Package.Version
 	vars[config.SubstitutionPackageEpoch] = strconv.FormatUint(cfg.Package.Epoch, 10)
 	vars[config.SubstitutionBuildArch] = apko_types.ParseArchitecture(runtime.GOARCH).ToAPK()
+	vars[config.SubstitutionBuildGoArch] = apko_types.ParseArchitecture(runtime.GOARCH).String()
 
 	err = cfg.PerformVarSubstitutions(vars)
 	if err != nil {

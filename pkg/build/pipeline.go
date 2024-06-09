@@ -149,6 +149,7 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[config.SubstitutionCrossTripletRustGlibc] = pb.Build.Arch.ToRustTriplet("gnu")
 		nw[config.SubstitutionCrossTripletRustMusl] = pb.Build.Arch.ToRustTriplet("musl")
 		nw[config.SubstitutionBuildArch] = pb.Build.Arch.ToAPK()
+		nw[config.SubstitutionBuildGoArch] = pb.Build.Arch.String()
 	}
 
 	// Retrieve vars from config

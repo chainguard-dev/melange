@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +48,6 @@ import (
 	"google.golang.org/api/option"
 	"k8s.io/kube-openapi/pkg/util/sets"
 
-	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
@@ -101,6 +101,9 @@ type Build struct {
 	Auth              map[string]options.Auth
 
 	EnabledBuildOptions []string
+
+	// mutated by Compile
+	externalRefs []purl.PackageURL
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -137,7 +140,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 
 		b.WorkspaceDir = absdir
-	} else {
+	} else if b.Runner != nil {
 		tmpdir, err := os.MkdirTemp(b.Runner.TempDir(), "melange-workspace-*")
 		if err != nil {
 			return nil, fmt.Errorf("unable to create workspace dir: %w", err)
@@ -195,7 +198,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	}
 
 	// Check that we actually can run things in containers.
-	if !b.Runner.TestUsability(ctx) {
+	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), GetAllRunners())
 	}
 
@@ -225,7 +228,10 @@ func (b *Build) Close(ctx context.Context) error {
 			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(context.WithoutCancel(ctx), b.containerConfig.ImgRef))
 		}
 	}
-	errs = append(errs, b.Runner.Close())
+
+	if b.Runner != nil {
+		errs = append(errs, b.Runner.Close())
+	}
 
 	return errors.Join(errs...)
 }
@@ -661,31 +667,9 @@ func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	})
 }
 
-func (pb *PipelineBuild) ShouldRun(sp config.Subpackage) (bool, error) {
-	if sp.If == "" {
-		return true, nil
-	}
-
-	lookupWith := func(key string) (string, error) {
-		mutated, err := MutateWith(pb, map[string]string{})
-		if err != nil {
-			return "", err
-		}
-		nk := fmt.Sprintf("${{%s}}", key)
-		return mutated[nk], nil
-	}
-
-	result, err := cond.Evaluate(sp.If, lookupWith)
-	if err != nil {
-		return false, fmt.Errorf("evaluating subpackage if-conditional: %w", err)
-	}
-
-	return result, nil
-}
-
 type linterTarget struct {
 	pkgName string
-	checks  config.Checks
+	checks  *config.Checks
 }
 
 func (b *Build) BuildPackage(ctx context.Context) error {
@@ -704,11 +688,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	pkg := &b.Configuration.Package
 
-	pb := PipelineBuild{
-		Build:   b,
-		Package: pkg,
-	}
-
 	if b.GuestDir == "" {
 		guestDir, err := os.MkdirTemp(b.Runner.TempDir(), "melange-guest-*")
 		if err != nil {
@@ -717,32 +696,24 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		b.GuestDir = guestDir
 	}
 
-	var externalRefs []purl.PackageURL
-
 	log.Infof("evaluating pipelines for package requirements")
-	for _, p := range b.Configuration.Pipeline {
-		// fine to pass nil for config, since not running in container.
-		pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs)
-
-		if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
-			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
-		}
-		externalRefs = append(externalRefs, pctx.ExternalRefs...)
+	if err := b.Compile(ctx); err != nil {
+		return fmt.Errorf("compiling build: %w", err)
 	}
 
-	for _, spkg := range b.Configuration.Subpackages {
-		spkg := spkg
-		pb.Subpackage = &spkg
-		for _, p := range spkg.Pipeline {
-			// fine to pass nil for config, since not running in container.
-			pctx := NewPipelineContext(&p, &b.Configuration.Environment, nil, b.PipelineDirs)
-			if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
-				return fmt.Errorf("unable to apply pipeline requirements: %w", err)
-			}
-			externalRefs = append(externalRefs, pctx.ExternalRefs...)
+	// Filter out any subpackages with false If conditions.
+	b.Configuration.Subpackages = slices.DeleteFunc(b.Configuration.Subpackages, func(sp config.Subpackage) bool {
+		result, err := shouldRun(sp.If)
+		if err != nil {
+			// This shouldn't give an error because we evaluate it in Compile.
+			panic(err)
 		}
-	}
-	pb.Subpackage = nil
+		if !result {
+			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
+		}
+
+		return !result
+	})
 
 	configFileRef, err := b.ConfigFileExternalRef()
 	if err != nil {
@@ -753,7 +724,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// In SPDX v3 there is dedicate field for this
 		// https://spdx.github.io/spdx-spec/v3.0/model/Build/Properties/configSourceUri/
 		log.Infof("adding external ref %s for ConfigFile", configFileRef)
-		externalRefs = append(externalRefs, *configFileRef)
+		b.externalRefs = append(b.externalRefs, *configFileRef)
+	}
+
+	pr := &pipelineRunner{
+		interactive: b.Interactive,
+		debug:       b.Debug,
+		config:      b.WorkspaceConfig(ctx),
+		runner:      b.Runner,
 	}
 
 	if b.EmptyWorkspace {
@@ -817,11 +795,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// run the main pipeline
 		log.Debug("running the main pipeline")
-		for _, p := range b.Configuration.Pipeline {
-			pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs)
-			if _, err := pctx.Run(ctx, &pb); err != nil {
-				return fmt.Errorf("unable to run pipeline: %w", err)
-			}
+		if err := pr.runPipelines(ctx, b.Configuration.Pipeline); err != nil {
+			return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
 		}
 
 		// add the main package to the linter queue
@@ -842,21 +817,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		sp := sp
 		if !b.IsBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
-			pb.Subpackage = &sp
 
-			result, err := pb.ShouldRun(sp)
-			if err != nil {
-				return err
-			}
-			if !result {
-				continue
-			}
-
-			for _, p := range sp.Pipeline {
-				pctx := NewPipelineContext(&p, &b.Configuration.Environment, cfg, b.PipelineDirs)
-				if _, err := pctx.Run(ctx, &pb); err != nil {
-					return fmt.Errorf("unable to run pipeline: %w", err)
-				}
+			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
+				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 			}
 		}
 
@@ -901,9 +864,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	// Run the SBOM generator.
-	generator := sbom.NewGenerator()
-
 	licensinginfos, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
 	if err != nil {
 		return err
@@ -913,26 +873,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
 
-		if !b.IsBuildLess() {
-			log.Infof("generating SBOM for subpackage %s", sp.Name)
-			pb.Subpackage = &sp
-
-			result, err := pb.ShouldRun(sp)
-			if err != nil {
-				return err
-			}
-			if !result {
-				continue
-			}
-		}
-
-		if err := generator.GenerateSBOM(ctx, &sbom.Spec{
+		log.Infof("generating SBOM for subpackage %s", sp.Name)
+		if err := sbom.Generate(ctx, &sbom.Spec{
 			Path:            filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
 			PackageName:     sp.Name,
 			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 			License:         b.Configuration.Package.LicenseExpression(),
 			LicensingInfos:  licensinginfos,
-			ExternalRefs:    externalRefs,
+			ExternalRefs:    b.externalRefs,
 			Copyright:       b.Configuration.Package.FullCopyright(),
 			Namespace:       namespace,
 			Arch:            b.Arch.ToAPK(),
@@ -942,13 +890,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	if err := generator.GenerateSBOM(ctx, &sbom.Spec{
+	log.Infof("generating SBOM for %s", b.Configuration.Package.Name)
+	if err := sbom.Generate(ctx, &sbom.Spec{
 		Path:            filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
 		PackageName:     b.Configuration.Package.Name,
 		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 		License:         b.Configuration.Package.LicenseExpression(),
 		LicensingInfos:  licensinginfos,
-		ExternalRefs:    externalRefs,
+		ExternalRefs:    b.externalRefs,
 		Copyright:       b.Configuration.Package.FullCopyright(),
 		Namespace:       namespace,
 		Arch:            b.Arch.ToAPK(),
@@ -958,24 +907,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// emit main package
-	if err := pb.Emit(ctx, pkg); err != nil {
+	if err := b.Emit(ctx, pkg); err != nil {
 		return fmt.Errorf("unable to emit package: %w", err)
 	}
 
 	// emit subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
-		pb.Subpackage = &sp
 
-		result, err := pb.ShouldRun(sp)
-		if err != nil {
-			return err
-		}
-		if !result {
-			continue
-		}
-
-		if err := pb.Emit(ctx, pkgFromSub(&sp)); err != nil {
+		if err := b.Emit(ctx, pkgFromSub(&sp)); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
 	}
@@ -997,7 +937,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// generate APKINDEX.tar.gz and sign it
 	if b.GenerateIndex {
-		packageDir := filepath.Join(pb.Build.OutDir, pb.Build.Arch.ToAPK())
+		packageDir := filepath.Join(b.OutDir, b.Arch.ToAPK())
 		log.Infof("generating apk index from packages in %s", packageDir)
 
 		var apkFiles []string
@@ -1006,15 +946,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		for _, subpkg := range b.Configuration.Subpackages {
 			subpkg := subpkg
-			pb.Subpackage = &subpkg
-
-			result, err := pb.ShouldRun(subpkg)
-			if err != nil {
-				return err
-			}
-			if !result {
-				continue
-			}
 
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))

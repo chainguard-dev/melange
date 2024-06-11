@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -229,7 +230,7 @@ func (t *Test) OverlayBinSh(suffix string) error {
 // IsTestless returns true if the test context does not actually do any
 // testing.
 func (t *Test) IsTestless() bool {
-	return len(t.Configuration.Test.Pipeline) == 0
+	return t.Configuration.Test == nil || len(t.Configuration.Test.Pipeline) == 0
 }
 
 func (t *Test) PopulateCache(ctx context.Context) error {
@@ -345,10 +346,24 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	pkg := &t.Configuration.Package
 
-	pb := PipelineBuild{
-		Test:    t,
-		Package: pkg,
+	log.Infof("evaluating pipelines for package requirements")
+	if err := t.Compile(ctx); err != nil {
+		return fmt.Errorf("compiling test pipelines: %w", err)
 	}
+
+	// Filter out any subpackages with false If conditions.
+	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
+		result, err := shouldRun(sp.If)
+		if err != nil {
+			// This shouldn't give an error because we evaluate it in Compile.
+			panic(err)
+		}
+		if !result {
+			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
+		}
+
+		return !result
+	})
 
 	// Unless a specific architecture is requests, we run the test for all.
 	inarchs := len(pkg.TargetArchitecture) == 0
@@ -369,25 +384,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
 		t.GuestDir = guestDir
-	}
-
-	log.Infof("evaluating main pipeline for package requirements")
-	// Append the main test package to be installed unless explicitly specified
-	// by the command line.
-	if t.Package != "" {
-		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, t.Package)
-	} else {
-		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, pkg.Name)
-	}
-
-	for i := range t.Configuration.Test.Pipeline {
-		p := &t.Configuration.Test.Pipeline[i]
-		// fine to pass nil for config, since not running in container.
-		pctx := NewPipelineContext(p, &t.Configuration.Test.Environment, nil, t.PipelineDirs)
-
-		if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
-			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
-		}
 	}
 
 	imgRef := ""
@@ -424,7 +420,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
@@ -433,6 +428,13 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Test.Environment)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
+	}
+
+	pr := &pipelineRunner{
+		interactive: t.Interactive,
+		debug:       t.Debug,
+		config:      cfg,
+		runner:      t.Runner,
 	}
 
 	if !t.IsTestless() {
@@ -449,14 +451,9 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}()
 		}
 
-		// run the main test pipeline
 		log.Infof("running the main test pipeline")
-		for i := range t.Configuration.Test.Pipeline {
-			p := &t.Configuration.Test.Pipeline[i]
-			pctx := NewPipelineContext(p, &t.Configuration.Test.Environment, cfg, t.PipelineDirs)
-			if _, err := pctx.Run(ctx, &pb); err != nil {
-				return fmt.Errorf("unable to run pipeline: %w", err)
-			}
+		if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
@@ -467,22 +464,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	for i := range t.Configuration.Subpackages {
 		sp := &t.Configuration.Subpackages[i]
 		if len(sp.Test.Pipeline) > 0 {
-			// Append the subpackage that we're testing to be installed.
-			sp.Test.Environment.Contents.Packages = append(sp.Test.Environment.Contents.Packages, sp.Name)
-
-			// See if there are any packages needed by the 'uses' pipelines, so
-			// they get built into the container.
-			for i := range sp.Test.Pipeline {
-				p := &sp.Test.Pipeline[i]
-				// fine to pass nil for config, since not running in container.
-				pctx := NewPipelineContext(p, &sp.Test.Environment, nil, t.PipelineDirs)
-				if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
-					return fmt.Errorf("unable to apply pipeline requirements: %w", err)
-				}
-			}
-
 			log.Infof("running test pipeline for subpackage %s", sp.Name)
-			pb.Subpackage = sp
 
 			guestFS, err := t.guestFS(ctx, sp.Name)
 			if err != nil {
@@ -501,6 +483,14 @@ func (t *Test) TestPackage(ctx context.Context) error {
 				return fmt.Errorf("unable to build workspace config: %w", err)
 			}
 			subCfg.Arch = t.Arch
+
+			pr := &pipelineRunner{
+				interactive: t.Interactive,
+				debug:       t.Debug,
+				config:      subCfg,
+				runner:      t.Runner,
+			}
+
 			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
 				return fmt.Errorf("unable to start subpackage test pod: %w", err)
 			}
@@ -512,23 +502,10 @@ func (t *Test) TestPackage(ctx context.Context) error {
 				}()
 			}
 
-			result, err := pb.ShouldRun(*sp)
-			if err != nil {
-				return err
-			}
-			if !result {
-				continue
-			}
-
-			for i := range sp.Test.Pipeline {
-				p := &sp.Test.Pipeline[i]
-				pctx := NewPipelineContext(p, &sp.Test.Environment, subCfg, t.PipelineDirs)
-				if _, err := pctx.Run(ctx, &pb); err != nil {
-					return fmt.Errorf("unable to run pipeline: %w", err)
-				}
+			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
 		}
-		pb.Subpackage = nil
 	}
 
 	// clean workspace dir

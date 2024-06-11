@@ -434,7 +434,10 @@ func (s *scaImpl) Filesystem() (sca.SCAFS, error) {
 }
 
 func (s *scaImpl) Options() config.PackageOption {
-	return s.pb.Options
+	if s.pb.Options == nil {
+		return config.PackageOption{}
+	}
+	return *s.pb.Options
 }
 
 func (s *scaImpl) BaseDependencies() config.Dependencies {

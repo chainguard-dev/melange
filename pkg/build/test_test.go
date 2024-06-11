@@ -156,7 +156,7 @@ func TestConfigurationLoad(t *testing.T) {
 					Name:    "hello",
 					Version: "world",
 				},
-				Test: config.Test{
+				Test: &config.Test{
 					Pipeline: []config.Pipeline{
 						{
 							Name: "hello",
@@ -165,25 +165,25 @@ func TestConfigurationLoad(t *testing.T) {
 					}},
 				Subpackages: []config.Subpackage{{
 					Name: "cats",
-					Test: config.Test{
+					Test: &config.Test{
 						Pipeline: []config.Pipeline{{
 							Runs: "cats are angry",
 						}}},
 				}, {
 					Name: "dogs",
-					Test: config.Test{
+					Test: &config.Test{
 						Pipeline: []config.Pipeline{{
 							Runs: "dogs are loyal",
 						}}},
 				}, {
 					Name: "turtles",
-					Test: config.Test{
+					Test: &config.Test{
 						Pipeline: []config.Pipeline{{
 							Runs: "turtles are slow",
 						}}},
 				}, {
 					Name: "donatello",
-					Test: config.Test{
+					Test: &config.Test{
 						Pipeline: []config.Pipeline{
 							{
 								Runs: "donatello's color is purple",
@@ -195,7 +195,7 @@ func TestConfigurationLoad(t *testing.T) {
 						}},
 				}, {
 					Name: "leonardo",
-					Test: config.Test{Pipeline: []config.Pipeline{
+					Test: &config.Test{Pipeline: []config.Pipeline{
 						{
 							Runs: "leonardo's color is blue",
 						},
@@ -206,7 +206,7 @@ func TestConfigurationLoad(t *testing.T) {
 					}},
 				}, {
 					Name: "michelangelo",
-					Test: config.Test{Pipeline: []config.Pipeline{
+					Test: &config.Test{Pipeline: []config.Pipeline{
 						{
 							Runs: "michelangelo's color is orange",
 						},
@@ -217,7 +217,7 @@ func TestConfigurationLoad(t *testing.T) {
 					}},
 				}, {
 					Name: "raphael",
-					Test: config.Test{Pipeline: []config.Pipeline{
+					Test: &config.Test{Pipeline: []config.Pipeline{
 						{
 							Runs: "raphael's color is red",
 						},
@@ -228,7 +228,7 @@ func TestConfigurationLoad(t *testing.T) {
 					}},
 				}, {
 					Name: "simple",
-					Test: config.Test{Pipeline: []config.Pipeline{
+					Test: &config.Test{Pipeline: []config.Pipeline{
 						{
 							Runs: "simple-runs",
 						}, {
@@ -245,7 +245,7 @@ func TestConfigurationLoad(t *testing.T) {
 					Name:    "py3-pandas",
 					Version: "2.1.3",
 				},
-				Test: config.Test{
+				Test: &config.Test{
 					Environment: types.ImageConfiguration{
 						Contents: types.ImageContents{
 							Packages: []string{"busybox", "python-3"},

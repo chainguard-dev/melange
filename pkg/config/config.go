@@ -108,12 +108,12 @@ type Package struct {
 	// List of packages to depends on
 	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
-	Options PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
+	Options *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
-	Scriptlets Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
+	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -236,11 +236,13 @@ func (cfg *Configuration) applySubstitutionsForPackages() error {
 			return fmt.Errorf("failed to apply replacement to package %q: %w", runtime, err)
 		}
 	}
-	for i, runtime := range cfg.Test.Environment.Contents.Packages {
-		var err error
-		cfg.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
-		if err != nil {
-			return fmt.Errorf("failed to apply replacement to test package %q: %w", runtime, err)
+	if cfg.Test != nil {
+		for i, runtime := range cfg.Test.Environment.Contents.Packages {
+			var err error
+			cfg.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
+			if err != nil {
+				return fmt.Errorf("failed to apply replacement to test package %q: %w", runtime, err)
+			}
 		}
 	}
 	return nil
@@ -304,6 +306,10 @@ func (p *Package) FullCopyright() string {
 func (chk *Checks) GetLinters() []string {
 	linters := linter_defaults.GetDefaultLinters(linter_defaults.LinterClassBuild)
 
+	if chk == nil {
+		return linters
+	}
+
 	// Enable non-default linters
 	for _, v := range chk.Enabled {
 		// Ensure we don't get duplicate values
@@ -352,13 +358,13 @@ type Pipeline struct {
 	// Optional: A map of inputs to the pipeline
 	Inputs map[string]Input `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Optional: Configuration to determine any explicit dependencies this pipeline may have
-	Needs Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
+	Needs *Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
 	// Optional: Labels to apply to the pipeline
 	Label string `json:"label,omitempty" yaml:"label,omitempty"`
 	// Optional: A condition to evaluate before running the pipeline
 	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: Assertions to evaluate whether the pipeline was successful
-	Assertions PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
+	Assertions *PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
 	// Optional: The working directory of the pipeline
 	//
 	// This defaults to the guests' build workspace (/home/build)
@@ -379,8 +385,8 @@ type Subpackage struct {
 	// Optional: List of packages to depend on
 	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
-	Options    PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
-	Scriptlets Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
+	Options    *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
+	Scriptlets *Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: The human readable description of the subpackage
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Optional: The URL to the package's homepage
@@ -388,9 +394,9 @@ type Subpackage struct {
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
-	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
+	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the subpackage. For more
@@ -445,7 +451,7 @@ type Configuration struct {
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Test section for the main package.
-	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
+	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 
 	// Parsed AST for this configuration
 	root *yaml.Node
@@ -800,6 +806,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 				"${{range.key}}":   k,
 				"${{range.value}}": v,
 			})
+
 			thingToAdd := Subpackage{
 				Name:        replacer.Replace(sp.Name),
 				Description: replacer.Replace(sp.Description),
@@ -811,7 +818,12 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					ReplacesPriority: replacer.Replace(sp.Dependencies.ReplacesPriority),
 				},
 				Options: sp.Options,
-				Scriptlets: Scriptlets{
+				URL:     replacer.Replace(sp.URL),
+				If:      replacer.Replace(sp.If),
+			}
+
+			if script := sp.Scriptlets; script != nil {
+				thingToAdd.Scriptlets = &Scriptlets{
 					Trigger: Trigger{
 						Script: replacer.Replace(sp.Scriptlets.Trigger.Script),
 						Paths:  replaceAll(replacer, sp.Scriptlets.Trigger.Paths),
@@ -822,10 +834,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					PostDeinstall: replacer.Replace(sp.Scriptlets.PostDeinstall),
 					PreUpgrade:    replacer.Replace(sp.Scriptlets.PreUpgrade),
 					PostUpgrade:   replacer.Replace(sp.Scriptlets.PostUpgrade),
-				},
-				URL: replacer.Replace(sp.URL),
-				If:  replacer.Replace(sp.If),
+				}
 			}
+
 			for _, p := range sp.Pipeline {
 				// take a copy of the with map, so we can replace the values
 				replacedWith := make(map[string]string)
@@ -849,28 +860,31 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					// TODO: p.Pipeline?
 				})
 			}
-			for _, p := range sp.Test.Pipeline {
-				// take a copy of the with map, so we can replace the values
-				replacedWith := make(map[string]string)
-				for key, value := range p.With {
-					replacedWith[key] = replacer.Replace(value)
-				}
+			if sp.Test != nil {
+				thingToAdd.Test = &Test{}
+				for _, p := range sp.Test.Pipeline {
+					// take a copy of the with map, so we can replace the values
+					replacedWith := make(map[string]string)
+					for key, value := range p.With {
+						replacedWith[key] = replacer.Replace(value)
+					}
 
-				// if the map is empty, set it to nil to avoid serializing an empty map
-				if len(replacedWith) == 0 {
-					replacedWith = nil
-				}
+					// if the map is empty, set it to nil to avoid serializing an empty map
+					if len(replacedWith) == 0 {
+						replacedWith = nil
+					}
 
-				thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
-					Name:   p.Name,
-					Uses:   p.Uses,
-					With:   replacedWith,
-					Inputs: p.Inputs,
-					Needs:  p.Needs,
-					Label:  p.Label,
-					Runs:   replacer.Replace(p.Runs),
-					// TODO: p.Pipeline?
-				})
+					thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
+						Name:   p.Name,
+						Uses:   p.Uses,
+						With:   replacedWith,
+						Inputs: p.Inputs,
+						Needs:  p.Needs,
+						Label:  p.Label,
+						Runs:   replacer.Replace(p.Runs),
+						// TODO: p.Pipeline?
+					})
+				}
 			}
 			subpackages = append(subpackages, thingToAdd)
 		}

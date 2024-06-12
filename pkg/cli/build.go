@@ -74,6 +74,7 @@ func Build() *cobra.Command {
 	var cpu, memory string
 	var timeout time.Duration
 	var extraPackages []string
+	var libc string
 
 	var traceFile string
 
@@ -152,6 +153,7 @@ func Build() *cobra.Command {
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
+				build.WithLibcFlavorOverride(libc),
 			}
 
 			if len(args) > 0 {
@@ -200,6 +202,7 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	cmd.Flags().StringVar(&libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))

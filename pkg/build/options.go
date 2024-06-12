@@ -361,3 +361,11 @@ func WithAuth(domain, user, pass string) Option {
 		return nil
 	}
 }
+
+// WithLibcFlavorOverride sets the libc flavor for the build.
+func WithLibcFlavorOverride(libc string) Option {
+	return func(b *Build) error {
+		b.Libc = libc
+		return nil
+	}
+}

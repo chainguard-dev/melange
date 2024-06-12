@@ -57,7 +57,7 @@ pipeline:
 
       git config --global --add safe.directory $workdir
       git config --global --add safe.directory $clone_fullpath
-      if [ '${{inputs.depth}}' == -1 ]; then
+      if [ "${{inputs.depth}}" == "-1" ]; then
         git clone $git_clone_flags $clone_target '${{inputs.repository}}' $workdir
       else
         git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir

@@ -36,6 +36,7 @@ type pythonOptions struct {
 	packageVersion         string
 	ghClient               *github.Client
 	mf                     *relmon.MonitorFinder
+	preserveBaseURI        bool
 }
 
 // PythonBuild is the top-level `convert python` cobra command
@@ -79,6 +80,7 @@ convert python botocore`,
 	cmd.Flags().StringVar(&o.baseURIFormat, "base-uri-format", "https://pypi.org",
 		"URI to use for querying gems for provided package name")
 	cmd.Flags().StringVar(&o.pythonVersion, "python-version", "3", "version of the python to build the package")
+	cmd.Flags().BoolVar(&o.preserveBaseURI, "preserve-base-uri", false, "preserve the base URI for PyPI packages instead of using the friendly URL")
 	return cmd
 }
 
@@ -97,6 +99,7 @@ func (o pythonOptions) pythonBuild(ctx context.Context, packageName string) erro
 	pythonContext.PackageVersion = o.packageVersion
 	pythonContext.PythonVersion = o.pythonVersion
 	pythonContext.PackageName = packageName
+	pythonContext.PreserveBaseURI = o.preserveBaseURI
 
 	// These two are conditionally set above, and if nil, they are unused.
 	pythonContext.GithubClient = o.ghClient

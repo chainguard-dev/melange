@@ -34,7 +34,6 @@ import (
 
 // PythonContext is the execution context for the python subcommand.
 type PythonContext struct {
-
 	// PackageName is the name of the python package to build and install
 	PackageName string
 
@@ -80,6 +79,10 @@ type PythonContext struct {
 	// If non-nil, this is the Release Monitoring client to use for fetching
 	// metadata to get the monitoring data for the package.
 	MonitoringClient *relmon.MonitorFinder
+
+	// If true, avoid converting the PyPI URI to a friendly, human-readable URL
+	// May help with conversion failures (404s)
+	PreserveBaseURI bool
 }
 
 // New initialises a new PythonContext.
@@ -400,7 +403,7 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 
 		releaseURL := release.URL
 		uri := strings.ReplaceAll(releaseURL, version, "${{package.version}}")
-		if strings.Contains(release.URL, "https://files.pythonhosted.org") {
+		if strings.Contains(release.URL, "https://files.pythonhosted.org") && !c.PreserveBaseURI {
 			packageName := strings.TrimPrefix(pack.Info.Name, fmt.Sprintf("py%s", release.PythonVersion))
 			releaseURL = fmt.Sprintf("https://files.pythonhosted.org/packages/source/%c/%s/%s-%s.tar.gz", packageName[0], packageName, packageName, version)
 
@@ -436,7 +439,8 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 				"repository":      ghVersion.Repo,
 				"tag":             ghVersion.TagPrefix + "${{package.version}}",
 				"expected-commit": ghVersion.SHA,
-			}})
+			},
+		})
 	}
 
 	pythonBuild := config.Pipeline{

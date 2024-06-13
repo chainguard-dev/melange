@@ -74,6 +74,7 @@ type Build struct {
 	EmptyWorkspace    bool
 	OutDir            string
 	Arch              apko_types.Architecture
+	Libc              string
 	ExtraKeys         []string
 	ExtraRepos        []string
 	ExtraPackages     []string
@@ -109,6 +110,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
+		Libc:            "gnu",
 		LogPolicy:       []string{"builtin:stderr"},
 	}
 
@@ -1061,13 +1063,10 @@ func (b *Build) Summarize(ctx context.Context) {
 // BuildFlavor determines if a build context uses glibc or musl, it returns
 // "gnu" for GNU systems, and "musl" for musl systems.
 func (b *Build) BuildFlavor() string {
-	for _, dir := range []string{"lib", "lib64"} {
-		if _, err := os.Stat(filepath.Join(b.GuestDir, dir, "libc.so.6")); err == nil {
-			return "gnu"
-		}
+	if b.Libc == "" {
+		return "gnu"
 	}
-
-	return "musl"
+	return b.Libc
 }
 
 // BuildTripletGnu returns the GNU autoconf build triplet, for example

@@ -47,7 +47,6 @@ melange build [flags]
   -h, --help                                                    help for build
   -i, --interactive                                             when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings                                  path to extra keys to include in the build environment keyring
-      --log-policy strings                                      logging policy to use (default [builtin:stderr])
       --memory string                                           default memory resources to use for builds
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")

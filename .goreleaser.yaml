@@ -52,7 +52,7 @@ brews:
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     url_template: "https://github.com/chainguard-dev/melange/releases/download/v{{ .Version }}/{{ .ArtifactName }}"
-    folder: Formula
+    directory: Formula
     commit_author:
       name: guardian
       email: guardian@chainguard.dev

@@ -529,10 +529,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 		}
 		pb.Subpackage = nil
-
-		if err := os.MkdirAll(filepath.Join(t.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
-			return err
-		}
 	}
 
 	// clean workspace dir

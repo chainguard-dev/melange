@@ -72,8 +72,8 @@ type PackageBuild struct {
 	OutDir        string
 	Dependencies  config.Dependencies
 	Arch          string
-	Options       config.PackageOption
-	Scriptlets    config.Scriptlets
+	Options       *config.PackageOption
+	Scriptlets    *config.Scriptlets
 	Description   string
 	URL           string
 	Commit        string
@@ -91,15 +91,15 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 	}
 }
 
-func (pb *PipelineBuild) Emit(ctx context.Context, pkg *config.Package) error {
+func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 	pc := PackageBuild{
-		Build:        pb.Build,
-		Origin:       &pb.Build.Configuration.Package,
+		Build:        b,
+		Origin:       &b.Configuration.Package,
 		PackageName:  pkg.Name,
 		OriginName:   pkg.Name,
-		OutDir:       filepath.Join(pb.Build.OutDir, pb.Build.Arch.ToAPK()),
+		OutDir:       filepath.Join(b.OutDir, b.Arch.ToAPK()),
 		Dependencies: pkg.Dependencies,
-		Arch:         pb.Build.Arch.ToAPK(),
+		Arch:         b.Arch.ToAPK(),
 		Options:      pkg.Options,
 		Scriptlets:   pkg.Scriptlets,
 		Description:  pkg.Description,
@@ -107,7 +107,7 @@ func (pb *PipelineBuild) Emit(ctx context.Context, pkg *config.Package) error {
 		Commit:       pkg.Commit,
 	}
 
-	if !pb.Build.StripOriginName {
+	if !b.StripOriginName {
 		pc.OriginName = pc.Origin.Name
 	}
 
@@ -177,9 +177,9 @@ provider_priority = {{ .Dependencies.ProviderPriority }}
 {{- if .Dependencies.ReplacesPriority }}
 replaces_priority = {{ .Dependencies.ReplacesPriority }}
 {{- end }}
-{{- if .Scriptlets.Trigger.Paths }}
+{{- if .Scriptlets}}{{ if .Scriptlets.Trigger.Paths }}
 triggers = {{ range $item := .Scriptlets.Trigger.Paths }}{{ $item }} {{ end }}
-{{- end }}
+{{- end }}{{ end }}
 datahash = {{.DataHash}}
 `
 
@@ -210,52 +210,54 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
-	if pc.Scriptlets.Trigger.Script != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".trigger", []byte(pc.Scriptlets.Trigger.Script), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+	if scriptlets := pc.Scriptlets; scriptlets != nil {
+		if scriptlets.Trigger.Script != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".trigger", []byte(scriptlets.Trigger.Script), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
-	}
 
-	if pc.Scriptlets.PreInstall != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".pre-install", []byte(pc.Scriptlets.PreInstall), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+		if scriptlets.PreInstall != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".pre-install", []byte(scriptlets.PreInstall), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
-	}
 
-	if pc.Scriptlets.PostInstall != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".post-install", []byte(pc.Scriptlets.PostInstall), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+		if scriptlets.PostInstall != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".post-install", []byte(scriptlets.PostInstall), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
-	}
 
-	if pc.Scriptlets.PreDeinstall != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".pre-deinstall", []byte(pc.Scriptlets.PreDeinstall), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+		if scriptlets.PreDeinstall != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".pre-deinstall", []byte(scriptlets.PreDeinstall), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
-	}
 
-	if pc.Scriptlets.PostDeinstall != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".post-deinstall", []byte(pc.Scriptlets.PostDeinstall), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+		if scriptlets.PostDeinstall != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".post-deinstall", []byte(scriptlets.PostDeinstall), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
-	}
 
-	if pc.Scriptlets.PreUpgrade != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".pre-upgrade", []byte(pc.Scriptlets.PreUpgrade), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+		if scriptlets.PreUpgrade != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".pre-upgrade", []byte(scriptlets.PreUpgrade), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
-	}
 
-	if pc.Scriptlets.PostUpgrade != "" {
-		// #nosec G306 -- scriptlets must be executable
-		if err := fsys.WriteFile(".post-upgrade", []byte(pc.Scriptlets.PostUpgrade), 0755); err != nil {
-			return nil, fmt.Errorf("unable to build control FS: %w", err)
+		if scriptlets.PostUpgrade != "" {
+			// #nosec G306 -- scriptlets must be executable
+			if err := fsys.WriteFile(".post-upgrade", []byte(scriptlets.PostUpgrade), 0755); err != nil {
+				return nil, fmt.Errorf("unable to build control FS: %w", err)
+			}
 		}
 	}
 

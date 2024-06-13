@@ -341,8 +341,13 @@ func (c ApkConvertor) mapconvert() {
 
 	// triggers
 	if c.Apkbuild.Triggers != nil {
-		c.GeneratedMelangeConfig.Package.Scriptlets.Trigger.Paths = []string{"FIXME"}
-		c.GeneratedMelangeConfig.Package.Scriptlets.Trigger.Script = "FIXME"
+		scriptlets := config.Scriptlets{
+			Trigger: config.Trigger{
+				Paths:  []string{"FIXME"},
+				Script: "FIXME",
+			},
+		}
+		c.GeneratedMelangeConfig.Package.Scriptlets = &scriptlets
 	}
 
 	// if c.Apkbuild.Funcs["build"] != nil {

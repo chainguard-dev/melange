@@ -27,14 +27,14 @@ import (
 	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
-func checksOnly(onlyLint string) config.Checks {
+func checksOnly(onlyLint string) *config.Checks {
 	checksDisabled := []string{}
 	for _, lint := range linter_defaults.GetDefaultLinters(linter_defaults.LinterClassBuild) {
 		if lint != onlyLint {
 			checksDisabled = append(checksDisabled, lint)
 		}
 	}
-	return config.Checks{
+	return &config.Checks{
 		Enabled:  []string{onlyLint},
 		Disabled: checksDisabled,
 	}
@@ -607,7 +607,7 @@ func Test_disableDefaultLinter(t *testing.T) {
 			Name:    "testdisable",
 			Version: "4.2.0",
 			Epoch:   0,
-			Checks: config.Checks{
+			Checks: &config.Checks{
 				Disabled: []string{"usrlocal"},
 			},
 		},

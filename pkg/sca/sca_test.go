@@ -63,7 +63,10 @@ func (th *testHandle) Filesystem() (SCAFS, error) {
 }
 
 func (th *testHandle) Options() config.PackageOption {
-	return th.cfg.Package.Options
+	if th.cfg.Package.Options == nil {
+		return config.PackageOption{}
+	}
+	return *th.cfg.Package.Options
 }
 
 func (th *testHandle) BaseDependencies() config.Dependencies {

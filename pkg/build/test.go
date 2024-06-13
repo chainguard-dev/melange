@@ -63,7 +63,6 @@ type Test struct {
 	Debug             bool
 	DebugRunner       bool
 	Interactive       bool
-	LogPolicy         []string
 	Auth              map[string]options.Auth
 }
 
@@ -71,7 +70,6 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t := Test{
 		WorkspaceIgnore: ".melangeignore",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
-		LogPolicy:       []string{"builtin:stderr"},
 	}
 
 	for _, opt := range opts {

@@ -299,14 +299,6 @@ func WithRemove(remove bool) Option {
 	}
 }
 
-// WithLogPolicy sets the logging policy to use during builds.
-func WithLogPolicy(policy []string) Option {
-	return func(b *Build) error {
-		b.LogPolicy = policy
-		return nil
-	}
-}
-
 // WithRunner specifies what runner to use to wrap
 // the build environment.
 func WithRunner(runner container.Runner) Option {

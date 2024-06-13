@@ -27,7 +27,6 @@ import (
 )
 
 func New() *cobra.Command {
-	var logPolicy []string
 	var level log.CharmLogLevel
 	var gcplog bool
 	cmd := &cobra.Command{
@@ -41,7 +40,7 @@ func New() *cobra.Command {
 			if gcplog {
 				slog.SetDefault(slog.New(gcp.NewHandler(slog.Level(level))))
 			} else {
-				out, err := log.Writer(logPolicy)
+				out, err := log.Writer([]string{"builtin:stderr"})
 				if err != nil {
 					return fmt.Errorf("failed to create log writer: %w", err)
 				}
@@ -51,7 +50,6 @@ func New() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.PersistentFlags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "log policy (e.g. builtin:stderr, /tmp/log/foo)")
 	cmd.PersistentFlags().Var(&level, "log-level", "log level (e.g. debug, info, warn, error)")
 	cmd.PersistentFlags().BoolVar(&gcplog, "gcplog", false, "use GCP logging")
 	_ = cmd.PersistentFlags().MarkHidden("gcplog")

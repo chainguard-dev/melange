@@ -18,6 +18,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"maps"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -27,33 +28,15 @@ import (
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 )
 
-type PipelineBuild struct {
-	Build      *Build
-	Test       *Test
-	Package    *config.Package
-	Subpackage *config.Subpackage
-}
-
-// GetConfiguration returns the configuration for the current pipeline.
-// This is either for the Test or the Build
-func (pb *PipelineBuild) GetConfiguration() *config.Configuration {
-	if pb.Test != nil {
-		return &pb.Test.Configuration
-	}
-	return &pb.Build.Configuration
-}
-
-func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, error) {
-	nw, err := substitutionMap(pb)
-	if err != nil {
-		return nil, err
-	}
+func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
+	nw := maps.Clone(sm.Substitutions)
 
 	for k, v := range with {
 		// already mutated?
@@ -77,30 +60,41 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 	return nw, nil
 }
 
-func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
+type SubstitutionMap struct {
+	Substitutions map[string]string
+}
+
+func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMap {
+	nw := maps.Clone(sm.Substitutions)
+	nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", subpkg.Name)
+	nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
+
+	return &SubstitutionMap{nw}
+}
+
+func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+	pkg := cfg.Package
+
 	nw := map[string]string{
-		config.SubstitutionPackageName:        pb.Package.Name,
-		config.SubstitutionPackageVersion:     pb.Package.Version,
-		config.SubstitutionPackageEpoch:       strconv.FormatUint(pb.Package.Epoch, 10),
+		config.SubstitutionPackageName:        pkg.Name,
+		config.SubstitutionPackageVersion:     pkg.Version,
+		config.SubstitutionPackageEpoch:       strconv.FormatUint(pkg.Epoch, 10),
 		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
-		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
-		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
+		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
+		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 	}
 
-	// These are not really meaningful for Test, so only use them for build.
-	if pb.Build != nil {
-		nw[config.SubstitutionHostTripletGnu] = pb.Build.BuildTripletGnu()
-		nw[config.SubstitutionHostTripletRust] = pb.Build.BuildTripletRust()
-		nw[config.SubstitutionCrossTripletGnuGlibc] = pb.Build.Arch.ToTriplet("gnu")
-		nw[config.SubstitutionCrossTripletGnuMusl] = pb.Build.Arch.ToTriplet("musl")
-		nw[config.SubstitutionCrossTripletRustGlibc] = pb.Build.Arch.ToRustTriplet("gnu")
-		nw[config.SubstitutionCrossTripletRustMusl] = pb.Build.Arch.ToRustTriplet("musl")
-		nw[config.SubstitutionBuildArch] = pb.Build.Arch.ToAPK()
-		nw[config.SubstitutionBuildGoArch] = pb.Build.Arch.String()
-	}
+	nw[config.SubstitutionHostTripletGnu] = arch.ToTriplet(flavor)
+	nw[config.SubstitutionHostTripletRust] = arch.ToTriplet(flavor)
+	nw[config.SubstitutionCrossTripletGnuGlibc] = arch.ToTriplet("gnu")
+	nw[config.SubstitutionCrossTripletGnuMusl] = arch.ToTriplet("musl")
+	nw[config.SubstitutionCrossTripletRustGlibc] = arch.ToRustTriplet("gnu")
+	nw[config.SubstitutionCrossTripletRustMusl] = arch.ToRustTriplet("musl")
+	nw[config.SubstitutionBuildArch] = arch.ToAPK()
+	nw[config.SubstitutionBuildGoArch] = arch.String()
 
 	// Retrieve vars from config
-	subst_nw, err := pb.GetConfiguration().GetVarsFromConfig()
+	subst_nw, err := cfg.GetVarsFromConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -110,18 +104,12 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	// Perform substitutions on current map
-	err = pb.GetConfiguration().PerformVarSubstitutions(nw)
-	if err != nil {
+	if err := cfg.PerformVarSubstitutions(nw); err != nil {
 		return nil, err
 	}
 
-	if pb.Subpackage != nil {
-		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Name)
-		nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
-	}
-
-	packageNames := []string{pb.Package.Name}
-	for _, sp := range pb.GetConfiguration().Subpackages {
+	packageNames := []string{pkg.Name}
+	for _, sp := range cfg.Subpackages {
 		packageNames = append(packageNames, sp.Name)
 	}
 
@@ -130,19 +118,17 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
 	}
 
-	for k := range pb.GetConfiguration().Options {
+	for k := range cfg.Options {
 		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
 		nw[nk] = "false"
 	}
 
-	if pb.Build != nil {
-		for _, opt := range pb.Build.EnabledBuildOptions {
-			nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
-			nw[nk] = "true"
-		}
+	for _, opt := range buildOpts {
+		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
+		nw[nk] = "true"
 	}
 
-	return nw, nil
+	return &SubstitutionMap{nw}, nil
 }
 
 func validateWith(data map[string]string, inputs map[string]config.Input) (map[string]string, error) {
@@ -158,19 +144,6 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
-	}
-
-	return data, nil
-}
-
-func loadPipelineData(dir string, uses string) ([]byte, error) {
-	if dir == "" {
-		return []byte{}, fmt.Errorf("pipeline directory not specified")
-	}
-
-	data, err := os.ReadFile(filepath.Join(dir, uses+".yaml"))
-	if err != nil {
-		return []byte{}, err
 	}
 
 	return data, nil

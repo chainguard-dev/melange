@@ -143,14 +143,6 @@ func WithTestBinShOverlay(binShOverlay string) TestOption {
 	}
 }
 
-// WithTestLogPolicy sets the logging policy to use during tests.
-func WithTestLogPolicy(policy []string) TestOption {
-	return func(t *Test) error {
-		t.LogPolicy = policy
-		return nil
-	}
-}
-
 // WithTestRunner specifies what runner to use to wrap
 // the test environment.
 func WithTestRunner(runner container.Runner) TestOption {

@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	chainguard.dev/apko v0.14.9
-	cloud.google.com/go/storage v1.41.0
+	cloud.google.com/go/storage v1.42.0
 	dagger.io/dagger v0.11.6
 	github.com/chainguard-dev/clog v1.3.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
@@ -165,7 +165,7 @@ require (
 	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	google.golang.org/genproto v0.0.0-20240604185151-ef581f913117 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect

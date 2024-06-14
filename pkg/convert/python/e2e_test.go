@@ -94,3 +94,74 @@ func TestGenerateManifest(t *testing.T) {
 		assert.Equal(t, got.Pipeline[2].Uses, "strip")
 	}
 }
+
+func TestGenerateManifestPreserveURI(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+
+	for i := range versions {
+		pythonctxs, err := SetupContextPreserveURI(versions[i])
+		assert.NoError(t, err)
+
+		// typing-extensions ctx
+		pythonctx := pythonctxs[0]
+		// Add additional repositories and keyrings
+		pythonctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
+		pythonctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
+		got, err := pythonctx.generateManifest(ctx, pythonctx.Package, pythonctx.PackageVersion, nil, nil)
+		assert.NoError(t, err)
+
+		// Check Package
+		assert.Equal(t, got.Package.Name, "py"+versions[i]+"-typing-extensions")
+		assert.Equal(t, got.Package.Version, "4.12.2")
+		assert.EqualValues(t, got.Package.Epoch, 0)
+		assert.Equal(t, got.Package.Description,
+			"Backported and Experimental Type Hints for Python 3.8+",
+		)
+		assert.Equal(t, got.Package.Dependencies.Runtime,
+			[]string{
+				"python-" + versions[i],
+			},
+		)
+
+		// Check Package.Copyright
+		assert.Equal(t, len(got.Package.Copyright), 1)
+		assert.Equal(t, got.Package.Copyright[0].License, "")
+
+		// Check Environment
+		assert.Equal(t, got.Environment.Contents.Packages, []string{
+			"build-base",
+			"busybox",
+			"ca-certificates-bundle",
+			"wolfi-base",
+		})
+
+		// Check Pipeline
+		assert.Equal(t, len(got.Pipeline), 3)
+
+		// Check Pipeline - fetch
+		assert.Equal(t, got.Pipeline[0].Uses, "fetch")
+
+		releases, ok := pythonctx.Package.Releases[pythonctx.PackageVersion]
+
+		// If the key exists
+		assert.True(t, ok)
+
+		var release Release
+		for _, r := range releases {
+			if r.PackageType == "sdist" {
+				release = r
+			}
+		}
+		assert.NotEmpty(t, release)
+		assert.Equal(t, "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-"+pythonctx.PackageVersion+".tar.gz", release.URL)
+
+		assert.Equal(t, got.Pipeline[0].With, map[string]string{
+			"expected-sha256": "1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8",
+			"uri":             "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-${{package.version}}.tar.gz",
+		})
+
+		// Check Pipeline - runs
+		assert.Equal(t, got.Pipeline[1].Uses, "python/build-wheel")
+		assert.Equal(t, got.Pipeline[2].Uses, "strip")
+	}
+}

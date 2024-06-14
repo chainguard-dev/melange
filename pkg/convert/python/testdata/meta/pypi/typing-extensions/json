@@ -1,1544 +1,2118 @@
 {
- "info": {
-  "author": "",
-  "author_email": "\"Guido van Rossum, Jukka Lehtosalo, Łukasz Langa, Michael Lee\" <levkivskyi@gmail.com>",
-  "bugtrack_url": null,
-  "classifiers": [
-   "Development Status :: 5 - Production/Stable",
-   "Environment :: Console",
-   "Intended Audience :: Developers",
-   "License :: OSI Approved :: Python Software Foundation License",
-   "Operating System :: OS Independent",
-   "Programming Language :: Python :: 3",
-   "Programming Language :: Python :: 3 :: Only",
-   "Programming Language :: Python :: 3.10",
-   "Programming Language :: Python :: 3.11",
-   "Programming Language :: Python :: 3.12",
-   "Programming Language :: Python :: 3.7",
-   "Programming Language :: Python :: 3.8",
-   "Programming Language :: Python :: 3.9",
-   "Topic :: Software Development"
-  ],
-  "description": "# Typing Extensions\n\n[![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing)\n\n[Documentation](https://typing-extensions.readthedocs.io/en/latest/#) –\n[PyPI](https://pypi.org/project/typing-extensions/)\n\n## Overview\n\nThe `typing_extensions` module serves two related purposes:\n\n- Enable use of new type system features on older Python versions. For example,\n  `typing.TypeGuard` is new in Python 3.10, but `typing_extensions` allows\n  users on previous Python versions to use it too.\n- Enable experimentation with new type system PEPs before they are accepted and\n  added to the `typing` module.\n\n`typing_extensions` is treated specially by static type checkers such as\nmypy and pyright. Objects defined in `typing_extensions` are treated the same\nway as equivalent forms in `typing`.\n\n`typing_extensions` uses\n[Semantic Versioning](https://semver.org/). The\nmajor version will be incremented only for backwards-incompatible changes.\nTherefore, it's safe to depend\non `typing_extensions` like this: `typing_extensions >=x.y, <(x+1)`,\nwhere `x.y` is the first version that includes all features you need.\n\n`typing_extensions` supports Python versions 3.7 and higher.\n\n## Included items\n\nSee [the documentation](https://typing-extensions.readthedocs.io/en/latest/#) for a\ncomplete listing of module contents.\n\n## Contributing\n\nSee [CONTRIBUTING.md](https://github.com/python/typing_extensions/blob/main/CONTRIBUTING.md)\nfor how to contribute to `typing_extensions`.\n\n",
-  "description_content_type": "text/markdown",
-  "docs_url": null,
-  "download_url": "",
-  "downloads": {
-   "last_day": -1,
-   "last_month": -1,
-   "last_week": -1
-  },
-  "home_page": "",
-  "keywords": "annotations,backport,checker,checking,function,hinting,hints,type,typechecking,typehinting,typehints,typing",
-  "license": "",
-  "maintainer": "",
-  "maintainer_email": "",
-  "name": "typing-extensions",
-  "package_url": "https://pypi.org/project/typing-extensions/",
-  "platform": null,
-  "project_url": "https://pypi.org/project/typing-extensions/",
-  "project_urls": {
-   "Bug Tracker": "https://github.com/python/typing_extensions/issues",
-   "Changes": "https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
-   "Documentation": "https://typing-extensions.readthedocs.io/",
-   "Home": "https://github.com/python/typing_extensions",
-   "Q & A": "https://github.com/python/typing/discussions",
-   "Repository": "https://github.com/python/typing_extensions"
-  },
-  "release_url": "https://pypi.org/project/typing-extensions/4.7.1/",
-  "requires_dist": null,
-  "requires_python": ">=3.7",
-  "summary": "Backported and Experimental Type Hints for Python 3.7+",
-  "version": "4.7.1",
-  "yanked": false,
-  "yanked_reason": null
- },
- "last_serial": 18729062,
- "releases": {
-  "3.10.0.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "dd3ab2cfe97bec9e7c317af222f0cee66a37b68bfa52e743c675bdc881ce1aeb",
-     "md5": "19760404c4469cae06305e99a3f484c2",
-     "sha256": "0ac0f89795dd19de6b97debb0c6af1c70987fd80a2d62d1958f7e56fcc31b497"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.0-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "19760404c4469cae06305e99a3f484c2",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 9291,
-    "upload_time": "2021-05-01T18:03:16",
-    "upload_time_iso_8601": "2021-05-01T18:03:16.560286Z",
-    "url": "https://files.pythonhosted.org/packages/dd/3a/b2cfe97bec9e7c317af222f0cee66a37b68bfa52e743c675bdc881ce1aeb/typing_extensions-3.10.0.0-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "2e356c4fff5ab443b57116cb1aad46421fb719bed2825664e8fe77d66d99bcbc",
-     "md5": "9fd2a2ae09511032a1d2ed40cd45713a",
-     "sha256": "779383f6086d90c99ae41cf0ff39aac8a7937a9283ce0a414e5dd782f4c94a84"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "9fd2a2ae09511032a1d2ed40cd45713a",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 26127,
-    "upload_time": "2021-05-01T18:03:18",
-    "upload_time_iso_8601": "2021-05-01T18:03:18.151721Z",
-    "url": "https://files.pythonhosted.org/packages/2e/35/6c4fff5ab443b57116cb1aad46421fb719bed2825664e8fe77d66d99bcbc/typing_extensions-3.10.0.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "aa5562e2d4934c282a60b4243a950c9dbfa01ae7cac0e8d6c0b5315b87432c81",
-     "md5": "9b5b33ae64c94479fa0862cf8ae89d58",
-     "sha256": "50b6f157849174217d0656f99dc82fe932884fb250826c18350e159ec6cdf342"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "9b5b33ae64c94479fa0862cf8ae89d58",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 45509,
-    "upload_time": "2021-05-01T18:03:19",
-    "upload_time_iso_8601": "2021-05-01T18:03:19.646727Z",
-    "url": "https://files.pythonhosted.org/packages/aa/55/62e2d4934c282a60b4243a950c9dbfa01ae7cac0e8d6c0b5315b87432c81/typing_extensions-3.10.0.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.10.0.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "df93ef0c164cd0bab2937275daf59b4c284331332d12f9e21866a56f5beb8ded",
-     "md5": "731477c84a2115a42e5c0dcfa95990f4",
-     "sha256": "8bbffbd37fbeb9747a0241fdfde5ae99d4531ad1d1a41ccaea62100e15a5814c"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.1-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "731477c84a2115a42e5c0dcfa95990f4",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 9291,
-    "upload_time": "2021-08-29T15:53:51",
-    "upload_time_iso_8601": "2021-08-29T15:53:51.580982Z",
-    "url": "https://files.pythonhosted.org/packages/df/93/ef0c164cd0bab2937275daf59b4c284331332d12f9e21866a56f5beb8ded/typing_extensions-3.10.0.1-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "e8ee237d13b6d3d532778a57df23e6df4b2a82fbbeb833c4016054c6b6730d56",
-     "md5": "c4c0d8cb7984a1b9c50e6a20c1a0cc9d",
-     "sha256": "045dd532231acfa03628df5e0c66dba64e2cc8fc8b844538d4ad6d5dd6cb82dc"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "c4c0d8cb7984a1b9c50e6a20c1a0cc9d",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 26278,
-    "upload_time": "2021-08-29T15:53:53",
-    "upload_time_iso_8601": "2021-08-29T15:53:53.093781Z",
-    "url": "https://files.pythonhosted.org/packages/e8/ee/237d13b6d3d532778a57df23e6df4b2a82fbbeb833c4016054c6b6730d56/typing_extensions-3.10.0.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "a5506fbfb5a45d4d8024222849f0731f8d8ddc5c7fe657a8f799bd4c605e93e0",
-     "md5": "534781b600f62d5850f22f47949ba744",
-     "sha256": "83af6730a045fda60f46510f7f1f094776d90321caa4d97d20ef38871bef4bd3"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "534781b600f62d5850f22f47949ba744",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 45309,
-    "upload_time": "2021-08-29T15:53:54",
-    "upload_time_iso_8601": "2021-08-29T15:53:54.868331Z",
-    "url": "https://files.pythonhosted.org/packages/a5/50/6fbfb5a45d4d8024222849f0731f8d8ddc5c7fe657a8f799bd4c605e93e0/typing_extensions-3.10.0.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.10.0.2": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "cc1e0310dee9d86a41f003c519ce263f3b931c54852fcb15ec780137b2e53d4e",
-     "md5": "96296851ac46115ff8ae00bf2f4f574d",
-     "sha256": "d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.2-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "96296851ac46115ff8ae00bf2f4f574d",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 9291,
-    "upload_time": "2021-08-30T18:46:23",
-    "upload_time_iso_8601": "2021-08-30T18:46:23.064211Z",
-    "url": "https://files.pythonhosted.org/packages/cc/1e/0310dee9d86a41f003c519ce263f3b931c54852fcb15ec780137b2e53d4e/typing_extensions-3.10.0.2-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "746018783336cc7fcdd95dae91d73477830aa53f5d3181ae4fe20491d7fc3199",
-     "md5": "7b84c09a94faa790c0daa8fec9cc36c9",
-     "sha256": "f1d25edafde516b146ecd0613dabcc61409817af4766fbbcfb8d1ad4ec441a34"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.2-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "7b84c09a94faa790c0daa8fec9cc36c9",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 26288,
-    "upload_time": "2021-08-30T18:46:26",
-    "upload_time_iso_8601": "2021-08-30T18:46:26.221036Z",
-    "url": "https://files.pythonhosted.org/packages/74/60/18783336cc7fcdd95dae91d73477830aa53f5d3181ae4fe20491d7fc3199/typing_extensions-3.10.0.2-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "ed12c5079a15cf5c01d7f4252b473b00f7e68ee711be605b9f001528f0298b98",
-     "md5": "ed80ecc8eac5cb15840535ca54eb43f3",
-     "sha256": "49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.10.0.2.tar.gz",
-    "has_sig": false,
-    "md5_digest": "ed80ecc8eac5cb15840535ca54eb43f3",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 46048,
-    "upload_time": "2021-08-30T18:46:27",
-    "upload_time_iso_8601": "2021-08-30T18:46:27.766165Z",
-    "url": "https://files.pythonhosted.org/packages/ed/12/c5079a15cf5c01d7f4252b473b00f7e68ee711be605b9f001528f0298b98/typing_extensions-3.10.0.2.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.6.2": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "7ad2776076bc80b5006c327c4106ccc8a6d645ccfae57ca72eee0ec98ea19ab0",
-     "md5": "37f5357d7c43b4d1642b99b38a158e56",
-     "sha256": "a13d47e36fb70d00de1fd111beea96cace79f5fcaa2c5381a75fc419ad50907d"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.2-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "37f5357d7c43b4d1642b99b38a158e56",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 7723,
-    "upload_time": "2017-09-17T12:25:17",
-    "upload_time_iso_8601": "2017-09-17T12:25:17.911412Z",
-    "url": "https://files.pythonhosted.org/packages/7a/d2/776076bc80b5006c327c4106ccc8a6d645ccfae57ca72eee0ec98ea19ab0/typing_extensions-3.6.2-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "cbcc4db345e919daa930cb4352e8b2e273bdb9e6d2a72c6e09da811a6127278f",
-     "md5": "7ab46a053e420150656fea1f6c7a199e",
-     "sha256": "9d1f70ae4b349f2040e8ca4acf1e7f8edceeff5f8aa49fbef9f9e39116312418"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.2-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "7ab46a053e420150656fea1f6c7a199e",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 11492,
-    "upload_time": "2017-09-17T12:25:19",
-    "upload_time_iso_8601": "2017-09-17T12:25:19.280623Z",
-    "url": "https://files.pythonhosted.org/packages/cb/cc/4db345e919daa930cb4352e8b2e273bdb9e6d2a72c6e09da811a6127278f/typing_extensions-3.6.2-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "d053db3c6bf3fc6a57cda61117dc84eb96de7586e2a43ab12e332a91570c5867",
-     "md5": "16976ca13bd31dd1af42dfd2318d5bbb",
-     "sha256": "e83f825d3ecb61443cf18639f499cabd02d87274e594de3728a1a07bc08a566d"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.2.tar.gz",
-    "has_sig": false,
-    "md5_digest": "16976ca13bd31dd1af42dfd2318d5bbb",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 6790,
-    "upload_time": "2017-09-17T12:25:20",
-    "upload_time_iso_8601": "2017-09-17T12:25:20.236441Z",
-    "url": "https://files.pythonhosted.org/packages/d0/53/db3c6bf3fc6a57cda61117dc84eb96de7586e2a43ab12e332a91570c5867/typing_extensions-3.6.2.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.6.2.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "1d5a9ce4a5ed063f4590a0ac37e984a679930cd46faeab4b7b16f0c8c90a027d",
-     "md5": "981b4fd002e0bdea8aed79e409007a31",
-     "sha256": "3f917fa1eb17b7dc09f19e01b52bfe15e7bc67c34cc3cf63613c8a37ce953b59"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.2.1-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "981b4fd002e0bdea8aed79e409007a31",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 7751,
-    "upload_time": "2017-09-30T08:53:23",
-    "upload_time_iso_8601": "2017-09-30T08:53:23.924418Z",
-    "url": "https://files.pythonhosted.org/packages/1d/5a/9ce4a5ed063f4590a0ac37e984a679930cd46faeab4b7b16f0c8c90a027d/typing_extensions-3.6.2.1-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "665c605dd55fcc9a8925f19263d5a74ddec06b9eab304d9fe64c956e85b7aa6c",
-     "md5": "4e2d8b7e1301b1bea5501e7e2a9274fb",
-     "sha256": "a685d27cadf53b99a18e953697e859f09478912efcbd8c86b89af9f6402dc301"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.2.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "4e2d8b7e1301b1bea5501e7e2a9274fb",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 11521,
-    "upload_time": "2017-09-30T08:53:25",
-    "upload_time_iso_8601": "2017-09-30T08:53:25.345851Z",
-    "url": "https://files.pythonhosted.org/packages/66/5c/605dd55fcc9a8925f19263d5a74ddec06b9eab304d9fe64c956e85b7aa6c/typing_extensions-3.6.2.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "bc24dd74d7d91f460b682492d146e15b943392d73b91c021557186dc810a264a",
-     "md5": "0cf451b9182c32dacaad90eb2d0b696c",
-     "sha256": "dc18da05be5c924538481f6761700757eb36415213350d5e15b9cbd72e46ffe3"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.2.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "0cf451b9182c32dacaad90eb2d0b696c",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 24828,
-    "upload_time": "2017-09-30T08:53:26",
-    "upload_time_iso_8601": "2017-09-30T08:53:26.724178Z",
-    "url": "https://files.pythonhosted.org/packages/bc/24/dd74d7d91f460b682492d146e15b943392d73b91c021557186dc810a264a/typing_extensions-3.6.2.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.6.5": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "303765f28f32654bee9a21951a8b07a70e1348dea00991d57d151cb49f2c108b",
-     "md5": "780e7eacbfc0752b1fc8864cd19baf9a",
-     "sha256": "8b0962ecb92847974514b1724c8ae2b6dd1ffe86bcdfac429517f5e583ada658"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.5-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "780e7eacbfc0752b1fc8864cd19baf9a",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 6231,
-    "upload_time": "2018-05-07T22:16:09",
-    "upload_time_iso_8601": "2018-05-07T22:16:09.460292Z",
-    "url": "https://files.pythonhosted.org/packages/30/37/65f28f32654bee9a21951a8b07a70e1348dea00991d57d151cb49f2c108b/typing_extensions-3.6.5-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "15f1ef4e69d77cd850af1cb7d6de62fc8a0e92eb6fe7b37e3dc563b41378b567",
-     "md5": "4611e7342c9bcc4eddfbba0582726d83",
-     "sha256": "be7b05ddab71727fabf1f071365043cf034e4cdac9cade1f1d61a6cc526aaafe"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.5-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "4611e7342c9bcc4eddfbba0582726d83",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 11447,
-    "upload_time": "2018-05-07T22:16:10",
-    "upload_time_iso_8601": "2018-05-07T22:16:10.524123Z",
-    "url": "https://files.pythonhosted.org/packages/15/f1/ef4e69d77cd850af1cb7d6de62fc8a0e92eb6fe7b37e3dc563b41378b567/typing_extensions-3.6.5-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "a9b0c98f86c94706784699bff1262506ceab6e8101386e984a773b10be7500fc",
-     "md5": "b89c0965d85245fc05f1cf4c5f8aa9ab",
-     "sha256": "1c0a8e3b4ce55207a03dd0dcb98bc47a704c71f14fe4311ec860cc8af8f4bd27"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.5.tar.gz",
-    "has_sig": false,
-    "md5_digest": "b89c0965d85245fc05f1cf4c5f8aa9ab",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 27146,
-    "upload_time": "2018-05-07T22:16:11",
-    "upload_time_iso_8601": "2018-05-07T22:16:11.447691Z",
-    "url": "https://files.pythonhosted.org/packages/a9/b0/c98f86c94706784699bff1262506ceab6e8101386e984a773b10be7500fc/typing_extensions-3.6.5.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.6.6": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "48596cef806c06dddd3ccb08890419a9fe6a4dc0dc5d3e3598621fb5627e874f",
-     "md5": "c57ff533ff96d6829d78941229b4ecdd",
-     "sha256": "2a6c6e78e291a4b6cbd0bbfd30edc0baaa366de962129506ec8fe06bdec66457"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.6-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "c57ff533ff96d6829d78941229b4ecdd",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 11126,
-    "upload_time": "2018-10-06T22:03:23",
-    "upload_time_iso_8601": "2018-10-06T22:03:23.629524Z",
-    "url": "https://files.pythonhosted.org/packages/48/59/6cef806c06dddd3ccb08890419a9fe6a4dc0dc5d3e3598621fb5627e874f/typing_extensions-3.6.6-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "624f392a1fa2873e646f5990eb6f956e662d8a235ab474450c72487745f67276",
-     "md5": "dce42ca126e9b4de55a8da59aaa3352c",
-     "sha256": "55401f6ed58ade5638eb566615c150ba13624e2f0c1eedd080fc3c1b6cb76f1d"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.6-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "dce42ca126e9b4de55a8da59aaa3352c",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 16218,
-    "upload_time": "2018-10-06T22:03:25",
-    "upload_time_iso_8601": "2018-10-06T22:03:25.173704Z",
-    "url": "https://files.pythonhosted.org/packages/62/4f/392a1fa2873e646f5990eb6f956e662d8a235ab474450c72487745f67276/typing_extensions-3.6.6-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "fce63d2f306b12f01bde2861d67458d32c673e206d6fcc255537bf452db8f80c",
-     "md5": "9509b7ff9cbd479d195e61b04d70cd3a",
-     "sha256": "51e7b7f3dcabf9ad22eed61490f3b8d23d9922af400fe6656cb08e66656b701f"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.6.6.tar.gz",
-    "has_sig": false,
-    "md5_digest": "9509b7ff9cbd479d195e61b04d70cd3a",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 32610,
-    "upload_time": "2018-10-06T22:03:30",
-    "upload_time_iso_8601": "2018-10-06T22:03:30.354432Z",
-    "url": "https://files.pythonhosted.org/packages/fc/e6/3d2f306b12f01bde2861d67458d32c673e206d6fcc255537bf452db8f80c/typing_extensions-3.6.6.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.7.2": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "696084116ab2840fda8414cbc92c2a63adfa71e9bafb2d305b467fadb20ec2a8",
-     "md5": "7fd2d0a56096e1e6c81d61727f7176cb",
-     "sha256": "07b2c978670896022a43c4b915df8958bec4a6b84add7f2c87b2b728bda3ba64"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.2-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "7fd2d0a56096e1e6c81d61727f7176cb",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 11418,
-    "upload_time": "2019-01-12T18:17:33",
-    "upload_time_iso_8601": "2019-01-12T18:17:33.193920Z",
-    "url": "https://files.pythonhosted.org/packages/69/60/84116ab2840fda8414cbc92c2a63adfa71e9bafb2d305b467fadb20ec2a8/typing_extensions-3.7.2-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "0f62c66e553258c37c33f9939abb2dd8d2481803d860ff68e635466f12aa7efa",
-     "md5": "7b265f15d4eed8d014f8db21263c5bb5",
-     "sha256": "f3f0e67e1d42de47b5c67c32c9b26641642e9170fe7e292991793705cd5fef7c"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.2-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "7b265f15d4eed8d014f8db21263c5bb5",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 16710,
-    "upload_time": "2019-01-12T18:17:34",
-    "upload_time_iso_8601": "2019-01-12T18:17:34.672850Z",
-    "url": "https://files.pythonhosted.org/packages/0f/62/c66e553258c37c33f9939abb2dd8d2481803d860ff68e635466f12aa7efa/typing_extensions-3.7.2-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "faaa229f5c82d17d10d4ef318b5c22a8626a1c78fc97f80d3307035cf696681b",
-     "md5": "33815f263f3e00ec63b9d9d26eea95de",
-     "sha256": "fb2cd053238d33a8ec939190f30cfd736c00653a85a2919415cecf7dc3d9da71"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.2.tar.gz",
-    "has_sig": false,
-    "md5_digest": "33815f263f3e00ec63b9d9d26eea95de",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 34042,
-    "upload_time": "2019-01-12T18:17:36",
-    "upload_time_iso_8601": "2019-01-12T18:17:36.336518Z",
-    "url": "https://files.pythonhosted.org/packages/fa/aa/229f5c82d17d10d4ef318b5c22a8626a1c78fc97f80d3307035cf696681b/typing_extensions-3.7.2.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.7.4": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "b84deddc8b3c539cd79a31987ffc96ccd62ecc35f637d5d4fdaa37e4b64a2e5b",
-     "md5": "bda2643d914905854872c0e5e7575285",
-     "sha256": "b1edbbf0652660e32ae780ac9433f4231e7339c7f9a8057d0f042fcbcea49b87"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "bda2643d914905854872c0e5e7575285",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 8935,
-    "upload_time": "2019-06-19T23:58:56",
-    "upload_time_iso_8601": "2019-06-19T23:58:56.983660Z",
-    "url": "https://files.pythonhosted.org/packages/b8/4d/eddc8b3c539cd79a31987ffc96ccd62ecc35f637d5d4fdaa37e4b64a2e5b/typing_extensions-3.7.4-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "27aabd1442cfb0224da1b671ab334d3b0a4302e4161ea916e28904ff9618d471",
-     "md5": "6ef332311f9864fa0ab45ad7d95e6bde",
-     "sha256": "d8179012ec2c620d3791ca6fe2bf7979d979acdbef1fca0bc56b37411db682ed"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "6ef332311f9864fa0ab45ad7d95e6bde",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 20721,
-    "upload_time": "2019-06-19T23:58:58",
-    "upload_time_iso_8601": "2019-06-19T23:58:58.535041Z",
-    "url": "https://files.pythonhosted.org/packages/27/aa/bd1442cfb0224da1b671ab334d3b0a4302e4161ea916e28904ff9618d471/typing_extensions-3.7.4-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "59b621774b993eec6e797fbc49e53830df823b69a3cb62f94d36dfb497a0b65a",
-     "md5": "98510adbacf8ea74f46f98b0a5cbdf73",
-     "sha256": "2ed632b30bb54fc3941c382decfd0ee4148f5c591651c9272473fea2c6397d95"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.tar.gz",
-    "has_sig": false,
-    "md5_digest": "98510adbacf8ea74f46f98b0a5cbdf73",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 36058,
-    "upload_time": "2019-06-19T23:59:00",
-    "upload_time_iso_8601": "2019-06-19T23:59:00.097528Z",
-    "url": "https://files.pythonhosted.org/packages/59/b6/21774b993eec6e797fbc49e53830df823b69a3cb62f94d36dfb497a0b65a/typing_extensions-3.7.4.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.7.4.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "890b611af6b186e4e59e290fee1a5b4a6c47a4ce29d7cb9b5141fc73c38d8b65",
-     "md5": "76b86c0334cf6f2abf692e7d850d89c1",
-     "sha256": "910f4656f54de5993ad9304959ce9bb903f90aadc7c67a0bef07e678014e892d"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.1-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "76b86c0334cf6f2abf692e7d850d89c1",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 8993,
-    "upload_time": "2019-10-28T13:29:12",
-    "upload_time_iso_8601": "2019-10-28T13:29:12.505359Z",
-    "url": "https://files.pythonhosted.org/packages/89/0b/611af6b186e4e59e290fee1a5b4a6c47a4ce29d7cb9b5141fc73c38d8b65/typing_extensions-3.7.4.1-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "0392705fe8aca27678e01bbdd7738173b8e7df0088a2202c80352f664630d638",
-     "md5": "cb8d1ddc981bd1ca7ccd9304146a3361",
-     "sha256": "cf8b63fedea4d89bab840ecbb93e75578af28f76f66c35889bd7065f5af88575"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "cb8d1ddc981bd1ca7ccd9304146a3361",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 20901,
-    "upload_time": "2019-10-28T13:29:13",
-    "upload_time_iso_8601": "2019-10-28T13:29:13.949779Z",
-    "url": "https://files.pythonhosted.org/packages/03/92/705fe8aca27678e01bbdd7738173b8e7df0088a2202c80352f664630d638/typing_extensions-3.7.4.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "e7ddf1713bc6638cc3a6a23735eff6ee09393b44b96176d3296693ada272a80b",
-     "md5": "566292497a533981216e1d05a7c00fd3",
-     "sha256": "091ecc894d5e908ac75209f10d5b4f118fbdb2eb1ede6a63544054bb1edb41f2"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "566292497a533981216e1d05a7c00fd3",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 36357,
-    "upload_time": "2019-10-28T13:29:15",
-    "upload_time_iso_8601": "2019-10-28T13:29:15.822245Z",
-    "url": "https://files.pythonhosted.org/packages/e7/dd/f1713bc6638cc3a6a23735eff6ee09393b44b96176d3296693ada272a80b/typing_extensions-3.7.4.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.7.4.2": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "55173f65ede2450a51ab7b8c6f9f4aa1ba07cddd980422e2409ea5d68ccdf38d",
-     "md5": "2da788f5f35d15b52bcb7ce0f5584e59",
-     "sha256": "f8d2bd89d25bc39dabe7d23df520442fa1d8969b82544370e03d88b5a591c392"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.2-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "2da788f5f35d15b52bcb7ce0f5584e59",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 9005,
-    "upload_time": "2020-04-02T17:40:28",
-    "upload_time_iso_8601": "2020-04-02T17:40:28.249155Z",
-    "url": "https://files.pythonhosted.org/packages/55/17/3f65ede2450a51ab7b8c6f9f4aa1ba07cddd980422e2409ea5d68ccdf38d/typing_extensions-3.7.4.2-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "0c0e3f026d0645d699e7320b59952146d56ad7c374e9cd72cd16e7c74e657a0f",
-     "md5": "800bf9c0ee2a28f610a6b7c0c266e85d",
-     "sha256": "6e95524d8a547a91e08f404ae485bbb71962de46967e1b71a0cb89af24e761c5"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.2-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "800bf9c0ee2a28f610a6b7c0c266e85d",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 22089,
-    "upload_time": "2020-04-02T17:40:29",
-    "upload_time_iso_8601": "2020-04-02T17:40:29.760003Z",
-    "url": "https://files.pythonhosted.org/packages/0c/0e/3f026d0645d699e7320b59952146d56ad7c374e9cd72cd16e7c74e657a0f/typing_extensions-3.7.4.2-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "6a28d32852f2af6b5ead85d396249d5bdf450833f3a69896d76eb480d9c5e406",
-     "md5": "f2674282966dc088d10170c2347431cc",
-     "sha256": "79ee589a3caca649a9bfd2a8de4709837400dfa00b6cc81962a1e6a1815969ae"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.2.tar.gz",
-    "has_sig": false,
-    "md5_digest": "f2674282966dc088d10170c2347431cc",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 38427,
-    "upload_time": "2020-04-02T17:40:31",
-    "upload_time_iso_8601": "2020-04-02T17:40:31.250116Z",
-    "url": "https://files.pythonhosted.org/packages/6a/28/d32852f2af6b5ead85d396249d5bdf450833f3a69896d76eb480d9c5e406/typing_extensions-3.7.4.2.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "3.7.4.3": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "bee18fe3f8a8aa3380f2a92b0075406c49f96fcc2b256f5c92d09571d2ab7847",
-     "md5": "e59526817794f0f6455be69d863b8ce3",
-     "sha256": "dafc7639cde7f1b6e1acc0f457842a83e722ccca8eef5270af2d74792619a89f"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.3-py2-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "e59526817794f0f6455be69d863b8ce3",
-    "packagetype": "bdist_wheel",
-    "python_version": "py2",
-    "requires_python": null,
-    "size": 9264,
-    "upload_time": "2020-08-23T16:44:06",
-    "upload_time_iso_8601": "2020-08-23T16:44:06.187895Z",
-    "url": "https://files.pythonhosted.org/packages/be/e1/8fe3f8a8aa3380f2a92b0075406c49f96fcc2b256f5c92d09571d2ab7847/typing_extensions-3.7.4.3-py2-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "607ae881b5abb54db0e6e671ab088d079c57ce54e8a01a3ca443f561ccadb37e",
-     "md5": "cbf20d17c294eb6a2d5e98669cfe67a6",
-     "sha256": "7cb407020f00f7bfc3cb3e7881628838e69d8f3fcab2f64742a5e76b2f841918"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.3-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "cbf20d17c294eb6a2d5e98669cfe67a6",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": null,
-    "size": 22544,
-    "upload_time": "2020-08-23T16:44:07",
-    "upload_time_iso_8601": "2020-08-23T16:44:07.642919Z",
-    "url": "https://files.pythonhosted.org/packages/60/7a/e881b5abb54db0e6e671ab088d079c57ce54e8a01a3ca443f561ccadb37e/typing_extensions-3.7.4.3-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "16060f7367eafb692f73158e5c5cbca1aec798cdf78be5167f6415dd4205fa32",
-     "md5": "5fcbfcb22e6f8c9bf23fb9f8e020f6ee",
-     "sha256": "99d4073b617d30288f569d3f13d2bd7548c3a7e4c8de87db09a9d29bb3a4a60c"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-3.7.4.3.tar.gz",
-    "has_sig": false,
-    "md5_digest": "5fcbfcb22e6f8c9bf23fb9f8e020f6ee",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": null,
-    "size": 38979,
-    "upload_time": "2020-08-23T16:44:09",
-    "upload_time_iso_8601": "2020-08-23T16:44:09.060142Z",
-    "url": "https://files.pythonhosted.org/packages/16/06/0f7367eafb692f73158e5c5cbca1aec798cdf78be5167f6415dd4205fa32/typing_extensions-3.7.4.3.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.0.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "176132c3ab8951142e061587d957226b5683d1387fb22d95b4f69186d92616d1",
-     "md5": "33a3059e2a2bee4359600b1ed3bd57e0",
-     "sha256": "829704698b22e13ec9eaf959122315eabb370b0884400e9818334d8b677023d9"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.0.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "33a3059e2a2bee4359600b1ed3bd57e0",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.6",
-    "size": 22615,
-    "upload_time": "2021-11-14T22:11:20",
-    "upload_time_iso_8601": "2021-11-14T22:11:20.075965Z",
-    "url": "https://files.pythonhosted.org/packages/17/61/32c3ab8951142e061587d957226b5683d1387fb22d95b4f69186d92616d1/typing_extensions-4.0.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "1a23748b0c9a5578110b31580c8d2643319adcb3ec91f601b50a955051b51f1d",
-     "md5": "80c0839d184acb59e00b72ccfbbdafa7",
-     "sha256": "2cdf80e4e04866a9b3689a51869016d36db0814d84b8d8a568d22781d45d27ed"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.0.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "80c0839d184acb59e00b72ccfbbdafa7",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.6",
-    "size": 37038,
-    "upload_time": "2021-11-15T15:23:58",
-    "upload_time_iso_8601": "2021-11-15T15:23:58.981523Z",
-    "url": "https://files.pythonhosted.org/packages/1a/23/748b0c9a5578110b31580c8d2643319adcb3ec91f601b50a955051b51f1d/typing_extensions-4.0.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.0.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "05e4baf0031e39cf545f0c9edd5b1a2ea12609b7fcba2d58e118b11753d68cf0",
-     "md5": "716362736bf3143f3f8e68924c4f1c6e",
-     "sha256": "7f001e5ac290a0c0401508864c7ec868be4e701886d5b573a9528ed3973d9d3b"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.0.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "716362736bf3143f3f8e68924c4f1c6e",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.6",
-    "size": 22816,
-    "upload_time": "2021-12-01T01:45:37",
-    "upload_time_iso_8601": "2021-12-01T01:45:37.772785Z",
-    "url": "https://files.pythonhosted.org/packages/05/e4/baf0031e39cf545f0c9edd5b1a2ea12609b7fcba2d58e118b11753d68cf0/typing_extensions-4.0.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "0d4a60ba3706797b878016f16edc5fbaf1e222109e38d0fa4d7d9312cb53f8dd",
-     "md5": "33f184a97b6833fc99838c23acad2332",
-     "sha256": "4ca091dea149f945ec56afb48dae714f21e8692ef22a395223bcd328961b6a0e"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.0.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "33f184a97b6833fc99838c23acad2332",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.6",
-    "size": 22706,
-    "upload_time": "2021-12-01T01:45:39",
-    "upload_time_iso_8601": "2021-12-01T01:45:39.576912Z",
-    "url": "https://files.pythonhosted.org/packages/0d/4a/60ba3706797b878016f16edc5fbaf1e222109e38d0fa4d7d9312cb53f8dd/typing_extensions-4.0.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.1.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "6a1edf241fd31424de8c834a6c0281652a13a30191bdb10c600c35cef02cd160",
-     "md5": "b3a23ac6e9e242855386f6386eecd2d5",
-     "sha256": "c13180fbaa7cd97065a4915ceba012bdb31dc34743e63ddee16360161d358414"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.1.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "b3a23ac6e9e242855386f6386eecd2d5",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.6",
-    "size": 26845,
-    "upload_time": "2022-02-12T21:35:42",
-    "upload_time_iso_8601": "2022-02-12T21:35:42.540804Z",
-    "url": "https://files.pythonhosted.org/packages/6a/1e/df241fd31424de8c834a6c0281652a13a30191bdb10c600c35cef02cd160/typing_extensions-4.1.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "0b61f231a1297068b3c0544577c997e558cbfafe49e750cc7fcb503224df23c4",
-     "md5": "a54a596ca4685baa98390956818dc55a",
-     "sha256": "ba97c5143e5bb067b57793c726dd857b1671d4b02ced273ca0538e71ff009095"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.1.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "a54a596ca4685baa98390956818dc55a",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.6",
-    "size": 26686,
-    "upload_time": "2022-02-12T21:35:44",
-    "upload_time_iso_8601": "2022-02-12T21:35:44.238220Z",
-    "url": "https://files.pythonhosted.org/packages/0b/61/f231a1297068b3c0544577c997e558cbfafe49e750cc7fcb503224df23c4/typing_extensions-4.1.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.1.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "456b44f7f8f1e110027cf88956b59f2fad776cca7e1704396d043f89effd3a0e",
-     "md5": "51e77e114d727c80f57551ca7aabb015",
-     "sha256": "21c85e0fe4b9a155d0799430b0ad741cdce7e359660ccbd8b530613e8df88ce2"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.1.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "51e77e114d727c80f57551ca7aabb015",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.6",
-    "size": 26844,
-    "upload_time": "2022-02-14T03:19:55",
-    "upload_time_iso_8601": "2022-02-14T03:19:55.773679Z",
-    "url": "https://files.pythonhosted.org/packages/45/6b/44f7f8f1e110027cf88956b59f2fad776cca7e1704396d043f89effd3a0e/typing_extensions-4.1.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "b15a8b5fbb891ef3f81fc923bf3cb4a578c0abf9471eb50ce0f51c74212182ab",
-     "md5": "3cd9b7b9a465afbcca8548e11668ca64",
-     "sha256": "1a9462dcc3347a79b1f1c0271fbe79e844580bb598bafa1ed208b94da3cdcd42"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.1.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "3cd9b7b9a465afbcca8548e11668ca64",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.6",
-    "size": 26694,
-    "upload_time": "2022-02-14T03:19:57",
-    "upload_time_iso_8601": "2022-02-14T03:19:57.426277Z",
-    "url": "https://files.pythonhosted.org/packages/b1/5a/8b5fbb891ef3f81fc923bf3cb4a578c0abf9471eb50ce0f51c74212182ab/typing_extensions-4.1.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.2.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "75e1932e06004039dd670c9d5e1df0cd606bf46e29a28e65d5bb28e894ea29c9",
-     "md5": "95fc87a08006c5249ae13b8a1c3770b9",
-     "sha256": "6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.2.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "95fc87a08006c5249ae13b8a1c3770b9",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 24207,
-    "upload_time": "2022-04-17T21:27:21",
-    "upload_time_iso_8601": "2022-04-17T21:27:21.545483Z",
-    "url": "https://files.pythonhosted.org/packages/75/e1/932e06004039dd670c9d5e1df0cd606bf46e29a28e65d5bb28e894ea29c9/typing_extensions-4.2.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "fe711df93bd59163c8084d812d166c907639646e8aac72886d563851b966bf18",
-     "md5": "197fb153e3720a3f6e0c85bb47f9c2b5",
-     "sha256": "f1c24655a0da0d1b67f07e17a5e6b2a105894e6824b92096378bb3668ef02376"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.2.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "197fb153e3720a3f6e0c85bb47f9c2b5",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 42982,
-    "upload_time": "2022-04-17T21:27:23",
-    "upload_time_iso_8601": "2022-04-17T21:27:23.671483Z",
-    "url": "https://files.pythonhosted.org/packages/fe/71/1df93bd59163c8084d812d166c907639646e8aac72886d563851b966bf18/typing_extensions-4.2.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.3.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "edd62afc375a8d55b8be879d6b4986d4f69f01115e795e36827fd3a40166028b",
-     "md5": "71054675413cd44176744d45dfa22094",
-     "sha256": "25642c956049920a5aa49edcdd6ab1e06d7e5d467fc00e0506c44ac86fbfca02"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.3.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "71054675413cd44176744d45dfa22094",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 25596,
-    "upload_time": "2022-07-01T14:56:11",
-    "upload_time_iso_8601": "2022-07-01T14:56:11.904033Z",
-    "url": "https://files.pythonhosted.org/packages/ed/d6/2afc375a8d55b8be879d6b4986d4f69f01115e795e36827fd3a40166028b/typing_extensions-4.3.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "9e1dd128169ff58c501059330f1ad96ed62b79114a2eb30b8238af63a2e27f70",
-     "md5": "30ff8c89459dd93970a92a90b0386aba",
-     "sha256": "e6d2677a32f47fc7eb2795db1dd15c1f34eff616bcaf2cfb5e997f854fa1c4a6"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.3.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "30ff8c89459dd93970a92a90b0386aba",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 47430,
-    "upload_time": "2022-07-01T14:56:14",
-    "upload_time_iso_8601": "2022-07-01T14:56:14.062698Z",
-    "url": "https://files.pythonhosted.org/packages/9e/1d/d128169ff58c501059330f1ad96ed62b79114a2eb30b8238af63a2e27f70/typing_extensions-4.3.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.4.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "0b8ef1a0a5a76cfef77e1eb6004cb49e5f8d72634da638420b9ea492ce8305e8",
-     "md5": "f9df449d3052bf105d5c09460857ab77",
-     "sha256": "16fa4864408f655d35ec496218b85f79b3437c829e93320c7c9215ccfd92489e"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.4.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "f9df449d3052bf105d5c09460857ab77",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 26662,
-    "upload_time": "2022-10-06T22:40:00",
-    "upload_time_iso_8601": "2022-10-06T22:40:00.875294Z",
-    "url": "https://files.pythonhosted.org/packages/0b/8e/f1a0a5a76cfef77e1eb6004cb49e5f8d72634da638420b9ea492ce8305e8/typing_extensions-4.4.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "e3a78f4e456ef0adac43f452efc2d0e4b242ab831297f1bac60ac815d37eb9cf",
-     "md5": "5cfcb56ea6fc4972c3600c0030f4d136",
-     "sha256": "1511434bb92bf8dd198c12b1cc812e800d4181cfcb867674e0f8279cc93087aa"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.4.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "5cfcb56ea6fc4972c3600c0030f4d136",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 49708,
-    "upload_time": "2022-10-06T22:40:03",
-    "upload_time_iso_8601": "2022-10-06T22:40:03.601145Z",
-    "url": "https://files.pythonhosted.org/packages/e3/a7/8f4e456ef0adac43f452efc2d0e4b242ab831297f1bac60ac815d37eb9cf/typing_extensions-4.4.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.5.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "31255abcd82372d3d4a3932e1fa8c3dbf9efac10cc7c0d16e78467460571b404",
-     "md5": "159820157d72b39382de7c13ff173897",
-     "sha256": "fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.5.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "159820157d72b39382de7c13ff173897",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 27736,
-    "upload_time": "2023-02-15T00:17:53",
-    "upload_time_iso_8601": "2023-02-15T00:17:53.726117Z",
-    "url": "https://files.pythonhosted.org/packages/31/25/5abcd82372d3d4a3932e1fa8c3dbf9efac10cc7c0d16e78467460571b404/typing_extensions-4.5.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "d32006270dac7316220643c32ae61694e451c98f8caf4c8eab3aa80a2bedf0df",
-     "md5": "03a01698ace869506cab825697dfb7e1",
-     "sha256": "5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.5.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "03a01698ace869506cab825697dfb7e1",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 52399,
-    "upload_time": "2023-02-15T00:17:55",
-    "upload_time_iso_8601": "2023-02-15T00:17:55.502193Z",
-    "url": "https://files.pythonhosted.org/packages/d3/20/06270dac7316220643c32ae61694e451c98f8caf4c8eab3aa80a2bedf0df/typing_extensions-4.5.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.6.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "85d2949d324c348014f0fd2e8e6d8efd3c0adefdcecd28990d4144f2cfc8105e",
-     "md5": "ac717c208e6fe35ba058d3e0516f5696",
-     "sha256": "6ad00b63f849b7dcc313b70b6b304ed67b2b2963b3098a33efe18056b1a9a223"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "ac717c208e6fe35ba058d3e0516f5696",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 30680,
-    "upload_time": "2023-05-23T00:14:22",
-    "upload_time_iso_8601": "2023-05-23T00:14:22.372532Z",
-    "url": "https://files.pythonhosted.org/packages/85/d2/949d324c348014f0fd2e8e6d8efd3c0adefdcecd28990d4144f2cfc8105e/typing_extensions-4.6.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "e4034670b4c206e1dc869f2f0120c3d0a2b17d42526ab2b5a8f66d4cd8642ef3",
-     "md5": "637ccb498580f2dd42ddd1ba55cfce5d",
-     "sha256": "ff6b238610c747e44c268aa4bb23c8c735d665a63726df3f9431ce707f2aa768"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "637ccb498580f2dd42ddd1ba55cfce5d",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 63017,
-    "upload_time": "2023-05-23T00:14:24",
-    "upload_time_iso_8601": "2023-05-23T00:14:24.987039Z",
-    "url": "https://files.pythonhosted.org/packages/e4/03/4670b4c206e1dc869f2f0120c3d0a2b17d42526ab2b5a8f66d4cd8642ef3/typing_extensions-4.6.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.6.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "82ed8ccf53a0ed10bf8fc8877b5833b40f5f99093cadfe6632b8892f74aead0f",
-     "md5": "100fa5775307d55bcfc834945d08c43f",
-     "sha256": "6bac751f4789b135c43228e72de18637e9a6c29d12777023a703fd1a6858469f"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "100fa5775307d55bcfc834945d08c43f",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 31091,
-    "upload_time": "2023-05-24T03:13:13",
-    "upload_time_iso_8601": "2023-05-24T03:13:13.291750Z",
-    "url": "https://files.pythonhosted.org/packages/82/ed/8ccf53a0ed10bf8fc8877b5833b40f5f99093cadfe6632b8892f74aead0f/typing_extensions-4.6.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "aa67f4e6ae6998b0c86ab10f8e96339f00afaf30bef11f63a81c63977c2b89d7",
-     "md5": "ffdf1486faf94d2cf0e43ebdfc0451e8",
-     "sha256": "558bc0c4145f01e6405f4a5fdbd82050bd221b119f4bf72a961a1cfd471349d6"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "ffdf1486faf94d2cf0e43ebdfc0451e8",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 64249,
-    "upload_time": "2023-05-24T03:13:15",
-    "upload_time_iso_8601": "2023-05-24T03:13:15.660683Z",
-    "url": "https://files.pythonhosted.org/packages/aa/67/f4e6ae6998b0c86ab10f8e96339f00afaf30bef11f63a81c63977c2b89d7/typing_extensions-4.6.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.6.2": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "3860300ad6f93adca578bf05d5f6cd1d854b7d140bebe2f9829561aa9977d9f3",
-     "md5": "fe3fc61f751f473f10b7a8f035222365",
-     "sha256": "3a8b36f13dd5fdc5d1b16fe317f5668545de77fa0b8e02006381fd49d731ab98"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.2-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "fe3fc61f751f473f10b7a8f035222365",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 31131,
-    "upload_time": "2023-05-25T13:20:20",
-    "upload_time_iso_8601": "2023-05-25T13:20:20.746721Z",
-    "url": "https://files.pythonhosted.org/packages/38/60/300ad6f93adca578bf05d5f6cd1d854b7d140bebe2f9829561aa9977d9f3/typing_extensions-4.6.2-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "befc3d12393d634fcb31d5f4231c28feaf4ead225124ba08021046317d5f450d",
-     "md5": "283614af87a035ef76e13e0a7bb8ea61",
-     "sha256": "06006244c70ac8ee83fa8282cb188f697b8db25bc8b4df07be1873c43897060c"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.2.tar.gz",
-    "has_sig": false,
-    "md5_digest": "283614af87a035ef76e13e0a7bb8ea61",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 64540,
-    "upload_time": "2023-05-25T13:20:22",
-    "upload_time_iso_8601": "2023-05-25T13:20:22.854013Z",
-    "url": "https://files.pythonhosted.org/packages/be/fc/3d12393d634fcb31d5f4231c28feaf4ead225124ba08021046317d5f450d/typing_extensions-4.6.2.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.6.3": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "5f86d9b1518d8e75b346a33eb59fa31bdbbee11459a7e2cc5be502fa779e96c5",
-     "md5": "72776ba8972479e350e3287a443ca266",
-     "sha256": "88a4153d8505aabbb4e13aacb7c486c2b4a33ca3b3f807914a9b4c844c471c26"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.3-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "72776ba8972479e350e3287a443ca266",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 31329,
-    "upload_time": "2023-06-01T23:55:34",
-    "upload_time_iso_8601": "2023-06-01T23:55:34.451414Z",
-    "url": "https://files.pythonhosted.org/packages/5f/86/d9b1518d8e75b346a33eb59fa31bdbbee11459a7e2cc5be502fa779e96c5/typing_extensions-4.6.3-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "4256cfaa7a5281734dadc842f3a22e50447c675a1c5a5b9f6ad8a07b467bffe7",
-     "md5": "111a7d37292a241811502bd1b64032be",
-     "sha256": "d91d5919357fe7f681a9f2b5b4cb2a5f1ef0a1e9f59c4d8ff0d3491e05c0ffd5"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.6.3.tar.gz",
-    "has_sig": false,
-    "md5_digest": "111a7d37292a241811502bd1b64032be",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 65757,
-    "upload_time": "2023-06-01T23:55:36",
-    "upload_time_iso_8601": "2023-06-01T23:55:36.332544Z",
-    "url": "https://files.pythonhosted.org/packages/42/56/cfaa7a5281734dadc842f3a22e50447c675a1c5a5b9f6ad8a07b467bffe7/typing_extensions-4.6.3.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.7.0": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "7e4db0185d077dc1cd070a56859a0ba3bb6e76618393ec693e59faf1368da8f6",
-     "md5": "a5b59587be4482343ffbf9e610f35044",
-     "sha256": "5d8c9dac95c27d20df12fb1d97b9793ab8b2af8a3a525e68c80e21060c161771"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.7.0-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "a5b59587be4482343ffbf9e610f35044",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 33023,
-    "upload_time": "2023-06-28T21:00:52",
-    "upload_time_iso_8601": "2023-06-28T21:00:52.235967Z",
-    "url": "https://files.pythonhosted.org/packages/7e/4d/b0185d077dc1cd070a56859a0ba3bb6e76618393ec693e59faf1368da8f6/typing_extensions-4.7.0-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "57e3b37a6b1ce6c1b2b75d05997ec24f73c794bc05a587e0f30a532d0ab13cb2",
-     "md5": "1186c1ade8902e60562b979c5e49f8d0",
-     "sha256": "935ccf31549830cda708b42289d44b6f74084d616a00be651601a4f968e77c82"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.7.0.tar.gz",
-    "has_sig": false,
-    "md5_digest": "1186c1ade8902e60562b979c5e49f8d0",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 72585,
-    "upload_time": "2023-06-28T21:00:54",
-    "upload_time_iso_8601": "2023-06-28T21:00:54.004662Z",
-    "url": "https://files.pythonhosted.org/packages/57/e3/b37a6b1ce6c1b2b75d05997ec24f73c794bc05a587e0f30a532d0ab13cb2/typing_extensions-4.7.0.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.7.0rc1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "adb65b6acdb8f2b5a37adfd79c6996fdd6c96bbd7f66fb6b97abf0a151ea0402",
-     "md5": "a8cc037d972ed8a380d90f4e70ab9592",
-     "sha256": "16224afa8cc2b3679dd9e9a1efe719dd2e20a03f0cc2e4cc4c97870ae9622532"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.7.0rc1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "a8cc037d972ed8a380d90f4e70ab9592",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 32993,
-    "upload_time": "2023-06-21T14:57:37",
-    "upload_time_iso_8601": "2023-06-21T14:57:37.696595Z",
-    "url": "https://files.pythonhosted.org/packages/ad/b6/5b6acdb8f2b5a37adfd79c6996fdd6c96bbd7f66fb6b97abf0a151ea0402/typing_extensions-4.7.0rc1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "3f5fa33a657105fed1ee22b8e7e35ddd2dbad177fc42b0d83c2031990e1e759d",
-     "md5": "6f24489c3706564aa60335893a7e9fe6",
-     "sha256": "3c2c2cd887648efa0ea8f8ba4260a1213058e8e4a25a6a6f4e084740b2c858e2"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.7.0rc1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "6f24489c3706564aa60335893a7e9fe6",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 72030,
-    "upload_time": "2023-06-21T14:57:39",
-    "upload_time_iso_8601": "2023-06-21T14:57:39.210368Z",
-    "url": "https://files.pythonhosted.org/packages/3f/5f/a33a657105fed1ee22b8e7e35ddd2dbad177fc42b0d83c2031990e1e759d/typing_extensions-4.7.0rc1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ],
-  "4.7.1": [
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "ec6b63cc3df74987c36fe26157ee12e09e8f9db4de771e0f3404263117e75b95",
-     "md5": "a9431036b53f8fda2a50a81c2e880848",
-     "sha256": "440d5dd3af93b060174bf433bccd69b0babc3b15b1a8dca43789fd7f61514b36"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.7.1-py3-none-any.whl",
-    "has_sig": false,
-    "md5_digest": "a9431036b53f8fda2a50a81c2e880848",
-    "packagetype": "bdist_wheel",
-    "python_version": "py3",
-    "requires_python": ">=3.7",
-    "size": 33232,
-    "upload_time": "2023-07-02T14:20:53",
-    "upload_time_iso_8601": "2023-07-02T14:20:53.275715Z",
-    "url": "https://files.pythonhosted.org/packages/ec/6b/63cc3df74987c36fe26157ee12e09e8f9db4de771e0f3404263117e75b95/typing_extensions-4.7.1-py3-none-any.whl",
-    "yanked": false,
-    "yanked_reason": null
-   },
-   {
-    "comment_text": "",
-    "digests": {
-     "blake2b_256": "3c8b0111dd7d6c1478bf83baa1cab85c686426c7a6274119aceb2bd9d35395ad",
-     "md5": "06e7fff4b1d51f8dc6f49b16e71de54e",
-     "sha256": "b75ddc264f0ba5615db7ba217daeb99701ad295353c45f9e95963337ceeeffb2"
-    },
-    "downloads": -1,
-    "filename": "typing_extensions-4.7.1.tar.gz",
-    "has_sig": false,
-    "md5_digest": "06e7fff4b1d51f8dc6f49b16e71de54e",
-    "packagetype": "sdist",
-    "python_version": "source",
-    "requires_python": ">=3.7",
-    "size": 72876,
-    "upload_time": "2023-07-02T14:20:55",
-    "upload_time_iso_8601": "2023-07-02T14:20:55.045815Z",
-    "url": "https://files.pythonhosted.org/packages/3c/8b/0111dd7d6c1478bf83baa1cab85c686426c7a6274119aceb2bd9d35395ad/typing_extensions-4.7.1.tar.gz",
-    "yanked": false,
-    "yanked_reason": null
-   }
-  ]
- },
- "urls": [
-  {
-   "comment_text": "",
-   "digests": {
-    "blake2b_256": "ec6b63cc3df74987c36fe26157ee12e09e8f9db4de771e0f3404263117e75b95",
-    "md5": "a9431036b53f8fda2a50a81c2e880848",
-    "sha256": "440d5dd3af93b060174bf433bccd69b0babc3b15b1a8dca43789fd7f61514b36"
-   },
-   "downloads": -1,
-   "filename": "typing_extensions-4.7.1-py3-none-any.whl",
-   "has_sig": false,
-   "md5_digest": "a9431036b53f8fda2a50a81c2e880848",
-   "packagetype": "bdist_wheel",
-   "python_version": "py3",
-   "requires_python": ">=3.7",
-   "size": 33232,
-   "upload_time": "2023-07-02T14:20:53",
-   "upload_time_iso_8601": "2023-07-02T14:20:53.275715Z",
-   "url": "https://files.pythonhosted.org/packages/ec/6b/63cc3df74987c36fe26157ee12e09e8f9db4de771e0f3404263117e75b95/typing_extensions-4.7.1-py3-none-any.whl",
-   "yanked": false,
-   "yanked_reason": null
-  },
-  {
-   "comment_text": "",
-   "digests": {
-    "blake2b_256": "3c8b0111dd7d6c1478bf83baa1cab85c686426c7a6274119aceb2bd9d35395ad",
-    "md5": "06e7fff4b1d51f8dc6f49b16e71de54e",
-    "sha256": "b75ddc264f0ba5615db7ba217daeb99701ad295353c45f9e95963337ceeeffb2"
-   },
-   "downloads": -1,
-   "filename": "typing_extensions-4.7.1.tar.gz",
-   "has_sig": false,
-   "md5_digest": "06e7fff4b1d51f8dc6f49b16e71de54e",
-   "packagetype": "sdist",
-   "python_version": "source",
-   "requires_python": ">=3.7",
-   "size": 72876,
-   "upload_time": "2023-07-02T14:20:55",
-   "upload_time_iso_8601": "2023-07-02T14:20:55.045815Z",
-   "url": "https://files.pythonhosted.org/packages/3c/8b/0111dd7d6c1478bf83baa1cab85c686426c7a6274119aceb2bd9d35395ad/typing_extensions-4.7.1.tar.gz",
-   "yanked": false,
-   "yanked_reason": null
-  }
- ],
- "vulnerabilities": []
+    "info": {
+        "author": null,
+        "author_email": "\"Guido van Rossum, Jukka Lehtosalo, Łukasz Langa, Michael Lee\" <levkivskyi@gmail.com>",
+        "bugtrack_url": null,
+        "classifiers": [
+            "Development Status :: 5 - Production/Stable",
+            "Environment :: Console",
+            "Intended Audience :: Developers",
+            "License :: OSI Approved :: Python Software Foundation License",
+            "Operating System :: OS Independent",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3 :: Only",
+            "Programming Language :: Python :: 3.10",
+            "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
+            "Programming Language :: Python :: 3.13",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
+            "Topic :: Software Development"
+        ],
+        "description": "# Typing Extensions\n\n[![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing)\n\n[Documentation](https://typing-extensions.readthedocs.io/en/latest/#) –\n[PyPI](https://pypi.org/project/typing-extensions/)\n\n## Overview\n\nThe `typing_extensions` module serves two related purposes:\n\n- Enable use of new type system features on older Python versions. For example,\n  `typing.TypeGuard` is new in Python 3.10, but `typing_extensions` allows\n  users on previous Python versions to use it too.\n- Enable experimentation with new type system PEPs before they are accepted and\n  added to the `typing` module.\n\n`typing_extensions` is treated specially by static type checkers such as\nmypy and pyright. Objects defined in `typing_extensions` are treated the same\nway as equivalent forms in `typing`.\n\n`typing_extensions` uses\n[Semantic Versioning](https://semver.org/). The\nmajor version will be incremented only for backwards-incompatible changes.\nTherefore, it's safe to depend\non `typing_extensions` like this: `typing_extensions >=x.y, <(x+1)`,\nwhere `x.y` is the first version that includes all features you need.\n\n## Included items\n\nSee [the documentation](https://typing-extensions.readthedocs.io/en/latest/#) for a\ncomplete listing of module contents.\n\n## Contributing\n\nSee [CONTRIBUTING.md](https://github.com/python/typing_extensions/blob/main/CONTRIBUTING.md)\nfor how to contribute to `typing_extensions`.\n\n",
+        "description_content_type": "text/markdown",
+        "docs_url": null,
+        "download_url": null,
+        "downloads": {
+            "last_day": -1,
+            "last_month": -1,
+            "last_week": -1
+        },
+        "dynamic": null,
+        "home_page": null,
+        "keywords": "annotations, backport, checker, checking, function, hinting, hints, type, typechecking, typehinting, typehints, typing",
+        "license": null,
+        "maintainer": null,
+        "maintainer_email": null,
+        "name": "typing-extensions",
+        "package_url": "https://pypi.org/project/typing-extensions/",
+        "platform": null,
+        "project_url": "https://pypi.org/project/typing-extensions/",
+        "project_urls": {
+            "Bug Tracker": "https://github.com/python/typing_extensions/issues",
+            "Changes": "https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+            "Documentation": "https://typing-extensions.readthedocs.io/",
+            "Home": "https://github.com/python/typing_extensions",
+            "Q & A": "https://github.com/python/typing/discussions",
+            "Repository": "https://github.com/python/typing_extensions"
+        },
+        "provides_extra": null,
+        "release_url": "https://pypi.org/project/typing-extensions/4.12.2/",
+        "requires_dist": null,
+        "requires_python": ">=3.8",
+        "summary": "Backported and Experimental Type Hints for Python 3.8+",
+        "version": "4.12.2",
+        "yanked": false,
+        "yanked_reason": null
+    },
+    "last_serial": 23577789,
+    "releases": {
+        "3.10.0.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "dd3ab2cfe97bec9e7c317af222f0cee66a37b68bfa52e743c675bdc881ce1aeb",
+                    "md5": "19760404c4469cae06305e99a3f484c2",
+                    "sha256": "0ac0f89795dd19de6b97debb0c6af1c70987fd80a2d62d1958f7e56fcc31b497"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.0-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "19760404c4469cae06305e99a3f484c2",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 9291,
+                "upload_time": "2021-05-01T18:03:16",
+                "upload_time_iso_8601": "2021-05-01T18:03:16.560286Z",
+                "url": "https://files.pythonhosted.org/packages/dd/3a/b2cfe97bec9e7c317af222f0cee66a37b68bfa52e743c675bdc881ce1aeb/typing_extensions-3.10.0.0-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "2e356c4fff5ab443b57116cb1aad46421fb719bed2825664e8fe77d66d99bcbc",
+                    "md5": "9fd2a2ae09511032a1d2ed40cd45713a",
+                    "sha256": "779383f6086d90c99ae41cf0ff39aac8a7937a9283ce0a414e5dd782f4c94a84"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "9fd2a2ae09511032a1d2ed40cd45713a",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 26127,
+                "upload_time": "2021-05-01T18:03:18",
+                "upload_time_iso_8601": "2021-05-01T18:03:18.151721Z",
+                "url": "https://files.pythonhosted.org/packages/2e/35/6c4fff5ab443b57116cb1aad46421fb719bed2825664e8fe77d66d99bcbc/typing_extensions-3.10.0.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "aa5562e2d4934c282a60b4243a950c9dbfa01ae7cac0e8d6c0b5315b87432c81",
+                    "md5": "9b5b33ae64c94479fa0862cf8ae89d58",
+                    "sha256": "50b6f157849174217d0656f99dc82fe932884fb250826c18350e159ec6cdf342"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "9b5b33ae64c94479fa0862cf8ae89d58",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 45509,
+                "upload_time": "2021-05-01T18:03:19",
+                "upload_time_iso_8601": "2021-05-01T18:03:19.646727Z",
+                "url": "https://files.pythonhosted.org/packages/aa/55/62e2d4934c282a60b4243a950c9dbfa01ae7cac0e8d6c0b5315b87432c81/typing_extensions-3.10.0.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.10.0.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "df93ef0c164cd0bab2937275daf59b4c284331332d12f9e21866a56f5beb8ded",
+                    "md5": "731477c84a2115a42e5c0dcfa95990f4",
+                    "sha256": "8bbffbd37fbeb9747a0241fdfde5ae99d4531ad1d1a41ccaea62100e15a5814c"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.1-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "731477c84a2115a42e5c0dcfa95990f4",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 9291,
+                "upload_time": "2021-08-29T15:53:51",
+                "upload_time_iso_8601": "2021-08-29T15:53:51.580982Z",
+                "url": "https://files.pythonhosted.org/packages/df/93/ef0c164cd0bab2937275daf59b4c284331332d12f9e21866a56f5beb8ded/typing_extensions-3.10.0.1-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e8ee237d13b6d3d532778a57df23e6df4b2a82fbbeb833c4016054c6b6730d56",
+                    "md5": "c4c0d8cb7984a1b9c50e6a20c1a0cc9d",
+                    "sha256": "045dd532231acfa03628df5e0c66dba64e2cc8fc8b844538d4ad6d5dd6cb82dc"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "c4c0d8cb7984a1b9c50e6a20c1a0cc9d",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 26278,
+                "upload_time": "2021-08-29T15:53:53",
+                "upload_time_iso_8601": "2021-08-29T15:53:53.093781Z",
+                "url": "https://files.pythonhosted.org/packages/e8/ee/237d13b6d3d532778a57df23e6df4b2a82fbbeb833c4016054c6b6730d56/typing_extensions-3.10.0.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "a5506fbfb5a45d4d8024222849f0731f8d8ddc5c7fe657a8f799bd4c605e93e0",
+                    "md5": "534781b600f62d5850f22f47949ba744",
+                    "sha256": "83af6730a045fda60f46510f7f1f094776d90321caa4d97d20ef38871bef4bd3"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "534781b600f62d5850f22f47949ba744",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 45309,
+                "upload_time": "2021-08-29T15:53:54",
+                "upload_time_iso_8601": "2021-08-29T15:53:54.868331Z",
+                "url": "https://files.pythonhosted.org/packages/a5/50/6fbfb5a45d4d8024222849f0731f8d8ddc5c7fe657a8f799bd4c605e93e0/typing_extensions-3.10.0.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.10.0.2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "cc1e0310dee9d86a41f003c519ce263f3b931c54852fcb15ec780137b2e53d4e",
+                    "md5": "96296851ac46115ff8ae00bf2f4f574d",
+                    "sha256": "d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.2-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "96296851ac46115ff8ae00bf2f4f574d",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 9291,
+                "upload_time": "2021-08-30T18:46:23",
+                "upload_time_iso_8601": "2021-08-30T18:46:23.064211Z",
+                "url": "https://files.pythonhosted.org/packages/cc/1e/0310dee9d86a41f003c519ce263f3b931c54852fcb15ec780137b2e53d4e/typing_extensions-3.10.0.2-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "746018783336cc7fcdd95dae91d73477830aa53f5d3181ae4fe20491d7fc3199",
+                    "md5": "7b84c09a94faa790c0daa8fec9cc36c9",
+                    "sha256": "f1d25edafde516b146ecd0613dabcc61409817af4766fbbcfb8d1ad4ec441a34"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "7b84c09a94faa790c0daa8fec9cc36c9",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 26288,
+                "upload_time": "2021-08-30T18:46:26",
+                "upload_time_iso_8601": "2021-08-30T18:46:26.221036Z",
+                "url": "https://files.pythonhosted.org/packages/74/60/18783336cc7fcdd95dae91d73477830aa53f5d3181ae4fe20491d7fc3199/typing_extensions-3.10.0.2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "ed12c5079a15cf5c01d7f4252b473b00f7e68ee711be605b9f001528f0298b98",
+                    "md5": "ed80ecc8eac5cb15840535ca54eb43f3",
+                    "sha256": "49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.10.0.2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "ed80ecc8eac5cb15840535ca54eb43f3",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 46048,
+                "upload_time": "2021-08-30T18:46:27",
+                "upload_time_iso_8601": "2021-08-30T18:46:27.766165Z",
+                "url": "https://files.pythonhosted.org/packages/ed/12/c5079a15cf5c01d7f4252b473b00f7e68ee711be605b9f001528f0298b98/typing_extensions-3.10.0.2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.6.2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "7ad2776076bc80b5006c327c4106ccc8a6d645ccfae57ca72eee0ec98ea19ab0",
+                    "md5": "37f5357d7c43b4d1642b99b38a158e56",
+                    "sha256": "a13d47e36fb70d00de1fd111beea96cace79f5fcaa2c5381a75fc419ad50907d"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.2-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "37f5357d7c43b4d1642b99b38a158e56",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 7723,
+                "upload_time": "2017-09-17T12:25:17",
+                "upload_time_iso_8601": "2017-09-17T12:25:17.911412Z",
+                "url": "https://files.pythonhosted.org/packages/7a/d2/776076bc80b5006c327c4106ccc8a6d645ccfae57ca72eee0ec98ea19ab0/typing_extensions-3.6.2-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "cbcc4db345e919daa930cb4352e8b2e273bdb9e6d2a72c6e09da811a6127278f",
+                    "md5": "7ab46a053e420150656fea1f6c7a199e",
+                    "sha256": "9d1f70ae4b349f2040e8ca4acf1e7f8edceeff5f8aa49fbef9f9e39116312418"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "7ab46a053e420150656fea1f6c7a199e",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 11492,
+                "upload_time": "2017-09-17T12:25:19",
+                "upload_time_iso_8601": "2017-09-17T12:25:19.280623Z",
+                "url": "https://files.pythonhosted.org/packages/cb/cc/4db345e919daa930cb4352e8b2e273bdb9e6d2a72c6e09da811a6127278f/typing_extensions-3.6.2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "d053db3c6bf3fc6a57cda61117dc84eb96de7586e2a43ab12e332a91570c5867",
+                    "md5": "16976ca13bd31dd1af42dfd2318d5bbb",
+                    "sha256": "e83f825d3ecb61443cf18639f499cabd02d87274e594de3728a1a07bc08a566d"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "16976ca13bd31dd1af42dfd2318d5bbb",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 6790,
+                "upload_time": "2017-09-17T12:25:20",
+                "upload_time_iso_8601": "2017-09-17T12:25:20.236441Z",
+                "url": "https://files.pythonhosted.org/packages/d0/53/db3c6bf3fc6a57cda61117dc84eb96de7586e2a43ab12e332a91570c5867/typing_extensions-3.6.2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.6.2.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "1d5a9ce4a5ed063f4590a0ac37e984a679930cd46faeab4b7b16f0c8c90a027d",
+                    "md5": "981b4fd002e0bdea8aed79e409007a31",
+                    "sha256": "3f917fa1eb17b7dc09f19e01b52bfe15e7bc67c34cc3cf63613c8a37ce953b59"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.2.1-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "981b4fd002e0bdea8aed79e409007a31",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 7751,
+                "upload_time": "2017-09-30T08:53:23",
+                "upload_time_iso_8601": "2017-09-30T08:53:23.924418Z",
+                "url": "https://files.pythonhosted.org/packages/1d/5a/9ce4a5ed063f4590a0ac37e984a679930cd46faeab4b7b16f0c8c90a027d/typing_extensions-3.6.2.1-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "665c605dd55fcc9a8925f19263d5a74ddec06b9eab304d9fe64c956e85b7aa6c",
+                    "md5": "4e2d8b7e1301b1bea5501e7e2a9274fb",
+                    "sha256": "a685d27cadf53b99a18e953697e859f09478912efcbd8c86b89af9f6402dc301"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.2.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "4e2d8b7e1301b1bea5501e7e2a9274fb",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 11521,
+                "upload_time": "2017-09-30T08:53:25",
+                "upload_time_iso_8601": "2017-09-30T08:53:25.345851Z",
+                "url": "https://files.pythonhosted.org/packages/66/5c/605dd55fcc9a8925f19263d5a74ddec06b9eab304d9fe64c956e85b7aa6c/typing_extensions-3.6.2.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "bc24dd74d7d91f460b682492d146e15b943392d73b91c021557186dc810a264a",
+                    "md5": "0cf451b9182c32dacaad90eb2d0b696c",
+                    "sha256": "dc18da05be5c924538481f6761700757eb36415213350d5e15b9cbd72e46ffe3"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.2.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "0cf451b9182c32dacaad90eb2d0b696c",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 24828,
+                "upload_time": "2017-09-30T08:53:26",
+                "upload_time_iso_8601": "2017-09-30T08:53:26.724178Z",
+                "url": "https://files.pythonhosted.org/packages/bc/24/dd74d7d91f460b682492d146e15b943392d73b91c021557186dc810a264a/typing_extensions-3.6.2.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.6.5": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "303765f28f32654bee9a21951a8b07a70e1348dea00991d57d151cb49f2c108b",
+                    "md5": "780e7eacbfc0752b1fc8864cd19baf9a",
+                    "sha256": "8b0962ecb92847974514b1724c8ae2b6dd1ffe86bcdfac429517f5e583ada658"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.5-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "780e7eacbfc0752b1fc8864cd19baf9a",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 6231,
+                "upload_time": "2018-05-07T22:16:09",
+                "upload_time_iso_8601": "2018-05-07T22:16:09.460292Z",
+                "url": "https://files.pythonhosted.org/packages/30/37/65f28f32654bee9a21951a8b07a70e1348dea00991d57d151cb49f2c108b/typing_extensions-3.6.5-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "15f1ef4e69d77cd850af1cb7d6de62fc8a0e92eb6fe7b37e3dc563b41378b567",
+                    "md5": "4611e7342c9bcc4eddfbba0582726d83",
+                    "sha256": "be7b05ddab71727fabf1f071365043cf034e4cdac9cade1f1d61a6cc526aaafe"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.5-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "4611e7342c9bcc4eddfbba0582726d83",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 11447,
+                "upload_time": "2018-05-07T22:16:10",
+                "upload_time_iso_8601": "2018-05-07T22:16:10.524123Z",
+                "url": "https://files.pythonhosted.org/packages/15/f1/ef4e69d77cd850af1cb7d6de62fc8a0e92eb6fe7b37e3dc563b41378b567/typing_extensions-3.6.5-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "a9b0c98f86c94706784699bff1262506ceab6e8101386e984a773b10be7500fc",
+                    "md5": "b89c0965d85245fc05f1cf4c5f8aa9ab",
+                    "sha256": "1c0a8e3b4ce55207a03dd0dcb98bc47a704c71f14fe4311ec860cc8af8f4bd27"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.5.tar.gz",
+                "has_sig": false,
+                "md5_digest": "b89c0965d85245fc05f1cf4c5f8aa9ab",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 27146,
+                "upload_time": "2018-05-07T22:16:11",
+                "upload_time_iso_8601": "2018-05-07T22:16:11.447691Z",
+                "url": "https://files.pythonhosted.org/packages/a9/b0/c98f86c94706784699bff1262506ceab6e8101386e984a773b10be7500fc/typing_extensions-3.6.5.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.6.6": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "48596cef806c06dddd3ccb08890419a9fe6a4dc0dc5d3e3598621fb5627e874f",
+                    "md5": "c57ff533ff96d6829d78941229b4ecdd",
+                    "sha256": "2a6c6e78e291a4b6cbd0bbfd30edc0baaa366de962129506ec8fe06bdec66457"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.6-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "c57ff533ff96d6829d78941229b4ecdd",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 11126,
+                "upload_time": "2018-10-06T22:03:23",
+                "upload_time_iso_8601": "2018-10-06T22:03:23.629524Z",
+                "url": "https://files.pythonhosted.org/packages/48/59/6cef806c06dddd3ccb08890419a9fe6a4dc0dc5d3e3598621fb5627e874f/typing_extensions-3.6.6-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "624f392a1fa2873e646f5990eb6f956e662d8a235ab474450c72487745f67276",
+                    "md5": "dce42ca126e9b4de55a8da59aaa3352c",
+                    "sha256": "55401f6ed58ade5638eb566615c150ba13624e2f0c1eedd080fc3c1b6cb76f1d"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.6-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "dce42ca126e9b4de55a8da59aaa3352c",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 16218,
+                "upload_time": "2018-10-06T22:03:25",
+                "upload_time_iso_8601": "2018-10-06T22:03:25.173704Z",
+                "url": "https://files.pythonhosted.org/packages/62/4f/392a1fa2873e646f5990eb6f956e662d8a235ab474450c72487745f67276/typing_extensions-3.6.6-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "fce63d2f306b12f01bde2861d67458d32c673e206d6fcc255537bf452db8f80c",
+                    "md5": "9509b7ff9cbd479d195e61b04d70cd3a",
+                    "sha256": "51e7b7f3dcabf9ad22eed61490f3b8d23d9922af400fe6656cb08e66656b701f"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.6.6.tar.gz",
+                "has_sig": false,
+                "md5_digest": "9509b7ff9cbd479d195e61b04d70cd3a",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 32610,
+                "upload_time": "2018-10-06T22:03:30",
+                "upload_time_iso_8601": "2018-10-06T22:03:30.354432Z",
+                "url": "https://files.pythonhosted.org/packages/fc/e6/3d2f306b12f01bde2861d67458d32c673e206d6fcc255537bf452db8f80c/typing_extensions-3.6.6.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.7.2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "696084116ab2840fda8414cbc92c2a63adfa71e9bafb2d305b467fadb20ec2a8",
+                    "md5": "7fd2d0a56096e1e6c81d61727f7176cb",
+                    "sha256": "07b2c978670896022a43c4b915df8958bec4a6b84add7f2c87b2b728bda3ba64"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.2-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "7fd2d0a56096e1e6c81d61727f7176cb",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 11418,
+                "upload_time": "2019-01-12T18:17:33",
+                "upload_time_iso_8601": "2019-01-12T18:17:33.193920Z",
+                "url": "https://files.pythonhosted.org/packages/69/60/84116ab2840fda8414cbc92c2a63adfa71e9bafb2d305b467fadb20ec2a8/typing_extensions-3.7.2-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0f62c66e553258c37c33f9939abb2dd8d2481803d860ff68e635466f12aa7efa",
+                    "md5": "7b265f15d4eed8d014f8db21263c5bb5",
+                    "sha256": "f3f0e67e1d42de47b5c67c32c9b26641642e9170fe7e292991793705cd5fef7c"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "7b265f15d4eed8d014f8db21263c5bb5",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 16710,
+                "upload_time": "2019-01-12T18:17:34",
+                "upload_time_iso_8601": "2019-01-12T18:17:34.672850Z",
+                "url": "https://files.pythonhosted.org/packages/0f/62/c66e553258c37c33f9939abb2dd8d2481803d860ff68e635466f12aa7efa/typing_extensions-3.7.2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "faaa229f5c82d17d10d4ef318b5c22a8626a1c78fc97f80d3307035cf696681b",
+                    "md5": "33815f263f3e00ec63b9d9d26eea95de",
+                    "sha256": "fb2cd053238d33a8ec939190f30cfd736c00653a85a2919415cecf7dc3d9da71"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "33815f263f3e00ec63b9d9d26eea95de",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 34042,
+                "upload_time": "2019-01-12T18:17:36",
+                "upload_time_iso_8601": "2019-01-12T18:17:36.336518Z",
+                "url": "https://files.pythonhosted.org/packages/fa/aa/229f5c82d17d10d4ef318b5c22a8626a1c78fc97f80d3307035cf696681b/typing_extensions-3.7.2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.7.4": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "b84deddc8b3c539cd79a31987ffc96ccd62ecc35f637d5d4fdaa37e4b64a2e5b",
+                    "md5": "bda2643d914905854872c0e5e7575285",
+                    "sha256": "b1edbbf0652660e32ae780ac9433f4231e7339c7f9a8057d0f042fcbcea49b87"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "bda2643d914905854872c0e5e7575285",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 8935,
+                "upload_time": "2019-06-19T23:58:56",
+                "upload_time_iso_8601": "2019-06-19T23:58:56.983660Z",
+                "url": "https://files.pythonhosted.org/packages/b8/4d/eddc8b3c539cd79a31987ffc96ccd62ecc35f637d5d4fdaa37e4b64a2e5b/typing_extensions-3.7.4-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "27aabd1442cfb0224da1b671ab334d3b0a4302e4161ea916e28904ff9618d471",
+                    "md5": "6ef332311f9864fa0ab45ad7d95e6bde",
+                    "sha256": "d8179012ec2c620d3791ca6fe2bf7979d979acdbef1fca0bc56b37411db682ed"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "6ef332311f9864fa0ab45ad7d95e6bde",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 20721,
+                "upload_time": "2019-06-19T23:58:58",
+                "upload_time_iso_8601": "2019-06-19T23:58:58.535041Z",
+                "url": "https://files.pythonhosted.org/packages/27/aa/bd1442cfb0224da1b671ab334d3b0a4302e4161ea916e28904ff9618d471/typing_extensions-3.7.4-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "59b621774b993eec6e797fbc49e53830df823b69a3cb62f94d36dfb497a0b65a",
+                    "md5": "98510adbacf8ea74f46f98b0a5cbdf73",
+                    "sha256": "2ed632b30bb54fc3941c382decfd0ee4148f5c591651c9272473fea2c6397d95"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.tar.gz",
+                "has_sig": false,
+                "md5_digest": "98510adbacf8ea74f46f98b0a5cbdf73",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 36058,
+                "upload_time": "2019-06-19T23:59:00",
+                "upload_time_iso_8601": "2019-06-19T23:59:00.097528Z",
+                "url": "https://files.pythonhosted.org/packages/59/b6/21774b993eec6e797fbc49e53830df823b69a3cb62f94d36dfb497a0b65a/typing_extensions-3.7.4.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.7.4.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "890b611af6b186e4e59e290fee1a5b4a6c47a4ce29d7cb9b5141fc73c38d8b65",
+                    "md5": "76b86c0334cf6f2abf692e7d850d89c1",
+                    "sha256": "910f4656f54de5993ad9304959ce9bb903f90aadc7c67a0bef07e678014e892d"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.1-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "76b86c0334cf6f2abf692e7d850d89c1",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 8993,
+                "upload_time": "2019-10-28T13:29:12",
+                "upload_time_iso_8601": "2019-10-28T13:29:12.505359Z",
+                "url": "https://files.pythonhosted.org/packages/89/0b/611af6b186e4e59e290fee1a5b4a6c47a4ce29d7cb9b5141fc73c38d8b65/typing_extensions-3.7.4.1-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0392705fe8aca27678e01bbdd7738173b8e7df0088a2202c80352f664630d638",
+                    "md5": "cb8d1ddc981bd1ca7ccd9304146a3361",
+                    "sha256": "cf8b63fedea4d89bab840ecbb93e75578af28f76f66c35889bd7065f5af88575"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "cb8d1ddc981bd1ca7ccd9304146a3361",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 20901,
+                "upload_time": "2019-10-28T13:29:13",
+                "upload_time_iso_8601": "2019-10-28T13:29:13.949779Z",
+                "url": "https://files.pythonhosted.org/packages/03/92/705fe8aca27678e01bbdd7738173b8e7df0088a2202c80352f664630d638/typing_extensions-3.7.4.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e7ddf1713bc6638cc3a6a23735eff6ee09393b44b96176d3296693ada272a80b",
+                    "md5": "566292497a533981216e1d05a7c00fd3",
+                    "sha256": "091ecc894d5e908ac75209f10d5b4f118fbdb2eb1ede6a63544054bb1edb41f2"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "566292497a533981216e1d05a7c00fd3",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 36357,
+                "upload_time": "2019-10-28T13:29:15",
+                "upload_time_iso_8601": "2019-10-28T13:29:15.822245Z",
+                "url": "https://files.pythonhosted.org/packages/e7/dd/f1713bc6638cc3a6a23735eff6ee09393b44b96176d3296693ada272a80b/typing_extensions-3.7.4.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.7.4.2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "55173f65ede2450a51ab7b8c6f9f4aa1ba07cddd980422e2409ea5d68ccdf38d",
+                    "md5": "2da788f5f35d15b52bcb7ce0f5584e59",
+                    "sha256": "f8d2bd89d25bc39dabe7d23df520442fa1d8969b82544370e03d88b5a591c392"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.2-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "2da788f5f35d15b52bcb7ce0f5584e59",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 9005,
+                "upload_time": "2020-04-02T17:40:28",
+                "upload_time_iso_8601": "2020-04-02T17:40:28.249155Z",
+                "url": "https://files.pythonhosted.org/packages/55/17/3f65ede2450a51ab7b8c6f9f4aa1ba07cddd980422e2409ea5d68ccdf38d/typing_extensions-3.7.4.2-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0c0e3f026d0645d699e7320b59952146d56ad7c374e9cd72cd16e7c74e657a0f",
+                    "md5": "800bf9c0ee2a28f610a6b7c0c266e85d",
+                    "sha256": "6e95524d8a547a91e08f404ae485bbb71962de46967e1b71a0cb89af24e761c5"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "800bf9c0ee2a28f610a6b7c0c266e85d",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 22089,
+                "upload_time": "2020-04-02T17:40:29",
+                "upload_time_iso_8601": "2020-04-02T17:40:29.760003Z",
+                "url": "https://files.pythonhosted.org/packages/0c/0e/3f026d0645d699e7320b59952146d56ad7c374e9cd72cd16e7c74e657a0f/typing_extensions-3.7.4.2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "6a28d32852f2af6b5ead85d396249d5bdf450833f3a69896d76eb480d9c5e406",
+                    "md5": "f2674282966dc088d10170c2347431cc",
+                    "sha256": "79ee589a3caca649a9bfd2a8de4709837400dfa00b6cc81962a1e6a1815969ae"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "f2674282966dc088d10170c2347431cc",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 38427,
+                "upload_time": "2020-04-02T17:40:31",
+                "upload_time_iso_8601": "2020-04-02T17:40:31.250116Z",
+                "url": "https://files.pythonhosted.org/packages/6a/28/d32852f2af6b5ead85d396249d5bdf450833f3a69896d76eb480d9c5e406/typing_extensions-3.7.4.2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "3.7.4.3": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "bee18fe3f8a8aa3380f2a92b0075406c49f96fcc2b256f5c92d09571d2ab7847",
+                    "md5": "e59526817794f0f6455be69d863b8ce3",
+                    "sha256": "dafc7639cde7f1b6e1acc0f457842a83e722ccca8eef5270af2d74792619a89f"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.3-py2-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "e59526817794f0f6455be69d863b8ce3",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2",
+                "requires_python": null,
+                "size": 9264,
+                "upload_time": "2020-08-23T16:44:06",
+                "upload_time_iso_8601": "2020-08-23T16:44:06.187895Z",
+                "url": "https://files.pythonhosted.org/packages/be/e1/8fe3f8a8aa3380f2a92b0075406c49f96fcc2b256f5c92d09571d2ab7847/typing_extensions-3.7.4.3-py2-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "607ae881b5abb54db0e6e671ab088d079c57ce54e8a01a3ca443f561ccadb37e",
+                    "md5": "cbf20d17c294eb6a2d5e98669cfe67a6",
+                    "sha256": "7cb407020f00f7bfc3cb3e7881628838e69d8f3fcab2f64742a5e76b2f841918"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.3-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "cbf20d17c294eb6a2d5e98669cfe67a6",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": null,
+                "size": 22544,
+                "upload_time": "2020-08-23T16:44:07",
+                "upload_time_iso_8601": "2020-08-23T16:44:07.642919Z",
+                "url": "https://files.pythonhosted.org/packages/60/7a/e881b5abb54db0e6e671ab088d079c57ce54e8a01a3ca443f561ccadb37e/typing_extensions-3.7.4.3-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "16060f7367eafb692f73158e5c5cbca1aec798cdf78be5167f6415dd4205fa32",
+                    "md5": "5fcbfcb22e6f8c9bf23fb9f8e020f6ee",
+                    "sha256": "99d4073b617d30288f569d3f13d2bd7548c3a7e4c8de87db09a9d29bb3a4a60c"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-3.7.4.3.tar.gz",
+                "has_sig": false,
+                "md5_digest": "5fcbfcb22e6f8c9bf23fb9f8e020f6ee",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": null,
+                "size": 38979,
+                "upload_time": "2020-08-23T16:44:09",
+                "upload_time_iso_8601": "2020-08-23T16:44:09.060142Z",
+                "url": "https://files.pythonhosted.org/packages/16/06/0f7367eafb692f73158e5c5cbca1aec798cdf78be5167f6415dd4205fa32/typing_extensions-3.7.4.3.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.0.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "176132c3ab8951142e061587d957226b5683d1387fb22d95b4f69186d92616d1",
+                    "md5": "33a3059e2a2bee4359600b1ed3bd57e0",
+                    "sha256": "829704698b22e13ec9eaf959122315eabb370b0884400e9818334d8b677023d9"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.0.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "33a3059e2a2bee4359600b1ed3bd57e0",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.6",
+                "size": 22615,
+                "upload_time": "2021-11-14T22:11:20",
+                "upload_time_iso_8601": "2021-11-14T22:11:20.075965Z",
+                "url": "https://files.pythonhosted.org/packages/17/61/32c3ab8951142e061587d957226b5683d1387fb22d95b4f69186d92616d1/typing_extensions-4.0.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "1a23748b0c9a5578110b31580c8d2643319adcb3ec91f601b50a955051b51f1d",
+                    "md5": "80c0839d184acb59e00b72ccfbbdafa7",
+                    "sha256": "2cdf80e4e04866a9b3689a51869016d36db0814d84b8d8a568d22781d45d27ed"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.0.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "80c0839d184acb59e00b72ccfbbdafa7",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.6",
+                "size": 37038,
+                "upload_time": "2021-11-15T15:23:58",
+                "upload_time_iso_8601": "2021-11-15T15:23:58.981523Z",
+                "url": "https://files.pythonhosted.org/packages/1a/23/748b0c9a5578110b31580c8d2643319adcb3ec91f601b50a955051b51f1d/typing_extensions-4.0.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.0.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "05e4baf0031e39cf545f0c9edd5b1a2ea12609b7fcba2d58e118b11753d68cf0",
+                    "md5": "716362736bf3143f3f8e68924c4f1c6e",
+                    "sha256": "7f001e5ac290a0c0401508864c7ec868be4e701886d5b573a9528ed3973d9d3b"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.0.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "716362736bf3143f3f8e68924c4f1c6e",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.6",
+                "size": 22816,
+                "upload_time": "2021-12-01T01:45:37",
+                "upload_time_iso_8601": "2021-12-01T01:45:37.772785Z",
+                "url": "https://files.pythonhosted.org/packages/05/e4/baf0031e39cf545f0c9edd5b1a2ea12609b7fcba2d58e118b11753d68cf0/typing_extensions-4.0.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0d4a60ba3706797b878016f16edc5fbaf1e222109e38d0fa4d7d9312cb53f8dd",
+                    "md5": "33f184a97b6833fc99838c23acad2332",
+                    "sha256": "4ca091dea149f945ec56afb48dae714f21e8692ef22a395223bcd328961b6a0e"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.0.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "33f184a97b6833fc99838c23acad2332",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.6",
+                "size": 22706,
+                "upload_time": "2021-12-01T01:45:39",
+                "upload_time_iso_8601": "2021-12-01T01:45:39.576912Z",
+                "url": "https://files.pythonhosted.org/packages/0d/4a/60ba3706797b878016f16edc5fbaf1e222109e38d0fa4d7d9312cb53f8dd/typing_extensions-4.0.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.1.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "6a1edf241fd31424de8c834a6c0281652a13a30191bdb10c600c35cef02cd160",
+                    "md5": "b3a23ac6e9e242855386f6386eecd2d5",
+                    "sha256": "c13180fbaa7cd97065a4915ceba012bdb31dc34743e63ddee16360161d358414"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.1.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "b3a23ac6e9e242855386f6386eecd2d5",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.6",
+                "size": 26845,
+                "upload_time": "2022-02-12T21:35:42",
+                "upload_time_iso_8601": "2022-02-12T21:35:42.540804Z",
+                "url": "https://files.pythonhosted.org/packages/6a/1e/df241fd31424de8c834a6c0281652a13a30191bdb10c600c35cef02cd160/typing_extensions-4.1.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0b61f231a1297068b3c0544577c997e558cbfafe49e750cc7fcb503224df23c4",
+                    "md5": "a54a596ca4685baa98390956818dc55a",
+                    "sha256": "ba97c5143e5bb067b57793c726dd857b1671d4b02ced273ca0538e71ff009095"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.1.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "a54a596ca4685baa98390956818dc55a",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.6",
+                "size": 26686,
+                "upload_time": "2022-02-12T21:35:44",
+                "upload_time_iso_8601": "2022-02-12T21:35:44.238220Z",
+                "url": "https://files.pythonhosted.org/packages/0b/61/f231a1297068b3c0544577c997e558cbfafe49e750cc7fcb503224df23c4/typing_extensions-4.1.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.1.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "456b44f7f8f1e110027cf88956b59f2fad776cca7e1704396d043f89effd3a0e",
+                    "md5": "51e77e114d727c80f57551ca7aabb015",
+                    "sha256": "21c85e0fe4b9a155d0799430b0ad741cdce7e359660ccbd8b530613e8df88ce2"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.1.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "51e77e114d727c80f57551ca7aabb015",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.6",
+                "size": 26844,
+                "upload_time": "2022-02-14T03:19:55",
+                "upload_time_iso_8601": "2022-02-14T03:19:55.773679Z",
+                "url": "https://files.pythonhosted.org/packages/45/6b/44f7f8f1e110027cf88956b59f2fad776cca7e1704396d043f89effd3a0e/typing_extensions-4.1.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "b15a8b5fbb891ef3f81fc923bf3cb4a578c0abf9471eb50ce0f51c74212182ab",
+                    "md5": "3cd9b7b9a465afbcca8548e11668ca64",
+                    "sha256": "1a9462dcc3347a79b1f1c0271fbe79e844580bb598bafa1ed208b94da3cdcd42"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.1.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "3cd9b7b9a465afbcca8548e11668ca64",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.6",
+                "size": 26694,
+                "upload_time": "2022-02-14T03:19:57",
+                "upload_time_iso_8601": "2022-02-14T03:19:57.426277Z",
+                "url": "https://files.pythonhosted.org/packages/b1/5a/8b5fbb891ef3f81fc923bf3cb4a578c0abf9471eb50ce0f51c74212182ab/typing_extensions-4.1.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.10.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "f9dedc04a3ea60b22624b51c703a84bbe0184abcd1d0b9bc8074b5d6b7ab90bb",
+                    "md5": "f46e63651cf5f89965f72c2c1eb6c5a5",
+                    "sha256": "69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.10.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "f46e63651cf5f89965f72c2c1eb6c5a5",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 33926,
+                "upload_time": "2024-02-25T22:12:47",
+                "upload_time_iso_8601": "2024-02-25T22:12:47.720766Z",
+                "url": "https://files.pythonhosted.org/packages/f9/de/dc04a3ea60b22624b51c703a84bbe0184abcd1d0b9bc8074b5d6b7ab90bb/typing_extensions-4.10.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "163a0d26ce356c7465a19c9ea8814b960f8a36c3b0d07c323176620b7b483e44",
+                    "md5": "a6ea8be6e5b41445d679541e0b6e0e0f",
+                    "sha256": "b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.10.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "a6ea8be6e5b41445d679541e0b6e0e0f",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 77558,
+                "upload_time": "2024-02-25T22:12:49",
+                "upload_time_iso_8601": "2024-02-25T22:12:49.693548Z",
+                "url": "https://files.pythonhosted.org/packages/16/3a/0d26ce356c7465a19c9ea8814b960f8a36c3b0d07c323176620b7b483e44/typing_extensions-4.10.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.10.0rc1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "d4b24980568cd3814002f1c04b542e2dd52faa0cec11bd5bda99e43eefe9a808",
+                    "md5": "d318fdf17853d7c97cb568e736c6d659",
+                    "sha256": "ada05f19b82a2ea6eeac4e7412a2328e70b5237f05f3ffef49cae6db558a914e"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.10.0rc1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "d318fdf17853d7c97cb568e736c6d659",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 33954,
+                "upload_time": "2024-02-18T02:58:31",
+                "upload_time_iso_8601": "2024-02-18T02:58:31.345000Z",
+                "url": "https://files.pythonhosted.org/packages/d4/b2/4980568cd3814002f1c04b542e2dd52faa0cec11bd5bda99e43eefe9a808/typing_extensions-4.10.0rc1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e161f809dfe06a933ed5707cf6de8705854e10137771585f0e0c3455443deae3",
+                    "md5": "be4520096aeb7025be1a6d7d9530b571",
+                    "sha256": "aee036f82b858bd4b43160c5dc2deb1780129223957eab47c3cac26b93b50e65"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.10.0rc1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "be4520096aeb7025be1a6d7d9530b571",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 77517,
+                "upload_time": "2024-02-18T02:58:33",
+                "upload_time_iso_8601": "2024-02-18T02:58:33.313501Z",
+                "url": "https://files.pythonhosted.org/packages/e1/61/f809dfe06a933ed5707cf6de8705854e10137771585f0e0c3455443deae3/typing_extensions-4.10.0rc1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.11.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "01f3936e209267d6ef7510322191003885de524fc48d1b43269810cd589ceaf5",
+                    "md5": "a13e9fa9c02678da7690602f04ed41ff",
+                    "sha256": "c1f94d72897edaf4ce775bb7558d5b79d8126906a14ea5ed1635921406c0387a"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.11.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "a13e9fa9c02678da7690602f04ed41ff",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 34698,
+                "upload_time": "2024-04-05T12:35:44",
+                "upload_time_iso_8601": "2024-04-05T12:35:44.388382Z",
+                "url": "https://files.pythonhosted.org/packages/01/f3/936e209267d6ef7510322191003885de524fc48d1b43269810cd589ceaf5/typing_extensions-4.11.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "f6f3b827b3ab53b4e3d8513914586dcca61c355fa2ce8252dea4da56e67bf8f2",
+                    "md5": "6b89642c3d08d034dbc9f3d97c6d735d",
+                    "sha256": "83f085bd5ca59c80295fc2a82ab5dac679cbe02b9f33f7d83af68e241bea51b0"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.11.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "6b89642c3d08d034dbc9f3d97c6d735d",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 78744,
+                "upload_time": "2024-04-05T12:35:47",
+                "upload_time_iso_8601": "2024-04-05T12:35:47.093977Z",
+                "url": "https://files.pythonhosted.org/packages/f6/f3/b827b3ab53b4e3d8513914586dcca61c355fa2ce8252dea4da56e67bf8f2/typing_extensions-4.11.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.11.0rc1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e3ce958158aec459fca6692764cef1696e56fbda870ba7f2b175e93d28b06ad7",
+                    "md5": "9702a1f6722f4085443637e599efe64a",
+                    "sha256": "7427ef26efa5e4e465e3765af0e52d3897e3684c908efe20e3331e1ce51884b3"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.11.0rc1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "9702a1f6722f4085443637e599efe64a",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 34726,
+                "upload_time": "2024-03-24T14:04:40",
+                "upload_time_iso_8601": "2024-03-24T14:04:40.306368Z",
+                "url": "https://files.pythonhosted.org/packages/e3/ce/958158aec459fca6692764cef1696e56fbda870ba7f2b175e93d28b06ad7/typing_extensions-4.11.0rc1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "5daa3e33d0b0b221c890109724678cc05a609599b5befa05f7af411f73e60322",
+                    "md5": "705c731bf8e5400e19e4a314ca0b2bae",
+                    "sha256": "6f1117ac0cbe64536f34520c4688cd144794f9b1d79690bfe0389aa12a347976"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.11.0rc1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "705c731bf8e5400e19e4a314ca0b2bae",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 78704,
+                "upload_time": "2024-03-24T14:04:46",
+                "upload_time_iso_8601": "2024-03-24T14:04:46.605804Z",
+                "url": "https://files.pythonhosted.org/packages/5d/aa/3e33d0b0b221c890109724678cc05a609599b5befa05f7af411f73e60322/typing_extensions-4.11.0rc1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.12.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e14dd612de852a0bc64a64418e1cef25fe1914c5b1611e34cc271ed7e36174c8",
+                    "md5": "74301378cdc1f5f156ce79df458cc6c8",
+                    "sha256": "b349c66bea9016ac22978d800cfff206d5f9816951f12a7d0ec5578b0a819594"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "74301378cdc1f5f156ce79df458cc6c8",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 37104,
+                "upload_time": "2024-05-24T00:26:43",
+                "upload_time_iso_8601": "2024-05-24T00:26:43.549001Z",
+                "url": "https://files.pythonhosted.org/packages/e1/4d/d612de852a0bc64a64418e1cef25fe1914c5b1611e34cc271ed7e36174c8/typing_extensions-4.12.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "ce6aaa0a40b0889ec2eb81a02ee0daa6a34c6697a605cf62e6e857eead9e4f85",
+                    "md5": "b1bf14a327338d50ecf5b9f3d0a3622b",
+                    "sha256": "8cbcdc8606ebcb0d95453ad7dc5065e6237b6aa230a31e81d0f440c30fed5fd8"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "b1bf14a327338d50ecf5b9f3d0a3622b",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 84291,
+                "upload_time": "2024-05-24T00:26:45",
+                "upload_time_iso_8601": "2024-05-24T00:26:45.576102Z",
+                "url": "https://files.pythonhosted.org/packages/ce/6a/aa0a40b0889ec2eb81a02ee0daa6a34c6697a605cf62e6e857eead9e4f85/typing_extensions-4.12.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.12.0a2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "00adb27319039bccf8894e01e10891ded51e4c7a178ebecbaa89ee25ae0523ed",
+                    "md5": "d70e80e09a1897ff010addac7cac19d8",
+                    "sha256": "fdd95e57256ef39dc7dafebfeecb0bc81699c1a9132b6e354390e13c12f0abba"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.0a2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "d70e80e09a1897ff010addac7cac19d8",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 37121,
+                "upload_time": "2024-05-16T19:26:37",
+                "upload_time_iso_8601": "2024-05-16T19:26:37.747926Z",
+                "url": "https://files.pythonhosted.org/packages/00/ad/b27319039bccf8894e01e10891ded51e4c7a178ebecbaa89ee25ae0523ed/typing_extensions-4.12.0a2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "3fb9276e099fec10d5b9d7e698993cb81b5bce63f8d98055f2bcff51b00f591d",
+                    "md5": "32cd51cc108197165a8d7769f3ae1432",
+                    "sha256": "9855ec8d505eb4c573efed56a31be1405e0bdc3e7f38fb47b0a6319e87a62cbe"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.0a2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "32cd51cc108197165a8d7769f3ae1432",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 83535,
+                "upload_time": "2024-05-16T19:26:39",
+                "upload_time_iso_8601": "2024-05-16T19:26:39.295937Z",
+                "url": "https://files.pythonhosted.org/packages/3f/b9/276e099fec10d5b9d7e698993cb81b5bce63f8d98055f2bcff51b00f591d/typing_extensions-4.12.0a2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.12.0rc1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "631ccd577dc90af7d8ffc5c397f2a1bc10348282ed6d603c3d4cbeedf8a981cf",
+                    "md5": "056be937a853623e49fc931c0045eb09",
+                    "sha256": "f933a7b288a919ca97adbff656e52ff81f7ff25d98a2aabb9355ca4090f772fe"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.0rc1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "056be937a853623e49fc931c0045eb09",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 37129,
+                "upload_time": "2024-05-16T19:58:42",
+                "upload_time_iso_8601": "2024-05-16T19:58:42.703064Z",
+                "url": "https://files.pythonhosted.org/packages/63/1c/cd577dc90af7d8ffc5c397f2a1bc10348282ed6d603c3d4cbeedf8a981cf/typing_extensions-4.12.0rc1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "39c76f73e328b82550288c65f714243ae31519d70c52ebcbddeb2293dfabd37b",
+                    "md5": "7f360265eb76671e41a1ffa197084ff6",
+                    "sha256": "be199d06d8f09ca2c9425e3aa04a9afba33e892fe079dea959e72df7f8442343"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.0rc1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "7f360265eb76671e41a1ffa197084ff6",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 83702,
+                "upload_time": "2024-05-16T19:58:45",
+                "upload_time_iso_8601": "2024-05-16T19:58:45.888655Z",
+                "url": "https://files.pythonhosted.org/packages/39/c7/6f73e328b82550288c65f714243ae31519d70c52ebcbddeb2293dfabd37b/typing_extensions-4.12.0rc1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.12.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "b65384a859aaddfe7378a6e5820e864a2d75763e82b6fcbda1a00e92ec620bb7",
+                    "md5": "0c09f20bd974ddc798094d4443e40356",
+                    "sha256": "6024b58b69089e5a89c347397254e35f1bf02a907728ec7fee9bf0fe837d203a"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "0c09f20bd974ddc798094d4443e40356",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 37250,
+                "upload_time": "2024-06-01T17:28:56",
+                "upload_time_iso_8601": "2024-06-01T17:28:56.718230Z",
+                "url": "https://files.pythonhosted.org/packages/b6/53/84a859aaddfe7378a6e5820e864a2d75763e82b6fcbda1a00e92ec620bb7/typing_extensions-4.12.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e8fb4217a963512b9646274fe4ce0aebc8ebff09bbb86c458c6163846bb65d9d",
+                    "md5": "7f5b3726b38d69205d592f26f1974546",
+                    "sha256": "915f5e35ff76f56588223f15fdd5938f9a1cf9195c0de25130c627e4d597f6d1"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "7f5b3726b38d69205d592f26f1974546",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 84923,
+                "upload_time": "2024-06-01T17:28:58",
+                "upload_time_iso_8601": "2024-06-01T17:28:58.454373Z",
+                "url": "https://files.pythonhosted.org/packages/e8/fb/4217a963512b9646274fe4ce0aebc8ebff09bbb86c458c6163846bb65d9d/typing_extensions-4.12.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.12.2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "269fad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0",
+                    "md5": "f5db8e1f1ab10181587cfe0b9ed1fc7f",
+                    "sha256": "04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "f5db8e1f1ab10181587cfe0b9ed1fc7f",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 37438,
+                "upload_time": "2024-06-07T18:52:13",
+                "upload_time_iso_8601": "2024-06-07T18:52:13.582461Z",
+                "url": "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "dfdbf35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557",
+                    "md5": "cf64c2313f5fa5eb04c1deb3fc93abe9",
+                    "sha256": "1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.12.2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "cf64c2313f5fa5eb04c1deb3fc93abe9",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 85321,
+                "upload_time": "2024-06-07T18:52:15",
+                "upload_time_iso_8601": "2024-06-07T18:52:15.995700Z",
+                "url": "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-4.12.2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.2.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "75e1932e06004039dd670c9d5e1df0cd606bf46e29a28e65d5bb28e894ea29c9",
+                    "md5": "95fc87a08006c5249ae13b8a1c3770b9",
+                    "sha256": "6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.2.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "95fc87a08006c5249ae13b8a1c3770b9",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 24207,
+                "upload_time": "2022-04-17T21:27:21",
+                "upload_time_iso_8601": "2022-04-17T21:27:21.545483Z",
+                "url": "https://files.pythonhosted.org/packages/75/e1/932e06004039dd670c9d5e1df0cd606bf46e29a28e65d5bb28e894ea29c9/typing_extensions-4.2.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "fe711df93bd59163c8084d812d166c907639646e8aac72886d563851b966bf18",
+                    "md5": "197fb153e3720a3f6e0c85bb47f9c2b5",
+                    "sha256": "f1c24655a0da0d1b67f07e17a5e6b2a105894e6824b92096378bb3668ef02376"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.2.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "197fb153e3720a3f6e0c85bb47f9c2b5",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 42982,
+                "upload_time": "2022-04-17T21:27:23",
+                "upload_time_iso_8601": "2022-04-17T21:27:23.671483Z",
+                "url": "https://files.pythonhosted.org/packages/fe/71/1df93bd59163c8084d812d166c907639646e8aac72886d563851b966bf18/typing_extensions-4.2.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.3.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "edd62afc375a8d55b8be879d6b4986d4f69f01115e795e36827fd3a40166028b",
+                    "md5": "71054675413cd44176744d45dfa22094",
+                    "sha256": "25642c956049920a5aa49edcdd6ab1e06d7e5d467fc00e0506c44ac86fbfca02"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.3.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "71054675413cd44176744d45dfa22094",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 25596,
+                "upload_time": "2022-07-01T14:56:11",
+                "upload_time_iso_8601": "2022-07-01T14:56:11.904033Z",
+                "url": "https://files.pythonhosted.org/packages/ed/d6/2afc375a8d55b8be879d6b4986d4f69f01115e795e36827fd3a40166028b/typing_extensions-4.3.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "9e1dd128169ff58c501059330f1ad96ed62b79114a2eb30b8238af63a2e27f70",
+                    "md5": "30ff8c89459dd93970a92a90b0386aba",
+                    "sha256": "e6d2677a32f47fc7eb2795db1dd15c1f34eff616bcaf2cfb5e997f854fa1c4a6"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.3.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "30ff8c89459dd93970a92a90b0386aba",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 47430,
+                "upload_time": "2022-07-01T14:56:14",
+                "upload_time_iso_8601": "2022-07-01T14:56:14.062698Z",
+                "url": "https://files.pythonhosted.org/packages/9e/1d/d128169ff58c501059330f1ad96ed62b79114a2eb30b8238af63a2e27f70/typing_extensions-4.3.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.4.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0b8ef1a0a5a76cfef77e1eb6004cb49e5f8d72634da638420b9ea492ce8305e8",
+                    "md5": "f9df449d3052bf105d5c09460857ab77",
+                    "sha256": "16fa4864408f655d35ec496218b85f79b3437c829e93320c7c9215ccfd92489e"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.4.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "f9df449d3052bf105d5c09460857ab77",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 26662,
+                "upload_time": "2022-10-06T22:40:00",
+                "upload_time_iso_8601": "2022-10-06T22:40:00.875294Z",
+                "url": "https://files.pythonhosted.org/packages/0b/8e/f1a0a5a76cfef77e1eb6004cb49e5f8d72634da638420b9ea492ce8305e8/typing_extensions-4.4.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e3a78f4e456ef0adac43f452efc2d0e4b242ab831297f1bac60ac815d37eb9cf",
+                    "md5": "5cfcb56ea6fc4972c3600c0030f4d136",
+                    "sha256": "1511434bb92bf8dd198c12b1cc812e800d4181cfcb867674e0f8279cc93087aa"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.4.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "5cfcb56ea6fc4972c3600c0030f4d136",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 49708,
+                "upload_time": "2022-10-06T22:40:03",
+                "upload_time_iso_8601": "2022-10-06T22:40:03.601145Z",
+                "url": "https://files.pythonhosted.org/packages/e3/a7/8f4e456ef0adac43f452efc2d0e4b242ab831297f1bac60ac815d37eb9cf/typing_extensions-4.4.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.5.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "31255abcd82372d3d4a3932e1fa8c3dbf9efac10cc7c0d16e78467460571b404",
+                    "md5": "159820157d72b39382de7c13ff173897",
+                    "sha256": "fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.5.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "159820157d72b39382de7c13ff173897",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 27736,
+                "upload_time": "2023-02-15T00:17:53",
+                "upload_time_iso_8601": "2023-02-15T00:17:53.726117Z",
+                "url": "https://files.pythonhosted.org/packages/31/25/5abcd82372d3d4a3932e1fa8c3dbf9efac10cc7c0d16e78467460571b404/typing_extensions-4.5.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "d32006270dac7316220643c32ae61694e451c98f8caf4c8eab3aa80a2bedf0df",
+                    "md5": "03a01698ace869506cab825697dfb7e1",
+                    "sha256": "5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.5.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "03a01698ace869506cab825697dfb7e1",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 52399,
+                "upload_time": "2023-02-15T00:17:55",
+                "upload_time_iso_8601": "2023-02-15T00:17:55.502193Z",
+                "url": "https://files.pythonhosted.org/packages/d3/20/06270dac7316220643c32ae61694e451c98f8caf4c8eab3aa80a2bedf0df/typing_extensions-4.5.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.6.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "85d2949d324c348014f0fd2e8e6d8efd3c0adefdcecd28990d4144f2cfc8105e",
+                    "md5": "ac717c208e6fe35ba058d3e0516f5696",
+                    "sha256": "6ad00b63f849b7dcc313b70b6b304ed67b2b2963b3098a33efe18056b1a9a223"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "ac717c208e6fe35ba058d3e0516f5696",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 30680,
+                "upload_time": "2023-05-23T00:14:22",
+                "upload_time_iso_8601": "2023-05-23T00:14:22.372532Z",
+                "url": "https://files.pythonhosted.org/packages/85/d2/949d324c348014f0fd2e8e6d8efd3c0adefdcecd28990d4144f2cfc8105e/typing_extensions-4.6.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "e4034670b4c206e1dc869f2f0120c3d0a2b17d42526ab2b5a8f66d4cd8642ef3",
+                    "md5": "637ccb498580f2dd42ddd1ba55cfce5d",
+                    "sha256": "ff6b238610c747e44c268aa4bb23c8c735d665a63726df3f9431ce707f2aa768"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "637ccb498580f2dd42ddd1ba55cfce5d",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 63017,
+                "upload_time": "2023-05-23T00:14:24",
+                "upload_time_iso_8601": "2023-05-23T00:14:24.987039Z",
+                "url": "https://files.pythonhosted.org/packages/e4/03/4670b4c206e1dc869f2f0120c3d0a2b17d42526ab2b5a8f66d4cd8642ef3/typing_extensions-4.6.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.6.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "82ed8ccf53a0ed10bf8fc8877b5833b40f5f99093cadfe6632b8892f74aead0f",
+                    "md5": "100fa5775307d55bcfc834945d08c43f",
+                    "sha256": "6bac751f4789b135c43228e72de18637e9a6c29d12777023a703fd1a6858469f"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "100fa5775307d55bcfc834945d08c43f",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 31091,
+                "upload_time": "2023-05-24T03:13:13",
+                "upload_time_iso_8601": "2023-05-24T03:13:13.291750Z",
+                "url": "https://files.pythonhosted.org/packages/82/ed/8ccf53a0ed10bf8fc8877b5833b40f5f99093cadfe6632b8892f74aead0f/typing_extensions-4.6.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "aa67f4e6ae6998b0c86ab10f8e96339f00afaf30bef11f63a81c63977c2b89d7",
+                    "md5": "ffdf1486faf94d2cf0e43ebdfc0451e8",
+                    "sha256": "558bc0c4145f01e6405f4a5fdbd82050bd221b119f4bf72a961a1cfd471349d6"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "ffdf1486faf94d2cf0e43ebdfc0451e8",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 64249,
+                "upload_time": "2023-05-24T03:13:15",
+                "upload_time_iso_8601": "2023-05-24T03:13:15.660683Z",
+                "url": "https://files.pythonhosted.org/packages/aa/67/f4e6ae6998b0c86ab10f8e96339f00afaf30bef11f63a81c63977c2b89d7/typing_extensions-4.6.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.6.2": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "3860300ad6f93adca578bf05d5f6cd1d854b7d140bebe2f9829561aa9977d9f3",
+                    "md5": "fe3fc61f751f473f10b7a8f035222365",
+                    "sha256": "3a8b36f13dd5fdc5d1b16fe317f5668545de77fa0b8e02006381fd49d731ab98"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.2-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "fe3fc61f751f473f10b7a8f035222365",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 31131,
+                "upload_time": "2023-05-25T13:20:20",
+                "upload_time_iso_8601": "2023-05-25T13:20:20.746721Z",
+                "url": "https://files.pythonhosted.org/packages/38/60/300ad6f93adca578bf05d5f6cd1d854b7d140bebe2f9829561aa9977d9f3/typing_extensions-4.6.2-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "befc3d12393d634fcb31d5f4231c28feaf4ead225124ba08021046317d5f450d",
+                    "md5": "283614af87a035ef76e13e0a7bb8ea61",
+                    "sha256": "06006244c70ac8ee83fa8282cb188f697b8db25bc8b4df07be1873c43897060c"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.2.tar.gz",
+                "has_sig": false,
+                "md5_digest": "283614af87a035ef76e13e0a7bb8ea61",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 64540,
+                "upload_time": "2023-05-25T13:20:22",
+                "upload_time_iso_8601": "2023-05-25T13:20:22.854013Z",
+                "url": "https://files.pythonhosted.org/packages/be/fc/3d12393d634fcb31d5f4231c28feaf4ead225124ba08021046317d5f450d/typing_extensions-4.6.2.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.6.3": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "5f86d9b1518d8e75b346a33eb59fa31bdbbee11459a7e2cc5be502fa779e96c5",
+                    "md5": "72776ba8972479e350e3287a443ca266",
+                    "sha256": "88a4153d8505aabbb4e13aacb7c486c2b4a33ca3b3f807914a9b4c844c471c26"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.3-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "72776ba8972479e350e3287a443ca266",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 31329,
+                "upload_time": "2023-06-01T23:55:34",
+                "upload_time_iso_8601": "2023-06-01T23:55:34.451414Z",
+                "url": "https://files.pythonhosted.org/packages/5f/86/d9b1518d8e75b346a33eb59fa31bdbbee11459a7e2cc5be502fa779e96c5/typing_extensions-4.6.3-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "4256cfaa7a5281734dadc842f3a22e50447c675a1c5a5b9f6ad8a07b467bffe7",
+                    "md5": "111a7d37292a241811502bd1b64032be",
+                    "sha256": "d91d5919357fe7f681a9f2b5b4cb2a5f1ef0a1e9f59c4d8ff0d3491e05c0ffd5"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.6.3.tar.gz",
+                "has_sig": false,
+                "md5_digest": "111a7d37292a241811502bd1b64032be",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 65757,
+                "upload_time": "2023-06-01T23:55:36",
+                "upload_time_iso_8601": "2023-06-01T23:55:36.332544Z",
+                "url": "https://files.pythonhosted.org/packages/42/56/cfaa7a5281734dadc842f3a22e50447c675a1c5a5b9f6ad8a07b467bffe7/typing_extensions-4.6.3.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.7.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "7e4db0185d077dc1cd070a56859a0ba3bb6e76618393ec693e59faf1368da8f6",
+                    "md5": "a5b59587be4482343ffbf9e610f35044",
+                    "sha256": "5d8c9dac95c27d20df12fb1d97b9793ab8b2af8a3a525e68c80e21060c161771"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.7.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "a5b59587be4482343ffbf9e610f35044",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 33023,
+                "upload_time": "2023-06-28T21:00:52",
+                "upload_time_iso_8601": "2023-06-28T21:00:52.235967Z",
+                "url": "https://files.pythonhosted.org/packages/7e/4d/b0185d077dc1cd070a56859a0ba3bb6e76618393ec693e59faf1368da8f6/typing_extensions-4.7.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "57e3b37a6b1ce6c1b2b75d05997ec24f73c794bc05a587e0f30a532d0ab13cb2",
+                    "md5": "1186c1ade8902e60562b979c5e49f8d0",
+                    "sha256": "935ccf31549830cda708b42289d44b6f74084d616a00be651601a4f968e77c82"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.7.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "1186c1ade8902e60562b979c5e49f8d0",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 72585,
+                "upload_time": "2023-06-28T21:00:54",
+                "upload_time_iso_8601": "2023-06-28T21:00:54.004662Z",
+                "url": "https://files.pythonhosted.org/packages/57/e3/b37a6b1ce6c1b2b75d05997ec24f73c794bc05a587e0f30a532d0ab13cb2/typing_extensions-4.7.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.7.0rc1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "adb65b6acdb8f2b5a37adfd79c6996fdd6c96bbd7f66fb6b97abf0a151ea0402",
+                    "md5": "a8cc037d972ed8a380d90f4e70ab9592",
+                    "sha256": "16224afa8cc2b3679dd9e9a1efe719dd2e20a03f0cc2e4cc4c97870ae9622532"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.7.0rc1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "a8cc037d972ed8a380d90f4e70ab9592",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 32993,
+                "upload_time": "2023-06-21T14:57:37",
+                "upload_time_iso_8601": "2023-06-21T14:57:37.696595Z",
+                "url": "https://files.pythonhosted.org/packages/ad/b6/5b6acdb8f2b5a37adfd79c6996fdd6c96bbd7f66fb6b97abf0a151ea0402/typing_extensions-4.7.0rc1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "3f5fa33a657105fed1ee22b8e7e35ddd2dbad177fc42b0d83c2031990e1e759d",
+                    "md5": "6f24489c3706564aa60335893a7e9fe6",
+                    "sha256": "3c2c2cd887648efa0ea8f8ba4260a1213058e8e4a25a6a6f4e084740b2c858e2"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.7.0rc1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "6f24489c3706564aa60335893a7e9fe6",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 72030,
+                "upload_time": "2023-06-21T14:57:39",
+                "upload_time_iso_8601": "2023-06-21T14:57:39.210368Z",
+                "url": "https://files.pythonhosted.org/packages/3f/5f/a33a657105fed1ee22b8e7e35ddd2dbad177fc42b0d83c2031990e1e759d/typing_extensions-4.7.0rc1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.7.1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "ec6b63cc3df74987c36fe26157ee12e09e8f9db4de771e0f3404263117e75b95",
+                    "md5": "a9431036b53f8fda2a50a81c2e880848",
+                    "sha256": "440d5dd3af93b060174bf433bccd69b0babc3b15b1a8dca43789fd7f61514b36"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.7.1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "a9431036b53f8fda2a50a81c2e880848",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.7",
+                "size": 33232,
+                "upload_time": "2023-07-02T14:20:53",
+                "upload_time_iso_8601": "2023-07-02T14:20:53.275715Z",
+                "url": "https://files.pythonhosted.org/packages/ec/6b/63cc3df74987c36fe26157ee12e09e8f9db4de771e0f3404263117e75b95/typing_extensions-4.7.1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "3c8b0111dd7d6c1478bf83baa1cab85c686426c7a6274119aceb2bd9d35395ad",
+                    "md5": "06e7fff4b1d51f8dc6f49b16e71de54e",
+                    "sha256": "b75ddc264f0ba5615db7ba217daeb99701ad295353c45f9e95963337ceeeffb2"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.7.1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "06e7fff4b1d51f8dc6f49b16e71de54e",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.7",
+                "size": 72876,
+                "upload_time": "2023-07-02T14:20:55",
+                "upload_time_iso_8601": "2023-07-02T14:20:55.045815Z",
+                "url": "https://files.pythonhosted.org/packages/3c/8b/0111dd7d6c1478bf83baa1cab85c686426c7a6274119aceb2bd9d35395ad/typing_extensions-4.7.1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.8.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "24217d397a4b7934ff4028987914ac1044d3b7d52712f30e2ac7a2ae5bc86dd0",
+                    "md5": "9c84e613da80ced7a5e86329ec75dc6c",
+                    "sha256": "8f92fc8806f9a6b641eaa5318da32b44d401efaac0f6678c9bc448ba3605faa0"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.8.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "9c84e613da80ced7a5e86329ec75dc6c",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 31584,
+                "upload_time": "2023-09-18T04:01:55",
+                "upload_time_iso_8601": "2023-09-18T04:01:55.398373Z",
+                "url": "https://files.pythonhosted.org/packages/24/21/7d397a4b7934ff4028987914ac1044d3b7d52712f30e2ac7a2ae5bc86dd0/typing_extensions-4.8.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "1f7a8b94bb016069caa12fc9f587b28080ac33b4fbb8ca369b98bc0a4828543e",
+                    "md5": "74bafe841fbd1c27324afdeb099babdf",
+                    "sha256": "df8e4339e9cb77357558cbdbceca33c303714cf861d1eef15e1070055ae8b7ef"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.8.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "74bafe841fbd1c27324afdeb099babdf",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 71456,
+                "upload_time": "2023-09-18T04:01:56",
+                "upload_time_iso_8601": "2023-09-18T04:01:56.846228Z",
+                "url": "https://files.pythonhosted.org/packages/1f/7a/8b94bb016069caa12fc9f587b28080ac33b4fbb8ca369b98bc0a4828543e/typing_extensions-4.8.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.8.0rc1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "63d6ebc4ad51f7a42b0e46c42693563f38b4299314778a773a802a968d6ae742",
+                    "md5": "4546d6a9bfd00accd51d9517e13ce06f",
+                    "sha256": "8ac091074039c3b0ecf99e8e339a9cdbcac65b6e6b9684eb692e1d521a5e6bee"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.8.0rc1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "4546d6a9bfd00accd51d9517e13ce06f",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 31612,
+                "upload_time": "2023-09-08T00:46:22",
+                "upload_time_iso_8601": "2023-09-08T00:46:22.002821Z",
+                "url": "https://files.pythonhosted.org/packages/63/d6/ebc4ad51f7a42b0e46c42693563f38b4299314778a773a802a968d6ae742/typing_extensions-4.8.0rc1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "9cbf74b5953d14bd6b003d531645884ade2d81ebd39ff29a76af546d591d5e2d",
+                    "md5": "8f850f89b21a5a876bcfe6c216cd26f5",
+                    "sha256": "86b48a88e428cbd88382fb599b8101363c3d92799f965f6b634183367cca1526"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.8.0rc1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "8f850f89b21a5a876bcfe6c216cd26f5",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 71439,
+                "upload_time": "2023-09-08T00:46:23",
+                "upload_time_iso_8601": "2023-09-08T00:46:23.347014Z",
+                "url": "https://files.pythonhosted.org/packages/9c/bf/74b5953d14bd6b003d531645884ade2d81ebd39ff29a76af546d591d5e2d/typing_extensions-4.8.0rc1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.9.0": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "b7f46a90020cd2d93349b442bfcb657d0dc91eee65491600b2cb1d388bc98e6b",
+                    "md5": "51f3a5f15988aee285f3277e03566f0f",
+                    "sha256": "af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.9.0-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "51f3a5f15988aee285f3277e03566f0f",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 32750,
+                "upload_time": "2023-12-10T01:14:20",
+                "upload_time_iso_8601": "2023-12-10T01:14:20.617723Z",
+                "url": "https://files.pythonhosted.org/packages/b7/f4/6a90020cd2d93349b442bfcb657d0dc91eee65491600b2cb1d388bc98e6b/typing_extensions-4.9.0-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "0c1deb26f5e75100d531d7399ae800814b069bc2ed2a7410834d57374d010d96",
+                    "md5": "2bcafbd6817cb0d7a29ed7a7f1bb1e5d",
+                    "sha256": "23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.9.0.tar.gz",
+                "has_sig": false,
+                "md5_digest": "2bcafbd6817cb0d7a29ed7a7f1bb1e5d",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 74918,
+                "upload_time": "2023-12-10T01:14:22",
+                "upload_time_iso_8601": "2023-12-10T01:14:22.627317Z",
+                "url": "https://files.pythonhosted.org/packages/0c/1d/eb26f5e75100d531d7399ae800814b069bc2ed2a7410834d57374d010d96/typing_extensions-4.9.0.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ],
+        "4.9.0rc1": [
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "681e4738def2321ec3a3ec2efde1515be665deb88eea3a60187b2ff42cde7447",
+                    "md5": "80cb885849a985db58ca9ee0f1f7a516",
+                    "sha256": "cc22327e22d9b583d1565ce1ed9f5ecc22831afa743f8789a403cad849fb702b"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.9.0rc1-py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "80cb885849a985db58ca9ee0f1f7a516",
+                "packagetype": "bdist_wheel",
+                "python_version": "py3",
+                "requires_python": ">=3.8",
+                "size": 32779,
+                "upload_time": "2023-11-29T18:15:58",
+                "upload_time_iso_8601": "2023-11-29T18:15:58.752378Z",
+                "url": "https://files.pythonhosted.org/packages/68/1e/4738def2321ec3a3ec2efde1515be665deb88eea3a60187b2ff42cde7447/typing_extensions-4.9.0rc1-py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            },
+            {
+                "comment_text": "",
+                "digests": {
+                    "blake2b_256": "b9dd1eba01e2b8d1a9d79ed87959d19f08ea57164c0ea241774c78adc32f61ee",
+                    "md5": "a7938f45d4fa3cb7ad561cd97e96c307",
+                    "sha256": "56a8f7a8776ea160e59ef0af6fc3a3a03b7d42156b90e47f0241515fcec620c2"
+                },
+                "downloads": -1,
+                "filename": "typing_extensions-4.9.0rc1.tar.gz",
+                "has_sig": false,
+                "md5_digest": "a7938f45d4fa3cb7ad561cd97e96c307",
+                "packagetype": "sdist",
+                "python_version": "source",
+                "requires_python": ">=3.8",
+                "size": 74858,
+                "upload_time": "2023-11-29T18:16:01",
+                "upload_time_iso_8601": "2023-11-29T18:16:01.175823Z",
+                "url": "https://files.pythonhosted.org/packages/b9/dd/1eba01e2b8d1a9d79ed87959d19f08ea57164c0ea241774c78adc32f61ee/typing_extensions-4.9.0rc1.tar.gz",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ]
+    },
+    "urls": [
+        {
+            "comment_text": "",
+            "digests": {
+                "blake2b_256": "269fad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0",
+                "md5": "f5db8e1f1ab10181587cfe0b9ed1fc7f",
+                "sha256": "04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"
+            },
+            "downloads": -1,
+            "filename": "typing_extensions-4.12.2-py3-none-any.whl",
+            "has_sig": false,
+            "md5_digest": "f5db8e1f1ab10181587cfe0b9ed1fc7f",
+            "packagetype": "bdist_wheel",
+            "python_version": "py3",
+            "requires_python": ">=3.8",
+            "size": 37438,
+            "upload_time": "2024-06-07T18:52:13",
+            "upload_time_iso_8601": "2024-06-07T18:52:13.582461Z",
+            "url": "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl",
+            "yanked": false,
+            "yanked_reason": null
+        },
+        {
+            "comment_text": "",
+            "digests": {
+                "blake2b_256": "dfdbf35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557",
+                "md5": "cf64c2313f5fa5eb04c1deb3fc93abe9",
+                "sha256": "1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
+            },
+            "downloads": -1,
+            "filename": "typing_extensions-4.12.2.tar.gz",
+            "has_sig": false,
+            "md5_digest": "cf64c2313f5fa5eb04c1deb3fc93abe9",
+            "packagetype": "sdist",
+            "python_version": "source",
+            "requires_python": ">=3.8",
+            "size": 85321,
+            "upload_time": "2024-06-07T18:52:15",
+            "upload_time_iso_8601": "2024-06-07T18:52:15.995700Z",
+            "url": "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-4.12.2.tar.gz",
+            "yanked": false,
+            "yanked_reason": null
+        }
+    ],
+    "vulnerabilities": []
 }

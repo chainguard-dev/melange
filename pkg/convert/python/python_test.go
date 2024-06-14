@@ -36,6 +36,7 @@ const (
 	testDataDir    = "testdata/"
 	botocoreMeta   = testDataDir + "/meta/pypi/botocore/"
 	jsonschemaMeta = testDataDir + "/meta/pypi/jsonschema/"
+	typingextMeta  = testDataDir + "/meta/pypi/typing-extensions/"
 	pypiMetaDir    = testDataDir + "/meta"
 )
 
@@ -224,11 +225,47 @@ func SetupContext(version string) ([]*PythonContext, error) {
 	return pythonctxs, nil
 }
 
+func SetupContextPreserveURI(version string) ([]*PythonContext, error) {
+	typingextctx, err := New("typing-extensions")
+	if err != nil {
+		return nil, err
+	}
+
+	typingextctx.PackageIndex = NewPackageIndex("https://pypi.org/")
+	typingextctx.PackageIndex.Client.Ratelimiter = nil // don't rate limit our unit tests
+	typingextctx.PackageName = "typing-extensions"
+	typingextctx.PackageVersion = "4.12.2"
+	typingextctx.PythonVersion = version
+	typingextctx.PreserveBaseURI = true
+
+	// Read the gem meta into
+	data, err := os.ReadFile(filepath.Join(typingextMeta, "json"))
+	if err != nil {
+		return nil, err
+	}
+
+	var typingextPackageMeta Package
+	err = json.Unmarshal(data, &typingextPackageMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	typingextctx.Package = typingextPackageMeta
+	typingextctx.Package.Dependencies = []string{}
+
+	pythonctxs := []*PythonContext{
+		&typingextctx,
+	}
+	return pythonctxs, nil
+}
+
 func GetJsonsPackagesForPackage(packageName string) ([]string, error) {
 	if packageName == "botocore" {
 		return []string{"botocore", "jmespath", "python-dateutil", "urllib3", "six"}, nil
 	} else if packageName == "jsonschema" {
 		return []string{"jsonschema", "attrs", "importlib-metadata", "importlib-resources", "pkgutil_resolve_name", "pyrsistent", "typing-extensions", "zipp"}, nil
+	} else if packageName == "typing-extensions" {
+		return []string{"typing-extensions"}, nil
 	}
 	return nil, fmt.Errorf("Unknown package %s", packageName)
 }

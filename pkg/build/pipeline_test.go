@@ -146,7 +146,7 @@ func Test_buildEvalRunCommand(t *testing.T) {
 	sysPath := "/foo"
 	workdir := "/bar"
 	fragment := "baz"
-	command := buildEvalRunCommand(context.Background(), p, debugOption, sysPath, workdir, fragment)
+	command := buildEvalRunCommand(context.Background(), p, debugOption, sysPath, workdir, fragment, false)
 	expected := []string{"/bin/sh", "-c", `set -ex
 export PATH='/foo'
 export FOO='bar'

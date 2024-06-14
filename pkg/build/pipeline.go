@@ -150,9 +150,14 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 }
 
 // Build a script to run as part of evalRun
-func buildEvalRunCommand(ctx context.Context, pipeline *config.Pipeline, debugOption rune, sysPath string, workdir string, fragment string) []string {
+func buildEvalRunCommand(ctx context.Context, pipeline *config.Pipeline, debugOption rune, sysPath string, workdir string, fragment string, interactive bool) []string {
 	envExport := "export %s='%s'"
 	envArr := []string{}
+	if interactive {
+		// This is a bit of a hack but I want non-busybox shells to have a working history during interactive debugging,
+		// and I suspect busybox is the least helpful here, so just make everything read from ~/.ash_history.
+		envArr = append(envArr, fmt.Sprintf(envExport, "HISTFILE", "~/.ash_history"))
+	}
 	for k, v := range pipeline.Environment {
 		envArr = append(envArr, fmt.Sprintf(envExport, k, v))
 	}
@@ -205,9 +210,9 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		log.Infof("running step %q", id)
 	}
 
-	command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs)
+	command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs, r.interactive)
 	if err := r.runner.Run(ctx, r.config, command...); err != nil {
-		if err := r.maybeDebug(ctx, command, workdir, err); err != nil {
+		if err := r.maybeDebug(ctx, pipeline.Runs, command, workdir, err); err != nil {
 			return false, err
 		}
 	}
@@ -231,7 +236,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	return true, nil
 }
 
-func (r *pipelineRunner) maybeDebug(ctx context.Context, cmd []string, workdir string, runErr error) error {
+func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []string, workdir string, runErr error) error {
 	if !r.interactive {
 		return runErr
 	}
@@ -256,7 +261,10 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, cmd []string, workdir s
 	// Don't cancel the context if we hit ctrl+C while debugging.
 	signal.Ignore(os.Interrupt)
 
-	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
+	// Populate ~/.ash_history with the current command so you can hit up arrow to repeat it.
+	history := fmt.Sprintf("echo '%s' >> ~/.ash_history", fragment)
+
+	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("%s && cd %s && exec /bin/sh", history, workdir)}...); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 

@@ -1,0 +1,62 @@
+package:
+  name: test-git-checkout
+  version: 6.14
+  epoch: 0
+  description: This package mainly just tests git-checkout pipeline
+environment:
+  contents:
+    packages:
+      - busybox
+      - git
+      - git-daemon
+vars:
+  workd: /tmp/test-git-checkout-workd
+  giturl: "file:///tmp/test-git-checkout-workd/repos/my-repo"
+  gitremoteurl: "git://127.6.14.21:61421/my-repo"
+pipeline:
+  - name: "Create the bogus package content"
+    runs: |
+      echo "package does not do anything" > "${{targets.contextdir}}/README"
+  - name: "Create a git repo"
+    runs: |
+      rm -Rf ${{vars.workd}}
+      mkdir -p ${{vars.workd}}/repos
+      repo=${{vars.workd}}/repos/my-repo
+
+      ./create-git-repo "$repo"
+      touch "$repo/git-daemon-export-ok"
+  - name: "Run the git daemon"
+    runs: |
+      url=${{vars.gitremoteurl}}
+      addr=${url#git://}
+      addr=${addr%%:*}
+      port=${url#git://*:}
+      port=${port%%/*}
+      set -- git daemon --listen="$addr" --port="$port" \
+          --detach --pid-file=${{vars.workd}}/pid \
+          --log-destination=stderr \
+          --base-path="${{vars.workd}}/repos/" "${{vars.workd}}/repos/"
+      echo "running daemon:" "$@"
+      "$@"
+      read pid < ${{vars.workd}}/pid
+      echo "pid is $pid"
+
+      vr() { echo "$@" 1>&2; "$@"; }
+      vr git clone "${{vars.giturl}}" my.git
+      vr git clone "${{vars.giturl}}" my2.git
+  - runs: |
+      vr() { echo "$@" 1>&2; "$@"; }
+      vr git clone "${{vars.giturl}}" my3.git
+
+  - name: "standard tag on branch"
+    uses: git-checkout
+    working-directory: standard
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+  - name: "check standard tag on branch"
+    working-directory: standard
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]

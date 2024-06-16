@@ -29,6 +29,12 @@ inputs:
 pipeline:
   - runs: |
       cd ${{inputs.dir}}
+
+      # Attempt to generate configuration if one does not exist
+      if [[ ! -f ./configure && -f ./configure.ac ]]; then
+          autoreconf -vfi
+      fi
+
       ./configure \
         --host=${{inputs.host}} \
         --build=${{inputs.build}} \

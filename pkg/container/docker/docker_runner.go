@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -226,8 +227,20 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...strin
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
+	// Default to the current user's UID
+	// Use a configured UID if it's not empty
+	currentUser, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	uid := currentUser.Uid
+	if cfg.RunAs != "" {
+		uid = cfg.RunAs
+	}
+
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
-		User:         cfg.RunAs,
+		User:         uid,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,

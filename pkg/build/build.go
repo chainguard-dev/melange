@@ -93,7 +93,6 @@ type Build struct {
 	DebugRunner       bool
 	Interactive       bool
 	Remove            bool
-	LogPolicy         []string
 	FailOnLintWarning bool
 	DefaultCPU        string
 	DefaultMemory     string
@@ -113,8 +112,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
-		Libc:            "gnu",
-		LogPolicy:       []string{"builtin:stderr"},
 	}
 
 	for _, opt := range opts {

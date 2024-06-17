@@ -18,6 +18,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"maps"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -27,33 +28,15 @@ import (
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 )
 
-type PipelineBuild struct {
-	Build      *Build
-	Test       *Test
-	Package    *config.Package
-	Subpackage *config.Subpackage
-}
-
-// GetConfiguration returns the configuration for the current pipeline.
-// This is either for the Test or the Build
-func (pb *PipelineBuild) GetConfiguration() *config.Configuration {
-	if pb.Test != nil {
-		return &pb.Test.Configuration
-	}
-	return &pb.Build.Configuration
-}
-
-func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, error) {
-	nw, err := substitutionMap(pb)
-	if err != nil {
-		return nil, err
-	}
+func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
+	nw := maps.Clone(sm.Substitutions)
 
 	for k, v := range with {
 		// already mutated?
@@ -77,30 +60,41 @@ func MutateWith(pb *PipelineBuild, with map[string]string) (map[string]string, e
 	return nw, nil
 }
 
-func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
+type SubstitutionMap struct {
+	Substitutions map[string]string
+}
+
+func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMap {
+	nw := maps.Clone(sm.Substitutions)
+	nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", subpkg.Name)
+	nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
+
+	return &SubstitutionMap{nw}
+}
+
+func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+	pkg := cfg.Package
+
 	nw := map[string]string{
-		config.SubstitutionPackageName:        pb.Package.Name,
-		config.SubstitutionPackageVersion:     pb.Package.Version,
-		config.SubstitutionPackageEpoch:       strconv.FormatUint(pb.Package.Epoch, 10),
+		config.SubstitutionPackageName:        pkg.Name,
+		config.SubstitutionPackageVersion:     pkg.Version,
+		config.SubstitutionPackageEpoch:       strconv.FormatUint(pkg.Epoch, 10),
 		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
-		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
-		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pb.Package.Name),
+		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
+		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 	}
 
-	// These are not really meaningful for Test, so only use them for build.
-	if pb.Build != nil {
-		nw[config.SubstitutionHostTripletGnu] = pb.Build.BuildTripletGnu()
-		nw[config.SubstitutionHostTripletRust] = pb.Build.BuildTripletRust()
-		nw[config.SubstitutionCrossTripletGnuGlibc] = pb.Build.Arch.ToTriplet("gnu")
-		nw[config.SubstitutionCrossTripletGnuMusl] = pb.Build.Arch.ToTriplet("musl")
-		nw[config.SubstitutionCrossTripletRustGlibc] = pb.Build.Arch.ToRustTriplet("gnu")
-		nw[config.SubstitutionCrossTripletRustMusl] = pb.Build.Arch.ToRustTriplet("musl")
-		nw[config.SubstitutionBuildArch] = pb.Build.Arch.ToAPK()
-		nw[config.SubstitutionBuildGoArch] = pb.Build.Arch.String()
-	}
+	nw[config.SubstitutionHostTripletGnu] = arch.ToTriplet(flavor)
+	nw[config.SubstitutionHostTripletRust] = arch.ToTriplet(flavor)
+	nw[config.SubstitutionCrossTripletGnuGlibc] = arch.ToTriplet("gnu")
+	nw[config.SubstitutionCrossTripletGnuMusl] = arch.ToTriplet("musl")
+	nw[config.SubstitutionCrossTripletRustGlibc] = arch.ToRustTriplet("gnu")
+	nw[config.SubstitutionCrossTripletRustMusl] = arch.ToRustTriplet("musl")
+	nw[config.SubstitutionBuildArch] = arch.ToAPK()
+	nw[config.SubstitutionBuildGoArch] = arch.String()
 
 	// Retrieve vars from config
-	subst_nw, err := pb.GetConfiguration().GetVarsFromConfig()
+	subst_nw, err := cfg.GetVarsFromConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -110,18 +104,12 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 	}
 
 	// Perform substitutions on current map
-	err = pb.GetConfiguration().PerformVarSubstitutions(nw)
-	if err != nil {
+	if err := cfg.PerformVarSubstitutions(nw); err != nil {
 		return nil, err
 	}
 
-	if pb.Subpackage != nil {
-		nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", pb.Subpackage.Name)
-		nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
-	}
-
-	packageNames := []string{pb.Package.Name}
-	for _, sp := range pb.GetConfiguration().Subpackages {
+	packageNames := []string{pkg.Name}
+	for _, sp := range cfg.Subpackages {
 		packageNames = append(packageNames, sp.Name)
 	}
 
@@ -130,19 +118,17 @@ func substitutionMap(pb *PipelineBuild) (map[string]string, error) {
 		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
 	}
 
-	for k := range pb.GetConfiguration().Options {
+	for k := range cfg.Options {
 		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
 		nw[nk] = "false"
 	}
 
-	if pb.Build != nil {
-		for _, opt := range pb.Build.EnabledBuildOptions {
-			nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
-			nw[nk] = "true"
-		}
+	for _, opt := range buildOpts {
+		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
+		nw[nk] = "true"
 	}
 
-	return nw, nil
+	return &SubstitutionMap{nw}, nil
 }
 
 func validateWith(data map[string]string, inputs map[string]config.Input) (map[string]string, error) {
@@ -163,23 +149,15 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	return data, nil
 }
 
-func loadPipelineData(dir string, uses string) ([]byte, error) {
-	if dir == "" {
-		return []byte{}, fmt.Errorf("pipeline directory not specified")
-	}
-
-	data, err := os.ReadFile(filepath.Join(dir, uses+".yaml"))
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return data, nil
-}
-
 // Build a script to run as part of evalRun
-func buildEvalRunCommand(ctx context.Context, pipeline *config.Pipeline, debugOption rune, sysPath string, workdir string, fragment string) []string {
+func buildEvalRunCommand(ctx context.Context, pipeline *config.Pipeline, debugOption rune, sysPath string, workdir string, fragment string, interactive bool) []string {
 	envExport := "export %s='%s'"
 	envArr := []string{}
+	if interactive {
+		// This is a bit of a hack but I want non-busybox shells to have a working history during interactive debugging,
+		// and I suspect busybox is the least helpful here, so just make everything read from ~/.ash_history.
+		envArr = append(envArr, fmt.Sprintf(envExport, "HISTFILE", "~/.ash_history"))
+	}
 	for k, v := range pipeline.Environment {
 		envArr = append(envArr, fmt.Sprintf(envExport, k, v))
 	}
@@ -232,9 +210,9 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		log.Infof("running step %q", id)
 	}
 
-	command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs)
+	command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs, r.interactive)
 	if err := r.runner.Run(ctx, r.config, command...); err != nil {
-		if err := r.maybeDebug(ctx, command, workdir, err); err != nil {
+		if err := r.maybeDebug(ctx, pipeline.Runs, command, workdir, err); err != nil {
 			return false, err
 		}
 	}
@@ -258,7 +236,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	return true, nil
 }
 
-func (r *pipelineRunner) maybeDebug(ctx context.Context, cmd []string, workdir string, runErr error) error {
+func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []string, workdir string, runErr error) error {
 	if !r.interactive {
 		return runErr
 	}
@@ -283,7 +261,10 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, cmd []string, workdir s
 	// Don't cancel the context if we hit ctrl+C while debugging.
 	signal.Ignore(os.Interrupt)
 
-	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
+	// Populate ~/.ash_history with the current command so you can hit up arrow to repeat it.
+	history := fmt.Sprintf("echo '%s' >> ~/.ash_history", fragment)
+
+	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("%s && cd %s && exec /bin/sh", history, workdir)}...); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 

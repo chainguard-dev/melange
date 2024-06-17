@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
@@ -29,9 +31,13 @@ import (
 
 func (t *Test) Compile(ctx context.Context) error {
 	cfg := t.Configuration
-	pb := &PipelineBuild{
-		Test:    t,
-		Package: &cfg.Package,
+
+	// TODO: Make this parameter go away when we revisit subtitutions.
+	flavor := "gnu"
+
+	sm, err := NewSubstitutionMap(&cfg, t.Arch, flavor, nil)
+	if err != nil {
+		return err
 	}
 
 	c := &Compiled{
@@ -43,37 +49,32 @@ func (t *Test) Compile(ctx context.Context) error {
 	}
 
 	// We want to evaluate this but not accumulate its deps.
-	if err := ignore.CompilePipelines(ctx, pb, cfg.Pipeline); err != nil {
-		return fmt.Errorf("compiling main pipelines: %w", err)
-	}
-
-	if err := c.CompilePipelines(ctx, pb, cfg.Test.Pipeline); err != nil {
+	if err := ignore.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
 		return fmt.Errorf("compiling main pipelines: %w", err)
 	}
 
 	for i, sp := range cfg.Subpackages {
-		pb.Subpackage = &sp
-
+		sm := sm.Subpackage(&sp)
 		if sp.If != "" {
-			mutated, err := MutateWith(pb, map[string]string{})
-			if err != nil {
-				return fmt.Errorf("creating subpackage map: %w", err)
-			}
-			sp.If, err = util.MutateAndQuoteStringFromMap(mutated, sp.If)
+			sp.If, err = util.MutateAndQuoteStringFromMap(sm.Substitutions, sp.If)
 			if err != nil {
 				return fmt.Errorf("mutating subpackage if: %w", err)
 			}
 		}
 
 		// We want to evaluate this but not accumulate its deps.
-		if err := ignore.CompilePipelines(ctx, pb, sp.Pipeline); err != nil {
+		if err := ignore.CompilePipelines(ctx, sm, sp.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q: %w", sp.Name, err)
+		}
+
+		if sp.Test == nil {
+			continue
 		}
 
 		test := &Compiled{
 			PipelineDirs: t.PipelineDirs,
 		}
-		if err := c.CompilePipelines(ctx, pb, sp.Test.Pipeline); err != nil {
+		if err := c.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
 
@@ -86,17 +87,22 @@ func (t *Test) Compile(ctx context.Context) error {
 		te.Packages = append(te.Packages, test.Needs...)
 	}
 
-	te := &t.Configuration.Test.Environment.Contents
+	if cfg.Test != nil {
+		if err := c.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
+			return fmt.Errorf("compiling main pipelines: %w", err)
+		}
+		te := &t.Configuration.Test.Environment.Contents
 
-	// Append the main test package to be installed unless explicitly specified by the command line.
-	if t.Package != "" {
-		te.Packages = append(te.Packages, t.Package)
-	} else {
-		te.Packages = append(te.Packages, t.Configuration.Package.Name)
+		// Append the main test package to be installed unless explicitly specified by the command line.
+		if t.Package != "" {
+			te.Packages = append(te.Packages, t.Package)
+		} else {
+			te.Packages = append(te.Packages, t.Configuration.Package.Name)
+		}
+
+		// Append anything the main package test needs.
+		te.Packages = append(te.Packages, c.Needs...)
 	}
-
-	// Append anything the main package test needs.
-	te.Packages = append(te.Packages, c.Needs...)
 
 	return nil
 }
@@ -104,34 +110,30 @@ func (t *Test) Compile(ctx context.Context) error {
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
 func (b *Build) Compile(ctx context.Context) error {
 	cfg := b.Configuration
-	pb := &PipelineBuild{
-		Build:   b,
-		Package: &cfg.Package,
+	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.BuildFlavor(), b.EnabledBuildOptions)
+	if err != nil {
+		return err
 	}
 
 	c := &Compiled{
 		PipelineDirs: b.PipelineDirs,
 	}
 
-	if err := c.CompilePipelines(ctx, pb, cfg.Pipeline); err != nil {
+	if err := c.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
 		return fmt.Errorf("compiling main pipelines: %w", err)
 	}
 
 	for i, sp := range cfg.Subpackages {
-		pb.Subpackage = &sp
+		sm := sm.Subpackage(&sp)
 
 		if sp.If != "" {
-			mutated, err := MutateWith(pb, map[string]string{})
-			if err != nil {
-				return fmt.Errorf("creating subpackage map: %w", err)
-			}
-			sp.If, err = util.MutateAndQuoteStringFromMap(mutated, sp.If)
+			sp.If, err = util.MutateAndQuoteStringFromMap(sm.Substitutions, sp.If)
 			if err != nil {
 				return fmt.Errorf("mutating subpackage if: %w", err)
 			}
 		}
 
-		if err := c.CompilePipelines(ctx, pb, sp.Pipeline); err != nil {
+		if err := c.CompilePipelines(ctx, sm, sp.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q: %w", sp.Name, err)
 		}
 
@@ -142,7 +144,7 @@ func (b *Build) Compile(ctx context.Context) error {
 		tc := &Compiled{
 			PipelineDirs: b.PipelineDirs,
 		}
-		if err := tc.CompilePipelines(ctx, pb, sp.Test.Pipeline); err != nil {
+		if err := tc.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
 
@@ -163,7 +165,7 @@ func (b *Build) Compile(ctx context.Context) error {
 			PipelineDirs: b.PipelineDirs,
 		}
 
-		if err := tc.CompilePipelines(ctx, pb, cfg.Test.Pipeline); err != nil {
+		if err := tc.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling main pipelines: %w", err)
 		}
 
@@ -186,9 +188,9 @@ type Compiled struct {
 	ExternalRefs []purl.PackageURL
 }
 
-func (c *Compiled) CompilePipelines(ctx context.Context, pb *PipelineBuild, pipelines []config.Pipeline) error {
+func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
 	for i := range pipelines {
-		if err := c.compilePipeline(ctx, pb, &pipelines[i]); err != nil {
+		if err := c.compilePipeline(ctx, sm, &pipelines[i]); err != nil {
 			return fmt.Errorf("compiling Pipeline[%d]: %w", i, err)
 		}
 
@@ -200,7 +202,7 @@ func (c *Compiled) CompilePipelines(ctx context.Context, pb *PipelineBuild, pipe
 	return nil
 }
 
-func (c *Compiled) compilePipeline(ctx context.Context, pb *PipelineBuild, pipeline *config.Pipeline) error {
+func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline) error {
 	log := clog.FromContext(ctx)
 	uses, with := pipeline.Uses, maps.Clone(pipeline.With)
 
@@ -212,7 +214,8 @@ func (c *Compiled) compilePipeline(ctx context.Context, pb *PipelineBuild, pipel
 
 		for _, pd := range c.PipelineDirs {
 			log.Debugf("trying to load pipeline %q from %q", uses, pd)
-			data, err = loadPipelineData(pd, uses)
+
+			data, err = os.ReadFile(filepath.Join(pd, uses+".yaml"))
 			if err == nil {
 				log.Infof("Found pipeline %s", string(data))
 				break
@@ -236,7 +239,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, pb *PipelineBuild, pipel
 		return fmt.Errorf("unable to validate with: %w", err)
 	}
 
-	mutated, err := MutateWith(pb, validated)
+	mutated, err := sm.MutateWith(validated)
 	if err != nil {
 		return fmt.Errorf("mutating with: %w", err)
 	}
@@ -282,7 +285,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, pb *PipelineBuild, pipel
 		p := &pipeline.Pipeline[i]
 		p.With = util.RightJoinMap(mutated, p.With)
 
-		if err := c.compilePipeline(ctx, pb, p); err != nil {
+		if err := c.compilePipeline(ctx, sm, p); err != nil {
 			return fmt.Errorf("compiling Pipeline[%d]: %w", i, err)
 		}
 	}

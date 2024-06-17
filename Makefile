@@ -163,7 +163,7 @@ clean: ## Clean the workspace
 
 .PHONY: snapshot
 snapshot: ## Run Goreleaser in snapshot mode
-	LDFLAGS="$(LDFLAGS)" goreleaser release --clean --snapshot --skip-sign --skip-publish
+	LDFLAGS="$(LDFLAGS)" goreleaser release --clean --snapshot --skip=sign,publish
 
 .PHONY: release
 release: ## Run Goreleaser in release mode

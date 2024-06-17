@@ -423,7 +423,11 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		}
 	}
 
-	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Test.Environment)
+	env := apko_types.ImageConfiguration{}
+	if t.Configuration.Test != nil {
+		env = t.Configuration.Test.Environment
+	}
+	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, env)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
@@ -461,48 +465,49 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	// dependencies.
 	for i := range t.Configuration.Subpackages {
 		sp := &t.Configuration.Subpackages[i]
-		if len(sp.Test.Pipeline) > 0 {
-			log.Infof("running test pipeline for subpackage %s", sp.Name)
+		if sp.Test == nil || len(sp.Test.Pipeline) == 0 {
+			continue
+		}
+		log.Infof("running test pipeline for subpackage %s", sp.Name)
 
-			guestFS, err := t.guestFS(ctx, sp.Name)
-			if err != nil {
-				return err
-			}
+		guestFS, err := t.guestFS(ctx, sp.Name)
+		if err != nil {
+			return err
+		}
 
-			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
-			if err != nil {
-				return fmt.Errorf("unable to build guest: %w", err)
-			}
-			if err := t.OverlayBinSh(sp.Name); err != nil {
-				return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-			}
-			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
-			if err != nil {
-				return fmt.Errorf("unable to build workspace config: %w", err)
-			}
-			subCfg.Arch = t.Arch
+		spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
+		if err != nil {
+			return fmt.Errorf("unable to build guest: %w", err)
+		}
+		if err := t.OverlayBinSh(sp.Name); err != nil {
+			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
+		}
+		subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
+		if err != nil {
+			return fmt.Errorf("unable to build workspace config: %w", err)
+		}
+		subCfg.Arch = t.Arch
 
-			pr := &pipelineRunner{
-				interactive: t.Interactive,
-				debug:       t.Debug,
-				config:      subCfg,
-				runner:      t.Runner,
-			}
+		pr := &pipelineRunner{
+			interactive: t.Interactive,
+			debug:       t.Debug,
+			config:      subCfg,
+			runner:      t.Runner,
+		}
 
-			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
-				return fmt.Errorf("unable to start subpackage test pod: %w", err)
-			}
-			if !t.DebugRunner {
-				defer func() {
-					if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
-						log.Warnf("unable to terminate subpackage test pod: %s", err)
-					}
-				}()
-			}
+		if err := t.Runner.StartPod(ctx, subCfg); err != nil {
+			return fmt.Errorf("unable to start subpackage test pod: %w", err)
+		}
+		if !t.DebugRunner {
+			defer func() {
+				if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
+					log.Warnf("unable to terminate subpackage test pod: %s", err)
+				}
+			}()
+		}
 
-			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
-				return fmt.Errorf("unable to run pipeline: %w", err)
-			}
+		if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 

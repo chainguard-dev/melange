@@ -53,10 +53,6 @@ func (t *Test) Compile(ctx context.Context) error {
 		return fmt.Errorf("compiling main pipelines: %w", err)
 	}
 
-	if err := c.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
-		return fmt.Errorf("compiling main pipelines: %w", err)
-	}
-
 	for i, sp := range cfg.Subpackages {
 		sm := sm.Subpackage(&sp)
 		if sp.If != "" {
@@ -69,6 +65,10 @@ func (t *Test) Compile(ctx context.Context) error {
 		// We want to evaluate this but not accumulate its deps.
 		if err := ignore.CompilePipelines(ctx, sm, sp.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q: %w", sp.Name, err)
+		}
+
+		if sp.Test == nil {
+			continue
 		}
 
 		test := &Compiled{
@@ -87,17 +87,22 @@ func (t *Test) Compile(ctx context.Context) error {
 		te.Packages = append(te.Packages, test.Needs...)
 	}
 
-	te := &t.Configuration.Test.Environment.Contents
+	if cfg.Test != nil {
+		if err := c.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
+			return fmt.Errorf("compiling main pipelines: %w", err)
+		}
+		te := &t.Configuration.Test.Environment.Contents
 
-	// Append the main test package to be installed unless explicitly specified by the command line.
-	if t.Package != "" {
-		te.Packages = append(te.Packages, t.Package)
-	} else {
-		te.Packages = append(te.Packages, t.Configuration.Package.Name)
+		// Append the main test package to be installed unless explicitly specified by the command line.
+		if t.Package != "" {
+			te.Packages = append(te.Packages, t.Package)
+		} else {
+			te.Packages = append(te.Packages, t.Configuration.Package.Name)
+		}
+
+		// Append anything the main package test needs.
+		te.Packages = append(te.Packages, c.Needs...)
 	}
-
-	// Append anything the main package test needs.
-	te.Packages = append(te.Packages, c.Needs...)
 
 	return nil
 }

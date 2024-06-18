@@ -21,6 +21,8 @@ environment:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     repositories:
       - https://packages.wolfi.dev/os
+    packages:
+      - busybox
 
 pipeline:
   - uses: git-checkout
@@ -29,8 +31,10 @@ pipeline:
       expected-commit: a73c4feb284dc6ed1e5758740f717f99dcd4c9d7
       tag: v${{package.version}}
 
-  - uses: go/build
+  - uses: native:list-files
+  - uses: native:write-file
     with:
-      tags: enterprise
-      packages: .
-      output: hello
+      path: "${{targets.destdir}}/cool/cool/hello.txt"
+      contents: hello
+  #- runs: ls -l "${{targets.destdir}}/cool/cool/hello.txt"
+

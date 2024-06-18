@@ -20,6 +20,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
@@ -206,7 +207,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	log := clog.FromContext(ctx)
 	uses, with := pipeline.Uses, maps.Clone(pipeline.With)
 
-	if uses != "" {
+	if uses != "" && !strings.HasPrefix(uses, "native:") {
 		var data []byte
 		// Set this to fail up front in case there are no pipeline dirs specified
 		// and we can't find them.

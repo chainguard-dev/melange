@@ -175,6 +175,7 @@ exit 0`, debugOption, sysPath, envString, workdir, workdir, workdir, fragment)
 type pipelineRunner struct {
 	debug       bool
 	interactive bool
+	guestDir    string
 	config      *container.Config
 	runner      container.Runner
 }
@@ -210,10 +211,21 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		log.Infof("running step %q", id)
 	}
 
-	command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs, r.interactive)
-	if err := r.runner.Run(ctx, r.config, command...); err != nil {
-		if err := r.maybeDebug(ctx, pipeline.Runs, command, workdir, err); err != nil {
-			return false, err
+	if strings.HasPrefix(pipeline.Uses, "native:") {
+		nativeStep, ok := nativeSteps[pipeline.Uses]
+		if !ok {
+			return false, fmt.Errorf("unknown native step: %s", pipeline.Uses)
+		}
+		if err := nativeStep(ctx, r.guestDir, pipeline.With); err != nil {
+			return false, fmt.Errorf("unable to run native step: %w", err)
+		}
+
+	} else {
+		command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs, r.interactive)
+		if err := r.runner.Run(ctx, r.config, command...); err != nil {
+			if err := r.maybeDebug(ctx, pipeline.Runs, command, workdir, err); err != nil {
+				return false, err
+			}
 		}
 	}
 
@@ -234,6 +246,41 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	}
 
 	return true, nil
+}
+
+type nativeStep func(ctx context.Context, workspaceDir string, with map[string]string) error
+
+var nativeSteps = map[string]nativeStep{
+	"native:list-files": func(ctx context.Context, guest string, _ map[string]string) error {
+		log := clog.FromContext(ctx)
+		return filepath.Walk(guest, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			log.Infof("  %s", path)
+			return nil
+		})
+	},
+	"native:write-file": func(ctx context.Context, guest string, with map[string]string) error {
+		// TODO: validate `with`
+		path, contents := with["path"], with["contents"]
+		if err := os.MkdirAll(filepath.Join(guest, filepath.Dir(path)), 0755); err != nil {
+			return err
+		}
+		clog.FromContext(ctx).Infof("writing %q", filepath.Join(guest, path))
+		if err := os.WriteFile(filepath.Join(guest, path), []byte(contents), 0644); err != nil {
+			return err
+		}
+		/* return nil */
+
+		b, err := os.ReadFile(filepath.Join(guest, path))
+		if err != nil {
+			return err
+		}
+		clog.FromContext(ctx).Infof("contents: %q", string(b))
+		return nil
+	},
 }
 
 func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []string, workdir string, runErr error) error {

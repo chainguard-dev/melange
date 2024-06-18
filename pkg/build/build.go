@@ -728,6 +728,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		interactive: b.Interactive,
 		debug:       b.Debug,
 		config:      b.WorkspaceConfig(ctx),
+		guestDir:    b.GuestDir,
 		runner:      b.Runner,
 	}
 

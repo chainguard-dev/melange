@@ -35,7 +35,7 @@ import (
 func Package() *cobra.Command {
 	var name, version, epoch, description, license, url, commit, outdir string
 	var archs, deps, provides, replaces []string
-	var providesPriority, replacesPriority int
+	var providerPriority, replacesPriority int
 	cmd := &cobra.Command{
 		Use:     "package",
 		Short:   "Emit a package for the given directory, tarball or file.",
@@ -54,7 +54,10 @@ func Package() *cobra.Command {
 			var databuf bytes.Buffer
 			var datahash string
 			{
-				tc, err := tarball.NewContext(tarball.WithUseChecksums(true))
+				tc, err := tarball.NewContext(
+					tarball.WithUseChecksums(true),
+					tarball.WithSourceDateEpoch(builddate),
+				)
 				if err != nil {
 					return fmt.Errorf("failed to create tarball context: %w", err)
 				}
@@ -102,7 +105,7 @@ func Package() *cobra.Command {
 						Dependencies:     deps,
 						Provides:         provides,
 						Replaces:         replaces,
-						ProvidesPriority: providesPriority,
+						ProviderPriority: providerPriority,
 						ReplacesPriority: replacesPriority,
 					}); err != nil {
 						return fmt.Errorf("failed to execute control template: %w", err)
@@ -139,7 +142,7 @@ func Package() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(&deps, "dep", nil, "runtime dependencies")
 	cmd.PersistentFlags().StringSliceVar(&provides, "provides", nil, "provides")
 	cmd.PersistentFlags().StringSliceVar(&replaces, "replaces", nil, "replaces")
-	cmd.PersistentFlags().IntVar(&providesPriority, "provides-priority", 0, "provides priority")
+	cmd.PersistentFlags().IntVar(&providerPriority, "provider-priority", 0, "provider priority")
 	cmd.PersistentFlags().IntVar(&replacesPriority, "replaces-priority", 0, "replaces priority")
 	cmd.PersistentFlags().StringSliceVar(&archs, "arch", []string{"x86_64"}, "package architectures")
 	return cmd
@@ -160,7 +163,7 @@ type controlSection struct {
 	Dependencies     []string
 	Provides         []string
 	Replaces         []string
-	ProvidesPriority int
+	ProviderPriority int
 	ReplacesPriority int
 	DataHash         string
 }
@@ -186,10 +189,10 @@ provides = {{ $dep }}
 {{- range $dep := .Replaces }}
 replaces = {{ $dep }}
 {{- end }}
-{{- if .Dependencies.ProviderPriority }}
+{{- if .ProviderPriority }}
 provider_priority = {{ .ProviderPriority }}
 {{- end }}
-{{- if .Dependencies.ReplacesPriority }}
+{{- if .ReplacesPriority }}
 replaces_priority = {{ .ReplacesPriority }}
 {{- end }}
 datahash = {{.DataHash}}

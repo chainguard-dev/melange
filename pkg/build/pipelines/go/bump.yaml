@@ -3,6 +3,7 @@ name: Bump go deps to a certain version
 needs:
   packages:
     - git
+    - gobump
 
 inputs:
   deps:
@@ -28,19 +29,7 @@ inputs:
 
 pipeline:
   - runs: |
-      # install the latest version of gobump
-      go install github.com/chainguard-dev/gobump@latest
-
-      GOPATH=$(go env GOPATH)
-
       cd "${{inputs.modroot}}"
 
-      # if ${{inputs.go-version}} is not set, we use the go version of the current environment
-      if [ -z "${{inputs.go-version}}" ]; then
-        GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-      else
-        GO_VERSION=${{inputs.go-version}}
-      fi
-
       # We use the --tidy flag to run go mod tidy before and after in some cases (if old versions of go are used, we need to update the go.mod format)
-      $GOPATH/bin/gobump --packages "${{inputs.deps}}" --replaces "${{inputs.replaces}}" --tidy=${{inputs.tidy}} --show-diff=${{inputs.show-diff}} --go-version=${GO_VERSION} --compat=${{inputs.tidy-compat}}
+      gobump --packages "${{inputs.deps}}" --replaces "${{inputs.replaces}}" --tidy=${{inputs.tidy}} --show-diff=${{inputs.show-diff}} --go-version=${{inputs.go-version}} --compat=${{inputs.tidy-compat}}

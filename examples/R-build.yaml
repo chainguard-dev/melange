@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2024 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+#
+# This is a sample configuration file to demonstrate how to build a software
+# project using melange's built-in R/build pipeline.
+#
+# For more information about melange's built-in rust support check out:
+# https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-R.md
+package:
+  name: cran-proxy
+  version: 0.4_27
+  epoch: 0
+  description: Distance and similarity measures
+  copyright:
+    - license: GPL-2.0-or-later
+
+environment:
+  contents:
+    packages:
+      - R
+      - R-dev
+      - busybox
+
+var-transforms:
+  - from: ${{package.version}}
+    match: '_'
+    replace: '-'
+    to: mangled-package-version
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/cran/proxy
+      tag: ${{vars.mangled-package-version}}
+      expected-commit: 311a8569a534460ef04473ffa442dc7b72ba9a41
+
+  - uses: R/build
+    with:
+      package: proxy
+      version: ${{vars.mangled-package-version}}
+
+  - uses: strip
+
+update:
+  enabled: true
+  version-transform:   
+    - match: '_'
+      replace: '-'
+  github:
+    identifier: cran/proxy
+    use-tag: true

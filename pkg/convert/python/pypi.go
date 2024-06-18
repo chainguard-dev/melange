@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -155,14 +154,10 @@ func (p *PackageIndex) packageReq(ctx context.Context, endpoint string) (*Packag
 		err := fmt.Errorf("%d when getting %s: %w", resp.StatusCode, url, cause)
 		return nil, err
 	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
+
+	if err := json.NewDecoder(resp.Body).Decode(&pkg); err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(data, &pkg)
-	if err != nil {
-		return nil, err
-	}
-	return pkg, err
+	return pkg, nil
 }

@@ -117,7 +117,7 @@ GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
 	set -e ;
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0;
 
 .PHONY: fmt
 fmt: ## Format all go files
@@ -143,11 +143,13 @@ log-%:
 
 .PHONY: lint
 lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
-	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --deadline 3m0s  --skip-dirs .modcache ./...
+	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --skip-dirs .modcache ./...
 
 .PHONY: test
-test: ## Run go test
-	go test ./... -race
+test: melange ## Run go test
+	# build test package
+	 ./melange build --generate-index=false pkg/sca/testdata/go-fips-bin/go-fips-bin.yaml --arch=`uname -m` --source-dir=pkg/sca/testdata/go-fips-bin/ --out-dir pkg/sca/testdata/go-fips-bin/packages/ --log-level error
+	go test -tags e2e ./... -race
 
 .PHONY: clean
 clean: ## Clean the workspace
@@ -161,7 +163,7 @@ clean: ## Clean the workspace
 
 .PHONY: snapshot
 snapshot: ## Run Goreleaser in snapshot mode
-	LDFLAGS="$(LDFLAGS)" goreleaser release --clean --snapshot --skip-sign --skip-publish
+	LDFLAGS="$(LDFLAGS)" goreleaser release --clean --snapshot --skip=sign,publish
 
 .PHONY: release
 release: ## Run Goreleaser in release mode

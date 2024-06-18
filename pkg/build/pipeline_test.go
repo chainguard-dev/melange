@@ -15,14 +15,14 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"gopkg.in/yaml.v3"
-
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
+	"gopkg.in/yaml.v3"
 
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/require"
@@ -50,30 +50,26 @@ func Test_substitutionMap(t *testing.T) {
 		{initialVersion: "1.2.3.9", match: `\.(\d+)$`, replace: "+$1", expected: "1.2.3+9"},
 	}
 	for _, tt := range tests {
-		pkg := &config.Package{
+		pkg := config.Package{
 			Name:    "foo",
 			Version: tt.initialVersion,
 		}
 
 		t.Run("sub", func(t *testing.T) {
-			pb := &PipelineBuild{
+			cfg := config.Configuration{
 				Package: pkg,
-				Build: &Build{
-					Configuration: config.Configuration{
-						VarTransforms: []config.VarTransforms{
-							{
-								From:    "${{package.version}}",
-								Match:   tt.match,
-								Replace: tt.replace,
-								To:      "mangled-package-version",
-							},
-						},
+				VarTransforms: []config.VarTransforms{
+					{
+						From:    "${{package.version}}",
+						Match:   tt.match,
+						Replace: tt.replace,
+						To:      "mangled-package-version",
 					},
 				},
 			}
-			m, err := substitutionMap(pb)
+			m, err := NewSubstitutionMap(&cfg, "", "", nil)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, m["${{vars.mangled-package-version}}"])
+			require.Equal(t, tt.expected, m.Substitutions["${{vars.mangled-package-version}}"])
 		})
 	}
 }
@@ -91,14 +87,15 @@ func Test_MutateWith(t *testing.T) {
 		epoch:   3,
 		want:    "1.2.3-r3",
 	}} {
-		pb := &PipelineBuild{
-			Package: &config.Package{
+		cfg := config.Configuration{
+			Package: config.Package{
 				Version: tc.version,
 				Epoch:   tc.epoch,
 			},
-			Build: &Build{},
 		}
-		got, err := MutateWith(pb, map[string]string{})
+		sm, err := NewSubstitutionMap(&cfg, "", "", nil)
+		require.NoError(t, err)
+		got, err := sm.MutateWith(map[string]string{})
 		if err != nil {
 			t.Fatalf("MutateWith failed with: %v", err)
 		}
@@ -111,44 +108,33 @@ func Test_MutateWith(t *testing.T) {
 
 func Test_substitutionNeedPackages(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
-	pkg := &config.Package{
+	pkg := config.Package{
 		Name:    "foo",
 		Version: "1.2.3",
 	}
 
-	p := &config.Pipeline{
-		Needs: struct{ Packages []string }{Packages: []string{"foo", "${{inputs.go-package}}"}},
-		Inputs: map[string]config.Input{
-			"go-package": {
-				Default: "go",
-			},
-		},
-	}
-
-	pctx := NewPipelineContext(p, nil, nil, []string{"pipelines"})
-
-	pb := &PipelineBuild{
+	cfg := config.Configuration{
 		Package: pkg,
-		Build: &Build{
-			PipelineDirs: []string{"pipelines"},
-			Configuration: config.Configuration{
-				Pipeline: []config.Pipeline{
-					{
-						Uses: "go/build",
-						With: map[string]string{
-							"go-package": "go-5.4.3",
-							"output":     "foo",
-							"packages":   "./bar",
-						},
-					},
+		Pipeline: []config.Pipeline{
+			{
+				Uses: "go/build",
+				With: map[string]string{
+					"go-package": "go-5.4.3",
+					"output":     "foo",
+					"packages":   "./bar",
 				},
 			},
 		},
 	}
+	pipelineDirs := []string{"pipelines"}
 
-	err := pctx.loadUse(ctx, pb, "go/build", pb.Build.Configuration.Pipeline[0].With)
+	c := &Compiled{PipelineDirs: pipelineDirs}
+	sm, err := NewSubstitutionMap(&cfg, "", "", nil)
 	require.NoError(t, err)
-	require.Equal(t, "go-5.4.3", pctx.Pipeline.Needs.Packages[0])
+
+	err = c.CompilePipelines(ctx, sm, cfg.Pipeline)
+	require.NoError(t, err)
+	require.Equal(t, "go-5.4.3", c.Needs[0])
 }
 
 func Test_buildEvalRunCommand(t *testing.T) {
@@ -156,13 +142,11 @@ func Test_buildEvalRunCommand(t *testing.T) {
 		Environment: map[string]string{"FOO": "bar"},
 	}
 
-	pctx := NewPipelineContext(p, nil, nil, []string{})
-
 	debugOption := 'x'
 	sysPath := "/foo"
 	workdir := "/bar"
 	fragment := "baz"
-	command := pctx.buildEvalRunCommand(debugOption, sysPath, workdir, fragment)
+	command := buildEvalRunCommand(context.Background(), p, debugOption, sysPath, workdir, fragment, false)
 	expected := []string{"/bin/sh", "-c", `set -ex
 export PATH='/foo'
 export FOO='bar'

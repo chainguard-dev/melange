@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
@@ -38,9 +40,9 @@ func Test() *cobra.Command {
 	var pipelineDirs []string
 	var extraKeys []string
 	var extraRepos []string
+	var envFile string
 	var overlayBinSh string
 	var testOption []string
-	var logPolicy []string
 	var debug bool
 	var debugRunner bool
 	var interactive bool
@@ -72,6 +74,7 @@ func Test() *cobra.Command {
 				build.WithExtraTestPackages(extraTestPackages),
 				build.WithTestBinShOverlay(overlayBinSh),
 				build.WithTestRunner(r),
+				build.WithTestEnvFile(envFile),
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
@@ -93,6 +96,17 @@ func Test() *cobra.Command {
 			}
 			options = append(options, build.WithTestPipelineDir(BuiltinPipelineDir))
 
+			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
+				// Fine, no auth.
+			} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
+				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
+			} else if parts[0] != "basic" {
+				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
+			} else {
+				domain, user, pass := parts[1], parts[2], parts[3]
+				options = append(options, build.WithTestAuth(domain, user, pass))
+			}
+
 			return TestCmd(cmd.Context(), archs, options...)
 		},
 	}
@@ -107,9 +121,9 @@ func Test() *cobra.Command {
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&testOption, "test-option", []string{}, "build options to enable")
-	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")

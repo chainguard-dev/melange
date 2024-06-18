@@ -1,0 +1,154 @@
+package:
+  name: test-git-checkout
+  version: 6.14
+  epoch: 0
+  description: This package mainly just tests git-checkout pipeline
+environment:
+  contents:
+    packages:
+      - busybox
+      - git
+vars:
+  workd: /tmp/test-git-checkout-workd
+  giturl: "file:///tmp/test-git-checkout-workd/repos/my-repo"
+pipeline:
+  - name: "Create the bogus package content"
+    runs: |
+      echo "package does not do anything" > "${{targets.contextdir}}/README"
+  - name: "Create a git repo"
+    runs: |
+      rm -Rf ${{vars.workd}}
+      mkdir -p ${{vars.workd}}/repos
+      repo=${{vars.workd}}/repos/my-repo
+
+      ./create-git-repo "$repo"
+      touch "$repo/git-daemon-export-ok"
+  - runs: |
+      vr() { echo "$@" 1>&2; "$@"; }
+      vr git clone "${{vars.giturl}}" my3.git
+  - name: "standard tag on branch"
+    uses: git-checkout
+    working-directory: standard
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+  - name: "check standard tag on branch"
+    working-directory: standard
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      cd ..
+      rm -Rf standard
+  - name: "standard no-working-directory"
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+  - name: "check standard no-working-directory"
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      [ -f create-git-repo ] ||
+         { echo "create-git-repo did not exist"; exit 1; }
+  - name: "destination"
+    uses: git-checkout
+    working-directory: destination-base
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+      destination: dest
+  - name: "check destination"
+    working-directory: destination-base
+    runs: |
+      cd dest
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      cd ../..
+      rm -R destination-base
+  - name: "depth 1"
+    uses: git-checkout
+    working-directory: depth-1
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+  - name: "check depth 1"
+    working-directory: depth-1
+    runs: |
+      if out=$(git show HEAD^ 2>&1); then
+          echo "git show HEAD^ should not succeed on checkout with depth 1"
+          exit 1
+      fi
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      cd ..
+      rm -R depth-1
+  - name: "depth -1"
+    working-directory: depth-neg-1
+    uses: git-checkout
+    with:
+      depth: -1
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+  - name: "check depth -1"
+    working-directory: depth-neg-1
+    runs: |
+      out=$(git show HEAD^ 2>&1) || {
+          echo "git show HEAD^ failed on depth -1 checkout"
+          echo "it should pass"
+          exit 1
+      }
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      cd ..
+      rm -R depth-neg-1
+  - name: "branch without expected"
+    working-directory: branch-no-expected
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+  - name: "check branch without expected"
+    working-directory: branch-no-expected
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f ]
+      cd ..
+      rm -R branch-no-expected
+  # for an annotated tag you can point to either the commit
+  # or the tag object hash object
+  - name: "annotated hash"
+    uses: git-checkout
+    working-directory: annotated-hash
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0-annotated
+      expected-commit: 4ce5bdbf45a68a166d931dd1247878829b5c0113
+  - name: "check annotated hash"
+    working-directory: annotated-hash
+    runs: |
+      git show-ref --tags -d
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      cd ..
+      rm -R annotated-hash
+  # special case with clone --branch if there is a tag and a branch
+  # with the same name.
+  - name: "tag and branch same name"
+    uses: git-checkout
+    working-directory: tag-and-branch
+    with:
+      repository: ${{vars.giturl}}
+      tag: dev
+      expected-commit: 2b9bb894348794bc840a2ee7553d54a1c80b9278
+  - name: "check tag and branch same name"
+    working-directory: tag-and-branch
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 2b9bb894348794bc840a2ee7553d54a1c80b9278 ]
+      cd ..
+      rm -R tag-and-branch

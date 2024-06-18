@@ -40,15 +40,16 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
+type Trigger struct {
+	// Optional: The script to run
+	Script string `json:"script,omitempty"`
+	// Optional: The list of paths to monitor to trigger the script
+	Paths []string `json:"paths,omitempty"`
+}
+
 type Scriptlets struct {
 	// Optional: A script to run on a custom trigger
-	Trigger struct {
-		// Optional: The script to run
-		Script string `json:"script,omitempty"`
-		// Optional: The list of paths to monitor to trigger the script
-		Paths []string `json:"paths,omitempty"`
-	} `json:"trigger,omitempty" yaml:"trigger,omitempty"`
-
+	Trigger Trigger `json:"trigger,omitempty" yaml:"trigger,omitempty"`
 	// Optional: The script to run pre install. The script should contain the
 	// shebang interpreter.
 	PreInstall string `json:"pre-install,omitempty" yaml:"pre-install,omitempty"`
@@ -107,12 +108,12 @@ type Package struct {
 	// List of packages to depends on
 	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
-	Options PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
+	Options *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
-	Scriptlets Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
+	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -155,6 +156,30 @@ func (cfg *Configuration) applySubstitutionsForProvides() error {
 			if err != nil {
 				return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
 			}
+		}
+	}
+	return nil
+}
+
+func (cfg *Configuration) applySubstitutionsForPriorities() error {
+	nw := buildConfigMap(cfg)
+	var err error
+	cfg.Package.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ProviderPriority)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
+	}
+	cfg.Package.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ReplacesPriority)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
+	}
+	for _, sp := range cfg.Subpackages {
+		sp.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ProviderPriority)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ProviderPriority, err)
+		}
+		sp.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ReplacesPriority)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ReplacesPriority, err)
 		}
 	}
 	return nil
@@ -211,11 +236,13 @@ func (cfg *Configuration) applySubstitutionsForPackages() error {
 			return fmt.Errorf("failed to apply replacement to package %q: %w", runtime, err)
 		}
 	}
-	for i, runtime := range cfg.Test.Environment.Contents.Packages {
-		var err error
-		cfg.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
-		if err != nil {
-			return fmt.Errorf("failed to apply replacement to test package %q: %w", runtime, err)
+	if cfg.Test != nil {
+		for i, runtime := range cfg.Test.Environment.Contents.Packages {
+			var err error
+			cfg.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
+			if err != nil {
+				return fmt.Errorf("failed to apply replacement to test package %q: %w", runtime, err)
+			}
 		}
 	}
 	return nil
@@ -228,6 +255,8 @@ type Copyright struct {
 	Attestation string `json:"attestation,omitempty" yaml:"attestation,omitempty"`
 	// Required: The license for this package
 	License string `json:"license" yaml:"license"`
+	// Optional: Path to text of the custom License Ref
+	LicensePath string `json:"license-path,omitempty" yaml:"license-path,omitempty"`
 }
 
 // LicenseExpression returns an SPDX license expression formed from the
@@ -246,6 +275,22 @@ func (p *Package) LicenseExpression() string {
 	return licenseExpression
 }
 
+// Returns array of ExtractedLicensingInfos formed from the data in
+// the copyright structs found in the conf.
+func (p *Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
+	licenseInfos := make(map[string]string)
+	for _, cp := range p.Copyright {
+		if cp.LicensePath != "" {
+			content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
+			}
+			licenseInfos[cp.License] = string(content)
+		}
+	}
+	return licenseInfos, nil
+}
+
 // FullCopyright returns the concatenated copyright expressions defined
 // in the configuration file.
 func (p *Package) FullCopyright() string {
@@ -260,6 +305,10 @@ func (p *Package) FullCopyright() string {
 // This includes the default linters as well, unless disabled.
 func (chk *Checks) GetLinters() []string {
 	linters := linter_defaults.GetDefaultLinters(linter_defaults.LinterClassBuild)
+
+	if chk == nil {
+		return linters
+	}
 
 	// Enable non-default linters
 	for _, v := range chk.Enabled {
@@ -309,13 +358,13 @@ type Pipeline struct {
 	// Optional: A map of inputs to the pipeline
 	Inputs map[string]Input `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Optional: Configuration to determine any explicit dependencies this pipeline may have
-	Needs Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
+	Needs *Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
 	// Optional: Labels to apply to the pipeline
 	Label string `json:"label,omitempty" yaml:"label,omitempty"`
 	// Optional: A condition to evaluate before running the pipeline
 	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: Assertions to evaluate whether the pipeline was successful
-	Assertions PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
+	Assertions *PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
 	// Optional: The working directory of the pipeline
 	//
 	// This defaults to the guests' build workspace (/home/build)
@@ -336,8 +385,8 @@ type Subpackage struct {
 	// Optional: List of packages to depend on
 	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
-	Options    PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
-	Scriptlets Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
+	Options    *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
+	Scriptlets *Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: The human readable description of the subpackage
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Optional: The URL to the package's homepage
@@ -345,9 +394,9 @@ type Subpackage struct {
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
-	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
+	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the subpackage. For more
@@ -402,7 +451,7 @@ type Configuration struct {
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Test section for the main package.
-	Test Test `json:"test,omitempty" yaml:"test,omitempty"`
+	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 
 	// Parsed AST for this configuration
 	root *yaml.Node
@@ -413,7 +462,7 @@ type Test struct {
 	// Environment.Contents.Packages automatically get
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
-	Environment apko_types.ImageConfiguration
+	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
@@ -513,9 +562,12 @@ type Dependencies struct {
 	Provides []string `json:"provides,omitempty" yaml:"provides,omitempty"`
 	// Optional: List of replace objectives
 	Replaces []string `json:"replaces,omitempty" yaml:"replaces,omitempty"`
-	// Optional: An integer compared against other equal package provides used to
-	// determine priority
-	ProviderPriority int `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
+	// Optional: An integer string compared against other equal package provides used to
+	// determine priority of provides
+	ProviderPriority string `json:"provider-priority,omitempty" yaml:"provider-priority,omitempty"`
+	// Optional: An integer string compared against other equal package provides used to
+	// determine priority of file replacements
+	ReplacesPriority string `json:"replaces-priority,omitempty" yaml:"replaces-priority,omitempty"`
 
 	// List of self-provided dependencies found outside of lib directories
 	// ("lib", "usr/lib", "lib64", or "usr/lib64").
@@ -689,6 +741,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	root := yaml.Node{}
 
@@ -753,19 +806,38 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 				"${{range.key}}":   k,
 				"${{range.value}}": v,
 			})
+
 			thingToAdd := Subpackage{
 				Name:        replacer.Replace(sp.Name),
 				Description: replacer.Replace(sp.Description),
+				Commit:      detectedCommit,
 				Dependencies: Dependencies{
 					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
 					Provides:         replaceAll(replacer, sp.Dependencies.Provides),
 					Replaces:         replaceAll(replacer, sp.Dependencies.Replaces),
-					ProviderPriority: sp.Dependencies.ProviderPriority,
+					ProviderPriority: replacer.Replace(sp.Dependencies.ProviderPriority),
+					ReplacesPriority: replacer.Replace(sp.Dependencies.ReplacesPriority),
 				},
 				Options: sp.Options,
 				URL:     replacer.Replace(sp.URL),
 				If:      replacer.Replace(sp.If),
 			}
+
+			if script := sp.Scriptlets; script != nil {
+				thingToAdd.Scriptlets = &Scriptlets{
+					Trigger: Trigger{
+						Script: replacer.Replace(sp.Scriptlets.Trigger.Script),
+						Paths:  replaceAll(replacer, sp.Scriptlets.Trigger.Paths),
+					},
+					PreInstall:    replacer.Replace(sp.Scriptlets.PreInstall),
+					PostInstall:   replacer.Replace(sp.Scriptlets.PostInstall),
+					PreDeinstall:  replacer.Replace(sp.Scriptlets.PreDeinstall),
+					PostDeinstall: replacer.Replace(sp.Scriptlets.PostDeinstall),
+					PreUpgrade:    replacer.Replace(sp.Scriptlets.PreUpgrade),
+					PostUpgrade:   replacer.Replace(sp.Scriptlets.PostUpgrade),
+				}
+			}
+
 			for _, p := range sp.Pipeline {
 				// take a copy of the with map, so we can replace the values
 				replacedWith := make(map[string]string)
@@ -789,28 +861,31 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					// TODO: p.Pipeline?
 				})
 			}
-			for _, p := range sp.Test.Pipeline {
-				// take a copy of the with map, so we can replace the values
-				replacedWith := make(map[string]string)
-				for key, value := range p.With {
-					replacedWith[key] = replacer.Replace(value)
-				}
+			if sp.Test != nil {
+				thingToAdd.Test = &Test{}
+				for _, p := range sp.Test.Pipeline {
+					// take a copy of the with map, so we can replace the values
+					replacedWith := make(map[string]string)
+					for key, value := range p.With {
+						replacedWith[key] = replacer.Replace(value)
+					}
 
-				// if the map is empty, set it to nil to avoid serializing an empty map
-				if len(replacedWith) == 0 {
-					replacedWith = nil
-				}
+					// if the map is empty, set it to nil to avoid serializing an empty map
+					if len(replacedWith) == 0 {
+						replacedWith = nil
+					}
 
-				thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
-					Name:   p.Name,
-					Uses:   p.Uses,
-					With:   replacedWith,
-					Inputs: p.Inputs,
-					Needs:  p.Needs,
-					Label:  p.Label,
-					Runs:   replacer.Replace(p.Runs),
-					// TODO: p.Pipeline?
-				})
+					thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
+						Name:   p.Name,
+						Uses:   p.Uses,
+						With:   replacedWith,
+						Inputs: p.Inputs,
+						Needs:  p.Needs,
+						Label:  p.Label,
+						Runs:   replacer.Replace(p.Runs),
+						// TODO: p.Pipeline?
+					})
+				}
 			}
 			subpackages = append(subpackages, thingToAdd)
 		}
@@ -861,7 +936,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		defaultEnvVarGOMODCACHE = "/var/cache/melange/gomodcache"
 	)
 
-	var setIfEmpty = func(key, value string) {
+	setIfEmpty := func(key, value string) {
 		if cfg.Environment.Environment[key] == "" {
 			cfg.Environment.Environment[key] = value
 		}
@@ -921,6 +996,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if err := cfg.applySubstitutionsForPackages(); err != nil {
 		return nil, err
 	}
+	if err := cfg.applySubstitutionsForPriorities(); err != nil {
+		return nil, err
+	}
 
 	// Propagate all child pipelines
 	cfg.propagatePipelines()
@@ -972,15 +1050,26 @@ func (cfg Configuration) validate() error {
 
 	// TODO: try to validate value of .package.version
 
+	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
+		return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+	}
 	if err := validatePipelines(cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 
+	saw := map[string]int{}
 	for i, sp := range cfg.Subpackages {
+		if extant, ok := saw[sp.Name]; ok {
+			return fmt.Errorf("saw duplicate subpackage name %q (subpackages index: %d and %d)", sp.Name, extant, i)
+		}
+		saw[sp.Name] = i
+
 		if !packageNameRegex.MatchString(sp.Name) {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}
-
+		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
+			return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+		}
 		if err := validatePipelines(sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
@@ -991,6 +1080,10 @@ func (cfg Configuration) validate() error {
 
 func validatePipelines(ps []Pipeline) error {
 	for _, p := range ps {
+		if p.With != nil && p.Uses == "" {
+			return fmt.Errorf("pipeline contains with but no uses")
+		}
+
 		if p.Uses != "" && p.Runs != "" {
 			return fmt.Errorf("pipeline cannot contain both uses %q and runs", p.Uses)
 		}
@@ -1000,6 +1093,20 @@ func validatePipelines(ps []Pipeline) error {
 		}
 
 		if err := validatePipelines(p.Pipeline); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDependenciesPriorities(deps Dependencies) error {
+	priorities := []string{deps.ProviderPriority, deps.ProviderPriority}
+	for _, priority := range priorities {
+		if priority == "" {
+			continue
+		}
+		_, err := strconv.Atoi(priority)
+		if err != nil {
 			return err
 		}
 	}

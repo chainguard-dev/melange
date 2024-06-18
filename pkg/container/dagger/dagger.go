@@ -29,14 +29,17 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
 
-const DaggerName = "dagger"
-const imageTarName = "image.tar"
+const (
+	DaggerName   = "dagger"
+	imageTarName = "image.tar"
+)
 
 type daggerRunner struct {
 	client    *dagger.Client
@@ -126,7 +129,7 @@ func (d *daggerRunner) StartPod(ctx context.Context, cfg *container.Config) erro
 	for _, mnt := range cfg.Mounts {
 
 		// We skip mounting in some files that we don't need in this mode
-		if mnt.Source == "/etc/resolv.conf" {
+		if mnt.Source == container.DefaultResolvConfPath {
 			continue
 		}
 
@@ -187,7 +190,7 @@ func (d *daggerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
-	img, err := apko_oci.BuildImageFromLayer(ctx, layer, bc.ImageConfiguration(), creationTime, arch)
+	img, err := apko_oci.BuildImageFromLayer(ctx, empty.Image, layer, bc.ImageConfiguration(), creationTime, arch)
 	if err != nil {
 		return "", err
 	}

@@ -20,14 +20,15 @@ import (
 	"net/http"
 
 	"chainguard.dev/apko/pkg/log"
+	"github.com/chainguard-dev/clog/gcp"
 	charmlog "github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/release-utils/version"
 )
 
 func New() *cobra.Command {
-	var logPolicy []string
 	var level log.CharmLogLevel
+	var gcplog bool
 	cmd := &cobra.Command{
 		Use:               "melange",
 		DisableAutoGenTag: true,
@@ -36,27 +37,34 @@ func New() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			http.DefaultTransport = userAgentTransport{http.DefaultTransport}
 
-			out, err := log.Writer(logPolicy)
-			if err != nil {
-				return fmt.Errorf("failed to create log writer: %w", err)
+			if gcplog {
+				slog.SetDefault(slog.New(gcp.NewHandler(slog.Level(level))))
+			} else {
+				out, err := log.Writer([]string{"builtin:stderr"})
+				if err != nil {
+					return fmt.Errorf("failed to create log writer: %w", err)
+				}
+				slog.SetDefault(slog.New(charmlog.NewWithOptions(out, charmlog.Options{ReportTimestamp: true, Level: charmlog.Level(level)})))
 			}
-			slog.SetDefault(slog.New(charmlog.NewWithOptions(out, charmlog.Options{ReportTimestamp: true, Level: charmlog.Level(level)})))
 
 			return nil
 		},
 	}
-	cmd.PersistentFlags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "log policy (e.g. builtin:stderr, /tmp/log/foo)")
 	cmd.PersistentFlags().Var(&level, "log-level", "log level (e.g. debug, info, warn, error)")
+	cmd.PersistentFlags().BoolVar(&gcplog, "gcplog", false, "use GCP logging")
+	_ = cmd.PersistentFlags().MarkHidden("gcplog")
 
 	cmd.AddCommand(Build())
 	cmd.AddCommand(Bump())
 	cmd.AddCommand(Completion())
+	cmd.AddCommand(Compile())
 	cmd.AddCommand(Convert())
 	cmd.AddCommand(Index())
 	cmd.AddCommand(Keygen())
 	cmd.AddCommand(Lint())
 	cmd.AddCommand(PackageVersion())
 	cmd.AddCommand(Query())
+	cmd.AddCommand(Scan())
 	cmd.AddCommand(Sign())
 	cmd.AddCommand(SignIndex())
 	cmd.AddCommand(Test())

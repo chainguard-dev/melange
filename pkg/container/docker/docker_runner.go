@@ -33,10 +33,12 @@ import (
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -84,6 +86,11 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 
 	mounts := []mount.Mount{}
 	for _, bind := range cfg.Mounts {
+		// We skip mounting in some files that we don't need in this mode
+		if bind.Source == mcontainer.DefaultResolvConfPath {
+			continue
+		}
+
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
 			Source: bind.Source,
@@ -219,11 +226,8 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...strin
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	// TODO(kaniini): We want to use the build user here, but for now lets keep it simple.
-	// TODO(epsilon-phase): building as the user "build" was removed from docker runner
-	// for consistency with other runners and to ensure that packages can be generated with files
-	// that have owners other than root. We should explore using fakeroot or similar tricks for these use-cases.
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
+		User:         cfg.RunAs,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -375,7 +379,7 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
-	img, err := apko_oci.BuildImageFromLayer(ctx, layer, bc.ImageConfiguration(), creationTime, arch)
+	img, err := apko_oci.BuildImageFromLayer(ctx, empty.Image, layer, bc.ImageConfiguration(), creationTime, arch)
 	if err != nil {
 		return "", err
 	}
@@ -390,7 +394,7 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("deleting image %s", ref)
-	resps, err := d.cli.ImageRemove(ctx, ref, types.ImageRemoveOptions{
+	resps, err := d.cli.ImageRemove(ctx, ref, image.RemoveOptions{
 		Force:         true,
 		PruneChildren: true,
 	})

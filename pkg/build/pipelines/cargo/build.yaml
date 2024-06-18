@@ -1,0 +1,47 @@
+name: Compile an auditable rust binary with Cargo
+
+needs:
+  packages:
+    - cargo-auditable
+    - rust
+
+inputs:
+  output:
+    description: |
+      Filename to use when writing the binary. The final install location inside
+      the apk will be in prefix / install-dir / output
+
+  opts:
+    default: "--release"
+    description: |
+      Options to pass to cargo build. Defaults to release
+
+  modroot:
+    default: "."
+    required: false
+    description: |
+      Top directory of the rust package, this is where the target package lives.
+      Before building, the cargo pipeline wil cd into this directory. Defaults
+      to current working directory
+
+  prefix:
+    default: usr
+    description: |
+      Installation prefix. Defaults to usr
+
+pipeline:
+  - runs: |
+      # Installation directory should always be bin as we are producing a binary
+      INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/bin"
+      OUTPUT_PATH="target/release"
+
+      # Enter target package directory
+      cd "${{inputs.modroot}}"
+
+      # Build and install package(s)
+      cargo auditable build "${{inputs.opts}}"
+      if [[ -z "${{inputs.output}}" ]]; then
+        install -Dm755 "${OUTPUT_PATH}/${{inputs.output}}" "${INSTALL_PATH}/${{inputs.output}}"
+      else
+        install -Dm755 "${OUTPUT_PATH}"/* -t "${INSTALL_PATH}"
+      fi

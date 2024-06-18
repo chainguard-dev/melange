@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -40,7 +39,7 @@ type MonitorFinder struct {
 }
 
 func (mf *MonitorFinder) FindMonitor(ctx context.Context, pkg string) (*Item, error) {
-	var Items *Items
+	var items *Items
 	url := fmt.Sprintf(searchFmt, pkg)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -51,23 +50,19 @@ func (mf *MonitorFinder) FindMonitor(ctx context.Context, pkg string) (*Item, er
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		cause := errors.New("http status return was not 200")
 		err := fmt.Errorf("%d when getting %s: %w", resp.StatusCode, url, cause)
 		return nil, err
 	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 
-	err = json.Unmarshal(data, &Items)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
 		return nil, err
 	}
-	if len(Items.Items) == 0 {
+	if len(items.Items) == 0 {
 		return nil, errors.New("no items found")
 	}
-	return &Items.Items[0], nil
+	return &items.Items[0], nil
 }

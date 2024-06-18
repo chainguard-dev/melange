@@ -1,0 +1,101 @@
+#!/bin/sh
+# create a repository with known hashes
+set -e
+MYDATE="Fri, 14 Jun 2024 15:21:36 -0000"
+TEMP_D=""
+
+fail() { echo "$@" 1>&2; exit 1; }
+
+wfile() {
+    name="$1" content="$2"
+    rm -f "$name"
+    printf "%s\n" "$content" > "$name"
+}
+
+gcommit() {
+    GIT_COMMITTER_DATE="$MYDATE" git commit \
+        --date="$MYDATE" "$@"
+}
+
+gtag() {
+    GIT_AUTHOR_DATE="$MYDATE" \
+        GIT_COMMITTER_DATE="$MYDATE" git tag "$@"
+}
+
+v() {
+    echo "execute:" "$@"
+    "$@"
+}
+
+cleanup() { rm -Rf "$TEMP_D"; TEMP_D=""; }
+
+TEMP_D=$(mktemp -d)
+trap cleanup EXIT
+
+dest="$1"
+if [ -e "$dest" ]; then
+    fail "do not give existing dir for dest"
+fi
+startd="$PWD"
+
+cd "$TEMP_D"
+export HOME="$PWD"
+workdir="$PWD/my-repo"
+export LC_ALL=C.UTF-8
+
+git config --global user.name "Melange Test"
+git config --global user.email meltest@example.com
+
+mkdir "$workdir"
+cd "$workdir"
+
+v git init --initial-branch=main .
+v wfile README "hello world"
+v git add README
+v gcommit -m "first commit" README
+v wfile README "data2"
+v gcommit -m "second commit" README
+
+v git checkout -b 1.x main
+v wfile README "1.0-release content"
+v gcommit -m "release 1.0" README
+v gtag 1.0 HEAD
+v gtag --annotate --message="Release 1.0" 1.0-annotated HEAD
+
+v wfile README "1.1-release content"
+v gcommit -m "release 1.1" README
+v gtag 1.1 HEAD
+
+v wfile README "1.2-staged content"
+v gcommit -m "stage 1.2 content" README
+v gtag 1.2
+v gtag --annotate --message="Release 1.2" 1.2-annotated HEAD
+
+v git checkout -b dev main
+v wfile README "stuff on dev"
+v gcommit -m "dev branch stuff" README
+# tag with same name as branch
+# https://github.com/chainguard-dev/melange/issues/1272
+v gtag dev HEAD
+v wfile README "more stuff on dev"
+v gcommit -m "more stuff on dev" README
+
+v git checkout main
+v wfile README "mainline stuff"
+v gcommit -m "mainline stuff" README
+
+v git checkout main
+v wfile README "mainline stuff 2"
+v gcommit -m "mainline stuff 2" README
+
+v git checkout -b 2.x main^
+v wfile README "2.0-release content"
+v gcommit -m "release 2.0" README
+v gtag 2.0
+v gtag --annotate --message="Release 2.0" 2.0-annotated HEAD
+
+v git checkout main
+
+v cd "$startd"
+v mv "$workdir/.git" "$dest"
+echo "wrote git dir to $dest"

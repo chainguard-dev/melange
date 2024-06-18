@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	sign "github.com/chainguard-dev/go-apk/pkg/signature"
+	sign "chainguard.dev/apko/pkg/apk/signature"
 	"github.com/klauspost/compress/gzip"
 	"go.opentelemetry.io/otel"
 )

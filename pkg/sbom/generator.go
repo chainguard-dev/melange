@@ -20,28 +20,25 @@ import (
 	"time"
 
 	"github.com/chainguard-dev/clog"
+	purl "github.com/package-url/packageurl-go"
 	"go.opentelemetry.io/otel"
 )
-
-func NewGenerator() *Generator {
-	return &Generator{}
-}
 
 type Spec struct {
 	Path            string
 	PackageName     string
 	PackageVersion  string
 	License         string // Full SPDX license expression
+	LicensingInfos  map[string]string
+	ExternalRefs    []purl.PackageURL
 	Copyright       string
 	Namespace       string
 	Arch            string
 	SourceDateEpoch time.Time
 }
 
-type Generator struct{}
-
-// GenerateSBOM runs the main SBOM generation process
-func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
+// Generate runs the main SBOM generation process.
+func Generate(ctx context.Context, spec *Spec) error {
 	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
 	defer span.End()
 	log := clog.FromContext(ctx)
@@ -58,17 +55,11 @@ func (g *Generator) GenerateSBOM(ctx context.Context, spec *Spec) error {
 
 	sbomDoc := &bom{
 		Packages: []pkg{},
-		Files:    []file{},
 	}
 
 	pkg, err := generateAPKPackage(spec)
 	if err != nil {
 		return fmt.Errorf("generating main package: %w", err)
-	}
-
-	// Add file inventory to packages
-	if err := scanFiles(spec, &pkg); err != nil {
-		return fmt.Errorf("reading SBOM file inventory: %w", err)
 	}
 
 	sbomDoc.Packages = append(sbomDoc.Packages, pkg)

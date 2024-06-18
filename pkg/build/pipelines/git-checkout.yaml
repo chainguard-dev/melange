@@ -17,7 +17,7 @@ inputs:
 
   depth:
     description: |
-      The depth to use when cloning.
+      The depth to use when cloning. Set to -1 to not specify depth when cloning.
     default: 1
 
   branch:
@@ -39,61 +39,110 @@ inputs:
 
 pipeline:
   - runs: |
-      if [ -z "${{inputs.branch}}" ] && [ -z "${{inputs.tag}}" ]; then
-        echo "Warning (git-checkout): you have not specified a branch or tag."
-      fi
+      #!/bin/sh
+      set -e
 
-      git_clone_flags=""
-      if [ "${{inputs.recurse-submodules}}" == "true" ]; then
-        git_clone_flags="--recurse-submodules"
-      fi
+      msg() { echo "[git checkout]" "$@" 1>&2; }
+      fail() { msg FAIL "$@"; exit 1; }
+      vr() { msg "execute:" "$@"; "$@"; }
 
-      [ -n '${{inputs.branch}}' ] && clone_target='--branch ${{inputs.branch}}'
-      [ -n '${{inputs.tag}}' ] && clone_target='--branch ${{inputs.tag}}'
+      main() {
+          local repo=$1 dest=${2:-.} depth=${3:-"-1"} branch=$4
+          local tag=$5 expcommit=$6 recurse=${7:-false}
+          msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
+              "tag='$tag' expcommit='$expcommit' recurse='$recurse'"
 
-      workdir=$(mktemp -d)
-      mkdir -p '${{inputs.destination}}'
-      clone_fullpath=$(realpath '${{inputs.destination}}')
+          case "$recurse" in
+              true|false) :;;
+              *) fail "recurse must be true or false, not '$recurse'"
+          esac
 
-      git config --global --add safe.directory $workdir
-      git config --global --add safe.directory $clone_fullpath
-      git clone $git_clone_flags $clone_target --depth '${{inputs.depth}}' '${{inputs.repository}}' $workdir
+          [ -n "$repo" ] || fail "repository not provided"
 
-      cd $workdir
-      tar -c . | (cd $clone_fullpath && tar -x)
-      rm -rf $workdir
-      cd $clone_fullpath
-      git config --global --add safe.directory $clone_fullpath
+          if [ -z "$branch" ] && [ -z "$tag" ]; then
+              msg "Warning: you have not specified a branch or tag."
+          fi
 
-      if [ -z "${{inputs.expected-commit}}" ]; then
-        echo "Warning (git-checkout): no expected-commit"
-      elif [ -n '${{inputs.branch}}' ]; then
-        git config --global advice.detachedHead false
-        remote_commit=$(git rev-parse --verify --end-of-options "refs/heads/${{inputs.branch}}")
-        if [[ '${{inputs.expected-commit}}' != "$remote_commit" ]]; then
-          echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got $remote_commit"
-          exit 1
-        fi
-      elif [ -n '${{inputs.tag}}' ]; then
-        # If it's a tag, then it could be a lightweight or annotated tag.
-        # Lightweight tags point directly to the commit and do not have any messages, signatures, or other data.
-        # Annotated tags point to its own git object containing the tag data, with a reference to the underlying commit.
-        # We expect most tags to be using annotated tags.
+          [ -n "$expcommit" ] ||
+              msg "Warning: no expected-commit"
 
-        # Compare direct tag value
-        remote_commit=$(git rev-parse --verify --end-of-options "refs/tags/${{inputs.tag}}")
-        if [[ '${{inputs.expected-commit}}' == "$remote_commit" ]]; then
-          exit 0
-        fi
+          local flags="" depthflag="" dest_fullpath="" workdir=""
+          local remote="origin" rcfile="" rc=""
+          [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
+          [ -n "$branch" ] && flags="--branch=$branch"
+          [ -n "$tag" ] && flags="--branch=$tag"
 
-        # Try to unpeel the tag and compare the underlying value.
-        echo "Warning (git-checkout): expected commit ${{inputs.expected-commit}}, does not match tag ${remote_commit}. Attempting to unpeel tag."
+          [ "$depth" = "-1" ] || depthflag="--depth=$depth"
 
-        unpeeled_commit=$(git rev-parse --verify --end-of-options "refs/tags/${{inputs.tag}}^{}")
-        if [[ '${{inputs.expected-commit}}' != "${unpeeled_commit}" ]]; then
-          echo "Error (git-checkout): expect commit ${{inputs.expected-commit}}, got ${unpeeled_commit}"
-          exit 1
-        fi
-      else
-        echo "Error (git-checkout): no branch or tag provided"
-      fi
+          workdir=$(mktemp -d)
+          rcfile=$(mktemp)
+          mkdir -p "$dest"
+          dest_fullpath=$(realpath "$dest")
+
+          vr git config --global --add safe.directory "$workdir"
+          vr git config --global --add safe.directory "$dest_fullpath"
+
+          vr git clone "--origin=$remote" $flags \
+              ${depthflag:+"$depthflag"} "$repo" "$workdir"
+
+          vr cd "$workdir"
+          msg "tar -c . | tar -C \"$dest_fullpath\" -x"
+          ( tar -c . ; echo $? > "$rcfile") | tar -C "$dest_fullpath" -x
+          read rc < "$rcfile" || fail "failed to read rc file"
+          [ $rc -eq 0 ] || fail "tar creation in $workdir failed"
+
+          rm -rf "$workdir"
+          vr cd "$dest_fullpath"
+          vr git config --global --add safe.directory "$dest_fullpath"
+
+          local foundcommit="" tagobj=""
+          vr git config --global advice.detachedHead false
+          if [ -z "$tag" ]; then
+              foundcommit=$(git rev-parse --verify HEAD)
+              if [ -n "$expcommit" ] && [ "$expcommit" != "$foundcommit" ]; then
+                  fail "expected commit $expcommit on ${branch:-HEAD}," \
+                      " got $foundcommit"
+              fi
+              msg "tip of ${branch:-HEAD} is commit $foundcommit"
+              return 0
+          fi
+
+          # git clone --branch=X will pick the branch X if there
+          # exists both a tag and a branch by that name.
+          # since a tag was given, we want the tag.
+          vr git fetch $remote ${depthflag:+"$depthflag"} --no-tags \
+              "+refs/tags/$tag:refs/$remote/tags/$tag"
+          vr git checkout "$remote/tags/$tag"
+
+          foundcommit=$(git rev-parse --verify HEAD)
+          if [ -z "$expcommit" ] || [ "$expcommit" = "$foundcommit" ]; then
+              msg "tag $tag is $foundcommit"
+              return 0
+          fi
+
+          # If it's a tag, then it could be a lightweight or annotated tag.
+          # Lightweight tags point directly to the commit and do not have
+          # any messages, signatures, or other data.  Annotated tags point
+          # to its own git object containing the tag data, with a reference
+          # to the underlying commit.  We expect most tags to be using
+          # annotated tags.
+          tagobj=$(git rev-parse --verify --end-of-options \
+              "refs/$remote/tags/$tag")
+          if [ "$expcommit" != "$tagobj" ]; then
+              [ "$tagobj" != "$expcommit" ] &&
+                  msg "tag object hash was $tagobj"
+              fail "Expected commit $expcommit for $tag, found $foundcommit"
+          fi
+
+          msg "Warning: The provided expected-commit ($expcommit)"
+          msg "was the hash of the annotated tag object for $tag."
+          msg "Update to set expected-commit to $foundcommit"
+
+          return 0
+      }
+
+      main \
+          "${{inputs.repository}}" "${{inputs.destination}}" \
+          "${{inputs.depth}}" "${{inputs.branch}}" \
+          "${{inputs.tag}}" "${{inputs.expected-commit}}" \
+          "${{inputs.recurse-submodules}}"

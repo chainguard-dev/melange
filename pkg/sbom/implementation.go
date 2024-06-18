@@ -36,11 +36,8 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/github/go-spdx/v2/spdxexp"
 	purl "github.com/package-url/packageurl-go"
-	"golang.org/x/exp/slices"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"sigs.k8s.io/release-utils/hash"
 	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
@@ -84,6 +81,7 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		return pkg{}, errors.New("unable to generate package, name not specified")
 	}
 
+	supplier := "Organization: " + cases.Title(language.English).String(spec.Namespace)
 	newPackage := pkg{
 		id:               stringToIdentifier(fmt.Sprintf("%s-%s", spec.PackageName, spec.PackageVersion)),
 		FilesAnalyzed:    false,
@@ -92,10 +90,12 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 		Relationships:    []relationship{},
 		LicenseDeclared:  spdx.NOASSERTION,
 		LicenseConcluded: spdx.NOASSERTION, // remove when omitted upstream
+		ExternalRefs:     spec.ExternalRefs,
 		Copyright:        spec.Copyright,
 		Namespace:        spec.Namespace,
 		Arch:             spec.Arch,
-		Originator:       "Organization: " + cases.Title(language.English).String(spec.Namespace),
+		Originator:       supplier,
+		Supplier:         supplier,
 	}
 
 	if spec.License != "" {
@@ -105,106 +105,21 @@ func generateAPKPackage(spec *Spec) (pkg, error) {
 	return newPackage, nil
 }
 
-// scanFiles reads the files to be packaged in the apk and
-// extracts the required data for the SBOM.
-func scanFiles(spec *Spec, dirPackage *pkg) error {
-	dirPath, err := filepath.Abs(spec.Path)
-	if err != nil {
-		return fmt.Errorf("getting absolute directory path: %w", err)
-	}
-	fileList, err := getDirectoryTree(dirPath)
-	if err != nil {
-		return fmt.Errorf("building directory tree: %w", err)
-	}
-
-	dirPackage.FilesAnalyzed = true
-
-	var g errgroup.Group
-	g.SetLimit(4)
-
-	files := make([]file, len(fileList))
-	for i, path := range fileList {
-		i, path := i, path
-
-		g.Go(func() error {
-			f := file{
-				id:            stringToIdentifier(path),
-				Name:          strings.TrimPrefix(path, "/"),
-				Checksums:     map[string]string{},
-				Relationships: []relationship{},
-			}
-
-			// Hash the file contents
-			for algo, fn := range map[string]func(string) (string, error){
-				"SHA1":   hash.SHA1ForFile,
-				"SHA256": hash.SHA256ForFile,
-				"SHA512": hash.SHA512ForFile,
-			} {
-				csum, err := fn(filepath.Join(dirPath, path))
-				if err != nil {
-					return fmt.Errorf("hashing %s file %s: %w", algo, path, err)
-				}
-				f.Checksums[algo] = csum
-			}
-
-			files[i] = f
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	// Sort the resulting dataset to ensure deterministic order
-	// to ensure builds are reproducible.
-	slices.SortFunc(files, func(a, b file) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-
-	// Add files into the package
-	for _, f := range files {
-		// TODO: Remove me when loopvar stuff lands.
-		target := f
-
-		rel := relationship{
-			Source: dirPackage,
-			Type:   "CONTAINS",
-		}
-
-		rel.Target = &target
-
-		dirPackage.Relationships = append(dirPackage.Relationships, rel)
-	}
-	return nil
-}
-
-func computeVerificationCode(hashList []string) string {
-	// Sort the strings:
-	sort.Strings(hashList)
-	h := sha1.New()
-	if _, err := h.Write([]byte(strings.Join(hashList, ""))); err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 // addPackage adds a package to the document
 func addPackage(doc *spdx.Document, p *pkg) {
 	spdxPkg := spdx.Package{
-		ID:                   p.ID(),
-		Name:                 p.Name,
-		Version:              p.Version,
-		FilesAnalyzed:        false,
-		HasFiles:             []string{},
-		LicenseConcluded:     p.LicenseConcluded,
-		LicenseDeclared:      p.LicenseDeclared,
-		DownloadLocation:     spdx.NOASSERTION,
-		LicenseInfoFromFiles: []string{},
-		CopyrightText:        p.Copyright,
-		Checksums:            []spdx.Checksum{},
-		ExternalRefs:         []spdx.ExternalRef{},
-		Originator:           p.Originator,
+		ID:               p.ID(),
+		Name:             p.Name,
+		Version:          p.Version,
+		FilesAnalyzed:    false,
+		LicenseConcluded: p.LicenseConcluded,
+		LicenseDeclared:  p.LicenseDeclared,
+		DownloadLocation: spdx.NOASSERTION,
+		CopyrightText:    p.Copyright,
+		Checksums:        []spdx.Checksum{},
+		ExternalRefs:     []spdx.ExternalRef{},
+		Originator:       p.Originator,
+		Supplier:         p.Supplier,
 	}
 
 	algos := []string{}
@@ -217,34 +132,6 @@ func addPackage(doc *spdx.Document, p *pkg) {
 			Algorithm: algo,
 			Value:     p.Checksums[algo],
 		})
-	}
-
-	// We need to cycle all files to add them to the package
-	// regardless if they are related else where in the doc.
-	// We also need to capture their hashes to produce the
-	// verification code
-	hashList := []string{}
-	excluded := []string{}
-	for _, rel := range p.Relationships {
-		if f, ok := rel.Target.(*file); ok {
-			spdxPkg.HasFiles = append(spdxPkg.HasFiles, f.ID())
-			if h, ok := f.Checksums["SHA1"]; ok {
-				hashList = append(hashList, h)
-			} else {
-				excluded = append(excluded, f.ID())
-			}
-		}
-	}
-
-	verificationCode := computeVerificationCode(hashList)
-	if verificationCode != "" {
-		spdxPkg.VerificationCode = &spdx.PackageVerificationCode{
-			Value: verificationCode,
-		}
-		spdxPkg.FilesAnalyzed = true
-		if len(excluded) > 0 {
-			spdxPkg.VerificationCode.ExcludedFiles = excluded
-		}
 	}
 
 	// Add the purl to the package
@@ -263,6 +150,13 @@ func addPackage(doc *spdx.Document, p *pkg) {
 			Type: "purl",
 		})
 	}
+	for _, purl := range p.ExternalRefs {
+		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
+			Category: "PACKAGE_MANAGER",
+			Locator:  purl.ToString(),
+			Type:     "purl",
+		})
+	}
 
 	doc.Packages = append(doc.Packages, spdxPkg)
 
@@ -272,8 +166,6 @@ func addPackage(doc *spdx.Document, p *pkg) {
 			continue
 		}
 		switch v := rel.Target.(type) {
-		case *file:
-			addFile(doc, v)
 		case *pkg:
 			addPackage(doc, v)
 		}
@@ -282,44 +174,6 @@ func addPackage(doc *spdx.Document, p *pkg) {
 			Type:    rel.Type,
 			Related: rel.Target.ID(),
 		})
-	}
-}
-
-func addFile(doc *spdx.Document, f *file) {
-	spdxFile := spdx.File{
-		ID:                f.ID(),
-		Name:              f.Name,
-		LicenseConcluded:  spdx.NOASSERTION,
-		FileTypes:         []string{},
-		LicenseInfoInFile: []string{},
-		Checksums:         []spdx.Checksum{},
-	}
-
-	algos := []string{}
-	for algo := range f.Checksums {
-		algos = append(algos, algo)
-	}
-	sort.Strings(algos)
-	for _, algo := range algos {
-		spdxFile.Checksums = append(spdxFile.Checksums, spdx.Checksum{
-			Algorithm: algo,
-			Value:     f.Checksums[algo],
-		})
-	}
-
-	doc.Files = append(doc.Files, spdxFile)
-
-	// Cycle the related objects and add them
-	for _, rel := range f.Relationships {
-		if sbomHasRelationship(doc, rel) {
-			continue
-		}
-		switch v := rel.Target.(type) {
-		case *file:
-			addFile(doc, v)
-		case *pkg:
-			addPackage(doc, v)
-		}
 	}
 }
 
@@ -356,10 +210,18 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		DataLicense:          "CC0-1.0",
 		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/" + hex.EncodeToString(h.Sum(nil)),
 		DocumentDescribes:    []string{},
-		Files:                []spdx.File{},
 		Packages:             []spdx.Package{},
 		Relationships:        []spdx.Relationship{},
 		ExternalDocumentRefs: []spdx.ExternalDocumentRef{},
+		LicensingInfos:       []spdx.LicensingInfo{},
+	}
+
+	for licenseID, extractedText := range spec.LicensingInfos {
+		spdxDoc.LicensingInfos = append(spdxDoc.LicensingInfos,
+			spdx.LicensingInfo{
+				LicenseID:     licenseID,
+				ExtractedText: extractedText,
+			})
 	}
 
 	if spec.License == "" {
@@ -376,10 +238,6 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		addPackage(&spdxDoc, &p)
 	}
 
-	for _, f := range doc.Files {
-		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, stringToIdentifier(f.ID()))
-		addFile(&spdxDoc, &f)
-	}
 	return &spdxDoc, nil
 }
 

@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog/slogtest"
-	"github.com/chainguard-dev/go-apk/pkg/apk"
-	"github.com/chainguard-dev/go-apk/pkg/expandapk"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/ini.v1"
 )
@@ -63,7 +63,10 @@ func (th *testHandle) Filesystem() (SCAFS, error) {
 }
 
 func (th *testHandle) Options() config.PackageOption {
-	return th.cfg.Package.Options
+	if th.cfg.Package.Options == nil {
+		return config.PackageOption{}
+	}
+	return *th.cfg.Package.Options
 }
 
 func (th *testHandle) BaseDependencies() config.Dependencies {
@@ -212,6 +215,31 @@ func TestUnstableSonames(t *testing.T) {
 		Provides: []string{"so:libaws-c-s3.so.0unstable=0"},
 	}
 
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestShbangDeps(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+	th := handleFromApk(ctx, t, "shbang-test-1-r1.apk", "shbang-test.yaml")
+	defer th.exp.Close()
+
+	want := config.Dependencies{
+		Runtime: util.Dedup([]string{
+			"cmd:bash",
+			"cmd:envDashSCmd",
+			"cmd:python3.12",
+		}),
+		Provides: nil,
+	}
+
+	got := config.Dependencies{}
+	if err := generateShbangDeps(ctx, th, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	got.Runtime = util.Dedup(got.Runtime)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}

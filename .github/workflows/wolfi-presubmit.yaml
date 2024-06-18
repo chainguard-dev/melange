@@ -15,18 +15,22 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+      - uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
         with:
-          go-version: '1.21'
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        with:
+          go-version-file: './go.mod'
           check-latest: true
 
       - name: build
         run: |
           make melange
 
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/melange
@@ -66,11 +70,15 @@ jobs:
           - ncurses
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           repository: wolfi-dev/os
 
-      - uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4.1.2
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/.melange-dir
@@ -87,7 +95,24 @@ jobs:
       - run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
 
-      - run: |
-          for f in packages/x86_64/${{ matrix.package }}-*.apk; do
-            docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
-          done
+      - name: "Retrieve Wolfi advisory data"
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          repository: "wolfi-dev/advisories"
+          path: "data/wolfi-advisories"
+
+      # this need to point to main to always get the latest action
+      - uses: wolfi-dev/actions/install-wolfictl@main # main
+
+      - name: Test installable and Scan for CVEs
+        run: |
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk
+
+            # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
+            # Do this outside of the loop in one invocation with every package.
+            wolfictl scan \
+            --advisories-repo-dir 'data/wolfi-advisories' \
+            --advisory-filter 'resolved' \
+            --require-zero \
+            packages/x86_64/${{ matrix.package }}-*.apk \
+            2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.

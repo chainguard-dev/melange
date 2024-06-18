@@ -24,13 +24,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"github.com/chainguard-dev/clog"
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
 
@@ -57,18 +59,18 @@ type Test struct {
 	CacheDir          string
 	ApkCacheDir       string
 	CacheSource       string
+	EnvFile           string
 	Runner            container.Runner
 	Debug             bool
 	DebugRunner       bool
 	Interactive       bool
-	LogPolicy         []string
+	Auth              map[string]options.Auth
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t := Test{
 		WorkspaceIgnore: ".melangeignore",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
-		LogPolicy:       []string{"builtin:stderr"},
 	}
 
 	for _, opt := range opts {
@@ -102,7 +104,9 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		t.WorkspaceDir = tmpdir
 	}
 
-	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile)
+	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
+		config.WithEnvFileForParsing(t.EnvFile),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -136,14 +140,20 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.RemoveAll(tmp)
 
+	authOpts := make([]apko_build.Option, 0, len(t.Auth))
+	for domain, auth := range t.Auth {
+		authOpts = append(authOpts, apko_build.WithAuth(domain, auth.User, auth.Pass))
+	}
+
 	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(imgConfig),
-		apko_build.WithArch(t.Arch),
-		apko_build.WithExtraKeys(t.ExtraKeys),
-		apko_build.WithExtraRepos(t.ExtraRepos),
-		apko_build.WithExtraPackages(t.ExtraTestPackages),
-		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
-		apko_build.WithTempDir(tmp),
+		append(authOpts,
+			apko_build.WithImageConfiguration(imgConfig),
+			apko_build.WithArch(t.Arch),
+			apko_build.WithExtraKeys(t.ExtraKeys),
+			apko_build.WithExtraRepos(t.ExtraRepos),
+			apko_build.WithExtraPackages(t.ExtraTestPackages),
+			apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+			apko_build.WithTempDir(tmp))...,
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
@@ -218,7 +228,7 @@ func (t *Test) OverlayBinSh(suffix string) error {
 // IsTestless returns true if the test context does not actually do any
 // testing.
 func (t *Test) IsTestless() bool {
-	return len(t.Configuration.Test.Pipeline) == 0
+	return t.Configuration.Test == nil || len(t.Configuration.Test.Pipeline) == 0
 }
 
 func (t *Test) PopulateCache(ctx context.Context) error {
@@ -334,10 +344,24 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	pkg := &t.Configuration.Package
 
-	pb := PipelineBuild{
-		Test:    t,
-		Package: pkg,
+	log.Infof("evaluating pipelines for package requirements")
+	if err := t.Compile(ctx); err != nil {
+		return fmt.Errorf("compiling test pipelines: %w", err)
 	}
+
+	// Filter out any subpackages with false If conditions.
+	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
+		result, err := shouldRun(sp.If)
+		if err != nil {
+			// This shouldn't give an error because we evaluate it in Compile.
+			panic(err)
+		}
+		if !result {
+			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
+		}
+
+		return !result
+	})
 
 	// Unless a specific architecture is requests, we run the test for all.
 	inarchs := len(pkg.TargetArchitecture) == 0
@@ -358,25 +382,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
 		t.GuestDir = guestDir
-	}
-
-	log.Infof("evaluating main pipeline for package requirements")
-	// Append the main test package to be installed unless explicitly specified
-	// by the command line.
-	if t.Package != "" {
-		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, t.Package)
-	} else {
-		t.Configuration.Test.Environment.Contents.Packages = append(t.Configuration.Test.Environment.Contents.Packages, pkg.Name)
-	}
-
-	for i := range t.Configuration.Test.Pipeline {
-		p := &t.Configuration.Test.Pipeline[i]
-		// fine to pass nil for config, since not running in container.
-		pctx := NewPipelineContext(p, &t.Configuration.Test.Environment, nil, t.PipelineDirs)
-
-		if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
-			return fmt.Errorf("unable to apply pipeline requirements: %w", err)
-		}
 	}
 
 	imgRef := ""
@@ -413,15 +418,25 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}
 
-	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, t.Configuration.Test.Environment.Environment)
+	env := apko_types.ImageConfiguration{}
+	if t.Configuration.Test != nil {
+		env = t.Configuration.Test.Environment
+	}
+	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, env)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
+	}
+
+	pr := &pipelineRunner{
+		interactive: t.Interactive,
+		debug:       t.Debug,
+		config:      cfg,
+		runner:      t.Runner,
 	}
 
 	if !t.IsTestless() {
@@ -438,14 +453,9 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}()
 		}
 
-		// run the main test pipeline
 		log.Infof("running the main test pipeline")
-		for i := range t.Configuration.Test.Pipeline {
-			p := &t.Configuration.Test.Pipeline[i]
-			pctx := NewPipelineContext(p, &t.Configuration.Test.Environment, cfg, t.PipelineDirs)
-			if _, err := pctx.Run(ctx, &pb); err != nil {
-				return fmt.Errorf("unable to run pipeline: %w", err)
-			}
+		if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
@@ -455,72 +465,49 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	// dependencies.
 	for i := range t.Configuration.Subpackages {
 		sp := &t.Configuration.Subpackages[i]
-		if len(sp.Test.Pipeline) > 0 {
-			// Append the subpackage that we're testing to be installed.
-			sp.Test.Environment.Contents.Packages = append(sp.Test.Environment.Contents.Packages, sp.Name)
-
-			// See if there are any packages needed by the 'uses' pipelines, so
-			// they get built into the container.
-			for i := range sp.Test.Pipeline {
-				p := &sp.Test.Pipeline[i]
-				// fine to pass nil for config, since not running in container.
-				pctx := NewPipelineContext(p, &sp.Test.Environment, nil, t.PipelineDirs)
-				if err := pctx.ApplyNeeds(ctx, &pb); err != nil {
-					return fmt.Errorf("unable to apply pipeline requirements: %w", err)
-				}
-			}
-
-			log.Infof("running test pipeline for subpackage %s", sp.Name)
-			pb.Subpackage = sp
-
-			guestFS, err := t.guestFS(ctx, sp.Name)
-			if err != nil {
-				return err
-			}
-
-			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
-			if err != nil {
-				return fmt.Errorf("unable to build guest: %w", err)
-			}
-			if err := t.OverlayBinSh(sp.Name); err != nil {
-				return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-			}
-			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment.Environment)
-			if err != nil {
-				return fmt.Errorf("unable to build workspace config: %w", err)
-			}
-			subCfg.Arch = t.Arch
-			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
-				return fmt.Errorf("unable to start subpackage test pod: %w", err)
-			}
-			if !t.DebugRunner {
-				defer func() {
-					if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
-						log.Warnf("unable to terminate subpackage test pod: %s", err)
-					}
-				}()
-			}
-
-			result, err := pb.ShouldRun(*sp)
-			if err != nil {
-				return err
-			}
-			if !result {
-				continue
-			}
-
-			for i := range sp.Test.Pipeline {
-				p := &sp.Test.Pipeline[i]
-				pctx := NewPipelineContext(p, &sp.Test.Environment, subCfg, t.PipelineDirs)
-				if _, err := pctx.Run(ctx, &pb); err != nil {
-					return fmt.Errorf("unable to run pipeline: %w", err)
-				}
-			}
+		if sp.Test == nil || len(sp.Test.Pipeline) == 0 {
+			continue
 		}
-		pb.Subpackage = nil
+		log.Infof("running test pipeline for subpackage %s", sp.Name)
 
-		if err := os.MkdirAll(filepath.Join(t.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
+		guestFS, err := t.guestFS(ctx, sp.Name)
+		if err != nil {
 			return err
+		}
+
+		spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
+		if err != nil {
+			return fmt.Errorf("unable to build guest: %w", err)
+		}
+		if err := t.OverlayBinSh(sp.Name); err != nil {
+			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
+		}
+		subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
+		if err != nil {
+			return fmt.Errorf("unable to build workspace config: %w", err)
+		}
+		subCfg.Arch = t.Arch
+
+		pr := &pipelineRunner{
+			interactive: t.Interactive,
+			debug:       t.Debug,
+			config:      subCfg,
+			runner:      t.Runner,
+		}
+
+		if err := t.Runner.StartPod(ctx, subCfg); err != nil {
+			return fmt.Errorf("unable to start subpackage test pod: %w", err)
+		}
+		if !t.DebugRunner {
+			defer func() {
+				if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
+					log.Warnf("unable to terminate subpackage test pod: %s", err)
+				}
+			}()
+		}
+
+		if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
@@ -547,7 +534,7 @@ func (t *Test) Summarize(ctx context.Context) {
 	t.SummarizePaths(ctx)
 }
 
-func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string, env map[string]string) (*container.Config, error) {
+func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string, imgcfg apko_types.ImageConfiguration) (*container.Config, error) {
 	log := clog.FromContext(ctx)
 	mounts := []container.BindMount{
 		{Source: t.WorkspaceDir, Destination: container.DefaultWorkspaceDir},
@@ -577,9 +564,10 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Mounts:       mounts,
 		Capabilities: caps,
 		Environment:  map[string]string{},
+		RunAs:        imgcfg.Accounts.RunAs,
 	}
 
-	for k, v := range env {
+	for k, v := range imgcfg.Environment {
 		cfg.Environment[k] = v
 	}
 

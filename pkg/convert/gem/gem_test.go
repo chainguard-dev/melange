@@ -12,6 +12,7 @@ import (
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
+	rlhttp "chainguard.dev/melange/pkg/http"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +23,16 @@ const (
 	gemMetaDir  = testDataDir + "/gem_meta"
 	archiveDir  = testDataDir + "/archive"
 )
+
+func testGemContext(base string) *GemContext {
+	return &GemContext{
+		Client: &rlhttp.RLHTTPClient{
+			Client: http.DefaultClient,
+		},
+		ToGenerate:    make(map[string]GemMeta),
+		BaseURIFormat: base,
+	}
+}
 
 func TestGetGemMeta(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -48,8 +59,7 @@ func TestGetGemMeta(t *testing.T) {
 	// Iterate through all gem metadata files and ensure the server response is
 	// the same as the file.
 	for _, gem := range gems {
-		gemctx, err := New()
-		assert.NoError(t, err)
+		gemctx := testGemContext(server.URL + "/%s.json")
 
 		// Read the gem meta into
 		data, err := os.ReadFile(filepath.Join(gemMetaDir, gem.Name()))
@@ -93,10 +103,7 @@ func TestFindDependencies(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, gems)
 
-	gemctx, err := New()
-	assert.NoError(t, err)
-
-	gemctx.BaseURIFormat = server.URL + "/%s.json"
+	gemctx := testGemContext(server.URL + "/%s.json")
 	gemctx.ToCheck = []string{"async"}
 
 	// Build list of dependencies
@@ -132,8 +139,7 @@ func TestGenerateManifest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	gemctx, err := New()
-	assert.NoError(t, err)
+	gemctx := testGemContext(server.URL + "/%s.json")
 
 	gemctx.RubyVersion = DefaultRubyVersion
 
@@ -240,8 +246,7 @@ func TestGeneratePackage(t *testing.T) {
 		},
 	}
 
-	gemctx, err := New()
-	assert.NoError(t, err)
+	gemctx := testGemContext("unused")
 
 	got := gemctx.generatePackage(g)
 	assert.Equal(t, expected, got)
@@ -265,8 +270,7 @@ func TestGenerateEnvironment(t *testing.T) {
 		},
 	}
 
-	gemctx, err := New()
-	assert.NoError(t, err)
+	gemctx := testGemContext("unused")
 
 	// Add additionalReposities and additionalKeyrings
 	gemctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"}

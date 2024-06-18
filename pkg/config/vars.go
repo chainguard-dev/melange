@@ -37,6 +37,7 @@ const (
 	SubstitutionCrossTripletRustGlibc = "${{cross.triplet.rust.glibc}}"
 	SubstitutionCrossTripletRustMusl  = "${{cross.triplet.rust.musl}}"
 	SubstitutionBuildArch             = "${{build.arch}}"
+	SubstitutionBuildGoArch           = "${{build.goarch}}"
 )
 
 // Get variables from configuration and return them in a map

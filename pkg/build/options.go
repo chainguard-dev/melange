@@ -20,6 +20,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -298,14 +299,6 @@ func WithRemove(remove bool) Option {
 	}
 }
 
-// WithLogPolicy sets the logging policy to use during builds.
-func WithLogPolicy(policy []string) Option {
-	return func(b *Build) error {
-		b.LogPolicy = policy
-		return nil
-	}
-}
-
 // WithRunner specifies what runner to use to wrap
 // the build environment.
 func WithRunner(runner container.Runner) Option {
@@ -347,6 +340,24 @@ func WithTimeout(dur time.Duration) Option {
 func WithExtraPackages(extraPackages []string) Option {
 	return func(b *Build) error {
 		b.ExtraPackages = extraPackages
+		return nil
+	}
+}
+
+func WithAuth(domain, user, pass string) Option {
+	return func(b *Build) error {
+		if b.Auth == nil {
+			b.Auth = make(map[string]options.Auth)
+		}
+		b.Auth[domain] = options.Auth{User: user, Pass: pass}
+		return nil
+	}
+}
+
+// WithLibcFlavorOverride sets the libc flavor for the build.
+func WithLibcFlavorOverride(libc string) Option {
+	return func(b *Build) error {
+		b.Libc = libc
 		return nil
 	}
 }

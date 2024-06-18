@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -29,7 +30,6 @@ import (
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/container/dagger"
 	"chainguard.dev/melange/pkg/container/docker"
-	"chainguard.dev/melange/pkg/container/k8s"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -63,7 +63,6 @@ func Build() *cobra.Command {
 	var varsFile string
 	var purlNamespace string
 	var buildOption []string
-	var logPolicy []string
 	var createBuildLog bool
 	var debug bool
 	var debugRunner bool
@@ -74,6 +73,7 @@ func Build() *cobra.Command {
 	var cpu, memory string
 	var timeout time.Duration
 	var extraPackages []string
+	var libc string
 
 	var traceFile string
 
@@ -146,12 +146,12 @@ func Build() *cobra.Command {
 				build.WithDebugRunner(debugRunner),
 				build.WithInteractive(interactive),
 				build.WithRemove(remove),
-				build.WithLogPolicy(logPolicy),
 				build.WithRunner(r),
 				build.WithFailOnLintWarning(failOnLintWarning),
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
+				build.WithLibcFlavorOverride(libc),
 			}
 
 			if len(args) > 0 {
@@ -164,6 +164,17 @@ func Build() *cobra.Command {
 
 			if sourceDir != "" {
 				options = append(options, build.WithSourceDir(sourceDir))
+			}
+
+			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
+				// Fine, no auth.
+			} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
+				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
+			} else if parts[0] != "basic" {
+				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
+			} else {
+				domain, user, pass := parts[1], parts[2], parts[3]
+				options = append(options, build.WithAuth(domain, user, pass))
 			}
 
 			return BuildCmd(ctx, archs, options...)
@@ -189,8 +200,8 @@ func Build() *cobra.Command {
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	cmd.Flags().StringVar(&libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
-	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
@@ -216,8 +227,6 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 			return container.BubblewrapRunner(), nil
 		case "docker":
 			return docker.NewRunner(ctx)
-		case "kubernetes":
-			return k8s.NewRunner(ctx)
 		case "experimentaldagger":
 			return dagger.NewRunner(ctx)
 		default:

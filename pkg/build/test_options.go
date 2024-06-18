@@ -16,6 +16,7 @@ package build
 
 import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -142,14 +143,6 @@ func WithTestBinShOverlay(binShOverlay string) TestOption {
 	}
 }
 
-// WithTestLogPolicy sets the logging policy to use during tests.
-func WithTestLogPolicy(policy []string) TestOption {
-	return func(t *Test) error {
-		t.LogPolicy = policy
-		return nil
-	}
-}
-
 // WithTestRunner specifies what runner to use to wrap
 // the test environment.
 func WithTestRunner(runner container.Runner) TestOption {
@@ -179,6 +172,27 @@ func WithTestPackageCacheDir(apkCacheDir string) TestOption {
 func WithExtraTestPackages(extraTestPackages []string) TestOption {
 	return func(t *Test) error {
 		t.ExtraTestPackages = extraTestPackages
+		return nil
+	}
+}
+
+// WithTestEnvFile specifies an environment file to use to preload the build
+// environment.  It should contain the CFLAGS and LDFLAGS used by the C
+// toolchain as well as any other desired environment settings for the
+// build environment.
+func WithTestEnvFile(envFile string) TestOption {
+	return func(t *Test) error {
+		t.EnvFile = envFile
+		return nil
+	}
+}
+
+func WithTestAuth(domain, user, pass string) TestOption {
+	return func(t *Test) error {
+		if t.Auth == nil {
+			t.Auth = make(map[string]options.Auth)
+		}
+		t.Auth[domain] = options.Auth{User: user, Pass: pass}
 		return nil
 	}
 }

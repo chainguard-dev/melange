@@ -17,6 +17,7 @@ package sca
 import (
 	"bytes"
 	"context"
+	"debug/buildinfo"
 	"debug/elf"
 	"fmt"
 	"io"
@@ -26,8 +27,8 @@ import (
 	"strings"
 	"unicode"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"github.com/chainguard-dev/clog"
-	apkofs "github.com/chainguard-dev/go-apk/pkg/fs"
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
@@ -85,7 +86,17 @@ func allowedPrefix(path string, prefixes []string) bool {
 	return false
 }
 
-var cmdPrefixes = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
+func isInDir(path string, dirs []string) bool {
+	mydir := filepath.Dir(path)
+	for _, d := range dirs {
+		if mydir == d || mydir+"/" == d {
+			return true
+		}
+	}
+	return false
+}
+
+var pathBinDirs = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
 
 func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -115,7 +126,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		if mode.Perm()&0555 == 0555 {
-			if allowedPrefix(path, cmdPrefixes) {
+			if isInDir(path, pathBinDirs) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
@@ -354,6 +365,27 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 		}
 
+		// check if it is a go binary
+		buildinfo, err := buildinfo.Read(seekableFile)
+		if err != nil {
+			return nil
+		}
+		var cgo, boringcrypto bool
+		for _, setting := range buildinfo.Settings {
+			if setting.Key == "CGO_ENABLED" && setting.Value == "1" {
+				cgo = true
+			}
+			if setting.Key == "GOEXPERIMENT" && setting.Value == "boringcrypto" {
+				boringcrypto = true
+			}
+		}
+		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
+		if !hdl.Options().NoDepends && cgo && boringcrypto {
+			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
+			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
+			generated.Runtime = append(generated.Runtime, "so:libssl.so.3")
+		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -424,14 +456,19 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		pcName := filepath.Base(path)
 		pcName, _ = strings.CutSuffix(pcName, ".pc")
 
+		// TODO: https://github.com/chainguard-dev/melange/issues/1172
+		sigh := func(ver string) string {
+			return strings.TrimSuffix(ver, "-release")
+		}
+
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
 		if !hdl.Options().NoProvides {
 			if allowedPrefix(path, pcDirs) {
 				log.Infof("  found pkg-config %s for %s", pcName, path)
-				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
 			} else {
 				log.Infof("  found vendored pkg-config %s for %s", pcName, path)
-				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, apkVersion))
+				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
 			}
 		}
 
@@ -462,7 +499,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 	return nil
 }
 
-// generatePythonDeps generates a python3~$VERSION dependency for packages which ship
+// generatePythonDeps generates a python-3.X-base dependency for packages which ship
 // Python modules.
 func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -520,10 +557,8 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 		}
 	}
 
-	// We use the python3 name here instead of the python-3 name so that we can be
-	// compatible with Alpine and Adelie.  Only Wolfi provides the python-3 name.
-	log.Infof("  found python module, generating python3~%s dependency", pythonModuleVer)
-	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python3~%s", pythonModuleVer))
+	log.Infof("  found python module, generating python-%s-base dependency", pythonModuleVer)
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python-%s-base", pythonModuleVer))
 
 	return nil
 }
@@ -546,6 +581,99 @@ func sonameLibver(soname string) string {
 	return libver
 }
 
+func getShbang(fp fs.File) (string, error) {
+	// python3 and sh are symlinks and generateCmdProviders currently only considers
+	// regular files. Since nothing will fulfill such a depend, do not generate one.
+	ignores := map[string]bool{"python3": true, "python": true, "sh": true}
+
+	buf := make([]byte, 80)
+	blen, err := io.ReadFull(fp, buf)
+	if err == io.EOF {
+		return "", nil
+	} else if err == io.ErrUnexpectedEOF {
+		if blen < 2 {
+			return "", nil
+		}
+	} else if err != nil {
+		return "", err
+	}
+
+	if !bytes.HasPrefix(buf, []byte("#!")) {
+		return "", nil
+	}
+
+	toks := strings.Fields(string(buf[2 : blen-2]))
+	bin := toks[0]
+
+	// if #! is '/usr/bin/env foo', then use next arg as the dep
+	if bin == "/usr/bin/env" {
+		if len(toks) == 1 {
+			return "", fmt.Errorf("a shbang of only '/usr/bin/env'")
+		} else if len(toks) == 2 {
+			bin = toks[1]
+		} else if len(toks) >= 3 && toks[1] == "-S" && !strings.HasPrefix(toks[2], "-") {
+			// we really need a env argument parser to figure out what the next cmd is.
+			// special case handle /usr/bin/env -S prog [arg1 [arg2 [...]]]
+			bin = toks[2]
+		} else {
+			return "", fmt.Errorf("a shbang of only '/usr/bin/env' with multiple arguments (%d %s)", len(toks), strings.Join(toks, " "))
+		}
+	}
+
+	if isIgnored := ignores[filepath.Base(bin)]; isIgnored {
+		return "", nil
+	}
+
+	return bin, nil
+}
+
+func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for shbang deps...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
+	cmds := map[string]string{}
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasPrefix(path, "usr/bin/") && !strings.HasPrefix(path, "bin/") {
+			return nil
+		}
+
+		if d.Type().IsDir() {
+			return nil
+		}
+
+		if fp, err := fsys.Open(path); err == nil {
+			shbang, err := getShbang(fp)
+			if err != nil {
+				log.Warnf("Error reading shbang from %s: %v", path, err)
+			} else if shbang != "" {
+				cmds[filepath.Base(shbang)] = path
+			}
+			fp.Close()
+		} else {
+			log.Infof("Failed to open %s: %v", path, err)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	for base, path := range cmds {
+		log.Infof("Added shbang dep cmd:%s for %s", base, path)
+		generated.Runtime = append(generated.Runtime, "cmd:"+base)
+	}
+
+	return nil
+}
+
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
@@ -557,6 +685,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generateCmdProviders,
 		generatePkgConfigDeps,
 		generatePythonDeps,
+		generateShbangDeps,
 	}
 
 	for _, gen := range generators {

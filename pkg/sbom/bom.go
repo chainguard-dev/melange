@@ -17,11 +17,14 @@
 // data) designed to be transcoded to specific formats.
 package sbom
 
-import "fmt"
+import (
+	"fmt"
+
+	purl "github.com/package-url/packageurl-go"
+)
 
 type bom struct {
 	Packages []pkg
-	Files    []file
 }
 
 type element interface {
@@ -43,6 +46,7 @@ type pkg struct {
 	Arch             string
 	Checksums        map[string]string
 	Relationships    []relationship
+	ExternalRefs     []purl.PackageURL
 }
 
 func (p *pkg) ID() string {
@@ -50,21 +54,6 @@ func (p *pkg) ID() string {
 		return fmt.Sprintf("SPDXRef-Package-%s", p.id)
 	}
 	return "SPDXRef-Package-" + p.Name
-}
-
-type file struct {
-	id            string
-	Name          string
-	Version       string
-	Checksums     map[string]string
-	Relationships []relationship
-}
-
-func (f *file) ID() string {
-	if f.id != "" {
-		return fmt.Sprintf("SPDXRef-File-%s", f.id)
-	}
-	return "SPDXRef-File-" + f.Name
 }
 
 type relationship struct {

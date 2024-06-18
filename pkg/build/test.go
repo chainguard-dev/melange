@@ -150,7 +150,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 			apko_build.WithImageConfiguration(imgConfig),
 			apko_build.WithArch(t.Arch),
 			apko_build.WithExtraKeys(t.ExtraKeys),
-			apko_build.WithExtraRepos(t.ExtraRepos),
+			apko_build.WithExtraBuildRepos(t.ExtraRepos),
 			apko_build.WithExtraPackages(t.ExtraTestPackages),
 			apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 			apko_build.WithTempDir(tmp))...,

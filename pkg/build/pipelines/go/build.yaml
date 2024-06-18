@@ -94,7 +94,7 @@ inputs:
   tidy:
     description: |
       If true, "go mod tidy" will run before the build
-    default: "false"
+    default: "true"
 
 pipeline:
   - runs: |

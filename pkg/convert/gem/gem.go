@@ -286,7 +286,7 @@ func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 	}
 
 	if len(c.AdditionalRepositories) > 0 {
-		env.Contents.Repositories = append(env.Contents.Repositories, c.AdditionalRepositories...)
+		env.Contents.BuildRepositories = append(env.Contents.BuildRepositories, c.AdditionalRepositories...)
 	}
 
 	if len(c.AdditionalKeyrings) > 0 {

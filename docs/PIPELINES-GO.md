@@ -1,11 +1,11 @@
 # Built-in go Pipelines
 
-Melange includes built-in pipelines to compile go projects. The first one, 
+Melange includes built-in pipelines to compile go projects. The first one,
 `go/build` gives authors more control on the compiler invocation while
 `go/install` focuses on simplicity.
 
 To get started quickly, we offer two working examples:
-[go-build.yaml](https://github.com/chainguard-dev/melange/blob/main/examples/go-build.yaml) 
+[go-build.yaml](https://github.com/chainguard-dev/melange/blob/main/examples/go-build.yaml)
 and
 [go-install.yaml](https://github.com/chainguard-dev/melange/blob/main/examples/go-install.yaml)
 
@@ -40,13 +40,13 @@ pipeline:
       version: HEAD
 ```
 
-(:bulb: Experiment with this code, 
+(:bulb: Experiment with this code,
 [download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/go-install.yaml))
 
 ## Building golang projects with `go/build`
 
 The `go/build` pipeline is a declarative interface to the `go build` command.
-This pipeline executes `go build` on already installed or cloned go projects. It 
+This pipeline executes `go build` on already installed or cloned go projects. It
 can compile more than one package and the collection and installation of
 built artifacts is manual.
 
@@ -80,7 +80,7 @@ pipeline:
       output: hello
 ```
 
-(:bulb: Experiment with this code, 
+(:bulb: Experiment with this code,
 [download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/go-build.yaml))
 
 ## Build Parameters
@@ -93,7 +93,7 @@ you can define the following values:
   tags:
     description: |
       A comma-separated list of build tags to pass to the go compiler
-      
+
   ldflags:
     description:
       List of [pattern=]arg to pass to the go compiler with -ldflags
@@ -105,9 +105,9 @@ you can define the following values:
 
 ## Updating dependencies with `go/bump`
 
-The `go/bump` pipeline is a declarative interface to the `GoBump` 
-[package](https://github.com/chainguard-dev/gobump). GoBump is a simple 
-command-line tool written in Go that allows you to update the versions 
+The `go/bump` pipeline is a declarative interface to the `GoBump`
+[package](https://github.com/chainguard-dev/gobump). GoBump is a simple
+command-line tool written in Go that allows you to update the versions
 of your Go dependencies.
 
 Here's a sample melange configuration file cloning and running the same
@@ -145,7 +145,7 @@ pipeline:
       output: hello
 ```
 
-(:bulb: Experiment with this code, 
+(:bulb: Experiment with this code,
 [download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/go-bump.yaml))
 
 For the most up to date supported features check the
@@ -155,5 +155,5 @@ and
 [bump](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/bump.yaml),
 pipeline definitions. Feel free to request more features in
 the built-in pipelines by
-[filing a new issue](https://github.com/chainguard-dev/melange/issues/new) in 
+[filing a new issue](https://github.com/chainguard-dev/melange/issues/new) in
 the melange repository!

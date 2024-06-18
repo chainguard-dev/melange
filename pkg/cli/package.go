@@ -88,7 +88,7 @@ func Package() *cobra.Command {
 				{
 					fs := memfs.New()
 					var ctrlbuf bytes.Buffer
-					template.Must(template.New("control").Parse(controlTemplate)).Execute(&ctrlbuf, controlSection{
+					if err := template.Must(template.New("control").Parse(controlTemplate)).Execute(&ctrlbuf, controlSection{
 						PackageName:      name,
 						OriginName:       name, // TODO: This should be configurable.
 						Version:          version,
@@ -104,7 +104,9 @@ func Package() *cobra.Command {
 						Replaces:         replaces,
 						ProvidesPriority: providesPriority,
 						ReplacesPriority: replacesPriority,
-					})
+					}); err != nil {
+						return fmt.Errorf("failed to execute control template: %w", err)
+					}
 
 					if err := fs.WriteFile(".PKGINFO", ctrlbuf.Bytes(), 0666); err != nil {
 						return fmt.Errorf("failed to write .PKGINFO: %w", err)

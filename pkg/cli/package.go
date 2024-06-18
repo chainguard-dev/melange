@@ -15,19 +15,23 @@
 package cli
 
 import (
+	"archive/tar"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
+	stdfs "io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"text/template"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/apko/pkg/apk/tarball"
 	"github.com/chainguard-dev/clog"
+	"github.com/pkg/errors"
 	"github.com/psanford/memfs"
 	"github.com/spf13/cobra"
 )
@@ -44,9 +48,54 @@ func Package() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
-			fs := fs.DirFS(args[0])
 
 			builddate := time.Now() // TODO: This should be configurable.
+			if os.Getenv("SOURCE_DATE_EPOCH") != "" {
+				epoch, err := strconv.ParseInt(os.Getenv("SOURCE_DATE_EPOCH"), 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
+				}
+				builddate = time.Unix(epoch, 0)
+			}
+
+			var fsys stdfs.FS
+			{
+				if fi, err := os.Stat(args[0]); err != nil {
+					return fmt.Errorf("failed to stat input: %w", err)
+				} else if fi.IsDir() {
+					fsys = fs.DirFS(args[0])
+				} else {
+					in, err := os.Open(args[0])
+					if err != nil {
+						return fmt.Errorf("failed to open input: %w", err)
+					}
+					defer in.Close()
+
+					// Is it a tar?
+					tr := tar.NewReader(in)
+					if _, err := tr.Next(); err == nil {
+						// It's a tar.
+						if _, err := in.Seek(0, io.SeekStart); err != nil {
+							return fmt.Errorf("failed to seek input: %w", err)
+						}
+						return errors.New("tarball input not yet supported")
+						// TODO: fsys = tarfs.FS(tr) <-- this is internal in apko
+					} else {
+						// Otherwise, assume it's a file.
+						fsys = memfs.New()
+						all, err := io.ReadAll(in)
+						if err != nil {
+							return fmt.Errorf("failed to read input: %w", err)
+						}
+						if err := fsys.(*memfs.FS).MkdirAll(filepath.Dir(args[0]), fi.Mode()); err != nil {
+							return fmt.Errorf("failed to create output directory: %w", err)
+						}
+						if err := fsys.(*memfs.FS).WriteFile(args[0], all, fi.Mode()); err != nil {
+							return fmt.Errorf("failed to write input: %w", err)
+						}
+					}
+				}
+			}
 
 			// Data section.
 			// Write and buffer this once first, so we can calculate the hash.
@@ -64,7 +113,7 @@ func Package() *cobra.Command {
 
 				digest := sha256.New()
 				mw := io.MultiWriter(&databuf, digest)
-				if err := tc.WriteTar(ctx, mw, fs, fs); err != nil {
+				if err := tc.WriteTar(ctx, mw, fsys, fsys); err != nil {
 					return fmt.Errorf("failed to write data section: %w", err)
 				}
 				datahash = hex.EncodeToString(digest.Sum(nil))

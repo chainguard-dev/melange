@@ -68,9 +68,9 @@ pipeline:
 
           local flags="" depthflag="" dest_fullpath="" workdir=""
           local remote="origin" rcfile="" rc=""
-          [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
           [ -n "$branch" ] && flags="--branch=$branch"
           [ -n "$tag" ] && flags="--branch=$tag"
+          [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
 
           [ "$depth" = "-1" ] || depthflag="--depth=$depth"
 

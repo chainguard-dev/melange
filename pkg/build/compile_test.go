@@ -42,3 +42,27 @@ func TestCompileEmpty(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestInheritWorkdir(t *testing.T) {
+	build := &Build{
+		Configuration: config.Configuration{
+			Pipeline: []config.Pipeline{{
+				WorkDir: "/work",
+				Pipeline: []config.Pipeline{{}, {
+					WorkDir: "/do-not-inherit",
+				}},
+			}},
+		},
+	}
+
+	if err := build.Compile(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got, want := build.Configuration.Pipeline[0].Pipeline[0].WorkDir, "/work"; want != got {
+		t.Fatalf("workdir[0]: want %q, got %q", want, got)
+	}
+	if got, want := build.Configuration.Pipeline[0].Pipeline[1].WorkDir, "/do-not-inherit"; want != got {
+		t.Fatalf("workdir[1]: want %q, got %q", want, got)
+	}
+}

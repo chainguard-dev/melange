@@ -285,6 +285,11 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		p := &pipeline.Pipeline[i]
 		p.With = util.RightJoinMap(mutated, p.With)
 
+		// Inherit workdir from parent pipeline unless overridden.
+		if p.WorkDir == "" {
+			p.WorkDir = pipeline.WorkDir
+		}
+
 		if err := c.compilePipeline(ctx, sm, p); err != nil {
 			return fmt.Errorf("compiling Pipeline[%d]: %w", i, err)
 		}

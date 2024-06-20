@@ -40,10 +40,6 @@ func (t *Test) Compile(ctx context.Context) error {
 		return err
 	}
 
-	c := &Compiled{
-		PipelineDirs: t.PipelineDirs,
-	}
-
 	ignore := &Compiled{
 		PipelineDirs: t.PipelineDirs,
 	}
@@ -74,23 +70,25 @@ func (t *Test) Compile(ctx context.Context) error {
 		test := &Compiled{
 			PipelineDirs: t.PipelineDirs,
 		}
-		if err := c.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
-			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
-		}
 
 		te := &cfg.Subpackages[i].Test.Environment.Contents
 
 		// Append the subpackage that we're testing to be installed.
 		te.Packages = append(te.Packages, sp.Name)
 
+		if err := test.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
+			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
+		}
+
 		// Append anything this subpackage test needs.
 		te.Packages = append(te.Packages, test.Needs...)
 	}
 
 	if cfg.Test != nil {
-		if err := c.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
-			return fmt.Errorf("compiling main pipelines: %w", err)
+		test := &Compiled{
+			PipelineDirs: t.PipelineDirs,
 		}
+
 		te := &t.Configuration.Test.Environment.Contents
 
 		// Append the main test package to be installed unless explicitly specified by the command line.
@@ -100,8 +98,12 @@ func (t *Test) Compile(ctx context.Context) error {
 			te.Packages = append(te.Packages, t.Configuration.Package.Name)
 		}
 
+		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
+			return fmt.Errorf("compiling main pipelines: %w", err)
+		}
+
 		// Append anything the main package test needs.
-		te.Packages = append(te.Packages, c.Needs...)
+		te.Packages = append(te.Packages, test.Needs...)
 	}
 
 	return nil

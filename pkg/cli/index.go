@@ -24,6 +24,7 @@ import (
 // Index is a constructor for a cobra.Command which wraps the IndexCmd function.
 func Index() *cobra.Command {
 	var apkIndexFilename string
+	var apkIndexJsonFilename string
 	var sourceIndexFilename string
 	var expectedArch string
 	var signingKey string
@@ -38,6 +39,7 @@ func Index() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := []index.Option{
 				index.WithIndexFile(apkIndexFilename),
+				index.WithIndexJsonFile(apkIndexJsonFilename),
 				index.WithSourceIndexFile(sourceIndexFilename),
 				index.WithExpectedArch(expectedArch),
 				index.WithMergeIndexFileFlag(mergeIndexEntries),
@@ -50,6 +52,8 @@ func Index() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&apkIndexFilename, "output", "o", "APKINDEX.tar.gz", "Output generated index to FILE")
+	// No default for now, as it's too new and is unexpected
+	cmd.Flags().StringVarP(&apkIndexJsonFilename, "jsonoutput", "j", "", "Output generated JSON index to FILE")
 	cmd.Flags().StringVarP(&sourceIndexFilename, "source", "s", "APKINDEX.tar.gz", "Source FILE to use for pre-existing index entries")
 	cmd.Flags().StringVarP(&expectedArch, "arch", "a", "", "Index only packages which match the expected architecture")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "Key to use for signing the index (optional)")

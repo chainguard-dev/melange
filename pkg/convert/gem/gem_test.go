@@ -171,7 +171,7 @@ func TestGenerateManifest(t *testing.T) {
 	assert.Equal(t, "MIT", got.Package.Copyright[0].License)
 
 	// Check Environment
-	assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.Repositories)
+	assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.BuildRepositories)
 	assert.Equal(t, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}, got.Environment.Contents.Keyring)
 	assert.Equal(t, []string{
 		"build-base",
@@ -257,8 +257,8 @@ func TestGeneratePackage(t *testing.T) {
 func TestGenerateEnvironment(t *testing.T) {
 	expected := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
-			Repositories: []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"},
-			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"},
+			BuildRepositories: []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"},
+			Keyring:           []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"},
 			Packages: []string{
 				"build-base",
 				"busybox",

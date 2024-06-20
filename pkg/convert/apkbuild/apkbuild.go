@@ -437,7 +437,7 @@ func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyring
 		},
 	}
 
-	env.Contents.Repositories = append(env.Contents.Repositories, additionalRepositories...)
+	env.Contents.BuildRepositories = append(env.Contents.BuildRepositories, additionalRepositories...)
 	env.Contents.Keyring = append(env.Contents.Keyring, additionalKeyrings...)
 	for _, makedepend := range c.Apkbuild.Makedepends {
 		env.Contents.Packages = append(env.Contents.Packages, makedepend.Pkgname)

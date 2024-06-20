@@ -810,6 +810,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 			thingToAdd := Subpackage{
 				Name:        replacer.Replace(sp.Name),
 				Description: replacer.Replace(sp.Description),
+				Commit:      detectedCommit,
 				Dependencies: Dependencies{
 					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
 					Provides:         replaceAll(replacer, sp.Dependencies.Provides),

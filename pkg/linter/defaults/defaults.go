@@ -34,6 +34,7 @@ var defaultLinters = []string{
 	"dev",
 	"documentation",
 	"empty",
+	"danglingsymlink",
 	"opt",
 	"object",
 	"python/docs",

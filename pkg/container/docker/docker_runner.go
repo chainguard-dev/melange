@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -31,7 +32,6 @@ import (
 	mcontainer "chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
@@ -226,8 +226,20 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...strin
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
-		User:         cfg.RunAs,
+	// Default to the current user's UID
+	// Use a configured UID if it's not empty
+	currentUser, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("failed to get current user: %w", err)
+	}
+
+	uid := currentUser.Uid
+	if cfg.RunAs != "" {
+		uid = cfg.RunAs
+	}
+
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+		User:         uid,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -239,7 +251,7 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...strin
 		return fmt.Errorf("failed to create exec task inside pod: %w", err)
 	}
 
-	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, types.ExecStartCheck{
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
 		Tty: false,
 	})
 	if err != nil {
@@ -278,7 +290,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, args ...str
 	h, w := outterm.GetTtySize()
 	size := [2]uint{h, w}
 
-	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, types.ExecConfig{
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -292,7 +304,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, args ...str
 		return fmt.Errorf("failed to create debug exec task inside pod: %w", err)
 	}
 
-	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, types.ExecStartCheck{
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
 		ConsoleSize: &size,
 		Tty:         true,
 	})

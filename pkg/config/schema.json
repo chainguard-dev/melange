@@ -361,6 +361,12 @@
     },
     "ImageContents": {
       "properties": {
+        "build_repositories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "repositories": {
           "items": {
             "type": "string"

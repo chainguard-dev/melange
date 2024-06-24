@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -132,6 +133,12 @@ var linterMap = map[string]linter{
 		FailOnError: false,
 		Explain:     "Properly strip all binaries in the pipeline",
 	},
+	"infodir": {
+		LinterFunc:  infodirLinter,
+		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
+		FailOnError: true,
+		Explain:     "Remove /usr/share/info/dir from the package (run split/infodir)",
+	},
 }
 
 var postLinterMap = map[string]postLinter{
@@ -161,24 +168,13 @@ var postLinterMap = map[string]postLinter{
 	},
 }
 
-var isDevRegex = regexp.MustCompile("^dev/")
-var isOptRegex = regexp.MustCompile("^opt/")
-var isSrvRegex = regexp.MustCompile("^srv/")
-var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
-var isUsrLocalRegex = regexp.MustCompile("^usr/local/")
-var isVarEmptyRegex = regexp.MustCompile("^var/empty/")
-var isCompatPackageRegex = regexp.MustCompile("-compat$")
-var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
-var isSbomPathRegex = regexp.MustCompile("^var/lib/db/sbom/")
-var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
-
 // Determine if a path should be ignored by a linter
 func isIgnoredPath(path string) bool {
-	return isSbomPathRegex.MatchString(path)
+	return strings.HasPrefix(path, "var/lib/db/sbom/")
 }
 
 func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isDevRegex.MatchString(path) {
+	if strings.HasPrefix(path, "dev/") {
 		return fmt.Errorf("package writes to /dev")
 	}
 
@@ -186,7 +182,7 @@ func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 }
 
 func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isOptRegex.MatchString(path) {
+	if strings.HasPrefix(path, "opt/") {
 		return fmt.Errorf("package writes to /opt")
 	}
 
@@ -199,6 +195,8 @@ func objectLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 
 	return nil
 }
+
+var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 
 func documentationLinter(lc LinterContext, path string, _ fs.DirEntry) error {
 	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(lc.pkgname, "-doc") {
@@ -228,39 +226,44 @@ func isSetUIDOrGIDLinter(_ LinterContext, path string, d fs.DirEntry) error {
 }
 
 func sbomLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isSbomPathRegex.MatchString(path) {
+	if strings.HasPrefix(path, "var/lib/db/sbom/") {
 		return fmt.Errorf("package writes to /var/lib/db/sbom")
 	}
+	return nil
+}
 
+func infodirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+	if strings.HasPrefix(path, "usr/share/info/dir") {
+		return fmt.Errorf("package writes to /usr/share/info/dir")
+	}
 	return nil
 }
 
 func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isSrvRegex.MatchString(path) {
+	if strings.HasPrefix(path, "srv/") {
 		return fmt.Errorf("package writes to /srv")
 	}
-
 	return nil
 }
+
+var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 
 func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	if isTempDirRegex.MatchString(path) {
 		return fmt.Errorf("package writes to a temp dir")
 	}
-
 	return nil
 }
 
 func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isUsrLocalRegex.MatchString(path) {
+	if strings.HasPrefix(path, "usr/local/") {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
-
 	return nil
 }
 
 func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if isVarEmptyRegex.MatchString(path) {
+	if strings.HasPrefix(path, "var/empty/") {
 		return fmt.Errorf("package writes to /var/empty")
 	}
 
@@ -294,6 +297,8 @@ func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
 }
 
 var elfMagic = []byte{'\x7f', 'E', 'L', 'F'}
+
+var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 
 func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
 	if isIgnoredPath(path) {
@@ -529,7 +534,7 @@ func CheckValidLinters(check []string) []string {
 
 func (lctx LinterContext) lintPackageFs(warn func(error), linters []string, linterClass linter_defaults.LinterClass) error {
 	// If this is a compat package, do nothing.
-	if isCompatPackageRegex.MatchString(lctx.pkgname) {
+	if strings.HasSuffix(lctx.pkgname, "-compat") {
 		return nil
 	}
 
@@ -606,13 +611,27 @@ func LintBuild(packageName string, path string, warn func(error), linters []stri
 
 // Lint the given APK at the given path
 func LintApk(ctx context.Context, path string, warn func(error), linters []string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("linting apk %q: %w", path, err)
+	var r io.Reader
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		resp, err := http.Get(path)
+		if err != nil {
+			return fmt.Errorf("getting apk %q: %w", path, err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("getting apk %q: %s", path, resp.Status)
+		}
+		defer resp.Body.Close()
+		r = resp.Body
+	} else {
+		file, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("linting apk %q: %w", path, err)
+		}
+		defer file.Close()
+		r = file
 	}
-	defer file.Close()
 
-	exp, err := expandapk.ExpandApk(ctx, file, "")
+	exp, err := expandapk.ExpandApk(ctx, r, "")
 	if err != nil {
 		return fmt.Errorf("expanding apk %q: %w", path, err)
 	}

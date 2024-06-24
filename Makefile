@@ -151,6 +151,10 @@ test: melange ## Run go test
 	 ./melange build --generate-index=false pkg/sca/testdata/go-fips-bin/go-fips-bin.yaml --arch=`uname -m` --source-dir=pkg/sca/testdata/go-fips-bin/ --out-dir pkg/sca/testdata/go-fips-bin/packages/ --log-level error
 	go test -tags e2e ./... -race
 
+.PHONY: test-e2e
+test-e2e:
+	cd e2e-tests && ./run-tests
+
 .PHONY: clean
 clean: ## Clean the workspace
 	rm -rf melange

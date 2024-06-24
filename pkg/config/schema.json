@@ -37,13 +37,6 @@
     },
     "Checks": {
       "properties": {
-        "enabled": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "Optional: enable these linters that are not enabled by default."
-        },
         "disabled": {
           "items": {
             "type": "string"

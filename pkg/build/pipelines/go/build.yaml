@@ -91,8 +91,15 @@ inputs:
       The -buildmode flag value. See "go help buildmode" for more information.
     default: "default"
 
+  tidy:
+    description: |
+      If true, "go mod tidy" will run before the build
+    default: "false"
+
 pipeline:
   - runs: |
+      "${{inputs.tidy}}" && go mod tidy
+      
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"

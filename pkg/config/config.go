@@ -109,7 +109,7 @@ type Package struct {
 	// lifecycle, triggered by configurable events
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`

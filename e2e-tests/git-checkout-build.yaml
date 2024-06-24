@@ -23,9 +23,6 @@ pipeline:
 
       ./create-git-repo "$repo"
       touch "$repo/git-daemon-export-ok"
-  - runs: |
-      vr() { echo "$@" 1>&2; "$@"; }
-      vr git clone "${{vars.giturl}}" my3.git
   - name: "standard tag on branch"
     uses: git-checkout
     working-directory: standard
@@ -68,26 +65,28 @@ pipeline:
       [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
       cd ../..
       rm -R destination-base
-  - name: "depth 1"
+  - name: "depth positive 1"
     uses: git-checkout
-    working-directory: depth-1
+    working-directory: depth-positive-1
     with:
+      depth: 1
       repository: ${{vars.giturl}}
       tag: 2.0
       expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
-  - name: "check depth 1"
-    working-directory: depth-1
+  - name: "check depth positive 1"
+    working-directory: depth-positive-1
     runs: |
       if out=$(git show HEAD^ 2>&1); then
-          echo "git show HEAD^ should not succeed on checkout with depth 1"
+          echo "FAIL: git show HEAD^ should not pass on checkout with depth 1"
+          echo "git show HEAD^ output: $output"
           exit 1
       fi
       hash=$(git rev-parse --verify HEAD)
       [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
       cd ..
-      rm -R depth-1
-  - name: "depth -1"
-    working-directory: depth-neg-1
+      rm -R depth-positive-1
+  - name: "depth negative 1"
+    working-directory: depth-negative-1
     uses: git-checkout
     with:
       depth: -1
@@ -95,17 +94,17 @@ pipeline:
       tag: 2.0
       expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
   - name: "check depth -1"
-    working-directory: depth-neg-1
+    working-directory: depth-negative-1
     runs: |
       out=$(git show HEAD^ 2>&1) || {
-          echo "git show HEAD^ failed on depth -1 checkout"
-          echo "it should pass"
+          echo "FAIL: git show HEAD^ failed on depth -1 checkout"
+          echo "git show HEAD^ output: $output"
           exit 1
       }
       hash=$(git rev-parse --verify HEAD)
       [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
       cd ..
-      rm -R depth-neg-1
+      rm -R depth-negative-1
   - name: "branch without expected"
     working-directory: branch-no-expected
     uses: git-checkout

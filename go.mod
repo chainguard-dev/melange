@@ -51,7 +51,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/dustin/go-humanize v1.0.1
 	github.com/prometheus/client_golang v1.19.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
 )

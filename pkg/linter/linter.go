@@ -31,6 +31,7 @@ import (
 
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"github.com/charmbracelet/log"
+	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
 
 	"gopkg.in/ini.v1"
@@ -81,52 +82,64 @@ func DefaultWarnLinters() []string {
 
 var linterMap = map[string]linter{
 	"dev": {
-		LinterFunc: allPaths(devLinter),
-		Explain:    "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
+		LinterFunc:      allPaths(devLinter),
+		Explain:         "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
+		defaultBehavior: Require,
 	},
 	"documentation": {
-		LinterFunc: allPaths(documentationLinter),
-		Explain:    "Place documentation into a separate package or remove it",
+		LinterFunc:      allPaths(documentationLinter),
+		Explain:         "Place documentation into a separate package or remove it",
+		defaultBehavior: Warn,
 	},
 	"opt": {
-		LinterFunc: allPaths(optLinter),
-		Explain:    "This package should be a -compat package",
+		LinterFunc:      allPaths(optLinter),
+		Explain:         "This package should be a -compat package",
+		defaultBehavior: Require,
 	},
 	"object": {
-		LinterFunc: allPaths(objectLinter),
-		Explain:    "This package contains intermediate object files",
+		LinterFunc:      allPaths(objectLinter),
+		Explain:         "This package contains intermediate object files",
+		defaultBehavior: Require,
 	},
 	"sbom": {
-		LinterFunc: allPaths(sbomLinter),
-		Explain:    "Remove any files in /var/lib/db/sbom from the package",
+		LinterFunc:      allPaths(sbomLinter),
+		Explain:         "Remove any files in /var/lib/db/sbom from the package",
+		defaultBehavior: Ignore, // TODO: needs work to be useful
 	},
 	"setuidgid": {
-		LinterFunc: isSetUIDOrGIDLinter,
-		Explain:    "Unset the setuid/setgid bit on the relevant files, or remove this linter",
+		LinterFunc:      isSetUIDOrGIDLinter,
+		Explain:         "Unset the setuid/setgid bit on the relevant files, or remove this linter",
+		defaultBehavior: Require,
 	},
 	"srv": {
-		LinterFunc: allPaths(srvLinter),
-		Explain:    "This package should be a -compat package",
+		LinterFunc:      allPaths(srvLinter),
+		Explain:         "This package should be a -compat package",
+		defaultBehavior: Require,
 	},
 	"tempdir": {
-		LinterFunc: allPaths(tempDirLinter),
-		Explain:    "Remove any offending files in temporary dirs in the pipeline",
+		LinterFunc:      allPaths(tempDirLinter),
+		Explain:         "Remove any offending files in temporary dirs in the pipeline",
+		defaultBehavior: Require,
 	},
 	"usrlocal": {
-		LinterFunc: allPaths(usrLocalLinter),
-		Explain:    "This package should be a -compat package",
+		LinterFunc:      allPaths(usrLocalLinter),
+		Explain:         "This package should be a -compat package",
+		defaultBehavior: Warn,
 	},
 	"varempty": {
-		LinterFunc: allPaths(varEmptyLinter),
-		Explain:    "Remove any offending files in /var/empty in the pipeline",
+		LinterFunc:      allPaths(varEmptyLinter),
+		Explain:         "Remove any offending files in /var/empty in the pipeline",
+		defaultBehavior: Require,
 	},
 	"worldwrite": {
-		LinterFunc: worldWriteableLinter,
-		Explain:    "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
+		LinterFunc:      worldWriteableLinter,
+		Explain:         "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
+		defaultBehavior: Require,
 	},
 	"strip": {
-		LinterFunc: strippedLinter,
-		Explain:    "Properly strip all binaries in the pipeline",
+		LinterFunc:      strippedLinter,
+		Explain:         "Properly strip all binaries in the pipeline",
+		defaultBehavior: Require,
 	},
 	"infodir": {
 		LinterFunc:      allPaths(infodirLinter),
@@ -134,20 +147,24 @@ var linterMap = map[string]linter{
 		defaultBehavior: Require,
 	},
 	"empty": {
-		LinterFunc: emptyLinter,
-		Explain:    "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
+		LinterFunc:      emptyLinter,
+		Explain:         "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
+		defaultBehavior: Require,
 	},
 	"python/docs": {
-		LinterFunc: pythonDocsLinter,
-		Explain:    "Remove all docs directories from the package",
+		LinterFunc:      pythonDocsLinter,
+		Explain:         "Remove all docs directories from the package",
+		defaultBehavior: Require,
 	},
 	"python/multiple": {
-		LinterFunc: pythonMultiplePackagesLinter,
-		Explain:    "Split this package up into multiple packages and verify you are not improperly using pip install",
+		LinterFunc:      pythonMultiplePackagesLinter,
+		Explain:         "Split this package up into multiple packages and verify you are not improperly using pip install",
+		defaultBehavior: Require,
 	},
 	"python/test": {
-		LinterFunc: pythonTestLinter,
-		Explain:    "Remove all test directories from the package",
+		LinterFunc:      pythonTestLinter,
+		Explain:         "Remove all test directories from the package",
+		defaultBehavior: Require,
 	},
 }
 
@@ -207,9 +224,9 @@ func isSetUIDOrGIDLinter(_ string, fsys fs.FS) error {
 	})
 }
 
-func sbomLinter(_, path string) error {
-	if strings.HasPrefix(path, "var/lib/db/sbom/") {
-		return fmt.Errorf("package writes to /var/lib/db/sbom")
+func sbomLinter(pkgname, path string) error {
+	if strings.HasPrefix(path, "var/lib/db/sbom/") && path != fmt.Sprintf("var/lib/db/sbom/%s.spdx.json", pkgname) {
+		return fmt.Errorf("package writes to %s", path)
 	}
 	return nil
 }
@@ -505,7 +522,7 @@ func lintPackageFs(pkgname string, fsys fs.FS, linters []string) error {
 			return fmt.Errorf("unknown linter: %q", linterName)
 		}
 		if err := linter.LinterFunc(linterName, fsys); err != nil {
-			errs = append(errs, fmt.Errorf("linter %s failed; suggest: %s", linterName, linter.Explain))
+			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", pkgname, linterName, err, linter.Explain))
 		}
 	}
 
@@ -520,6 +537,7 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 	if err := lintPackageFs(packageName, fsys, warn); err != nil {
 		log.Warnf("package linter warning in %s: %v", packageName, err)
 	}
+	log.Infof("linting apk: %s", packageName)
 	return lintPackageFs(packageName, fsys, require)
 }
 
@@ -573,6 +591,7 @@ func LintApk(ctx context.Context, path string, require, warn []string) error {
 		return fmt.Errorf("pkgname is nonexistent")
 	}
 
+	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
 	if err := lintPackageFs(pkgname, exp.TarFS, warn); err != nil {
 		log.Warnf("package linter warning in %s: %v", pkgname, err)
 	}

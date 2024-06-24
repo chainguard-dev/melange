@@ -44,12 +44,15 @@ func Lint() *cobra.Command {
 			g, ctx := errgroup.WithContext(ctx)
 			g.SetLimit(runtime.GOMAXPROCS(0))
 
+			log := clog.FromContext(ctx)
+			log.Infof("Required checks: %v", lintRequire)
+			log.Infof("Warning checks: %v", lintWarn)
+
 			errs := []error{}
 			var mu sync.Mutex
 			for _, pkg := range args {
 				pkg := pkg
 				g.Go(func() error {
-					clog.FromContext(ctx).Infof("Linting apk: %s", pkg)
 					if err := linter.LintApk(ctx, pkg, lintRequire, lintWarn); err != nil {
 						mu.Lock()
 						defer mu.Unlock()

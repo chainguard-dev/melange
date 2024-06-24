@@ -246,8 +246,10 @@ func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 	return nil
 }
 
+var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
+
 func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
-	if strings.HasPrefix(path, "var/tmp/") || strings.HasPrefix(path, "var/run/") {
+	if isTempDirRegex.MatchString(path) {
 		return fmt.Errorf("package writes to a temp dir")
 	}
 	return nil

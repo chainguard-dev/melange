@@ -23,10 +23,12 @@ inputs:
   branch:
     description: |
       The branch to check out, otherwise HEAD is checked out.
+      For reproducibility, tag is generally favored over branch.
+      Branch and tag are mutually exclusive.
 
   tag:
     description: |
-      The tag to check out.
+      The tag to check out.  Branch and tag are mutually exclusive.
 
   expected-commit:
     description: |
@@ -61,6 +63,8 @@ pipeline:
 
           if [ -z "$branch" ] && [ -z "$tag" ]; then
               msg "Warning: you have not specified a branch or tag."
+          elif [ -n "$branch" ] && [ -n "$tag" ]; then
+              fail "both branch ($branch) and tag ($tag) are specified."
           fi
 
           [ -n "$expcommit" ] ||

@@ -27,10 +27,6 @@ import (
 	"chainguard.dev/melange/pkg/linter"
 )
 
-type LintOpts struct {
-	linters []string
-}
-
 func Lint() *cobra.Command {
 	var lintRequire, lintWarn []string
 	cmd := &cobra.Command{
@@ -72,7 +68,7 @@ func Lint() *cobra.Command {
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
-	cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
+	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
 
 	return cmd
 }

@@ -15,19 +15,15 @@
 package main
 
 import (
-	"context"
-	"log"
 	"os"
-	"os/signal"
 
 	"chainguard.dev/melange/pkg/cli"
+	"github.com/chainguard-dev/clog"
 )
 
 func main() {
-	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer done()
-
-	if err := cli.New().ExecuteContext(ctx); err != nil {
-		log.Fatalf("error during command execution: %v", err)
+	if err := cli.New().Execute(); err != nil {
+		clog.Error(err.Error())
+		os.Exit(1)
 	}
 }

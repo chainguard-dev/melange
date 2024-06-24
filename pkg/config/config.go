@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,7 +35,6 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
-	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -82,8 +80,6 @@ type PackageOption struct {
 }
 
 type Checks struct {
-	// Optional: enable these linters that are not enabled by default.
-	Enabled []string `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// Optional: disable these linters that are not enabled by default.
 	Disabled []string `json:"disabled,omitempty" yaml:"disabled,omitempty"`
 }
@@ -113,7 +109,7 @@ type Package struct {
 	// lifecycle, triggered by configurable events
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -301,29 +297,6 @@ func (p *Package) FullCopyright() string {
 	return copyright
 }
 
-// Computes the list of package or subpackage linters, taking into account default linters.
-// This includes the default linters as well, unless disabled.
-func (chk *Checks) GetLinters() []string {
-	linters := linter_defaults.GetDefaultLinters(linter_defaults.LinterClassBuild)
-
-	if chk == nil {
-		return linters
-	}
-
-	// Enable non-default linters
-	for _, v := range chk.Enabled {
-		// Ensure we don't get duplicate values
-		if !slices.Contains(linters, v) {
-			linters = append(linters, v)
-		}
-	}
-
-	// Filter linters
-	linters = slices.DeleteFunc(linters, func(n string) bool { return slices.Contains(chk.Disabled, n) })
-
-	return linters
-}
-
 type Needs struct {
 	// A list of packages needed by this pipeline
 	Packages []string
@@ -394,7 +367,7 @@ type Subpackage struct {
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks *Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 }

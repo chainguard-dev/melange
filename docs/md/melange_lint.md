@@ -28,9 +28,9 @@ melange lint [flags]
 ### Options
 
 ```
-      --disabled --enabled   disable linters enabled by default or passed in --enabled
-      --enabled --disabled   enable additional, non-default lints, --disabled overrides this
-  -h, --help                 help for lint
+  -h, --help                   help for lint
+      --lint-require strings   linters that must pass
+      --lint-warn strings      linters that will generate warnings (default [dev,documentation,empty,infodir,object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,tempdir,usrlocal,varempty,worldwrite])
 ```
 
 ### Options inherited from parent commands

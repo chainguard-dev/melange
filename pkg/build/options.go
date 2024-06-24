@@ -34,10 +34,18 @@ func WithConfig(configFile string) Option {
 	}
 }
 
-// WithFailOnLintWarning sets whether or not to fail on linter warnings.
-func WithFailOnLintWarning(fail bool) Option {
+// WithLintRequire sets required linter checks.
+func WithLintRequire(linters []string) Option {
 	return func(b *Build) error {
-		b.FailOnLintWarning = fail
+		b.LintRequire = linters
+		return nil
+	}
+}
+
+// WithLintWarn sets non-required linter checks.
+func WithLintWarn(linters []string) Option {
+	return func(b *Build) error {
+		b.LintWarn = linters
 		return nil
 	}
 }

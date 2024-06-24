@@ -30,6 +30,7 @@ import (
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/container/dagger"
 	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -69,11 +70,11 @@ func Build() *cobra.Command {
 	var interactive bool
 	var remove bool
 	var runner string
-	var failOnLintWarning bool
 	var cpu, memory string
 	var timeout time.Duration
 	var extraPackages []string
 	var libc string
+	var lintRequire, lintWarn []string
 
 	var traceFile string
 
@@ -147,7 +148,8 @@ func Build() *cobra.Command {
 				build.WithInteractive(interactive),
 				build.WithRemove(remove),
 				build.WithRunner(r),
-				build.WithFailOnLintWarning(failOnLintWarning),
+				build.WithLintRequire(lintRequire),
+				build.WithLintWarn(lintWarn),
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
@@ -211,11 +213,15 @@ func Build() *cobra.Command {
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
-	cmd.Flags().BoolVar(&failOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
 	cmd.Flags().StringVar(&traceFile, "trace", "", "where to write trace output")
+	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
+	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
+
+	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
+	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
 
 	return cmd
 }

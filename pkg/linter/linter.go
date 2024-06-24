@@ -351,8 +351,7 @@ func strippedLinter(_ string, fsys fs.FS) error {
 
 		file, err := elf.NewFile(readerAt)
 		if err != nil {
-			// We don't particularly care if this fails otherwise.
-			fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
+			return fmt.Errorf("Could not open file %q as executable: %v\n", path, err)
 		}
 		defer file.Close()
 
@@ -509,7 +508,7 @@ func pythonTestLinter(_ string, fsys fs.FS) error {
 	return nil
 }
 
-func lintPackageFs(pkgname string, fsys fs.FS, linters []string) error {
+func lintPackageFS(pkgname string, fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if strings.HasSuffix(pkgname, "-compat") {
 		return nil
@@ -534,15 +533,15 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 	log := log.FromContext(ctx)
 	fsys := os.DirFS(path)
 
-	if err := lintPackageFs(packageName, fsys, warn); err != nil {
-		log.Warnf("package linter warning in %s: %v", packageName, err)
+	if err := lintPackageFS(packageName, fsys, warn); err != nil {
+		log.Warnf(err.Error())
 	}
 	log.Infof("linting apk: %s", packageName)
-	return lintPackageFs(packageName, fsys, require)
+	return lintPackageFS(packageName, fsys, require)
 }
 
 // Lint the given APK at the given path
-func LintApk(ctx context.Context, path string, require, warn []string) error {
+func LintAPK(ctx context.Context, path string, require, warn []string) error {
 	var r io.Reader
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		resp, err := http.Get(path)
@@ -592,8 +591,8 @@ func LintApk(ctx context.Context, path string, require, warn []string) error {
 	}
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
-	if err := lintPackageFs(pkgname, exp.TarFS, warn); err != nil {
-		log.Warnf("package linter warning in %s: %v", pkgname, err)
+	if err := lintPackageFS(pkgname, exp.TarFS, warn); err != nil {
+		log.Warnf(err.Error())
 	}
-	return lintPackageFs(pkgname, exp.TarFS, require)
+	return lintPackageFS(pkgname, exp.TarFS, require)
 }

@@ -633,12 +633,12 @@ func Test_disableDefaultLinter(t *testing.T) {
 func Test_lintApk(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
 	called := false
-	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
 		called = true
 	}, linter_defaults.GetDefaultLinters(linter_defaults.LinterClassApk)))
 	assert.False(t, called)
 
-	assert.NoError(t, LintApk(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), func(err error) {
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), func(err error) {
 		called = true
 	}, linter_defaults.GetDefaultLinters(linter_defaults.LinterClassApk)))
 	assert.True(t, called)

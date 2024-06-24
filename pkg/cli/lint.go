@@ -53,7 +53,7 @@ func Lint() *cobra.Command {
 			for _, pkg := range args {
 				pkg := pkg
 				g.Go(func() error {
-					if err := linter.LintApk(ctx, pkg, lintRequire, lintWarn); err != nil {
+					if err := linter.LintAPK(ctx, pkg, lintRequire, lintWarn); err != nil {
 						mu.Lock()
 						defer mu.Unlock()
 						errs = append(errs, err)
@@ -70,6 +70,9 @@ func Lint() *cobra.Command {
 
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
+
+	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
+	cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
 
 	return cmd
 }

@@ -15,6 +15,7 @@
 package linter
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -22,335 +23,119 @@ import (
 
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
-
-	"chainguard.dev/melange/pkg/config"
-	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
-func checksOnly(onlyLint string) *config.Checks {
-	checksDisabled := []string{}
-	for _, lint := range linter_defaults.GetDefaultLinters(linter_defaults.LinterClassBuild) {
-		if lint != onlyLint {
-			checksDisabled = append(checksDisabled, lint)
+func TestLinters(t *testing.T) {
+	mkfile := func(t *testing.T, path string) func() string {
+		return func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir(path)), 0700))
+			f, err := os.Create(filepath.Join(d, path))
+			assert.NoError(t, err)
+			fmt.Fprintln(f, "blah")
+			defer f.Close()
+			return d
 		}
 	}
-	return &config.Checks{
-		Enabled:  []string{onlyLint},
-		Disabled: checksDisabled,
+
+	for _, c := range []struct {
+		dirFunc func() string
+		linter  string
+		noError bool // If true, expect no error
+	}{{
+		dirFunc: t.TempDir,
+		linter:  "empty",
+	}, {
+		dirFunc: mkfile(t, "usr/local/test.txt"),
+		linter:  "usrlocal",
+	}, {
+		dirFunc: mkfile(t, "var/empty/test.txt"),
+		linter:  "varempty",
+	}, {
+		dirFunc: mkfile(t, "dev/test.txt"),
+		linter:  "dev",
+	}, {
+		dirFunc: mkfile(t, "opt/test.txt"),
+		linter:  "opt",
+	}, {
+		dirFunc: mkfile(t, "usr/bin/object.o"),
+		linter:  "object",
+	}, {
+		dirFunc: mkfile(t, "usr/bin/docs/README.md"),
+		linter:  "documentation",
+	}, {
+		dirFunc: mkfile(t, "usr/lib/python3.14/site-packages/docs/test.txt"),
+		linter:  "python/docs",
+	}, {
+		dirFunc: mkfile(t, "srv/test.txt"),
+		linter:  "srv",
+	}, {
+		dirFunc: mkfile(t, "tmp/test.txt"),
+		linter:  "tempdir",
+	}, {
+		dirFunc: mkfile(t, "run/test.txt"),
+		linter:  "tempdir",
+	}, {
+		dirFunc: mkfile(t, "var/tmp/test.txt"),
+		linter:  "tempdir",
+	}, {
+		dirFunc: mkfile(t, "var/run/test.txt"),
+		linter:  "tempdir",
+	}} {
+		ctx := slogtest.TestContextWithLogger(t)
+		t.Run(c.linter, func(t *testing.T) {
+			dir := c.dirFunc()
+			if c.noError {
+				assert.NoError(t, LintBuild(ctx, c.linter, dir, []string{c.linter}, nil))
+			} else {
+				assert.Error(t, LintBuild(ctx, c.linter, dir, []string{c.linter}, nil))
+			}
+			// In warn mode, it should never raise an error.
+			assert.NoError(t, LintBuild(ctx, c.linter, dir, nil, []string{c.linter}))
+		})
 	}
-}
-
-func Test_emptyLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testempty",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("empty"),
-		},
-	}
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"empty"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_usrLocalLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testusrlocal",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("usrlocal"),
-		},
-	}
-
-	err = os.MkdirAll(filepath.Join(dir, "usr", "local"), 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(dir, "usr", "local", "test.txt"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"usrlocal"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_varEmptyLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testvarempty",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("varempty"),
-		},
-	}
-
-	pathdir := filepath.Join(dir, "var", "empty")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(pathdir, "test.txt"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"varempty"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_devLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testdev",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("dev"),
-		},
-	}
-
-	pathdir := filepath.Join(dir, "dev")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(pathdir, "test.txt"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"dev"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_optLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testopt",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("opt"),
-		},
-	}
-
-	pathdir := filepath.Join(dir, "opt")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(pathdir, "test.txt"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"opt"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_objectLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testobject",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("object"),
-		},
-	}
-
-	pathdir := filepath.Join(dir, "")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(pathdir, "test.o"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"object"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_documentationLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testobject",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("documentation"),
-		},
-	}
-
-	pathdir := filepath.Join(dir, "")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(pathdir, "test.md"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"documentation"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_pythonDocsLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testpythondocs",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("python/docs"),
-		},
-	}
-
-	// Base dir
-	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"python/docs"})
-
-	// Make one "package"
-	packagedir := filepath.Join(pythonPathdir, "foo")
-	err = os.MkdirAll(packagedir, 0700)
-	assert.NoError(t, err)
-
-	// One package should not trip it
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
-
-	// Create docs
-	docsdir := filepath.Join(pythonPathdir, "docs")
-	err = os.MkdirAll(docsdir, 0700)
-	assert.NoError(t, err)
-
-	// This should trip
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
 }
 
 func Test_pythonMultiplePackagesLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
+	ctx := slogtest.TestContextWithLogger(t)
+	dir := t.TempDir()
 
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testpythonmultiplepackages",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("python/multiple"),
-		},
-	}
+	linters := []string{"python/multiple"}
 
 	// Base dir
 	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
 
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"python/multiple"})
-
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
-	err = os.MkdirAll(packagedir, 0700)
-	assert.NoError(t, err)
+	assert.NoError(t, os.MkdirAll(packagedir, 0700))
 
 	// One package should not trip it
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
 
 	// Egg info files should not count
-	_, err = os.Create(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"))
+	_, err := os.Create(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
 
 	// dist info files should not count
 	_, err = os.Create(filepath.Join(pythonPathdir, "foodist-0.1-py3.14.dist-info"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
 
 	// pth files should not count
 	_, err = os.Create(filepath.Join(pythonPathdir, "foopth-0.1-py3.14.pth"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
 
 	// .so files duplicate with a dir should not count
 	_, err = os.Create(filepath.Join(pythonPathdir, "foo.so"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
 
 	// __pycache__ dirs should not count
 	err = os.MkdirAll(filepath.Join(pythonPathdir, "__pycache__"), 0700)
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
 
 	// Make another "package" (at this point we should have 2)
 	packagedir = filepath.Join(pythonPathdir, "bar")
@@ -358,209 +143,61 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Two should trip it
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
+	assert.Error(t, LintBuild(ctx, "multiple", dir, linters, nil))
 }
 
 func Test_pythonTestLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
+	ctx := slogtest.TestContextWithLogger(t)
 
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testpythontest",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("python/test"),
-		},
-	}
+	dir := t.TempDir()
+
+	linters := []string{"python/test"}
 
 	// Base dir
 	pythonPathdir := filepath.Join(dir, "usr", "lib", "python3.14", "site-packages")
 
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"python/test"})
-
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
-	err = os.MkdirAll(packagedir, 0700)
-	assert.NoError(t, err)
+	assert.NoError(t, os.MkdirAll(packagedir, 0700))
 
 	// One package should not trip it
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "python-test", dir, linters, nil))
 
 	// Create docs
 	docsdir := filepath.Join(pythonPathdir, "test")
-	err = os.MkdirAll(docsdir, 0700)
-	assert.NoError(t, err)
+	assert.NoError(t, os.MkdirAll(docsdir, 0700))
 
 	// This should trip
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_srvLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testsrv",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("srv"),
-		},
-	}
-
-	pathdir := filepath.Join(dir, "srv")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filepath.Join(pathdir, "test.txt"))
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"srv"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_tempDirLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testtempdir",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("tempdir"),
-		},
-	}
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"tempdir"})
-
-	// Test /tmp check
-	pathdir := filepath.Join(dir, "tmp")
-	filename := filepath.Join(pathdir, "test.txt")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filename)
-	assert.NoError(t, err)
-	os.Remove(filename)
-
-	// Test /run check
-	pathdir = filepath.Join(dir, "run")
-	filename = filepath.Join(pathdir, "test.txt")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filename)
-	assert.NoError(t, err)
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-	os.Remove(filename)
-
-	// Test /var/tmp check
-	pathdir = filepath.Join(dir, "var", "tmp")
-	filename = filepath.Join(pathdir, "test.txt")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filename)
-	assert.NoError(t, err)
-	os.Remove(filename)
-
-	// Test /var/run check
-	pathdir = filepath.Join(dir, "var", "run")
-	filename = filepath.Join(pathdir, "test.txt")
-	err = os.MkdirAll(pathdir, 0700)
-	assert.NoError(t, err)
-	_, err = os.Create(filename)
-	assert.NoError(t, err)
-	os.Remove(filename)
+	assert.Error(t, LintBuild(ctx, "python-test", dir, linters, nil))
 }
 
 func Test_setUidGidLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
+	ctx := slogtest.TestContextWithLogger(t)
+
+	linters := []string{"setuidgid"}
+	filePath := filepath.Join(t.TempDir(), "test.txt")
+
+	f, err := os.Create(filePath)
 	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testsetuidgid",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("setuidgid"),
-		},
-	}
-
-	usrLocalDirPath := filepath.Join(dir, "usr", "local")
-	filePath := filepath.Join(usrLocalDirPath, "test.txt")
-
-	err = os.MkdirAll(usrLocalDirPath, 0770)
-	assert.NoError(t, err)
-
-	_, err = os.Create(filePath)
-	assert.NoError(t, err)
-
-	err = os.Chmod(filePath, 0770|fs.ModeSetuid|fs.ModeSetgid)
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"setuidgid"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
+	assert.NoError(t, f.Close())
+	assert.NoError(t, os.Chmod(filePath, 0770|fs.ModeSetuid|fs.ModeSetgid))
+	assert.NoError(t, LintBuild(ctx, "setuidgid", t.TempDir(), linters, nil))
 }
 
 func Test_worldWriteLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
+	ctx := slogtest.TestContextWithLogger(t)
 
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testworldwrite",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks:  checksOnly("worldwrite"),
-		},
-	}
+	linters := []string{"worldwrite"}
 
-	usrLocalDirPath := filepath.Join(dir, "usr", "lib")
-	err = os.MkdirAll(usrLocalDirPath, 0777)
-	assert.NoError(t, err)
+	dir := t.TempDir()
+	assert.NoError(t, os.MkdirAll(filepath.Join(dir, "usr", "lib"), 0777))
 
 	// Ensure 777 dirs don't trigger it
-	linters := cfg.Package.Checks.GetLinters()
-	assert.Equal(t, linters, []string{"worldwrite"})
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
 
 	// Create test file
-	filePath := filepath.Join(usrLocalDirPath, "test.txt")
-	_, err = os.Create(filePath)
+	filePath := filepath.Join(dir, "usr", "lib", "test.txt")
+	_, err := os.Create(filePath)
 	assert.NoError(t, err)
 
 	// Set writeable and executable bits for non-world
@@ -568,78 +205,26 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Linter should not trigger
-	called = false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.NoError(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
 
 	// Set writeable bit (but not executable bit)
 	err = os.Chmod(filePath, 0776)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	called = false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
+	assert.Error(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
 
 	// Set writeable and executable bit
 	err = os.Chmod(filePath, 0777)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	called = false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.True(t, called)
-}
-
-func Test_disableDefaultLinter(t *testing.T) {
-	dir, err := os.MkdirTemp("", "melange.XXXXX")
-	defer os.RemoveAll(dir)
-	assert.NoError(t, err)
-
-	cfg := config.Configuration{
-		Package: config.Package{
-			Name:    "testdisable",
-			Version: "4.2.0",
-			Epoch:   0,
-			Checks: &config.Checks{
-				Disabled: []string{"usrlocal"},
-			},
-		},
-	}
-
-	usrLocalDirPath := filepath.Join(dir, "usr", "local")
-	filePath := filepath.Join(usrLocalDirPath, "test.txt")
-
-	err = os.MkdirAll(usrLocalDirPath, 0770)
-	assert.NoError(t, err)
-
-	_, err = os.Create(filePath)
-	assert.NoError(t, err)
-
-	linters := cfg.Package.Checks.GetLinters()
-	called := false
-	assert.NoError(t, LintBuild(cfg.Package.Name, dir, func(err error) {
-		called = true
-	}, linters))
-	assert.False(t, called)
+	assert.Error(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
 }
 
 func Test_lintApk(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
-	called := false
-	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), func(err error) {
-		called = true
-	}, linter_defaults.GetDefaultLinters(linter_defaults.LinterClassApk)))
-	assert.False(t, called)
 
-	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), func(err error) {
-		called = true
-	}, linter_defaults.GetDefaultLinters(linter_defaults.LinterClassApk)))
-	assert.True(t, called)
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), DefaultRequiredLinters(), DefaultWarnLinters()))
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), DefaultRequiredLinters(), DefaultWarnLinters()))
 }

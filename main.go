@@ -15,13 +15,15 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"chainguard.dev/melange/pkg/cli"
+	"github.com/chainguard-dev/clog"
 )
 
 func main() {
 	if err := cli.New().Execute(); err != nil {
-		log.Fatalf("error during command execution: %v", err)
+		clog.Error(err.Error())
+		os.Exit(1)
 	}
 }

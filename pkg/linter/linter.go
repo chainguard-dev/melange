@@ -63,7 +63,10 @@ func allPaths(fn func(pkgname, path string) error) func(pkgname string, fsys fs.
 				// Ignore directories
 				return nil
 			}
-			return fn(pkgname, path)
+			if err := fn(pkgname, path); err != nil {
+				return fmt.Errorf("%w: %s", err, path)
+			}
+			return nil
 		})
 	}
 }
@@ -84,7 +87,7 @@ var linterMap = map[string]linter{
 	"dev": {
 		LinterFunc:      allPaths(devLinter),
 		Explain:         "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"documentation": {
 		LinterFunc:      allPaths(documentationLinter),
@@ -94,12 +97,12 @@ var linterMap = map[string]linter{
 	"opt": {
 		LinterFunc:      allPaths(optLinter),
 		Explain:         "This package should be a -compat package",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"object": {
 		LinterFunc:      allPaths(objectLinter),
 		Explain:         "This package contains intermediate object files",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"sbom": {
 		LinterFunc:      allPaths(sbomLinter),
@@ -109,17 +112,17 @@ var linterMap = map[string]linter{
 	"setuidgid": {
 		LinterFunc:      isSetUIDOrGIDLinter,
 		Explain:         "Unset the setuid/setgid bit on the relevant files, or remove this linter",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"srv": {
 		LinterFunc:      allPaths(srvLinter),
 		Explain:         "This package should be a -compat package",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"tempdir": {
 		LinterFunc:      allPaths(tempDirLinter),
 		Explain:         "Remove any offending files in temporary dirs in the pipeline",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"usrlocal": {
 		LinterFunc:      allPaths(usrLocalLinter),
@@ -129,42 +132,42 @@ var linterMap = map[string]linter{
 	"varempty": {
 		LinterFunc:      allPaths(varEmptyLinter),
 		Explain:         "Remove any offending files in /var/empty in the pipeline",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"worldwrite": {
 		LinterFunc:      worldWriteableLinter,
 		Explain:         "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"strip": {
 		LinterFunc:      strippedLinter,
 		Explain:         "Properly strip all binaries in the pipeline",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"infodir": {
 		LinterFunc:      allPaths(infodirLinter),
 		Explain:         "Remove /usr/share/info/dir from the package (run split/infodir)",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"empty": {
 		LinterFunc:      emptyLinter,
 		Explain:         "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"python/docs": {
 		LinterFunc:      pythonDocsLinter,
 		Explain:         "Remove all docs directories from the package",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"python/multiple": {
 		LinterFunc:      pythonMultiplePackagesLinter,
 		Explain:         "Split this package up into multiple packages and verify you are not improperly using pip install",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 	"python/test": {
 		LinterFunc:      pythonTestLinter,
 		Explain:         "Remove all test directories from the package",
-		defaultBehavior: Require,
+		defaultBehavior: Warn,
 	},
 }
 
@@ -198,7 +201,7 @@ var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDIT
 
 func documentationLinter(pkgname, path string) error {
 	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(pkgname, "-doc") {
-		return fmt.Errorf("package contains documentation files but is not a documentation package")
+		return errors.New("package contains documentation files but is not a documentation package")
 	}
 	return nil
 }
@@ -224,16 +227,16 @@ func isSetUIDOrGIDLinter(_ string, fsys fs.FS) error {
 	})
 }
 
-func sbomLinter(pkgname, path string) error {
-	if strings.HasPrefix(path, "var/lib/db/sbom/") && path != fmt.Sprintf("var/lib/db/sbom/%s.spdx.json", pkgname) {
+func sbomLinter(_, path string) error {
+	if strings.HasPrefix(path, "var/lib/db/sbom/") {
 		return fmt.Errorf("package writes to %s", path)
 	}
 	return nil
 }
 
 func infodirLinter(_, path string) error {
-	if strings.HasPrefix(path, "usr/share/info/dir") {
-		return fmt.Errorf("package writes to /usr/share/info/dir")
+	if strings.HasPrefix(path, "usr/share/info/dir/") {
+		return fmt.Errorf("package writes to /usr/share/info/dir/")
 	}
 	return nil
 }
@@ -516,10 +519,7 @@ func lintPackageFS(pkgname string, fsys fs.FS, linters []string) error {
 
 	errs := []error{}
 	for _, linterName := range linters {
-		linter, found := linterMap[linterName]
-		if !found {
-			return fmt.Errorf("unknown linter: %q", linterName)
-		}
+		linter := linterMap[linterName]
 		if err := linter.LinterFunc(linterName, fsys); err != nil {
 			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", pkgname, linterName, err, linter.Explain))
 		}
@@ -528,8 +528,22 @@ func lintPackageFS(pkgname string, fsys fs.FS, linters []string) error {
 	return errors.Join(errs...)
 }
 
+func checkLinters(linters []string) error {
+	var errs []error
+	for _, linterName := range linters {
+		if _, found := linterMap[linterName]; !found {
+			errs = append(errs, fmt.Errorf("unknown linter: %q", linterName))
+		}
+	}
+	return errors.Join(errs...)
+}
+
 // Lint the given build directory at the given path
 func LintBuild(ctx context.Context, packageName string, path string, require, warn []string) error {
+	if err := checkLinters(append(require, warn...)); err != nil {
+		return err
+	}
+
 	log := log.FromContext(ctx)
 	fsys := os.DirFS(path)
 
@@ -542,6 +556,10 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 
 // Lint the given APK at the given path
 func LintAPK(ctx context.Context, path string, require, warn []string) error {
+	if err := checkLinters(append(require, warn...)); err != nil {
+		return err
+	}
+
 	var r io.Reader
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		resp, err := http.Get(path)

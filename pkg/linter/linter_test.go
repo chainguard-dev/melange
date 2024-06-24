@@ -41,7 +41,6 @@ func TestLinters(t *testing.T) {
 	for _, c := range []struct {
 		dirFunc func() string
 		linter  string
-		noError bool // If true, expect no error
 	}{{
 		dirFunc: t.TempDir,
 		linter:  "empty",
@@ -85,11 +84,9 @@ func TestLinters(t *testing.T) {
 		ctx := slogtest.TestContextWithLogger(t)
 		t.Run(c.linter, func(t *testing.T) {
 			dir := c.dirFunc()
-			if c.noError {
-				assert.NoError(t, LintBuild(ctx, c.linter, dir, []string{c.linter}, nil))
-			} else {
-				assert.Error(t, LintBuild(ctx, c.linter, dir, []string{c.linter}, nil))
-			}
+			// In required mode, it should raise an error.
+			assert.Error(t, LintBuild(ctx, c.linter, dir, []string{c.linter}, nil))
+
 			// In warn mode, it should never raise an error.
 			assert.NoError(t, LintBuild(ctx, c.linter, dir, nil, []string{c.linter}))
 		})

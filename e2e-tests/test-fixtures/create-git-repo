@@ -14,12 +14,12 @@ wfile() {
 
 gcommit() {
     GIT_COMMITTER_DATE="$MYDATE" git commit \
-        --date="$MYDATE" "$@"
+        --date="$MYDATE" "$@" </dev/null
 }
 
 gtag() {
     GIT_AUTHOR_DATE="$MYDATE" \
-        GIT_COMMITTER_DATE="$MYDATE" git tag "$@"
+        GIT_COMMITTER_DATE="$MYDATE" git tag "$@" </dev/null
 }
 
 v() {
@@ -45,6 +45,8 @@ export LC_ALL=C.UTF-8
 
 git config --global user.name "Melange Test"
 git config --global user.email meltest@example.com
+git config --global tag.gpgsign false
+git config --global commit.gpgsign false
 
 mkdir "$workdir"
 cd "$workdir"
@@ -56,7 +58,7 @@ v gcommit -m "first commit" README
 v wfile README "data2"
 v gcommit -m "second commit" README
 
-v git checkout -b 1.x main
+v git checkout --quiet -b 1.x main
 v wfile README "1.0-release content"
 v gcommit -m "release 1.0" README
 v gtag 1.0 HEAD
@@ -71,7 +73,7 @@ v gcommit -m "stage 1.2 content" README
 v gtag 1.2
 v gtag --annotate --message="Release 1.2" 1.2-annotated HEAD
 
-v git checkout -b dev main
+v git checkout --quiet -b dev main
 v wfile README "stuff on dev"
 v gcommit -m "dev branch stuff" README
 # tag with same name as branch
@@ -80,21 +82,21 @@ v gtag dev HEAD
 v wfile README "more stuff on dev"
 v gcommit -m "more stuff on dev" README
 
-v git checkout main
+v git checkout --quiet main
 v wfile README "mainline stuff"
 v gcommit -m "mainline stuff" README
 
-v git checkout main
+v git checkout --quiet main
 v wfile README "mainline stuff 2"
 v gcommit -m "mainline stuff 2" README
 
-v git checkout -b 2.x main^
+v git checkout --quiet -b 2.x main^
 v wfile README "2.0-release content"
 v gcommit -m "release 2.0" README
 v gtag 2.0
 v gtag --annotate --message="Release 2.0" 2.0-annotated HEAD
 
-v git checkout main
+v git checkout --quiet main
 
 v cd "$startd"
 v mv "$workdir/.git" "$dest"

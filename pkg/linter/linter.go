@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"debug/elf"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -25,146 +26,128 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"chainguard.dev/apko/pkg/apk/expandapk"
-	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
+	"github.com/charmbracelet/log"
+	"golang.org/x/exp/maps"
 
 	"gopkg.in/ini.v1"
 )
 
-type LinterContext struct {
-	pkgname string
-	fsys    fs.FS
-}
-
-func NewLinterContext(name string, fsys fs.FS) LinterContext {
-	return LinterContext{name, fsys}
-}
-
-type linterFunc func(lctx LinterContext, path string, d fs.DirEntry) error
+type linterFunc func(pkgname string, fsys fs.FS) error
 
 type linter struct {
-	LinterFunc  linterFunc
-	LinterClass linter_defaults.LinterClass
-	FailOnError bool
-	Explain     string
+	LinterFunc      linterFunc
+	Explain         string
+	defaultBehavior defaultBehavior
 }
 
-type postLinterFunc func(lctx LinterContext, fsys fs.FS) error
+type defaultBehavior int
 
-type postLinter struct {
-	LinterFunc  postLinterFunc
-	LinterClass linter_defaults.LinterClass
-	FailOnError bool
-	Explain     string
+const (
+	// Ignore the linter (default)
+	Ignore defaultBehavior = iota
+	// Require the linter.
+	Require
+	// Warn about the linter.
+	Warn
+)
+
+func allPaths(fn func(pkgname, path string) error) func(pkgname string, fsys fs.FS) error {
+	return func(pkgname string, fsys fs.FS) error {
+		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+			if d.IsDir() {
+				// Ignore directories
+				return nil
+			}
+			return fn(pkgname, path)
+		})
+	}
+}
+
+func DefaultRequiredLinters() []string {
+	return slices.DeleteFunc(maps.Keys(linterMap), func(k string) bool {
+		return linterMap[k].defaultBehavior != Require
+	})
+}
+
+func DefaultWarnLinters() []string {
+	return slices.DeleteFunc(maps.Keys(linterMap), func(k string) bool {
+		return linterMap[k].defaultBehavior != Warn
+	})
 }
 
 var linterMap = map[string]linter{
 	"dev": {
-		LinterFunc:  devLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
+		LinterFunc: allPaths(devLinter),
+		Explain:    "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
 	},
 	"documentation": {
-		LinterFunc:  documentationLinter,
-		LinterClass: linter_defaults.LinterClassApk | linter_defaults.LinterClassBuild,
-		FailOnError: false,
-		Explain:     "Place documentation into a separate package or remove it",
+		LinterFunc: allPaths(documentationLinter),
+		Explain:    "Place documentation into a separate package or remove it",
 	},
 	"opt": {
-		LinterFunc:  optLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "This package should be a -compat package",
+		LinterFunc: allPaths(optLinter),
+		Explain:    "This package should be a -compat package",
 	},
 	"object": {
-		LinterFunc:  objectLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "This package contains intermediate object files",
+		LinterFunc: allPaths(objectLinter),
+		Explain:    "This package contains intermediate object files",
 	},
 	"sbom": {
-		LinterFunc:  sbomLinter,
-		LinterClass: linter_defaults.LinterClassBuild,
-		FailOnError: false,
-		Explain:     "Remove any files in /var/lib/db/sbom from the package",
+		LinterFunc: allPaths(sbomLinter),
+		Explain:    "Remove any files in /var/lib/db/sbom from the package",
 	},
 	"setuidgid": {
-		LinterFunc:  isSetUIDOrGIDLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Unset the setuid/setgid bit on the relevant files, or remove this linter",
+		LinterFunc: isSetUIDOrGIDLinter,
+		Explain:    "Unset the setuid/setgid bit on the relevant files, or remove this linter",
 	},
 	"srv": {
-		LinterFunc:  srvLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "This package should be a -compat package",
+		LinterFunc: allPaths(srvLinter),
+		Explain:    "This package should be a -compat package",
 	},
 	"tempdir": {
-		LinterFunc:  tempDirLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Remove any offending files in temporary dirs in the pipeline",
+		LinterFunc: allPaths(tempDirLinter),
+		Explain:    "Remove any offending files in temporary dirs in the pipeline",
 	},
 	"usrlocal": {
-		LinterFunc:  usrLocalLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "This package should be a -compat package",
+		LinterFunc: allPaths(usrLocalLinter),
+		Explain:    "This package should be a -compat package",
 	},
 	"varempty": {
-		LinterFunc:  varEmptyLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Remove any offending files in /var/empty in the pipeline",
+		LinterFunc: allPaths(varEmptyLinter),
+		Explain:    "Remove any offending files in /var/empty in the pipeline",
 	},
 	"worldwrite": {
-		LinterFunc:  worldWriteableLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
+		LinterFunc: worldWriteableLinter,
+		Explain:    "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
 	},
 	"strip": {
-		LinterFunc:  strippedLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Properly strip all binaries in the pipeline",
+		LinterFunc: strippedLinter,
+		Explain:    "Properly strip all binaries in the pipeline",
 	},
 	"infodir": {
-		LinterFunc:  infodirLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: true,
-		Explain:     "Remove /usr/share/info/dir from the package (run split/infodir)",
+		LinterFunc:      allPaths(infodirLinter),
+		Explain:         "Remove /usr/share/info/dir from the package (run split/infodir)",
+		defaultBehavior: Require,
 	},
-}
-
-var postLinterMap = map[string]postLinter{
 	"empty": {
-		LinterFunc:  emptyPostLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
+		LinterFunc: emptyLinter,
+		Explain:    "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
 	},
 	"python/docs": {
-		LinterFunc:  pythonDocsPostLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Remove all docs directories from the package",
+		LinterFunc: pythonDocsLinter,
+		Explain:    "Remove all docs directories from the package",
 	},
 	"python/multiple": {
-		LinterFunc:  pythonMultiplePackagesPostLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Split this package up into multiple packages and verify you are not improperly using pip install",
+		LinterFunc: pythonMultiplePackagesLinter,
+		Explain:    "Split this package up into multiple packages and verify you are not improperly using pip install",
 	},
 	"python/test": {
-		LinterFunc:  pythonTestPostLinter,
-		LinterClass: linter_defaults.LinterClassBuild | linter_defaults.LinterClassApk,
-		FailOnError: false,
-		Explain:     "Remove all test directories from the package",
+		LinterFunc: pythonTestLinter,
+		Explain:    "Remove all test directories from the package",
 	},
 }
 
@@ -173,73 +156,72 @@ func isIgnoredPath(path string) bool {
 	return strings.HasPrefix(path, "var/lib/db/sbom/")
 }
 
-func devLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func devLinter(_, path string) error {
 	if strings.HasPrefix(path, "dev/") {
 		return fmt.Errorf("package writes to /dev")
 	}
-
 	return nil
 }
 
-func optLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func optLinter(_, path string) error {
 	if strings.HasPrefix(path, "opt/") {
 		return fmt.Errorf("package writes to /opt")
 	}
 
 	return nil
 }
-func objectLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func objectLinter(_, path string) error {
 	if filepath.Ext(path) == ".o" {
 		return fmt.Errorf("package contains intermediate object file '%s'. This is usually wrong. In most cases they should be removed", path)
 	}
-
 	return nil
 }
 
 var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 
-func documentationLinter(lc LinterContext, path string, _ fs.DirEntry) error {
-	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(lc.pkgname, "-doc") {
+func documentationLinter(pkgname, path string) error {
+	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(pkgname, "-doc") {
 		return fmt.Errorf("package contains documentation files but is not a documentation package")
 	}
 	return nil
 }
 
-func isSetUIDOrGIDLinter(_ LinterContext, path string, d fs.DirEntry) error {
-	if isIgnoredPath(path) {
+func isSetUIDOrGIDLinter(_ string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := info.Mode()
+		if mode&fs.ModeSetuid != 0 {
+			return fmt.Errorf("file is setuid")
+		} else if mode&fs.ModeSetgid != 0 {
+			return fmt.Errorf("file is setgid")
+		}
 		return nil
-	}
-
-	info, err := d.Info()
-	if err != nil {
-		return err
-	}
-
-	mode := info.Mode()
-	if mode&fs.ModeSetuid != 0 {
-		return fmt.Errorf("file is setuid")
-	} else if mode&fs.ModeSetgid != 0 {
-		return fmt.Errorf("file is setgid")
-	}
-
-	return nil
+	})
 }
 
-func sbomLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func sbomLinter(_, path string) error {
 	if strings.HasPrefix(path, "var/lib/db/sbom/") {
 		return fmt.Errorf("package writes to /var/lib/db/sbom")
 	}
 	return nil
 }
 
-func infodirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func infodirLinter(_, path string) error {
 	if strings.HasPrefix(path, "usr/share/info/dir") {
 		return fmt.Errorf("package writes to /usr/share/info/dir")
 	}
 	return nil
 }
 
-func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func srvLinter(_, path string) error {
 	if strings.HasPrefix(path, "srv/") {
 		return fmt.Errorf("package writes to /srv")
 	}
@@ -248,126 +230,126 @@ func srvLinter(_ LinterContext, path string, _ fs.DirEntry) error {
 
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 
-func tempDirLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func tempDirLinter(_, path string) error {
 	if isTempDirRegex.MatchString(path) {
 		return fmt.Errorf("package writes to a temp dir")
 	}
 	return nil
 }
 
-func usrLocalLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func usrLocalLinter(_, path string) error {
 	if strings.HasPrefix(path, "usr/local/") {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
 	return nil
 }
 
-func varEmptyLinter(_ LinterContext, path string, _ fs.DirEntry) error {
+func varEmptyLinter(_, path string) error {
 	if strings.HasPrefix(path, "var/empty/") {
 		return fmt.Errorf("package writes to /var/empty")
 	}
-
 	return nil
 }
 
-func worldWriteableLinter(_ LinterContext, path string, d fs.DirEntry) error {
-	if isIgnoredPath(path) {
-		return nil
-	}
-
-	if !d.Type().IsRegular() {
-		// Don't worry about non-files
-		return nil
-	}
-
-	info, err := d.Info()
-	if err != nil {
-		return err
-	}
-
-	mode := info.Mode()
-	if mode&0002 != 0 {
-		if mode&0111 != 0 {
-			return fmt.Errorf("world-writeable executable file found in package (security risk)")
+func worldWriteableLinter(pkgname string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if isIgnoredPath(path) {
+			return nil
 		}
-		return fmt.Errorf("world-writeable file found in package")
-	}
 
-	return nil
+		if !d.Type().IsRegular() { // Don't worry about non-files
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := info.Mode()
+		if mode&0002 != 0 {
+			if mode&0111 != 0 {
+				return fmt.Errorf("world-writeable executable file found in package (security risk)")
+			}
+			return fmt.Errorf("world-writeable file found in package")
+		}
+		return nil
+	})
 }
 
 var elfMagic = []byte{'\x7f', 'E', 'L', 'F'}
 
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 
-func strippedLinter(lctx LinterContext, path string, d fs.DirEntry) error {
-	if isIgnoredPath(path) {
+func strippedLinter(_ string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		if !d.Type().IsRegular() {
+			// Don't worry about non-files
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		if info.Size() < int64(len(elfMagic)) {
+			// This is definitely not an ELF file.
+			return nil
+		}
+
+		ext := filepath.Ext(path)
+		mode := info.Mode()
+		if mode&0111 == 0 && !isObjectFileRegex.MatchString(ext) {
+			// Not an executable or library
+			return nil
+		}
+
+		f, err := fsys.Open(path)
+		if err != nil {
+			return fmt.Errorf("opening file: %w", err)
+		}
+		defer f.Close()
+
+		// Both os.DirFS and go-apk return a file that implements ReaderAt.
+		// We don't have any other callers, so this should never fail.
+		readerAt, ok := f.(io.ReaderAt)
+		if !ok {
+			return fmt.Errorf("fs.File does not impl ReaderAt: %T", f)
+		}
+
+		hdr := make([]byte, len(elfMagic))
+		if _, err := readerAt.ReadAt(hdr, 0); err != nil {
+			return fmt.Errorf("failed to read %d bytes for magic ELF header: %w", len(elfMagic), err)
+		}
+
+		if !bytes.Equal(elfMagic, hdr) {
+			// No magic header, definitely not ELF.
+			return nil
+		}
+
+		file, err := elf.NewFile(readerAt)
+		if err != nil {
+			// We don't particularly care if this fails otherwise.
+			fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
+		}
+		defer file.Close()
+
+		// No debug sections allowed
+		if file.Section(".debug") != nil || file.Section(".zdebug") != nil {
+			return fmt.Errorf("ELF file is not stripped")
+		}
 		return nil
-	}
-
-	if !d.Type().IsRegular() {
-		// Don't worry about non-files
-		return nil
-	}
-
-	info, err := d.Info()
-	if err != nil {
-		return err
-	}
-
-	if info.Size() < int64(len(elfMagic)) {
-		// This is definitely not an ELF file.
-		return nil
-	}
-
-	ext := filepath.Ext(path)
-	mode := info.Mode()
-	if mode&0111 == 0 && !isObjectFileRegex.MatchString(ext) {
-		// Not an executable or library
-		return nil
-	}
-
-	f, err := lctx.fsys.Open(path)
-	if err != nil {
-		return fmt.Errorf("opening file: %w", err)
-	}
-	defer f.Close()
-
-	// Both os.DirFS and go-apk return a file that implements ReaderAt.
-	// We don't have any other callers, so this should never fail.
-	readerAt, ok := f.(io.ReaderAt)
-	if !ok {
-		return fmt.Errorf("fs.File does not impl ReaderAt: %T", f)
-	}
-
-	hdr := make([]byte, len(elfMagic))
-	if _, err := readerAt.ReadAt(hdr, 0); err != nil {
-		return fmt.Errorf("failed to read %d bytes for magic ELF header: %w", len(elfMagic), err)
-	}
-
-	if !bytes.Equal(elfMagic, hdr) {
-		// No magic header, definitely not ELF.
-		return nil
-	}
-
-	file, err := elf.NewFile(readerAt)
-	if err != nil {
-		// We don't particularly care if this fails otherwise.
-		fmt.Printf("WARNING: Could not open file %q as executable: %v\n", path, err)
-	}
-	defer file.Close()
-
-	// No debug sections allowed
-	if file.Section(".debug") != nil || file.Section(".zdebug") != nil {
-		return fmt.Errorf("ELF file is not stripped")
-	}
-
-	return nil
+	})
 }
 
-func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
+func emptyLinter(pkgname string, fsys fs.FS) error {
 	foundfile := false
-	walkCb := func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -383,9 +365,7 @@ func emptyPostLinter(_ LinterContext, fsys fs.FS) error {
 
 		foundfile = true
 		return fs.SkipAll
-	}
-
-	err := fs.WalkDir(fsys, ".", walkCb)
+	})
 	if err != nil {
 		return err
 	}
@@ -424,7 +404,7 @@ func getPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 	return
 }
 
-func pythonDocsPostLinter(_ LinterContext, fsys fs.FS) error {
+func pythonDocsLinter(_ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -440,7 +420,7 @@ func pythonDocsPostLinter(_ LinterContext, fsys fs.FS) error {
 	return nil
 }
 
-func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
+func pythonMultiplePackagesLinter(_ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -496,7 +476,7 @@ func pythonMultiplePackagesPostLinter(_ LinterContext, fsys fs.FS) error {
 	return nil
 }
 
-func pythonTestPostLinter(_ LinterContext, fsys fs.FS) error {
+func pythonTestLinter(_ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -512,105 +492,39 @@ func pythonTestPostLinter(_ LinterContext, fsys fs.FS) error {
 	return nil
 }
 
-// Checks if the linters in the given slice are known linters
-// Returns an empty slice if all linters are known, otherwise a slice with all the bad linters
-func CheckValidLinters(check []string) []string {
-	linters := []string{}
-	for _, l := range check {
-		_, present := linterMap[l]
-		if present {
-			continue
-		}
-
-		// Check post-linter map too
-		_, present = postLinterMap[l]
-		if !present {
-			linters = append(linters, l)
-		}
-	}
-
-	return linters
-}
-
-func (lctx LinterContext) lintPackageFs(warn func(error), linters []string, linterClass linter_defaults.LinterClass) error {
+func lintPackageFs(pkgname string, fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
-	if strings.HasSuffix(lctx.pkgname, "-compat") {
+	if strings.HasSuffix(pkgname, "-compat") {
 		return nil
 	}
 
-	// Verify all linters are known
-	badLints := CheckValidLinters(linters)
-	if len(badLints) > 0 {
-		return fmt.Errorf("unknown linter(s): %s", strings.Join(badLints, ", "))
-	}
-
-	postLinters := []string{}
-	walkCb := func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("error traversing tree at %s: %w", path, err)
+	errs := []error{}
+	for _, linterName := range linters {
+		linter, found := linterMap[linterName]
+		if !found {
+			return fmt.Errorf("unknown linter: %q", linterName)
 		}
-
-		for _, linterName := range linters {
-			linter, present := linterMap[linterName]
-			if !present {
-				// We already checked that all linters are valid, so this must be a post linter
-				postLinters = append(postLinters, linterName)
-				continue
-			}
-
-			if linter.LinterClass&linterClass == 0 {
-				// Linter not in class, ignored
-				continue
-			}
-
-			err = linter.LinterFunc(lctx, path, d)
-			if err != nil {
-				if linter.FailOnError {
-					return fmt.Errorf("linter %s failed at path %q: %w; suggest: %s", linterName, path, err, linter.Explain)
-				}
-				warn(err)
-			}
-		}
-
-		return nil
-	}
-
-	if err := fs.WalkDir(lctx.fsys, ".", walkCb); err != nil {
-		return err
-	}
-
-	// Run post-walking linters
-	for _, linterName := range postLinters {
-		linter := postLinterMap[linterName]
-
-		if linter.LinterClass&linterClass == 0 {
-			// Linter not in class, ignored
-			continue
-		}
-
-		err := linter.LinterFunc(lctx, lctx.fsys)
-		if err != nil {
-			if linter.FailOnError {
-				return fmt.Errorf("linter %s failed; suggest: %s", linterName, linter.Explain)
-			}
-			warn(err)
+		if err := linter.LinterFunc(linterName, fsys); err != nil {
+			errs = append(errs, fmt.Errorf("linter %s failed; suggest: %s", linterName, linter.Explain))
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 // Lint the given build directory at the given path
-func LintBuild(packageName string, path string, warn func(error), linters []string) error {
+func LintBuild(ctx context.Context, packageName string, path string, require, warn []string) error {
+	log := log.FromContext(ctx)
 	fsys := os.DirFS(path)
 
-	lctx := NewLinterContext(packageName, fsys)
-
-	return lctx.lintPackageFs(warn, linters, linter_defaults.LinterClassBuild)
+	if err := lintPackageFs(packageName, fsys, warn); err != nil {
+		log.Warnf("package linter warning in %s: %v", packageName, err)
+	}
+	return lintPackageFs(packageName, fsys, require)
 }
 
 // Lint the given APK at the given path
-func LintApk(ctx context.Context, path string, warn func(error), linters []string) error {
+func LintApk(ctx context.Context, path string, require, warn []string) error {
 	var r io.Reader
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		resp, err := http.Get(path)
@@ -659,7 +573,8 @@ func LintApk(ctx context.Context, path string, warn func(error), linters []strin
 		return fmt.Errorf("pkgname is nonexistent")
 	}
 
-	lctx := NewLinterContext(pkgname, exp.TarFS)
-
-	return lctx.lintPackageFs(warn, linters, linter_defaults.LinterClassApk)
+	if err := lintPackageFs(pkgname, exp.TarFS, warn); err != nil {
+		log.Warnf("package linter warning in %s: %v", pkgname, err)
+	}
+	return lintPackageFs(pkgname, exp.TarFS, require)
 }

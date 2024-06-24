@@ -64,40 +64,40 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceIgnore string
 	// Ordered directories where to find 'uses' pipelines.
-	PipelineDirs      []string
-	SourceDir         string
-	GuestDir          string
-	SigningKey        string
-	SigningPassphrase string
-	Namespace         string
-	GenerateIndex     bool
-	EmptyWorkspace    bool
-	OutDir            string
-	Arch              apko_types.Architecture
-	Libc              string
-	ExtraKeys         []string
-	ExtraRepos        []string
-	ExtraPackages     []string
-	DependencyLog     string
-	BinShOverlay      string
-	CreateBuildLog    bool
-	CacheDir          string
-	ApkCacheDir       string
-	CacheSource       string
-	StripOriginName   bool
-	EnvFile           string
-	VarsFile          string
-	Runner            container.Runner
-	containerConfig   *container.Config
-	Debug             bool
-	DebugRunner       bool
-	Interactive       bool
-	Remove            bool
-	FailOnLintWarning bool
-	DefaultCPU        string
-	DefaultMemory     string
-	DefaultTimeout    time.Duration
-	Auth              map[string]options.Auth
+	PipelineDirs          []string
+	SourceDir             string
+	GuestDir              string
+	SigningKey            string
+	SigningPassphrase     string
+	Namespace             string
+	GenerateIndex         bool
+	EmptyWorkspace        bool
+	OutDir                string
+	Arch                  apko_types.Architecture
+	Libc                  string
+	ExtraKeys             []string
+	ExtraRepos            []string
+	ExtraPackages         []string
+	DependencyLog         string
+	BinShOverlay          string
+	CreateBuildLog        bool
+	CacheDir              string
+	ApkCacheDir           string
+	CacheSource           string
+	StripOriginName       bool
+	EnvFile               string
+	VarsFile              string
+	Runner                container.Runner
+	containerConfig       *container.Config
+	Debug                 bool
+	DebugRunner           bool
+	Interactive           bool
+	Remove                bool
+	LintRequire, LintWarn []string
+	DefaultCPU            string
+	DefaultMemory         string
+	DefaultTimeout        time.Duration
+	Auth                  map[string]options.Auth
 
 	EnabledBuildOptions []string
 
@@ -665,8 +665,8 @@ func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 }
 
 type linterTarget struct {
-	pkgName string
-	checks  *config.Checks
+	pkgName  string
+	disabled []string // checks that are downgraded from required -> warn
 }
 
 func (b *Build) BuildPackage(ctx context.Context) error {
@@ -798,8 +798,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
-			pkgName: b.Configuration.Package.Name,
-			checks:  b.Configuration.Package.Checks,
+			pkgName:  b.Configuration.Package.Name,
+			disabled: b.Configuration.Package.Checks.Disabled,
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}
@@ -826,8 +826,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
-			pkgName: sp.Name,
-			checks:  sp.Checks,
+			pkgName:  sp.Name,
+			disabled: sp.Checks.Disabled,
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}
@@ -843,21 +843,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)
-
 		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
-		linters := lt.checks.GetLinters()
 
-		var innerErr error
-		if err := linter.LintBuild(lt.pkgName, path, func(err error) {
-			if b.FailOnLintWarning {
-				innerErr = err
-			} else {
-				log.Warnf("WARNING: %v", err)
-			}
-		}, linters); err != nil {
-			return fmt.Errorf("package linter error: %w", err)
-		} else if innerErr != nil {
-			return fmt.Errorf("package linter warning: %w", err)
+		// Downgrade disabled checks from required to warn
+		require := slices.DeleteFunc(b.LintRequire, func(s string) bool {
+			return slices.Contains(lt.disabled, s)
+		})
+		warn := slices.CompactFunc(append(b.LintWarn, lt.disabled...), func(a, b string) bool {
+			return a == b
+		})
+
+		if err := linter.LintBuild(ctx, lt.pkgName, path, require, warn); err != nil {
+			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}
 

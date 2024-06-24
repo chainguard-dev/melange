@@ -105,7 +105,6 @@ func Compile() *cobra.Command {
 				build.WithDebugRunner(debugRunner),
 				build.WithInteractive(interactive),
 				build.WithRemove(remove),
-				build.WithFailOnLintWarning(failOnLintWarning),
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),

@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,7 +35,6 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
-	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -82,8 +80,6 @@ type PackageOption struct {
 }
 
 type Checks struct {
-	// Optional: enable these linters that are not enabled by default.
-	Enabled []string `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// Optional: disable these linters that are not enabled by default.
 	Disabled []string `json:"disabled,omitempty" yaml:"disabled,omitempty"`
 }
@@ -299,29 +295,6 @@ func (p *Package) FullCopyright() string {
 		copyright += cp.Attestation + "\n"
 	}
 	return copyright
-}
-
-// Computes the list of package or subpackage linters, taking into account default linters.
-// This includes the default linters as well, unless disabled.
-func (chk *Checks) GetLinters() []string {
-	linters := linter_defaults.GetDefaultLinters(linter_defaults.LinterClassBuild)
-
-	if chk == nil {
-		return linters
-	}
-
-	// Enable non-default linters
-	for _, v := range chk.Enabled {
-		// Ensure we don't get duplicate values
-		if !slices.Contains(linters, v) {
-			linters = append(linters, v)
-		}
-	}
-
-	// Filter linters
-	linters = slices.DeleteFunc(linters, func(n string) bool { return slices.Contains(chk.Disabled, n) })
-
-	return linters
 }
 
 type Needs struct {

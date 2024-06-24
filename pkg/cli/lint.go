@@ -15,11 +15,9 @@
 package cli
 
 import (
-	"context"
-	"fmt"
+	"errors"
 	"runtime"
-	"slices"
-	"strings"
+	"sync"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
@@ -27,7 +25,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"chainguard.dev/melange/pkg/linter"
-	linter_defaults "chainguard.dev/melange/pkg/linter/defaults"
 )
 
 type LintOpts struct {
@@ -35,10 +32,7 @@ type LintOpts struct {
 }
 
 func Lint() *cobra.Command {
-	o := LintOpts{}
-
-	var enabled, disabled []string
-
+	var lintRequire, lintWarn []string
 	cmd := &cobra.Command{
 		Use:     "lint",
 		Short:   "EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors",
@@ -47,69 +41,32 @@ func Lint() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			g, ctx := errgroup.WithContext(ctx)
+			g.SetLimit(runtime.GOMAXPROCS(0))
 
-			// Cheap and dirty way to handle duplicates
-			linterSet := map[string]struct{}{}
-
-			// Get all default linters, ignoring disabled ones
-			for _, e := range linter_defaults.GetDefaultLinters(linter_defaults.LinterClassApk) {
-				if !slices.Contains(disabled, e) {
-					linterSet[e] = struct{}{}
-				}
+			errs := []error{}
+			var mu sync.Mutex
+			for _, pkg := range args {
+				pkg := pkg
+				g.Go(func() error {
+					clog.FromContext(ctx).Infof("Linting apk: %s", pkg)
+					if err := linter.LintApk(ctx, pkg, lintRequire, lintWarn); err != nil {
+						mu.Lock()
+						defer mu.Unlock()
+						errs = append(errs, err)
+					}
+					return nil
+				})
 			}
-
-			// Enable non-default lints
-			for _, e := range enabled {
-				if !slices.Contains(disabled, e) {
-					linterSet[e] = struct{}{}
-				}
+			if err := g.Wait(); err != nil {
+				return err
 			}
-
-			// Collect
-			linters := []string{}
-			for e := range linterSet {
-				linters = append(linters, e)
-			}
-
-			badLints := linter.CheckValidLinters(linters)
-			if len(badLints) > 0 {
-				return fmt.Errorf("Unknwon linter(s): %s", strings.Join(badLints, ", "))
-			}
-
-			o.linters = linters
-
-			return o.RunAllE(ctx, args...)
+			return errors.Join(errs...)
 		},
 	}
 
-	cmd.Flags().StringSliceVar(&enabled, "enabled", []string{}, "enable additional, non-default lints, `--disabled` overrides this")
-	cmd.Flags().StringSliceVar(&disabled, "disabled", []string{}, "disable linters enabled by default or passed in `--enabled`")
+	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
+	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 
 	return cmd
-}
-
-func (o LintOpts) RunAllE(ctx context.Context, pkgs ...string) error {
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(runtime.GOMAXPROCS(0))
-
-	for _, pkg := range pkgs {
-		p := pkg
-		g.Go(func() error { return o.run(ctx, p) })
-	}
-	return g.Wait()
-}
-
-func (o LintOpts) run(ctx context.Context, pkg string) error {
-	log := clog.FromContext(ctx)
-	log.Infof("Linting apk: %s", pkg)
-
-	var innerErr error
-	passthru := func(err error) { innerErr = err }
-	err := linter.LintApk(ctx, pkg, passthru, o.linters)
-	if err != nil {
-		return fmt.Errorf("package linter error in %s: %w", pkg, err)
-	} else if innerErr != nil {
-		log.Warnf("package linter warning in %s: %v", pkg, innerErr)
-	}
-	return nil
 }

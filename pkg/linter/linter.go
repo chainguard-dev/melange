@@ -72,15 +72,15 @@ func allPaths(fn func(pkgname, path string) error) func(pkgname string, fsys fs.
 }
 
 func DefaultRequiredLinters() []string {
-	return slices.DeleteFunc(maps.Keys(linterMap), func(k string) bool {
-		return linterMap[k].defaultBehavior != Require
-	})
+	l := slices.DeleteFunc(maps.Keys(linterMap), func(k string) bool { return linterMap[k].defaultBehavior != Require })
+	slices.Sort(l)
+	return l
 }
 
 func DefaultWarnLinters() []string {
-	return slices.DeleteFunc(maps.Keys(linterMap), func(k string) bool {
-		return linterMap[k].defaultBehavior != Warn
-	})
+	l := slices.DeleteFunc(maps.Keys(linterMap), func(k string) bool { return linterMap[k].defaultBehavior != Warn })
+	slices.Sort(l)
+	return l
 }
 
 var linterMap = map[string]linter{

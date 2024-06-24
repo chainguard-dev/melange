@@ -47,7 +47,7 @@ melange build [flags]
   -i, --interactive                                             when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings                                  path to extra keys to include in the build environment keyring
       --lint-require strings                                    linters that must pass
-      --lint-warn strings                                       linters that will generate warnings (default [setuidgid,tempdir,varempty,python/docs,dev,empty,python/test,opt,srv,infodir,python/multiple,documentation,strip,worldwrite,object,usrlocal])
+      --lint-warn strings                                       linters that will generate warnings (default [dev,documentation,empty,infodir,object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,tempdir,usrlocal,varempty,worldwrite])
       --memory string                                           default memory resources to use for builds
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")

@@ -30,7 +30,7 @@ melange lint [flags]
 ```
   -h, --help                   help for lint
       --lint-require strings   linters that must pass
-      --lint-warn strings      linters that will generate warnings (default [dev,setuidgid,tempdir,varempty,python/docs,opt,srv,empty,python/test,documentation,strip,infodir,python/multiple,object,usrlocal,worldwrite])
+      --lint-warn strings      linters that will generate warnings (default [dev,documentation,empty,infodir,object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,tempdir,usrlocal,varempty,worldwrite])
 ```
 
 ### Options inherited from parent commands

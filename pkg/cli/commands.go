@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"chainguard.dev/apko/pkg/log"
 	"github.com/chainguard-dev/clog/gcp"
@@ -40,11 +41,7 @@ func New() *cobra.Command {
 			if gcplog {
 				slog.SetDefault(slog.New(gcp.NewHandler(slog.Level(level))))
 			} else {
-				out, err := log.Writer([]string{"builtin:stderr"})
-				if err != nil {
-					return fmt.Errorf("failed to create log writer: %w", err)
-				}
-				slog.SetDefault(slog.New(charmlog.NewWithOptions(out, charmlog.Options{ReportTimestamp: true, Level: charmlog.Level(level)})))
+				slog.SetDefault(slog.New(charmlog.NewWithOptions(os.Stderr, charmlog.Options{ReportTimestamp: true, Level: charmlog.Level(level)})))
 			}
 
 			return nil

@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -89,29 +90,26 @@ func Lint() *cobra.Command {
 
 func (o LintOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(runtime.GOMAXPROCS(0))
 
 	for _, pkg := range pkgs {
 		p := pkg
-
-		g.Go(func() error {
-			return o.run(ctx, p)
-		})
+		g.Go(func() error { return o.run(ctx, p) })
 	}
 	return g.Wait()
 }
 
 func (o LintOpts) run(ctx context.Context, pkg string) error {
 	log := clog.FromContext(ctx)
-	log.Infof("Linting apk: %s\n", pkg)
+	log.Infof("Linting apk: %s", pkg)
 
 	var innerErr error
-	err := linter.LintApk(ctx, pkg, func(err error) {
-		innerErr = err
-	}, o.linters)
+	passthru := func(err error) { innerErr = err }
+	err := linter.LintApk(ctx, pkg, passthru, o.linters)
 	if err != nil {
-		return fmt.Errorf("package linter error in %s: %w\n", pkg, err)
+		return fmt.Errorf("package linter error in %s: %w", pkg, err)
 	} else if innerErr != nil {
-		log.Infof("package linter warning in %s: %v\n", pkg, innerErr)
+		log.Warnf("package linter warning in %s: %v", pkg, innerErr)
 	}
 	return nil
 }

@@ -151,3 +151,20 @@ pipeline:
       [ "$hash" = 2b9bb894348794bc840a2ee7553d54a1c80b9278 ]
       cd ..
       rm -R tag-and-branch
+  - name: "process cherry-picks"
+    uses: git-checkout
+    working-directory: cherry-pick-test
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      cherry-picks: |
+        main/582b4d7d62f1c512568649ce8b6db085a3d85a9f
+  - name: "check cherry-picks"
+    working-directory: cherry-pick-test
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      # Replace the expected hash with the correct one after cherry-pick
+      expected_hash="225e712ae452645acbd8f137b13d6b1ded8a96a1"
+      [ "$hash" != "$expected_hash" ]
+      cd ..
+      rm -R cherry-pick-test

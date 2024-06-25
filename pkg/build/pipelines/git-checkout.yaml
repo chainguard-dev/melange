@@ -53,66 +53,73 @@ pipeline:
       vr() { msg "execute:" "$@"; "$@"; }
 
       process_cherry_picks() {
-            local cpicksf="$1" oifs="$IFS" count=0
-            local fetched_branches=""
-            local sdate=${SOURCE_DATE_EPOCH:-0}
-            if [ "$sdate" -lt 315532800 ]; then
-                msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
-                sdate=315532800
-            fi
-            if [ -z "$cpicksf" ]; then
-                return 0
-            fi
-            if [ ! -f "$cpicksf" ]; then
-                msg "cherry picks input '$cpicksf' is not a file"
+        local cpicksf="$1" oifs="$IFS" count=0
+        local fetched_branches=""
+        local sdate=${SOURCE_DATE_EPOCH:-0}
+        if [ "$sdate" -lt 315532800 ]; then
+            msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
+            sdate=315532800
+        fi
+        if [ -z "$cpicksf" ]; then
+            return 0
+        fi
+        if [ ! -f "$cpicksf" ]; then
+            msg "cherry picks input '$cpicksf' is not a file"
+            return 1
+        fi
+
+        local line="" branch="" hash="" comment=""
+        while IFS= read -r line; do
+            # Drop anything after #
+            line=${line%%#*}
+            [ -z "$line" ] && continue
+            # Ensure the line contains ':'
+            if ! echo "$line" | grep -q ':'; then
+                msg "Invalid format, expected '[branch/]commit: comment'. Found: $line"
                 return 1
             fi
-
-            local line="" branch="" hash="" comment=""
-            while IFS= read -r line; do
-                # drop anything after #
-                line=${line%%#*}
-                [ -z "$line" ] && continue
-                # Ensure the line contains ':'
-                if ! echo "$line" | grep -q ':'; then
-                    msg "Invalid format, expected '[branch/]commit: comment'. Found: $line"
-                    return 1
-                fi
-                # Split the line into branch/hash and comment parts
-                branch=${line%%:*}
-                comment=${line#*:}
-                # Extract commit hash
-                hash=${branch##*/}
-                # If branch information exists, strip it off to just leave the branch name
-                [ "$branch" != "$hash" ] && branch=${branch%/*} || branch=""
-
-                if [ -n "$branch" ]; then
-                    case " $fetched_branches " in
-                        *" $branch "*) ;;
-                        *) vr git fetch origin $branch:$branch || {
-                            msg "failed to fetch branch $branch"
-                            return 1
-                            }
-                            fetched_branches="$fetched_branches $branch ";;
-                    esac
-                fi
-
-                vr env \
-                    GIT_COMMITTER_DATE="@$sdate" \
-                    git cherry-pick -x "$hash" || {
-                    msg "failed to cherry-pick $hash from branch $branch"
-                    return 1
-                }
-
-                msg "Cherry-picked $hash from $branch with comment: $comment"
-
-                count=$((count + 1))
-            done < "$cpicksf"
-
-            if [ $count -gt 0 ]; then
-                msg "applied $count cherry-pick(s). head is now $(git rev-parse HEAD)"
+            # Split the line into branch/hash and comment parts
+            branch=${line%%:*}
+            comment=${line#*:}
+            comment=$(echo "$comment" | xargs)  # Strip leading/trailing whitespace
+            # Check if the comment is empty
+            if [ -z "$comment" ]; then
+                msg "Empty comment for cherry-pick: $line"
+                return 1  # or continue to skip this cherry-pick
             fi
-        }
+            # Extract commit hash
+            hash=${branch##*/}
+            # If branch information exists, strip it off to just leave the branch name
+            [ "$branch" != "$hash" ] && branch=${branch%/*} || branch=""
+
+            if [ -n "$branch" ]; then
+                case " $fetched_branches " in
+                    *" $branch "*) ;;
+                    *) vr git fetch origin $branch:$branch || {
+                        msg "failed to fetch branch $branch"
+                        return 1
+                        }
+                        fetched_branches="$fetched_branches $branch ";;
+                esac
+            fi
+
+            vr env \
+                GIT_COMMITTER_DATE="@$sdate" \
+                git cherry-pick -x "$hash" || {
+                msg "failed to cherry-pick $hash from branch $branch"
+                return 1
+            }
+
+            msg "Cherry-picked $hash from $branch with comment: $comment"
+
+            count=$((count + 1))
+        done < "$cpicksf"
+
+        if [ $count -gt 0 ]; then
+            msg "applied $count cherry-pick(s). head is now $(git rev-parse HEAD)"
+        fi
+      }
+
 
 
       main() {

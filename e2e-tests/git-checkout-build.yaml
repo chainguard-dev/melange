@@ -158,7 +158,7 @@ pipeline:
       repository: ${{vars.giturl}}
       branch: 1.x
       cherry-picks: |
-        main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: my comment
+        main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: here comment
   - name: "check cherry-picks"
     working-directory: cherry-pick-test
     runs: |

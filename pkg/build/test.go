@@ -513,7 +513,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	// clean workspace dir
 	if err := os.RemoveAll(t.WorkspaceDir); err != nil {
-		log.Infof("WARNING: unable to clean workspace: %s", err)
+		log.Warnf("unable to clean workspace: %s", err)
 	}
 	return nil
 }

@@ -172,7 +172,7 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 			}
 
 			if idx.ExpectedArch != "" && pkg.Arch != idx.ExpectedArch {
-				log.Infof("WARNING: %s-%s: found unexpected architecture %s, expecting %s",
+				log.Warnf("%s-%s: found unexpected architecture %s, expecting %s",
 					pkg.Name, pkg.Version, pkg.Arch, idx.ExpectedArch)
 				return nil
 			}

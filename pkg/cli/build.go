@@ -283,7 +283,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	}
 
 	if len(bcs) == 0 {
-		log.Warn("WARNING: target-architecture and --arch do not overlap, nothing to build")
+		log.Warn("target-architecture and --arch do not overlap, nothing to build")
 		return nil
 	}
 

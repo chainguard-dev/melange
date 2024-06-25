@@ -9,39 +9,43 @@ inputs:
     description: |
       The repository to check out sources from.
     required: true
-
   destination:
     description: |
       The path to check out the sources to.
     default: .
-
   depth:
     description: |
       The depth to use when cloning. Set to -1 to not specify depth when cloning.
     default: 1
-
   branch:
     description: |
       The branch to check out, otherwise HEAD is checked out.
       For reproducibility, tag is generally favored over branch.
       Branch and tag are mutually exclusive.
-
   tag:
     description: |
       The tag to check out.  Branch and tag are mutually exclusive.
-
   expected-commit:
     description: |
       The expected commit hash
-
   recurse-submodules:
     description: |
       Indicates whether --recurse-submodules should be passed to git clone.
     default: false
-  
   cherry-picks:
     description: |
-      List of cherry picks to apply
+      List of cherry picks to apply. New line separated entries.  Lines can be empty. Any content on a line after `#` is ignored.
+      After removing comments, each line is of the form:
+
+          [branch/]commit-id: comment explaining cherry-pick
+
+      comment and commit-id are required.  branch on origin that
+      the commit lives should be provided or git is not guaranteed to
+      have a reference to the commit-id.
+
+      Example:
+        cherry-picks: |
+        3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
 
 pipeline:
   - runs: |
@@ -230,7 +234,7 @@ pipeline:
         echo "failed mktemp"
         exit 1
       }
-      
+
       cat >"$cpickf" <<"END_CHERRY_PICKS"
       ${{inputs.cherry-picks}}
       END_CHERRY_PICKS

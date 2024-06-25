@@ -90,12 +90,12 @@ var linterMap = map[string]linter{
 	"dev": {
 		LinterFunc:      allPaths(devLinter),
 		Explain:         "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
-		defaultBehavior: Warn,
+		defaultBehavior: Require,
 	},
 	"documentation": {
 		LinterFunc:      allPaths(documentationLinter),
 		Explain:         "Place documentation into a separate package or remove it",
-		defaultBehavior: Warn,
+		defaultBehavior: Ignore, // TODO: Lots of packages write to READMEs, etc.
 	},
 	"opt": {
 		LinterFunc:      allPaths(optLinter),
@@ -125,7 +125,7 @@ var linterMap = map[string]linter{
 	"tempdir": {
 		LinterFunc:      allPaths(tempDirLinter),
 		Explain:         "Remove any offending files in temporary dirs in the pipeline",
-		defaultBehavior: Warn,
+		defaultBehavior: Require,
 	},
 	"usrlocal": {
 		LinterFunc:      allPaths(usrLocalLinter),
@@ -135,7 +135,7 @@ var linterMap = map[string]linter{
 	"varempty": {
 		LinterFunc:      allPaths(varEmptyLinter),
 		Explain:         "Remove any offending files in /var/empty in the pipeline",
-		defaultBehavior: Warn,
+		defaultBehavior: Require,
 	},
 	"worldwrite": {
 		LinterFunc:      worldWriteableLinter,
@@ -150,12 +150,12 @@ var linterMap = map[string]linter{
 	"infodir": {
 		LinterFunc:      allPaths(infodirLinter),
 		Explain:         "Remove /usr/share/info/dir from the package (run split/infodir)",
-		defaultBehavior: Warn,
+		defaultBehavior: Require,
 	},
 	"empty": {
 		LinterFunc:      emptyLinter,
 		Explain:         "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
-		defaultBehavior: Warn,
+		defaultBehavior: Ignore, // TODO: Needs to ignore packages that specify no-provides.
 	},
 	"python/docs": {
 		LinterFunc:      pythonDocsLinter,
@@ -305,9 +305,9 @@ func worldWriteableLinter(ctx context.Context, pkgname string, fsys fs.FS) error
 		mode := info.Mode()
 		if mode&0002 != 0 {
 			if mode&0111 != 0 {
-				return fmt.Errorf("world-writeable executable file found in package (security risk)")
+				return fmt.Errorf("world-writeable executable file found in package (security risk): %s", path)
 			}
-			return fmt.Errorf("world-writeable file found in package")
+			return fmt.Errorf("world-writeable file found in package: %s", path)
 		}
 		return nil
 	})
@@ -587,7 +587,11 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 
 	var r io.Reader
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		resp, err := http.Get(path)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
+		if err != nil {
+			return fmt.Errorf("creating HTTP request: %w", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("getting apk %q: %w", path, err)
 		}

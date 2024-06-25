@@ -81,8 +81,8 @@ pipeline:
             # Split the line into branch/hash and comment parts
             branch=${line%%:*}
             comment=${line#*:}
-            comment=$(echo "$comment" | xargs)  # Strip leading/trailing whitespace
-            # Check if the comment is empty
+            comment=$(set -f; echo $comment) # Strip leading/trailing whitespace
+
             if [ -z "$comment" ]; then
                 msg "Empty comment for cherry-pick: $line"
                 return 1  # or continue to skip this cherry-pick

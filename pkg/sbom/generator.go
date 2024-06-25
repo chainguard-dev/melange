@@ -49,7 +49,7 @@ func Generate(ctx context.Context, spec *Spec) error {
 	}
 
 	if !shouldRun {
-		log.Infof("Warning: Working directory not found, probably apk is empty")
+		log.Warnf("working directory not found, apk is empty")
 		return nil
 	}
 

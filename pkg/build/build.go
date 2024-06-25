@@ -917,7 +917,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	if !b.IsBuildLess() {
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
-			log.Infof("WARNING: unable to clean guest container: %s", err)
+			log.Warnf("unable to clean guest container: %s", err)
 		}
 	}
 
@@ -926,7 +926,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// that is running melange. files created inside the build not owned by the build user are
 	// not be possible to delete with this strategy.
 	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
-		log.Infof("WARNING: unable to clean workspace: %s", err)
+		log.Warnf("unable to clean workspace: %s", err)
 	}
 
 	// generate APKINDEX.tar.gz and sign it

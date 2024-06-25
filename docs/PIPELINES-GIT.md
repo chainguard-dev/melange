@@ -29,7 +29,7 @@ pipeline:
     with:
       expected-commit: 976ea78599d71f22e9c0fefc2dc37c1d9fc835a4
       repository: https://github.com/python/cpython.git
-      tag: v${{package.version}}
+      tag: v3.10.14
       cherry-picks: |
         3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032
 ```

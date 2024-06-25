@@ -33,6 +33,7 @@ convert python botocore
       --base-uri-format string   URI to use for querying gems for provided package name (default "https://pypi.org")
   -h, --help                     help for python
       --package-version string   version of the python package to convert
+      --preserve-base-uri        preserve the base URI for PyPI packages instead of using the friendly URL
       --python-version string    version of the python to build the package (default "3")
 ```
 

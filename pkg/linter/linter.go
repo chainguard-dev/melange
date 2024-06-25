@@ -305,9 +305,9 @@ func worldWriteableLinter(ctx context.Context, pkgname string, fsys fs.FS) error
 		mode := info.Mode()
 		if mode&0002 != 0 {
 			if mode&0111 != 0 {
-				return fmt.Errorf("world-writeable executable file found in package (security risk)")
+				return fmt.Errorf("world-writeable executable file found in package (security risk): %s")
 			}
-			return fmt.Errorf("world-writeable file found in package")
+			return fmt.Errorf("world-writeable file found in package: %s", path)
 		}
 		return nil
 	})

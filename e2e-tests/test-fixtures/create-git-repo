@@ -33,6 +33,9 @@ TEMP_D=$(mktemp -d)
 trap cleanup EXIT
 
 dest="$1"
+if [ -z "$dest" ]; then
+    fail "must provide dest dir for bare git repo"
+fi
 if [ -e "$dest" ]; then
     fail "do not give existing dir for dest"
 fi
@@ -86,15 +89,19 @@ v git checkout --quiet main
 v wfile README "mainline stuff"
 v gcommit -m "mainline stuff" README
 
-v git checkout --quiet main
-v wfile README "mainline stuff 2"
-v gcommit -m "mainline stuff 2" README
-
-v git checkout --quiet -b 2.x main^
+v git checkout --quiet -b 2.x main
 v wfile README "2.0-release content"
 v gcommit -m "release 2.0" README
 v gtag 2.0
 v gtag --annotate --message="Release 2.0" 2.0-annotated HEAD
+
+v git checkout --quiet main
+v wfile README "mainline stuff 2"
+v gcommit -m "mainline stuff 2" README
+
+v wfile file1.txt "exciting file contents"
+v git add file1.txt
+v gcommit -m "finally add file1.txt" file1.txt
 
 v git checkout --quiet main
 

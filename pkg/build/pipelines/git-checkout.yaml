@@ -9,35 +9,46 @@ inputs:
     description: |
       The repository to check out sources from.
     required: true
-
   destination:
     description: |
       The path to check out the sources to.
     default: .
-
   depth:
     description: |
       The depth to use when cloning. Set to -1 to not specify depth when cloning.
     default: 1
-
   branch:
     description: |
       The branch to check out, otherwise HEAD is checked out.
       For reproducibility, tag is generally favored over branch.
       Branch and tag are mutually exclusive.
-
   tag:
     description: |
       The tag to check out.  Branch and tag are mutually exclusive.
-
   expected-commit:
     description: |
       The expected commit hash
-
   recurse-submodules:
     description: |
       Indicates whether --recurse-submodules should be passed to git clone.
     default: false
+  cherry-picks:
+    description: |
+      List of cherry picks to apply.
+      New line separated entries. 
+      Lines can be empty.
+      Any content on a line after `#` is ignored.
+      After removing comments, each line is of the form:
+
+          [branch/]commit-id: comment explaining cherry-pick
+
+      comment and commit-id are required.  branch on origin that
+      the commit lives should be provided or git is not guaranteed to
+      have a reference to the commit-id.
+
+        Example:
+          cherry-picks: |
+            3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
 
 pipeline:
   - runs: |
@@ -48,9 +59,80 @@ pipeline:
       fail() { msg FAIL "$@"; exit 1; }
       vr() { msg "execute:" "$@"; "$@"; }
 
+      process_cherry_picks() {
+        local cpicksf="$1" oifs="$IFS" count=0
+        local fetched_branches=""
+        local sdate=${SOURCE_DATE_EPOCH:-0}
+        if [ "$sdate" -lt 315532800 ]; then
+            msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
+            sdate=315532800
+        fi
+        if [ -z "$cpicksf" ]; then
+            return 0
+        fi
+        if [ ! -f "$cpicksf" ]; then
+            msg "cherry picks input '$cpicksf' is not a file"
+            return 1
+        fi
+
+        local line="" branch="" hash="" comment=""
+        while IFS= read -r line; do
+            # Drop anything after #
+            line=${line%%#*}
+            [ -z "$line" ] && continue
+            # Ensure the line contains ':'
+            if ! echo "$line" | grep -q ':'; then
+                msg "Invalid format, expected '[branch/]commit: comment'. Found: $line"
+                return 1
+            fi
+            # Split the line into branch/hash and comment parts
+            branch=${line%%:*}
+            comment=${line#*:}
+            comment=$(set -f; echo $comment) # Strip leading/trailing whitespace
+
+            if [ -z "$comment" ]; then
+                msg "Empty comment for cherry-pick: $line"
+                return 1  # or continue to skip this cherry-pick
+            fi
+            # Extract commit hash
+            hash=${branch##*/}
+            # If branch information exists, strip it off to just leave the branch name
+            [ "$branch" != "$hash" ] && branch=${branch%/*} || branch=""
+
+            if [ -n "$branch" ]; then
+                case " $fetched_branches " in
+                    *" $branch "*) ;;
+                    *) vr git fetch origin $branch:$branch || {
+                        msg "failed to fetch branch $branch"
+                        return 1
+                        }
+                        fetched_branches="$fetched_branches $branch ";;
+                esac
+            fi
+
+            vr env \
+                GIT_COMMITTER_DATE="@$sdate" \
+                git cherry-pick -x "$hash" || {
+                msg "failed to cherry-pick $hash from branch $branch"
+                return 1
+            }
+
+            msg "Cherry-picked $hash from $branch with comment: $comment"
+
+            count=$((count + 1))
+        done < "$cpicksf"
+
+        if [ $count -gt 0 ]; then
+            msg "applied $count cherry-pick(s). head is now $(git rev-parse HEAD)"
+        fi
+      }
+
+
+
       main() {
           local repo=$1 dest=${2:-.} depth=${3:-"-1"} branch=$4
           local tag=$5 expcommit=$6 recurse=${7:-false}
+          local cherry_pick="$8"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
               "tag='$tag' expcommit='$expcommit' recurse='$recurse'"
 
@@ -87,7 +169,10 @@ pipeline:
           vr git config --global --add safe.directory "$workdir"
           vr git config --global --add safe.directory "$dest_fullpath"
 
-          vr git clone $quiet "--origin=$remote" $flags \
+          vr git clone $quiet "--origin=$remote" \
+              "--config=user.name=Melange Build" \
+              "--config=user.email=melange-build@cgr.dev" \
+              $flags \
               ${depthflag:+"$depthflag"} "$repo" "$workdir"
 
           vr cd "$workdir"
@@ -108,6 +193,7 @@ pipeline:
                       " got $foundcommit"
               fi
               msg "tip of ${branch:-HEAD} is commit $foundcommit"
+              process_cherry_picks "$cherry_pick" || fail "failed to apply cherry-pick"
               return 0
           fi
 
@@ -121,32 +207,45 @@ pipeline:
           foundcommit=$(git rev-parse --verify HEAD)
           if [ -z "$expcommit" ] || [ "$expcommit" = "$foundcommit" ]; then
               msg "tag $tag is $foundcommit"
-              return 0
+          else
+                # If it's a tag, then it could be a lightweight or annotated tag.
+                # Lightweight tags point directly to the commit and do not have
+                # any messages, signatures, or other data.  Annotated tags point
+                # to its own git object containing the tag data, with a reference
+                # to the underlying commit.  We expect most tags to be using
+                # annotated tags.
+                tagobj=$(git rev-parse --verify --end-of-options \
+                    "refs/$remote/tags/$tag")
+                if [ "$expcommit" != "$tagobj" ]; then
+                    [ "$tagobj" != "$expcommit" ] &&
+                        msg "tag object hash was $tagobj"
+                    fail "Expected commit $expcommit for $tag, found $foundcommit"
+                fi
+
+                msg "Warning: The provided expected-commit ($expcommit)"
+                msg "was the hash of the annotated tag object for $tag."
+                msg "Update to set expected-commit to $foundcommit"
           fi
 
-          # If it's a tag, then it could be a lightweight or annotated tag.
-          # Lightweight tags point directly to the commit and do not have
-          # any messages, signatures, or other data.  Annotated tags point
-          # to its own git object containing the tag data, with a reference
-          # to the underlying commit.  We expect most tags to be using
-          # annotated tags.
-          tagobj=$(git rev-parse --verify --end-of-options \
-              "refs/$remote/tags/$tag")
-          if [ "$expcommit" != "$tagobj" ]; then
-              [ "$tagobj" != "$expcommit" ] &&
-                  msg "tag object hash was $tagobj"
-              fail "Expected commit $expcommit for $tag, found $foundcommit"
-          fi
-
-          msg "Warning: The provided expected-commit ($expcommit)"
-          msg "was the hash of the annotated tag object for $tag."
-          msg "Update to set expected-commit to $foundcommit"
+          process_cherry_picks "$cherry_pick" ||
+                fail "failed to apply cherry-pick"
 
           return 0
       }
+
+      cpickf=$(mktemp) || {
+        echo "failed mktemp"
+        exit 1
+      }
+
+      cat >"$cpickf" <<"END_CHERRY_PICKS"
+      ${{inputs.cherry-picks}}
+      END_CHERRY_PICKS
 
       main \
           "${{inputs.repository}}" "${{inputs.destination}}" \
           "${{inputs.depth}}" "${{inputs.branch}}" \
           "${{inputs.tag}}" "${{inputs.expected-commit}}" \
-          "${{inputs.recurse-submodules}}"
+          "${{inputs.recurse-submodules}}" "$cpickf"
+
+      rm -f "$cpickf"

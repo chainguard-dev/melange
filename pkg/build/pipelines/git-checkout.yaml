@@ -43,9 +43,9 @@ inputs:
       the commit lives should be provided or git is not guaranteed to
       have a reference to the commit-id.
 
-      Example:
-        cherry-picks: |
-        3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
+        Example:
+          cherry-picks: |
+          3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
 
 pipeline:
   - runs: |

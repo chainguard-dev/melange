@@ -1,0 +1,64 @@
+#!/bin/sh
+vrc() {
+    local name="$1" rc=""
+    shift
+    echo "$name"
+    echo "execute: $*"
+    "$@"
+    rc=$?
+    [ $rc -eq 0 ] || echo "ERROR[$rc]: $name"
+    return $rc
+}
+
+MELANGE=${MELANGE:-melange}
+if [ "$MELANGE" = "melange" ]; then
+    MELANGE=$(which melange)
+fi
+
+echo "Testing with melange from $MELANGE"
+$MELANGE version --json
+
+if [ $# -eq 0 ]; then
+    set -- *.yaml
+fi
+
+fails=""
+for yaml in "$@"; do
+  args=""
+  op=""
+  base=${yaml%.yaml}
+  case "$base" in
+    *-nopkg-test)
+      op="test"
+      args="$args --test-package-append busybox"
+      args="$args --test-package-append=python-3"
+      ;;
+    *-test)
+      op="test"
+      args="${base%-test}"
+      ;;
+    *-build)
+      op="build"
+      ;;
+    *)
+      echo "ERROR: Unexpected input '$yaml'."
+      exit 1
+      ;;
+  esac
+
+  vrc "Testing $base from $yaml" \
+    ${MELANGE} "$op" \
+      --arch=x86_64 --source-dir=./test-fixtures \
+      $yaml \
+      ${args} \
+      "--repository-append=https://packages.wolfi.dev/os" \
+      "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
+      fails="${fails} $yaml"
+done
+
+if [ -z "$fails" ]; then
+    echo "PASS: $*"
+    exit 0
+fi
+echo "FAIL: $fails"
+exit 1

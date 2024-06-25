@@ -37,7 +37,7 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-type linterFunc func(pkgname string, fsys fs.FS) error
+type linterFunc func(ctx context.Context, pkgname string, fsys fs.FS) error
 
 type linter struct {
 	LinterFunc      linterFunc
@@ -56,14 +56,17 @@ const (
 	Warn
 )
 
-func allPaths(fn func(pkgname, path string) error) func(pkgname string, fsys fs.FS) error {
-	return func(pkgname string, fsys fs.FS) error {
+func allPaths(fn func(ctx context.Context, pkgname, path string) error) func(ctx context.Context, pkgname string, fsys fs.FS) error {
+	return func(ctx context.Context, pkgname string, fsys fs.FS) error {
 		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if d.IsDir() {
 				// Ignore directories
 				return nil
 			}
-			if err := fn(pkgname, path); err != nil {
+			if err := fn(ctx, pkgname, path); err != nil {
 				return fmt.Errorf("%w: %s", err, path)
 			}
 			return nil
@@ -176,21 +179,21 @@ func isIgnoredPath(path string) bool {
 	return strings.HasPrefix(path, "var/lib/db/sbom/")
 }
 
-func devLinter(_, path string) error {
+func devLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "dev/") {
 		return fmt.Errorf("package writes to /dev")
 	}
 	return nil
 }
 
-func optLinter(_, path string) error {
+func optLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "opt/") {
 		return fmt.Errorf("package writes to /opt")
 	}
 
 	return nil
 }
-func objectLinter(_, path string) error {
+func objectLinter(_ context.Context, _, path string) error {
 	if filepath.Ext(path) == ".o" {
 		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
 	}
@@ -199,15 +202,18 @@ func objectLinter(_, path string) error {
 
 var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 
-func documentationLinter(pkgname, path string) error {
+func documentationLinter(_ context.Context, pkgname, path string) error {
 	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(pkgname, "-doc") {
 		return errors.New("package contains documentation files but is not a documentation package")
 	}
 	return nil
 }
 
-func isSetUIDOrGIDLinter(_ string, fsys fs.FS) error {
+func isSetUIDOrGIDLinter(ctx context.Context, _ string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -230,21 +236,21 @@ func isSetUIDOrGIDLinter(_ string, fsys fs.FS) error {
 	})
 }
 
-func sbomLinter(_, path string) error {
+func sbomLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "var/lib/db/sbom/") {
 		return fmt.Errorf("package writes to %s", path)
 	}
 	return nil
 }
 
-func infodirLinter(_, path string) error {
+func infodirLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "usr/share/info/dir/") {
 		return fmt.Errorf("package writes to /usr/share/info/dir/")
 	}
 	return nil
 }
 
-func srvLinter(_, path string) error {
+func srvLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "srv/") {
 		return fmt.Errorf("package writes to /srv")
 	}
@@ -253,29 +259,33 @@ func srvLinter(_, path string) error {
 
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 
-func tempDirLinter(_, path string) error {
+func tempDirLinter(_ context.Context, _, path string) error {
 	if isTempDirRegex.MatchString(path) {
 		return fmt.Errorf("package writes to a temp dir")
 	}
 	return nil
 }
 
-func usrLocalLinter(_, path string) error {
+func usrLocalLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "usr/local/") {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
 	return nil
 }
 
-func varEmptyLinter(_, path string) error {
+func varEmptyLinter(_ context.Context, _, path string) error {
 	if strings.HasPrefix(path, "var/empty/") {
 		return fmt.Errorf("package writes to /var/empty")
 	}
 	return nil
 }
 
-func worldWriteableLinter(pkgname string, fsys fs.FS) error {
+func worldWriteableLinter(ctx context.Context, pkgname string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		if err != nil {
 			return err
 		}
@@ -307,8 +317,11 @@ var elfMagic = []byte{'\x7f', 'E', 'L', 'F'}
 
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 
-func strippedLinter(_ string, fsys fs.FS) error {
+func strippedLinter(ctx context.Context, _ string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -375,7 +388,7 @@ func strippedLinter(_ string, fsys fs.FS) error {
 	})
 }
 
-func emptyLinter(pkgname string, fsys fs.FS) error {
+func emptyLinter(_ context.Context, pkgname string, fsys fs.FS) error {
 	foundfile := false
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -432,7 +445,7 @@ func getPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 	return
 }
 
-func pythonDocsLinter(_ string, fsys fs.FS) error {
+func pythonDocsLinter(_ context.Context, _ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -448,7 +461,7 @@ func pythonDocsLinter(_ string, fsys fs.FS) error {
 	return nil
 }
 
-func pythonMultiplePackagesLinter(_ string, fsys fs.FS) error {
+func pythonMultiplePackagesLinter(_ context.Context, _ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -504,7 +517,7 @@ func pythonMultiplePackagesLinter(_ string, fsys fs.FS) error {
 	return nil
 }
 
-func pythonTestLinter(_ string, fsys fs.FS) error {
+func pythonTestLinter(_ context.Context, _ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -520,7 +533,7 @@ func pythonTestLinter(_ string, fsys fs.FS) error {
 	return nil
 }
 
-func lintPackageFS(pkgname string, fsys fs.FS, linters []string) error {
+func lintPackageFS(ctx context.Context, pkgname string, fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if strings.HasSuffix(pkgname, "-compat") {
 		return nil
@@ -528,8 +541,11 @@ func lintPackageFS(pkgname string, fsys fs.FS, linters []string) error {
 
 	errs := []error{}
 	for _, linterName := range linters {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		linter := linterMap[linterName]
-		if err := linter.LinterFunc(linterName, fsys); err != nil {
+		if err := linter.LinterFunc(ctx, linterName, fsys); err != nil {
 			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", linterName, pkgname, err, linter.Explain))
 		}
 	}
@@ -556,11 +572,11 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 	log := log.FromContext(ctx)
 	fsys := os.DirFS(path)
 
-	if err := lintPackageFS(packageName, fsys, warn); err != nil {
+	if err := lintPackageFS(ctx, packageName, fsys, warn); err != nil {
 		log.Warnf(err.Error())
 	}
 	log.Infof("linting apk: %s", packageName)
-	return lintPackageFS(packageName, fsys, require)
+	return lintPackageFS(ctx, packageName, fsys, require)
 }
 
 // Lint the given APK at the given path
@@ -618,8 +634,8 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 	}
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
-	if err := lintPackageFS(pkgname, exp.TarFS, warn); err != nil {
+	if err := lintPackageFS(ctx, pkgname, exp.TarFS, warn); err != nil {
 		log.Warnf(err.Error())
 	}
-	return lintPackageFS(pkgname, exp.TarFS, require)
+	return lintPackageFS(ctx, pkgname, exp.TarFS, require)
 }

@@ -49,6 +49,9 @@ func Lint() *cobra.Command {
 			for _, pkg := range args {
 				pkg := pkg
 				g.Go(func() error {
+					if err := ctx.Err(); err != nil {
+						return err
+					}
 					if err := linter.LintAPK(ctx, pkg, lintRequire, lintWarn); err != nil {
 						mu.Lock()
 						defer mu.Unlock()

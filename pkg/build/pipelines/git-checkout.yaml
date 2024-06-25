@@ -48,7 +48,7 @@ inputs:
 
         Example:
           cherry-picks: |
-          3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
+            3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
 
 pipeline:
   - runs: |

@@ -34,7 +34,10 @@ inputs:
     default: false
   cherry-picks:
     description: |
-      List of cherry picks to apply. New line separated entries.  Lines can be empty. Any content on a line after `#` is ignored.
+      List of cherry picks to apply.
+      New line separated entries. 
+      Lines can be empty.
+      Any content on a line after `#` is ignored.
       After removing comments, each line is of the form:
 
           [branch/]commit-id: comment explaining cherry-pick

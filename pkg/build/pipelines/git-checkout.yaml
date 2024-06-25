@@ -55,6 +55,14 @@ pipeline:
       process_cherry_picks() {
             local cpicksf="$1" oifs="" count=0
             local fetched_branches=""
+            local sdate=${SOURCE_DATE_EPOCH:-0}
+            if [ "$sdate" -lt 315532800 ]; then
+                # git wont take a committer date of '@unix_seconds'
+                # where unix_seconds are less than some number.
+                # this is Jan 1 1980, and used in wolfi.
+                msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
+                sdate=315532800
+            fi
             if [ -z "$cpicksf" ]; then
                 return 0
             fi
@@ -83,13 +91,13 @@ pipeline:
                 fi
 
                 vr env \
-                GIT_AUTHOR_NAME="Melange Build" \
-                GIT_AUTHOR_EMAIL="melange-build@cgr.dev" \
-                GIT_COMMITTER_DATE="$SOURCE_DATE_EPOCH" \
-                git cherry-pick -x "$hash" || {
+                    GIT_COMMITTER_DATE="@$sdate" \
+                    git cherry-pick -x "$hash" || {
                     msg "failed to cherry-pick $hash from branch $branch"
                     return 1
                 }
+
+                git show --format=fuller </dev/null
 
                 count=$((count + 1))
             done < "$cpicksf"
@@ -139,7 +147,10 @@ pipeline:
           vr git config --global --add safe.directory "$workdir"
           vr git config --global --add safe.directory "$dest_fullpath"
 
-          vr git clone $quiet "--origin=$remote" $flags \
+          vr git clone $quiet "--origin=$remote" \
+              "--config=user.name=Melange Build" \
+              "--config=user.email=melange-build@cgr.dev" \
+              $flags \
               ${depthflag:+"$depthflag"} "$repo" "$workdir"
 
           vr cd "$workdir"

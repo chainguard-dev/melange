@@ -53,13 +53,10 @@ pipeline:
       vr() { msg "execute:" "$@"; "$@"; }
 
       process_cherry_picks() {
-            local cpicksf="$1" oifs="" count=0
+            local cpicksf="$1" oifs="$IFS" count=0
             local fetched_branches=""
             local sdate=${SOURCE_DATE_EPOCH:-0}
             if [ "$sdate" -lt 315532800 ]; then
-                # git wont take a committer date of '@unix_seconds'
-                # where unix_seconds are less than some number.
-                # this is Jan 1 1980, and used in wolfi.
                 msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
                 sdate=315532800
             fi
@@ -71,22 +68,32 @@ pipeline:
                 return 1
             fi
 
-            local line="" branch="" hash=""
-            while read line; do
+            local line="" branch="" hash="" comment=""
+            while IFS= read -r line; do
                 # drop anything after #
                 line=${line%%#*}
                 [ -z "$line" ] && continue
-                case "$line" in
-                    */*) branch=${line%%/*}; hash=${line#*/};;
-                    *) hash=${line};;
-                esac
+                # Ensure the line contains ':'
+                if ! echo "$line" | grep -q ':'; then
+                    msg "Invalid format, expected '[branch/]commit: comment'. Found: $line"
+                    return 1
+                fi
+                # Split the line into branch/hash and comment parts
+                branch=${line%%:*}
+                comment=${line#*:}
+                # Extract commit hash
+                hash=${branch##*/}
+                # If branch information exists, strip it off to just leave the branch name
+                [ "$branch" != "$hash" ] && branch=${branch%/*} || branch=""
+
                 if [ -n "$branch" ]; then
                     case " $fetched_branches " in
+                        *" $branch "*) ;;
                         *) vr git fetch origin $branch:$branch || {
                             msg "failed to fetch branch $branch"
                             return 1
                             }
-                            local fetched_branches="$fetched_branches $branch";;
+                            fetched_branches="$fetched_branches $branch ";;
                     esac
                 fi
 
@@ -97,7 +104,7 @@ pipeline:
                     return 1
                 }
 
-                git show --format=fuller </dev/null
+                msg "Cherry-picked $hash from $branch with comment: $comment"
 
                 count=$((count + 1))
             done < "$cpicksf"
@@ -106,6 +113,7 @@ pipeline:
                 msg "applied $count cherry-pick(s). head is now $(git rev-parse HEAD)"
             fi
         }
+
 
       main() {
           local repo=$1 dest=${2:-.} depth=${3:-"-1"} branch=$4

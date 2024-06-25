@@ -195,7 +195,7 @@ func optLinter(_ context.Context, _, path string) error {
 }
 func objectLinter(_ context.Context, _, path string) error {
 	if filepath.Ext(path) == ".o" {
-		return fmt.Errorf("package contains intermediate object file '%s'. This is usually wrong. In most cases they should be removed", path)
+		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
 	}
 	return nil
 }
@@ -546,7 +546,7 @@ func lintPackageFS(ctx context.Context, pkgname string, fsys fs.FS, linters []st
 		}
 		linter := linterMap[linterName]
 		if err := linter.LinterFunc(ctx, linterName, fsys); err != nil {
-			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", pkgname, linterName, err, linter.Explain))
+			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", linterName, pkgname, err, linter.Explain))
 		}
 	}
 

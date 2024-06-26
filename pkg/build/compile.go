@@ -192,7 +192,7 @@ type Compiled struct {
 
 func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
 	for i := range pipelines {
-		if err := c.compilePipeline(ctx, sm, &pipelines[i]); err != nil {
+		if err := c.compilePipeline(ctx, sm, &pipelines[i], nil); err != nil {
 			return fmt.Errorf("compiling Pipeline[%d]: %w", i, err)
 		}
 
@@ -204,7 +204,7 @@ func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pi
 	return nil
 }
 
-func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline) error {
+func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline, parent map[string]string) error {
 	log := clog.FromContext(ctx)
 	uses, with := pipeline.Uses, maps.Clone(pipeline.With)
 
@@ -234,6 +234,16 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		if err := yaml.Unmarshal(data, pipeline); err != nil {
 			return fmt.Errorf("unable to parse pipeline %q: %w", uses, err)
 		}
+
+		for k := range with {
+			if _, ok := pipeline.Inputs[k]; !ok {
+				return fmt.Errorf("undefined input %q to pipeline %q", k, pipeline.Uses)
+			}
+		}
+	}
+
+	if parent != nil {
+		with = util.RightJoinMap(parent, with)
 	}
 
 	validated, err := validateWith(with, pipeline.Inputs)
@@ -285,14 +295,13 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 
 	for i := range pipeline.Pipeline {
 		p := &pipeline.Pipeline[i]
-		p.With = util.RightJoinMap(mutated, p.With)
 
 		// Inherit workdir from parent pipeline unless overridden.
 		if p.WorkDir == "" {
 			p.WorkDir = pipeline.WorkDir
 		}
 
-		if err := c.compilePipeline(ctx, sm, p); err != nil {
+		if err := c.compilePipeline(ctx, sm, p, mutated); err != nil {
 			return fmt.Errorf("compiling Pipeline[%d]: %w", i, err)
 		}
 	}

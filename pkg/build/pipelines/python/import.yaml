@@ -5,6 +5,10 @@ needs:
     - wolfi-base
 
 inputs:
+  python:
+    description: Which python to use
+    required: true
+    default: python3
   import:
     description: |
       The package to import.
@@ -17,7 +21,7 @@ inputs:
 pipeline:
   - runs: |
       if [ -n "${{inputs.from}}" ]; then
-        python3 -c "from ${{inputs.from}} import ${{inputs.import}}"
+        ${{inputs.python}} -c "from ${{inputs.from}} import ${{inputs.import}}"
       else
-        python3 -c "import ${{inputs.import}}"
+        ${{inputs.python}} -c "import ${{inputs.import}}"
       fi

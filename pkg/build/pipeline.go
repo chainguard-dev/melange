@@ -262,9 +262,11 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []
 	signal.Ignore(os.Interrupt)
 
 	// Populate ~/.ash_history with the current command so you can hit up arrow to repeat it.
-	history := fmt.Sprintf("echo '%s' >> ~/.ash_history", fragment)
+	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0644); err != nil {
+		return fmt.Errorf("failed to write history file: %w", err)
+	}
 
-	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("%s && cd %s && exec /bin/sh", history, workdir)}...); dbgErr != nil {
+	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 

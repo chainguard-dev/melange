@@ -6,13 +6,18 @@ inputs:
       The directory containing the Makefile.
     default: .
 
+  opts:
+    description: |
+      Options to pass to the make command.
+    default: ''
+
 needs:
   packages:
     - make
 
 pipeline:
   - runs: |
-      make -C "${{inputs.dir}}" install DESTDIR="${{targets.contextdir}}" V=1
+      make -C "${{inputs.dir}}" install DESTDIR="${{targets.contextdir}}" V=1 ${{inputs.opts}}
 
   # Delete all GNU libtool metadata files.  These things are the bane of a
   # packager's existence: they contain useless metadata, cause overlinking and

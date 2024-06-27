@@ -85,7 +85,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture,
 	}
 
 	nw[config.SubstitutionHostTripletGnu] = arch.ToTriplet(flavor)
-	nw[config.SubstitutionHostTripletRust] = arch.ToTriplet(flavor)
+	nw[config.SubstitutionHostTripletRust] = arch.ToRustTriplet(flavor)
 	nw[config.SubstitutionCrossTripletGnuGlibc] = arch.ToTriplet("gnu")
 	nw[config.SubstitutionCrossTripletGnuMusl] = arch.ToTriplet("musl")
 	nw[config.SubstitutionCrossTripletRustGlibc] = arch.ToRustTriplet("gnu")

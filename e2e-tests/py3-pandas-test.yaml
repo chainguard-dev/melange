@@ -14,5 +14,15 @@ test:
       packages:
         - busybox
   pipeline:
+    - uses: python/import
+      with:
+        imports: |
+          from numpy import ma
+          from pandas import DataFrame
+          import tzdata
+    - uses: python/import
+      with:
+        import: ma
+        from: numpy
     - runs: |
         python3 ./py3-pandas-test.py

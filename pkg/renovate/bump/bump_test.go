@@ -107,6 +107,47 @@ func TestBump_withExpectedCommit(t *testing.T) {
 	}
 }
 
+func TestBump_withExpectedCommitAndMangledVarsGitTag(t *testing.T) {
+	dir := t.TempDir()
+
+	tests := []struct {
+		name           string
+		newVersion     string
+		expectedCommit string
+		expectedEpoch  uint64
+	}{
+		{name: "minio.yaml", newVersion: "0.20240629.012047", expectedCommit: "91faaa13877df0e2989b1eb3821f0e82fcbbfe80", expectedEpoch: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := slogtest.TestContextWithLogger(t)
+			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
+			assert.NoError(t, err)
+
+			// write the modified melange config to our working temp folder
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
+			assert.NoError(t, err)
+
+			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			assert.NoError(t, err)
+
+			bumpRenovator := New(ctx,
+				WithTargetVersion(tt.newVersion),
+				WithExpectedCommit(tt.expectedCommit),
+			)
+
+			err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
+			assert.NoError(t, err)
+
+			rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, tt.name))
+			require.NoError(t, err)
+			assert.Equal(t, rs.Package.Version, tt.newVersion)
+			assert.Equal(t, rs.Package.Epoch, tt.expectedEpoch)
+			assert.Equal(t, rs.Pipeline[0].With["expected-commit"], tt.expectedCommit)
+		})
+	}
+}
+
 func TestBump_withMultipleCheckouts(t *testing.T) {
 	dir := t.TempDir()
 	filename := "multiple_checkouts.yaml"

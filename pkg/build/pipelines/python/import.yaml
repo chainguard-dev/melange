@@ -40,7 +40,8 @@ pipeline:
           echo "\"$command\": FAIL"
           return 1
         fi
-      }
+      } 
+
 
       if [ -n "$SINGLE_IMPORT" ] && [ -n "$MULTIPLE_IMPORTS" ]; then
         echo "Error: Cannot mix 'import' with 'imports'."

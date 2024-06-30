@@ -1,0 +1,29 @@
+package:
+  name: minio
+  version: 0.20240628.090649
+  epoch: 0
+  description: Multi-Cloud Object Storage
+  copyright:
+    - license: AGPL-3.0-or-later
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - go
+      - perl
+
+var-transforms:
+  - from: ${{package.version}}
+    match: ^0\.(\d{4})(\d{2})(\d{2})\.(\d{2})(\d{2})(\d{2})$
+    replace: RELEASE.${1}-${2}-${3}T${4}-${5}-${6}Z
+    to: mangled-package-version
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/minio/minio
+      tag: ${{vars.mangled-package-version}}
+      expected-commit: aebac9001386b034e14cb7d5f1dbb8113831b3f7

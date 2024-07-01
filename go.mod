@@ -3,15 +3,15 @@ module chainguard.dev/melange
 go 1.22.3
 
 require (
-	chainguard.dev/apko v0.15.0
+	chainguard.dev/apko v0.15.1-0.20240701202623-057f3e285595
 	cloud.google.com/go/storage v1.42.0
 	dagger.io/dagger v0.11.6
 	github.com/chainguard-dev/clog v1.4.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.0.9
 	github.com/charmbracelet/log v0.4.0
-	github.com/docker/cli v26.1.4+incompatible
-	github.com/docker/docker v27.0.0+incompatible
+	github.com/docker/cli v27.0.3+incompatible
+	github.com/docker/docker v27.0.3+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.1
 	github.com/go-git/go-git/v5 v5.12.0
@@ -121,7 +121,7 @@ require (
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/letsencrypt/boulder v0.0.0-20240617152149-1ece848ae580 // indirect
+	github.com/letsencrypt/boulder v0.0.0-20240627203931-55c274d132fb // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -142,7 +142,7 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/sigstore/cosign/v2 v2.2.4 // indirect
 	github.com/sigstore/rekor v1.3.6 // indirect
-	github.com/sigstore/sigstore v1.8.4 // indirect
+	github.com/sigstore/sigstore v1.8.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
@@ -154,7 +154,7 @@ require (
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect
-	go.mongodb.org/mongo-driver v1.15.1 // indirect
+	go.mongodb.org/mongo-driver v1.16.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.52.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 // indirect

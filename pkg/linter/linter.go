@@ -29,12 +29,13 @@ import (
 	"slices"
 	"strings"
 
-	"chainguard.dev/apko/pkg/apk/expandapk"
 	"github.com/charmbracelet/log"
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
-
 	"gopkg.in/ini.v1"
+
+	"chainguard.dev/apko/pkg/apk/auth"
+	"chainguard.dev/apko/pkg/apk/expandapk"
 )
 
 type linterFunc func(ctx context.Context, pkgname string, fsys fs.FS) error
@@ -591,6 +592,7 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 		if err != nil {
 			return fmt.Errorf("creating HTTP request: %w", err)
 		}
+		auth.DefaultAuthenciators.AddAuth(ctx, req)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("getting apk %q: %w", path, err)

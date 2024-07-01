@@ -73,9 +73,4 @@ pipeline:
         fail_flag=1
       fi
 
-      # Exit with non-zero status if any imports failed
-      if [ $fail_flag -eq 1 ]; then
-        exit 1
-      else
-        exit 0
-      fi
+      exit $fail_flag

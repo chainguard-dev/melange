@@ -11,17 +11,66 @@ inputs:
     default: python3
   import:
     description: |
-      The package to import.
-    required: true
+      The package to import. Deprecated, use 'imports' instead.
+    required: false
   from:
     description: |
-      The package to import (from <from> import <import>).
+      The package to import from (used with 'from <from> import <import>'). Deprecated, use 'imports' instead.
+    required: false
+  imports:
+    description: |
+      Commands to import packages, each line is a separate command. Example:
+        from libfoo import bar
+        from asdf import otherthing
+        import bark
     required: false
 
 pipeline:
   - runs: |
-      if [ -n "${{inputs.from}}" ]; then
-        ${{inputs.python}} -c "from ${{inputs.from}} import ${{inputs.import}}"
-      else
-        ${{inputs.python}} -c "import ${{inputs.import}}"
+      PYTHON="${{inputs.python}}"
+      SINGLE_IMPORT="${{inputs.import}}"
+      MULTIPLE_IMPORTS="${{inputs.imports}}"
+      FROM_PKG="${{inputs.from}}"
+
+      perform_import() {
+        command="$1"
+        if $PYTHON -c "$command"; then
+          echo "\"$command\": PASS"
+        else
+          echo "\"$command\": FAIL"
+          return 1
+        fi
+      } 
+
+
+      if [ -n "$SINGLE_IMPORT" ] && [ -n "$MULTIPLE_IMPORTS" ]; then
+        echo "Error: Cannot mix 'import' with 'imports'."
+        exit 1
       fi
+      if [ -n "$FROM_PKG" ] && [ -n "$MULTIPLE_IMPORTS" ]; then
+        echo "Error: Cannot use 'from' with 'imports'."
+        exit 1
+      fi
+
+      fail_flag=0
+      if [ -n "$MULTIPLE_IMPORTS" ]; then
+        echo "$MULTIPLE_IMPORTS" | while IFS= read -r cmd
+        do
+          [ -z "$cmd" ] && continue
+          perform_import "$cmd" || fail_flag=1
+        done
+      elif [ -n "$FROM_PKG" ]; then
+        if [ -z "$SINGLE_IMPORT" ]; then
+          echo "Error: 'from' specified without 'import'."
+          exit 1
+        fi
+        command="from $FROM_PKG import $SINGLE_IMPORT"
+        perform_import "$command" || fail_flag=1
+      elif [ -n "$SINGLE_IMPORT" ]; then
+        perform_import "import $SINGLE_IMPORT" || fail_flag=1
+      else
+        echo "No package specified for import."
+        fail_flag=1
+      fi
+
+      exit $fail_flag

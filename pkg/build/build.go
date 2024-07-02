@@ -246,21 +246,15 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.RemoveAll(tmp)
 
-	authOpts := make([]apko_build.Option, 0, len(b.Auth))
-	for domain, auth := range b.Auth {
-		authOpts = append(authOpts, apko_build.WithAuth(domain, auth.User, auth.Pass))
-	}
-
 	bc, err := apko_build.New(ctx, guestFS,
-		append(authOpts,
-			apko_build.WithImageConfiguration(imgConfig),
-			apko_build.WithArch(b.Arch),
-			apko_build.WithExtraKeys(b.ExtraKeys),
-			apko_build.WithExtraBuildRepos(b.ExtraRepos),
-			apko_build.WithExtraPackages(b.ExtraPackages),
-			apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
-			apko_build.WithTempDir(tmp))...,
-	)
+		apko_build.WithImageConfiguration(imgConfig),
+		apko_build.WithArch(b.Arch),
+		apko_build.WithExtraKeys(b.ExtraKeys),
+		apko_build.WithExtraBuildRepos(b.ExtraRepos),
+		apko_build.WithExtraPackages(b.ExtraPackages),
+		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithTempDir(tmp))
+
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}

@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.22.3
 
 require (
-	chainguard.dev/apko v0.15.1-0.20240701202623-057f3e285595
+	chainguard.dev/apko v0.15.1-0.20240702145404-20f57d2660cb
 	cloud.google.com/go/storage v1.42.0
 	dagger.io/dagger v0.11.6
 	github.com/chainguard-dev/clog v1.4.0
@@ -145,10 +145,12 @@ require (
 	github.com/sigstore/sigstore v1.8.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
+	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
+	github.com/tmc/dot v0.0.0-20210901225022-f9bc17da75c0 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.14 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect

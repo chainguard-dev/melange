@@ -3,7 +3,7 @@
 Build apk packages using declarative pipelines.
 
 Commonly used to provide custom packages for container images built with [apko][apko]. The majority
-of apks are built for use with either the [Wolfi](https://github.com/wolfi-dev) or [Alpine Linux](https://www.alpinelinux.org/) ecosystems.
+of apks are built for use with the [Wolfi](https://github.com/wolfi-dev) ecosystems.
 
 Key features:
 

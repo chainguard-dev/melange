@@ -39,8 +39,14 @@ vars:
   foo: FOO
   bar: BAR
 
+var-transforms:
+  - from: ${{package.version}}
+    match: ^(\d+\.\d+)\.\d+$
+    replace: "$1"
+    to: short-package-version
+
 subpackages:
-  - name: subpackage
+  - name: subpackage-${{vars.short-package-version}}
     dependencies:
       runtime:
         - ${{package.name}}-config-${{package.version}}
@@ -101,6 +107,8 @@ test:
 	require.Equal(t, []string{
 		"replacement-provides-config",
 	}, cfg.Test.Environment.Contents.Packages)
+
+	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")
 }
 
 func Test_rangeSubstitutions(t *testing.T) {

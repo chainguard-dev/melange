@@ -940,6 +940,10 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 
 	// Mutate config properties with substitutions.
 	configMap := buildConfigMap(&cfg)
+	if err := cfg.PerformVarSubstitutions(configMap); err != nil {
+		return nil, fmt.Errorf("applying variable substitutions: %w", err)
+	}
+
 	replacer := replacerFromMap(configMap)
 
 	cfg.Package.Name = replacer.Replace(cfg.Package.Name)

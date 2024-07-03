@@ -1,6 +1,6 @@
 package:
   name: hello
-  version: 2.12
+  version: 2.12.4
   epoch: 0
   description: "an example of how conditionals influence build behavior"
   copyright:
@@ -20,6 +20,12 @@ vars:
   bar: "World"
   buildLocation: "/home/build/foo"
 
+var-transforms:
+  - from: ${{package.version}}
+    match: ^(\d+\.\d+)\.\d+$
+    replace: "$1"
+    to: short-package-version
+
 pipeline:
   # Variable substitution works for `with`, `working-directory` and
   # `runs` statements.
@@ -30,3 +36,8 @@ pipeline:
   - working-directory: ${{targets.destdir}}
     runs: |
       echo "${{vars.foo}} ${{vars.bar}}"
+
+subpackages:
+  - name: subpackage-${{vars.short-package-version}}
+    pipeline:
+      - runs: echo "subpackage-${{vars.short-package-version}}"

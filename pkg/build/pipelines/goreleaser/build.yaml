@@ -11,6 +11,11 @@ inputs:
     description: |
       List of space-separated args to pass to the GoReleaser `release` command.
     required: false
+  skip:
+    description: |
+      List of comma-separated skip values to pass to the GoReleaser `release` command.
+    required: true
+    default: "docker,ko,publish"
   
   output:
     description: |
@@ -42,7 +47,7 @@ pipeline:
   - runs: |
       #!/bin/sh
       set -eux -o pipefail
-      goreleaser_flags="--clean --skip=docker,ko,publish ${{inputs.args}}"
+      goreleaser_flags="--clean --skip=${{inputs.skip}} ${{inputs.args}}"
 
       DIR="$(dirname '${{inputs.output}}')"
       mkdir -p $DIR

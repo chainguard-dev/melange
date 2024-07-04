@@ -42,7 +42,7 @@ pipeline:
   - runs: |
       #!/bin/sh
       set -eux -o pipefail
-      goreleaser_flags="--clean --skip-docker --skip-ko --skip-publish ${{inputs.args}}"
+      goreleaser_flags="--clean --skip=docker,ko,publish ${{inputs.args}}"
 
       DIR="$(dirname '${{inputs.output}}')"
       mkdir -p $DIR

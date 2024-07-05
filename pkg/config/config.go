@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -636,6 +637,7 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 		SubstitutionPackageDescription: cfg.Package.Description,
 		SubstitutionPackageEpoch:       strconv.FormatUint(cfg.Package.Epoch, 10),
 		SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%d", cfg.Package.Version, cfg.Package.Epoch),
+		SubstitutionBuildArch:          apko_types.ParseArchitecture(runtime.GOARCH).ToAPK(),
 	}
 
 	for k, v := range cfg.Vars {

@@ -61,7 +61,6 @@ func (cfg Configuration) GetVarsFromConfig() (map[string]string, error) {
 // Perform variable substitutions from the configuration on a given map
 func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
 	for _, v := range cfg.VarTransforms {
-		nk := fmt.Sprintf("${{vars.%s}}", v.To)
 		from, err := util.MutateStringFromMap(nw, v.From)
 		if err != nil {
 			return err
@@ -73,6 +72,7 @@ func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
 		}
 
 		output := re.ReplaceAllString(from, v.Replace)
+		nk := fmt.Sprintf("${{vars.%s}}", v.To)
 		nw[nk] = output
 	}
 

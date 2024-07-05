@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/chainguard-dev/clog/slogtest"
@@ -44,6 +45,14 @@ var-transforms:
     match: ^(\d+\.\d+)\.\d+$
     replace: "$1"
     to: short-package-version
+  - from: ${{build.arch}}
+    match: 'x86_64'
+    replace: 'amd64'
+    to: mangled-arch
+  - from: ${{build.arch}}
+    match: 'aarch64'
+    replace: 'arm64'
+    to: mangled-arch
 
 subpackages:
   - name: subpackage-${{vars.short-package-version}}
@@ -58,6 +67,7 @@ subpackages:
         - subpackage-bar=${{vars.bar}}
       replaces:
         - james=${{package.name}}
+  - name: build-arch-${{vars.mangled-arch}}
 
 test:
   environment:
@@ -109,6 +119,8 @@ test:
 	}, cfg.Test.Environment.Contents.Packages)
 
 	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")
+
+	require.Equal(t, cfg.Subpackages[1].Name, "build-arch-"+runtime.GOARCH)
 }
 
 func Test_rangeSubstitutions(t *testing.T) {

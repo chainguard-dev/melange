@@ -1,6 +1,6 @@
 module chainguard.dev/melange
 
-go 1.22.3
+go 1.22.5
 
 require (
 	chainguard.dev/apko v0.15.1-0.20240702145404-20f57d2660cb

@@ -1,5 +1,5 @@
-chainguard.dev/apko v0.15.1-0.20240702145404-20f57d2660cb h1:E7ePJLQxWamfsH52M7qcZYcyCMHXI3o9T+zGtjw3VyM=
-chainguard.dev/apko v0.15.1-0.20240702145404-20f57d2660cb/go.mod h1:Kg5kGNw6NToAvJ8RQcUV3AiJOmTjXLPa85EvbnY95Ks=
+chainguard.dev/apko v0.16.0 h1:BGtZya0AHHTUjLFUHm4oL23+nt0WpCpv6WR8yy+FPek=
+chainguard.dev/apko v0.16.0/go.mod h1:Kg5kGNw6NToAvJ8RQcUV3AiJOmTjXLPa85EvbnY95Ks=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.115.0 h1:CnFSK6Xo3lDYRoBKEcAtia6VSC837/ZkJuRduSFnr14=
 cloud.google.com/go v0.115.0/go.mod h1:8jIM5vVgoAEoiVxQ/O4BFTfHqulPZgs/ufEzMcFMdWU=

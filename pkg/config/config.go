@@ -138,6 +138,9 @@ func (p Package) PackageURL(distro string) string {
 
 func (cfg *Configuration) applySubstitutionsForProvides() error {
 	nw := buildConfigMap(cfg)
+	if err := cfg.PerformVarSubstitutions(nw); err != nil {
+		return fmt.Errorf("applying variable substitutions for provides: %w", err)
+	}
 	for i, prov := range cfg.Package.Dependencies.Provides {
 		var err error
 		cfg.Package.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
@@ -183,6 +186,9 @@ func (cfg *Configuration) applySubstitutionsForPriorities() error {
 
 func (cfg *Configuration) applySubstitutionsForRuntime() error {
 	nw := buildConfigMap(cfg)
+	if err := cfg.PerformVarSubstitutions(nw); err != nil {
+		return fmt.Errorf("applying variable substitutions for runtime: %w", err)
+	}
 	for i, runtime := range cfg.Package.Dependencies.Runtime {
 		var err error
 		cfg.Package.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
@@ -225,6 +231,9 @@ func (cfg *Configuration) applySubstitutionsForReplaces() error {
 
 func (cfg *Configuration) applySubstitutionsForPackages() error {
 	nw := buildConfigMap(cfg)
+	if err := cfg.PerformVarSubstitutions(nw); err != nil {
+		return fmt.Errorf("applying variable substitutions for packages: %w", err)
+	}
 	for i, runtime := range cfg.Environment.Contents.Packages {
 		var err error
 		cfg.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)

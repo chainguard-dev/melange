@@ -52,6 +52,7 @@ subpackages:
         - ${{package.name}}-config-${{package.version}}
         - ${{vars.foo}}
         - other-package=${{package.version}}
+        - replacement-provides-${{vars.short-package-version}}
       provides:
         - subpackage-version=${{package.version}}
         - subpackage-foo=${{vars.foo}}
@@ -64,6 +65,7 @@ test:
     contents:
       packages:
         - ${{package.name}}-config
+        - replacement-provides-${{vars.short-package-version}}
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +96,7 @@ test:
 		"replacement-provides-config-0.0.1",
 		"FOO",
 		"other-package=0.0.1",
+		"replacement-provides-0.0",
 	}, cfg.Subpackages[0].Dependencies.Runtime)
 
 	require.Equal(t, []string{
@@ -106,6 +109,7 @@ test:
 
 	require.Equal(t, []string{
 		"replacement-provides-config",
+		"replacement-provides-0.0",
 	}, cfg.Test.Environment.Contents.Packages)
 
 	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")

@@ -8,7 +8,7 @@ require (
 	dagger.io/dagger v0.11.9
 	github.com/chainguard-dev/clog v1.4.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.0.10
+	github.com/chainguard-dev/yam v0.0.11
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v27.0.3+incompatible
 	github.com/docker/docker v27.0.3+incompatible
@@ -46,7 +46,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.30.2
 	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
-	sigs.k8s.io/release-utils v0.8.2
+	sigs.k8s.io/release-utils v0.8.3
 )
 
 require (

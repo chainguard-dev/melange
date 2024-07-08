@@ -59,6 +59,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(Index())
 	cmd.AddCommand(Keygen())
 	cmd.AddCommand(Lint())
+	cmd.AddCommand(Package())
 	cmd.AddCommand(PackageVersion())
 	cmd.AddCommand(Query())
 	cmd.AddCommand(Scan())

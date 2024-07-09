@@ -46,10 +46,10 @@ pipeline:
       }
 
       if [ "$PYTHON" = "DEFAULT" ]; then
-          glob=/usr/bin/python3.[0-9][0-9]
+          glob="/usr/bin/python3.[0-9][0-9] /usr/bin/python3.[789]"
           n=0
           for p in $glob; do
-            [ -x "$p" ] && n=$((n+1))
+            [ -x "$p" ] && n=$((n+1)) && py=$p
           done
           if [ "$n" -ne 1 ]; then
             echo "FAIL: must set inputs.python: " \
@@ -57,8 +57,8 @@ pipeline:
             [ "$n" -eq 0 ] || echo "found:" $glob
             exit 1
           fi
-          echo "using python $p"
-          PYTHON=$p
+          echo "using python $py"
+          PYTHON=$py
       fi
 
       if [ -n "$SINGLE_IMPORT" ] && [ -n "$MULTIPLE_IMPORTS" ]; then

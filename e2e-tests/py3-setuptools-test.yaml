@@ -1,0 +1,18 @@
+package:
+  name: py3-setuptools
+  version: 70.2.0
+  epoch: 1
+  description: tests of setuptools
+  copyright:
+    - license: 'BSD-3-Clause'
+
+pipeline:
+
+test:
+  pipeline:
+    - uses: python/import
+      with:
+        imports: |
+          # this is a full line comment
+          import setuptools
+          from setuptools import version # inline comment

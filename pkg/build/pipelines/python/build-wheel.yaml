@@ -5,6 +5,7 @@ needs:
     - busybox
     - py3-build
     - py3-installer
+    - python3
 
 pipeline:
   - runs: |
@@ -14,6 +15,12 @@ pipeline:
       fi
 
   - runs: |
-      python3 -m build
-      python3 -m installer -d "${{targets.contextdir}}" dist/*.whl
+      python=python3
+      if p=$(command -v $python) && [ -L "$p" ]; then
+        python=$(readlink -f "$p") ||
+          { echo "failed 'readlink -f $p'"; exit 1; }
+      fi
+
+      $python -m build
+      $python -m installer -d "${{targets.contextdir}}" dist/*.whl
       find ${{targets.contextdir}} -name "*.pyc" -exec rm -rf '{}' +

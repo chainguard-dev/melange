@@ -3,6 +3,7 @@ name: Install a Python package
 needs:
   packages:
     - busybox
+    - python3
 
 pipeline:
   - runs: |
@@ -12,4 +13,10 @@ pipeline:
       fi
 
   - runs: |
-      python setup.py install --prefix=/usr --root="${{targets.contextdir}}"
+      python=python
+      if p=$(command -v $python) && [ -L "$p" ]; then
+        python=$(readlink -f "$p") ||
+          { echo "failed 'readlink -f $p'"; exit 1; }
+      fi
+
+      $python setup.py install --prefix=/usr --root="${{targets.contextdir}}"

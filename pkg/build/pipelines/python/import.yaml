@@ -7,8 +7,7 @@ needs:
 inputs:
   python:
     description: Which python to use
-    required: true
-    default: python3
+    default: DEFAULT
   import:
     description: |
       The package to import. Deprecated, use 'imports' instead.
@@ -21,12 +20,16 @@ inputs:
     description: |
       Commands to import packages, each line is a separate command. Example:
         from libfoo import bar
+        # test that otherthing can be imported from asdf
         from asdf import otherthing
-        import bark
+        import bark # this is like woof
+
+      full-line and inline comments are supported via '#'
     required: false
 
 pipeline:
   - runs: |
+      set +x
       PYTHON="${{inputs.python}}"
       SINGLE_IMPORT="${{inputs.import}}"
       MULTIPLE_IMPORTS="${{inputs.imports}}"
@@ -35,13 +38,28 @@ pipeline:
       perform_import() {
         command="$1"
         if $PYTHON -c "$command"; then
-          echo "\"$command\": PASS"
+          echo "$PYTHON -c \"$command\": PASS"
         else
-          echo "\"$command\": FAIL"
+          echo "$PYTHON -c \"$command\": FAIL"
           return 1
         fi
-      } 
+      }
 
+      if [ "$PYTHON" = "DEFAULT" ]; then
+          glob=/usr/bin/python3.[0-9][0-9]
+          n=0
+          for p in $glob; do
+            [ -x "$p" ] && n=$((n+1))
+          done
+          if [ "$n" -ne 1 ]; then
+            echo "FAIL: must set inputs.python: " \
+               "found $n executables matching $glob"
+            [ "$n" -eq 0 ] || echo "found:" $glob
+            exit 1
+          fi
+          echo "using python $p"
+          PYTHON=$p
+      fi
 
       if [ -n "$SINGLE_IMPORT" ] && [ -n "$MULTIPLE_IMPORTS" ]; then
         echo "Error: Cannot mix 'import' with 'imports'."
@@ -54,11 +72,18 @@ pipeline:
 
       fail_flag=0
       if [ -n "$MULTIPLE_IMPORTS" ]; then
-        echo "$MULTIPLE_IMPORTS" | while IFS= read -r cmd
-        do
+        importf=$(mktemp) || { echo "failed mktemp"; exit 1; }
+        printf "%s\n" "$MULTIPLE_IMPORTS" > "$importf" ||
+            { echo "failed to write to temp file"; exit 1; }
+
+        while read line; do
+          # Drop anything after #
+          line=${line%%#*}
+          cmd=$(set -f; echo $line) # normalize/trim whitespace
           [ -z "$cmd" ] && continue
           perform_import "$cmd" || fail_flag=1
-        done
+        done < "$importf"
+        rm -f "$importf"
       elif [ -n "$FROM_PKG" ]; then
         if [ -z "$SINGLE_IMPORT" ]; then
           echo "Error: 'from' specified without 'import'."

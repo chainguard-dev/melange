@@ -21,6 +21,7 @@ import (
 	"maps"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -150,25 +151,12 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 }
 
 // Build a script to run as part of evalRun
-func buildEvalRunCommand(ctx context.Context, pipeline *config.Pipeline, debugOption rune, sysPath string, workdir string, fragment string, interactive bool) []string {
-	envExport := "export %s='%s'"
-	envArr := []string{}
-	if interactive {
-		// This is a bit of a hack but I want non-busybox shells to have a working history during interactive debugging,
-		// and I suspect busybox is the least helpful here, so just make everything read from ~/.ash_history.
-		envArr = append(envArr, fmt.Sprintf(envExport, "HISTFILE", "~/.ash_history"))
-	}
-	for k, v := range pipeline.Environment {
-		envArr = append(envArr, fmt.Sprintf(envExport, k, v))
-	}
-	envString := strings.Join(envArr, "\n")
+func buildEvalRunCommand(pipeline *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
 	script := fmt.Sprintf(`set -e%c
-export PATH='%s'
-%s
 [ -d '%s' ] || mkdir -p '%s'
 cd '%s'
 %s
-exit 0`, debugOption, sysPath, envString, workdir, workdir, workdir, fragment)
+exit 0`, debugOption, workdir, workdir, workdir, fragment)
 	return []string{"/bin/sh", "-c", script}
 }
 
@@ -191,7 +179,14 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		debugOption = 'x'
 	}
 
-	sysPath := "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	// Pipelines can have their own environment variables, which override the global ones.
+	envOverride := map[string]string{
+		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+	}
+
+	for k, v := range pipeline.Environment {
+		envOverride[k] = v
+	}
 
 	workdir := "/home/build"
 	if pipeline.WorkDir != "" {
@@ -210,9 +205,9 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		log.Infof("running step %q", id)
 	}
 
-	command := buildEvalRunCommand(ctx, pipeline, debugOption, sysPath, workdir, pipeline.Runs, r.interactive)
-	if err := r.runner.Run(ctx, r.config, command...); err != nil {
-		if err := r.maybeDebug(ctx, pipeline.Runs, command, workdir, err); err != nil {
+	command := buildEvalRunCommand(pipeline, debugOption, workdir, pipeline.Runs)
+	if err := r.runner.Run(ctx, r.config, envOverride, command...); err != nil {
+		if err := r.maybeDebug(ctx, pipeline.Runs, envOverride, command, workdir, err); err != nil {
 			return false, err
 		}
 	}
@@ -236,7 +231,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	return true, nil
 }
 
-func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []string, workdir string, runErr error) error {
+func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOverride map[string]string, cmd []string, workdir string, runErr error) error {
 	if !r.interactive {
 		return runErr
 	}
@@ -247,6 +242,14 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []
 	if !ok {
 		log.Errorf("TODO: Implement Debug() for Runner: %T", r.runner)
 		return runErr
+	}
+
+	// This is a bit of a hack but I want non-busybox shells to have a working history during interactive debugging,
+	// and I suspect busybox is the least helpful here, so just make everything read from $HOME/.ash_history.
+	if home, ok := envOverride["HOME"]; ok {
+		envOverride["HISTFILE"] = path.Join(home, ".ash_history")
+	} else if home, ok := r.config.Environment["HOME"]; ok {
+		envOverride["HISTFILE"] = path.Join(home, ".ash_history")
 	}
 
 	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
@@ -261,12 +264,12 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, cmd []
 	// Don't cancel the context if we hit ctrl+C while debugging.
 	signal.Ignore(os.Interrupt)
 
-	// Populate ~/.ash_history with the current command so you can hit up arrow to repeat it.
+	// Populate $HOME/.ash_history with the current command so you can hit up arrow to repeat it.
 	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0644); err != nil {
 		return fmt.Errorf("failed to write history file: %w", err)
 	}
 
-	if dbgErr := dbg.Debug(ctx, r.config, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
+	if dbgErr := dbg.Debug(ctx, r.config, envOverride, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 

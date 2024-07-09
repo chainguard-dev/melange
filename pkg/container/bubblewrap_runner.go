@@ -54,8 +54,8 @@ func (bw *bubblewrap) Name() string {
 }
 
 // Run runs a Bubblewrap task given a Config and command string.
-func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) error {
-	execCmd := bw.cmd(ctx, cfg, false, args...)
+func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
+	execCmd := bw.cmd(ctx, cfg, false, envOverride, args...)
 
 	log := clog.FromContext(ctx)
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
@@ -68,7 +68,7 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, args ...string) erro
 	return execCmd.Run()
 }
 
-func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...string) *exec.Cmd {
+func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverride map[string]string, args ...string) *exec.Cmd {
 	baseargs := []string{}
 
 	// always be sure to mount the / first!
@@ -103,6 +103,9 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...
 	for k, v := range cfg.Environment {
 		baseargs = append(baseargs, "--setenv", k, v)
 	}
+	for k, v := range envOverride {
+		baseargs = append(baseargs, "--setenv", k, v)
+	}
 
 	args = append(baseargs, args...)
 	execCmd := exec.CommandContext(ctx, "bwrap", args...)
@@ -112,8 +115,8 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, args ...
 	return execCmd
 }
 
-func (bw *bubblewrap) Debug(ctx context.Context, cfg *Config, args ...string) error {
-	execCmd := bw.cmd(ctx, cfg, true, args...)
+func (bw *bubblewrap) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
+	execCmd := bw.cmd(ctx, cfg, true, envOverride, args...)
 
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
@@ -151,7 +154,7 @@ func (bw *bubblewrap) StartPod(ctx context.Context, cfg *Config) error {
 	defer span.End()
 
 	script := "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true"
-	return bw.Run(ctx, cfg, "/bin/sh", "-c", script)
+	return bw.Run(ctx, cfg, nil, "/bin/sh", "-c", script)
 }
 
 // TerminatePod terminates a pod if necessary.  Not implemented

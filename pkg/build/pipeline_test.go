@@ -15,7 +15,6 @@
 package build
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -143,13 +142,10 @@ func Test_buildEvalRunCommand(t *testing.T) {
 	}
 
 	debugOption := 'x'
-	sysPath := "/foo"
 	workdir := "/bar"
 	fragment := "baz"
-	command := buildEvalRunCommand(context.Background(), p, debugOption, sysPath, workdir, fragment, false)
+	command := buildEvalRunCommand(p, debugOption, workdir, fragment)
 	expected := []string{"/bin/sh", "-c", `set -ex
-export PATH='/foo'
-export FOO='bar'
 [ -d '/bar' ] || mkdir -p '/bar'
 cd '/bar'
 baz

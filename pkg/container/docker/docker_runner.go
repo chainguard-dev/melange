@@ -215,13 +215,16 @@ func (dk *docker) waitForCommand(ctx context.Context, r io.Reader) error {
 
 // Run runs a Docker task given a Config and command string.
 // The resultant filesystem can be read from the io.ReadCloser
-func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...string) error {
+func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride map[string]string, args ...string) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
 
 	environ := []string{}
 	for k, v := range cfg.Environment {
+		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
+	}
+	for k, v := range envOverride {
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
@@ -263,13 +266,16 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, args ...strin
 	}
 }
 
-func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, args ...string) error {
+func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride map[string]string, args ...string) error {
 	if cfg.PodID == "" {
 		return fmt.Errorf("pod not running")
 	}
 
 	environ := []string{}
 	for k, v := range cfg.Environment {
+		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
+	}
+	for k, v := range envOverride {
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 

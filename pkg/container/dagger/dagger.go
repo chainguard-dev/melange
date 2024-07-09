@@ -74,16 +74,18 @@ func (d *daggerRunner) Name() string {
 }
 
 // Run runs a Dagger task given a Config and command string.
-func (d *daggerRunner) Run(ctx context.Context, cfg *container.Config, args ...string) error {
+func (d *daggerRunner) Run(ctx context.Context, cfg *container.Config, envOverride map[string]string, args ...string) error {
 	_, span := otel.Tracer("melange").Start(ctx, "dagger.Run")
 	defer span.End()
 
 	// Add env in a deterministic order.
-	keys := maps.Keys(cfg.Environment)
-	slices.Sort(keys)
-	for _, key := range keys {
-		val := cfg.Environment[key]
-		d.container = d.container.WithEnvVariable(key, val)
+	for _, envs := range []map[string]string{cfg.Environment, envOverride} {
+		keys := maps.Keys(envs)
+		slices.Sort(keys)
+		for _, key := range keys {
+			val := envs[key]
+			d.container = d.container.WithEnvVariable(key, val)
+		}
 	}
 
 	d.container = d.container.WithExec(args, dagger.ContainerWithExecOpts{})

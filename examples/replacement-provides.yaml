@@ -4,9 +4,7 @@ package:
   description: example using a replacement in provides
   dependencies:
     provides:
-      - replacement-provides-version=${{package.version}}
-      - replacement-provides-foo=${{vars.foo}}
-      - replacement-provides-bar=${{vars.bar}}
+      - replacement-provides-version>>>>>>=${{package.version}}
 
 vars:
   foo: FOO

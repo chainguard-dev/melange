@@ -49,7 +49,7 @@ func keygen() *cobra.Command {
 		Short:   "Generate a key for package signing",
 		Long:    `Generate a key for package signing.`,
 		Example: `  melange keygen [key.rsa]`,
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := "melange.rsa"
 			if len(args) > 0 {

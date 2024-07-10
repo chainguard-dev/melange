@@ -34,14 +34,14 @@ type KeygenContext struct {
 
 type KeygenOption func(*KeygenContext) error
 
-func withKeyName(keyName string) KeygenOption {
+func WithKeyName(keyName string) KeygenOption {
 	return func(kc *KeygenContext) error {
 		kc.KeyName = keyName
 		return nil
 	}
 }
 
-func withBitSize(bitSize int) KeygenOption {
+func WithBitSize(bitSize int) KeygenOption {
 	return func(kc *KeygenContext) error {
 		kc.BitSize = bitSize
 		return nil
@@ -84,11 +84,11 @@ func Keygen() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := []KeygenOption{
-				withBitSize(keySize),
+				WithBitSize(keySize),
 			}
 
 			if len(args) > 0 {
-				options = append(options, withKeyName(args[0]))
+				options = append(options, WithKeyName(args[0]))
 			}
 
 			return KeygenCmd(cmd.Context(), options...)

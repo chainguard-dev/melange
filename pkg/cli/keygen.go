@@ -49,9 +49,13 @@ func keygen() *cobra.Command {
 		Short:   "Generate a key for package signing",
 		Long:    `Generate a key for package signing.`,
 		Example: `  melange keygen [key.rsa]`,
-		Args:    cobra.MinimumNArgs(0),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return KeygenCmd(cmd.Context(), args[0], keySize)
+			name := "melange.rsa"
+			if len(args) > 0 {
+				name = args[0]
+			}
+			return KeygenCmd(cmd.Context(), name, keySize)
 		},
 	}
 	cmd.Flags().IntVar(&keySize, "key-size", 4096, "the size of the prime to calculate (in bits)")

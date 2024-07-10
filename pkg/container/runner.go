@@ -24,7 +24,7 @@ import (
 )
 
 type Debugger interface {
-	Debug(context.Context, *Config, ...string) error
+	Debug(ctx context.Context, cfg *Config, envOverride map[string]string, cmd ...string) error
 }
 
 type Runner interface {
@@ -36,7 +36,7 @@ type Runner interface {
 	// as a tar stream into the Loader. That image will be used as the root when StartPod() the container.
 	OCIImageLoader() Loader
 	StartPod(ctx context.Context, cfg *Config) error
-	Run(ctx context.Context, cfg *Config, cmd ...string) error
+	Run(ctx context.Context, cfg *Config, envOverride map[string]string, cmd ...string) error
 	TerminatePod(ctx context.Context, cfg *Config) error
 	// TempDir returns the base for temporary directory, or "" if whatever is provided by the system is fine
 	TempDir() string

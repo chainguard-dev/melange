@@ -26,6 +26,7 @@ func packageVersion() *cobra.Command {
 		Equivalent to running:
 
 			melange query config.yaml '{{ .Package.Name }}-{{ .Package.Version }}-r{{ .Package.Epoch }}'
+
 		`,
 		Example: `  melange package-version [config.yaml]`,
 		Args:    cobra.MinimumNArgs(1),

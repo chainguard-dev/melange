@@ -27,7 +27,7 @@ import (
 	"chainguard.dev/melange/pkg/linter"
 )
 
-func Lint() *cobra.Command {
+func lint() *cobra.Command {
 	var lintRequire, lintWarn []string
 	cmd := &cobra.Command{
 		Use:     "lint",

@@ -46,7 +46,7 @@ type scanConfig struct {
 	comments bool
 }
 
-func Scan() *cobra.Command {
+func scan() *cobra.Command {
 	sc := scanConfig{}
 
 	cmd := &cobra.Command{

@@ -41,7 +41,7 @@ import (
 
 const BuiltinPipelineDir = "/usr/share/melange/pipelines"
 
-func Build() *cobra.Command {
+func buildCmd() *cobra.Command {
 	var buildDate string
 	var workspaceDir string
 	var pipelineDir string

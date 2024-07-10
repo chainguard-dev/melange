@@ -29,7 +29,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Test() *cobra.Command {
+func test() *cobra.Command {
 	var workspaceDir string
 	var sourceDir string
 	var cacheDir string

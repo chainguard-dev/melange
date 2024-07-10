@@ -35,8 +35,7 @@ type signIndexOpts struct {
 	Force bool
 }
 
-// SignIndex is a constructor that returns a cobra.Command which wraps the SignIndexCmd() function.
-func SignIndex() *cobra.Command {
+func signIndex() *cobra.Command {
 	o := &signIndexOpts{}
 
 	cmd := &cobra.Command{
@@ -152,7 +151,7 @@ type signOpts struct {
 	Key string
 }
 
-func Sign() *cobra.Command {
+func signCmd() *cobra.Command {
 	o := &signOpts{}
 
 	cmd := &cobra.Command{

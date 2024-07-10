@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Completion() *cobra.Command {
+func completion() *cobra.Command {
 	var completionCmd = &cobra.Command{
 		Use:   "completion [bash|zsh|fish|powershell]",
 		Short: "Generate completion script",

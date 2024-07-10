@@ -21,8 +21,7 @@ import (
 	"chainguard.dev/melange/pkg/renovate/cache"
 )
 
-// UpdateCache is a constructor for a cobra.Command which provides the "melange update-cache" command.
-func UpdateCache() *cobra.Command {
+func updateCache() *cobra.Command {
 	var cacheDir string
 
 	cmd := &cobra.Command{

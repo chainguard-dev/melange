@@ -32,37 +32,6 @@ type KeygenContext struct {
 	BitSize int
 }
 
-type KeygenOption func(*KeygenContext) error
-
-func WithKeyName(keyName string) KeygenOption {
-	return func(kc *KeygenContext) error {
-		kc.KeyName = keyName
-		return nil
-	}
-}
-
-func WithBitSize(bitSize int) KeygenOption {
-	return func(kc *KeygenContext) error {
-		kc.BitSize = bitSize
-		return nil
-	}
-}
-
-func newKeygenContext(opts ...KeygenOption) (*KeygenContext, error) {
-	kc := KeygenContext{
-		KeyName: "melange.rsa",
-		BitSize: 4096,
-	}
-
-	for _, opt := range opts {
-		if err := opt(&kc); err != nil {
-			return nil, err
-		}
-	}
-
-	return &kc, nil
-}
-
 func (kc *KeygenContext) GenerateKeypair() (*rsa.PrivateKey, *rsa.PublicKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, kc.BitSize)
 	if err != nil {
@@ -73,38 +42,31 @@ func (kc *KeygenContext) GenerateKeypair() (*rsa.PrivateKey, *rsa.PublicKey, err
 	return privateKey, publicKey, nil
 }
 
-func Keygen() *cobra.Command {
+func keygen() *cobra.Command {
 	var keySize int
-
 	cmd := &cobra.Command{
 		Use:     "keygen",
 		Short:   "Generate a key for package signing",
 		Long:    `Generate a key for package signing.`,
 		Example: `  melange keygen [key.rsa]`,
-		Args:    cobra.MinimumNArgs(0),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options := []KeygenOption{
-				WithBitSize(keySize),
-			}
-
+			name := "melange.rsa"
 			if len(args) > 0 {
-				options = append(options, WithKeyName(args[0]))
+				name = args[0]
 			}
-
-			return KeygenCmd(cmd.Context(), options...)
+			return KeygenCmd(cmd.Context(), name, keySize)
 		},
 	}
-
 	cmd.Flags().IntVar(&keySize, "key-size", 4096, "the size of the prime to calculate (in bits)")
-
 	return cmd
 }
 
-func KeygenCmd(ctx context.Context, opts ...KeygenOption) error {
+func KeygenCmd(ctx context.Context, keyName string, bitSize int) error {
 	log := clog.FromContext(ctx)
-	kc, err := newKeygenContext(opts...)
-	if err != nil {
-		return err
+	kc := &KeygenContext{
+		KeyName: keyName,
+		BitSize: bitSize,
 	}
 
 	log.Infof("generating keypair with a %d bit prime, please wait...", kc.BitSize)

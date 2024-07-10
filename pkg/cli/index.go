@@ -21,8 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Index is a constructor for a cobra.Command which wraps the IndexCmd function.
-func Index() *cobra.Command {
+func indexCmd() *cobra.Command {
 	var apkIndexFilename string
 	var sourceIndexFilename string
 	var expectedArch string

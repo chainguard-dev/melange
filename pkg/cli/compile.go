@@ -29,7 +29,7 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-func Compile() *cobra.Command {
+func compile() *cobra.Command {
 	var buildDate string
 	var workspaceDir string
 	var pipelineDir string

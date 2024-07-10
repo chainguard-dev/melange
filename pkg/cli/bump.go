@@ -21,7 +21,7 @@ import (
 	"chainguard.dev/melange/pkg/renovate/bump"
 )
 
-func Bump() *cobra.Command {
+func bumpCmd() *cobra.Command {
 	var expectedCommit string
 	cmd := &cobra.Command{
 		Use:     "bump",

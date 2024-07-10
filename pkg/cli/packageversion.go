@@ -18,13 +18,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func PackageVersion() *cobra.Command {
+func packageVersion() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package-version",
 		Short: "Report the target package for a YAML configuration file",
 		Long: `Report the target package for a YAML configuration file.
 		Equivalent to running:
-		
+
 			melange query config.yaml '{{ .Package.Name }}-{{ .Package.Version }}-r{{ .Package.Epoch }}'
 		`,
 		Example: `  melange package-version [config.yaml]`,

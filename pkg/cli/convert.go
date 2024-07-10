@@ -36,7 +36,7 @@ type convertCmd struct {
 	useGithub     bool
 }
 
-func Convert() *cobra.Command {
+func convert() *cobra.Command {
 	c := &convertCmd{}
 	cmd := &cobra.Command{
 		Use:               "convert",

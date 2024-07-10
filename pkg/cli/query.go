@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Query() *cobra.Command {
+func query() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "query",
 		Short: "Query a Melange YAML file for information",

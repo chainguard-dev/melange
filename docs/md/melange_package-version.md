@@ -15,8 +15,9 @@ Report the target package for a YAML configuration file
 
 Report the target package for a YAML configuration file.
 		Equivalent to running:
-		
+
 			melange query config.yaml '{{ .Package.Name }}-{{ .Package.Version }}-r{{ .Package.Epoch }}'
+
 		
 
 ```

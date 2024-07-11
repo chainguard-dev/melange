@@ -686,6 +686,10 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	if hdl.Options().NoProvides {
+		return nil
+	}
+
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,

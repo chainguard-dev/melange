@@ -58,22 +58,3 @@ pipeline:
       DESTDIR="${{targets.destdir}}" cmake --install build
 
   - uses: strip
-
-subpackages:
-  - name: aws-c-s3-dev
-    pipeline:
-      - uses: split/dev
-      - runs: |
-          mkdir -p "${{targets.subpkgdir}}"/usr/lib
-          mv "${{targets.destdir}}"/usr/lib/aws-c-s3 "${{targets.subpkgdir}}"/usr/lib/
-    dependencies:
-      runtime:
-        - aws-c-s3
-    description: aws-c-s3 dev
-
-update:
-  enabled: true
-  github:
-    identifier: awslabs/aws-c-s3
-    strip-prefix: v
-    use-tag: true

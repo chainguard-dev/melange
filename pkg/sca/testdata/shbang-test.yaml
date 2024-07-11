@@ -5,9 +5,16 @@ package:
   description: shbang test
   copyright:
     - license: MIT
+  options:
+    # This ensures that no-provides doesn't also disable no-requires
+    no-provides: true
 
 environment:
   contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
       - build-base
       - busybox
@@ -98,3 +105,8 @@ pipeline:
 
 update:
   enabled: false
+
+test:
+  pipeline:
+    # Test that bash is a SCA-detected runtime dependency
+    - runs: which bash

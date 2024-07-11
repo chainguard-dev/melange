@@ -15,6 +15,8 @@
 //go:build e2e
 // +build e2e
 
+//go:generate go run ./../../ build --out-dir=./generated ./testdata/shbang-test.yaml --arch=x86_64
+
 package sca
 
 import (
@@ -53,21 +55,41 @@ func TestGoFipsBinDeps(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: []string{
+		Runtime: util.Dedup([]string{
 			"openssl-config-fipshardened",
 			ldso,
 			"so:libc.so.6",
 			"so:libcrypto.so.3",
 			"so:libssl.so.3",
-		},
-		Provides: []string{
-			"cmd:go-fips-bin=v0.0.1-r0",
-		},
+		}),
+		Provides: []string{"cmd:go-fips-bin=v0.0.1-r0"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestShbangDeps(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+	// Generated with `go generate ./...`
+	th := handleFromApk(ctx, t, "generated/x86_64/shbang-test-1-r1.apk", "shbang-test.yaml")
+	defer th.exp.Close()
+
+	want := config.Dependencies{
+		Runtime: util.Dedup([]string{
+			"cmd:bash",
+			"cmd:envDashSCmd",
+			"cmd:python3.12",
+			"so:ld-linux-x86-64.so.2",
+			"so:libc.so.6",
+		}),
+		Provides: nil,
 	}
 
-	got.Runtime = util.Dedup(got.Runtime)
-	got.Provides = util.Dedup(got.Provides)
-
+	got := config.Dependencies{}
+	if err := Analyze(ctx, th, &got); err != nil {
+		t.Fatal(err)
+	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}

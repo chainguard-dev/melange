@@ -32,6 +32,7 @@ import (
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/util"
 )
 
 var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
@@ -129,7 +130,9 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 			if isInDir(path, pathBinDirs) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
-				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
+				if !hdl.Options().NoProvides {
+					generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
+				}
 			}
 		}
 
@@ -358,7 +361,9 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 				libver := sonameLibver(soname)
 
 				if allowedPrefix(path, libDirs) {
-					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					if !hdl.Options().NoProvides {
+						generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					}
 				} else {
 					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
 				}
@@ -558,7 +563,9 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	}
 
 	log.Infof("  found python module, generating python-%s-base dependency", pythonModuleVer)
-	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python-%s-base", pythonModuleVer))
+	if !hdl.Options().NoDepends {
+		generated.Runtime = append(generated.Runtime, fmt.Sprintf("python-%s-base", pythonModuleVer))
+	}
 
 	return nil
 }
@@ -668,7 +675,9 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 
 	for base, path := range cmds {
 		log.Infof("Added shbang dep cmd:%s for %s", base, path)
-		generated.Runtime = append(generated.Runtime, "cmd:"+base)
+		if !hdl.Options().NoDepends {
+			generated.Runtime = append(generated.Runtime, "cmd:"+base)
+		}
 	}
 
 	return nil
@@ -677,9 +686,6 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
-	if hdl.Options().NoProvides {
-		return nil
-	}
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
@@ -693,6 +699,10 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 			return err
 		}
 	}
+
+	generated.Runtime = util.Dedup(generated.Runtime)
+	generated.Provides = util.Dedup(generated.Provides)
+	generated.Vendored = util.Dedup(generated.Vendored)
 
 	return nil
 }

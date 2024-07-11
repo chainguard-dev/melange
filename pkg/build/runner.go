@@ -5,7 +5,6 @@ type Runner string
 const (
 	runnerBubblewrap Runner = "bubblewrap"
 	runnerDocker     Runner = "docker"
-	runnerLima       Runner = "lima"
 	runnerKubernetes Runner = "kubernetes"
 	// more to come
 )
@@ -15,7 +14,6 @@ func GetAllRunners() []Runner {
 	return []Runner{
 		runnerBubblewrap,
 		runnerDocker,
-		runnerLima,
 		runnerKubernetes,
 	}
 }

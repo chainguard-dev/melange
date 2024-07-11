@@ -490,6 +490,8 @@ type Update struct {
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
+	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
+	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/

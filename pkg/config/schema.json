@@ -906,6 +906,10 @@
           },
           "type": "array",
           "description": "The configuration block for transforming the `package.version` into an APK version"
+        },
+        "exclude-reason": {
+          "type": "string",
+          "description": "ExcludeReason is required if enabled=false, to explain why updates are disabled."
         }
       },
       "additionalProperties": false,

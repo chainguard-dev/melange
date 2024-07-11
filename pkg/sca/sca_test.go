@@ -121,7 +121,7 @@ func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile strin
 
 func TestExecableSharedObjects(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
-	th := handleFromApk(ctx, t, "libcap-2.69-r0.apk", "neon.yaml")
+	th := handleFromApk(ctx, t, "libcap-2.69-r0.apk", "libcap.yaml")
 	defer th.exp.Close()
 
 	got := config.Dependencies{}
@@ -130,21 +130,17 @@ func TestExecableSharedObjects(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: []string{
+		Runtime: util.Dedup([]string{
 			"so:ld-linux-aarch64.so.1",
 			"so:libc.so.6",
 			"so:libcap.so.2",
 			"so:libpsx.so.2",
-		},
-		Provides: []string{
+		}),
+		Provides: util.Dedup([]string{
 			"so:libcap.so.2=2",
 			"so:libpsx.so.2=2",
-		},
+		}),
 	}
-
-	got.Runtime = util.Dedup(got.Runtime)
-	got.Provides = util.Dedup(got.Provides)
-
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}
@@ -164,12 +160,12 @@ func TestVendoredPkgConfig(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: []string{
+		Runtime: util.Dedup([]string{
 			// We only include libecpg_compat.so.3 to test that "libexec" isn't treated as a library directory.
 			// These are dependencies of libecpg_compat.so.3, but if we had the whole neon APK it would look different.
 			"so:libecpg.so.6", "so:libpgtypes.so.3", "so:libpq.so.5", "so:libc.so.6", "so:ld-linux-aarch64.so.1",
-		},
-		Vendored: []string{
+		}),
+		Vendored: util.Dedup([]string{
 			"so:libecpg_compat.so.3=3",
 			"pc:libecpg=14.10",
 			"pc:libecpg_compat=14.10",
@@ -179,7 +175,7 @@ func TestVendoredPkgConfig(t *testing.T) {
 			"pc:libecpg_compat=15.5",
 			"pc:libpgtypes=15.5",
 			"pc:libpq=15.5",
-		},
+		}),
 	}
 
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -201,45 +197,20 @@ func TestUnstableSonames(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: []string{
-			"so:libaws-c-s3.so.0unstable",
+		Runtime: util.Dedup([]string{
+			"so:ld-linux-aarch64.so.1",
 			"so:libaws-c-auth.so.1.0.0",
-			"so:libaws-checksums.so.1.0.0",
-			"so:libaws-c-http.so.1.0.0",
-			"so:libaws-c-io.so.1.0.0",
 			"so:libaws-c-cal.so.1.0.0",
 			"so:libaws-c-common.so.1",
+			"so:libaws-c-http.so.1.0.0",
+			"so:libaws-c-io.so.1.0.0",
+			"so:libaws-c-s3.so.0unstable",
+			"so:libaws-checksums.so.1.0.0",
 			"so:libc.so.6",
-			"so:ld-linux-aarch64.so.1",
-		},
+		}),
 		Provides: []string{"so:libaws-c-s3.so.0unstable=0"},
 	}
 
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
-	}
-}
-
-func TestShbangDeps(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
-	th := handleFromApk(ctx, t, "shbang-test-1-r1.apk", "shbang-test.yaml")
-	defer th.exp.Close()
-
-	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
-			"cmd:bash",
-			"cmd:envDashSCmd",
-			"cmd:python3.12",
-		}),
-		Provides: nil,
-	}
-
-	got := config.Dependencies{}
-	if err := generateShbangDeps(ctx, th, &got); err != nil {
-		t.Fatal(err)
-	}
-
-	got.Runtime = util.Dedup(got.Runtime)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}

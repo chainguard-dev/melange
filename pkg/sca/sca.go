@@ -360,7 +360,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			for _, soname := range sonames {
 				libver := sonameLibver(soname)
 
-				if allowedPrefix(path, libDirs) {
+				if isInDir(path, libDirs) {
 					if !hdl.Options().NoProvides {
 						generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
 					}

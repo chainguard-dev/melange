@@ -146,13 +146,13 @@ lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
 	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --skip-dirs .modcache ./...
 
 .PHONY: test
-test: melange ## Run go test
-	# build test package
-	 ./melange build --generate-index=false pkg/sca/testdata/go-fips-bin/go-fips-bin.yaml --arch=`uname -m` --source-dir=pkg/sca/testdata/go-fips-bin/ --out-dir pkg/sca/testdata/go-fips-bin/packages/ --log-level error
-	go test -tags e2e ./... -race
+test:
+	go test ./... -race
 
 .PHONY: test-e2e
-test-e2e:
+test-e2e: test
+	go generate ./...
+	go test -tags e2e ./... -race
 	cd e2e-tests && ./run-tests
 
 .PHONY: clean

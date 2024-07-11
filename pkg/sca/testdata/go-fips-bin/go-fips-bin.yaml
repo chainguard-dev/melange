@@ -11,7 +11,7 @@
 # please see go-install.yaml in this directory.
 package:
   name: go-fips-bin
-  version: v0.0.1
+  version: 0.0.1
   epoch: 0
   description: "A tiny fips-like go binary"
 

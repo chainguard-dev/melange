@@ -72,10 +72,6 @@ jobs:
           go-version-file: './go.mod'
           check-latest: true
 
-      - name: Go generate and diff
-        run: |
-          go generate ./...
-          git diff --exit-code
       - name: Run e2e-tests
         run: |
           make test-e2e

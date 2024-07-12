@@ -77,16 +77,6 @@ type SCAHandle interface {
 // findings based on analysis.
 type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies) error
 
-func allowedPrefix(path string, prefixes []string) bool {
-	for _, pfx := range prefixes {
-		if strings.HasPrefix(path, pfx) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func isInDir(path string, dirs []string) bool {
 	mydir := filepath.Dir(path)
 	for _, d := range dirs {
@@ -96,8 +86,6 @@ func isInDir(path string, dirs []string) bool {
 	}
 	return false
 }
-
-var pathBinDirs = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
 
 func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -127,7 +115,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		if mode.Perm()&0555 == 0555 {
-			if isInDir(path, pathBinDirs) {
+			if isInDir(path, []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
 				if !hdl.Options().NoProvides {
@@ -404,8 +392,6 @@ var pkgConfigVersionRegexp = regexp.MustCompile("-(alpha|beta|rc|pre)")
 // TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
 var generateRuntimePkgConfigDeps = false
 
-var pcDirs = []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}
-
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
 func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
@@ -468,7 +454,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
 		if !hdl.Options().NoProvides {
-			if allowedPrefix(path, pcDirs) {
+			if isInDir(path, []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}) {
 				log.Infof("  found pkg-config %s for %s", pcName, path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
 			} else {

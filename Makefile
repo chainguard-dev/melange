@@ -88,7 +88,7 @@ ko-apply:  ## Build the image and apply the manifests
 ##########
 
 .PHONY: generate
-generate: ## Generates jsonschema for melange types.
+generate:
 	go generate ./...
 
 ##########
@@ -150,8 +150,7 @@ test:
 	go test ./... -race
 
 .PHONY: test-e2e
-test-e2e: test
-	go generate ./...
+test-e2e: test generate
 	go test -tags e2e ./... -race
 	cd e2e-tests && ./run-tests
 

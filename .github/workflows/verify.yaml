@@ -37,6 +37,5 @@ jobs:
           git diff --exit-code
 
       - run: |
-          make generate
           go mod tidy
           git diff --exit-code

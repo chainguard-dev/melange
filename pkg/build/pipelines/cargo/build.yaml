@@ -40,7 +40,7 @@ pipeline:
 
       # Build and install package(s)
       cargo auditable build "${{inputs.opts}}"
-      if [[ -z "${{inputs.output}}" ]]; then
+      if [[ ! -z "${{inputs.output}}" ]]; then
         install -Dm755 "${OUTPUT_PATH}/${{inputs.output}}" "${INSTALL_PATH}/${{inputs.output}}"
       else
         install -Dm755 "${OUTPUT_PATH}"/* -t "${INSTALL_PATH}"

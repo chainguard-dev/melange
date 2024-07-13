@@ -19,7 +19,7 @@ inputs:
   prefix:
     description: |
       The -prefix argument to pass to npm install; where /bin and /lib will be copied to.
-    default: "${{targets.destdir}}/usr/"
+    default: "${{targets.contextdir}}/usr/"
 
   overrides:
     description: |

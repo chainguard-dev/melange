@@ -12,6 +12,6 @@ pipeline:
         exit 1
       fi
   - runs: |
-      INSTALL_DIR=${{targets.destdir}}/$(ruby -e 'puts Gem.default_dir')
+      INSTALL_DIR=${{targets.contextdir}}/$(ruby -e 'puts Gem.default_dir')
       rm -rf ${INSTALL_DIR}/build_info \
              ${INSTALL_DIR}/cache

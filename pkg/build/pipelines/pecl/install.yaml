@@ -12,6 +12,6 @@ inputs:
 
 pipeline:
   - runs: |
-      make INSTALL_ROOT="${{targets.destdir}}" install
-      install -d ${{targets.destdir}}/etc/php/conf.d
-      echo "extension=${{inputs.extension}}.so" > ${{targets.destdir}}/etc/php/conf.d/${{inputs.extension}}.ini
+      make INSTALL_ROOT="${{targets.contextdir}}" install
+      install -d ${{targets.contextdir}}/etc/php/conf.d
+      echo "extension=${{inputs.extension}}.so" > ${{targets.contextdir}}/etc/php/conf.d/${{inputs.extension}}.ini

@@ -6,4 +6,4 @@ needs:
 
 pipeline:
   - runs: |
-      find "${{targets.destdir}}" \( -name perllocal.pod -o -name .packlist \) -delete
+      find "${{targets.contextdir}}" \( -name perllocal.pod -o -name .packlist \) -delete

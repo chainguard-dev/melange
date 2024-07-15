@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/shbang-test.yaml --arch=x86_64
+//go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin.yaml --arch=x86_64
+//go:generate curl -s -o ./testdata/py3-seaborn.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/py3-seaborn.yaml
+//go:generate curl -s -o ./testdata/systemd.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/systemd.yaml
+
 package sca
 
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,9 +84,20 @@ func (th *testHandle) BaseDependencies() config.Dependencies {
 // TODO: Loose coupling.
 func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile string) *testHandle {
 	t.Helper()
-	file, err := os.Open(filepath.Join("testdata", apkfile))
-	if err != nil {
-		t.Fatal(err)
+	var file io.Reader
+	if strings.HasPrefix(apkfile, "https://") {
+		resp, err := http.Get(apkfile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		file = resp.Body
+	} else {
+		var err error
+		file, err = os.Open(filepath.Join("testdata", apkfile))
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	exp, err := expandapk.ExpandApk(ctx, file, "")
@@ -211,6 +230,32 @@ func TestUnstableSonames(t *testing.T) {
 		Provides: []string{"so:libaws-c-s3.so.0unstable=0"},
 	}
 
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestShbangDeps(t *testing.T) {
+	ctx := slogtest.TestContextWithLogger(t)
+	// Generated with `go generate ./...`
+	th := handleFromApk(ctx, t, "generated/x86_64/shbang-test-1-r1.apk", "shbang-test.yaml")
+	defer th.exp.Close()
+
+	want := config.Dependencies{
+		Runtime: util.Dedup([]string{
+			"cmd:bash",
+			"cmd:envDashSCmd",
+			"cmd:python3.12",
+			"so:ld-linux-x86-64.so.2",
+			"so:libc.so.6",
+		}),
+		Provides: nil,
+	}
+
+	got := config.Dependencies{}
+	if err := Analyze(ctx, th, &got); err != nil {
+		t.Fatal(err)
+	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}

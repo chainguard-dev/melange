@@ -21,7 +21,7 @@ melange.rsa.pub
 packages/
 .idea/
 bin/
-/generated/
+generated/
 melange.images
 /.DS_Store
 dist/

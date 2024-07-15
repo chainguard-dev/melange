@@ -15,13 +15,9 @@
 //go:build e2e
 // +build e2e
 
-//go:generate go run ./../../ build --out-dir=./generated ./testdata/shbang-test.yaml --arch=x86_64
-
 package sca
 
 import (
-	"fmt"
-	"runtime"
 	"testing"
 
 	"chainguard.dev/melange/pkg/config"
@@ -30,67 +26,187 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// test a fips like go binary package for SCA depends
-// Chainguard go-fips toolchain generates binaries like these
-// which at runtime require openssl and fips provider
 func TestGoFipsBinDeps(t *testing.T) {
 	ctx := slogtest.TestContextWithLogger(t)
-
-	var ldso, archdir string
-	switch runtime.GOARCH {
-	case "arm64":
-		ldso = "so:ld-linux-aarch64.so.1"
-		archdir = "aarch64"
-	case "amd64":
-		ldso = "so:ld-linux-x86-64.so.2"
-		archdir = "x86_64"
-	}
-
-	th := handleFromApk(ctx, t, fmt.Sprintf("go-fips-bin/packages/%s/go-fips-bin-v0.0.1-r0.apk", archdir), "go-fips-bin/go-fips-bin.yaml")
+	th := handleFromApk(ctx, t, "generated/x86_64/go-fips-bin-0.0.1-r0.apk", "go-fips-bin/go-fips-bin.yaml")
 	defer th.exp.Close()
 
 	got := config.Dependencies{}
 	if err := Analyze(ctx, th, &got); err != nil {
 		t.Fatal(err)
 	}
-
 	want := config.Dependencies{
 		Runtime: util.Dedup([]string{
 			"openssl-config-fipshardened",
-			ldso,
+			"so:ld-linux-x86-64.so.2",
 			"so:libc.so.6",
 			"so:libcrypto.so.3",
 			"so:libssl.so.3",
 		}),
-		Provides: []string{"cmd:go-fips-bin=v0.0.1-r0"},
+		Provides: []string{"cmd:go-fips-bin=0.0.1-r0"},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}
 }
 
-func TestShbangDeps(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
-	// Generated with `go generate ./...`
-	th := handleFromApk(ctx, t, "generated/x86_64/shbang-test-1-r1.apk", "shbang-test.yaml")
-	defer th.exp.Close()
+func TestAnalyze(t *testing.T) {
+	for _, c := range []struct {
+		apk     string
+		cfgpath string
+		want    config.Dependencies
+	}{{
+		apk:     "py3-seaborn-0.13.2-r0.apk",
+		cfgpath: "py3-seaborn.yaml",
+		want: config.Dependencies{
+			Runtime: []string{
+				"so:ld-linux-x86-64.so.2",
+				"so:libXau-154567c4.so.6.0.0",
+				"so:libbrotlicommon-3ecfe81c.so.1",
+				"so:libbrotlidec-ba690955.so.1",
+				"so:libc.so.6",
+				"so:libdl.so.2",
+				"so:libfreetype-f154df84.so.6.20.1",
+				"so:libgcc_s.so.1",
+				"so:libgfortran-040039e1.so.5.0.0",
+				"so:libharfbuzz-2093a78b.so.0.60830.0",
+				"so:libjpeg-e44fd0cd.so.62.4.0",
+				"so:liblcms2-e69eef39.so.2.0.16",
+				"so:liblzma-13fa198c.so.5.4.5",
+				"so:libm.so.6",
+				"so:libopenjp2-eca49203.so.2.5.0",
+				"so:libpng16-78d422d5.so.16.40.0",
+				"so:libpthread.so.0",
+				"so:libquadmath-96973f99.so.0.0.0",
+				"so:libsharpyuv-20f78091.so.0.0.1",
+				"so:libstdc++.so.6",
+				"so:libtiff-91af027d.so.6.0.2",
+				"so:libwebp-850e2bec.so.7.1.8",
+				"so:libwebpdemux-df9b36c7.so.2.0.14",
+				"so:libwebpmux-9fe05867.so.3.0.13",
+				"so:libxcb-f0538cc0.so.1.1.0",
+				"so:libz.so.1",
+			},
+			Provides: []string{
+				"cmd:f2py=0.13.2-r0",
+				"cmd:fonttools=0.13.2-r0",
+				"cmd:pyftmerge=0.13.2-r0",
+				"cmd:pyftsubset=0.13.2-r0",
+				"cmd:ttx=0.13.2-r0",
+			},
+			Vendored: []string{
+				"so:libXau-154567c4.so.6.0.0=6.0.0",
+				"so:libbrotlicommon-3ecfe81c.so.1=1",
+				"so:libbrotlidec-ba690955.so.1=1",
+				"so:libfreetype-f154df84.so.6.20.1=6.20.1",
+				"so:libgfortran-040039e1.so.5.0.0=5.0.0",
+				"so:libharfbuzz-2093a78b.so.0.60830.0=0.60830.0",
+				"so:libjpeg-e44fd0cd.so.62.4.0=62.4.0",
+				"so:liblcms2-e69eef39.so.2.0.16=2.0.16",
+				"so:liblzma-13fa198c.so.5.4.5=5.4.5",
+				"so:libopenblas64_p-r0-0cf96a72.3.23.dev.so=0",
+				"so:libopenjp2-eca49203.so.2.5.0=2.5.0",
+				"so:libpng16-78d422d5.so.16.40.0=16.40.0",
+				"so:libquadmath-96973f99.so.0.0.0=0.0.0",
+				"so:libsharpyuv-20f78091.so.0.0.1=0.0.1",
+				"so:libtiff-91af027d.so.6.0.2=6.0.2",
+				"so:libwebp-850e2bec.so.7.1.8=7.1.8",
+				"so:libwebpdemux-df9b36c7.so.2.0.14=2.0.14",
+				"so:libwebpmux-9fe05867.so.3.0.13=3.0.13",
+				"so:libxcb-f0538cc0.so.1.1.0=1.1.0",
+			},
+		},
+	}, {
+		apk:     "systemd-256.2-r1.apk",
+		cfgpath: "systemd.yaml",
+		want: config.Dependencies{
+			Runtime: []string{
+				"so:ld-linux-x86-64.so.2",
+				"so:libblkid.so.1",
+				"so:libc.so.6",
+				"so:libcap.so.2",
+				"so:libcrypt.so.1",
+				"so:libcrypto.so.3",
+				"so:libfdisk.so.1",
+				"so:libm.so.6",
+				"so:libmount.so.1",
+				"so:libssl.so.3",
+				"so:libudev.so.1",
+			},
+			Provides: []string{
+				"cmd:bootctl=256.2-r1",
+				"cmd:busctl=256.2-r1",
+				"cmd:coredumpctl=256.2-r1",
+				"cmd:hostnamectl=256.2-r1",
+				"cmd:journalctl=256.2-r1",
+				"cmd:kernel-install=256.2-r1",
+				"cmd:localectl=256.2-r1",
+				"cmd:loginctl=256.2-r1",
+				"cmd:machinectl=256.2-r1",
+				"cmd:networkctl=256.2-r1",
+				"cmd:oomctl=256.2-r1",
+				"cmd:portablectl=256.2-r1",
+				"cmd:resolvectl=256.2-r1",
+				"cmd:systemctl=256.2-r1",
+				"cmd:systemd-ac-power=256.2-r1",
+				"cmd:systemd-analyze=256.2-r1",
+				"cmd:systemd-ask-password=256.2-r1",
+				"cmd:systemd-cat=256.2-r1",
+				"cmd:systemd-cgls=256.2-r1",
+				"cmd:systemd-cgtop=256.2-r1",
+				"cmd:systemd-creds=256.2-r1",
+				"cmd:systemd-delta=256.2-r1",
+				"cmd:systemd-detect-virt=256.2-r1",
+				"cmd:systemd-dissect=256.2-r1",
+				"cmd:systemd-escape=256.2-r1",
+				"cmd:systemd-firstboot=256.2-r1",
+				"cmd:systemd-hwdb=256.2-r1",
+				"cmd:systemd-id128=256.2-r1",
+				"cmd:systemd-inhibit=256.2-r1",
+				"cmd:systemd-machine-id-setup=256.2-r1",
+				"cmd:systemd-mount=256.2-r1",
+				"cmd:systemd-notify=256.2-r1",
+				"cmd:systemd-nspawn=256.2-r1",
+				"cmd:systemd-path=256.2-r1",
+				"cmd:systemd-repart=256.2-r1",
+				"cmd:systemd-run=256.2-r1",
+				"cmd:systemd-socket-activate=256.2-r1",
+				"cmd:systemd-stdio-bridge=256.2-r1",
+				"cmd:systemd-sysext=256.2-r1",
+				"cmd:systemd-sysusers=256.2-r1",
+				"cmd:systemd-tmpfiles=256.2-r1",
+				"cmd:systemd-tty-ask-password-agent=256.2-r1",
+				"cmd:systemd-vmspawn=256.2-r1",
+				"cmd:systemd-vpick=256.2-r1",
+				"cmd:timedatectl=256.2-r1",
+				"cmd:udevadm=256.2-r1",
+				"cmd:userdbctl=256.2-r1",
+				"cmd:varlinkctl=256.2-r1",
+				"so:libnss_myhostname.so.2=2",
+				"so:libnss_mymachines.so.2=2",
+				"so:libnss_resolve.so.2=2",
+				"so:libnss_systemd.so.2=2",
+				"so:libudev.so.1=1",
+			},
+			Vendored: []string{
+				"so:libsystemd-core-256.so=0",
+				"so:libsystemd-shared-256.so=0",
+			},
+		},
+	}} {
+		t.Run(c.apk, func(t *testing.T) {
+			ctx := slogtest.TestContextWithLogger(t)
+			url := "https://packages.wolfi.dev/os/x86_64/" + c.apk
+			th := handleFromApk(ctx, t, url, c.cfgpath)
+			defer th.exp.Close()
 
-	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
-			"cmd:bash",
-			"cmd:envDashSCmd",
-			"cmd:python3.12",
-			"so:ld-linux-x86-64.so.2",
-			"so:libc.so.6",
-		}),
-		Provides: nil,
-	}
-
-	got := config.Dependencies{}
-	if err := Analyze(ctx, th, &got); err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+			got := config.Dependencies{}
+			if err := Analyze(ctx, th, &got); err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(c.want, got); diff != "" {
+				t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+			}
+		})
 	}
 }

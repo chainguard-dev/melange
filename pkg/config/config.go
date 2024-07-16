@@ -784,12 +784,15 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		}
 		sort.Strings(keys)
 
+		configMap := buildConfigMap(&cfg)
+		if err := cfg.PerformVarSubstitutions(configMap); err != nil {
+			return nil, fmt.Errorf("applying variable substitutions: %w", err)
+		}
 		for _, k := range keys {
 			v := items[k]
-			replacer := replacerFromMap(map[string]string{
-				"${{range.key}}":   k,
-				"${{range.value}}": v,
-			})
+			configMap["${{range.key}}"] = k
+			configMap["${{range.value}}"] = v
+			replacer := replacerFromMap(configMap)
 
 			thingToAdd := Subpackage{
 				Name:        replacer.Replace(sp.Name),
@@ -835,13 +838,14 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 				}
 
 				thingToAdd.Pipeline = append(thingToAdd.Pipeline, Pipeline{
-					Name:   p.Name,
-					Uses:   p.Uses,
-					With:   replacedWith,
-					Inputs: p.Inputs,
-					Needs:  p.Needs,
-					Label:  p.Label,
-					Runs:   replacer.Replace(p.Runs),
+					Name:    p.Name,
+					Uses:    p.Uses,
+					With:    replacedWith,
+					Inputs:  p.Inputs,
+					Needs:   p.Needs,
+					Label:   p.Label,
+					Runs:    replacer.Replace(p.Runs),
+					WorkDir: replacer.Replace(p.WorkDir),
 					// TODO: p.Pipeline?
 				})
 			}
@@ -860,13 +864,14 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					}
 
 					thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
-						Name:   p.Name,
-						Uses:   p.Uses,
-						With:   replacedWith,
-						Inputs: p.Inputs,
-						Needs:  p.Needs,
-						Label:  p.Label,
-						Runs:   replacer.Replace(p.Runs),
+						Name:    p.Name,
+						Uses:    p.Uses,
+						With:    replacedWith,
+						Inputs:  p.Inputs,
+						Needs:   p.Needs,
+						Label:   p.Label,
+						Runs:    replacer.Replace(p.Runs),
+						WorkDir: replacer.Replace(p.WorkDir),
 						// TODO: p.Pipeline?
 					})
 				}

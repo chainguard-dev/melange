@@ -169,6 +169,9 @@ data:
       a: 10
       b: 20
 
+vars:
+  buildLocation: "/home/build/foo"
+
 subpackages:
   - range: I-am-a-range
     name: ${{range.key}}
@@ -178,6 +181,10 @@ subpackages:
       replaces-priority: ${{range.value}}
       runtime:
         - wow-some-kinda-dynamically-linked-library-i-guess=1.0
+    pipeline:
+      - working-directory: ${{vars.buildLocation}}/subdir/${{range.key}}/${{range.value}}
+        runs: |
+          echo "$PWD"
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -187,6 +194,8 @@ subpackages:
 	}
 	require.Equal(t, cfg.Subpackages[0].Dependencies.ProviderPriority, "10")
 	require.Equal(t, cfg.Subpackages[0].Dependencies.ReplacesPriority, "10")
+	require.Equal(t, cfg.Subpackages[0].Pipeline[0].WorkDir, "/home/build/foo/subdir/a/10")
+	require.Equal(t, cfg.Subpackages[1].Pipeline[0].WorkDir, "/home/build/foo/subdir/b/20")
 }
 
 func Test_propagatePipelines(t *testing.T) {

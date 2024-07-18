@@ -75,6 +75,7 @@ func buildCmd() *cobra.Command {
 	var extraPackages []string
 	var libc string
 	var lintRequire, lintWarn []string
+	var ignoreSignatures bool
 
 	var traceFile string
 
@@ -154,6 +155,7 @@ func buildCmd() *cobra.Command {
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
+				build.WithIgnoreSignatures(ignoreSignatures),
 			}
 
 			if len(args) > 0 {
@@ -219,6 +221,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&traceFile, "trace", "", "where to write trace output")
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
+	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")

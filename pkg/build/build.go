@@ -98,6 +98,7 @@ type Build struct {
 	DefaultMemory         string
 	DefaultTimeout        time.Duration
 	Auth                  map[string]options.Auth
+	IgnoreSignatures      bool
 
 	EnabledBuildOptions []string
 
@@ -253,7 +254,8 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
 		apko_build.WithExtraPackages(b.ExtraPackages),
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
-		apko_build.WithTempDir(tmp))
+		apko_build.WithTempDir(tmp),
+		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
 
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)

@@ -234,6 +234,8 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 		switch runner {
 		case "bubblewrap":
 			return container.BubblewrapRunner(), nil
+		case "qemu":
+			return container.QemuRunner(), nil
 		case "docker":
 			return docker.NewRunner(ctx)
 		case "experimentaldagger":

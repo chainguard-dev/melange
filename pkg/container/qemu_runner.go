@@ -144,6 +144,7 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 // TerminatePod terminates a pod if necessary.  Not implemented
 // for Qemu runners.
 func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
+	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
 		"root",
 		"localhost",
@@ -290,6 +291,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	injectFstab := ""
 
 	clog.FromContext(ctx).Info("qemu: generating qemu command...")
+	clog.FromContext(ctx).Debug("qemu: generating mount list")
 	for count, bind := range cfg.Mounts {
 		// we skip file mounts, it doesn't work for qemu
 		fileInfo, err := os.Stat(bind.Source)
@@ -298,12 +300,14 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 
 		if !fileInfo.IsDir() {
+			clog.FromContext(ctx).Debugf("qemu: skipping file mount: %s", bind.Source)
 			continue
 		}
 
 		// we skip mounting the workspace
 		// we build locally and retrieve it with WorkspaceTar
 		if strings.Contains(bind.Source, "workspace") {
+			clog.FromContext(ctx).Debugf("qemu: skipping workspace mount: %s", bind.Source)
 			continue
 		}
 
@@ -334,6 +338,7 @@ mount -a
 [ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true`
 
 	clog.FromContext(ctx).Info("qemu: injecting fstab...")
+	clog.FromContext(ctx).Debugf("qemu: injecting fstab - %s", sshCmd)
 	err = sendSSHCommand(ctx,
 		"root",
 		"localhost",
@@ -368,10 +373,17 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 		"var/empty",
 		"var/run",
 	}
+	clog.FromContext(ctx).Debug("qemu: creating basic rootfs directories")
 	for _, path := range mkdirPaths {
 		_ = os.MkdirAll(filepath.Join(rootfs, path), 0o755)
 	}
 
+	// inject /init from ./qemu_init.sh, previously this was using
+	// systemd, we now use this minimal init as we only need:
+	//   - basic mount points
+	//   - setup static network
+	//   - start sshd
+	clog.FromContext(ctx).Debug("qemu: injecting /init")
 	err = os.WriteFile(filepath.Join(rootfs, "init"),
 		qemuInit,
 		0755)
@@ -379,11 +391,13 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: setup default timezone")
 	err = os.Symlink("/usr/share/zoneinfo/UTC", filepath.Join(rootfs, "etc/localtime"))
 	if err != nil {
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: setup /etc/hosts")
 	err = replaceStringInFile(filepath.Join(rootfs, "etc/hosts"),
 		" localhost ",
 		" localhost wolfi-qemu ")
@@ -391,6 +405,7 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: setup hostname")
 	err = os.WriteFile(filepath.Join(rootfs, "etc/hostname"),
 		[]byte("wolfi-qemu"),
 		0644)
@@ -398,6 +413,7 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: setup DNS")
 	err = os.WriteFile(filepath.Join(rootfs, "etc/resolv.conf"),
 		[]byte("nameserver 1.1.1.1"),
 		0644)
@@ -406,36 +422,42 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 	}
 
 	// allow passing env variables to ssh commands
+	clog.FromContext(ctx).Debug("qemu: ssh - acceptenv")
 	sshdConfig, err := os.OpenFile(filepath.Join(rootfs, "etc/ssh/sshd_config"), os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return "", "", err
 	}
-	// Append the string to the file
 	_, err = sshdConfig.WriteString(`AcceptEnv *`)
 	if err != nil {
 		return "", "", err
 	}
+	defer sshdConfig.Close()
 
+	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
 	err = generateSSHKeys(ctx, rootfs)
 	if err != nil {
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys")
 	err = os.Rename(filepath.Join(rootfs, PublicKeyFile), filepath.Join(rootfs, "root/.ssh/authorized_keys"))
 	if err != nil {
 		return "", "", err
 	}
 
-	// fix permissions ofr .ssh and authorized keys files
+	clog.FromContext(ctx).Debug("qemu: ssh - fix dir permissions")
 	err = os.Chmod(filepath.Join(rootfs, "root/.ssh"), 0700)
 	if err != nil {
 		return "", "", err
 	}
+
+	clog.FromContext(ctx).Debug("qemu: ssh - fix file permissions")
 	err = os.Chmod(filepath.Join(rootfs, "root/.ssh/authorized_keys"), 0400)
 	if err != nil {
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: generating initramfs...")
 	initramfs, err := generateInitrd(ctx, rootfs)
 	if err != nil {
 		return "", "", err
@@ -449,7 +471,6 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 	clog.FromContext(ctx).Info("qemu: building initramfs...")
 
-	// ( cd /tmp/initramfs/rootfs && find . >../files )
 	findFileOutput, err := os.CreateTemp("", "")
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: rootfs file fidning output file failed: %v", err)
@@ -462,7 +483,7 @@ func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 	findFiles.Dir = rootfs
 	findFiles.Stdout = findFileOutput
 
-	clog.FromContext(ctx).Info("qemu: finding rootfs files...")
+	clog.FromContext(ctx).Debug("qemu: finding rootfs files...")
 	err = findFiles.Run()
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: rootfs file fidning failed: %v", err)
@@ -490,25 +511,23 @@ func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 	gzipCmd := exec.Command("gzip", "--to-stdout")
 	gzipCmd.Stdout = initramfs
 
-	// Pipe cmd1 to cmd2
 	gzipCmd.Stdin, err = cpioCmd.StdoutPipe()
 	if err != nil {
 		return "", err
 	}
 
-	// Start cmd2 first to avoid deadlock
 	if err := gzipCmd.Start(); err != nil {
 		return "", err
 	}
 
 	clog.FromContext(ctx).Info("qemu: compressing rootfs...")
-	// Then start cmd1
+	clog.FromContext(ctx).Debugf("qemu: launching command - %s",
+		strings.Join(cpioCmd.Args, " ")+" | "+strings.Join(gzipCmd.Args, " "))
 	if err := cpioCmd.Run(); err != nil {
 		clog.FromContext(ctx).Errorf("qemu: initramfs cpio command failed: %v", err)
 		return "", err
 	}
 
-	// Wait for cmd2 to finish
 	if err := gzipCmd.Wait(); err != nil {
 		clog.FromContext(ctx).Errorf("qemu: initramfs gzip command failed: %v", err)
 		return "", err

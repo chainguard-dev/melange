@@ -25,3 +25,5 @@ generated/
 melange.images
 /.DS_Store
 dist/
+tags
+ctags

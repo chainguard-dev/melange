@@ -23,6 +23,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	_ "embed"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -43,6 +44,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
 )
+
+//go:embed qemu_init.sh
+var qemuInit []byte
 
 var _ Debugger = (*qemu)(nil)
 
@@ -369,24 +373,7 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 	}
 
 	err = os.WriteFile(filepath.Join(rootfs, "init"),
-		[]byte(`#!/bin/busybox sh
-set -e
-
-/bin/mount -t proc proc /proc
-/bin/mount -t sysfs sys /sys
-/bin/mount -t devtmpfs devtmpfs /dev
-
-/bin/mkdir /dev/pts
-/bin/mount -t devpts devpts -o noexec,nosuid,newinstance,ptmxmode=0666,mode=0620,gid=tty /dev/pts/
-/bin/mount --bind /dev/pts/ptmx /dev/ptmx
-
-/bin/ifconfig lo up
-/bin/ifconfig eth0 10.0.2.15 netmask 255.255.255.0
-/bin/route add default gw 10.0.2.2 eth0
-/bin/hostname $(cat /etc/hostname)
-
-/usr/bin/ssh-keygen -A
-/usr/sbin/sshd -D`),
+		qemuInit,
 		0755)
 	if err != nil {
 		return "", "", err

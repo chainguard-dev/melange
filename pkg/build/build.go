@@ -251,7 +251,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		b.ExtraPackages = append(b.ExtraPackages, []string{
 			"mount",
 			"linux",
-			"systemd",
+			"net-tools",
 			"openssh-server",
 			"openssh-server-config",
 		}...)

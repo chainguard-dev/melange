@@ -149,7 +149,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
-		[]string{"shutdown -h +10&"},
+		[]string{"echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
 		return err
@@ -352,14 +352,13 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 
 	mkdirPaths := []string{
 		"dev",
-		"etc/systemd/network",
-		"etc/systemd/system",
 		"home",
 		"opt",
 		"proc",
 		"root",
 		"root/.ssh",
 		"run",
+		"sys",
 		"tmp",
 		"var",
 		"var/empty",
@@ -369,31 +368,31 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 		_ = os.MkdirAll(filepath.Join(rootfs, path), 0o755)
 	}
 
-	err = os.Symlink("/dev/null", filepath.Join(rootfs, "etc/systemd/system/systemd-logind.service"))
-	if err != nil {
-		return "", "", err
-	}
+	err = os.WriteFile(filepath.Join(rootfs, "init"),
+		[]byte(`#!/bin/busybox sh
+set -e
 
-	err = os.Symlink("/usr/lib/systemd/systemd", filepath.Join(rootfs, "init"))
+/bin/mount -t proc proc /proc
+/bin/mount -t sysfs sys /sys
+/bin/mount -t devtmpfs devtmpfs /dev
+
+/bin/mkdir /dev/pts
+/bin/mount -t devpts devpts -o noexec,nosuid,newinstance,ptmxmode=0666,mode=0620,gid=tty /dev/pts/
+/bin/mount --bind /dev/pts/ptmx /dev/ptmx
+
+/bin/ifconfig lo up
+/bin/ifconfig eth0 10.0.2.15 netmask 255.255.255.0
+/bin/route add default gw 10.0.2.2 eth0
+/bin/hostname $(cat /etc/hostname)
+
+/usr/bin/ssh-keygen -A
+/usr/sbin/sshd -D`),
+		0755)
 	if err != nil {
 		return "", "", err
 	}
 
 	err = os.Symlink("/usr/share/zoneinfo/UTC", filepath.Join(rootfs, "etc/localtime"))
-	if err != nil {
-		return "", "", err
-	}
-
-	err = replaceStringInFile(filepath.Join(rootfs, "usr/lib/systemd/system/serial-getty@.service"),
-		"(?m)^ExecStart=.*",
-		"ExecStart=/bin/sh -c \"/usr/bin/ssh-keygen -A; /usr/sbin/sshd -D\"")
-	if err != nil {
-		return "", "", err
-	}
-
-	err = replaceStringInFile(filepath.Join(rootfs, "usr/lib/systemd/system/systemd-vconsole-setup.service"),
-		"(?m)^ExecStart=.*",
-		"ExecStart=/bin/true")
 	if err != nil {
 		return "", "", err
 	}
@@ -412,6 +411,13 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 		return "", "", err
 	}
 
+	err = os.WriteFile(filepath.Join(rootfs, "etc/resolv.conf"),
+		[]byte("nameserver 1.1.1.1"),
+		0644)
+	if err != nil {
+		return "", "", err
+	}
+
 	// allow passing env variables to ssh commands
 	sshdConfig, err := os.OpenFile(filepath.Join(rootfs, "etc/ssh/sshd_config"), os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
@@ -419,18 +425,6 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 	}
 	// Append the string to the file
 	_, err = sshdConfig.WriteString(`AcceptEnv *`)
-	if err != nil {
-		return "", "", err
-	}
-
-	err = os.WriteFile(filepath.Join(rootfs, "etc/systemd/network/20-wired.network"),
-		[]byte(`[Match]
-Name=en*
-[Network]
-Address=10.0.2.15/24
-Gateway=10.0.2.2
-DNS=1.1.1.1`),
-		0644)
 	if err != nil {
 		return "", "", err
 	}

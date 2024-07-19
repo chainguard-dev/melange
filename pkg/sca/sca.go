@@ -607,7 +607,7 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		}
 
 		// This takes the X.Y part of the ruby/gems/X.Y.Z directory name as the version to pin against.
-		// If the X.Y part is not present, then rubyModuleVer will remain an empty string and
+		// If the X.Y part is not present, then rubyGemVer will remain an empty string and
 		// no dependency will be generated.
 		rubyGemVer = basename[:3]
 		return nil
@@ -622,8 +622,13 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 
 	// Do not add a Ruby dependency if one already exists.
 	for _, dep := range hdl.BaseDependencies().Runtime {
-		if strings.HasPrefix(dep, "ruby") {
+		if strings.HasPrefix(dep, "ruby-") {
 			log.Warnf("%s: Ruby dependency %q already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName(), dep)
+			return nil
+		}
+
+		if dep == "ruby" {
+			log.Warnf("%s: Ruby dependency already specified", hdl.PackageName())
 			return nil
 		}
 	}

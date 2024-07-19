@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -32,7 +33,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -193,6 +193,9 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		file,
 		[]string{"cat /home/build/melange-out.tar.gz"},
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return os.Open(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"))
 }
@@ -269,7 +272,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	baseargs = append(baseargs, "-m", fmt.Sprintf("%d", sysTotalMemoryMegabytes()))
+	baseargs = append(baseargs, "-m", getAvailableMemoryKB())
 	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
 	baseargs = append(baseargs, "-cpu", "host")
 	baseargs = append(baseargs, "-enable-kvm")
@@ -573,21 +576,17 @@ func sendSSHCommand(ctx context.Context, user, host, port, privatekey string, cf
 	}
 	defer session.Close()
 
-	if cfg.Environment != nil {
-		for k, v := range cfg.Environment {
-			err = session.Setenv(k, v)
-			if err != nil {
-				return err
-			}
+	for k, v := range cfg.Environment {
+		err = session.Setenv(k, v)
+		if err != nil {
+			return err
 		}
 	}
 
-	if extraVars != nil {
-		for k, v := range extraVars {
-			err = session.Setenv(k, v)
-			if err != nil {
-				return err
-			}
+	for k, v := range extraVars {
+		err = session.Setenv(k, v)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -663,14 +662,24 @@ func randpomPortN() (int, error) {
 	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
 }
 
-func sysTotalMemoryMegabytes() uint64 {
-	in := &syscall.Sysinfo_t{}
-	err := syscall.Sysinfo(in)
-	if err != nil {
-		return 0
+func getAvailableMemoryKB() string {
+	mem := "16000000"
+	f, e := os.Open("/proc/meminfo")
+	if e != nil {
+		return mem
 	}
 
-	return (uint64(in.Totalram) * uint64(in.Unit)) / 1048576
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		var n int
+		if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
+			mem = strconv.Itoa(n)
+			return mem
+		}
+	}
+
+	return mem
 }
 
 func replaceStringInFile(inputFile, pattern, replace string) error {

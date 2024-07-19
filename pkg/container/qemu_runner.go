@@ -19,8 +19,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -48,7 +49,7 @@ var _ Debugger = (*qemu)(nil)
 const QemuName = "qemu"
 
 const (
-	PrivateKeyFile    = "id_rsa_wolfi"
+	PrivateKeyFile    = "id_ecdsa_wolfi"
 	PublicKeyFile     = PrivateKeyFile + ".pub"
 	SSHPortRangeStart = 10000
 	SSHPortRangeEnd   = 50000
@@ -604,24 +605,20 @@ func sendSSHCommand(ctx context.Context, user, host, port, privatekey string, cf
 func generateSSHKeys(ctx context.Context, rootfs string) error {
 	clog.FromContext(ctx).Info("qemu: generating ssh key pairs for ephemeral VM...")
 	// Private Key generation
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return err
-	}
-
-	// Validate Private Key
-	err = privateKey.Validate()
-	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: ssh keygen failed: %v", err)
 		return err
 	}
 
 	// Get ASN.1 DER format
-	privDER := x509.MarshalPKCS1PrivateKey(privateKey)
+	privDER, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
 
 	// pem.Block
 	privBlock := pem.Block{
-		Type:    "RSA PRIVATE KEY",
+		Type:    "EC PRIVATE KEY",
 		Headers: nil,
 		Bytes:   privDER,
 	}
@@ -633,13 +630,13 @@ func generateSSHKeys(ctx context.Context, rootfs string) error {
 		return err
 	}
 
-	publicRsaKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: ssh keygen failed: %v", err)
 		return err
 	}
 
-	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
+	pubKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
 	err = os.WriteFile(filepath.Join(rootfs, PublicKeyFile), pubKeyBytes, 0600)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: ssh keygen failed: %v", err)
@@ -663,19 +660,20 @@ func randpomPortN() (int, error) {
 }
 
 func getAvailableMemoryKB() string {
-	mem := "16000000"
+	mem := "16000000k"
+
 	f, e := os.Open("/proc/meminfo")
 	if e != nil {
 		return mem
 	}
-
 	defer f.Close()
+
 	s := bufio.NewScanner(f)
+
 	for s.Scan() {
 		var n int
 		if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
-			mem = strconv.Itoa(n)
-			return mem
+			return strconv.Itoa(n) + "k"
 		}
 	}
 

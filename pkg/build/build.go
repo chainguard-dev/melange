@@ -247,6 +247,16 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.RemoveAll(tmp)
 
+	if b.Runner.Name() == container.QemuName {
+		b.ExtraPackages = append(b.ExtraPackages, []string{
+			"mount",
+			"linux",
+			"systemd",
+			"openssh-server",
+			"openssh-server-config",
+		}...)
+	}
+
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
@@ -256,7 +266,6 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 		apko_build.WithTempDir(tmp),
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
-
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}

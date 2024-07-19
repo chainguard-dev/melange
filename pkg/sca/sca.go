@@ -556,6 +556,86 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	return nil
 }
 
+// generateRubyDeps generates a ruby-X.Y dependency for packages which ship
+// Ruby gems.
+func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for ruby gems...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
+	var rubyGemVer string
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Ruby gems are installed in paths such as /usr/lib/ruby/gems/X.Y.Z/gems/...,
+		// so if we find a directory named gems, and its parent is a ruby directory,
+		// then we have a Ruby gem directory.
+		basename := filepath.Base(path)
+		if basename != "gems" {
+			return nil
+		}
+
+		parent := filepath.Dir(path)
+		basename = filepath.Base(parent)
+
+		// The gems path we want is nested in another gems directory, where the parent
+		// contains the Ruby version. Return if the parent is the Ruby directory
+		if basename == "ruby" {
+			return nil
+		}
+
+		// Ruby versions are formatted as major.minor.patch
+		majorMinorPatch := `^\d+\.\d+\.\d+$`
+
+		// Compile expected Ruby version format
+		re := regexp.MustCompile(majorMinorPatch)
+
+		// Match the directory against version format
+		if !re.MatchString(basename) {
+			return nil
+		}
+
+		// This probably shouldn't ever happen, but lets check to make sure.
+		if !d.IsDir() {
+			return nil
+		}
+
+		// This takes the X.Y part of the ruby/gems/X.Y.Z directory name as the version to pin against.
+		// If the X.Y part is not present, then rubyModuleVer will remain an empty string and
+		// no dependency will be generated.
+		rubyGemVer = basename[:3]
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Nothing to do...
+	if rubyGemVer == "" {
+		return nil
+	}
+
+	// Do not add a Ruby dependency if one already exists.
+	for _, dep := range hdl.BaseDependencies().Runtime {
+		if strings.HasPrefix(dep, "ruby") {
+			log.Warnf("%s: Ruby dependency %q already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName(), dep)
+			return nil
+		}
+	}
+
+	log.Infof("  found ruby gem, generating ruby-%s dependency", rubyGemVer)
+	if !hdl.Options().NoDepends {
+		generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s", rubyGemVer))
+	}
+
+	return nil
+}
+
 func sonameLibver(soname string) string {
 	parts := strings.Split(soname, ".so.")
 	if len(parts) < 2 {
@@ -677,6 +757,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generateCmdProviders,
 		generatePkgConfigDeps,
 		generatePythonDeps,
+		generateRubyDeps,
 		generateShbangDeps,
 	}
 

@@ -266,16 +266,31 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs := []string{}
 
 	// always be sure to create the VM rootfs first!
-	kernelPath, rootfsInitrdPath, err := createRootfs(ctx, rootfs)
+	kernelPath, rootfsInitrdPath, err := createRootfs(ctx, cfg, rootfs)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
 		return err
 	}
 
-	baseargs = append(baseargs, "-m", getAvailableMemoryKB())
+	if cfg.Memory != "" {
+		baseargs = append(baseargs, "-m", cfg.Memory)
+	} else {
+		baseargs = append(baseargs, "-m", getAvailableMemoryKB())
+	}
+
+	if cfg.CPU != "" {
+		baseargs = append(baseargs, "-cpu", cfg.CPU)
+	} else {
+		baseargs = append(baseargs, "-cpu", "host")
+	}
+
+	if runtime.GOOS == "linux" {
+		baseargs = append(baseargs, "-enable-kvm")
+	} else if runtime.GOOS == "darwin" {
+		baseargs = append(baseargs, "-accel", "hvf")
+	}
+
 	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
-	baseargs = append(baseargs, "-cpu", "host")
-	baseargs = append(baseargs, "-enable-kvm")
 	baseargs = append(baseargs, "-daemonize")
 	baseargs = append(baseargs, "-nic", "user,hostfwd=tcp::"+cfg.SSHPort+"-:22")
 	baseargs = append(baseargs, "-kernel", kernelPath)

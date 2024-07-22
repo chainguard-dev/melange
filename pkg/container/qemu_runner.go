@@ -272,6 +272,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// load microvm profile and bios, shave some milliseconds from boot
+	// using this will make a complete boot->initrd (with working network) In ~700ms
+	// instead of ~900ms.
+	if _, err := os.Stat("/usr/share/qemu/bios-microvm.bin"); err == nil {
+		// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
+		baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
+		baseargs = append(baseargs, "-bios", "/usr/share/qemu/bios-microvm.bin")
+	}
+
 	if cfg.Memory != "" {
 		baseargs = append(baseargs, "-m", cfg.Memory)
 	} else {
@@ -284,6 +293,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-cpu", "host")
 	}
 
+	// use kvm on linux, and Hypervisor.framework on macOS
 	if runtime.GOOS == "linux" {
 		baseargs = append(baseargs, "-enable-kvm")
 	} else if runtime.GOOS == "darwin" {
@@ -291,14 +301,22 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
+	baseargs = append(baseargs, "-no-reboot")
+	baseargs = append(baseargs, "-no-user-config")
 	baseargs = append(baseargs, "-daemonize")
-	baseargs = append(baseargs, "-nic", "user,hostfwd=tcp::"+cfg.SSHPort+"-:22")
+	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
+	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp::"+cfg.SSHPort+"-:22")
+	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
-	baseargs = append(baseargs, "-append", "console=ttyS0 quiet")
+	baseargs = append(baseargs, "-append", "quiet")
 
 	injectFstab := ""
 
+	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
+	// kill all performances (lots of small files)
+	// instead we will copy back the finished workspace artifacts when done.
+	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
 	clog.FromContext(ctx).Info("qemu: generating qemu command...")
 	clog.FromContext(ctx).Debug("qemu: generating mount list")
 	for count, bind := range cfg.Mounts {

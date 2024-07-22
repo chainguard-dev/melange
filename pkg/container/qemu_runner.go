@@ -499,7 +499,7 @@ func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 		return "", err
 	}
 
-	initramfs, err := os.Create(filepath.Join(rootfs, "initramfs.cpio.gz"))
+	initramfs, err := os.Create(filepath.Join(rootfs, "initramfs.cpio"))
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: initramfs file creation failed: %v", err)
 		return "", err
@@ -510,35 +510,17 @@ func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 	buffer := bytes.Buffer{}
 	buffer.Write(content)
 
-	// ( cd /tmp/initramfs/rootfs && cpio --format=newc -o ) </tmp/initramfs/files | gzip --to-stdout > /initramfs.$(uname -m).cpio.gz
 	cpioCmd := exec.Command("cpio", "--format=newc", "-o", "-R", "0:0")
 
+	cpioCmd.Stdout = initramfs
 	cpioCmd.Stdin = &buffer
-	// cpioCmd.Stdout = initramfs
 	cpioCmd.Dir = rootfs
-
-	gzipCmd := exec.Command("gzip", "--to-stdout")
-	gzipCmd.Stdout = initramfs
-
-	gzipCmd.Stdin, err = cpioCmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-
-	if err := gzipCmd.Start(); err != nil {
-		return "", err
-	}
 
 	clog.FromContext(ctx).Info("qemu: compressing rootfs...")
 	clog.FromContext(ctx).Debugf("qemu: launching command - %s",
-		strings.Join(cpioCmd.Args, " ")+" | "+strings.Join(gzipCmd.Args, " "))
+		strings.Join(cpioCmd.Args, " ")+" | "+strings.Join(cpioCmd.Args, " "))
 	if err := cpioCmd.Run(); err != nil {
 		clog.FromContext(ctx).Errorf("qemu: initramfs cpio command failed: %v", err)
-		return "", err
-	}
-
-	if err := gzipCmd.Wait(); err != nil {
-		clog.FromContext(ctx).Errorf("qemu: initramfs gzip command failed: %v", err)
 		return "", err
 	}
 

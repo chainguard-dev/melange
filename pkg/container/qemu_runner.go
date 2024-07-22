@@ -325,7 +325,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
-	baseargs = append(baseargs, "-append", "quiet")
+	baseargs = append(baseargs, "-append", "quiet panic=-1")
 
 	injectFstab := ""
 

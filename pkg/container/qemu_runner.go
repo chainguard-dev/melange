@@ -53,8 +53,6 @@ var _ Debugger = (*qemu)(nil)
 const QemuName = "qemu"
 
 const (
-	PrivateKeyFile    = "id_ecdsa_wolfi"
-	PublicKeyFile     = PrivateKeyFile + ".pub"
 	SSHPortRangeStart = 10000
 	SSHPortRangeEnd   = 50000
 )
@@ -85,8 +83,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	err := sendSSHCommand(ctx,
 		"root",
 		"localhost",
-		cfg.PodID,
-		filepath.Join(cfg.ImgRef, PrivateKeyFile),
+		cfg.SSHPort,
 		cfg,
 		envOverride,
 		stderr,
@@ -136,7 +133,7 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	cfg.PodID = strconv.Itoa(sshPort)
+	cfg.SSHPort = strconv.Itoa(sshPort)
 
 	return createMicroVM(ctx, cfg)
 }
@@ -148,8 +145,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	err := sendSSHCommand(ctx,
 		"root",
 		"localhost",
-		cfg.PodID,
-		filepath.Join(cfg.ImgRef, PrivateKeyFile),
+		cfg.SSHPort,
 		cfg,
 		nil,
 		nil,
@@ -169,8 +165,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	err := sendSSHCommand(ctx,
 		"root",
 		"localhost",
-		cfg.PodID,
-		filepath.Join(cfg.ImgRef, PrivateKeyFile),
+		cfg.SSHPort,
 		cfg,
 		nil,
 		nil,
@@ -191,8 +186,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	err = sendSSHCommand(ctx,
 		"root",
 		"localhost",
-		cfg.PodID,
-		filepath.Join(cfg.ImgRef, PrivateKeyFile),
+		cfg.SSHPort,
 		cfg,
 		nil,
 		nil,
@@ -283,7 +277,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-cpu", "host")
 	baseargs = append(baseargs, "-enable-kvm")
 	baseargs = append(baseargs, "-daemonize")
-	baseargs = append(baseargs, "-nic", "user,hostfwd=tcp::"+cfg.PodID+"-:22")
+	baseargs = append(baseargs, "-nic", "user,hostfwd=tcp::"+cfg.SSHPort+"-:22")
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
 	baseargs = append(baseargs, "-append", "console=ttyS0 quiet")
@@ -342,8 +336,7 @@ mount -a
 	err = sendSSHCommand(ctx,
 		"root",
 		"localhost",
-		cfg.PodID,
-		filepath.Join(cfg.ImgRef, PrivateKeyFile),
+		cfg.SSHPort,
 		cfg,
 		nil,
 		nil,
@@ -353,7 +346,7 @@ mount -a
 	return err
 }
 
-func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
+func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {
 	err := os.Chmod(rootfs, 0755)
 	if err != nil {
 		return "", "", err
@@ -434,14 +427,15 @@ func createRootfs(ctx context.Context, rootfs string) (string, string, error) {
 	defer sshdConfig.Close()
 
 	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
-	err = generateSSHKeys(ctx, rootfs)
+	pubKeyBytes, err := generateSSHKeys(ctx, cfg, rootfs)
 	if err != nil {
 		return "", "", err
 	}
 
 	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys")
-	err = os.Rename(filepath.Join(rootfs, PublicKeyFile), filepath.Join(rootfs, "root/.ssh/authorized_keys"))
+	err = os.WriteFile(filepath.Join(rootfs, "root/.ssh/authorized_keys"), pubKeyBytes, 0600)
 	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: ssh pubkey write failed: %v", err)
 		return "", "", err
 	}
 
@@ -537,16 +531,10 @@ func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 	return initramfs.Name(), nil
 }
 
-func sendSSHCommand(ctx context.Context, user, host, port, privatekey string, cfg *Config, extraVars map[string]string, stderr, stdout io.Writer, command []string) error {
+func sendSSHCommand(ctx context.Context, user, host, port string, cfg *Config, extraVars map[string]string, stderr, stdout io.Writer, command []string) error {
 	server := host + ":" + port
 
-	key, err := os.ReadFile(privatekey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to read private key: %v", err)
-		return err
-	}
-
-	signer, err := ssh.ParsePrivateKey(key)
+	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
 		return err
@@ -602,18 +590,18 @@ func sendSSHCommand(ctx context.Context, user, host, port, privatekey string, cf
 	return nil
 }
 
-func generateSSHKeys(ctx context.Context, rootfs string) error {
+func generateSSHKeys(ctx context.Context, cfg *Config, rootfs string) ([]byte, error) {
 	clog.FromContext(ctx).Info("qemu: generating ssh key pairs for ephemeral VM...")
 	// Private Key generation
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Get ASN.1 DER format
 	privDER, err := x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// pem.Block
@@ -624,26 +612,15 @@ func generateSSHKeys(ctx context.Context, rootfs string) error {
 	}
 
 	// Private key in PEM format
-	err = os.WriteFile(filepath.Join(rootfs, PrivateKeyFile), pem.EncodeToMemory(&privBlock), 0600)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: ssh keygen failed: %v", err)
-		return err
-	}
+	cfg.SSHKey = pem.EncodeToMemory(&privBlock)
 
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: ssh keygen failed: %v", err)
-		return err
+		return nil, err
 	}
 
-	pubKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
-	err = os.WriteFile(filepath.Join(rootfs, PublicKeyFile), pubKeyBytes, 0600)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: ssh keygen failed: %v", err)
-		return err
-	}
-
-	return nil
+	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
 
 func randpomPortN() (int, error) {

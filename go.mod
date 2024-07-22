@@ -10,7 +10,7 @@ require (
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.0.12
 	github.com/charmbracelet/log v0.4.0
-	github.com/docker/cli v27.0.3+incompatible
+	github.com/docker/cli v27.1.0+incompatible
 	github.com/docker/docker v27.0.3+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.1

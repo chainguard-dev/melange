@@ -65,6 +65,7 @@ type Test struct {
 	DebugRunner       bool
 	Interactive       bool
 	Auth              map[string]options.Auth
+	IgnoreSignatures  bool
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {

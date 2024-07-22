@@ -369,3 +369,11 @@ func WithLibcFlavorOverride(libc string) Option {
 		return nil
 	}
 }
+
+// WithIgnoreIndexSignatures sets whether to ignore repository signature verification.
+func WithIgnoreSignatures(ignore bool) Option {
+	return func(b *Build) error {
+		b.IgnoreSignatures = ignore
+		return nil
+	}
+}

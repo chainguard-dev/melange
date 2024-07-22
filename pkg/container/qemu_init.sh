@@ -19,5 +19,8 @@ set -e
 /bin/route add default gw 10.0.2.2 eth0
 /bin/hostname "$(cat /etc/hostname)"
 
+# Fix home permissions from cpio command
+/bin/chown -R build:build /home/build
+
 /usr/bin/ssh-keygen -A
 /usr/sbin/sshd -D

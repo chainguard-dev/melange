@@ -82,8 +82,15 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stdout.Close()
 	defer stderr.Close()
 
+	// default to root user but if a different user is specified
+	// we will use the embedded build:1000:1000 user
+	user := "root"
+	if cfg.RunAs != "" {
+		user = "build"
+	}
+
 	err := sendSSHCommand(ctx,
-		"root",
+		user,
 		"localhost",
 		cfg.SSHPort,
 		cfg,
@@ -163,9 +170,16 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 // WorkspaceTar implements Runner
 func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+	// default to root user but if a different user is specified
+	// we will use the embedded build:1000:1000 user
+	user := "root"
+	if cfg.RunAs != "" {
+		user = "build"
+	}
+
 	clog.FromContext(ctx).Infof("compressing remote workspace")
 	err := sendSSHCommand(ctx,
-		"root",
+		user,
 		"localhost",
 		cfg.SSHPort,
 		cfg,
@@ -186,7 +200,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	defer file.Close()
 
 	err = sendSSHCommand(ctx,
-		"root",
+		user,
 		"localhost",
 		cfg.SSHPort,
 		cfg,
@@ -390,20 +404,32 @@ func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, stri
 	mkdirPaths := []string{
 		"dev",
 		"home",
-		"opt",
+		"home/build/.ssh",
 		"proc",
 		"root",
 		"root/.ssh",
 		"run",
 		"sys",
-		"tmp",
 		"var",
 		"var/empty",
-		"var/run",
 	}
 	clog.FromContext(ctx).Debug("qemu: creating basic rootfs directories")
 	for _, path := range mkdirPaths {
 		_ = os.MkdirAll(filepath.Join(rootfs, path), 0o755)
+	}
+
+	mkdirPaths = []string{
+		"opt",
+		"tmp",
+		"var/cache",
+		"var/run",
+	}
+	clog.FromContext(ctx).Debug("qemu: creating basic word writable rootfs directories")
+	for _, path := range mkdirPaths {
+		_ = os.Mkdir(filepath.Join(rootfs, path), 0o777)
+	}
+	for _, path := range mkdirPaths {
+		_ = os.Chmod(filepath.Join(rootfs, path), 0o777)
 	}
 
 	// inject /init from ./qemu_init.sh, previously this was using
@@ -467,21 +493,28 @@ func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, stri
 		return "", "", err
 	}
 
-	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys")
-	err = os.WriteFile(filepath.Join(rootfs, "root/.ssh/authorized_keys"), pubKeyBytes, 0600)
+	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys - root")
+	err = os.WriteFile(filepath.Join(rootfs, "root/.ssh/authorized_keys"), pubKeyBytes, 0400)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: ssh pubkey write failed: %v", err)
 		return "", "", err
 	}
 
-	clog.FromContext(ctx).Debug("qemu: ssh - fix dir permissions")
+	clog.FromContext(ctx).Debug("qemu: ssh - fix dir permissions - root")
 	err = os.Chmod(filepath.Join(rootfs, "root/.ssh"), 0700)
 	if err != nil {
 		return "", "", err
 	}
 
-	clog.FromContext(ctx).Debug("qemu: ssh - fix file permissions")
-	err = os.Chmod(filepath.Join(rootfs, "root/.ssh/authorized_keys"), 0400)
+	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys - build user")
+	err = os.WriteFile(filepath.Join(rootfs, "home/build/.ssh/authorized_keys"), pubKeyBytes, 0400)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: ssh pubkey write failed: %v", err)
+		return "", "", err
+	}
+
+	clog.FromContext(ctx).Debug("qemu: ssh - fix dir permissions - build user")
+	err = os.Chmod(filepath.Join(rootfs, "home/build/.ssh"), 0700)
 	if err != nil {
 		return "", "", err
 	}

@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +37,7 @@ import (
 	"strconv"
 	"strings"
 
+	"chainguard.dev/apko/pkg/apk/expandapk"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/internal/logwriter"
@@ -484,15 +486,111 @@ func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, stri
 		return "", "", err
 	}
 
+	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
+	kernel, err := generateVmlinuz(ctx, rootfs)
+	if err != nil {
+		return "", "", err
+	}
+
 	clog.FromContext(ctx).Debug("qemu: generating initramfs...")
 	initramfs, err := generateInitrd(ctx, rootfs)
 	if err != nil {
 		return "", "", err
 	}
 
-	kernel := filepath.Join(rootfs, "boot", "vmlinuz")
-
 	return kernel, initramfs, nil
+}
+
+func generateVmlinuz(ctx context.Context, rootfs string) (string, error) {
+	clog.FromContext(ctx).Info("qemu: detecting kernel")
+	if _, err := os.Stat("/boot/vmlinuz"); err == nil {
+		clog.FromContext(ctx).Info("qemu: vmlinuz detected, reusing it")
+		return "/boot/vmlinuz", nil
+	}
+
+	clog.FromContext(ctx).Info("qemu: detecting kernel")
+	if _, err := os.Stat("/boot/vmlinuz-virt"); err == nil {
+		clog.FromContext(ctx).Info("qemu: vmlinuz detected, reusing it")
+		return "/boot/vmlinuz-virt", nil
+	}
+
+	clog.FromContext(ctx).Info("qemu: kernel not found, downloading...")
+	// download mainline kernel from ubuntu
+	response, err := http.Get("https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/linux-virt-6.6.41-r0.apk")
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: can't download kernel - %v", err)
+		return "", err
+	}
+	defer response.Body.Close()
+
+	// Check if the request was successful
+	if response.StatusCode != http.StatusOK {
+		clog.FromContext(ctx).Errorf("qemu: can't download kernel - %v", err)
+		return "", err
+	}
+
+	cachedir, err := os.MkdirTemp("", "")
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: can't setup cache dir - %v", err)
+		return "", err
+	}
+	defer os.RemoveAll(cachedir)
+
+	apk, err := expandapk.ExpandApk(ctx, response.Body, cachedir)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
+		return "", err
+	}
+
+	clog.FromContext(ctx).Info("qemu: unpacking package")
+	content, err := apk.PackageData()
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
+		return "", err
+	}
+	defer content.Close()
+
+	var tarReader *tar.Reader = tar.NewReader(content)
+
+	clog.FromContext(ctx).Info("qemu: unpacking kernel")
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
+			return "", err
+		}
+
+		target := filepath.Join(rootfs, header.Name)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			// Create directory
+			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
+				clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
+				return "", err
+			}
+		case tar.TypeReg:
+			// Create file
+			outFile, err := os.Create(target)
+			if err != nil {
+				clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
+				return "", err
+			}
+			defer outFile.Close()
+
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
+				return "", err
+			}
+		default:
+			clog.FromContext(ctx).Warnf("Unsupported type: %v in %s\n", header.Typeflag, header.Name)
+		}
+	}
+
+	clog.FromContext(ctx).Info("qemu: kernel successfully unpacked")
+	return filepath.Join(rootfs, "boot", "vmlinuz-virt"), nil
 }
 
 func generateInitrd(ctx context.Context, rootfs string) (string, error) {

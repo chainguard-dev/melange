@@ -56,7 +56,7 @@ melange compile [flags]
       --pipeline-dir string         directory used to extend defined built-in pipelines
   -r, --repository-append strings   path to extra repositories to include in the build environment
       --rm                          clean up intermediate artifacts (e.g. container images)
-      --runner string               which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker"]
+      --runner string               which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --signing-key string          key to use for signing
       --source-dir string           directory used for included sources
       --strip-origin-name           whether origin names should be stripped (for bootstrap)

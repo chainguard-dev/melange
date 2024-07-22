@@ -254,7 +254,7 @@ func (cfg *Configuration) applySubstitutionsForPackages() error {
 }
 
 type Copyright struct {
-	// Optional: The license paths, typically '*'
+	// Optional: Paths the license applies to, typically '*'
 	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
 	// Optional: Attestations of the license
 	Attestation string `json:"attestation,omitempty" yaml:"attestation,omitempty"`

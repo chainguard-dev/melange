@@ -249,11 +249,10 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 
 	if b.Runner.Name() == container.QemuName {
 		b.ExtraPackages = append(b.ExtraPackages, []string{
+			"kmod",
 			"mount",
 			"net-tools",
-			"kmod",
 			"openssh-server",
-			"openssh-server-config",
 		}...)
 	}
 

@@ -23,4 +23,4 @@ set -e
 /bin/chown -R build:build /home/build
 
 /usr/bin/ssh-keygen -A
-/usr/sbin/sshd -D
+exec /usr/sbin/sshd -D

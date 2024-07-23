@@ -394,24 +394,29 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	sshCmd := `echo "` + injectFstab + `" >> /etc/fstab
+	// in case of additional mount points, we inject them in the fstab, so that
+	// they will be mounted automatically
+	if injectFstab != "" {
+		sshCmd := `echo "` + injectFstab + `" >> /etc/fstab
 cat /etc/fstab | cut -d' ' -f2 | xargs mkdir -p
-mount -a
-[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true`
+mount -a`
 
-	clog.FromContext(ctx).Info("qemu: injecting fstab...")
-	clog.FromContext(ctx).Debugf("qemu: injecting fstab - %s", sshCmd)
-	err = sendSSHCommand(ctx,
-		"root",
-		"localhost",
-		cfg.SSHPort,
-		cfg,
-		nil,
-		nil,
-		nil,
-		[]string{sshCmd},
-	)
-	return err
+		clog.FromContext(ctx).Info("qemu: injecting fstab...")
+		clog.FromContext(ctx).Debugf("qemu: injecting fstab - %s", sshCmd)
+		err = sendSSHCommand(ctx,
+			"root",
+			"localhost",
+			cfg.SSHPort,
+			cfg,
+			nil,
+			nil,
+			nil,
+			[]string{sshCmd},
+		)
+		return err
+	}
+
+	return nil
 }
 
 func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {

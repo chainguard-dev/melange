@@ -317,15 +317,20 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
+	baseargs = append(baseargs, "-daemonize")
+	baseargs = append(baseargs, "-display", "none")
 	baseargs = append(baseargs, "-no-reboot")
 	baseargs = append(baseargs, "-no-user-config")
-	baseargs = append(baseargs, "-daemonize")
+	baseargs = append(baseargs, "-nodefaults")
+	baseargs = append(baseargs, "-parallel", "none")
+	baseargs = append(baseargs, "-serial", "none")
+	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp::"+cfg.SSHPort+"-:22")
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
-	baseargs = append(baseargs, "-append", "quiet panic=-1")
+	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1")
 
 	injectFstab := ""
 

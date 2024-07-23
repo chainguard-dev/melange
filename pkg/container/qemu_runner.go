@@ -156,6 +156,9 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 // TerminatePod terminates a pod if necessary.  Not implemented
 // for Qemu runners.
 func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.TerminatePod")
+	defer span.End()
+
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
 		"root",

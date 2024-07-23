@@ -26,5 +26,10 @@ set -e
 # Fix home permissions from cpio command
 /bin/chown -R build:build /home/build
 
+# ldconfig is run to prime ld.so.cache for glibc packages which require it.
+if [ -x /sbin/ldconfig ]; then
+	/sbin/ldconfig /lib /usr/lib /usr/lib64 || :
+fi
+
 /usr/bin/ssh-keygen -A
 exec /usr/sbin/sshd -D

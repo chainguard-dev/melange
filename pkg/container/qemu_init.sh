@@ -1,9 +1,10 @@
 #!/bin/busybox sh
 set -e
 
-/bin/mount -t proc proc /proc
-/bin/mount -t sysfs sys /sys
-/bin/mount -t devtmpfs devtmpfs /dev
+/bin/mount -t proc proc -o nodev,nosuid,hidepid=2 /proc
+/bin/mount -t devtmpfs -o nosuid,noexec devtmpfs /dev
+/bin/mount -t sysfs sys -o nodev,nosuid,noexec /sys
+/bin/mount -t tmpfs -o nodev,nosuid,noexec tmpfs /tmp
 
 /bin/mkdir /dev/pts
 /bin/mount -t devpts devpts -o noexec,nosuid,newinstance,ptmxmode=0666,mode=0620,gid=tty /dev/pts/

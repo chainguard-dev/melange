@@ -114,8 +114,14 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 // as a microvm runner.
 func (bw *qemu) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
-	if _, err := exec.LookPath("qemu-system-x86_64"); err != nil {
-		log.Warnf("cannot use qemu for microvms: qemu-system-x86_64 not found on $PATH")
+
+	qemuBin := "qemu-system-x86_64"
+	if runtime.GOARCH == "arm64" {
+		qemuBin = "qemu-system-aarch64"
+	}
+
+	if _, err := exec.LookPath(qemuBin); err != nil {
+		log.Warnf("cannot use qemu for microvms: %s not found on $PATH", qemuBin)
 		return false
 	}
 
@@ -371,12 +377,17 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		injectFstab = injectFstab + "\n" + mountTag + " " + bind.Destination + " 9p  trans=virtio,version=9p2000.L   0   0"
 	}
 
-	execCmd := exec.CommandContext(ctx, "qemu-system-x86_64", baseargs...)
+	qemuBin := "qemu-system-x86_64"
+	if runtime.GOARCH == "arm64" {
+		qemuBin = "qemu-system-aarch64"
+	}
+
+	execCmd := exec.CommandContext(ctx, qemuBin, baseargs...)
 	clog.FromContext(ctx).Infof("qemu: executing - %s", strings.Join(execCmd.Args, " "))
 
-	err = execCmd.Run()
+	output, err := execCmd.CombinedOutput()
 	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: failed to run qemu command: %v", err)
+		clog.FromContext(ctx).Errorf("qemu: failed to run qemu command: %v - %s", err, string(output))
 		return err
 	}
 

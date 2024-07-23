@@ -12,7 +12,10 @@ set -e
 # We can ignore this fail, if we use a kernel with kvm_guest.config, we won't need this
 # and network will work anyway
 # If this fails and we won't have network, the ifconfig command will fail anyway.
-/usr/sbin/modprobe virtio_net || :
+# Also we load cpu accelleration drivers in case those are needed.
+/usr/bin/sort -u \
+	/sys/devices/system/cpu/modalias  \
+	/sys/devices/pci*/*/virtio*/modalias | /usr/bin/xargs -n1 /usr/sbin/modprobe 2>/dev/null || :
 
 /bin/ifconfig lo up
 /bin/ifconfig eth0 10.0.2.15 netmask 255.255.255.0

@@ -77,6 +77,8 @@ func (bw *qemu) Name() string {
 
 // Run runs a Qemu task given a Config and command string.
 func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
+	clog.InfoContextf(ctx, "running command %s", strings.Join(args, " "))
+
 	log := clog.FromContext(ctx)
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
@@ -95,6 +97,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 		cfg.SSHPort,
 		cfg,
 		envOverride,
+		nil,
 		stderr,
 		stdout,
 		args,
@@ -107,7 +110,31 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 }
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
-	return bw.Run(ctx, cfg, envOverride, args...)
+	clog.InfoContextf(ctx, "debugging command %s", strings.Join(args, " "))
+
+	// default to root user but if a different user is specified
+	// we will use the embedded build:1000:1000 user
+	user := "root"
+	if cfg.RunAs != "" {
+		user = "build"
+	}
+
+	err := sendSSHCommand(ctx,
+		user,
+		"localhost",
+		cfg.SSHPort,
+		cfg,
+		envOverride,
+		os.Stdin,
+		os.Stderr,
+		os.Stdout,
+		args,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // TestUsability determines if the Qemu runner can be used
@@ -164,6 +191,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
+		nil,
 		[]string{"echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
@@ -191,6 +219,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		nil,
 		nil,
+		nil,
 		[]string{"cd /home/build && tar cvzf melange-out.tar.gz melange-out"},
 	)
 	if err != nil {
@@ -198,12 +227,15 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	}
 
 	clog.FromContext(ctx).Infof("fetching remote workspace")
-	file, err := os.OpenFile(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	workspaceTar, err := os.OpenFile(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer workspaceTar.Close()
 
+	// work around missing scp (needs openssh-sftp package), we just cat the file
+	// and pipe the output to our local file. It is potentially slower, but being
+	// a localhost interface, the performance penalty should be negligible.
 	err = sendSSHCommand(ctx,
 		user,
 		"localhost",
@@ -211,7 +243,8 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		cfg,
 		nil,
 		nil,
-		file,
+		nil,
+		workspaceTar,
 		[]string{"cat /home/build/melange-out.tar.gz"},
 	)
 	if err != nil {
@@ -404,6 +437,7 @@ mount -a`
 			"localhost",
 			cfg.SSHPort,
 			cfg,
+			nil,
 			nil,
 			nil,
 			nil,
@@ -697,7 +731,11 @@ func generateInitrd(ctx context.Context, rootfs string) (string, error) {
 	return initramfs.Name(), nil
 }
 
-func sendSSHCommand(ctx context.Context, user, host, port string, cfg *Config, extraVars map[string]string, stderr, stdout io.Writer, command []string) error {
+func sendSSHCommand(ctx context.Context, user, host, port string,
+	cfg *Config, extraVars map[string]string,
+	stdin io.Reader, stderr, stdout io.Writer,
+	command []string,
+) error {
 	server := host + ":" + port
 
 	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
@@ -745,6 +783,7 @@ func sendSSHCommand(ctx context.Context, user, host, port string, cfg *Config, e
 		}
 	}
 
+	session.Stdin = stdin
 	session.Stderr = stderr
 	session.Stdout = stdout
 	err = session.Run(strings.Join(command, " "))

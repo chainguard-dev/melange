@@ -115,13 +115,9 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 func (bw *qemu) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
 
-	qemuBin := "qemu-system-x86_64"
-	if runtime.GOARCH == "arm64" {
-		qemuBin = "qemu-system-aarch64"
-	}
-
-	if _, err := exec.LookPath(qemuBin); err != nil {
-		log.Warnf("cannot use qemu for microvms: %s not found on $PATH", qemuBin)
+	arch := apko_types.Architecture(runtime.GOARCH)
+	if _, err := exec.LookPath(fmt.Sprintf("qemu-system-%s", arch.ToAPK())); err != nil {
+		log.Warnf("cannot use qemu for microvms: qemu-system-%s not found on $PATH", arch.ToAPK())
 		return false
 	}
 
@@ -327,6 +323,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
 	baseargs = append(baseargs, "-daemonize")
+	// ensure we disable unneeded devices, this is less needed if we use microvm machines
+	// but still useful otherwise
 	baseargs = append(baseargs, "-display", "none")
 	baseargs = append(baseargs, "-no-reboot")
 	baseargs = append(baseargs, "-no-user-config")
@@ -339,6 +337,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
+	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1")
 
 	injectFstab := ""
@@ -368,8 +367,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			continue
 		}
 
+		// mount tags have to be an alfanumeric string of 31 char max
 		mountTag := strings.ReplaceAll(bind.Source, "/", "")
-
 		if len(mountTag) > 30 {
 			mountTag = mountTag[:30]
 		}
@@ -377,15 +376,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev"+strconv.Itoa(count)+",path="+bind.Source)
 		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs"+strconv.Itoa(count)+",fsdev=fsdev"+strconv.Itoa(count)+",mount_tag="+mountTag)
 
+		// create the mount string for the fstab
 		injectFstab = injectFstab + "\n" + mountTag + " " + bind.Destination + " 9p  trans=virtio,version=9p2000.L   0   0"
 	}
 
-	qemuBin := "qemu-system-x86_64"
-	if runtime.GOARCH == "arm64" {
-		qemuBin = "qemu-system-aarch64"
-	}
-
-	execCmd := exec.CommandContext(ctx, qemuBin, baseargs...)
+	// qemu-system-x86_64 or qemu-system-aarch64...
+	execCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
 	clog.FromContext(ctx).Infof("qemu: executing - %s", strings.Join(execCmd.Args, " "))
 
 	output, err := execCmd.CombinedOutput()

@@ -207,16 +207,10 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	}
 
 	clog.FromContext(ctx).Infof("fetching remote workspace")
-	workspaceTar, err := os.OpenFile(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return nil, err
-	}
-	defer workspaceTar.Close()
-
 	// work around missing scp (needs openssh-sftp package), we just tar the file
 	// and pipe the output to our local file. It is potentially slower, but being
 	// a localhost interface, the performance penalty should be negligible.
-	err = sendSSHCommand(ctx,
+	err := sendSSHCommand(ctx,
 		user,
 		"localhost",
 		cfg.SSHPort,
@@ -224,14 +218,14 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		nil,
 		nil,
-		workspaceTar,
-		[]string{"cd /home/build && tar cvzf - melange-out"},
+		nil,
+		[]string{"cp -r /home/build/melange-out /mnt"},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return os.Open(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"))
+	return nil, nil
 }
 
 type qemuOCILoader struct{}
@@ -332,8 +326,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1")
 	// Add default SSH keys to the VM
-	// we add a "defaultshare" 9pfs with an ssh dir sharing the authorized keys
-	// without this the VM WILL NOT BOOT.
+	// we add a "defaultshare" 9pfs with the workspace dir sharing the authorized keys
+	// inside it, without this the VM WILL NOT BOOT.
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
@@ -410,7 +404,24 @@ mount -a`
 		return err
 	}
 
-	return nil
+	// default to root user but if a different user is specified
+	// we will use the embedded build:1000:1000 user
+	user := "root"
+	if cfg.RunAs != "" {
+		user = "build"
+	}
+	clog.FromContext(ctx).Info("qemu: setting up local workspace...")
+	return sendSSHCommand(ctx,
+		user,
+		"localhost",
+		cfg.SSHPort,
+		cfg,
+		nil,
+		nil,
+		nil,
+		nil,
+		[]string{"cp -r /mnt/* /home/build"},
+	)
 }
 
 func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {

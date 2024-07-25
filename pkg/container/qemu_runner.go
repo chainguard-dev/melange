@@ -28,27 +28,23 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 
-	"chainguard.dev/apko/pkg/apk/expandapk"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
 )
-
-//go:embed qemu_init.sh
-var qemuInit []byte
 
 var _ Debugger = (*qemu)(nil)
 
@@ -198,7 +194,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	return nil
+	return os.Remove(cfg.ImgRef)
 }
 
 // WorkspaceTar implements Runner
@@ -245,53 +241,32 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	defer span.End()
 
 	// qemu does not have the idea of container images or layers or such, just
-	// straight out rootfs, so we create the guest dir
-	guestDir, err := os.MkdirTemp("", "melange-guest-*")
+	// create an initramfs from the layer
+	guestInitramfs, err := os.CreateTemp("", "melange-guest-*.initramfs.cpio")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
-	rc, err := layer.Uncompressed()
-	if err != nil {
-		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
-	}
-	defer rc.Close()
-	tr := tar.NewReader(rc)
-	for {
-		hdr, err := tr.Next()
-		if err != nil {
-			break
-		}
-		fullname := filepath.Join(guestDir, hdr.Name)
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(fullname, hdr.FileInfo().Mode().Perm()); err != nil {
-				return ref, fmt.Errorf("failed to create directory %s: %w", fullname, err)
-			}
-			continue
-		case tar.TypeReg:
-			f, err := os.OpenFile(fullname, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode().Perm())
+
+	// in case of some kernel images, we also need the /lib/modules directory to load
+	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
+	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
+		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
+		if _, err := os.Stat(qemuModule); err == nil {
+			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_MODULES dir detected, injecting...:")
+			layer, err = injectKernelModules(ctx, layer, qemuModule)
 			if err != nil {
-				return ref, fmt.Errorf("failed to create file %s: %w", fullname, err)
+				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
+				return "", err
 			}
-			if _, err := io.Copy(f, tr); err != nil {
-				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
-			}
-			f.Close()
-		case tar.TypeSymlink:
-			if err := os.Symlink(hdr.Linkname, filepath.Join(guestDir, hdr.Name)); err != nil {
-				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)
-			}
-		case tar.TypeLink:
-			if err := os.Link(filepath.Join(guestDir, hdr.Linkname), filepath.Join(guestDir, hdr.Name)); err != nil {
-				return ref, fmt.Errorf("failed to create hardlink %s: %w", fullname, err)
-			}
-		default:
-			// TODO: Is this correct? We are loading these into the directory, so character devices and such
-			// do not really matter to us, but maybe they should?
-			continue
 		}
 	}
-	return guestDir, nil
+
+	err = apko_cpio.FromLayer(layer, guestInitramfs)
+	if err != nil {
+		return ref, fmt.Errorf("failed to create cpio initramfs: %w", err)
+	}
+
+	return guestInitramfs.Name(), nil
 }
 
 func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
@@ -356,6 +331,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1")
+	// Add default SSH keys to the VM
+	// we add a "defaultshare" 9pfs with an ssh dir sharing the authorized keys
+	// without this the VM WILL NOT BOOT.
+	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
+	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
 	injectFstab := ""
 
@@ -434,285 +414,111 @@ mount -a`
 }
 
 func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {
-	err := os.Chmod(rootfs, 0755)
-	if err != nil {
-		return "", "", err
-	}
-
-	mkdirPaths := []string{
-		"dev",
-		"home",
-		"home/build/.ssh",
-		"proc",
-		"root",
-		"root/.ssh",
-		"run",
-		"sys",
-		"var",
-		"var/empty",
-	}
-	clog.FromContext(ctx).Debug("qemu: creating basic rootfs directories")
-	for _, path := range mkdirPaths {
-		_ = os.MkdirAll(filepath.Join(rootfs, path), 0o755)
-	}
-
-	mkdirPaths = []string{
-		"opt",
-		"tmp",
-		"var/cache",
-		"var/run",
-	}
-	clog.FromContext(ctx).Debug("qemu: creating basic word writable rootfs directories")
-	for _, path := range mkdirPaths {
-		_ = os.Mkdir(filepath.Join(rootfs, path), 0o777)
-	}
-	for _, path := range mkdirPaths {
-		_ = os.Chmod(filepath.Join(rootfs, path), 0o777)
-	}
-
-	// inject /init from ./qemu_init.sh, previously this was using
-	// systemd, we now use this minimal init as we only need:
-	//   - basic mount points
-	//   - setup static network
-	//   - start sshd
-	clog.FromContext(ctx).Debug("qemu: injecting /init")
-	err = os.WriteFile(filepath.Join(rootfs, "init"),
-		qemuInit,
-		0755)
-	if err != nil {
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: setup default timezone")
-	err = os.Symlink("/usr/share/zoneinfo/UTC", filepath.Join(rootfs, "etc/localtime"))
-	if err != nil {
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: setup /etc/hosts")
-	err = replaceStringInFile(filepath.Join(rootfs, "etc/hosts"),
-		" localhost ",
-		" localhost wolfi-qemu ")
-	if err != nil {
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: setup hostname")
-	err = os.WriteFile(filepath.Join(rootfs, "etc/hostname"),
-		[]byte("wolfi-qemu"),
-		0644)
-	if err != nil {
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: setup DNS")
-	err = os.WriteFile(filepath.Join(rootfs, "etc/resolv.conf"),
-		[]byte("nameserver 1.1.1.1"),
-		0644)
-	if err != nil {
-		return "", "", err
-	}
-
-	// allow passing env variables to ssh commands
-	clog.FromContext(ctx).Debug("qemu: ssh - acceptenv")
-	sshdConfig, err := os.OpenFile(filepath.Join(rootfs, "etc/ssh/sshd_config"), os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return "", "", err
-	}
-	_, err = sshdConfig.WriteString(`AcceptEnv *`)
-	if err != nil {
-		return "", "", err
-	}
-	defer sshdConfig.Close()
-
 	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
 	pubKeyBytes, err := generateSSHKeys(ctx, cfg, rootfs)
 	if err != nil {
 		return "", "", err
 	}
 
+	err = os.MkdirAll(filepath.Join(cfg.WorkspaceDir, "ssh"), os.ModePerm)
+	if err != nil {
+		return "", "", err
+	}
+
 	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys - root")
-	err = os.WriteFile(filepath.Join(rootfs, "root/.ssh/authorized_keys"), pubKeyBytes, 0400)
+	err = os.WriteFile(filepath.Join(cfg.WorkspaceDir, "ssh/authorized_keys"), pubKeyBytes, 0400)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: ssh pubkey write failed: %v", err)
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: ssh - fix dir permissions - root")
-	err = os.Chmod(filepath.Join(rootfs, "root/.ssh"), 0700)
-	if err != nil {
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys - build user")
-	err = os.WriteFile(filepath.Join(rootfs, "home/build/.ssh/authorized_keys"), pubKeyBytes, 0400)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: ssh pubkey write failed: %v", err)
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: ssh - fix dir permissions - build user")
-	err = os.Chmod(filepath.Join(rootfs, "home/build/.ssh"), 0700)
-	if err != nil {
 		return "", "", err
 	}
 
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
-	kernel, err := generateVmlinuz(ctx, rootfs)
-	if err != nil {
-		return "", "", err
+	kernel := "/boot/vmlinuz"
+	if kernelVar, ok := os.LookupEnv("QEMU_KERNEL_IMAGE"); ok {
+		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL_IMAGE env set")
+		if _, err := os.Stat(kernelVar); err == nil {
+			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_IMAGE file detected, using: %s", kernelVar)
+			kernel = kernelVar
+		}
 	}
 
-	clog.FromContext(ctx).Debug("qemu: generating initramfs...")
-	initramfs, err := generateInitrd(ctx, rootfs)
-	if err != nil {
-		return "", "", err
-	}
-
-	return kernel, initramfs, nil
+	return kernel, cfg.ImgRef, nil
 }
 
-func generateVmlinuz(ctx context.Context, rootfs string) (string, error) {
-	if qemuKernel, ok := os.LookupEnv("QEMU_KERNEL"); ok {
-		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL env set, detecting if local file")
-		if _, err := os.Stat(qemuKernel); err == nil {
-			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL file detected, using: %s", qemuKernel)
-			return qemuKernel, nil
-		}
+// in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
+// we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
+func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
+	clog.FromContext(ctx).Info("qemu: appending modules to initramfs...")
 
-		clog.FromContext(ctx).Infof("qemu: QEMU_KERNEL not a local file, downloading %s", qemuKernel)
-		response, err := http.Get(qemuKernel)
-		if err != nil {
-			clog.FromContext(ctx).Errorf("qemu: can't download kernel - %v", err)
-			return "", err
-		}
-		defer response.Body.Close()
-
-		// Check if the request was successful
-		if response.StatusCode != http.StatusOK {
-			clog.FromContext(ctx).Errorf("qemu: can't download kernel - %v", err)
-			return "", err
-		}
-
-		cachedir, err := os.MkdirTemp("", "")
-		if err != nil {
-			clog.FromContext(ctx).Errorf("qemu: can't setup cache dir - %v", err)
-			return "", err
-		}
-		defer os.RemoveAll(cachedir)
-
-		apk, err := expandapk.ExpandApk(ctx, response.Body, cachedir)
-		if err != nil {
-			clog.FromContext(ctx).Errorf("qemu: can't unpack kernel, make sure it points to a valid APK package - %v", err)
-			return "", err
-		}
-
-		clog.FromContext(ctx).Info("qemu: unpacking package")
-		content, err := apk.PackageData()
-		if err != nil {
-			clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
-			return "", err
-		}
-		defer content.Close()
-
-		var tarReader *tar.Reader = tar.NewReader(content)
-
-		clog.FromContext(ctx).Info("qemu: unpacking kernel")
-		for {
-			header, err := tarReader.Next()
-			if err == io.EOF {
-				break // End of archive
-			}
-			if err != nil {
-				clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
-				return "", err
-			}
-
-			target := filepath.Join(rootfs, header.Name)
-			switch header.Typeflag {
-			case tar.TypeDir:
-				// Create directory
-				if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
-					clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
-					return "", err
-				}
-			case tar.TypeReg:
-				// Create file
-				outFile, err := os.Create(target)
-				if err != nil {
-					clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
-					return "", err
-				}
-				defer outFile.Close()
-
-				if _, err := io.Copy(outFile, tarReader); err != nil {
-					clog.FromContext(ctx).Errorf("qemu: can't unpack kernel - %v", err)
-					return "", err
-				}
-			default:
-				clog.FromContext(ctx).Warnf("Unsupported type: %v in %s\n", header.Typeflag, header.Name)
-			}
-		}
-	}
-
-	clog.FromContext(ctx).Info("qemu: detecting default kernel in /boot/vmlinuz")
-	if _, err := os.Stat("/boot/vmlinuz"); err == nil {
-		clog.FromContext(ctx).Info("qemu: /boot/vmlinuz detected")
-		return "/boot/vmlinuz", nil
-	}
-
-	return "", fmt.Errorf("no kernel specified, could not find default /boot/vmlinuz")
-}
-
-func generateInitrd(ctx context.Context, rootfs string) (string, error) {
-	clog.FromContext(ctx).Info("qemu: building initramfs...")
-
-	findFileOutput, err := os.CreateTemp("", "")
+	// get tar layer, we will need to inject new files into it
+	uncompressed, err := rootfs.Uncompressed()
 	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: rootfs file fidning output file failed: %v", err)
-		return "", err
+		return nil, err
 	}
-	defer findFileOutput.Close()
-	defer os.Remove(findFileOutput.Name())
+	defer uncompressed.Close()
 
-	findFiles := exec.Command("find", ".")
-	findFiles.Dir = rootfs
-	findFiles.Stdout = findFileOutput
+	// copy old tar layer into new tar
+	buf := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buf)
+	tartReader := tar.NewReader(uncompressed)
 
-	clog.FromContext(ctx).Debug("qemu: finding rootfs files...")
-	err = findFiles.Run()
+	for {
+		header, err := tartReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tarWriter, tartReader); err != nil {
+			return nil, err
+		}
+	}
+
+	// Walk through the input directory and add files to the tar archive
+	err = filepath.Walk(modulesPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		header, err := tar.FileInfoHeader(info, path)
+		if err != nil {
+			return fmt.Errorf("failed to create tar header for %s: %w", path, err)
+		}
+
+		header.Name = "/lib/modules/" + filepath.ToSlash(path[len(modulesPath):])
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return fmt.Errorf("failed to write tar header for %s: %w", path, err)
+		}
+
+		if _, err := tarWriter.Write(data); err != nil {
+			return fmt.Errorf("failed to write file %s to tar: %w", path, err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: rootfs file fidning failed: %v", err)
-		return "", err
+		return nil, err
 	}
 
-	initramfs, err := os.Create(filepath.Join(rootfs, "initramfs.cpio"))
-	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: initramfs file creation failed: %v", err)
-		return "", err
-	}
-	defer initramfs.Close()
-
-	content, _ := os.ReadFile(findFileOutput.Name())
-	buffer := bytes.Buffer{}
-	buffer.Write(content)
-
-	cpioCmd := exec.Command("cpio", "--format=newc", "-o", "-R", "0:0")
-
-	cpioCmd.Stdout = initramfs
-	cpioCmd.Stdin = &buffer
-	cpioCmd.Dir = rootfs
-
-	clog.FromContext(ctx).Info("qemu: compressing rootfs...")
-	clog.FromContext(ctx).Debugf("qemu: launching command - %s",
-		strings.Join(cpioCmd.Args, " ")+" | "+strings.Join(cpioCmd.Args, " "))
-	if err := cpioCmd.Run(); err != nil {
-		clog.FromContext(ctx).Errorf("qemu: initramfs cpio command failed: %v", err)
-		return "", err
+	opener := func() (io.ReadCloser, error) {
+		// Return a ReadCloser from the buffer
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
 	}
 
-	clog.FromContext(ctx).Info("qemu: initramfs ready")
-	return initramfs.Name(), nil
+	// Create a layer from the Opener
+	return tarball.LayerFromOpener(opener)
 }
 
 func sendSSHCommand(ctx context.Context, user, host, port string,
@@ -847,20 +653,4 @@ func getAvailableMemoryKB() string {
 	}
 
 	return mem
-}
-
-func replaceStringInFile(inputFile, pattern, replace string) error {
-	file, err := os.ReadFile(inputFile)
-	if err != nil {
-		return err
-	}
-
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return err
-	}
-
-	replaced := re.ReplaceAllString(string(file), replace)
-
-	return os.WriteFile(inputFile, []byte(replaced), 0644)
 }

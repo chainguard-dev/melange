@@ -210,22 +210,6 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		user = "build"
 	}
 
-	clog.FromContext(ctx).Infof("compressing remote workspace")
-	err := sendSSHCommand(ctx,
-		user,
-		"localhost",
-		cfg.SSHPort,
-		cfg,
-		nil,
-		nil,
-		nil,
-		nil,
-		[]string{"cd /home/build && tar cvzf melange-out.tar.gz melange-out"},
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	clog.FromContext(ctx).Infof("fetching remote workspace")
 	workspaceTar, err := os.OpenFile(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -233,7 +217,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	}
 	defer workspaceTar.Close()
 
-	// work around missing scp (needs openssh-sftp package), we just cat the file
+	// work around missing scp (needs openssh-sftp package), we just tar the file
 	// and pipe the output to our local file. It is potentially slower, but being
 	// a localhost interface, the performance penalty should be negligible.
 	err = sendSSHCommand(ctx,
@@ -245,7 +229,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		nil,
 		workspaceTar,
-		[]string{"cat /home/build/melange-out.tar.gz"},
+		[]string{"cd /home/build && tar cvzf - melange-out"},
 	)
 	if err != nil {
 		return nil, err
@@ -750,6 +734,9 @@ func sendSSHCommand(ctx context.Context, user, host, port string,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-ctr"},
+		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // equivalent to StrictHostKeyChecking=no
 	}
 
@@ -786,7 +773,7 @@ func sendSSHCommand(ctx context.Context, user, host, port string,
 	session.Stdin = stdin
 	session.Stderr = stderr
 	session.Stdout = stdout
-	err = session.Run(strings.Join(command, " "))
+	err = session.Run("set -e;" + strings.Join(command, " "))
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to run command: %s", err)
 		return err

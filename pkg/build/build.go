@@ -755,8 +755,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	linterQueue := []linterTarget{}
 	cfg := b.WorkspaceConfig(ctx)
 
-	cfg.Disk = b.DefaultDisk
-
 	if !b.IsBuildLess() {
 		// Prepare guest directory
 		if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
@@ -1059,6 +1057,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	if b.Configuration.Package.Resources != nil {
 		cfg.CPU = b.Configuration.Package.Resources.CPU
 		cfg.Memory = b.Configuration.Package.Resources.Memory
+		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}
 
 	for k, v := range b.Configuration.Environment.Environment {

@@ -50,6 +50,7 @@ melange build [flags]
       --lint-require strings                                    linters that must pass (default [dev,infodir,tempdir,varempty])
       --lint-warn strings                                       linters that will generate warnings (default [object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,worldwrite])
       --memory string                                           default memory resources to use for builds
+      --disk string                                             disk size to use for builds
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")
       --overlay-binsh string                                    use specified file as /bin/sh overlay in build environment

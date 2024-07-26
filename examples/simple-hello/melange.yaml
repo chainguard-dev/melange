@@ -9,6 +9,7 @@ package:
   resources:
     cpu: .5
     memory: 128Mi
+    disk: 10Gi
 
 environment:
   contents:

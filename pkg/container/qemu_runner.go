@@ -246,7 +246,7 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
 		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
 		if _, err := os.Stat(qemuModule); err == nil {
-			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_MODULES dir detected, injecting...:")
+			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_MODULES dir detected, injecting...")
 			layer, err = injectKernelModules(ctx, layer, qemuModule)
 			if err != nil {
 				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
@@ -289,15 +289,20 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	if cfg.Memory != "" {
-		baseargs = append(baseargs, "-m", cfg.Memory)
+		memKb, err := convertMemoryToKB(cfg.Memory)
+		if err != nil {
+			return err
+		}
+
+		baseargs = append(baseargs, "-m", memKb)
 	} else {
 		baseargs = append(baseargs, "-m", getAvailableMemoryKB())
 	}
 
 	if cfg.CPU != "" {
-		baseargs = append(baseargs, "-cpu", cfg.CPU)
+		baseargs = append(baseargs, "-smp", cfg.CPU)
 	} else {
-		baseargs = append(baseargs, "-cpu", "host")
+		baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
 	}
 
 	// use kvm on linux, and Hypervisor.framework on macOS
@@ -307,7 +312,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-accel", "hvf")
 	}
 
-	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
+	baseargs = append(baseargs, "-cpu", "host")
 	baseargs = append(baseargs, "-daemonize")
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise
@@ -643,6 +648,49 @@ func randpomPortN() (int, error) {
 	}
 
 	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
+}
+
+func convertMemoryToKB(memory string) (string, error) {
+	// Map of unit multipliers
+	unitMultipliers := map[string]int64{
+		"Ki": 1,                  // Kibibytes
+		"Mi": 1024,               // Mebibytes
+		"Gi": 1024 * 1024,        // Gibibytes
+		"Ti": 1024 * 1024 * 1024, // Tebibytes
+		"K":  1,                  // Kilobytes (KB)
+		"M":  1 * 1024,           // Megabytes (MB)
+		"G":  1024 * 1024,        // Gigabytes (GB)
+		"T":  1024 * 1024 * 1024, // Terabytes (TB)
+	}
+
+	// Separate the numerical part from the unit part
+	var numStr, unit string
+	for i, r := range memory {
+		if r < '0' || r > '9' {
+			numStr = memory[:i]
+			unit = memory[i:]
+			break
+		}
+	}
+
+	if numStr == "" || unit == "" {
+		return "", fmt.Errorf("invalid memory format: %s", memory)
+	}
+
+	// Convert the numerical part to a int
+	num, err := strconv.ParseInt(numStr, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("invalid number: %s", numStr)
+	}
+
+	// Get the multiplier for the unit
+	multiplier, exists := unitMultipliers[unit]
+	if !exists {
+		return "", fmt.Errorf("unknown unit: %s", unit)
+	}
+
+	// Return the value in kilobytes
+	return fmt.Sprintf("%dk", num*multiplier), nil
 }
 
 func getAvailableMemoryKB() string {

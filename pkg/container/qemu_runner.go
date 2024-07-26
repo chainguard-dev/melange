@@ -39,7 +39,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
-	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -355,7 +354,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 
 		// append raw disk, init will take care of formatting it if present.
-		baseargs = append(baseargs, "-drive", "if=virtio,file="+diskFile+",format=raw")
+		baseargs = append(baseargs, "-drive", "if=virtio,file="+diskFile+",format=raw,werror=report,rerror=report")
 		// save the disk name, we will wipe it off when done
 		cfg.Disk = diskFile
 	}
@@ -575,7 +574,7 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 	size = size * 1024
 
 	clog.FromContext(ctx).Infof("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
-	return diskName.Name(), util.Fallocate(diskName, 0, size)
+	return diskName.Name(), os.Truncate(diskName.Name(), size)
 }
 
 func sendSSHCommand(ctx context.Context, user, host, port string,

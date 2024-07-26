@@ -120,6 +120,7 @@ type Package struct {
 type Resources struct {
 	CPU    string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	Memory string `json:"memory,omitempty" yaml:"memory,omitempty"`
+	Disk   string `json:"memory,omitempty" yaml:"disk,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the package. For more
@@ -1013,6 +1014,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 	if options.memory != "" {
 		cfg.Package.Resources.Memory = options.memory
+	}
+	if options.disk != "" {
+		cfg.Package.Resources.Disk = options.disk
 	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.

@@ -731,6 +731,9 @@
         },
         "memory": {
           "type": "string"
+        },
+        "disk": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

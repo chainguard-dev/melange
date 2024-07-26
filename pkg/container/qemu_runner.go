@@ -39,6 +39,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -177,6 +178,7 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.TerminatePod")
 	defer span.End()
+	defer os.Remove(cfg.ImgRef)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -194,7 +196,14 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	return os.Remove(cfg.ImgRef)
+	if cfg.Disk != "" {
+		err = os.Remove(cfg.Disk)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // WorkspaceTar implements Runner
@@ -246,7 +255,7 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
 		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
 		if _, err := os.Stat(qemuModule); err == nil {
-			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_MODULES dir detected, injecting...")
+			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
 			layer, err = injectKernelModules(ctx, layer, qemuModule)
 			if err != nil {
 				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
@@ -271,6 +280,7 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 func createMicroVM(ctx context.Context, cfg *Config) error {
 	rootfs := cfg.ImgRef
 	baseargs := []string{}
+	injectFstab := ""
 
 	// always be sure to create the VM rootfs first!
 	kernelPath, rootfsInitrdPath, err := createRootfs(ctx, cfg, rootfs)
@@ -294,7 +304,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			return err
 		}
 
-		baseargs = append(baseargs, "-m", memKb)
+		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", memKb))
 	} else {
 		baseargs = append(baseargs, "-m", getAvailableMemoryKB())
 	}
@@ -336,13 +346,25 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
-	injectFstab := ""
+	// if we want a disk, just add it, the init will mount it to the build home automatically
+	if cfg.Disk != "" {
+		diskFile, err := generateDiskFile(ctx, cfg.Disk)
+		if err != nil {
+			clog.FromContext(ctx).Errorf("qemu: could not generate additional disks: %v", err)
+			return err
+		}
+
+		// append raw disk, init will take care of formatting it if present.
+		baseargs = append(baseargs, "-drive", "if=virtio,file="+diskFile+",format=raw")
+		// save the disk name, we will wipe it off when done
+		cfg.Disk = diskFile
+	}
 
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
 	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
-	clog.FromContext(ctx).Info("qemu: generating qemu command...")
+	clog.FromContext(ctx).Info("qemu: generating qemu command")
 	clog.FromContext(ctx).Debug("qemu: generating mount list")
 	for count, bind := range cfg.Mounts {
 		// we skip file mounts, it doesn't work for qemu
@@ -393,7 +415,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 cat /etc/fstab | cut -d' ' -f2 | xargs mkdir -p
 mount -a`
 
-		clog.FromContext(ctx).Info("qemu: injecting fstab...")
+		clog.FromContext(ctx).Info("qemu: injecting fstab")
 		clog.FromContext(ctx).Debugf("qemu: injecting fstab - %s", sshCmd)
 		err = sendSSHCommand(ctx,
 			"root",
@@ -415,7 +437,7 @@ mount -a`
 	if cfg.RunAs != "" {
 		user = "build"
 	}
-	clog.FromContext(ctx).Info("qemu: setting up local workspace...")
+	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	return sendSSHCommand(ctx,
 		user,
 		"localhost",
@@ -464,7 +486,7 @@ func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, stri
 // in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
 // we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
 func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
-	clog.FromContext(ctx).Info("qemu: appending modules to initramfs...")
+	clog.FromContext(ctx).Info("qemu: appending modules to initramfs")
 
 	// get tar layer, we will need to inject new files into it
 	uncompressed, err := rootfs.Uncompressed()
@@ -537,6 +559,25 @@ func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath strin
 	return tarball.LayerFromOpener(opener)
 }
 
+func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
+	diskName, err := os.CreateTemp(".", "*.img")
+	if err != nil {
+		return "", err
+	}
+	defer diskName.Close()
+
+	size, err := convertMemoryToKB(diskSize)
+	if err != nil {
+		return "", err
+	}
+
+	// we need bytes
+	size = size * 1024
+
+	clog.FromContext(ctx).Infof("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
+	return diskName.Name(), util.Fallocate(diskName, 0, size)
+}
+
 func sendSSHCommand(ctx context.Context, user, host, port string,
 	cfg *Config, extraVars map[string]string,
 	stdin io.Reader, stderr, stdout io.Writer,
@@ -605,7 +646,7 @@ func sendSSHCommand(ctx context.Context, user, host, port string,
 }
 
 func generateSSHKeys(ctx context.Context, cfg *Config, rootfs string) ([]byte, error) {
-	clog.FromContext(ctx).Info("qemu: generating ssh key pairs for ephemeral VM...")
+	clog.FromContext(ctx).Info("qemu: generating ssh key pairs for ephemeral VM")
 	// Private Key generation
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -650,7 +691,7 @@ func randpomPortN() (int, error) {
 	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
 }
 
-func convertMemoryToKB(memory string) (string, error) {
+func convertMemoryToKB(memory string) (int64, error) {
 	// Map of unit multipliers
 	unitMultipliers := map[string]int64{
 		"Ki": 1,                  // Kibibytes
@@ -661,6 +702,10 @@ func convertMemoryToKB(memory string) (string, error) {
 		"M":  1 * 1024,           // Megabytes (MB)
 		"G":  1024 * 1024,        // Gigabytes (GB)
 		"T":  1024 * 1024 * 1024, // Terabytes (TB)
+		"k":  1,                  // Kilobytes (KB)
+		"m":  1 * 1024,           // Megabytes (MB)
+		"g":  1024 * 1024,        // Gigabytes (GB)
+		"t":  1024 * 1024 * 1024, // Terabytes (TB)
 	}
 
 	// Separate the numerical part from the unit part
@@ -674,23 +719,23 @@ func convertMemoryToKB(memory string) (string, error) {
 	}
 
 	if numStr == "" || unit == "" {
-		return "", fmt.Errorf("invalid memory format: %s", memory)
+		return 0, fmt.Errorf("invalid memory format: %s", memory)
 	}
 
 	// Convert the numerical part to a int
 	num, err := strconv.ParseInt(numStr, 10, 64)
 	if err != nil {
-		return "", fmt.Errorf("invalid number: %s", numStr)
+		return 0, fmt.Errorf("invalid number: %s", numStr)
 	}
 
 	// Get the multiplier for the unit
 	multiplier, exists := unitMultipliers[unit]
 	if !exists {
-		return "", fmt.Errorf("unknown unit: %s", unit)
+		return 0, fmt.Errorf("unknown unit: %s", unit)
 	}
 
 	// Return the value in kilobytes
-	return fmt.Sprintf("%dk", num*multiplier), nil
+	return num * multiplier, nil
 }
 
 func getAvailableMemoryKB() string {

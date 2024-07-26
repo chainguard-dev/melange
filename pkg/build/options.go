@@ -330,6 +330,13 @@ func WithCPU(cpu string) Option {
 	}
 }
 
+func WithDisk(disk string) Option {
+	return func(b *Build) error {
+		b.DefaultDisk = disk
+		return nil
+	}
+}
+
 func WithMemory(memory string) Option {
 	return func(b *Build) error {
 		b.DefaultMemory = memory

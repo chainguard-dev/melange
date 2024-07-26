@@ -70,7 +70,7 @@ func buildCmd() *cobra.Command {
 	var interactive bool
 	var remove bool
 	var runner string
-	var cpu, memory string
+	var cpu, memory, disk string
 	var timeout time.Duration
 	var extraPackages []string
 	var libc string
@@ -152,6 +152,7 @@ func buildCmd() *cobra.Command {
 				build.WithLintRequire(lintRequire),
 				build.WithLintWarn(lintWarn),
 				build.WithCPU(cpu),
+				build.WithDisk(disk),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
@@ -216,6 +217,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
+	cmd.Flags().StringVar(&disk, "disk", "", "disk size to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
 	cmd.Flags().StringVar(&traceFile, "trace", "", "where to write trace output")

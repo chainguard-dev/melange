@@ -655,10 +655,10 @@ type Dependencies struct {
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
-	filesystem  fs.FS
-	envFilePath string
-	cpu, memory string
-	timeout     time.Duration
+	filesystem        fs.FS
+	envFilePath       string
+	cpu, memory, disk string
+	timeout           time.Duration
 
 	varsFilePath string
 }
@@ -680,6 +680,12 @@ func WithDefaultTimeout(timeout time.Duration) ConfigurationParsingOption {
 func WithDefaultCPU(cpu string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.cpu = cpu
+	}
+}
+
+func WithDefaultDisk(disk string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.disk = disk
 	}
 }
 

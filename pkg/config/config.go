@@ -1002,6 +1002,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	// Propagate all child pipelines
 	cfg.propagatePipelines()
 
+	if cfg.Package.Resources == nil {
+		cfg.Package.Resources = &Resources{}
+	}
 	if options.timeout != 0 {
 		cfg.Package.Timeout = options.timeout
 	}

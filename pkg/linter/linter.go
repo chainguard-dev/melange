@@ -592,7 +592,9 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 		if err != nil {
 			return fmt.Errorf("creating HTTP request: %w", err)
 		}
-		auth.DefaultAuthenticators.AddAuth(ctx, req)
+		if err := auth.DefaultAuthenticators.AddAuth(ctx, req); err != nil {
+			return fmt.Errorf("adding authentication to request: %w", err)
+		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("getting apk %q: %w", path, err)

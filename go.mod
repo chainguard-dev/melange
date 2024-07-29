@@ -5,13 +5,13 @@ go 1.22.5
 require (
 	chainguard.dev/apko v0.17.0
 	cloud.google.com/go/storage v1.43.0
-	dagger.io/dagger v0.12.2
+	dagger.io/dagger v0.12.3
 	github.com/chainguard-dev/clog v1.4.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.0.12
 	github.com/charmbracelet/log v0.4.0
-	github.com/docker/cli v27.1.0+incompatible
-	github.com/docker/docker v27.1.0+incompatible
+	github.com/docker/cli v27.1.1+incompatible
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.1
 	github.com/go-git/go-git/v5 v5.12.0
@@ -45,7 +45,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
-	sigs.k8s.io/release-utils v0.8.3
+	sigs.k8s.io/release-utils v0.8.4
 )
 
 require (

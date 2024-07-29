@@ -51,6 +51,7 @@ var _ Debugger = (*qemu)(nil)
 const QemuName = "qemu"
 
 const (
+	defaultDiskSize   = "50Gi"
 	SSHPortRangeStart = 10000
 	SSHPortRangeEnd   = 50000
 )
@@ -178,6 +179,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.TerminatePod")
 	defer span.End()
 	defer os.Remove(cfg.ImgRef)
+	defer os.Remove(cfg.Disk)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -193,13 +195,6 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	)
 	if err != nil {
 		return err
-	}
-
-	if cfg.Disk != "" {
-		err = os.Remove(cfg.Disk)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -345,19 +340,23 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
-	// if we want a disk, just add it, the init will mount it to the build home automatically
-	if cfg.Disk != "" {
-		diskFile, err := generateDiskFile(ctx, cfg.Disk)
-		if err != nil {
-			clog.FromContext(ctx).Errorf("qemu: could not generate additional disks: %v", err)
-			return err
-		}
-
-		// append raw disk, init will take care of formatting it if present.
-		baseargs = append(baseargs, "-drive", "if=virtio,file="+diskFile+",format=raw,werror=report,rerror=report")
-		// save the disk name, we will wipe it off when done
-		cfg.Disk = diskFile
+	// if no size is specified, let's go for a default
+	if cfg.Disk == "" {
+		clog.FromContext(ctx).Infof("qemu: no disk space specified, using default: %s", defaultDiskSize)
+		cfg.Disk = defaultDiskSize
 	}
+
+	// if we want a disk, just add it, the init will mount it to the build home automatically
+	diskFile, err := generateDiskFile(ctx, cfg.Disk)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: could not generate additional disks: %v", err)
+		return err
+	}
+
+	// append raw disk, init will take care of formatting it if present.
+	baseargs = append(baseargs, "-drive", "if=virtio,file="+diskFile+",format=raw,werror=report,rerror=report")
+	// save the disk name, we will wipe it off when done
+	cfg.Disk = diskFile
 
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
@@ -559,7 +558,19 @@ func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath strin
 }
 
 func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
-	diskName, err := os.CreateTemp(".", "*.img")
+	diskPath, _ := os.LookupEnv("QEMU_DISKS_PATH")
+	if diskPath == "" {
+		diskPath = "."
+	}
+
+	if _, err := os.Stat(diskPath); err != nil {
+		err = os.MkdirAll(diskPath, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	diskName, err := os.CreateTemp(diskPath, "*.img")
 	if err != nil {
 		return "", err
 	}

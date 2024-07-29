@@ -24,6 +24,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	_ "embed"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -274,10 +275,15 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 func createMicroVM(ctx context.Context, cfg *Config) error {
 	rootfs := cfg.ImgRef
 	baseargs := []string{}
-	injectFstab := ""
+
+	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
+	pubKey, err := generateSSHKeys(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	// always be sure to create the VM rootfs first!
-	kernelPath, rootfsInitrdPath, err := createRootfs(ctx, cfg, rootfs)
+	kernelPath, rootfsInitrdPath, err := getKernelPath(ctx, cfg, rootfs)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
 		return err
@@ -333,10 +339,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
-	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1")
 	// Add default SSH keys to the VM
-	// we add a "defaultshare" 9pfs with the workspace dir sharing the authorized keys
-	// inside it, without this the VM WILL NOT BOOT.
+	sshkey := base64.StdEncoding.EncodeToString(pubKey)
+	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1 sshkey="+sshkey)
+	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
+	// kill all performances (lots of small files)
+	// instead we will copy back the finished workspace artifacts when done.
+	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
@@ -358,44 +367,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// save the disk name, we will wipe it off when done
 	cfg.Disk = diskFile
 
-	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
-	// kill all performances (lots of small files)
-	// instead we will copy back the finished workspace artifacts when done.
-	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
-	clog.FromContext(ctx).Info("qemu: generating qemu command")
-	clog.FromContext(ctx).Debug("qemu: generating mount list")
-	for count, bind := range cfg.Mounts {
-		// we skip file mounts, it doesn't work for qemu
-		fileInfo, err := os.Stat(bind.Source)
-		if err != nil {
-			return err
-		}
-
-		if !fileInfo.IsDir() {
-			clog.FromContext(ctx).Debugf("qemu: skipping file mount: %s", bind.Source)
-			continue
-		}
-
-		// we skip mounting the workspace
-		// we build locally and retrieve it with WorkspaceTar
-		if strings.Contains(bind.Source, "workspace") {
-			clog.FromContext(ctx).Debugf("qemu: skipping workspace mount: %s", bind.Source)
-			continue
-		}
-
-		// mount tags have to be an alfanumeric string of 31 char max
-		mountTag := strings.ReplaceAll(bind.Source, "/", "")
-		if len(mountTag) > 30 {
-			mountTag = mountTag[:30]
-		}
-
-		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev"+strconv.Itoa(count)+",path="+bind.Source)
-		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs"+strconv.Itoa(count)+",fsdev=fsdev"+strconv.Itoa(count)+",mount_tag="+mountTag)
-
-		// create the mount string for the fstab
-		injectFstab = injectFstab + "\n" + mountTag + " " + bind.Destination + " 9p  trans=virtio,version=9p2000.L   0   0"
-	}
-
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	execCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
 	clog.FromContext(ctx).Infof("qemu: executing - %s", strings.Join(execCmd.Args, " "))
@@ -403,29 +374,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	output, err := execCmd.CombinedOutput()
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: failed to run qemu command: %v - %s", err, string(output))
-		return err
-	}
-
-	// in case of additional mount points, we inject them in the fstab, so that
-	// they will be mounted automatically
-	if injectFstab != "" {
-		sshCmd := `echo "` + injectFstab + `" >> /etc/fstab
-cat /etc/fstab | cut -d' ' -f2 | xargs mkdir -p
-mount -a`
-
-		clog.FromContext(ctx).Info("qemu: injecting fstab")
-		clog.FromContext(ctx).Debugf("qemu: injecting fstab - %s", sshCmd)
-		err = sendSSHCommand(ctx,
-			"root",
-			"localhost",
-			cfg.SSHPort,
-			cfg,
-			nil,
-			nil,
-			nil,
-			nil,
-			[]string{sshCmd},
-		)
 		return err
 	}
 
@@ -449,25 +397,7 @@ mount -a`
 	)
 }
 
-func createRootfs(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {
-	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
-	pubKeyBytes, err := generateSSHKeys(ctx, cfg, rootfs)
-	if err != nil {
-		return "", "", err
-	}
-
-	err = os.MkdirAll(filepath.Join(cfg.WorkspaceDir, "ssh"), os.ModePerm)
-	if err != nil {
-		return "", "", err
-	}
-
-	clog.FromContext(ctx).Debug("qemu: ssh - inject authorized_keys - root")
-	err = os.WriteFile(filepath.Join(cfg.WorkspaceDir, "ssh/authorized_keys"), pubKeyBytes, 0400)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("qemu: ssh pubkey write failed: %v", err)
-		return "", "", err
-	}
-
+func getKernelPath(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
 	kernel := "/boot/vmlinuz"
 	if kernelVar, ok := os.LookupEnv("QEMU_KERNEL_IMAGE"); ok {
@@ -655,7 +585,7 @@ func sendSSHCommand(ctx context.Context, user, host, port string,
 	return nil
 }
 
-func generateSSHKeys(ctx context.Context, cfg *Config, rootfs string) ([]byte, error) {
+func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	clog.FromContext(ctx).Info("qemu: generating ssh key pairs for ephemeral VM")
 	// Private Key generation
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

@@ -4,6 +4,8 @@ chainguard.dev/go-grpc-kit v0.17.5 h1:y0MHgqm3v0LKKQfxPJV57wkXxa8uMSpNTjhtHbNh1D
 chainguard.dev/go-grpc-kit v0.17.5/go.mod h1:vQGcwZiX6jXwhyLPCZwVMvjITD+XcrSmQzuCTW/XcVc=
 chainguard.dev/sdk v0.1.23 h1:k4hEYYCJ1PTXPam4+ULxIip/DkoVfH7Pu3rnktar/Zo=
 chainguard.dev/sdk v0.1.23/go.mod h1:TojPLtaHmy1TThjHjvPQbwKRDCusBPpQWSBZ2EkQFFk=
+al.essio.dev/pkg/shellescape v1.5.0 h1:7oTvSsQ5kg9WksA9O58y9wjYnY4jP0CL82/Q8WLUGKk=
+al.essio.dev/pkg/shellescape v1.5.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.115.0 h1:CnFSK6Xo3lDYRoBKEcAtia6VSC837/ZkJuRduSFnr14=
 cloud.google.com/go v0.115.0/go.mod h1:8jIM5vVgoAEoiVxQ/O4BFTfHqulPZgs/ufEzMcFMdWU=

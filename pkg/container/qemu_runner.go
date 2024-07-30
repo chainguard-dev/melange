@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"al.essio.dev/pkg/shellescape"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
@@ -193,7 +194,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
-		[]string{"echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
+		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
 		return err
@@ -224,7 +225,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		nil,
 		nil,
-		[]string{"cp -r /home/build/melange-out /mnt"},
+		[]string{"cp", "-r", "/home/build/melange-out", "/mnt"},
 	)
 	if err != nil {
 		return nil, err
@@ -412,7 +413,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
-		[]string{"cp -r /mnt/* /home/build"},
+		[]string{"sh", "-c", "cp -r /mnt/* /home/build"},
 	)
 }
 
@@ -626,9 +627,19 @@ func sendSSHCommand(ctx context.Context, user, host, port string,
 	session.Stdin = stdin
 	session.Stderr = stderr
 	session.Stdout = stdout
-	err = session.Run("set -e;" + strings.Join(command, " "))
+
+	b64cmd := base64.StdEncoding.EncodeToString([]byte(shellescape.QuoteCommand(command)))
+	cmd := strings.Join(
+		[]string{
+			"_c=$(echo " + b64cmd + "| base64 -d) || exit 97",
+			"eval set -- \"$_c\" || exit 98",
+			"exec \"$@\"",
+		}, " ;")
+
+	clog.FromContext(ctx).Infof("running (%d) %v", len(command), command)
+	err = session.Run(cmd)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command: %s", err)
+		clog.FromContext(ctx).Errorf("Failed to run command %v: %s", command, err)
 		return err
 	}
 

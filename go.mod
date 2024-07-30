@@ -3,7 +3,12 @@ module chainguard.dev/melange
 go 1.22.5
 
 require (
+<<<<<<< HEAD
 	chainguard.dev/apko v0.17.0
+=======
+	al.essio.dev/pkg/shellescape v1.5.0
+	chainguard.dev/apko v0.16.0
+>>>>>>> 3d70135 (Make sendSSHCommand properly execute multiple arguments.)
 	cloud.google.com/go/storage v1.43.0
 	dagger.io/dagger v0.12.3
 	github.com/chainguard-dev/clog v1.4.0

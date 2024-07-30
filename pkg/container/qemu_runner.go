@@ -35,6 +35,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -273,9 +274,6 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
-	rootfs := cfg.ImgRef
-	baseargs := []string{}
-
 	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
 	if err != nil {
@@ -283,12 +281,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	// always be sure to create the VM rootfs first!
-	kernelPath, rootfsInitrdPath, err := getKernelPath(ctx, cfg, rootfs)
+	kernelPath, rootfsInitrdPath, err := getKernelPath(ctx, cfg)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
 		return err
 	}
 
+	baseargs := []string{}
 	// load microvm profile and bios, shave some milliseconds from boot
 	// using this will make a complete boot->initrd (with working network) In ~700ms
 	// instead of ~900ms.
@@ -297,6 +296,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
 		baseargs = append(baseargs, "-bios", "/usr/share/qemu/bios-microvm.bin")
 	}
+
+	baseargs = append(baseargs, "-kernel", kernelPath)
+	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
 
 	if cfg.Memory != "" {
 		memKb, err := convertMemoryToKB(cfg.Memory)
@@ -336,8 +338,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp::"+cfg.SSHPort+"-:22")
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
-	baseargs = append(baseargs, "-kernel", kernelPath)
-	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
+	// add random generator via pci, improve ssh startup time
+	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
@@ -370,13 +372,22 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	cfg.Disk = diskFile
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
-	execCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
-	clog.FromContext(ctx).Infof("qemu: executing - %s", strings.Join(execCmd.Args, " "))
+	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
+	clog.FromContext(ctx).Infof("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
-	output, err := execCmd.CombinedOutput()
+	output, err := qemuCmd.CombinedOutput()
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: failed to run qemu command: %v - %s", err, string(output))
 		return err
+	}
+
+	for {
+		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up")
+		// Attempt to connect to the address
+		err = checkSSHServer("localhost:" + cfg.SSHPort)
+		if err == nil {
+			break
+		}
 	}
 
 	// default to root user but if a different user is specified
@@ -399,7 +410,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	)
 }
 
-func getKernelPath(ctx context.Context, cfg *Config, rootfs string) (string, string, error) {
+func getKernelPath(ctx context.Context, cfg *Config) (string, string, error) {
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
 	kernel := "/boot/vmlinuz"
 	if kernelVar, ok := os.LookupEnv("QEMU_KERNEL_IMAGE"); ok {
@@ -518,6 +529,37 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 
 	clog.FromContext(ctx).Infof("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
 	return diskName.Name(), os.Truncate(diskName.Name(), size)
+}
+
+// qemu will open the port way before the ssh daemon is ready to listen
+// so we need to check if we get the SSH banner in order to value if the server
+// is up or not.
+// this avoids the ssh client trying to connect on a booting server.
+func checkSSHServer(address string) error {
+	// Establish a connection to the address
+	conn, err := net.DialTimeout("tcp", address, time.Millisecond*500)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// Set a deadline for the connection
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 500))
+
+	// Read the SSH banner
+	buffer := make([]byte, 255)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		return err
+	}
+
+	// Check if the banner starts with "SSH-"
+	banner := string(buffer[:n])
+	if len(banner) >= 4 && banner[:4] == "SSH-" {
+		return err
+	}
+
+	return nil
 }
 
 func sendSSHCommand(ctx context.Context, user, host, port string,

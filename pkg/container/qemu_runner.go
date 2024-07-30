@@ -363,7 +363,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	// append raw disk, init will take care of formatting it if present.
-	baseargs = append(baseargs, "-drive", "if=virtio,file="+diskFile+",format=raw,werror=report,rerror=report")
+	baseargs = append(baseargs, "-object", "iothread,id=io1")
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1")
+	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=none,format=raw,aio=threads,werror=report,rerror=report,file="+diskFile)
 	// save the disk name, we will wipe it off when done
 	cfg.Disk = diskFile
 

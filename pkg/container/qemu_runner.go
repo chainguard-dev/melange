@@ -301,7 +301,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
 
 	if cfg.Memory != "" {
-		memKb, err := convertMemoryToKB(cfg.Memory)
+		memKb, err := convertHumanToKB(cfg.Memory)
 		if err != nil {
 			return err
 		}
@@ -519,7 +519,7 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 	}
 	defer diskName.Close()
 
-	size, err := convertMemoryToKB(diskSize)
+	size, err := convertHumanToKB(diskSize)
 	if err != nil {
 		return "", err
 	}
@@ -675,21 +675,22 @@ func randpomPortN() (int, error) {
 	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
 }
 
-func convertMemoryToKB(memory string) (int64, error) {
+func convertHumanToKB(memory string) (int64, error) {
 	// Map of unit multipliers
 	unitMultipliers := map[string]int64{
-		"Ki": 1,                  // Kibibytes
-		"Mi": 1024,               // Mebibytes
-		"Gi": 1024 * 1024,        // Gibibytes
-		"Ti": 1024 * 1024 * 1024, // Tebibytes
-		"K":  1,                  // Kilobytes (KB)
-		"M":  1 * 1024,           // Megabytes (MB)
-		"G":  1024 * 1024,        // Gigabytes (GB)
-		"T":  1024 * 1024 * 1024, // Terabytes (TB)
-		"k":  1,                  // Kilobytes (KB)
-		"m":  1 * 1024,           // Megabytes (MB)
-		"g":  1024 * 1024,        // Gigabytes (GB)
-		"t":  1024 * 1024 * 1024, // Terabytes (TB)
+		"Ki": 1024,                      // Kibibytes
+		"Mi": 1024 * 1024,               // Mebibytes
+		"Gi": 1024 * 1024 * 1024,        // Gibibytes
+		"Ti": 1024 * 1024 * 1024 * 1024, // Tebibytes
+		"K":  1024,                      // Kilobytes (KB)
+		"M":  1024 * 1024,               // Megabytes (MB)
+		"G":  1024 * 1024 * 1024,        // Gigabytes (GB)
+		"T":  1024 * 1024 * 1024 * 1024, // Terabytes (TB)
+		"k":  1024,                      // Kilobytes (KB)
+		"m":  1024 * 1024,               // Megabytes (MB)
+		"g":  1024 * 1024 * 1024,        // Gigabytes (GB)
+		"t":  1024 * 1024 * 1024 * 1024, // Terabytes (TB)
+		"B":  1,
 	}
 
 	// Separate the numerical part from the unit part
@@ -719,7 +720,7 @@ func convertMemoryToKB(memory string) (int64, error) {
 	}
 
 	// Return the value in kilobytes
-	return num * multiplier, nil
+	return num * multiplier / 1024, nil
 }
 
 func getAvailableMemoryKB() string {

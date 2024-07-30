@@ -567,53 +567,18 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		return err
 	}
 
-	var rubyGemVer string
-	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Ruby gems are installed in paths such as /usr/lib/ruby/gems/X.Y.Z/gems/...,
-		// so if we find a directory named gems, and its parent is a ruby directory,
-		// then we have a Ruby gem directory.
-		basename := filepath.Base(path)
-		if basename != "gems" {
-			return nil
-		}
-
-		parent := filepath.Dir(path)
-		basename = filepath.Base(parent)
-
-		// The gems path we want is nested in another gems directory, where the parent
-		// contains the Ruby version. Return if the parent is the Ruby directory
-		if basename == "ruby" {
-			return nil
-		}
-
-		// Ruby versions are formatted as major.minor.patch
-		majorMinorPatch := `^\d+\.\d+\.\d+$`
-
-		// Compile expected Ruby version format
-		re := regexp.MustCompile(majorMinorPatch)
-
-		// Match the directory against version format
-		if !re.MatchString(basename) {
-			return nil
-		}
-
-		// This probably shouldn't ever happen, but lets check to make sure.
-		if !d.IsDir() {
-			return nil
-		}
-
-		// This takes the X.Y part of the ruby/gems/X.Y.Z directory name as the version to pin against.
-		// If the X.Y part is not present, then rubyGemVer will remain an empty string and
-		// no dependency will be generated.
-		rubyGemVer = basename[:3]
-		return nil
-	}); err != nil {
+	rubyGemMatches, err := fs.Glob(fsys, "usr/lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
+	if err != nil {
 		return err
 	}
+	if len(rubyGemMatches) == 0 {
+		return nil
+	}
+
+	// This takes the first X.Y part of the usr/lib/ruby/gems/X.Y.Z directory name
+	// as the version to pin against.
+	majorMinorMicro := filepath.Base(filepath.Dir(rubyGemMatches[0]))
+	rubyGemVer := strings.TrimSuffix(majorMinorMicro, filepath.Ext(majorMinorMicro))
 
 	// Nothing to do...
 	if rubyGemVer == "" {

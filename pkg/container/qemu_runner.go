@@ -291,10 +291,16 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// load microvm profile and bios, shave some milliseconds from boot
 	// using this will make a complete boot->initrd (with working network) In ~700ms
 	// instead of ~900ms.
-	if _, err := os.Stat("/usr/share/qemu/bios-microvm.bin"); err == nil {
-		// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-		baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
-		baseargs = append(baseargs, "-bios", "/usr/share/qemu/bios-microvm.bin")
+	for _, p := range []string{
+		"/usr/share/qemu/bios-microvm.bin",
+		"/usr/share/seabios/bios-microvm.bin",
+	} {
+		if _, err := os.Stat(p); err == nil {
+			// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
+			baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
+			baseargs = append(baseargs, "-bios", p)
+			break
+		}
 	}
 
 	baseargs = append(baseargs, "-kernel", kernelPath)

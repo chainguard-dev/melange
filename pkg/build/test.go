@@ -565,6 +565,10 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		cfg.Environment[k] = v
 	}
 
+	if _, ok := cfg.Environment["HOME"]; !ok {
+		cfg.Environment["HOME"] = "/root"
+	}
+
 	cfg.ImgRef = imgRef
 	log.Infof("ImgRef = %s", cfg.ImgRef)
 

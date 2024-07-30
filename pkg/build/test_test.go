@@ -56,7 +56,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 	// Just define the base stuff here that we can then
 	// modify in the tests.
 	wantBase := container.Config{
-		Environment:  map[string]string{},
+		Environment:  map[string]string{"HOME": "/root"},
 		PackageName:  testPkgName,
 		ImgRef:       testImgRef,
 		Capabilities: container.Capabilities{Networking: true},
@@ -111,7 +111,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 			want: func() *container.Config {
 				want := wantBase
 				want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDirReal, Destination: "/var/cache/melange"})
-				want.Environment = map[string]string{"FOO": "bar", "BAZ": "zzz"}
+				want.Environment = map[string]string{"FOO": "bar", "BAZ": "zzz", "HOME": "/root"}
 				return &want
 			}(),
 		},

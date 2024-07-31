@@ -39,6 +39,7 @@ melange build [flags]
       --debug                                                   enables debug logging of build pipelines
       --debug-runner                                            when enabled, the builder pod will persist after the build succeeds or fails
       --dependency-log string                                   log dependencies to a specified file
+      --disk string                                             disk size to use for builds
       --empty-workspace                                         whether the build workspace should be empty
       --env-file string                                         file to use for preloaded environment variables
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
@@ -50,7 +51,6 @@ melange build [flags]
       --lint-require strings                                    linters that must pass (default [dev,infodir,tempdir,varempty])
       --lint-warn strings                                       linters that will generate warnings (default [object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,worldwrite])
       --memory string                                           default memory resources to use for builds
-      --disk string                                             disk size to use for builds
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")
       --overlay-binsh string                                    use specified file as /bin/sh overlay in build environment

@@ -28,6 +28,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	mrand "math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -93,8 +94,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 
 	err := sendSSHCommand(ctx,
 		user,
-		"localhost",
-		cfg.SSHPort,
+		cfg.SSHAddress,
 		cfg,
 		envOverride,
 		nil,
@@ -121,8 +121,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 
 	err := sendSSHCommand(ctx,
 		user,
-		"localhost",
-		cfg.SSHPort,
+		cfg.SSHAddress,
 		cfg,
 		envOverride,
 		os.Stdin,
@@ -166,12 +165,13 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.StartPod")
 	defer span.End()
 
-	sshPort, err := randpomPortN()
-	if err != nil {
-		return err
-	}
+	// generate a random address in 127.0.0.0/8 with a random port between 10000 - 50000
+	// this will be where we will forward the guest's SSH port.
+	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
+	ip := net.IPv4(127, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256))).String()
+	port := r.Intn(SSHPortRangeEnd-SSHPortRangeStart) + SSHPortRangeStart
 
-	cfg.SSHPort = strconv.Itoa(sshPort)
+	cfg.SSHAddress = ip + ":" + strconv.Itoa(port)
 
 	return createMicroVM(ctx, cfg)
 }
@@ -187,8 +187,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
 		"root",
-		"localhost",
-		cfg.SSHPort,
+		cfg.SSHAddress,
 		cfg,
 		nil,
 		nil,
@@ -218,8 +217,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	// a localhost interface, the performance penalty should be negligible.
 	err := sendSSHCommand(ctx,
 		user,
-		"localhost",
-		cfg.SSHPort,
+		cfg.SSHAddress,
 		cfg,
 		nil,
 		nil,
@@ -350,7 +348,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-serial", "none")
 	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp::"+cfg.SSHPort+"-:22")
+	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22")
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
@@ -398,7 +396,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	for {
 		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up")
 		// Attempt to connect to the address
-		err = checkSSHServer("localhost:" + cfg.SSHPort)
+		err = checkSSHServer(cfg.SSHAddress)
 		if err == nil {
 			break
 		}
@@ -413,8 +411,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	return sendSSHCommand(ctx,
 		user,
-		"localhost",
-		cfg.SSHPort,
+		cfg.SSHAddress,
 		cfg,
 		nil,
 		nil,
@@ -576,13 +573,11 @@ func checkSSHServer(address string) error {
 	return nil
 }
 
-func sendSSHCommand(ctx context.Context, user, host, port string,
+func sendSSHCommand(ctx context.Context, user, address string,
 	cfg *Config, extraVars map[string]string,
 	stdin io.Reader, stderr, stdout io.Writer,
 	command []string,
 ) error {
-	server := host + ":" + port
-
 	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
@@ -602,7 +597,7 @@ func sendSSHCommand(ctx context.Context, user, host, port string,
 	}
 
 	// Connect to the SSH server
-	client, err := ssh.Dial("tcp", server, config)
+	client, err := ssh.Dial("tcp", address, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
@@ -684,19 +679,6 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	}
 
 	return ssh.MarshalAuthorizedKey(publicKey), nil
-}
-
-func randpomPortN() (int, error) {
-	for port := SSHPortRangeStart; port <= SSHPortRangeEnd; port++ {
-		address := fmt.Sprintf("localhost:%d", port)
-		listener, err := net.Listen("tcp", address)
-		if err == nil {
-			listener.Close()
-			return port, nil
-		}
-	}
-
-	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
 }
 
 func convertHumanToKB(memory string) (int64, error) {

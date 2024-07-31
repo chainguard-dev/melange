@@ -54,7 +54,7 @@ type Config struct {
 	WorkspaceDir string
 	CPU, Memory  string
 	SSHKey       []byte
-	SSHPort      string
+	SSHAddress   string
 	Disk         string
 	Timeout      time.Duration
 }

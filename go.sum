@@ -1,7 +1,7 @@
-chainguard.dev/apko v0.17.0 h1:VxMKcoX+yGQVH/RrUjc20YBd0kUxEauJl6QEq7giHWs=
-chainguard.dev/apko v0.17.0/go.mod h1:DUDscQD4XUjI13EfUmOpE0NwL4/ozx7ERTXWyux/1Cg=
 al.essio.dev/pkg/shellescape v1.5.0 h1:7oTvSsQ5kg9WksA9O58y9wjYnY4jP0CL82/Q8WLUGKk=
 al.essio.dev/pkg/shellescape v1.5.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
+chainguard.dev/apko v0.17.1-0.20240725145252-b396a50b3422 h1:KTONmhjT80SEm+16Ku23QtyNPxyrYLOW3uAvheSyOI4=
+chainguard.dev/apko v0.17.1-0.20240725145252-b396a50b3422/go.mod h1:XgSlrCs5NID2iuHz+p4PFhvRhCP0DjqnKtP6kqAvuPI=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.115.0 h1:CnFSK6Xo3lDYRoBKEcAtia6VSC837/ZkJuRduSFnr14=
 cloud.google.com/go v0.115.0/go.mod h1:8jIM5vVgoAEoiVxQ/O4BFTfHqulPZgs/ufEzMcFMdWU=

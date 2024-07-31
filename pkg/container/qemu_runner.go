@@ -289,6 +289,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	baseargs := []string{}
+	microvm := false
 	// load microvm profile and bios, shave some milliseconds from boot
 	// using this will make a complete boot->initrd (with working network) In ~700ms
 	// instead of ~900ms.
@@ -300,8 +301,14 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
 			baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
 			baseargs = append(baseargs, "-bios", p)
+			microvm = true
 			break
 		}
+	}
+
+	// we need to fallback to -machine virt, if not machine has been specified
+	if !microvm {
+		baseargs = append(baseargs, "-machine", "virt")
 	}
 
 	baseargs = append(baseargs, "-kernel", kernelPath)

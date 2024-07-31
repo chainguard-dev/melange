@@ -555,7 +555,10 @@ func checkSSHServer(address string) error {
 	defer conn.Close()
 
 	// Set a deadline for the connection
-	conn.SetDeadline(time.Now().Add(time.Millisecond * 500))
+	err = conn.SetDeadline(time.Now().Add(time.Millisecond * 500))
+	if err != nil {
+		return err
+	}
 
 	// Read the SSH banner
 	buffer := make([]byte, 255)

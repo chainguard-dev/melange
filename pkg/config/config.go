@@ -120,7 +120,7 @@ type Package struct {
 type Resources struct {
 	CPU    string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	Memory string `json:"memory,omitempty" yaml:"memory,omitempty"`
-	Disk   string `json:"memory,omitempty" yaml:"disk,omitempty"`
+	Disk   string `json:"disk,omitempty" yaml:"disk,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the package. For more

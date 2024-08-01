@@ -318,9 +318,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			return err
 		}
 
+		if memKb > int64(getAvailableMemoryKB()) {
+			return fmt.Errorf("qemu: requested too much memory, requested: %d, have: %d", memKb, getAvailableMemoryKB())
+		}
+
 		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", memKb))
 	} else {
-		baseargs = append(baseargs, "-m", getAvailableMemoryKB())
+		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", getAvailableMemoryKB()/4))
 	}
 
 	if cfg.CPU != "" {
@@ -732,8 +736,8 @@ func convertHumanToKB(memory string) (int64, error) {
 	return num * multiplier / 1024, nil
 }
 
-func getAvailableMemoryKB() string {
-	mem := "16000000k"
+func getAvailableMemoryKB() int {
+	mem := 16000000
 
 	f, e := os.Open("/proc/meminfo")
 	if e != nil {
@@ -746,7 +750,7 @@ func getAvailableMemoryKB() string {
 	for s.Scan() {
 		var n int
 		if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
-			return strconv.Itoa(n) + "k"
+			return n
 		}
 	}
 

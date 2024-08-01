@@ -44,6 +44,7 @@ import (
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
 	"github.com/chainguard-dev/clog"
+	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"go.opentelemetry.io/otel"
@@ -319,13 +320,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 
 		if memKb > int64(getAvailableMemoryKB()) {
-			return fmt.Errorf("qemu: requested too much memory, requested: %d, have: %d", memKb, getAvailableMemoryKB())
+			log.Warnf("qemu: requested too much memory, requested: %d, have: %d", memKb, getAvailableMemoryKB())
+			memKb = int64(getAvailableMemoryKB())
 		}
 
-		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", memKb))
+		cfg.Memory = fmt.Sprintf("%dk", memKb)
 	} else {
-		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", getAvailableMemoryKB()/4))
+		cfg.Memory = fmt.Sprintf("%dk", getAvailableMemoryKB()/4)
 	}
+	baseargs = append(baseargs, "-m", cfg.Memory)
 
 	if cfg.CPU != "" {
 		baseargs = append(baseargs, "-smp", cfg.CPU)

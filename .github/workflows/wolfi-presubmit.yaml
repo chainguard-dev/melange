@@ -54,6 +54,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        runner:
+          - bubblewrap
+          - qemu
         package:
           - hello-wolfi
           - glibc
@@ -89,11 +92,44 @@ jobs:
           sudo chmod a+x /usr/bin/melange
           melange version
 
-      - run: |
+      - if: matrix.runner == 'bubblewrap'
+        run: |
           sudo apt-get -y install bubblewrap
 
-      - run: |
+      - if: matrix.runner == 'bubblewrap'
+        run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
+
+      - name: Download kernel for VMs
+        if: matrix.runner == 'qemu'
+        run: |
+          KERNEL_PKG="$(curl -sL https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$1 == "P" {printf "%s-", $2} $1 == "V" {printf "%s.apk\n", $2}' | grep "linux-virt" | grep -v dev)"
+          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/$KERNEL_PKG"
+          mkdir -p /tmp/kernel
+          tar -xf ./linux-virt.apk -C /tmp/kernel/
+
+      - name: Install QEMU/KVM
+        if: matrix.runner == 'qemu'
+        run: |
+          sudo apt-get -y install qemu-system qemu-kvm
+
+      - name: Enable KVM group perms
+        if: matrix.runner == 'qemu'
+        run: |
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+
+      - name: Make package ${{matrix.package}} with QEMU Runner
+        if: matrix.runner == 'qemu'
+        run: |
+          make \
+            SHELL="/bin/bash" \
+            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
+            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
+            MELANGE="/usr/bin/melange" \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            package/${{ matrix.package }}
 
       - name: "Retrieve Wolfi advisory data"
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7

@@ -327,9 +327,6 @@
           },
           "type": "array"
         },
-        "os-release": {
-          "$ref": "#/$defs/OSRelease"
-        },
         "vcs-url": {
           "type": "string"
         },
@@ -462,30 +459,6 @@
       "required": [
         "Packages"
       ]
-    },
-    "OSRelease": {
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "version-id": {
-          "type": "string"
-        },
-        "pretty-name": {
-          "type": "string"
-        },
-        "home-url": {
-          "type": "string"
-        },
-        "bug-report-url": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
     },
     "Package": {
       "properties": {
@@ -686,6 +659,21 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "Polling": {
+      "properties": {
+        "git": {
+          "type": "boolean",
+          "description": "Git should be used to find the latest version"
+        },
+        "reason": {
+          "type": "string",
+          "description": "The reason polling is being used"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Polling indicates that polling should be used to find latest versions"
+    },
     "RangeData": {
       "properties": {
         "name": {
@@ -735,6 +723,22 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "Schedule": {
+      "properties": {
+        "daily": {
+          "type": "boolean"
+        },
+        "weekly": {
+          "type": "boolean"
+        },
+        "monthly": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Schedule defines the schedule for the update check to run"
     },
     "Scriptlets": {
       "properties": {
@@ -910,6 +914,14 @@
         "exclude-reason": {
           "type": "string",
           "description": "ExcludeReason is required if enabled=false, to explain why updates are disabled."
+        },
+        "polling": {
+          "$ref": "#/$defs/Polling",
+          "description": "Polling indicates that polling should be used to find latest versions"
+        },
+        "schedule": {
+          "$ref": "#/$defs/Schedule",
+          "description": "Schedule defines the schedule for the update check to run"
         }
       },
       "additionalProperties": false,

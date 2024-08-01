@@ -101,3 +101,30 @@ the next update pr will be like:
 +  version: 3.2.4
    epoch: 0
 ```
+
+# Schedule
+
+Schedule describes how often tooling should check for an update.
+
+```yaml
+update:
+  enabled: true
+  github:
+    identifier: sigstore/cosign 
+  schedule:
+    daily: true # alternative values include `weekly: true` and `monthly: true`
+```
+
+# Polling
+
+Polling can instruct tooling to use a polling mechanism as opposed to querying via an API.  It is advised to combine this with a schedule
+
+```yaml
+update:
+  enabled: true
+  polling:
+    git: true
+    reason: upstream project does not support tags or releases
+  schedule:
+    daily: true
+```

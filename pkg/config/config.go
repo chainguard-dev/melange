@@ -493,7 +493,7 @@ type Update struct {
 	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
 	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
 	// Polling indicates that polling should be used to find latest versions
-	Polling *Polling `json:"polling,omitempty" yaml:"polling"`
+	Polling *Polling `json:"polling,omitempty" yaml:"polling,omitempty"`
 	// Schedule defines the schedule for the update check to run
 	Schedule *Schedule `json:"schedule,omitempty" yaml:"schedule,omitempty"`
 }

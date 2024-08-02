@@ -212,25 +212,35 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		user = "build"
 	}
 
+	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"))
+	if err != nil {
+		return nil, err
+	}
+	defer outFile.Close()
+
 	clog.FromContext(ctx).Infof("fetching remote workspace")
 	// work around missing scp (needs openssh-sftp package), we just tar the file
 	// and pipe the output to our local file. It is potentially slower, but being
 	// a localhost interface, the performance penalty should be negligible.
-	err := sendSSHCommand(ctx,
+	//
+	// We could just cp -a to /mnt as it is our shared workspace directory, but
+	// this will lose some file metadata like hardlinks, owners and so on.
+	// Example of package that won't work when using "cp -a" is glibc.
+	err = sendSSHCommand(ctx,
 		user,
 		cfg.SSHAddress,
 		cfg,
 		nil,
 		nil,
 		nil,
-		nil,
-		[]string{"cp", "-r", "/home/build/melange-out", "/mnt"},
+		outFile,
+		[]string{"sh", "-c", "cd /home/build && tar cvzf - melange-out"},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return os.Open(outFile.Name())
 }
 
 type qemuOCILoader struct{}

@@ -492,6 +492,10 @@ type Update struct {
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
 	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
 	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
+	// Polling indicates that polling should be used to find latest versions
+	Polling *Polling `json:"polling,omitempty" yaml:"polling,omitempty"`
+	// Schedule defines the schedule for the update check to run
+	Schedule *Schedule `json:"schedule,omitempty" yaml:"schedule,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/
@@ -530,6 +534,21 @@ type VersionTransform struct {
 	Match string `json:"match" yaml:"match"`
 	// Required: The repl to replace on all `match` matches
 	Replace string `json:"replace" yaml:"replace"`
+}
+
+// Schedule defines the schedule for the update check to run
+type Schedule struct {
+	Daily   bool `json:"daily,omitempty" yaml:"daily,omitempty"`
+	Weekly  bool `json:"weekly,omitempty" yaml:"weekly,omitempty"`
+	Monthly bool `json:"monthly,omitempty" yaml:"monthly,omitempty"`
+}
+
+// Polling indicates that polling should be used to find latest versions
+type Polling struct {
+	// Git should be used to find the latest version
+	Git bool `json:"git,omitempty" yaml:"git,omitempty"`
+	// The reason polling is being used
+	Reason string `json:"reason,omitempty" yaml:"reason,omitempty"`
 }
 
 type RangeData struct {

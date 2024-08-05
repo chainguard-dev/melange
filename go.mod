@@ -5,10 +5,10 @@ go 1.22.5
 require (
 	chainguard.dev/apko v0.17.0
 	cloud.google.com/go/storage v1.43.0
-	dagger.io/dagger v0.12.3
+	dagger.io/dagger v0.12.4
 	github.com/chainguard-dev/clog v1.4.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.0.12
+	github.com/chainguard-dev/yam v0.0.13
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v27.1.1+incompatible
 	github.com/docker/docker v27.1.1+incompatible

@@ -412,7 +412,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	retries := 50
+	// 5 minutes timeout
+	retries := 6000
 	try := 0
 	for try <= retries {
 		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up, try %d of %d", try, retries)

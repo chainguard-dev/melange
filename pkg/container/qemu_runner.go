@@ -406,17 +406,30 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	output, err := qemuCmd.CombinedOutput()
 	if err != nil {
+		// ensure cleanup of resources
+		defer os.Remove(cfg.ImgRef)
+		defer os.Remove(cfg.Disk)
+
 		clog.FromContext(ctx).Errorf("qemu: failed to run qemu command: %v - %s", err, string(output))
 		return err
 	}
 
-	for {
-		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up")
+	retries := 50
+	try := 0
+	for try <= retries {
+		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up, try %d of %d", try, retries)
 		// Attempt to connect to the address
 		err = checkSSHServer(cfg.SSHAddress)
 		if err == nil {
 			break
 		}
+		try++
+	}
+	if try >= retries {
+		// ensure cleanup of resources
+		defer os.Remove(cfg.ImgRef)
+		defer os.Remove(cfg.Disk)
+		return fmt.Errorf("qemu: could not start VM, timeout reached")
 	}
 
 	// default to root user but if a different user is specified

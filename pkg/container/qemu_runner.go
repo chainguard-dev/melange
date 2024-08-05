@@ -28,7 +28,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	mrand "math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -166,13 +165,12 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.StartPod")
 	defer span.End()
 
-	// generate a random address in 127.0.0.0/8 with a random port between 10000 - 50000
-	// this will be where we will forward the guest's SSH port.
-	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
-	ip := net.IPv4(127, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256))).String()
-	port := r.Intn(SSHPortRangeEnd-SSHPortRangeStart) + SSHPortRangeStart
+	port, err := randpomPortN()
+	if err != nil {
+		return err
+	}
 
-	cfg.SSHAddress = ip + ":" + strconv.Itoa(port)
+	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(port)
 
 	return createMicroVM(ctx, cfg)
 }
@@ -781,4 +779,17 @@ func getAvailableMemoryKB() int {
 	}
 
 	return mem
+}
+
+func randpomPortN() (int, error) {
+	for port := SSHPortRangeStart; port <= SSHPortRangeEnd; port++ {
+		address := fmt.Sprintf("localhost:%d", port)
+		listener, err := net.Listen("tcp", address)
+		if err == nil {
+			listener.Close()
+			return port, nil
+		}
+	}
+
+	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
 }

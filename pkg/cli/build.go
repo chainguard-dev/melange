@@ -21,15 +21,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/container/dagger"
-	"chainguard.dev/melange/pkg/container/docker"
 	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
@@ -112,9 +109,9 @@ func buildCmd() *cobra.Command {
 				ctx = tctx
 			}
 
-			r, err := getRunner(ctx, runner)
-			if err != nil {
-				return err
+			r := container.GetRunner(runner)
+			if r == nil {
+				return fmt.Errorf("runner %q not found", runner)
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -206,7 +203,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringVar(&libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
-	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
+	cmd.Flags().StringVar(&runner, "runner", "", "which runner to use to enable running commands, default is based on your platform.")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
@@ -227,31 +224,6 @@ func buildCmd() *cobra.Command {
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
 
 	return cmd
-}
-
-func getRunner(ctx context.Context, runner string) (container.Runner, error) {
-	if runner != "" {
-		switch runner {
-		case "bubblewrap":
-			return container.BubblewrapRunner(), nil
-		case "docker":
-			return docker.NewRunner(ctx)
-		case "experimentaldagger":
-			return dagger.NewRunner(ctx)
-		default:
-			return nil, fmt.Errorf("unknown runner: %s", runner)
-		}
-	}
-
-	switch runtime.GOOS {
-	case "linux":
-		return container.BubblewrapRunner(), nil
-	case "darwin":
-		// darwin is the same as default, but we want to keep it explicit
-		fallthrough
-	default:
-		return docker.NewRunner(ctx)
-	}
 }
 
 func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...build.Option) error {

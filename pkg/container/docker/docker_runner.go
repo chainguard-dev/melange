@@ -41,18 +41,15 @@ import (
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-var _ mcontainer.Debugger = (*docker)(nil)
+func init() {
+	r, _ := NewRunner(context.Background())
+	mcontainer.RegisterRunner("docker", r)
+}
 
-const (
-	DockerName = "docker"
-
-	runnerWorkdir = "/home/build"
-)
+const runnerWorkdir = "/home/build"
 
 // docker is a Runner implementation that uses the docker library.
-type docker struct {
-	cli *client.Client
-}
+type docker struct{ cli *client.Client }
 
 // NewRunner returns a Docker Runner implementation.
 func NewRunner(ctx context.Context) (mcontainer.Runner, error) {
@@ -60,19 +57,12 @@ func NewRunner(ctx context.Context) (mcontainer.Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &docker{
-		cli: cli,
-	}, nil
+	return &docker{cli: cli}, nil
 }
 
-func (dk *docker) Name() string {
-	return DockerName
-}
+func (dk *docker) Name() string { return "docker" }
 
-func (dk *docker) Close() error {
-	return dk.cli.Close()
-}
+func (dk *docker) Close() error { return dk.cli.Close() }
 
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.

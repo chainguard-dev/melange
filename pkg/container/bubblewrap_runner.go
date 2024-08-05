@@ -32,26 +32,19 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func init() { RegisterRunner("bubblewrap", &bubblewrap{}) }
+
 var _ Debugger = (*bubblewrap)(nil)
 
-const BubblewrapName = "bubblewrap"
-
-type bubblewrap struct {
-}
+type bubblewrap struct{}
 
 // BubblewrapRunner returns a Bubblewrap Runner implementation.
-func BubblewrapRunner() Runner {
-	return &bubblewrap{}
-}
+func BubblewrapRunner() Runner { return &bubblewrap{} }
 
-func (bw *bubblewrap) Close() error {
-	return nil
-}
+func (bw *bubblewrap) Close() error { return nil }
 
 // Name name of the runner
-func (bw *bubblewrap) Name() string {
-	return BubblewrapName
-}
+func (bw *bubblewrap) Name() string { return "bubblewrap" }
 
 // Run runs a Bubblewrap task given a Config and command string.
 func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {

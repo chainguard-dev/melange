@@ -23,6 +23,7 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -56,10 +57,9 @@ func test() *cobra.Command {
 		Example: `  melange test <test.yaml> [package-name]`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			r, err := getRunner(ctx, runner)
-			if err != nil {
-				return err
+			r := container.GetRunner(runner)
+			if r == nil {
+				return fmt.Errorf("runner %q not found", runner)
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -121,7 +121,7 @@ func test() *cobra.Command {
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&testOption, "test-option", []string{}, "build options to enable")
-	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
+	cmd.Flags().StringVar(&runner, "runner", "", "which runner to use to enable running commands, default is based on your platform.")
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")

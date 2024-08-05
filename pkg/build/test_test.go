@@ -153,8 +153,9 @@ func TestConfigurationLoad(t *testing.T) {
 			requireErr: require.NoError,
 			expected: &config.Configuration{
 				Package: config.Package{
-					Name:    "hello",
-					Version: "world",
+					Name:      "hello",
+					Version:   "world",
+					Resources: &config.Resources{},
 				},
 				Test: &config.Test{
 					Pipeline: []config.Pipeline{
@@ -162,25 +163,29 @@ func TestConfigurationLoad(t *testing.T) {
 							Name: "hello",
 							Runs: "world",
 						},
-					}},
+					},
+				},
 				Subpackages: []config.Subpackage{{
 					Name: "cats",
 					Test: &config.Test{
 						Pipeline: []config.Pipeline{{
 							Runs: "cats are angry",
-						}}},
+						}},
+					},
 				}, {
 					Name: "dogs",
 					Test: &config.Test{
 						Pipeline: []config.Pipeline{{
 							Runs: "dogs are loyal",
-						}}},
+						}},
+					},
 				}, {
 					Name: "turtles",
 					Test: &config.Test{
 						Pipeline: []config.Pipeline{{
 							Runs: "turtles are slow",
-						}}},
+						}},
+					},
 				}, {
 					Name: "donatello",
 					Test: &config.Test{
@@ -192,7 +197,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "purple"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "leonardo",
 					Test: &config.Test{Pipeline: []config.Pipeline{
@@ -242,8 +248,9 @@ func TestConfigurationLoad(t *testing.T) {
 			requireErr: require.NoError,
 			expected: &config.Configuration{
 				Package: config.Package{
-					Name:    "py3-pandas",
-					Version: "2.1.3",
+					Name:      "py3-pandas",
+					Version:   "2.1.3",
+					Resources: &config.Resources{},
 				},
 				Test: &config.Test{
 					Environment: types.ImageConfiguration{
@@ -258,7 +265,8 @@ func TestConfigurationLoad(t *testing.T) {
 							Uses: "test-uses",
 							With: map[string]string{"test-with": "test-with-value"},
 						},
-					}},
+					},
+				},
 			},
 		},
 	}

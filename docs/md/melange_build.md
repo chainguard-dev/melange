@@ -39,6 +39,7 @@ melange build [flags]
       --debug                                                   enables debug logging of build pipelines
       --debug-runner                                            when enabled, the builder pod will persist after the build succeeds or fails
       --dependency-log string                                   log dependencies to a specified file
+      --disk string                                             disk size to use for builds
       --empty-workspace                                         whether the build workspace should be empty
       --env-file string                                         file to use for preloaded environment variables
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
@@ -58,7 +59,7 @@ melange build [flags]
       --pipeline-dir string                                     directory used to extend defined built-in pipelines
   -r, --repository-append strings                               path to extra repositories to include in the build environment
       --rm                                                      clean up intermediate artifacts (e.g. container images)
-      --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker"]
+      --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --signing-key string                                      key to use for signing
       --source-dir string                                       directory used for included sources
       --strip-origin-name                                       whether origin names should be stripped (for bootstrap)

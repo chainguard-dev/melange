@@ -95,6 +95,7 @@ type Build struct {
 	Remove                bool
 	LintRequire, LintWarn []string
 	DefaultCPU            string
+	DefaultDisk           string
 	DefaultMemory         string
 	DefaultTimeout        time.Duration
 	Auth                  map[string]options.Auth
@@ -169,6 +170,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		config.WithEnvFileForParsing(b.EnvFile),
 		config.WithVarsFileForParsing(b.VarsFile),
 		config.WithDefaultCPU(b.DefaultCPU),
+		config.WithDefaultDisk(b.DefaultDisk),
 		config.WithDefaultMemory(b.DefaultMemory),
 		config.WithDefaultTimeout(b.DefaultTimeout),
 	)
@@ -247,6 +249,12 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.RemoveAll(tmp)
 
+	if b.Runner.Name() == container.QemuName {
+		b.ExtraPackages = append(b.ExtraPackages, []string{
+			"melange-microvm-init",
+		}...)
+	}
+
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
@@ -256,7 +264,6 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
 		apko_build.WithTempDir(tmp),
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
-
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
@@ -1050,6 +1057,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	if b.Configuration.Package.Resources != nil {
 		cfg.CPU = b.Configuration.Package.Resources.CPU
 		cfg.Memory = b.Configuration.Package.Resources.Memory
+		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}
 
 	for k, v := range b.Configuration.Environment.Environment {

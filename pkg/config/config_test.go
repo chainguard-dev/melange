@@ -396,3 +396,26 @@ func TestValidatePipelines(t *testing.T) {
 		})
 	}
 }
+
+func TestGetScheduleMessage(t *testing.T) {
+	tests := []struct {
+		schedule Schedule
+		expected string
+		err      bool
+	}{
+		{Schedule{Period: Daily}, "Scheduled daily update check", false},
+		{Schedule{Period: Weekly}, "Scheduled weekly update check", false},
+		{Schedule{Period: Monthly}, "Scheduled monthly update check", false},
+		{Schedule{Period: "yearly"}, "", true},
+	}
+
+	for _, test := range tests {
+		result, err := test.schedule.getScheduleMessage()
+		if (err != nil) != test.err {
+			t.Errorf("getScheduleMessage(%v) returned error %v, expected error: %v", test.schedule, err, test.err)
+		}
+		if result != test.expected {
+			t.Errorf("getScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
+		}
+	}
+}

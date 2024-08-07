@@ -488,12 +488,12 @@ type Update struct {
 	ReleaseMonitor *ReleaseMonitor `json:"release-monitor,omitempty" yaml:"release-monitor,omitempty"`
 	// The configuration block for updates tracked via the Github API
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
+	// The configuration block for updates tracked via Git
+	GitMonitor *GitMonitor `json:"git,omitempty" yaml:"git,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
 	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
 	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
-	// Polling indicates that polling should be used to find latest versions
-	Polling *Polling `json:"polling,omitempty" yaml:"polling,omitempty"`
 	// Schedule defines the schedule for the update check to run
 	Schedule *Schedule `json:"schedule,omitempty" yaml:"schedule,omitempty"`
 }
@@ -506,6 +506,15 @@ type ReleaseMonitor struct {
 	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
 	// If the version in release monitor contains a suffix which should be ignored
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
+}
+
+// VersionHandler is an interface that defines methods for retrieving version filtering and stripping parameters.
+// It is used to provide a common interface for handling version-related operations for different types of version monitors.
+type VersionHandler interface {
+	GetStripPrefix() string
+	GetStripSuffix() string
+	GetTagFilterPrefix() string
+	GetTagFilterContains() string
 }
 
 // GitHubMonitor indicates using the GitHub API
@@ -528,6 +537,58 @@ type GitHubMonitor struct {
 	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`
 }
 
+// GitMonitor indicates using Git
+type GitMonitor struct {
+	// StripPrefix is the prefix to strip from the version
+	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
+	// If the version in GitHub contains a suffix which should be ignored
+	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
+	// Prefix filter to apply when searching tags on a GitHub repository
+	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
+	// Filter to apply when searching tags on a GitHub repository
+	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+}
+
+// GetStripPrefix returns the prefix that should be stripped from the GitMonitor version.
+func (gm *GitMonitor) GetStripPrefix() string {
+	return gm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix that should be stripped from the GitMonitor version.
+func (gm *GitMonitor) GetStripSuffix() string {
+	return gm.StripSuffix
+}
+
+// GetTagFilterPrefix returns the prefix filter to apply when searching tags in GitMonitor.
+func (gm *GitMonitor) GetTagFilterPrefix() string {
+	return gm.TagFilterPrefix
+}
+
+// GetTagFilterContains returns the substring filter to apply when searching tags in GitMonitor.
+func (gm *GitMonitor) GetTagFilterContains() string {
+	return gm.TagFilterContains
+}
+
+// GetStripPrefix returns the prefix that should be stripped from the GitHubMonitor version.
+func (ghm *GitHubMonitor) GetStripPrefix() string {
+	return ghm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix that should be stripped from the GitHubMonitor version.
+func (ghm *GitHubMonitor) GetStripSuffix() string {
+	return ghm.StripSuffix
+}
+
+// GetTagFilterPrefix returns the prefix filter to apply when searching tags in GitHubMonitor.
+func (ghm *GitHubMonitor) GetTagFilterPrefix() string {
+	return ghm.TagFilterPrefix
+}
+
+// GetTagFilterContains returns the substring filter to apply when searching tags in GitHubMonitor.
+func (ghm *GitHubMonitor) GetTagFilterContains() string {
+	return ghm.TagFilterContains
+}
+
 // VersionTransform allows mapping the package version to an APK version
 type VersionTransform struct {
 	// Required: The regular expression to match against the `package.version` variable
@@ -536,19 +597,33 @@ type VersionTransform struct {
 	Replace string `json:"replace" yaml:"replace"`
 }
 
+// Period represents the update check period
+type Period string
+
+const (
+	Daily   Period = "daily"
+	Weekly  Period = "weekly"
+	Monthly Period = "monthly"
+)
+
 // Schedule defines the schedule for the update check to run
 type Schedule struct {
-	Daily   bool `json:"daily,omitempty" yaml:"daily,omitempty"`
-	Weekly  bool `json:"weekly,omitempty" yaml:"weekly,omitempty"`
-	Monthly bool `json:"monthly,omitempty" yaml:"monthly,omitempty"`
+	// The reason scheduling is being used
+	Reason string `json:"reason,omitempty" yaml:"reason,omitempty"`
+	Period Period `json:"period,omitempty" yaml:"period,omitempty"`
 }
 
-// Polling indicates that polling should be used to find latest versions
-type Polling struct {
-	// Git should be used to find the latest version
-	Git bool `json:"git,omitempty" yaml:"git,omitempty"`
-	// The reason polling is being used
-	Reason string `json:"reason,omitempty" yaml:"reason,omitempty"`
+func (schedule Schedule) getScheduleMessage() (string, error) {
+	switch schedule.Period {
+	case Daily:
+		return "Scheduled daily update check", nil
+	case Weekly:
+		return "Scheduled weekly update check", nil
+	case Monthly:
+		return "Scheduled monthly update check", nil
+	default:
+		return "", fmt.Errorf("unsupported period: %s", schedule.Period)
+	}
 }
 
 type RangeData struct {

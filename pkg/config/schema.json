@@ -250,6 +250,29 @@
       ],
       "description": "GitHubMonitor indicates using the GitHub API"
     },
+    "GitMonitor": {
+      "properties": {
+        "strip-prefix": {
+          "type": "string",
+          "description": "StripPrefix is the prefix to strip from the version"
+        },
+        "strip-suffix": {
+          "type": "string",
+          "description": "If the version in GitHub contains a suffix which should be ignored"
+        },
+        "tag-filter-prefix": {
+          "type": "string",
+          "description": "Prefix filter to apply when searching tags on a GitHub repository"
+        },
+        "tag-filter-contains": {
+          "type": "string",
+          "description": "Filter to apply when searching tags on a GitHub repository"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "GitMonitor indicates using Git"
+    },
     "Group": {
       "properties": {
         "groupname": {
@@ -659,21 +682,6 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "Polling": {
-      "properties": {
-        "git": {
-          "type": "boolean",
-          "description": "Git should be used to find the latest version"
-        },
-        "reason": {
-          "type": "string",
-          "description": "The reason polling is being used"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "description": "Polling indicates that polling should be used to find latest versions"
-    },
     "RangeData": {
       "properties": {
         "name": {
@@ -726,14 +734,12 @@
     },
     "Schedule": {
       "properties": {
-        "daily": {
-          "type": "boolean"
+        "reason": {
+          "type": "string",
+          "description": "The reason scheduling is being used"
         },
-        "weekly": {
-          "type": "boolean"
-        },
-        "monthly": {
-          "type": "boolean"
+        "period": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -904,6 +910,10 @@
           "$ref": "#/$defs/GitHubMonitor",
           "description": "The configuration block for updates tracked via the Github API"
         },
+        "git": {
+          "$ref": "#/$defs/GitMonitor",
+          "description": "The configuration block for updates tracked via Git"
+        },
         "version-transform": {
           "items": {
             "$ref": "#/$defs/VersionTransform"
@@ -914,10 +924,6 @@
         "exclude-reason": {
           "type": "string",
           "description": "ExcludeReason is required if enabled=false, to explain why updates are disabled."
-        },
-        "polling": {
-          "$ref": "#/$defs/Polling",
-          "description": "Polling indicates that polling should be used to find latest versions"
         },
         "schedule": {
           "$ref": "#/$defs/Schedule",

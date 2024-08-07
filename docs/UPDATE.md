@@ -33,7 +33,7 @@ update:
 
 ## GitHub
 
-This assumes you are using the graphql API and the Identifier matches the organisation/repositoryname
+This assumes you are using the graphql API and the Identifier matches the organisation/repositoryname.  The default behaviour is to use the GitHub Releases API as this returns a richer set of data.  This can be changed below with `use-tag: true`.
 
 ```yaml
 package:
@@ -53,6 +53,32 @@ update:
     strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
     use-tag: true # Optional, override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
     tag-filter: foo # Optional, filter to apply when searching tags on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
+```
+
+## Git
+
+Git uses vanilla git to check for updates.  This is useful for projects that use unsupported Git Provider APIs.
+
+It is recommended to use a `schedule` as described below when using Git as this is a less performant approach to using APIs such as GitHub and Release Monitoring.
+
+```yaml
+update:
+  enabled: true
+  git: {} # no specialized version handling required
+  schedule:
+    period: daily # options are daily|weekly|monthly
+    reason: upstream project does not support tags or releases
+```
+
+```yaml
+update:
+  enabled: true
+  git:
+    tag-filter-prefix: v17.2
+    strip-prefix: v
+  schedule:
+    period: daily
+    reason: upstream project does not support tags or releases
 ```
 
 ## Ignore versions
@@ -104,7 +130,7 @@ the next update pr will be like:
 
 # Schedule
 
-Schedule describes how often tooling should check for an update.
+Schedule describes how often tooling should check for an update, this overrides any default behaviour provided by an update service.
 
 ```yaml
 update:
@@ -112,19 +138,5 @@ update:
   github:
     identifier: sigstore/cosign 
   schedule:
-    daily: true # alternative values include `weekly: true` and `monthly: true`
-```
-
-# Polling
-
-Polling can instruct tooling to use a polling mechanism as opposed to querying via an API.  It is advised to combine this with a schedule
-
-```yaml
-update:
-  enabled: true
-  polling:
-    git: true
-    reason: upstream project does not support tags or releases
-  schedule:
-    daily: true
+    period: daily # options are daily|weekly|monthly
 ```

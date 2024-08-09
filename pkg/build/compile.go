@@ -353,7 +353,7 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 
 	if pipeline.Needs != nil {
 		for _, pkg := range pipeline.Needs.Packages {
-			log.Infof("  adding package %q for pipeline %q", pkg, id)
+			log.Debugf("  adding package %q for pipeline %q", pkg, id)
 		}
 		c.Needs = append(c.Needs, pipeline.Needs.Packages...)
 

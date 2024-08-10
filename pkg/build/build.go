@@ -197,7 +197,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
-		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), GetAllRunners())
+		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), container.AllRunners())
 	}
 
 	// Apply build options to the context.

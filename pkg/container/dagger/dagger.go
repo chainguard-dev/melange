@@ -36,10 +36,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const (
-	DaggerName   = "dagger"
-	imageTarName = "image.tar"
-)
+func init() {
+	r, _ := NewRunner(context.Background())
+	container.RegisterRunner("experimentaldagger", r)
+}
+
+const imageTarName = "image.tar"
 
 type daggerRunner struct {
 	client    *dagger.Client
@@ -69,9 +71,7 @@ func (d *daggerRunner) Close() error {
 }
 
 // Name name of the runner
-func (d *daggerRunner) Name() string {
-	return DaggerName
-}
+func (d *daggerRunner) Name() string { return "experimentaldagger" }
 
 // Run runs a Dagger task given a Config and command string.
 func (d *daggerRunner) Run(ctx context.Context, cfg *container.Config, envOverride map[string]string, args ...string) error {

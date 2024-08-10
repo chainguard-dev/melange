@@ -17,6 +17,9 @@ package container
 import (
 	"context"
 	"io"
+	"slices"
+
+	"golang.org/x/exp/maps"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -50,3 +53,18 @@ type Loader interface {
 	LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
 	RemoveImage(ctx context.Context, ref string) error
 }
+
+var runners = map[string]Runner{}
+
+// RegisterRunner registers a Runner implementation with the given name.
+//
+// Calling GetRunner with the name returns the Runner implementation, if one is found.
+func RegisterRunner(name string, r Runner) { runners[name] = r }
+
+// GetRunner returns a registered Runner implementation by name.
+//
+// If no Runner is found, GetRunner returns nil.
+func GetRunner(name string) Runner { return runners[name] }
+
+// AllRunners returns the names of all registered Runner implementations.
+func AllRunners() []string { k := maps.Keys(runners); slices.Sort(k); return k }

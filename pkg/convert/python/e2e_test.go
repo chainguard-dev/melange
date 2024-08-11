@@ -29,7 +29,7 @@ import (
 // This test downloads 10MB from files.pythonhosted.org (twice).
 // I am not in a position to untangle it, so we're going to gate this behind an e2e build tag that only runs in CI.
 func TestGenerateManifest(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	for i := range versions {
 		pythonctxs, err := SetupContext(versions[i])
@@ -96,7 +96,7 @@ func TestGenerateManifest(t *testing.T) {
 }
 
 func TestGenerateManifestPreserveURI(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	for i := range versions {
 		pythonctxs, err := SetupContextPreserveURI(versions[i])

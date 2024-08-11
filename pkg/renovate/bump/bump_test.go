@@ -30,7 +30,7 @@ func TestBump_versions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			err, server := setupTestServer(t)
 			assert.NoError(t, err)
 
@@ -51,7 +51,7 @@ func TestBump_versions(t *testing.T) {
 				WithTargetVersion(tt.newVersion),
 			)
 
-			err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
+			err = rctx.Renovate(slogtest.Context(t), bumpRenovator)
 			assert.NoError(t, err)
 
 			resultData, err := os.ReadFile(filepath.Join(dir, tt.name))
@@ -79,7 +79,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
 			assert.NoError(t, err)
 
@@ -95,7 +95,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 				WithExpectedCommit(tt.expectedCommit),
 			)
 
-			err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
+			err = rctx.Renovate(slogtest.Context(t), bumpRenovator)
 			assert.NoError(t, err)
 
 			rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, tt.name))
@@ -120,7 +120,7 @@ func TestBump_withExpectedCommitAndMangledVarsGitTag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
 			assert.NoError(t, err)
 
@@ -136,7 +136,7 @@ func TestBump_withExpectedCommitAndMangledVarsGitTag(t *testing.T) {
 				WithExpectedCommit(tt.expectedCommit),
 			)
 
-			err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
+			err = rctx.Renovate(slogtest.Context(t), bumpRenovator)
 			assert.NoError(t, err)
 
 			rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, tt.name))
@@ -162,14 +162,14 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, filename)))
 	assert.NoError(t, err)
 
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	bumpRenovator := New(ctx,
 		WithTargetVersion("6.8"),
 		WithExpectedCommit("1234abcd"),
 	)
 
-	err = rctx.Renovate(slogtest.TestContextWithLogger(t), bumpRenovator)
+	err = rctx.Renovate(slogtest.Context(t), bumpRenovator)
 	assert.NoError(t, err)
 
 	rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, filename))

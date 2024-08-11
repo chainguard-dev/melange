@@ -81,7 +81,7 @@ func TestLinters(t *testing.T) {
 		dirFunc: mkfile(t, "var/run/test.txt"),
 		linter:  "tempdir",
 	}} {
-		ctx := slogtest.TestContextWithLogger(t)
+		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {
 			dir := c.dirFunc()
 			// In required mode, it should raise an error.
@@ -94,7 +94,7 @@ func TestLinters(t *testing.T) {
 }
 
 func Test_pythonMultiplePackagesLinter(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	dir := t.TempDir()
 
 	linters := []string{"python/multiple"}
@@ -144,7 +144,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 }
 
 func Test_pythonTestLinter(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	dir := t.TempDir()
 
@@ -169,7 +169,7 @@ func Test_pythonTestLinter(t *testing.T) {
 }
 
 func Test_setUidGidLinter(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	linters := []string{"setuidgid"}
 	filePath := filepath.Join(t.TempDir(), "test.txt")
@@ -182,7 +182,7 @@ func Test_setUidGidLinter(t *testing.T) {
 }
 
 func Test_worldWriteLinter(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	linters := []string{"worldwrite"}
 
@@ -220,7 +220,7 @@ func Test_worldWriteLinter(t *testing.T) {
 }
 
 func Test_lintApk(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), DefaultRequiredLinters(), DefaultWarnLinters()))
 	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), DefaultRequiredLinters(), DefaultWarnLinters()))

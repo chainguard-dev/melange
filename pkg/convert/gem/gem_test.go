@@ -78,7 +78,7 @@ func TestGetGemMeta(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Ensure expected == got
-		got, err := gemctx.getGemMeta(slogtest.TestContextWithLogger(t), gemURL)
+		got, err := gemctx.getGemMeta(slogtest.Context(t), gemURL)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, got)
 	}
@@ -107,7 +107,7 @@ func TestFindDependencies(t *testing.T) {
 	gemctx.ToCheck = []string{"async"}
 
 	// Build list of dependencies
-	err = gemctx.findDependencies(slogtest.TestContextWithLogger(t))
+	err = gemctx.findDependencies(slogtest.Context(t))
 	assert.NoError(t, err)
 
 	for _, gem := range gems {
@@ -157,7 +157,7 @@ func TestGenerateManifest(t *testing.T) {
 
 	g.RepoURI = server.URL
 
-	got, err := gemctx.generateManifest(slogtest.TestContextWithLogger(t), g)
+	got, err := gemctx.generateManifest(slogtest.Context(t), g)
 	assert.NoError(t, err)
 
 	// Check Package

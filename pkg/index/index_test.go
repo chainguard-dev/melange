@@ -17,7 +17,7 @@ import (
 )
 
 func TestUpdateIndex(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	filename := filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk")
 
@@ -65,7 +65,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 		t.Fatal(err)
 	}
 
-	exp, err := expandapk.ExpandApk(slogtest.TestContextWithLogger(t), file, "")
+	exp, err := expandapk.ExpandApk(slogtest.Context(t), file, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 }
 
 func TestMergeIndex(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	newDesc := "This should replace the existing description"
 
 	filename := filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk")

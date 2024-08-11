@@ -4,13 +4,11 @@ go 1.22.5
 
 replace chainguard.dev/apko => ../apko
 
-replace github.com/chainguard-dev/clog => ../clog
-
 require (
 	chainguard.dev/apko v0.17.0
 	cloud.google.com/go/storage v1.43.0
 	dagger.io/dagger v0.12.4
-	github.com/chainguard-dev/clog v1.5.0
+	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.0.13
 	github.com/charmbracelet/log v0.4.0

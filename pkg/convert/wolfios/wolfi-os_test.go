@@ -27,7 +27,7 @@ func Test_getWolfiPackages(t *testing.T) {
 	}))
 
 	c := New(server.Client(), server.URL+"/APKINDEX.tar.gz")
-	wolfiPackages, err := c.GetWolfiPackages(slogtest.TestContextWithLogger(t))
+	wolfiPackages, err := c.GetWolfiPackages(slogtest.Context(t))
 	assert.NoError(t, err)
 	assert.True(t, wolfiPackages["pkgconf-doc"])
 	assert.True(t, wolfiPackages["wolfi-baselayout"])

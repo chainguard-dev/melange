@@ -106,7 +106,7 @@ func Test_MutateWith(t *testing.T) {
 }
 
 func Test_substitutionNeedPackages(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	pkg := config.Package{
 		Name:    "foo",
 		Version: "1.2.3",

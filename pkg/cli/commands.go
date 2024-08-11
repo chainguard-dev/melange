@@ -20,15 +20,15 @@ import (
 	"net/http"
 	"os"
 
-	"chainguard.dev/apko/pkg/log"
 	"github.com/chainguard-dev/clog/gcp"
+	"github.com/chainguard-dev/clog/slag"
 	charmlog "github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/release-utils/version"
 )
 
 func New() *cobra.Command {
-	var level log.CharmLogLevel
+	var level slag.Level
 	var gcplog bool
 	cmd := &cobra.Command{
 		Use:               "melange",

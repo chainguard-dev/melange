@@ -35,7 +35,7 @@ melange update-cache [flags]
 ### Options inherited from parent commands
 
 ```
-      --log-level string   log level (e.g. debug, info, warn, error) (default "info")
+      --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
 ```
 
 ### SEE ALSO

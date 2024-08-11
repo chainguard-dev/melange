@@ -40,7 +40,7 @@ convert gem fluentd
 ```
       --additional-keyrings stringArray       additional repositories to be added to convert environment config
       --additional-repositories stringArray   additional repositories to be added to convert environment config
-      --log-level string                      log level (e.g. debug, info, warn, error) (default "info")
+      --log-level string                      log level (e.g. debug, info, warn, error) (default "INFO")
   -o, --out-dir string                        directory where convert config will be output (default ".")
       --use-github                            **experimental** if true, tries to use github to figure out the release commit details (python only for now). To prevent rate limiting, you can set the GITHUB_TOKEN env variable to a github token. (default true)
       --use-relmon                            **experimental** if true, tries to use release-monitoring to fetch release monitoring data.

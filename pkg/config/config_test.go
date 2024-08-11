@@ -10,7 +10,7 @@ import (
 )
 
 func Test_applySubstitution(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`
@@ -116,7 +116,7 @@ test:
 }
 
 func Test_rangeSubstitutions(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`
@@ -153,7 +153,7 @@ subpackages:
 }
 
 func Test_rangeSubstitutionsPriorities(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInRangePriorities")
 	if err := os.WriteFile(fp, []byte(`
@@ -199,7 +199,7 @@ subpackages:
 }
 
 func Test_propagatePipelines(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-propagatePipelines")
 	if err := os.WriteFile(fp, []byte(`
@@ -243,7 +243,7 @@ subpackages:
 }
 
 func Test_propagateWorkingDirectory(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -280,7 +280,7 @@ pipeline:
 }
 
 func Test_propagateWorkingDirectoryToUsesNodes(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	fp := filepath.Join(os.TempDir(), "melange-test-propagateWorkingDirectory")
 	if err := os.WriteFile(fp, []byte(`
 package:
@@ -322,7 +322,7 @@ pipeline:
 }
 
 func TestDuplicateSubpackage(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 
 	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
 	if err := os.WriteFile(fp, []byte(`

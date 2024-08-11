@@ -118,7 +118,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			got, gotErr := tt.t.buildWorkspaceConfig(ctx, testImgRef, testPkgName, apko_types.ImageConfiguration{Environment: tt.env})
 			if gotErr != nil {
 				if tt.wantErr == "" {
@@ -265,7 +265,7 @@ func TestConfigurationLoad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			tctx := Test{
 				ConfigFile: filepath.Join("testdata", "test_configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
 			}

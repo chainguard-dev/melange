@@ -210,7 +210,7 @@ func TestConfiguration_Load(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			bctx := Build{
 				ConfigFile: filepath.Join("testdata", "configuration_load", fmt.Sprintf("%s.melange.yaml", tt.name)),
 			}
@@ -259,7 +259,7 @@ func cleanTestConfig(cfg *config.Configuration) {
 // TestConfiguration_Load_Raw tests loading a configuration file with raw
 // resolved values for fields not specified by the input YAML file.
 func TestConfiguration_Load_Raw(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	contents := `
 package:
   name: nginx

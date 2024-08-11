@@ -27,7 +27,7 @@ import (
 )
 
 func TestGoFipsBinDeps(t *testing.T) {
-	ctx := slogtest.TestContextWithLogger(t)
+	ctx := slogtest.Context(t)
 	th := handleFromApk(ctx, t, "generated/x86_64/go-fips-bin-0.0.1-r0.apk", "go-fips-bin/go-fips-bin.yaml")
 	defer th.exp.Close()
 
@@ -195,7 +195,7 @@ func TestAnalyze(t *testing.T) {
 		},
 	}} {
 		t.Run(c.apk, func(t *testing.T) {
-			ctx := slogtest.TestContextWithLogger(t)
+			ctx := slogtest.Context(t)
 			url := "https://packages.wolfi.dev/os/x86_64/" + c.apk
 			th := handleFromApk(ctx, t, url, c.cfgpath)
 			defer th.exp.Close()

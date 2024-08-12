@@ -48,8 +48,9 @@ func TestConfiguration_Load(t *testing.T) {
 			requireErr: require.NoError,
 			expected: &config.Configuration{
 				Package: config.Package{
-					Name:    "hello",
-					Version: "world",
+					Name:      "hello",
+					Version:   "world",
+					Resources: &config.Resources{},
 				},
 				Pipeline: []config.Pipeline{
 					{
@@ -124,8 +125,9 @@ func TestConfiguration_Load(t *testing.T) {
 			requireErr: require.NoError,
 			expected: &config.Configuration{
 				Package: config.Package{
-					Name:    "cosign",
-					Version: "2.0.0",
+					Name:      "cosign",
+					Version:   "2.0.0",
+					Resources: &config.Resources{},
 				},
 				Update: config.Update{
 					Enabled: true,
@@ -142,7 +144,7 @@ func TestConfiguration_Load(t *testing.T) {
 			name:       "release-monitor",
 			requireErr: require.NoError,
 			expected: &config.Configuration{
-				Package: config.Package{Name: "bison", Version: "3.8.2"},
+				Package: config.Package{Name: "bison", Version: "3.8.2", Resources: &config.Resources{}},
 				Update: config.Update{
 					Enabled: true,
 					Shared:  false,
@@ -188,9 +190,10 @@ func TestConfiguration_Load(t *testing.T) {
 			requireErr:          require.NoError,
 			expected: &config.Configuration{
 				Package: config.Package{
-					Name:    "cosign",
-					Version: "2.0.0",
-					Epoch:   0,
+					Name:      "cosign",
+					Version:   "2.0.0",
+					Epoch:     0,
+					Resources: &config.Resources{},
 				},
 				Environment: apko_types.ImageConfiguration{
 					Environment: map[string]string{
@@ -267,8 +270,9 @@ package:
 `
 	expected := &config.Configuration{
 		Package: config.Package{
-			Name:    "nginx",
-			Version: "100",
+			Name:      "nginx",
+			Version:   "100",
+			Resources: &config.Resources{},
 		},
 		Subpackages: []config.Subpackage{},
 	}

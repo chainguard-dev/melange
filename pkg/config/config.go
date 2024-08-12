@@ -120,6 +120,7 @@ type Package struct {
 type Resources struct {
 	CPU    string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	Memory string `json:"memory,omitempty" yaml:"memory,omitempty"`
+	Disk   string `json:"disk,omitempty" yaml:"disk,omitempty"`
 }
 
 // PackageURL returns the package URL ("purl") for the package. For more
@@ -655,10 +656,10 @@ type Dependencies struct {
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
-	filesystem  fs.FS
-	envFilePath string
-	cpu, memory string
-	timeout     time.Duration
+	filesystem        fs.FS
+	envFilePath       string
+	cpu, memory, disk string
+	timeout           time.Duration
 
 	varsFilePath string
 }
@@ -680,6 +681,12 @@ func WithDefaultTimeout(timeout time.Duration) ConfigurationParsingOption {
 func WithDefaultCPU(cpu string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.cpu = cpu
+	}
+}
+
+func WithDefaultDisk(disk string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.disk = disk
 	}
 }
 
@@ -1090,6 +1097,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	// Propagate all child pipelines
 	cfg.propagatePipelines()
 
+	if cfg.Package.Resources == nil {
+		cfg.Package.Resources = &Resources{}
+	}
 	if options.timeout != 0 {
 		cfg.Package.Timeout = options.timeout
 	}
@@ -1098,6 +1108,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 	if options.memory != "" {
 		cfg.Package.Resources.Memory = options.memory
+	}
+	if options.disk != "" {
+		cfg.Package.Resources.Disk = options.disk
 	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.

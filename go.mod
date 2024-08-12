@@ -8,7 +8,7 @@ require (
 	dagger.io/dagger v0.12.4
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.0.13
+	github.com/chainguard-dev/yam v0.1.0
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v27.1.1+incompatible
 	github.com/docker/docker v27.1.1+incompatible

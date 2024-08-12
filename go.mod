@@ -3,8 +3,8 @@ module chainguard.dev/melange
 go 1.22.5
 
 require (
-	chainguard.dev/apko v0.17.1-0.20240811194015-315ca1f1f1d3
 	al.essio.dev/pkg/shellescape v1.5.0
+	chainguard.dev/apko v0.17.1-0.20240811194015-315ca1f1f1d3
 	cloud.google.com/go/storage v1.43.0
 	dagger.io/dagger v0.12.4
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
@@ -37,7 +37,7 @@ require (
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.28.0
 	go.opentelemetry.io/otel/sdk v1.28.0
-	golang.org/x/crypto v0.25.0
+	golang.org/x/crypto v0.26.0
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.24.0
@@ -57,11 +57,7 @@ require (
 
 require (
 	chainguard.dev/go-grpc-kit v0.17.5 // indirect
-<<<<<<< HEAD
 	chainguard.dev/sdk v0.1.23 // indirect
-=======
-	chainguard.dev/sdk v0.1.21 // indirect
->>>>>>> 43a7c52 (go-mod: use latest apko without using replace)
 	cloud.google.com/go v0.115.0 // indirect
 	cloud.google.com/go/auth v0.7.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
@@ -77,10 +73,7 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-<<<<<<< HEAD
 	github.com/blang/semver v3.5.1+incompatible // indirect
-=======
->>>>>>> 43a7c52 (go-mod: use latest apko without using replace)
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -127,17 +120,10 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
-<<<<<<< HEAD
 	github.com/googleapis/gax-go/v2 v2.13.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.1-0.20210315223345-82c243799c99 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0 // indirect
-=======
-	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.1-0.20210315223345-82c243799c99 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
->>>>>>> 43a7c52 (go-mod: use latest apko without using replace)
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -193,11 +179,7 @@ require (
 	go.mongodb.org/mongo-driver v1.16.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.53.0 // indirect
-<<<<<<< HEAD
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
-=======
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 // indirect
->>>>>>> 43a7c52 (go-mod: use latest apko without using replace)
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.0.0-20240518090000-14441aefdf88 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.3.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0 // indirect
@@ -210,7 +192,6 @@ require (
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect

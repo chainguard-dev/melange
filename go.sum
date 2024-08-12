@@ -73,8 +73,8 @@ github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10/go.mod h1:1p6+MesLcjKeON5BRWa7I87mvAY0QmKjgginIM3w6BI=
 github.com/chainguard-dev/slogctx v1.2.2 h1:aDfTjasw/ApX0By8Nicl0C02oV/bXzBD8Dh7AG014ZM=
 github.com/chainguard-dev/slogctx v1.2.2/go.mod h1:+/TwogApSQPC+Umn9LF/T6my0KDml1XDAgpuSN/nwU4=
-github.com/chainguard-dev/yam v0.0.13 h1:7PCImnMuPrlM3FuC+HDUmgAH1heC53cTTbYnfJsO6MM=
-github.com/chainguard-dev/yam v0.0.13/go.mod h1:TfY6sf38CxIJsj93dEZITAWyE170VXpbvuXHuL6VLi0=
+github.com/chainguard-dev/yam v0.1.0 h1:3KDti6xqrVoFpX7nMb07aagWRy4qM/JzsmGqFLytmpI=
+github.com/chainguard-dev/yam v0.1.0/go.mod h1:TfY6sf38CxIJsj93dEZITAWyE170VXpbvuXHuL6VLi0=
 github.com/charmbracelet/lipgloss v0.11.0 h1:UoAcbQ6Qml8hDwSWs0Y1cB5TEQuZkDPH/ZqwWWYTG4g=
 github.com/charmbracelet/lipgloss v0.11.0/go.mod h1:1UdRTH9gYgpcdNN5oBtjbu/IzNKtzVtb7sqN1t9LNn8=
 github.com/charmbracelet/log v0.4.0 h1:G9bQAcx8rWA2T3pWvx7YtPTPwgqpk7D68BX21IRW8ZM=

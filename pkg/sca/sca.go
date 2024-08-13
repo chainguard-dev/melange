@@ -268,10 +268,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			return nil
 		}
 
-		if mode.Perm()&0555 != 0555 {
-			return nil
-		}
-
 		basename := filepath.Base(path)
 
 		// most likely a shell script instead of an ELF, so treat any
@@ -296,31 +292,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		interp, err := findInterpreter(ef)
 		if err != nil {
 			return err
-		}
-		if interp != "" && !hdl.Options().NoDepends {
-			log.Infof("interpreter for %s => %s", basename, interp)
-
-			// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
-			// the dependency.
-			interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
-			interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
-			generated.Runtime = append(generated.Runtime, interpName)
-		}
-
-		libs, err := ef.ImportedLibraries()
-		if err != nil {
-			log.Warnf("WTF: ImportedLibraries() returned error: %v", err)
-			return nil
-		}
-
-		if !hdl.Options().NoDepends {
-			for _, lib := range libs {
-				if strings.Contains(lib, ".so.") {
-					log.Infof("  found lib %s for %s", lib, path)
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-					depends[lib] = append(depends[lib], path)
-				}
-			}
 		}
 
 		// An executable program should never have a SONAME, but apparently binaries built
@@ -354,6 +325,36 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 					}
 				} else {
 					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
+				}
+			}
+		}
+
+		if mode.Perm()&0555 != 0555 {
+			return nil
+		}
+
+		if interp != "" && !hdl.Options().NoDepends {
+			log.Infof("interpreter for %s => %s", basename, interp)
+
+			// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
+			// the dependency.
+			interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
+			interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
+			generated.Runtime = append(generated.Runtime, interpName)
+		}
+
+		libs, err := ef.ImportedLibraries()
+		if err != nil {
+			log.Warnf("WTF: ImportedLibraries() returned error: %v", err)
+			return nil
+		}
+
+		if !hdl.Options().NoDepends {
+			for _, lib := range libs {
+				if strings.Contains(lib, ".so.") {
+					log.Infof("  found lib %s for %s", lib, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+					depends[lib] = append(depends[lib], path)
 				}
 			}
 		}

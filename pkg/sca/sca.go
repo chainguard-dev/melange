@@ -24,6 +24,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -89,9 +90,6 @@ func isInDir(path string, dirs []string) bool {
 
 func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
-	if hdl.Options().NoCommands {
-		return nil
-	}
 
 	log.Info("scanning for commands...")
 	fsys, err := hdl.Filesystem()
@@ -118,9 +116,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 			if isInDir(path, []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
-				if !hdl.Options().NoProvides {
-					generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
-				}
+				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
 			}
 		}
 
@@ -254,9 +250,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 				for _, soname := range sonames {
 					log.Infof("  found soname %s for %s", soname, path)
 
-					if !hdl.Options().NoDepends {
-						generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
-					}
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
 				}
 			}
 
@@ -297,7 +291,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		if err != nil {
 			return err
 		}
-		if interp != "" && !hdl.Options().NoDepends {
+		if interp != "" {
 			log.Infof("interpreter for %s => %s", basename, interp)
 
 			// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
@@ -313,13 +307,11 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			return nil
 		}
 
-		if !hdl.Options().NoDepends {
-			for _, lib := range libs {
-				if strings.Contains(lib, ".so.") {
-					log.Infof("  found lib %s for %s", lib, path)
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-					depends[lib] = append(depends[lib], path)
-				}
+		for _, lib := range libs {
+			if strings.Contains(lib, ".so.") {
+				log.Infof("  found lib %s for %s", lib, path)
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+				depends[lib] = append(depends[lib], path)
 			}
 		}
 
@@ -349,9 +341,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 				libver := sonameLibver(soname)
 
 				if isInDir(path, libDirs) {
-					if !hdl.Options().NoProvides {
-						generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
-					}
+					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
 				} else {
 					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
 				}
@@ -373,7 +363,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 		}
 		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
-		if !hdl.Options().NoDepends && cgo && boringcrypto {
+		if cgo && boringcrypto {
 			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
 			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
 			generated.Runtime = append(generated.Runtime, "so:libssl.so.3")
@@ -453,14 +443,12 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		}
 
 		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
-		if !hdl.Options().NoProvides {
-			if isInDir(path, []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}) {
-				log.Infof("  found pkg-config %s for %s", pcName, path)
-				generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
-			} else {
-				log.Infof("  found vendored pkg-config %s for %s", pcName, path)
-				generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
-			}
+		if isInDir(path, []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}) {
+			log.Infof("  found pkg-config %s for %s", pcName, path)
+			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
+		} else {
+			log.Infof("  found vendored pkg-config %s for %s", pcName, path)
+			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
 		}
 
 		if generateRuntimePkgConfigDeps {
@@ -549,9 +537,7 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	}
 
 	log.Infof("  found python module, generating python-%s-base dependency", pythonModuleVer)
-	if !hdl.Options().NoDepends {
-		generated.Runtime = append(generated.Runtime, fmt.Sprintf("python-%s-base", pythonModuleVer))
-	}
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("python-%s-base", pythonModuleVer))
 
 	return nil
 }
@@ -599,9 +585,7 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 	}
 
 	log.Infof("  found ruby gem, generating ruby-%s dependency", rubyGemVer)
-	if !hdl.Options().NoDepends {
-		generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s", rubyGemVer))
-	}
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s", rubyGemVer))
 
 	return nil
 }
@@ -711,9 +695,7 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 
 	for base, path := range cmds {
 		log.Infof("Added shbang dep cmd:%s for %s", base, path)
-		if !hdl.Options().NoDepends {
-			generated.Runtime = append(generated.Runtime, "cmd:"+base)
-		}
+		generated.Runtime = append(generated.Runtime, "cmd:"+base)
 	}
 
 	return nil
@@ -740,6 +722,24 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 	generated.Runtime = util.Dedup(generated.Runtime)
 	generated.Provides = util.Dedup(generated.Provides)
 	generated.Vendored = util.Dedup(generated.Vendored)
+
+	if hdl.Options().NoCommands {
+		generated.Provides = slices.DeleteFunc(generated.Provides, func(s string) bool {
+			return strings.HasPrefix(s, "cmd:")
+		})
+
+		generated.Runtime = slices.DeleteFunc(generated.Runtime, func(s string) bool {
+			return strings.HasPrefix(s, "cmd:")
+		})
+	}
+
+	if hdl.Options().NoDepends {
+		generated.Runtime = nil
+	}
+
+	if hdl.Options().NoProvides {
+		generated.Provides = nil
+	}
 
 	return nil
 }

@@ -69,8 +69,9 @@ jobs:
           - mdbook
           - s3cmd
           - perl-yaml-syck
-          - xmlto
           - ncurses
+          # TODO: https://github.com/wolfi-dev/os/issues/26442
+          #- xmlto
 
     steps:
       - uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
@@ -111,6 +112,7 @@ jobs:
       - name: Install QEMU/KVM
         if: matrix.runner == 'qemu'
         run: |
+          sudo apt-get update
           sudo apt-get -y install qemu-system qemu-kvm
 
       - name: Enable KVM group perms

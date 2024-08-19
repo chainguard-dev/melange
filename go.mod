@@ -1,6 +1,6 @@
 module chainguard.dev/melange
 
-go 1.22.5
+go 1.23.0
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.0

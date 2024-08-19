@@ -1,0 +1,6 @@
+package:
+  name: hello
+  version: 1.2.3
+
+subpackages:
+  - name: hello

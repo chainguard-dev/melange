@@ -185,6 +185,12 @@ func TestConfiguration_Load(t *testing.T) {
 			expected:            nil,
 		},
 		{
+			name:                "invalid-duplicate-package-name",
+			skipConfigCleanStep: true,
+			requireErr:          requireErrInvalidConfiguration,
+			expected:            nil,
+		},
+		{
 			name:                "env-vars-set-that-have-default-values",
 			skipConfigCleanStep: true,
 			requireErr:          require.NoError,

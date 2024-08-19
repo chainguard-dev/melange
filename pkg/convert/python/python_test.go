@@ -263,7 +263,7 @@ func GetJsonsPackagesForPackage(packageName string) ([]string, error) {
 	if packageName == "botocore" {
 		return []string{"botocore", "jmespath", "python-dateutil", "urllib3", "six"}, nil
 	} else if packageName == "jsonschema" {
-		return []string{"jsonschema", "attrs", "importlib-metadata", "importlib-resources", "pkgutil_resolve_name", "pyrsistent", "typing-extensions", "zipp"}, nil
+		return []string{"jsonschema", "attrs", "importlib-metadata", "importlib-resources", "pkgutil-resolve-name", "pyrsistent", "typing-extensions", "zipp"}, nil
 	} else if packageName == "typing-extensions" {
 		return []string{"typing-extensions"}, nil
 	}

@@ -216,10 +216,9 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 
 		for _, pd := range c.PipelineDirs {
 			log.Debugf("trying to load pipeline %q from %q", uses, pd)
-
 			data, err = os.ReadFile(filepath.Join(pd, uses+".yaml"))
 			if err == nil {
-				log.Infof("Found pipeline %s", string(data))
+				log.Debugf("Found pipeline %s", string(data))
 				break
 			}
 		}

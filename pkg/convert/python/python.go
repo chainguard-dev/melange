@@ -193,8 +193,8 @@ func normalizeName(packageName string) string {
 	// Normalize python packaging names
 	// See https://packaging.python.org/en/latest/specifications/name-normalization/#name-normalization
 	re := regexp.MustCompile("[-_.]+")
-    name := strings.ToLower(re.ReplaceAllString(packageName, "-"))
-    return name
+	name := strings.ToLower(re.ReplaceAllString(packageName, "-"))
+	return name
 }
 
 func stripDep(dep string) (string, error) {
@@ -219,7 +219,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-    p.Info.Name = normalizeName(p.Info.Name)
+	p.Info.Name = normalizeName(p.Info.Name)
 
 	log.Infof("[%s] %s Add to generate list", c.ToCheck[0], p.Info.Name)
 	c.ToCheck = c.ToCheck[1:]
@@ -240,7 +240,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 			continue
 		}
 		dep, err = stripDep(dep)
-        dep = normalizeName(dep)
+		dep = normalizeName(dep)
 		if err != nil {
 			return err
 		}

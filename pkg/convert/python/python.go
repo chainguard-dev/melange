@@ -88,7 +88,7 @@ type PythonContext struct {
 // New initialises a new PythonContext.
 func New(packageName string) (PythonContext, error) {
 	context := PythonContext{
-		PackageName: packageName,
+		PackageName: normalizeName(packageName),
 		ToGenerate:  make(map[string]Package),
 	}
 	return context, nil
@@ -112,6 +112,8 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 		return err
 	}
 	c.Package = *p
+
+	p.Info.Name = normalizeName(p.Info.Name)
 	// add self to check to start the find dep tree
 	c.ToCheck = append(c.ToCheck, p.Info.Name)
 
@@ -187,6 +189,14 @@ func (c *PythonContext) Generate(ctx context.Context) error {
 	return nil
 }
 
+func normalizeName(packageName string) string {
+	// Normalize python packaging names
+	// See https://packaging.python.org/en/latest/specifications/name-normalization/#name-normalization
+	re := regexp.MustCompile("[-_.]+")
+    name := strings.ToLower(re.ReplaceAllString(packageName, "-"))
+    return name
+}
+
 func stripDep(dep string) (string, error) {
 	// removing all the special chars from the requirements like   "importlib-metadata (>=3.6.0) ; python_version < \"3.10\""
 	re := regexp.MustCompile(`[;()\[\]!~=<>]`)
@@ -209,6 +219,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+    p.Info.Name = normalizeName(p.Info.Name)
 
 	log.Infof("[%s] %s Add to generate list", c.ToCheck[0], p.Info.Name)
 	c.ToCheck = c.ToCheck[1:]
@@ -229,6 +240,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 			continue
 		}
 		dep, err = stripDep(dep)
+        dep = normalizeName(dep)
 		if err != nil {
 			return err
 		}

@@ -43,7 +43,7 @@ require (
 	golang.org/x/sys v0.24.0
 	golang.org/x/text v0.17.0
 	golang.org/x/time v0.6.0
-	google.golang.org/api v0.191.0
+	google.golang.org/api v0.192.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
@@ -59,7 +59,7 @@ require (
 	chainguard.dev/go-grpc-kit v0.17.5 // indirect
 	chainguard.dev/sdk v0.1.23 // indirect
 	cloud.google.com/go v0.115.0 // indirect
-	cloud.google.com/go/auth v0.7.3 // indirect
+	cloud.google.com/go/auth v0.8.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/iam v1.1.12 // indirect

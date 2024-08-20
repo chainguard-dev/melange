@@ -182,7 +182,10 @@ subpackages:
       runtime:
         - wow-some-kinda-dynamically-linked-library-i-guess=1.0
     pipeline:
-      - working-directory: ${{vars.buildLocation}}/subdir/${{range.key}}/${{range.value}}
+      - needs:
+          packages:
+            - ${{range.key}}
+        working-directory: ${{vars.buildLocation}}/subdir/${{range.key}}/${{range.value}}
         runs: |
           echo "$PWD"
 `), 0644); err != nil {
@@ -196,6 +199,8 @@ subpackages:
 	require.Equal(t, cfg.Subpackages[0].Dependencies.ReplacesPriority, "10")
 	require.Equal(t, cfg.Subpackages[0].Pipeline[0].WorkDir, "/home/build/foo/subdir/a/10")
 	require.Equal(t, cfg.Subpackages[1].Pipeline[0].WorkDir, "/home/build/foo/subdir/b/20")
+	require.Equal(t, cfg.Subpackages[0].Pipeline[0].Needs.Packages[0], "a")
+	require.Equal(t, cfg.Subpackages[1].Pipeline[0].Needs.Packages[0], "b")
 }
 
 func Test_propagatePipelines(t *testing.T) {

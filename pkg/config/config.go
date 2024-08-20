@@ -777,6 +777,15 @@ func replaceAll(r *strings.Replacer, in []string) []string {
 	return out
 }
 
+func replaceNeeds(r *strings.Replacer, in *Needs) *Needs {
+	if in == nil {
+		return nil
+	}
+	return &Needs{
+		Packages: replaceAll(r, in.Packages),
+	}
+}
+
 // propagateChildPipelines performs downward propagation of configuration values.
 func (p *Pipeline) propagateChildPipelines() {
 	for idx := range p.Pipeline {
@@ -943,7 +952,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 					Uses:    p.Uses,
 					With:    replacedWith,
 					Inputs:  p.Inputs,
-					Needs:   p.Needs,
+					Needs:   replaceNeeds(replacer, p.Needs),
 					Label:   p.Label,
 					Runs:    replacer.Replace(p.Runs),
 					WorkDir: replacer.Replace(p.WorkDir),
@@ -969,7 +978,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 						Uses:    p.Uses,
 						With:    replacedWith,
 						Inputs:  p.Inputs,
-						Needs:   p.Needs,
+						Needs:   replaceNeeds(replacer, p.Needs),
 						Label:   p.Label,
 						Runs:    replacer.Replace(p.Runs),
 						WorkDir: replacer.Replace(p.WorkDir),

@@ -786,6 +786,174 @@ func replaceNeeds(r *strings.Replacer, in *Needs) *Needs {
 	}
 }
 
+func replaceMap(r *strings.Replacer, in map[string]string) map[string]string {
+	if len(in) == 0 {
+		return nil
+	}
+
+	replacedWith := make(map[string]string, len(in))
+	for key, value := range in {
+		replacedWith[key] = r.Replace(value)
+	}
+	return replacedWith
+}
+
+func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
+	return Pipeline{
+		Name:        r.Replace(in.Name),
+		Uses:        in.Uses,
+		With:        replaceMap(r, in.With),
+		Runs:        r.Replace(in.Runs),
+		Pipeline:    replacePipelines(r, in.Pipeline),
+		Inputs:      in.Inputs,
+		Needs:       replaceNeeds(r, in.Needs),
+		Label:       in.Label,
+		If:          r.Replace(in.If),
+		Assertions:  in.Assertions,
+		WorkDir:     r.Replace(in.WorkDir),
+		Environment: in.Environment,
+	}
+}
+
+func replacePipelines(r *strings.Replacer, in []Pipeline) []Pipeline {
+	if in == nil {
+		return nil
+	}
+
+	out := make([]Pipeline, 0, len(in))
+	for _, p := range in {
+		out = append(out, replacePipeline(r, p))
+	}
+	return out
+}
+
+func replaceTest(r *strings.Replacer, in *Test) *Test {
+	if in == nil {
+		return nil
+	}
+	return &Test{
+		Environment: in.Environment,
+		Pipeline:    replacePipelines(r, in.Pipeline),
+	}
+}
+
+func replaceScriptlets(r *strings.Replacer, in *Scriptlets) *Scriptlets {
+	if in == nil {
+		return nil
+	}
+
+	return &Scriptlets{
+		Trigger: Trigger{
+			Script: r.Replace(in.Trigger.Script),
+			Paths:  replaceAll(r, in.Trigger.Paths),
+		},
+		PreInstall:    r.Replace(in.PreInstall),
+		PostInstall:   r.Replace(in.PostInstall),
+		PreDeinstall:  r.Replace(in.PreDeinstall),
+		PostDeinstall: r.Replace(in.PostDeinstall),
+		PreUpgrade:    r.Replace(in.PreUpgrade),
+		PostUpgrade:   r.Replace(in.PostUpgrade),
+	}
+}
+
+// default to detectedCommit unless commit is explicitly specified
+func replaceCommit(detectedCommit string, in string) string {
+	if in == "" {
+		return detectedCommit
+	}
+	return in
+}
+
+func replaceDependencies(r *strings.Replacer, in Dependencies) Dependencies {
+	return Dependencies{
+		Runtime:          replaceAll(r, in.Runtime),
+		Provides:         replaceAll(r, in.Provides),
+		Replaces:         replaceAll(r, in.Replaces),
+		ProviderPriority: r.Replace(in.ProviderPriority),
+		ReplacesPriority: r.Replace(in.ReplacesPriority),
+	}
+}
+
+func replacePackage(r *strings.Replacer, detectedCommit string, in Package) Package {
+	return Package{
+		Name:               r.Replace(in.Name),
+		Version:            r.Replace(in.Version),
+		Epoch:              in.Epoch,
+		Description:        r.Replace(in.Description),
+		URL:                r.Replace(in.URL),
+		Commit:             replaceCommit(detectedCommit, in.Commit),
+		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
+		Copyright:          in.Copyright,
+		Dependencies:       replaceDependencies(r, in.Dependencies),
+		Options:            in.Options,
+		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
+		Checks:             in.Checks,
+		Timeout:            in.Timeout,
+		Resources:          in.Resources,
+	}
+}
+
+func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage) Subpackage {
+	return Subpackage{
+		If:           r.Replace(in.If),
+		Name:         r.Replace(in.Name),
+		Pipeline:     replacePipelines(r, in.Pipeline),
+		Dependencies: replaceDependencies(r, in.Dependencies),
+		Options:      in.Options,
+		Scriptlets:   replaceScriptlets(r, in.Scriptlets),
+		Description:  r.Replace(in.Description),
+		URL:          r.Replace(in.URL),
+		Commit:       replaceCommit(detectedCommit, in.Commit),
+		Checks:       in.Checks,
+		Test:         replaceTest(r, in.Test),
+	}
+}
+
+func replaceSubpackages(r *strings.Replacer, datas map[string]DataItems, cfg Configuration, in []Subpackage) ([]Subpackage, error) {
+	out := make([]Subpackage, 0, len(in))
+
+	for i, sp := range in {
+		if sp.Commit == "" {
+			sp.Commit = cfg.Package.Commit
+		}
+
+		if sp.Range == "" {
+			out = append(out, replaceSubpackage(r, cfg.Package.Commit, sp))
+			continue
+		}
+
+		items, ok := datas[sp.Range]
+		if !ok {
+			return nil, fmt.Errorf("subpackages[%d] (%q) specified undefined range: %q", i, sp.Name, sp.Range)
+		}
+
+		// Ensure iterating over items is deterministic by sorting keys alphabetically
+		keys := make([]string, 0, len(items))
+		for k := range items {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		configMap := buildConfigMap(&cfg)
+		if err := cfg.PerformVarSubstitutions(configMap); err != nil {
+			return nil, fmt.Errorf("applying variable substitutions: %w", err)
+		}
+
+		for _, k := range keys {
+			v := items[k]
+			configMap["${{range.key}}"] = k
+			configMap["${{range.value}}"] = v
+			r := replacerFromMap(configMap)
+
+			thingToAdd := replaceSubpackage(r, cfg.Package.Commit, sp)
+
+			out = append(out, thingToAdd)
+		}
+	}
+
+	return out, nil
+}
+
 // propagateChildPipelines performs downward propagation of configuration values.
 func (p *Pipeline) propagateChildPipelines() {
 	for idx := range p.Pipeline {
@@ -858,139 +1026,52 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	reader := bytes.NewReader(data)
 	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)
-	err = decoder.Decode(&cfg)
+	if err := decoder.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
+	}
+
+	// If a variables file was defined, merge it into the variables block.
+	if varsFile := options.varsFilePath; varsFile != "" {
+		f, err := os.Open(varsFile)
+		if err != nil {
+			return nil, fmt.Errorf("loading variables file: %w", err)
+		}
+		defer f.Close()
+
+		vars := map[string]string{}
+		err = yaml.NewDecoder(f).Decode(&vars)
+		if err != nil {
+			return nil, fmt.Errorf("loading variables file: %w", err)
+		}
+
+		for k, v := range vars {
+			cfg.Vars[k] = v
+		}
+	}
+
+	// Mutate config properties with substitutions.
+	configMap := buildConfigMap(&cfg)
+	if err := cfg.PerformVarSubstitutions(configMap); err != nil {
+		return nil, fmt.Errorf("applying variable substitutions: %w", err)
+	}
+
+	replacer := replacerFromMap(configMap)
+
+	detectedCommit := detectCommit(ctx, configurationDirPath)
+
+	cfg.Package = replacePackage(replacer, detectedCommit, cfg.Package)
+
+	datas := make(map[string]DataItems, len(cfg.Data))
+	for _, d := range cfg.Data {
+		datas[d.Name] = d.Items
+	}
+
+	cfg.Subpackages, err = replaceSubpackages(replacer, datas, cfg, cfg.Subpackages)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
 
-	detectedCommit := detectCommit(ctx, configurationDirPath)
-	if cfg.Package.Commit == "" {
-		cfg.Package.Commit = detectedCommit
-	}
-
-	datas := make(map[string]DataItems)
-	for _, d := range cfg.Data {
-		datas[d.Name] = d.Items
-	}
-	subpackages := []Subpackage{}
-	for _, sp := range cfg.Subpackages {
-		if sp.Commit == "" {
-			sp.Commit = detectedCommit
-		}
-
-		if sp.Range == "" {
-			subpackages = append(subpackages, sp)
-			continue
-		}
-		items, ok := datas[sp.Range]
-		if !ok {
-			return nil, fmt.Errorf("unable to parse configuration file %q: subpackage %q specified undefined range: %q", configurationFilePath, sp.Name, sp.Range)
-		}
-
-		// Ensure iterating over items is deterministic by sorting keys alphabetically
-		keys := make([]string, 0, len(items))
-		for k := range items {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		configMap := buildConfigMap(&cfg)
-		if err := cfg.PerformVarSubstitutions(configMap); err != nil {
-			return nil, fmt.Errorf("applying variable substitutions: %w", err)
-		}
-		for _, k := range keys {
-			v := items[k]
-			configMap["${{range.key}}"] = k
-			configMap["${{range.value}}"] = v
-			replacer := replacerFromMap(configMap)
-
-			thingToAdd := Subpackage{
-				Name:        replacer.Replace(sp.Name),
-				Description: replacer.Replace(sp.Description),
-				Commit:      detectedCommit,
-				Dependencies: Dependencies{
-					Runtime:          replaceAll(replacer, sp.Dependencies.Runtime),
-					Provides:         replaceAll(replacer, sp.Dependencies.Provides),
-					Replaces:         replaceAll(replacer, sp.Dependencies.Replaces),
-					ProviderPriority: replacer.Replace(sp.Dependencies.ProviderPriority),
-					ReplacesPriority: replacer.Replace(sp.Dependencies.ReplacesPriority),
-				},
-				Options: sp.Options,
-				URL:     replacer.Replace(sp.URL),
-				If:      replacer.Replace(sp.If),
-			}
-
-			if script := sp.Scriptlets; script != nil {
-				thingToAdd.Scriptlets = &Scriptlets{
-					Trigger: Trigger{
-						Script: replacer.Replace(sp.Scriptlets.Trigger.Script),
-						Paths:  replaceAll(replacer, sp.Scriptlets.Trigger.Paths),
-					},
-					PreInstall:    replacer.Replace(sp.Scriptlets.PreInstall),
-					PostInstall:   replacer.Replace(sp.Scriptlets.PostInstall),
-					PreDeinstall:  replacer.Replace(sp.Scriptlets.PreDeinstall),
-					PostDeinstall: replacer.Replace(sp.Scriptlets.PostDeinstall),
-					PreUpgrade:    replacer.Replace(sp.Scriptlets.PreUpgrade),
-					PostUpgrade:   replacer.Replace(sp.Scriptlets.PostUpgrade),
-				}
-			}
-
-			for _, p := range sp.Pipeline {
-				// take a copy of the with map, so we can replace the values
-				replacedWith := make(map[string]string)
-				for key, value := range p.With {
-					replacedWith[key] = replacer.Replace(value)
-				}
-
-				// if the map is empty, set it to nil to avoid serializing an empty map
-				if len(replacedWith) == 0 {
-					replacedWith = nil
-				}
-
-				thingToAdd.Pipeline = append(thingToAdd.Pipeline, Pipeline{
-					Name:    p.Name,
-					Uses:    p.Uses,
-					With:    replacedWith,
-					Inputs:  p.Inputs,
-					Needs:   replaceNeeds(replacer, p.Needs),
-					Label:   p.Label,
-					Runs:    replacer.Replace(p.Runs),
-					WorkDir: replacer.Replace(p.WorkDir),
-					// TODO: p.Pipeline?
-				})
-			}
-			if sp.Test != nil {
-				thingToAdd.Test = &Test{}
-				for _, p := range sp.Test.Pipeline {
-					// take a copy of the with map, so we can replace the values
-					replacedWith := make(map[string]string)
-					for key, value := range p.With {
-						replacedWith[key] = replacer.Replace(value)
-					}
-
-					// if the map is empty, set it to nil to avoid serializing an empty map
-					if len(replacedWith) == 0 {
-						replacedWith = nil
-					}
-
-					thingToAdd.Test.Pipeline = append(thingToAdd.Test.Pipeline, Pipeline{
-						Name:    p.Name,
-						Uses:    p.Uses,
-						With:    replacedWith,
-						Inputs:  p.Inputs,
-						Needs:   replaceNeeds(replacer, p.Needs),
-						Label:   p.Label,
-						Runs:    replacer.Replace(p.Runs),
-						WorkDir: replacer.Replace(p.WorkDir),
-						// TODO: p.Pipeline?
-					})
-				}
-			}
-			subpackages = append(subpackages, thingToAdd)
-		}
-	}
 	cfg.Data = nil // TODO: zero this out or not?
-	cfg.Subpackages = subpackages
 
 	// TODO: validate that subpackage ranges have been consumed and applied
 
@@ -1044,48 +1125,6 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	setIfEmpty("HOME", defaultEnvVarHOME)
 	setIfEmpty("GOPATH", defaultEnvVarGOPATH)
 	setIfEmpty("GOMODCACHE", defaultEnvVarGOMODCACHE)
-
-	// If a variables file was defined, merge it into the variables block.
-	if varsFile := options.varsFilePath; varsFile != "" {
-		f, err := os.Open(varsFile)
-		if err != nil {
-			return nil, fmt.Errorf("loading variables file: %w", err)
-		}
-		defer f.Close()
-
-		vars := map[string]string{}
-		err = yaml.NewDecoder(f).Decode(&vars)
-		if err != nil {
-			return nil, fmt.Errorf("loading variables file: %w", err)
-		}
-
-		for k, v := range vars {
-			cfg.Vars[k] = v
-		}
-	}
-
-	// Mutate config properties with substitutions.
-	configMap := buildConfigMap(&cfg)
-	if err := cfg.PerformVarSubstitutions(configMap); err != nil {
-		return nil, fmt.Errorf("applying variable substitutions: %w", err)
-	}
-
-	replacer := replacerFromMap(configMap)
-
-	cfg.Package.Name = replacer.Replace(cfg.Package.Name)
-	cfg.Package.Version = replacer.Replace(cfg.Package.Version)
-	cfg.Package.Description = replacer.Replace(cfg.Package.Description)
-
-	subpackages = []Subpackage{}
-
-	for _, sp := range cfg.Subpackages {
-		sp.Name = replacer.Replace(sp.Name)
-		sp.Description = replacer.Replace(sp.Description)
-
-		subpackages = append(subpackages, sp)
-	}
-
-	cfg.Subpackages = subpackages
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err

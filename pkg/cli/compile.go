@@ -99,7 +99,6 @@ func compile() *cobra.Command {
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
-				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),

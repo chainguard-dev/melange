@@ -30,7 +30,6 @@ import (
 	purl "github.com/package-url/packageurl-go"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
@@ -73,7 +72,7 @@ func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMa
 	return &SubstitutionMap{nw}
 }
 
-func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string) (*SubstitutionMap, error) {
 	pkg := cfg.Package
 
 	nw := map[string]string{
@@ -119,16 +118,6 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture,
 		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
 	}
 
-	for k := range cfg.Options {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
-		nw[nk] = "false"
-	}
-
-	for _, opt := range buildOpts {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
-		nw[nk] = "true"
-	}
-
 	return &SubstitutionMap{nw}, nil
 }
 
@@ -170,8 +159,9 @@ type pipelineRunner struct {
 func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) (bool, error) {
 	log := clog.FromContext(ctx)
 
-	if result, err := shouldRun(pipeline.If); !result {
-		return result, err
+	if pipeline.IfArch != "" && pipeline.IfArch != r.config.Arch {
+		log.Infof("skipping pipeline %q because it is not for arch %q", identity(pipeline), r.config.Arch)
+		return false, nil
 	}
 
 	debugOption := ' '
@@ -219,12 +209,6 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 			return false, fmt.Errorf("unable to run pipeline: %w", err)
 		} else if ran {
 			steps++
-		}
-	}
-
-	if assert := pipeline.Assertions; assert != nil {
-		if want := assert.RequiredSteps; want != steps {
-			return false, fmt.Errorf("pipeline did not run the required %d steps, only %d", want, steps)
 		}
 	}
 
@@ -288,19 +272,6 @@ func (r *pipelineRunner) runPipelines(ctx context.Context, pipelines []config.Pi
 	}
 
 	return nil
-}
-
-func shouldRun(ifs string) (bool, error) {
-	if ifs == "" {
-		return true, nil
-	}
-
-	result, err := cond.Evaluate(ifs)
-	if err != nil {
-		return false, fmt.Errorf("evaluating if-conditional %q: %w", ifs, err)
-	}
-
-	return result, nil
 }
 
 // computeExternalRefs generates PURLs for subpipelines

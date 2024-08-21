@@ -15,6 +15,7 @@
 package cond
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -98,4 +99,16 @@ fi`
 	_, err := Subst(doc, fakeLookup)
 
 	require.NoErrorf(t, err, "got error: %v", err)
+}
+
+func placeholderLookup(key string) (string, error) {
+	if key == "foo.BAR_BAZ" {
+		return "bar-baz", nil
+	}
+
+	if key == "foo.bar" {
+		return "baz", nil
+	}
+
+	return "", fmt.Errorf("unknown key %s", key)
 }

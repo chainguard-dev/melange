@@ -101,8 +101,6 @@ type Build struct {
 	Auth                  map[string]options.Auth
 	IgnoreSignatures      bool
 
-	EnabledBuildOptions []string
-
 	// mutated by Compile
 	externalRefs []purl.PackageURL
 }
@@ -200,17 +198,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), GetAllRunners())
-	}
-
-	// Apply build options to the context.
-	for _, optName := range b.EnabledBuildOptions {
-		log.Infof("applying configuration patches for build option %s", optName)
-
-		if opt, ok := b.Configuration.Options[optName]; ok {
-			if err := b.ApplyBuildOption(opt); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	return &b, nil
@@ -700,20 +687,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	if err := b.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling build: %w", err)
 	}
-
-	// Filter out any subpackages with false If conditions.
-	b.Configuration.Subpackages = slices.DeleteFunc(b.Configuration.Subpackages, func(sp config.Subpackage) bool {
-		result, err := shouldRun(sp.If)
-		if err != nil {
-			// This shouldn't give an error because we evaluate it in Compile.
-			panic(err)
-		}
-		if !result {
-			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
-		}
-
-		return !result
-	})
 
 	configFileRef, err := b.ConfigFileExternalRef()
 	if err != nil {

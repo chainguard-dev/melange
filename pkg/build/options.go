@@ -253,17 +253,6 @@ func WithNamespace(namespace string) Option {
 	}
 }
 
-// WithEnabledBuildOptions takes an array of strings representing enabled build
-// options.  These options are referenced in the options block of the Configuration,
-// and represent patches to the configured build process which are optionally
-// applied.
-func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
-	return func(b *Build) error {
-		b.EnabledBuildOptions = enabledBuildOptions
-		return nil
-	}
-}
-
 // WithCreateBuildLog indicates whether to generate a package.log file containing the
 // list of packages that were built.  Some packages may have been skipped
 // during the build if , so it can be hard to know exactly which packages were built

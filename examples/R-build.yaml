@@ -43,7 +43,7 @@ pipeline:
 
 update:
   enabled: true
-  version-transform:   
+  version-transform:
     - match: '_'
       replace: '-'
   github:

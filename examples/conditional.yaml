@@ -20,32 +20,12 @@ environment:
 pipeline:
   # at least one of the steps in the sub-pipeline below
   # must run for the build to pass
-  - assertions:
-      required-steps: 1
-    pipeline:
-      - if: ${{build.arch}} == 'x86_64'
-        runs: |
-          echo "build arch is x86_64!"
-      - if: ${{build.arch}} == 'aarch64'
-        runs: |
-          echo "build arch is aarch64!"
-
-  # this should print "package name matches 'hello'!"
-  - if: ${{package.name}} == 'hello'
+  - if-arch: 'x86_64'
     runs: |
-      echo "package name matches 'hello'!"
-
-  # this shouldn't print anything.
-  - if: ${{package.name}} != 'hello'
+      echo "build arch is x86_64!"
+  - if-arch: 'aarch64'
     runs: |
-      echo "package name doesn't match hello!"
-
-  # likewise, this shouldn't fetch
-  - uses: fetch
-    if: ${{package.name}} != 'hello'
-    with:
-      uri: https://ftp.gnu.org/gnu/hello/hello-${{package.version}}.tar.gz
-      expected-sha256: cf04af86dc085268c5f4470fbae49b18afbc221b78096aab842d934a76bad0ab
+      echo "build arch is aarch64!"
 
   - runs: |
       mkdir -p "${{targets.destdir}}"

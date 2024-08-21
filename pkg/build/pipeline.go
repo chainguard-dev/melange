@@ -172,6 +172,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	if pipeline.IfArch != "" && pipeline.IfArch != r.config.Arch {
 		log.Infof("skipping pipeline %q because it is not for arch %q", identity(pipeline), r.config.Arch)
+		return false, nil
 	}
 
 	if result, err := shouldRun(pipeline.If); !result {
@@ -219,6 +220,11 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	steps := 0
 
 	for _, p := range pipeline.Pipeline {
+		if p.IfArch != "" && p.IfArch != r.config.Arch {
+			log.Infof("skipping pipeline %q because it is not for arch %q", identity(p), r.config.Arch)
+			continue
+		}
+
 		if ran, err := r.runPipeline(ctx, &p); err != nil {
 			return false, fmt.Errorf("unable to run pipeline: %w", err)
 		} else if ran {

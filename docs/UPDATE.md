@@ -9,6 +9,7 @@ There are currently two ways to describe where to search for latest versions of 
 
  1. `release-monitor:` to query https://release-monitoring.org/
  2. `github:` to query https://github.com via it's graphql API
+ 3. `git:` to query local git checkout
 
 ## Release Monitor
 
@@ -58,6 +59,8 @@ update:
 ## Git
 
 Git uses vanilla git to check for updates.  This is useful for projects that use unsupported Git Provider APIs.
+
+The git repository queried is the first repository specified in the `pipeline: / uses: git-checkout` section of the melange config.
 
 It is recommended to use a `schedule` as described below when using Git as this is a less performant approach to using APIs such as GitHub and Release Monitoring.
 

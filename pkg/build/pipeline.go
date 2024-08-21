@@ -156,12 +156,12 @@ type pipelineRunner struct {
 	runner      container.Runner
 }
 
-func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) (bool, error) {
+func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) error {
 	log := clog.FromContext(ctx)
 
 	if pipeline.IfArch != "" && pipeline.IfArch != r.config.Arch {
 		log.Infof("skipping pipeline %q because it is not for arch %q", identity(pipeline), r.config.Arch)
-		return false, nil
+		return nil
 	}
 
 	debugOption := ' '
@@ -198,21 +198,17 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	command := buildEvalRunCommand(pipeline, debugOption, workdir, pipeline.Runs)
 	if err := r.runner.Run(ctx, r.config, envOverride, command...); err != nil {
 		if err := r.maybeDebug(ctx, pipeline.Runs, envOverride, command, workdir, err); err != nil {
-			return false, err
+			return err
 		}
 	}
-
-	steps := 0
 
 	for _, p := range pipeline.Pipeline {
-		if ran, err := r.runPipeline(ctx, &p); err != nil {
-			return false, fmt.Errorf("unable to run pipeline: %w", err)
-		} else if ran {
-			steps++
+		if err := r.runPipeline(ctx, &p); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
-	return true, nil
+	return nil
 }
 
 func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOverride map[string]string, cmd []string, workdir string, runErr error) error {
@@ -266,7 +262,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 
 func (r *pipelineRunner) runPipelines(ctx context.Context, pipelines []config.Pipeline) error {
 	for _, p := range pipelines {
-		if _, err := r.runPipeline(ctx, &p); err != nil {
+		if err := r.runPipeline(ctx, &p); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}

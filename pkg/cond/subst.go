@@ -22,6 +22,17 @@ import (
 	"github.com/ijt/goparsify"
 )
 
+// A VariableLookupFunction designates how variables should be
+// resolved when evaluating expressions.
+type VariableLookupFunction func(key string) (string, error)
+
+// NullLookup returns an empty value for any requested variable and
+// does not return an error.  This is the default variable lookup
+// function used by Evaluate.
+func NullLookup(key string) (string, error) {
+	return "", nil
+}
+
 func Subst(inputExpr string, lookupFns ...VariableLookupFunction) (string, error) {
 	lookupFn := NullLookup
 

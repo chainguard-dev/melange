@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
@@ -35,7 +34,7 @@ func (t *Test) Compile(ctx context.Context) error {
 	// TODO: Make this parameter go away when we revisit subtitutions.
 	flavor := "gnu"
 
-	sm, err := NewSubstitutionMap(&cfg, t.Arch, flavor, nil)
+	sm, err := NewSubstitutionMap(&cfg, t.Arch, flavor)
 	if err != nil {
 		return err
 	}
@@ -51,12 +50,6 @@ func (t *Test) Compile(ctx context.Context) error {
 
 	for i, sp := range cfg.Subpackages {
 		sm := sm.Subpackage(&sp)
-		if sp.If != "" {
-			sp.If, err = util.MutateAndQuoteStringFromMap(sm.Substitutions, sp.If)
-			if err != nil {
-				return fmt.Errorf("mutating subpackage if: %w", err)
-			}
-		}
 
 		// We want to evaluate this but not accumulate its deps.
 		if err := ignore.CompilePipelines(ctx, sm, sp.Pipeline); err != nil {
@@ -112,7 +105,7 @@ func (t *Test) Compile(ctx context.Context) error {
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
 func (b *Build) Compile(ctx context.Context) error {
 	cfg := b.Configuration
-	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.BuildFlavor(), b.EnabledBuildOptions)
+	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.BuildFlavor())
 	if err != nil {
 		return err
 	}
@@ -127,13 +120,6 @@ func (b *Build) Compile(ctx context.Context) error {
 
 	for i, sp := range cfg.Subpackages {
 		sm := sm.Subpackage(&sp)
-
-		if sp.If != "" {
-			sp.If, err = util.MutateAndQuoteStringFromMap(sm.Substitutions, sp.If)
-			if err != nil {
-				return fmt.Errorf("mutating subpackage if: %w", err)
-			}
-		}
 
 		if err := c.CompilePipelines(ctx, sm, sp.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q: %w", sp.Name, err)
@@ -277,13 +263,6 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		return fmt.Errorf("mutating runs: %w", err)
 	}
 
-	if pipeline.If != "" {
-		pipeline.If, err = util.MutateAndQuoteStringFromMap(mutated, pipeline.If)
-		if err != nil {
-			return fmt.Errorf("mutating if: %w", err)
-		}
-	}
-
 	// Compute external refs for this pipeline.
 	externalRefs, err := computeExternalRefs(uses, mutated)
 	if err != nil {
@@ -341,14 +320,6 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 	log := clog.FromContext(ctx)
 
 	id := identity(pipeline)
-
-	if pipeline.If != "" {
-		if result, err := cond.Evaluate(pipeline.If); err != nil {
-			return fmt.Errorf("evaluating conditional %q: %w", pipeline.If, err)
-		} else if !result {
-			return nil
-		}
-	}
 
 	if pipeline.Needs != nil {
 		for _, pkg := range pipeline.Needs.Packages {

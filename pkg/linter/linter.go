@@ -29,6 +29,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/chainguard-dev/clog"
 	"github.com/charmbracelet/log"
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
@@ -574,7 +575,7 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 	fsys := os.DirFS(path)
 
 	if err := lintPackageFS(ctx, packageName, fsys, warn); err != nil {
-		log.Warnf(err.Error())
+		log.Warnf("linting package FS: %s", err)
 	}
 	log.Infof("linting apk: %s", packageName)
 	return lintPackageFS(ctx, packageName, fsys, require)
@@ -582,6 +583,7 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 
 // Lint the given APK at the given path
 func LintAPK(ctx context.Context, path string, require, warn []string) error {
+	log := clog.FromContext(ctx)
 	if err := checkLinters(append(require, warn...)); err != nil {
 		return err
 	}
@@ -643,7 +645,7 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
 	if err := lintPackageFS(ctx, pkgname, exp.TarFS, warn); err != nil {
-		log.Warnf(err.Error())
+		log.Warnf("linting package FS: %s", err)
 	}
 	return lintPackageFS(ctx, pkgname, exp.TarFS, require)
 }

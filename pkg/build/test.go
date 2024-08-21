@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -342,20 +341,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	if err := t.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling test pipelines: %w", err)
 	}
-
-	// Filter out any subpackages with false If conditions.
-	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
-		result, err := shouldRun(sp.If)
-		if err != nil {
-			// This shouldn't give an error because we evaluate it in Compile.
-			panic(err)
-		}
-		if !result {
-			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
-		}
-
-		return !result
-	})
 
 	// Unless a specific architecture is requests, we run the test for all.
 	inarchs := len(pkg.TargetArchitecture) == 0

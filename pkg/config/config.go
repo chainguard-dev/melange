@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 
 	"github.com/chainguard-dev/clog"
@@ -344,21 +345,18 @@ type Pipeline struct {
 	Needs *Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
 	// Optional: Labels to apply to the pipeline
 	Label string `json:"label,omitempty" yaml:"label,omitempty"`
-	// Optional: A condition to evaluate before running the pipeline
-	If string `json:"if,omitempty" yaml:"if,omitempty"`
-	// Optional: Assertions to evaluate whether the pipeline was successful
-	Assertions *PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
 	// Optional: The working directory of the pipeline
 	//
 	// This defaults to the guests' build workspace (/home/build)
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
 	// Optional: environment variables to override the apko environment
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+
+	// Only execute this pipeline if the arch matches this arch.
+	IfArch types.Architecture `json:"if-arch,omitempty" yaml:"if-arch,omitempty"`
 }
 
 type Subpackage struct {
-	// Optional: A conditional statement to evaluate for the subpackage
-	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: The iterable used to generate multiple subpackages
 	Range string `json:"range,omitempty" yaml:"range,omitempty"`
 	// Required: Name of the subpackage
@@ -430,8 +428,6 @@ type Configuration struct {
 	// Optional: A list of transformations to create for the builtin template
 	// variables
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
-	// Optional: Deviations to the build
-	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
@@ -917,7 +913,6 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 				},
 				Options: sp.Options,
 				URL:     replacer.Replace(sp.URL),
-				If:      replacer.Replace(sp.If),
 			}
 
 			if script := sp.Scriptlets; script != nil {

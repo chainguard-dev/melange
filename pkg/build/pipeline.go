@@ -30,7 +30,6 @@ import (
 	purl "github.com/package-url/packageurl-go"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
@@ -73,7 +72,7 @@ func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMa
 	return &SubstitutionMap{nw}
 }
 
-func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string) (*SubstitutionMap, error) {
 	pkg := cfg.Package
 
 	nw := map[string]string{
@@ -119,16 +118,6 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture,
 		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
 	}
 
-	for k := range cfg.Options {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
-		nw[nk] = "false"
-	}
-
-	for _, opt := range buildOpts {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
-		nw[nk] = "true"
-	}
-
 	return &SubstitutionMap{nw}, nil
 }
 
@@ -167,11 +156,12 @@ type pipelineRunner struct {
 	runner      container.Runner
 }
 
-func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) (bool, error) {
+func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) error {
 	log := clog.FromContext(ctx)
 
-	if result, err := shouldRun(pipeline.If); !result {
-		return result, err
+	if pipeline.IfArch != "" && pipeline.IfArch != r.config.Arch {
+		log.Infof("skipping pipeline %q because it is not for arch %q", identity(pipeline), r.config.Arch)
+		return nil
 	}
 
 	debugOption := ' '
@@ -208,27 +198,17 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	command := buildEvalRunCommand(pipeline, debugOption, workdir, pipeline.Runs)
 	if err := r.runner.Run(ctx, r.config, envOverride, command...); err != nil {
 		if err := r.maybeDebug(ctx, pipeline.Runs, envOverride, command, workdir, err); err != nil {
-			return false, err
+			return err
 		}
 	}
-
-	steps := 0
 
 	for _, p := range pipeline.Pipeline {
-		if ran, err := r.runPipeline(ctx, &p); err != nil {
-			return false, fmt.Errorf("unable to run pipeline: %w", err)
-		} else if ran {
-			steps++
+		if err := r.runPipeline(ctx, &p); err != nil {
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
-	if assert := pipeline.Assertions; assert != nil {
-		if want := assert.RequiredSteps; want != steps {
-			return false, fmt.Errorf("pipeline did not run the required %d steps, only %d", want, steps)
-		}
-	}
-
-	return true, nil
+	return nil
 }
 
 func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOverride map[string]string, cmd []string, workdir string, runErr error) error {
@@ -282,25 +262,12 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 
 func (r *pipelineRunner) runPipelines(ctx context.Context, pipelines []config.Pipeline) error {
 	for _, p := range pipelines {
-		if _, err := r.runPipeline(ctx, &p); err != nil {
+		if err := r.runPipeline(ctx, &p); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
 	return nil
-}
-
-func shouldRun(ifs string) (bool, error) {
-	if ifs == "" {
-		return true, nil
-	}
-
-	result, err := cond.Evaluate(ifs)
-	if err != nil {
-		return false, fmt.Errorf("evaluating if-conditional %q: %w", ifs, err)
-	}
-
-	return result, nil
 }
 
 // computeExternalRefs generates PURLs for subpipelines

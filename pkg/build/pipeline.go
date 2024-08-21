@@ -221,7 +221,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	for _, p := range pipeline.Pipeline {
 		if p.IfArch != "" && p.IfArch != r.config.Arch {
-			log.Infof("skipping pipeline %q because it is not for arch %q", identity(p), r.config.Arch)
+			log.Infof("skipping pipeline %q because it is not for arch %q", identity(&p), r.config.Arch)
 			continue
 		}
 

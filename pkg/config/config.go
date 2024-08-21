@@ -154,7 +154,7 @@ func (cfg *Configuration) applySubstitutionsForProvides() error {
 			var err error
 			sp.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
+				return fmt.Errorf("failed to apply replacement to %q provides %q: %w", sp.Name, prov, err)
 			}
 		}
 	}
@@ -166,20 +166,20 @@ func (cfg *Configuration) applySubstitutionsForPriorities() error {
 	var err error
 	cfg.Package.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ProviderPriority)
 	if err != nil {
-		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
+		return fmt.Errorf("failed to apply replacement to provider priority %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
 	}
 	cfg.Package.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ReplacesPriority)
 	if err != nil {
-		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
+		return fmt.Errorf("failed to apply replacement to replaces priority %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
 	}
 	for _, sp := range cfg.Subpackages {
 		sp.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ProviderPriority)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ProviderPriority, err)
+			return fmt.Errorf("failed to apply replacement to %q provider priority %q: %w", sp.Name, sp.Dependencies.ProviderPriority, err)
 		}
 		sp.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ReplacesPriority)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ReplacesPriority, err)
+			return fmt.Errorf("failed to apply replacement to %q replaces priority %q: %w", sp.Name, sp.Dependencies.ReplacesPriority, err)
 		}
 	}
 	return nil
@@ -194,15 +194,15 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 		var err error
 		cfg.Package.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to runtime %q: %w", runtime, err)
+			return fmt.Errorf("failed to apply replacement to runtime dependency %q: %w", runtime, err)
 		}
 	}
-	for _, srt := range cfg.Subpackages {
-		for i, runtime := range srt.Dependencies.Runtime {
+	for _, sp := range cfg.Subpackages {
+		for i, runtime := range sp.Dependencies.Runtime {
 			var err error
-			srt.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
+			sp.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to runtime %q: %w", runtime, err)
+				return fmt.Errorf("failed to apply replacement to %q runtime dependency %q: %w", sp.Name, runtime, err)
 			}
 		}
 	}
@@ -218,12 +218,12 @@ func (cfg *Configuration) applySubstitutionsForReplaces() error {
 			return fmt.Errorf("failed to apply replacement to replaces %q: %w", replaces, err)
 		}
 	}
-	for _, srt := range cfg.Subpackages {
-		for i, replaces := range srt.Dependencies.Replaces {
+	for _, sp := range cfg.Subpackages {
+		for i, replaces := range sp.Dependencies.Replaces {
 			var err error
-			srt.Dependencies.Replaces[i], err = util.MutateStringFromMap(nw, replaces)
+			sp.Dependencies.Replaces[i], err = util.MutateStringFromMap(nw, replaces)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to replaces %q: %w", replaces, err)
+				return fmt.Errorf("failed to apply replacement to %q replaces %q: %w", sp.Name, replaces, err)
 			}
 		}
 	}
@@ -248,6 +248,17 @@ func (cfg *Configuration) applySubstitutionsForPackages() error {
 			cfg.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
 			if err != nil {
 				return fmt.Errorf("failed to apply replacement to test package %q: %w", runtime, err)
+			}
+		}
+	}
+	for _, sp := range cfg.Subpackages {
+		if sp.Test != nil {
+			for i, runtime := range sp.Test.Environment.Contents.Packages {
+				var err error
+				sp.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
+				if err != nil {
+					return fmt.Errorf("failed to apply replacement to subpackage %q test %q: %w", sp.Name, runtime, err)
+				}
 			}
 		}
 	}
@@ -1245,7 +1256,7 @@ func (cfg Configuration) validate() error {
 	// TODO: try to validate value of .package.version
 
 	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
-		return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+		return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 	}
 	if err := validatePipelines(cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
@@ -1271,7 +1282,7 @@ func (cfg Configuration) validate() error {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}
 		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
-			return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
 		if err := validatePipelines(sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}

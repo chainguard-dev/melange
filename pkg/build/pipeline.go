@@ -170,8 +170,12 @@ type pipelineRunner struct {
 func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) (bool, error) {
 	log := clog.FromContext(ctx)
 
+	if pipeline.IfArch != "" && pipeline.IfArch != r.config.Arch {
+		log.Infof("skipping pipeline %q because it is not for arch %q", identity(pipeline), r.config.Arch)
+	}
+
 	if result, err := shouldRun(pipeline.If); !result {
-		return result, err
+		return false, err
 	}
 
 	debugOption := ' '

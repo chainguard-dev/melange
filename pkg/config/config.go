@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 
 	"github.com/chainguard-dev/clog"
@@ -354,6 +355,9 @@ type Pipeline struct {
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
 	// Optional: environment variables to override the apko environment
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+
+	// Optional: Only run the pipeline if the runtime architecture matches this architecture.
+	IfArch types.Architecture `json:"if-arch,omitempty" yaml:"if-arch,omitempty"`
 }
 
 type Subpackage struct {

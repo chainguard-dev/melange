@@ -170,8 +170,8 @@ type pipelineRunner struct {
 func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) (bool, error) {
 	log := clog.FromContext(ctx)
 
-	if pipeline.IfArch != "" && pipeline.IfArch != r.config.Arch {
-		log.Infof("skipping pipeline %q because it is not for arch %q", identity(pipeline), r.config.Arch)
+	if pipeline.IfArch != "" && pipeline.IfArch.ToAPK() != r.config.Arch.ToAPK() {
+		log.Warnf("skipping %q because runtime arch %q does not match if-arch:%q", identity(pipeline), r.config.Arch.ToAPK(), pipeline.IfArch.ToAPK())
 		return false, nil
 	}
 

@@ -490,7 +490,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		}
 
 		if err := t.Runner.StartPod(ctx, subCfg); err != nil {
-			return fmt.Errorf("unable to start subpackage test pod: %w", err)
+			return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
 		}
 		if !t.DebugRunner {
 			defer func() {

@@ -188,6 +188,8 @@ subpackages:
         working-directory: ${{vars.buildLocation}}/subdir/${{range.key}}/${{range.value}}
         runs: |
           echo "$PWD"
+        pipeline:
+          - runs: exit 1
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -201,6 +203,8 @@ subpackages:
 	require.Equal(t, cfg.Subpackages[1].Pipeline[0].WorkDir, "/home/build/foo/subdir/b/20")
 	require.Equal(t, cfg.Subpackages[0].Pipeline[0].Needs.Packages[0], "a")
 	require.Equal(t, cfg.Subpackages[1].Pipeline[0].Needs.Packages[0], "b")
+	require.Equal(t, cfg.Subpackages[0].Pipeline[0].Pipeline[0].Runs, "exit 1")
+	require.Equal(t, cfg.Subpackages[1].Pipeline[0].Pipeline[0].Runs, "exit 1")
 }
 
 func Test_propagatePipelines(t *testing.T) {

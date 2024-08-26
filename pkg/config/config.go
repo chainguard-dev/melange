@@ -1061,6 +1061,8 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 
 	cfg.Package = replacePackage(replacer, detectedCommit, cfg.Package)
 
+	cfg.Pipeline = replacePipelines(replacer, cfg.Pipeline)
+
 	datas := make(map[string]DataItems, len(cfg.Data))
 	for _, d := range cfg.Data {
 		datas[d.Name] = d.Items

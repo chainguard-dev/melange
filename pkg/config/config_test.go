@@ -311,7 +311,7 @@ pipeline:
           - runs: pwd
           - uses: fetch
             with:
-              uri: https://example.com/foo.zip
+              uri: https://example.com/foo-${{package.version}}.zip
               expected-sha256: 123456
 `), 0644); err != nil {
 		t.Fatal(err)
@@ -328,6 +328,7 @@ pipeline:
 	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[0].WorkDir)
 	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[1].WorkDir)
 	require.Equal(t, "/home/build/baz", cfg.Pipeline[1].Pipeline[0].Pipeline[2].WorkDir)
+	require.Equal(t, "https://example.com/foo-0.0.1.zip", cfg.Pipeline[1].Pipeline[0].Pipeline[2].With["uri"])
 }
 
 func TestDuplicateSubpackage(t *testing.T) {

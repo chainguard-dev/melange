@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// bom captures the internal data model of the SBOMs melange produces
-// into a private, generalized bill of materials model (with relationship
-// data) designed to be transcoded to specific formats.
+// Package sbom captures the internal data model of the SBOMs melange produces
+// into a private, generalized bill of materials model (with relationship data)
+// designed to be transcoded to specific formats.
 package sbom
 
 import (

@@ -155,7 +155,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 
 	// Add the purl to the package
-	const extRefCatPackageManager = "PACKAGE_MANAGER"
+	const extRefCatPackageManager = "PACKAGE-MANAGER"
 	if p.Namespace != "" {
 		var q purl.Qualifiers
 		if p.Arch != "" {

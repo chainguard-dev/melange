@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+// Spec is the input specification for generating an SBOM.
 type Spec struct {
 	Path            string
 	PackageName     string
@@ -37,32 +38,31 @@ type Spec struct {
 	SourceDateEpoch time.Time
 }
 
-// Generate runs the main SBOM generation process.
+// Generate runs the main SBOM generation process, by analyzing the APK package
+// from the given spec, creating an SPDX SBOM document, and writing that
+// document to disk.
 func Generate(ctx context.Context, spec *Spec) error {
 	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
 	defer span.End()
 	log := clog.FromContext(ctx)
 
-	shouldRun, err := checkEnvironment(spec)
-	if err != nil {
+	if shouldRun, err := checkEnvironment(spec); err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)
-	}
-
-	if !shouldRun {
+	} else if !shouldRun {
 		log.Warnf("working directory not found, apk is empty")
 		return nil
 	}
 
-	sbomDoc := &bom{
-		Packages: []pkg{},
-	}
-
-	pkg, err := generateAPKPackage(spec)
+	p, err := generateAPKPackage(spec)
 	if err != nil {
-		return fmt.Errorf("generating main package: %w", err)
+		return fmt.Errorf("generating main APK package: %w", err)
 	}
 
-	sbomDoc.Packages = append(sbomDoc.Packages, pkg)
+	sbomDoc := &bom{
+		Packages: []pkg{
+			p,
+		},
+	}
 
 	// Finally, write the SBOM data to disk
 	if err := writeSBOM(ctx, spec, sbomDoc); err != nil {

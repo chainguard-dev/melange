@@ -24,14 +24,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/github/go-spdx/v2/spdxexp"
@@ -43,21 +42,42 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 )
 
-var validIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
+// invalidIDCharsRe is a regular expression that matches characters not
+// considered valid in SPDX identifiers.
+var invalidIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
 
-func stringToIdentifier(in string) (out string) {
+// stringToIdentifier converts a string to a valid SPDX identifier by replacing
+// invalid characters. Colons and slashes are replaced by dashes, and all other
+// invalid characters are replaced by their Unicode code point prefixed with
+// "C".
+//
+// Examples:
+//
+//	"foo:bar" -> "foo-bar"
+//	"foo/bar" -> "foo-bar"
+//	"foo bar" -> "fooC32bar"
+func stringToIdentifier(in string) string {
 	in = strings.ReplaceAll(in, ":", "-")
 	in = strings.ReplaceAll(in, "/", "-")
-	return validIDCharsRe.ReplaceAllStringFunc(in, func(s string) string {
-		r := ""
-		for i := 0; i < len(s); i++ {
-			uc, _ := utf8.DecodeRuneInString(string(s[i]))
-			r = fmt.Sprintf("%sC%d", r, uc)
+
+	invalidCharReplacer := func(s string) string {
+		sb := strings.Builder{}
+		for _, r := range s {
+			sb.WriteString(encodeInvalidRune(r))
 		}
-		return r
-	})
+		return sb.String()
+	}
+
+	return invalidIDCharsRe.ReplaceAllStringFunc(in, invalidCharReplacer)
 }
 
+func encodeInvalidRune(r rune) string {
+	return "C" + strconv.Itoa(int(r))
+}
+
+// checkEnvironment returns a bool indicating if Spec's Path exists. If the path
+// does not exist, it returns false and a nil error. If an error occurs while
+// checking the directory, it returns false and the error.
 func checkEnvironment(spec *Spec) (bool, error) {
 	dirPath, err := filepath.Abs(spec.Path)
 	if err != nil {
@@ -135,6 +155,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 
 	// Add the purl to the package
+	const extRefCatPackageManager = "PACKAGE_MANAGER"
 	if p.Namespace != "" {
 		var q purl.Qualifiers
 		if p.Arch != "" {
@@ -143,7 +164,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 			)
 		}
 		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
-			Category: "PACKAGE_MANAGER",
+			Category: extRefCatPackageManager,
 			Locator: purl.NewPackageURL(
 				"apk", p.Namespace, p.Name, p.Version, q, "",
 			).ToString(),
@@ -152,7 +173,7 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 	for _, purl := range p.ExternalRefs {
 		spdxPkg.ExternalRefs = append(spdxPkg.ExternalRefs, spdx.ExternalRef{
-			Category: "PACKAGE_MANAGER",
+			Category: extRefCatPackageManager,
 			Locator:  purl.ToString(),
 			Type:     "purl",
 		})
@@ -241,7 +262,9 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 	return &spdxDoc, nil
 }
 
-// writeSBOM writes the SBOM to the apk filesystem
+// writeSBOM constructs an SPDX document from the given bom, encodes the
+// document to JSON, and writes it to the filesystem in the directory
+// `/var/lib/db/sbom`.
 func writeSBOM(ctx context.Context, spec *Spec, doc *bom) error {
 	spdxDoc, err := buildDocumentSPDX(ctx, spec, doc)
 	if err != nil {
@@ -253,16 +276,17 @@ func writeSBOM(ctx context.Context, spec *Spec, doc *bom) error {
 		return fmt.Errorf("getting absolute directory path: %w", err)
 	}
 
-	apkSBOMdir := "/var/lib/db/sbom"
-	if err := os.MkdirAll(filepath.Join(dirPath, apkSBOMdir), os.FileMode(0755)); err != nil {
+	const apkSBOMDir = "/var/lib/db/sbom"
+	if err := os.MkdirAll(filepath.Join(dirPath, apkSBOMDir), os.FileMode(0755)); err != nil {
 		return fmt.Errorf("creating SBOM directory in apk filesystem: %w", err)
 	}
 
-	apkSBOMpath := filepath.Join(
-		dirPath, apkSBOMdir,
+	apkSBOMPath := filepath.Join(
+		dirPath,
+		apkSBOMDir,
 		fmt.Sprintf("%s-%s.spdx.json", spec.PackageName, spec.PackageVersion),
 	)
-	f, err := os.Create(apkSBOMpath)
+	f, err := os.Create(apkSBOMPath)
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}
@@ -276,29 +300,4 @@ func writeSBOM(ctx context.Context, spec *Spec, doc *bom) error {
 	}
 
 	return nil
-}
-
-// getDirectoryTree reads a directory and returns a list of strings of all files init
-func getDirectoryTree(dirPath string) ([]string, error) {
-	fileList := []string{}
-
-	if err := fs.WalkDir(os.DirFS(dirPath), ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-
-		if d.Type() == os.ModeSymlink {
-			return nil
-		}
-
-		fileList = append(fileList, filepath.Join(string(filepath.Separator), path))
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("buiding directory tree: %w", err)
-	}
-	sort.Strings(fileList)
-	return fileList, nil
 }

@@ -574,7 +574,7 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 	fsys := os.DirFS(path)
 
 	if err := lintPackageFS(ctx, packageName, fsys, warn); err != nil {
-		log.Warnf(err.Error())
+		log.Warnf("%s", err.Error())
 	}
 	log.Infof("linting apk: %s", packageName)
 	return lintPackageFS(ctx, packageName, fsys, require)
@@ -643,7 +643,7 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
 	if err := lintPackageFS(ctx, pkgname, exp.TarFS, warn); err != nil {
-		log.Warnf(err.Error())
+		log.Warnf("%s", err.Error())
 	}
 	return lintPackageFS(ctx, pkgname, exp.TarFS, require)
 }

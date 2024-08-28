@@ -871,8 +871,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		sp := sp
 
 		log.Infof("generating SBOM for subpackage %s", sp.Name)
-		if err := sbom.Generate(ctx, &sbom.Spec{
-			Path:            filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
+
+		apkFSPath := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
+		if err := sbom.GenerateAndWrite(ctx, apkFSPath, &sbom.Spec{
 			PackageName:     sp.Name,
 			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 			License:         b.Configuration.Package.LicenseExpression(),
@@ -888,8 +889,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	log.Infof("generating SBOM for %s", b.Configuration.Package.Name)
-	if err := sbom.Generate(ctx, &sbom.Spec{
-		Path:            filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
+
+	apkFSPath := filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name)
+	if err := sbom.GenerateAndWrite(ctx, apkFSPath, &sbom.Spec{
 		PackageName:     b.Configuration.Package.Name,
 		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 		License:         b.Configuration.Package.LicenseExpression(),

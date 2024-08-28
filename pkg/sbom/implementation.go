@@ -75,11 +75,12 @@ func encodeInvalidRune(r rune) string {
 	return "C" + strconv.Itoa(int(r))
 }
 
-// checkEnvironment returns a bool indicating if Spec's Path exists. If the path
-// does not exist, it returns false and a nil error. If an error occurs while
-// checking the directory, it returns false and the error.
-func checkEnvironment(spec *Spec) (bool, error) {
-	dirPath, err := filepath.Abs(spec.Path)
+// checkEnvironment returns a bool indicating if the specified path for an APK's
+// filesystem exists. If the path does not exist, it returns false and a nil
+// error. If an error occurs while checking the directory, it returns false and
+// the error.
+func checkEnvironment(apkFSPath string) (bool, error) {
+	dirPath, err := filepath.Abs(apkFSPath)
 	if err != nil {
 		return false, fmt.Errorf("getting absolute directory path: %w", err)
 	}
@@ -95,14 +96,14 @@ func checkEnvironment(spec *Spec) (bool, error) {
 	return true, nil
 }
 
-// generateAPKPackage generates the sbom package representing the apk
-func generateAPKPackage(spec *Spec) (pkg, error) {
+// generateAPKPackage generates the sbom package representing the apk.
+func generateAPKPackage(spec *Spec) (*pkg, error) {
 	if spec.PackageName == "" {
-		return pkg{}, errors.New("unable to generate package, name not specified")
+		return nil, errors.New("package name not specified")
 	}
 
 	supplier := "Organization: " + cases.Title(language.English).String(spec.Namespace)
-	newPackage := pkg{
+	newPackage := &pkg{
 		id:               stringToIdentifier(fmt.Sprintf("%s-%s", spec.PackageName, spec.PackageVersion)),
 		FilesAnalyzed:    false,
 		Name:             spec.PackageName,
@@ -209,8 +210,8 @@ func sbomHasRelationship(spdxDoc *spdx.Document, bomRel relationship) bool {
 	return false
 }
 
-// buildDocumentSPDX creates an SPDX 2.3 document from our generic representation
-func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Document, error) {
+// newSPDXDocument creates an SPDX 2.3 document from our generic representation.
+func newSPDXDocument(ctx context.Context, spec *Spec, p *pkg) (*spdx.Document, error) {
 	log := clog.FromContext(ctx)
 
 	h := sha1.New()
@@ -228,9 +229,11 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 			},
 			LicenseListVersion: "3.22", // https://spdx.org/licenses/
 		},
-		DataLicense:          "CC0-1.0",
-		Namespace:            "https://spdx.org/spdxdocs/chainguard/melange/" + hex.EncodeToString(h.Sum(nil)),
-		DocumentDescribes:    []string{},
+		DataLicense: "CC0-1.0",
+		Namespace:   "https://spdx.org/spdxdocs/chainguard/melange/" + hex.EncodeToString(h.Sum(nil)),
+		DocumentDescribes: []string{
+			stringToIdentifier(p.ID()),
+		},
 		Packages:             []spdx.Package{},
 		Relationships:        []spdx.Relationship{},
 		ExternalDocumentRefs: []spdx.ExternalDocumentRef{},
@@ -254,39 +257,28 @@ func buildDocumentSPDX(ctx context.Context, spec *Spec, doc *bom) (*spdx.Documen
 		}
 	}
 
-	for _, p := range doc.Packages {
-		spdxDoc.DocumentDescribes = append(spdxDoc.DocumentDescribes, stringToIdentifier(p.ID()))
-		addPackage(&spdxDoc, &p)
-	}
+	addPackage(&spdxDoc, p)
 
 	return &spdxDoc, nil
 }
 
-// writeSBOM constructs an SPDX document from the given bom, encodes the
-// document to JSON, and writes it to the filesystem in the directory
-// `/var/lib/db/sbom`.
-func writeSBOM(ctx context.Context, spec *Spec, doc *bom) error {
-	spdxDoc, err := buildDocumentSPDX(ctx, spec, doc)
-	if err != nil {
-		return fmt.Errorf("building SPDX document: %w", err)
-	}
-
-	dirPath, err := filepath.Abs(spec.Path)
-	if err != nil {
-		return fmt.Errorf("getting absolute directory path: %w", err)
-	}
-
-	const apkSBOMDir = "/var/lib/db/sbom"
-	if err := os.MkdirAll(filepath.Join(dirPath, apkSBOMDir), os.FileMode(0755)); err != nil {
-		return fmt.Errorf("creating SBOM directory in apk filesystem: %w", err)
-	}
-
-	apkSBOMPath := filepath.Join(
-		dirPath,
-		apkSBOMDir,
-		fmt.Sprintf("%s-%s.spdx.json", spec.PackageName, spec.PackageVersion),
+func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
+	return filepath.Join(
+		sbomDirPath,
+		fmt.Sprintf("%s-%s.spdx.json", pkgName, pkgVersion),
 	)
-	f, err := os.Create(apkSBOMPath)
+}
+
+// writeSBOM encodes the given SPDX document to JSON and writes it to the
+// filesystem in the directory `/var/lib/db/sbom`.
+func writeSBOM(apkFSPath, pkgName, pkgVersion string, spdxDoc *spdx.Document) error {
+	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
+	if err := os.MkdirAll(sbomDirPath, os.FileMode(0755)); err != nil {
+		return fmt.Errorf("creating SBOM directory: %w", err)
+	}
+
+	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
+	f, err := os.Create(sbomPath)
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}

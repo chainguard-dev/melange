@@ -23,10 +23,6 @@ import (
 	purl "github.com/package-url/packageurl-go"
 )
 
-type bom struct {
-	Packages []pkg
-}
-
 type element interface {
 	ID() string
 }

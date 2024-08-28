@@ -97,8 +97,9 @@ func checkPathExists(p string) (bool, error) {
 	return true, nil
 }
 
-// generateAPKPackage generates the sbom package representing the apk.
-func generateAPKPackage(spec *Spec) (*pkg, error) {
+// generateSBOMDataForAPKPackage puts together the normalized SBOM
+// representation for the APK package.
+func generateSBOMDataForAPKPackage(spec *Spec) (*pkg, error) {
 	if spec.PackageName == "" {
 		return nil, errors.New("package name not specified")
 	}

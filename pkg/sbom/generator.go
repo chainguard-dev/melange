@@ -67,7 +67,7 @@ func GenerateAndWrite(ctx context.Context, apkFSPath string, spec *Spec) error {
 
 // GenerateSPDX creates an SPDX 2.3 document from the given Spec.
 func GenerateSPDX(ctx context.Context, spec *Spec) (*spdx.Document, error) {
-	p, err := generateAPKPackage(spec)
+	p, err := generateSBOMDataForAPKPackage(spec)
 	if err != nil {
 		return nil, fmt.Errorf("generating main APK package: %w", err)
 	}

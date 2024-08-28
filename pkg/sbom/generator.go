@@ -46,7 +46,7 @@ func GenerateAndWrite(ctx context.Context, apkFSPath string, spec *Spec) error {
 	defer span.End()
 	log := clog.FromContext(ctx)
 
-	if shouldRun, err := checkEnvironment(apkFSPath); err != nil {
+	if shouldRun, err := checkPathExists(apkFSPath); err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)
 	} else if !shouldRun {
 		log.Warnf("working directory not found, apk is empty")

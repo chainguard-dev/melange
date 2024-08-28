@@ -75,14 +75,13 @@ func encodeInvalidRune(r rune) string {
 	return "C" + strconv.Itoa(int(r))
 }
 
-// checkEnvironment returns a bool indicating if the specified path for an APK's
-// filesystem exists. If the path does not exist, it returns false and a nil
-// error. If an error occurs while checking the directory, it returns false and
-// the error.
-func checkEnvironment(apkFSPath string) (bool, error) {
-	dirPath, err := filepath.Abs(apkFSPath)
+// checkPathExists returns a bool indicating if the specified path exists. If
+// the path does not exist, it returns false and a nil error. If an error occurs
+// while checking the directory, it returns false and the error.
+func checkPathExists(p string) (bool, error) {
+	dirPath, err := filepath.Abs(p)
 	if err != nil {
-		return false, fmt.Errorf("getting absolute directory path: %w", err)
+		return false, fmt.Errorf("getting absolute path: %w", err)
 	}
 
 	// Check if directory exists
@@ -90,7 +89,7 @@ func checkEnvironment(apkFSPath string) (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("checking if working directory exists: %w", err)
+		return false, fmt.Errorf("stat: %w", err)
 	}
 
 	return true, nil

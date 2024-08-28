@@ -721,6 +721,9 @@ func WithVarsFileForParsing(path string) ConfigurationParsingOption {
 }
 
 func detectCommit(ctx context.Context, dirPath string) string {
+	// TODO(luhring): Heads up, a similar implementation was added after this one.
+	//  We should unify these implementations. See Build.ConfigFileExternalRef.
+
 	log := clog.FromContext(ctx)
 	// Best-effort detection of current commit, to be used when not specified in the config file
 

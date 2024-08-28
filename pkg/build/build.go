@@ -497,6 +497,10 @@ func (b *Build) IsBuildLess() bool {
 // ConfigFileExternalRef calculates ExternalRef for the melange config
 // file itself.
 func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
+	// TODO(luhring): This is now the second implementation of finding the commit
+	//  for the config file (the first being the "detectedCommit" logic. We should
+	//  unify these.
+
 	// configFile must exist
 	configpath, err := filepath.Abs(b.ConfigFile)
 	if err != nil {
@@ -508,6 +512,11 @@ func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
 	if err != nil {
 		return nil, nil
 	}
+
+	// TODO(luhring): This is brittle and assumes a specific git remote configuration.
+	//  We should consider a more general approach, and this may be moot when we
+	//  unify our git state detection mechanisms.
+
 	// If no remote origin, skip (local git repo)
 	remote, err := r.Remote("origin")
 	if err != nil {
@@ -871,8 +880,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		sp := sp
 
 		log.Infof("generating SBOM for subpackage %s", sp.Name)
-		if err := sbom.Generate(ctx, &sbom.Spec{
-			Path:            filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
+
+		apkFSPath := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
+		if err := sbom.GenerateAndWrite(ctx, apkFSPath, &sbom.Spec{
 			PackageName:     sp.Name,
 			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 			License:         b.Configuration.Package.LicenseExpression(),
@@ -888,8 +898,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	log.Infof("generating SBOM for %s", b.Configuration.Package.Name)
-	if err := sbom.Generate(ctx, &sbom.Spec{
-		Path:            filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
+
+	apkFSPath := filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name)
+	if err := sbom.GenerateAndWrite(ctx, apkFSPath, &sbom.Spec{
 		PackageName:     b.Configuration.Package.Name,
 		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
 		License:         b.Configuration.Package.LicenseExpression(),

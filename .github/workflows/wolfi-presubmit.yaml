@@ -63,7 +63,7 @@ jobs:
           - tini
           - lzo
           - bubblewrap
-          - gdk-pixbuf
+#          - gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
           - gitsign
           - guac
           - mdbook

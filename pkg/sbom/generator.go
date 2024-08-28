@@ -19,14 +19,15 @@ import (
 	"fmt"
 	"time"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"go.opentelemetry.io/otel"
 )
 
-// Spec is the input specification for generating an SBOM.
+// Spec describes the metadata of an APK package for which an SBOM should be
+// created.
 type Spec struct {
-	Path            string
 	PackageName     string
 	PackageVersion  string
 	License         string // Full SPDX license expression
@@ -38,36 +39,43 @@ type Spec struct {
 	SourceDateEpoch time.Time
 }
 
-// Generate runs the main SBOM generation process, by analyzing the APK package
-// from the given spec, creating an SPDX SBOM document, and writing that
-// document to disk.
-func Generate(ctx context.Context, spec *Spec) error {
+// GenerateAndWrite creates an SBOM for the APK package described by the given
+// Spec and writes the SBOM to the APK's filesystem.
+func GenerateAndWrite(ctx context.Context, apkFSPath string, spec *Spec) error {
 	_, span := otel.Tracer("melange").Start(ctx, "GenerateSBOM")
 	defer span.End()
 	log := clog.FromContext(ctx)
 
-	if shouldRun, err := checkEnvironment(spec); err != nil {
+	if shouldRun, err := checkPathExists(apkFSPath); err != nil {
 		return fmt.Errorf("checking SBOM environment: %w", err)
 	} else if !shouldRun {
 		log.Warnf("working directory not found, apk is empty")
 		return nil
 	}
 
-	p, err := generateAPKPackage(spec)
+	document, err := GenerateSPDX(ctx, spec)
 	if err != nil {
-		return fmt.Errorf("generating main APK package: %w", err)
+		return fmt.Errorf("generating SPDX document: %w", err)
 	}
 
-	sbomDoc := &bom{
-		Packages: []pkg{
-			p,
-		},
-	}
-
-	// Finally, write the SBOM data to disk
-	if err := writeSBOM(ctx, spec, sbomDoc); err != nil {
+	if err := writeSBOM(apkFSPath, spec.PackageName, spec.PackageVersion, document); err != nil {
 		return fmt.Errorf("writing sbom to disk: %w", err)
 	}
 
 	return nil
+}
+
+// GenerateSPDX creates an SPDX 2.3 document from the given Spec.
+func GenerateSPDX(ctx context.Context, spec *Spec) (*spdx.Document, error) {
+	p, err := generateSBOMDataForAPKPackage(spec)
+	if err != nil {
+		return nil, fmt.Errorf("generating main APK package: %w", err)
+	}
+
+	doc, err := newSPDXDocument(ctx, spec, p)
+	if err != nil {
+		return nil, fmt.Errorf("creating SPDX document: %w", err)
+	}
+
+	return doc, nil
 }

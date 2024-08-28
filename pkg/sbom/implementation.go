@@ -42,6 +42,8 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 )
 
+const extRefCatPackageManager = "PACKAGE-MANAGER"
+
 // invalidIDCharsRe is a regular expression that matches characters not
 // considered valid in SPDX identifiers.
 var invalidIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
@@ -155,7 +157,6 @@ func addPackage(doc *spdx.Document, p *pkg) {
 	}
 
 	// Add the purl to the package
-	const extRefCatPackageManager = "PACKAGE-MANAGER"
 	if p.Namespace != "" {
 		var q purl.Qualifiers
 		if p.Arch != "" {

@@ -50,6 +50,7 @@ func TestGenerateManifest(t *testing.T) {
 		assert.EqualValues(t, got.Package.Epoch, 0)
 		assert.Equal(t, got.Package.Description, "Low-level, data-driven core of boto 3.")
 		assert.Equal(t, got.Package.Dependencies.Runtime, []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]})
+		assert.Equal(t, "0", got.Package.Dependencies.ProviderPriority)
 
 		// Check Package.Copyright
 		assert.Equal(t, len(got.Package.Copyright), 1)
@@ -60,16 +61,39 @@ func TestGenerateManifest(t *testing.T) {
 			"build-base",
 			"busybox",
 			"ca-certificates-bundle",
+			"py3-supported-pip",
 			"wolfi-base",
 		})
 
 		// Check Pipeline
-		assert.Equal(t, len(got.Pipeline), 3)
+		assert.Equal(t, 1, len(got.Pipeline))
 
 		// Check Pipeline - fetch
 		assert.Equal(t, got.Pipeline[0].Uses, "fetch")
 
+		// Check Subpackages
+		assert.Equal(t, "py-versions", got.Subpackages[0].Range)
+		assert.Equal(t, "py3-${{vars.pypi-package}}", got.Subpackages[0].Dependencies.Provides[0])
+		assert.Equal(t, "py/pip-build-install", got.Subpackages[0].Pipeline[0].Uses)
+		var expectedRuntimeDeps []string = []string{
+			"py3.10-jmespath",
+			"py3.10-python-dateutil",
+			"py3.10-urllib3",
+			"python-3.10",
+		}
+		// Subpackages aren't added to this array in the same order every time causing spurious
+		// test failues. To fix this Just check what is seen and replace the deps with the version string.
+		var replacementPyVersion = got.Subpackages[0].Dependencies.Runtime[0][2:6]
+		for idx, dep := range expectedRuntimeDeps {
+			expectedRuntimeDeps[idx] = strings.Replace(dep, "3.10", replacementPyVersion, 1)
+		}
+
+		assert.Equal(t, expectedRuntimeDeps, got.Subpackages[0].Dependencies.Runtime)
+		assert.Equal(t, "${{range.value}}", got.Subpackages[0].Dependencies.ProviderPriority)
 		releases, ok := pythonctx.Package.Releases[pythonctx.PackageVersion]
+
+		assert.Equal(t, "python/import", got.Subpackages[0].Test.Pipeline[0].Uses)
+		assert.Equal(t, "${{vars.module_name}}", got.Subpackages[0].Test.Pipeline[0].With["import"])
 
 		// If the key exists
 		assert.True(t, ok)
@@ -89,9 +113,6 @@ func TestGenerateManifest(t *testing.T) {
 			"uri":             strings.ReplaceAll(tempURI, pythonctx.PackageVersion, "${{package.version}}"),
 		})
 
-		// Check Pipeline - runs
-		assert.Equal(t, got.Pipeline[1].Uses, "python/build-wheel")
-		assert.Equal(t, got.Pipeline[2].Uses, "strip")
 	}
 }
 
@@ -117,11 +138,8 @@ func TestGenerateManifestPreserveURI(t *testing.T) {
 		assert.Equal(t, got.Package.Description,
 			"Backported and Experimental Type Hints for Python 3.8+",
 		)
-		assert.Equal(t, got.Package.Dependencies.Runtime,
-			[]string{
-				"python-" + versions[i],
-			},
-		)
+		assert.Equal(t, []string{}, got.Package.Dependencies.Runtime)
+		assert.Equal(t, "0", got.Package.Dependencies.ProviderPriority)
 
 		// Check Package.Copyright
 		assert.Equal(t, len(got.Package.Copyright), 1)
@@ -132,11 +150,12 @@ func TestGenerateManifestPreserveURI(t *testing.T) {
 			"build-base",
 			"busybox",
 			"ca-certificates-bundle",
+			"py3-supported-pip",
 			"wolfi-base",
 		})
 
 		// Check Pipeline
-		assert.Equal(t, len(got.Pipeline), 3)
+		assert.Equal(t, 1, len(got.Pipeline))
 
 		// Check Pipeline - fetch
 		assert.Equal(t, got.Pipeline[0].Uses, "fetch")
@@ -160,8 +179,8 @@ func TestGenerateManifestPreserveURI(t *testing.T) {
 			"uri":             "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-${{package.version}}.tar.gz",
 		})
 
-		// Check Pipeline - runs
-		assert.Equal(t, got.Pipeline[1].Uses, "python/build-wheel")
-		assert.Equal(t, got.Pipeline[2].Uses, "strip")
+		// Check Tests
+		assert.Equal(t, "python/import", got.Test.Pipeline[0].Uses)
+		assert.Equal(t, "${{vars.module_name}}", got.Test.Pipeline[0].With["import"])
 	}
 }

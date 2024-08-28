@@ -136,7 +136,7 @@ func TestFindDependencies(t *testing.T) {
 	}
 }
 
-// TestGeneratePackage tests when a gem has multiple licenses
+// TestGeneratePackage tests when a python package has multiple licenses
 func TestGeneratePackage(t *testing.T) {
 	for i := range versions {
 		pythonctxs, err := SetupContext(versions[i])
@@ -157,11 +157,12 @@ func TestGeneratePackage(t *testing.T) {
 				},
 			},
 			Dependencies: config.Dependencies{
-				Runtime: []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]},
+				Runtime:          []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]},
+				ProviderPriority: "0",
 			},
 		}
 
-		assert.Equal(t, got, expected)
+		assert.Equal(t, expected, got)
 	}
 }
 
@@ -177,7 +178,7 @@ func SetupContext(version string) ([]*PythonContext, error) {
 	botocorepythonctx.PackageVersion = "1.29.78"
 	botocorepythonctx.PythonVersion = version
 
-	// Read the gem meta into
+	// Read the pypi meta into
 	data, err := os.ReadFile(filepath.Join(botocoreMeta, "json"))
 	if err != nil {
 		return nil, err
@@ -190,7 +191,7 @@ func SetupContext(version string) ([]*PythonContext, error) {
 	}
 
 	botocorepythonctx.Package = botocorePackageMeta
-	botocorepythonctx.Package.Dependencies = []string{"py" + version + "-jmespath", "py" + version + "-python-dateutil", "py" + version + "-urllib3"}
+	botocorepythonctx.Package.Dependencies = []string{"py" + version + "-jmespath", "py" + version + "-python-dateutil", "py" + version + "-urllib3", "python-" + version}
 
 	jsonschemapythonctx, err := New("jsonschema")
 	if err != nil {
@@ -203,7 +204,7 @@ func SetupContext(version string) ([]*PythonContext, error) {
 	jsonschemapythonctx.PackageVersion = "4.17.3"
 	jsonschemapythonctx.PythonVersion = version
 
-	// Read the gem meta into
+	// Read the pypi meta into
 	data, err = os.ReadFile(filepath.Join(jsonschemaMeta, "json"))
 	if err != nil {
 		return nil, err
@@ -238,7 +239,7 @@ func SetupContextPreserveURI(version string) ([]*PythonContext, error) {
 	typingextctx.PythonVersion = version
 	typingextctx.PreserveBaseURI = true
 
-	// Read the gem meta into
+	// Read the pypi package meta into
 	data, err := os.ReadFile(filepath.Join(typingextMeta, "json"))
 	if err != nil {
 		return nil, err
@@ -291,6 +292,7 @@ func TestGenerateEnvironment(t *testing.T) {
 				"build-base",
 				"busybox",
 				"ca-certificates-bundle",
+				"py3-supported-pip",
 				"wolfi-base",
 			},
 		},
@@ -314,6 +316,7 @@ func TestGenerateEnvironment(t *testing.T) {
 				"build-base",
 				"busybox",
 				"ca-certificates-bundle",
+				"py3-supported-pip",
 				"wolfi-base",
 			},
 		},

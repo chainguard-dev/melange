@@ -273,7 +273,11 @@ func (c *PythonContext) generateManifest(ctx context.Context, pack Package, vers
 	// Generate each field in the manifest
 	generated.GeneratedFromComment = pack.Info.ProjectURL
 	generated.Package = c.generatePackage(ctx, pack, version)
+	generated.Data = c.generateRange(ctx)
+	generated.Vars = c.generateVars(pack)
+	generated.Subpackages = c.generateSubpackages(ctx, pack)
 	generated.Environment = c.generateEnvironment(ctx, pack)
+	generated.Test = c.generateTest(ctx, pack)
 
 	pipelines, err := c.generatePipeline(ctx, pack, version, ghVersions)
 	if err != nil {
@@ -333,8 +337,6 @@ func (c *PythonContext) generatePackage(ctx context.Context, pack Package, versi
 
 	log.Infof("[%s] Run time Deps %v", pack.Info.Name, pack.Dependencies)
 
-	pack.Dependencies = append(pack.Dependencies, "python-"+c.PythonVersion)
-
 	pkg := config.Package{
 		Name:        fmt.Sprintf("py%s-%s", c.PythonVersion, pack.Info.Name),
 		Version:     version,
@@ -342,7 +344,8 @@ func (c *PythonContext) generatePackage(ctx context.Context, pack Package, versi
 		Description: pack.Info.Summary,
 		Copyright:   []config.Copyright{},
 		Dependencies: config.Dependencies{
-			Runtime: pack.Dependencies,
+			Runtime:          pack.Dependencies,
+			ProviderPriority: "0",
 		},
 	}
 
@@ -363,6 +366,7 @@ func (c *PythonContext) generateEnvironment(ctx context.Context, pack Package) a
 		"build-base",
 		"busybox",
 		"ca-certificates-bundle",
+		"py3-supported-pip",
 		"wolfi-base",
 	}
 
@@ -455,16 +459,90 @@ func (c *PythonContext) generatePipeline(ctx context.Context, pack Package, vers
 		})
 	}
 
-	pythonBuild := config.Pipeline{
-		Name: "Python Build",
-		Uses: "python/build-wheel",
-	}
-
-	strip := config.Pipeline{
-		Uses: "strip",
-	}
-	pipeline = append(pipeline, pythonBuild)
-	pipeline = append(pipeline, strip)
-
 	return pipeline, nil
+}
+
+// generateVars handles generated variables for multi version python generateSubpackages
+func (c *PythonContext) generateRange(ctx context.Context) []config.RangeData {
+	return []config.RangeData{{
+		Name: "py-versions",
+		Items: map[string]string{
+			"3.10": "310",
+			"3.11": "311",
+			"3.12": "312",
+		}},
+	}
+}
+
+// Generate the vars for pypi package name and pip
+// Set pypi-package and module_name to the same value because it's the most common case.
+// Someone else can fix it up if the build fails
+func (c *PythonContext) generateVars(pack Package) map[string]string {
+	return map[string]string{
+		"pypi-package": pack.Info.Name,
+		"module_name":  pack.Info.Name,
+	}
+}
+
+// generateSubpackages handles generating suibpackages field of the melange manifest
+func (c *PythonContext) generateSubpackages(ctx context.Context, pack Package) []config.Subpackage {
+	log := clog.FromContext(ctx)
+
+	log.Infof("[%s] Generating Subpackages", pack.Info.Name)
+
+	importTest := config.Test{
+		Pipeline: []config.Pipeline{config.Pipeline{
+			Name: "Import Test",
+			Uses: "python/import",
+			With: map[string]string{
+				"python": "python${{range.key}}",
+				"import": "${{vars.module_name}}",
+			},
+		},
+		},
+	}
+
+	pythonSubpackages := config.Subpackage{
+		Range: "py-versions",
+		Name:  "py${{range.key}}-${{vars.pypi-package}}",
+		Dependencies: config.Dependencies{
+			Runtime:          pack.Dependencies,
+			Provides:         []string{"py3-${{vars.pypi-package}}"},
+			ProviderPriority: "${{range.value}}",
+		},
+		Pipeline: []config.Pipeline{config.Pipeline{
+			Name: "Python Build",
+			Uses: "py/pip-build-install",
+			With: map[string]string{
+				"python": "python${{range.key}}",
+			},
+		},
+		},
+		Test: &importTest,
+	}
+
+	return []config.Subpackage{pythonSubpackages}
+}
+
+// generate file-level package test.  When building python packages for multiple
+// python versions we want to ensure that we don't generate -support packages with
+// contents in /bin as well as ensuring that people installing the unversioned package
+// receive on and only one version of the library
+func (c *PythonContext) generateTest(ctx context.Context, pack Package) *config.Test {
+	log := clog.FromContext(ctx)
+
+	log.Infof("[%s] Generating Tests", pack.Info.Name)
+
+	importTest := config.Test{
+		Pipeline: []config.Pipeline{config.Pipeline{
+			Name: "Import Test",
+			Uses: "python/import",
+			With: map[string]string{
+				"import": "${{vars.module_name}}",
+			},
+		},
+		},
+	}
+
+	return &importTest
 }

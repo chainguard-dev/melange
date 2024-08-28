@@ -497,6 +497,10 @@ func (b *Build) IsBuildLess() bool {
 // ConfigFileExternalRef calculates ExternalRef for the melange config
 // file itself.
 func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
+	// TODO(luhring): This is now the second implementation of finding the commit
+	//  for the config file (the first being the "detectedCommit" logic. We should
+	//  unify these.
+
 	// configFile must exist
 	configpath, err := filepath.Abs(b.ConfigFile)
 	if err != nil {
@@ -508,6 +512,11 @@ func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
 	if err != nil {
 		return nil, nil
 	}
+
+	// TODO(luhring): This is brittle and assumes a specific git remote configuration.
+	//  We should consider a more general approach, and this may be moot when we
+	//  unify our git state detection mechanisms.
+
 	// If no remote origin, skip (local git repo)
 	remote, err := r.Remote("origin")
 	if err != nil {

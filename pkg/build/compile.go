@@ -25,7 +25,6 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
-	purl "github.com/package-url/packageurl-go"
 	"gopkg.in/yaml.v3"
 )
 
@@ -178,16 +177,12 @@ func (b *Build) Compile(ctx context.Context) error {
 		te.Packages = append(te.Packages, b.Configuration.Package.Name)
 	}
 
-	b.externalRefs = c.ExternalRefs
-
 	return nil
 }
 
 type Compiled struct {
 	PipelineDirs []string
-
 	Needs        []string
-	ExternalRefs []purl.PackageURL
 }
 
 func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
@@ -286,14 +281,6 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 			return fmt.Errorf("mutating if: %w", err)
 		}
 	}
-
-	// Compute external refs for this pipeline.
-	externalRefs, err := computeExternalRefs(uses, mutated)
-	if err != nil {
-		return fmt.Errorf("computing external refs: %w", err)
-	}
-
-	c.ExternalRefs = append(c.ExternalRefs, externalRefs...)
 
 	for i := range pipeline.Pipeline {
 		p := &pipeline.Pipeline[i]

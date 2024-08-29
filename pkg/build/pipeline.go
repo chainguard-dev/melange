@@ -26,14 +26,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chainguard-dev/clog"
-	purl "github.com/package-url/packageurl-go"
-
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
+	"github.com/chainguard-dev/clog"
 )
 
 func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
@@ -313,82 +311,6 @@ func shouldRun(ifs string) (bool, error) {
 	}
 
 	return result, nil
-}
-
-// computeExternalRefs generates PURLs for subpipelines
-func computeExternalRefs(uses string, with map[string]string) ([]purl.PackageURL, error) {
-	var purls []purl.PackageURL
-	var newpurl purl.PackageURL
-
-	switch uses {
-	case "fetch":
-		args := make(map[string]string)
-		args["download_url"] = with["${{inputs.uri}}"]
-		if len(with["${{inputs.expected-sha256}}"]) > 0 {
-			args["checksum"] = "sha256:" + with["${{inputs.expected-sha256}}"]
-		}
-		if len(with["${{inputs.expected-sha512}}"]) > 0 {
-			args["checksum"] = "sha512:" + with["${{inputs.expected-sha512}}"]
-		}
-		newpurl = purl.PackageURL{
-			Type:       "generic",
-			Name:       with["${{inputs.purl-name}}"],
-			Version:    with["${{inputs.purl-version}}"],
-			Qualifiers: purl.QualifiersFromMap(args),
-		}
-		if err := newpurl.Normalize(); err != nil {
-			return nil, err
-		}
-		purls = append(purls, newpurl)
-
-	case "git-checkout":
-		repository := with["${{inputs.repository}}"]
-		if strings.HasPrefix(repository, "https://github.com/") {
-			namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
-			versions := []string{
-				with["${{inputs.tag}}"],
-				with["${{inputs.expected-commit}}"],
-			}
-			for _, version := range versions {
-				if version != "" {
-					newpurl = purl.PackageURL{
-						Type:      "github",
-						Namespace: namespace,
-						Name:      name,
-						Version:   version,
-					}
-					if err := newpurl.Normalize(); err != nil {
-						return nil, err
-					}
-					purls = append(purls, newpurl)
-				}
-			}
-		} else {
-			// Create nice looking package name, last component of uri, without .git
-			name := strings.TrimSuffix(filepath.Base(repository), ".git")
-			// Encode vcs_url with git+ prefix and @commit suffix
-			vcsUrl := "git+" + repository
-			if len(with["${{inputs.expected-commit}}"]) > 0 {
-				vcsUrl = vcsUrl + "@" + with["${{inputs.expected-commit}}"]
-			}
-			// Use tag as version
-			version := ""
-			if len(with["${{inputs.tag}}"]) > 0 {
-				version = with["${{inputs.tag}}"]
-			}
-			newpurl = purl.PackageURL{
-				Type:       "generic",
-				Name:       name,
-				Version:    version,
-				Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
-			}
-			if err := newpurl.Normalize(); err != nil {
-				return nil, err
-			}
-			purls = append(purls, newpurl)
-		}
-	}
-	return purls, nil
 }
 
 //go:embed pipelines/*

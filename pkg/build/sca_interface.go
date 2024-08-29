@@ -54,7 +54,7 @@ func (scabi *SCABuildInterface) Version() string {
 // FilesystemForRelative implements an abstract filesystem for any of the packages being
 // built.
 func (scabi *SCABuildInterface) FilesystemForRelative(pkgName string) (sca.SCAFS, error) {
-	pkgDir := filepath.Join(scabi.PackageBuild.Build.WorkspaceDir, "melange-out", pkgName)
+	pkgDir := filepath.Join(scabi.PackageBuild.Build.WorkspaceDir, melangeOutputDirName, pkgName)
 	rlFS := readlinkFS(pkgDir)
 	scaFS, ok := rlFS.(sca.SCAFS)
 	if !ok {

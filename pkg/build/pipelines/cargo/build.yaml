@@ -2,6 +2,7 @@ name: Compile an auditable rust binary with Cargo
 
 needs:
   packages:
+    - busybox
     - cargo-auditable
     - rust
 
@@ -29,10 +30,15 @@ inputs:
     description: |
       Installation prefix. Defaults to usr
 
+  install-dir:
+    description: |
+      Directory where binaries will be installed
+    default: bin
+
 pipeline:
   - runs: |
       # Installation directory should always be bin as we are producing a binary
-      INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/bin"
+      INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}"
       OUTPUT_PATH="target/release"
 
       # Enter target package directory

@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -377,8 +376,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	return nil
 }
 
-var pkgConfigVersionRegexp = regexp.MustCompile("-(alpha|beta|rc|pre)")
-
 // TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
 var generateRuntimePkgConfigDeps = false
 
@@ -437,18 +434,12 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		pcName := filepath.Base(path)
 		pcName, _ = strings.CutSuffix(pcName, ".pc")
 
-		// TODO: https://github.com/chainguard-dev/melange/issues/1172
-		sigh := func(ver string) string {
-			return strings.TrimSuffix(ver, "-release")
-		}
-
-		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
 		if isInDir(path, []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}) {
 			log.Infof("  found pkg-config %s for %s", pcName, path)
-			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
+			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
 		} else {
 			log.Infof("  found vendored pkg-config %s for %s", pcName, path)
-			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
+			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
 		}
 
 		if generateRuntimePkgConfigDeps {

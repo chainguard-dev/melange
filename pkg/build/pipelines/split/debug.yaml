@@ -15,7 +15,7 @@ inputs:
 pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"
-      if [ -n "$PACKAGE_DIR" ]; then
+      if [ -n "${{inputs.package}}" ]; then
         PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
       fi
 

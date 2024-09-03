@@ -353,17 +353,19 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		if err != nil {
 			return nil
 		}
-		var cgo, boringcrypto bool
+		var cgo, fipscrypto bool
+		// current RHEL/golang-fips; current microsoft/go; old microsoft/go
+		fipsexperiments := []string{"boringcrypto", "systemcrypto", "opensslcrypto"}
 		for _, setting := range buildinfo.Settings {
 			if setting.Key == "CGO_ENABLED" && setting.Value == "1" {
 				cgo = true
 			}
-			if setting.Key == "GOEXPERIMENT" && setting.Value == "boringcrypto" {
-				boringcrypto = true
+			if setting.Key == "GOEXPERIMENT" && slices.Contains(fipsexperiments, setting.Value) {
+				fipscrypto = true
 			}
 		}
 		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
-		if cgo && boringcrypto {
+		if cgo && fipscrypto {
 			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
 			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
 			generated.Runtime = append(generated.Runtime, "so:libssl.so.3")

@@ -1,9 +1,19 @@
 name: Split manpages
 
+needs:
+  packages:
+    - busybox
+
+inputs:
+  packagedir:
+    description: |
+      The package directory to split manpages from
+    default: ${{targets.destdir}}
+
 pipeline:
-  - if: ${{targets.destdir}} != ${{targets.contextdir}}
+  - if: ${{inputs.packagedir}} != ${{targets.contextdir}}
     runs: |
-      if [ -d "${{targets.destdir}}/usr/share/man" ]; then
+      if [ -d "${{inputs.packagedir}}/usr/share/man" ]; then
         mkdir -p "${{targets.contextdir}}/usr/share"
-        mv "${{targets.destdir}}/usr/share/man" "${{targets.contextdir}}/usr/share"
+        mv "${{inputs.packagedir}}/usr/share/man" "${{targets.contextdir}}/usr/share"
       fi

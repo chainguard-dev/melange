@@ -1,9 +1,19 @@
 name: Split locales
 
+needs:
+  packages:
+    - busybox
+
+inputs:
+  packagedir:
+    description: |
+      The package directory to split locales from
+    default: ${{targets.destdir}}
+
 pipeline:
-  - if: ${{targets.destdir}} != ${{targets.contextdir}}
+  - if: ${{inputs.packagedir}} != ${{targets.contextdir}}
     runs: |
-      if [ -d "${{targets.destdir}}"/usr/share/locale ]; then
+      if [ -d "${{inputs.packagedir}}"/usr/share/locale ]; then
         mkdir -p "${{targets.contextdir}}"/usr/share
-        mv "${{targets.destdir}}"/usr/share/locale "${{targets.contextdir}}"/usr/share/locale
+        mv "${{inputs.packagedir}}"/usr/share/locale "${{targets.contextdir}}"/usr/share/locale
       fi

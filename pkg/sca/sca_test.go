@@ -186,14 +186,10 @@ func TestVendoredPkgConfig(t *testing.T) {
 		}),
 		Vendored: util.Dedup([]string{
 			"so:libecpg_compat.so.3=3",
-			"pc:libecpg=14.10",
-			"pc:libecpg_compat=14.10",
-			"pc:libpgtypes=14.10",
-			"pc:libpq=14.10",
-			"pc:libecpg=15.5",
-			"pc:libecpg_compat=15.5",
-			"pc:libpgtypes=15.5",
-			"pc:libpq=15.5",
+			"pc:libecpg=4604-r0",
+			"pc:libecpg_compat=4604-r0",
+			"pc:libpgtypes=4604-r0",
+			"pc:libpq=4604-r0",
 		}),
 	}
 

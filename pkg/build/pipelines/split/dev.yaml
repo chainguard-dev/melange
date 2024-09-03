@@ -8,7 +8,7 @@ inputs:
   packagedir:
     description: |
       The package directory to split development headers from
-    default: ${{inputs.packagedir}}
+    default: ${{targets.destdir}}
 
 pipeline:
   - if: ${{inputs.packagedir}} != ${{targets.contextdir}}

@@ -26,6 +26,7 @@ pipeline:
 
       libdirs=usr/
       [ -d lib/ ] && libdirs="lib/ $libdirs"
+      [ -d lib64/ ] && libdirs="lib64/ $libdirs"
       for i in \
         $(find $libdirs -name '*.a' 2>/dev/null); do
             if [ -e "$PACKAGE_DIR/$i" ] || [ -L "$PACKAGE_DIR/$i" ]; then

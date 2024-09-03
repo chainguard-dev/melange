@@ -26,6 +26,7 @@ pipeline:
 
       libdirs=usr/
       [ -d lib/ ] && libdirs="lib/ $libdirs"
+      [ -d lib64/ ] && libdirs="lib64/ $libdirs"
       for i in usr/include usr/lib/pkgconfig usr/share/pkgconfig \
         usr/share/aclocal usr/share/gettext \
         usr/bin/*-config usr/bin/*_config usr/share/vala/vapi \

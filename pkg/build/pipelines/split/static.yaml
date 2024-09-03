@@ -5,25 +5,33 @@ needs:
     - busybox
 
 inputs:
-  packagedir:
+  package:
     description: |
-      The package directory to split static library files from
-    default: ${{targets.destdir}}
+      The package to split static library files from
+    required: false
 
 pipeline:
-  - if: ${{inputs.packagedir}} != ${{targets.contextdir}}
-    runs: |
+  - runs: |
+      PACKAGE_DIR="${{targets.destdir}}"
+      if [ -n "$PACKAGE_DIR" ]; then
+        PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
+      fi
+
+      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!" && exit 1
+      fi
+
       i= j=
-      cd "${{inputs.packagedir}}" || exit 0
+      cd "$PACKAGE_DIR" || exit 0
 
       libdirs=usr/
       [ -d lib/ ] && libdirs="lib/ $libdirs"
       for i in \
         $(find $libdirs -name '*.a' 2>/dev/null); do
-            if [ -e "${{inputs.packagedir}}/$i" ] || [ -L "${{inputs.packagedir}}/$i" ]; then
+            if [ -e "$PACKAGE_DIR/$i" ] || [ -L "$PACKAGE_DIR/$i" ]; then
               d="${{targets.contextdir}}/${i%/*}" # dirname $i
               mkdir -p "$d"
-              mv "${{inputs.packagedir}}/$i" "$d"
-              rmdir "${{inputs.packagedir}}/${i%/*}" 2>/dev/null || :
+              mv "$PACKAGE_DIR/$i" "$d"
+              rmdir "$PACKAGE_DIR/${i%/*}" 2>/dev/null || :
             fi
         done

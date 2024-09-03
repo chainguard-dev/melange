@@ -5,17 +5,25 @@ needs:
     - busybox
 
 inputs:
-  packagedir:
+  package:
     description: |
-      The package directory to split info pages from
-    default: ${{targets.destdir}}
+      The package to split info pages files from
+    required: false
 
 pipeline:
-  - if: ${{inputs.packagedir}} != ${{targets.contextdir}}
-    runs: |
-      if [ -d "${{inputs.packagedir}}/usr/share/info" ]; then
-        rm -f "${{inputs.packagedir}}"/usr/share/info/dir
+  - runs: |
+      PACKAGE_DIR="${{targets.destdir}}"
+      if [ -n "$PACKAGE_DIR" ]; then
+        PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
+      fi
+
+      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!" && exit 1
+      fi
+
+      if [ -d "$PACKAGE_DIR/usr/share/info" ]; then
+        rm -f "$PACKAGE_DIR"/usr/share/info/dir
 
         mkdir -p "${{targets.contextdir}}/usr/share"
-        mv "${{inputs.packagedir}}"/usr/share/info "${{targets.contextdir}}/usr/share"
+        mv "$PACKAGE_DIR"/usr/share/info "${{targets.contextdir}}/usr/share"
       fi

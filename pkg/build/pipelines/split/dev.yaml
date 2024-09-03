@@ -33,6 +33,7 @@ pipeline:
         usr/share/gir-[0-9]* usr/share/qt*/mkspecs \
         usr/lib/qt*/mkspecs usr/lib/cmake \
         usr/lib/glade/modules usr/share/glade/catalogs \
+        usr/local/*/include usr/local/*/lib64 \
         $(find . -name include -type d) \
         $(find $libdirs -name '*.a' 2>/dev/null) \
         $(find $libdirs -name '*.[cho]' \

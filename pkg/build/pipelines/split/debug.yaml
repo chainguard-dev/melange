@@ -3,28 +3,43 @@ name: Split debug files
 needs:
   packages:
     - binutils
+    - busybox
     - scanelf
 
+inputs:
+  package:
+    description: |
+      The package to split debug files from
+    required: false
+
 pipeline:
-  - if: ${{targets.destdir}} != ${{targets.contextdir}}
-    runs: |
-      mkdir -p "${{targets.destdir}}/.dbg-tmp"
+  - runs: |
+      PACKAGE_DIR="${{targets.destdir}}"
+      if [ -n "${{inputs.package}}" ]; then
+        PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
+      fi
+
+      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!" && exit 1
+      fi
+
+      mkdir -p "$PACKAGE_DIR/.dbg-tmp"
       # note: the ${{targets.subpkgdir}} doesn't exist when the glob is evaluated
-      scanelf -Ry "${{targets.destdir}}"/* | while read type src; do
+      scanelf -Ry "$PACKAGE_DIR"/* | while read type src; do
         if [ "$type" != ET_DYN ]; then
           continue
         fi
-        dst=${{targets.contextdir}}/usr/lib/debug/${src#"${{targets.destdir}}"/*/}.debug
+        dst=${{targets.contextdir}}/usr/lib/debug/${src#"$PACKAGE_DIR"/*/}.debug
         mkdir -p "${dst%/*}"
         ino=$(stat -c %i "$src")
-        if ! [ -e "${{targets.destdir}}/.dbg-tmp/$ino" ]; then
-          tmp=${{targets.destdir}}/.dbg-tmp/${src##*/}
+        if ! [ -e "$PACKAGE_DIR/.dbg-tmp/$ino" ]; then
+          tmp=$PACKAGE_DIR/.dbg-tmp/${src##*/}
           objcopy --only-keep-debug "$src" "$dst"
           objcopy --add-gnu-debuglink="$dst" --strip-unneeded -R .comment "$src" "$tmp"
           # preserve attributes, links
           cat "$tmp" > "$src"
           rm "$tmp"
-          ln "$dst" "${{targets.destdir}}/.dbg-tmp/$ino"
+          ln "$dst" "$PACKAGE_DIR/.dbg-tmp/$ino"
         fi
       done
-      rm -r "${{targets.destdir}}/.dbg-tmp"
+      rm -r "$PACKAGE_DIR/.dbg-tmp"

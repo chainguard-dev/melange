@@ -2,6 +2,8 @@ module chainguard.dev/melange
 
 go 1.23.2
 
+toolchain go1.23.2
+
 require (
 	al.essio.dev/pkg/shellescape v1.5.1
 	chainguard.dev/apko v0.19.2

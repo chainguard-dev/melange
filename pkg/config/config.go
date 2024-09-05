@@ -801,6 +801,33 @@ func replaceMap(r *strings.Replacer, in map[string]string) map[string]string {
 	return replacedWith
 }
 
+func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_types.ImageEntrypoint {
+	return apko_types.ImageEntrypoint{
+		Type:          in.Type,
+		Command:       r.Replace(in.Command),
+		ShellFragment: r.Replace(in.ShellFragment),
+		Services:      replaceMap(r, in.Services),
+	}
+}
+
+func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) apko_types.ImageConfiguration {
+	return apko_types.ImageConfiguration{
+		Contents:    in.Contents, // TODO
+		Entrypoint:  replaceEntrypoint(r, in.Entrypoint),
+		Cmd:         r.Replace(in.Cmd),
+		StopSignal:  r.Replace(in.StopSignal),
+		WorkDir:     r.Replace(in.WorkDir),
+		Accounts:    in.Accounts, // TODO
+		Archs:       in.Archs,    // TODO
+		Environment: replaceMap(r, in.Environment),
+		Paths:       in.Paths, // TODO
+		VCSUrl:      r.Replace(in.VCSUrl),
+		Annotations: replaceMap(r, in.Annotations),
+		Include:     in.Include, // TODO
+		Volumes:     replaceAll(r, in.Volumes),
+	}
+}
+
 func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 	return Pipeline{
 		Name:        r.Replace(in.Name),
@@ -814,7 +841,7 @@ func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 		If:          r.Replace(in.If),
 		Assertions:  in.Assertions,
 		WorkDir:     r.Replace(in.WorkDir),
-		Environment: in.Environment,
+		Environment: replaceMap(r, in.Environment),
 	}
 }
 
@@ -835,7 +862,7 @@ func replaceTest(r *strings.Replacer, in *Test) *Test {
 		return nil
 	}
 	return &Test{
-		Environment: in.Environment,
+		Environment: replaceImageConfig(r, in.Environment),
 		Pipeline:    replacePipelines(r, in.Pipeline),
 	}
 }
@@ -1075,6 +1102,10 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
+
+	cfg.Environment = replaceImageConfig(replacer, cfg.Environment)
+
+	cfg.Test = replaceTest(replacer, cfg.Test)
 
 	cfg.Data = nil // TODO: zero this out or not?
 

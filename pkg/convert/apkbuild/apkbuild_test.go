@@ -281,6 +281,14 @@ func Test_context_mapconvert(t *testing.T) {
 
 			assert.NoError(t, err)
 
+			// Ensure that the generated configuration contains the test block
+			assert.NotNil(t, config.Test, "Test block should be created in the generated config")
+			// assert.Nil(t, config.Test.Environment, "Expected environment to be nil or empty")
+
+			// Ensure that the test block contains the version-check pipeline
+			assert.NotEmpty(t, config.Test.Pipeline, "Test pipeline should not be empty")
+
+			// Check that the generated YAML matches the expected YAML
 			assert.YAMLEqf(t, string(expected), string(actual), "generated convert yaml not the same as expected")
 		})
 	}

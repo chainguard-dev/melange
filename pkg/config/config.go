@@ -769,186 +769,49 @@ func replacerFromMap(with map[string]string) *strings.Replacer {
 	return strings.NewReplacer(replacements...)
 }
 
-func replaceAll(r *strings.Replacer, in []string) []string {
-	if in == nil {
-		return nil
-	}
-	out := make([]string, len(in))
-	for i, s := range in {
-		out[i] = r.Replace(s)
-	}
-	return out
-}
-
-func replaceNeeds(r *strings.Replacer, in *Needs) *Needs {
-	if in == nil {
-		return nil
-	}
-	return &Needs{
-		Packages: replaceAll(r, in.Packages),
-	}
-}
-
-func replaceMap(r *strings.Replacer, in map[string]string) map[string]string {
-	if len(in) == 0 {
-		return nil
+func replaceConfiguration(cfg Configuration) (Configuration, error) {
+	// Mutate config properties with substitutions.
+	configMap := buildConfigMap(&cfg)
+	if err := cfg.PerformVarSubstitutions(configMap); err != nil {
+		return cfg, fmt.Errorf("applying variable substitutions: %w", err)
 	}
 
-	replacedWith := make(map[string]string, len(in))
-	for key, value := range in {
-		replacedWith[key] = r.Replace(value)
-	}
-	return replacedWith
-}
+	r := replacerFromMap(configMap)
 
-func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_types.ImageEntrypoint {
-	return apko_types.ImageEntrypoint{
-		Type:          in.Type,
-		Command:       r.Replace(in.Command),
-		ShellFragment: r.Replace(in.ShellFragment),
-		Services:      replaceMap(r, in.Services),
-	}
-}
-
-func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) apko_types.ImageConfiguration {
-	return apko_types.ImageConfiguration{
-		Contents:    in.Contents, // TODO
-		Entrypoint:  replaceEntrypoint(r, in.Entrypoint),
-		Cmd:         r.Replace(in.Cmd),
-		StopSignal:  r.Replace(in.StopSignal),
-		WorkDir:     r.Replace(in.WorkDir),
-		Accounts:    in.Accounts, // TODO
-		Archs:       in.Archs,    // TODO
-		Environment: replaceMap(r, in.Environment),
-		Paths:       in.Paths, // TODO
-		VCSUrl:      r.Replace(in.VCSUrl),
-		Annotations: replaceMap(r, in.Annotations),
-		Include:     in.Include, // TODO
-		Volumes:     replaceAll(r, in.Volumes),
-	}
-}
-
-func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
-	return Pipeline{
-		Name:        r.Replace(in.Name),
-		Uses:        in.Uses,
-		With:        replaceMap(r, in.With),
-		Runs:        r.Replace(in.Runs),
-		Pipeline:    replacePipelines(r, in.Pipeline),
-		Inputs:      in.Inputs,
-		Needs:       replaceNeeds(r, in.Needs),
-		Label:       in.Label,
-		If:          r.Replace(in.If),
-		Assertions:  in.Assertions,
-		WorkDir:     r.Replace(in.WorkDir),
-		Environment: replaceMap(r, in.Environment),
-	}
-}
-
-func replacePipelines(r *strings.Replacer, in []Pipeline) []Pipeline {
-	if in == nil {
-		return nil
+	datas := make(map[string]DataItems, len(cfg.Data))
+	for _, d := range cfg.Data {
+		datas[d.Name] = d.Items
 	}
 
-	out := make([]Pipeline, 0, len(in))
-	for _, p := range in {
-		out = append(out, replacePipeline(r, p))
-	}
-	return out
-}
-
-func replaceTest(r *strings.Replacer, in *Test) *Test {
-	if in == nil {
-		return nil
-	}
-	return &Test{
-		Environment: replaceImageConfig(r, in.Environment),
-		Pipeline:    replacePipelines(r, in.Pipeline),
-	}
-}
-
-func replaceScriptlets(r *strings.Replacer, in *Scriptlets) *Scriptlets {
-	if in == nil {
-		return nil
+	// Since subpackages support Range, we need to expand them and can't just call replace().
+	subpkgs, err := replaceSubpackages(r, datas, cfg, cfg.Subpackages)
+	if err != nil {
+		return cfg, fmt.Errorf("replacing subpackages: %w", err)
 	}
 
-	return &Scriptlets{
-		Trigger: Trigger{
-			Script: r.Replace(in.Trigger.Script),
-			Paths:  replaceAll(r, in.Trigger.Paths),
-		},
-		PreInstall:    r.Replace(in.PreInstall),
-		PostInstall:   r.Replace(in.PostInstall),
-		PreDeinstall:  r.Replace(in.PreDeinstall),
-		PostDeinstall: r.Replace(in.PostDeinstall),
-		PreUpgrade:    r.Replace(in.PreUpgrade),
-		PostUpgrade:   r.Replace(in.PostUpgrade),
-	}
-}
-
-// default to detectedCommit unless commit is explicitly specified
-func replaceCommit(detectedCommit string, in string) string {
-	if in == "" {
-		return detectedCommit
-	}
-	return in
-}
-
-func replaceDependencies(r *strings.Replacer, in Dependencies) Dependencies {
-	return Dependencies{
-		Runtime:          replaceAll(r, in.Runtime),
-		Provides:         replaceAll(r, in.Provides),
-		Replaces:         replaceAll(r, in.Replaces),
-		ProviderPriority: r.Replace(in.ProviderPriority),
-		ReplacesPriority: r.Replace(in.ReplacesPriority),
-	}
-}
-
-func replacePackage(r *strings.Replacer, detectedCommit string, in Package) Package {
-	return Package{
-		Name:               r.Replace(in.Name),
-		Version:            r.Replace(in.Version),
-		Epoch:              in.Epoch,
-		Description:        r.Replace(in.Description),
-		URL:                r.Replace(in.URL),
-		Commit:             replaceCommit(detectedCommit, in.Commit),
-		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
-		Copyright:          in.Copyright,
-		Dependencies:       replaceDependencies(r, in.Dependencies),
-		Options:            in.Options,
-		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
-		Checks:             in.Checks,
-		Timeout:            in.Timeout,
-		Resources:          in.Resources,
-	}
-}
-
-func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage) Subpackage {
-	return Subpackage{
-		If:           r.Replace(in.If),
-		Name:         r.Replace(in.Name),
-		Pipeline:     replacePipelines(r, in.Pipeline),
-		Dependencies: replaceDependencies(r, in.Dependencies),
-		Options:      in.Options,
-		Scriptlets:   replaceScriptlets(r, in.Scriptlets),
-		Description:  r.Replace(in.Description),
-		URL:          r.Replace(in.URL),
-		Commit:       replaceCommit(detectedCommit, in.Commit),
-		Checks:       in.Checks,
-		Test:         replaceTest(r, in.Test),
-	}
+	// We don't just call replace(cfg) because we don't want to replace every field.
+	// Doing that breaks renovate tests for reasons I don't quite understand yet.
+	return Configuration{
+		Package:       replace(r, cfg.Package),
+		Environment:   replace(r, cfg.Environment),
+		Pipeline:      replace(r, cfg.Pipeline),
+		Subpackages:   subpkgs,
+		Data:          nil, // TODO: zero this out or not?
+		Update:        cfg.Update,
+		Vars:          cfg.Vars,
+		VarTransforms: cfg.VarTransforms,
+		Options:       cfg.Options,
+		Test:          replace(r, cfg.Test),
+		root:          cfg.root,
+	}, nil
 }
 
 func replaceSubpackages(r *strings.Replacer, datas map[string]DataItems, cfg Configuration, in []Subpackage) ([]Subpackage, error) {
 	out := make([]Subpackage, 0, len(in))
 
 	for i, sp := range in {
-		if sp.Commit == "" {
-			sp.Commit = cfg.Package.Commit
-		}
-
 		if sp.Range == "" {
-			out = append(out, replaceSubpackage(r, cfg.Package.Commit, sp))
+			out = append(out, replace(r, sp))
 			continue
 		}
 
@@ -975,7 +838,8 @@ func replaceSubpackages(r *strings.Replacer, datas map[string]DataItems, cfg Con
 			configMap["${{range.value}}"] = v
 			r := replacerFromMap(configMap)
 
-			thingToAdd := replaceSubpackage(r, cfg.Package.Commit, sp)
+			thingToAdd := replace(r, sp)
+			thingToAdd.Range = ""
 
 			out = append(out, thingToAdd)
 		}
@@ -1079,35 +943,21 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		}
 	}
 
-	// Mutate config properties with substitutions.
-	configMap := buildConfigMap(&cfg)
-	if err := cfg.PerformVarSubstitutions(configMap); err != nil {
-		return nil, fmt.Errorf("applying variable substitutions: %w", err)
-	}
-
-	replacer := replacerFromMap(configMap)
-
-	detectedCommit := detectCommit(ctx, configurationDirPath)
-
-	cfg.Package = replacePackage(replacer, detectedCommit, cfg.Package)
-
-	cfg.Pipeline = replacePipelines(replacer, cfg.Pipeline)
-
-	datas := make(map[string]DataItems, len(cfg.Data))
-	for _, d := range cfg.Data {
-		datas[d.Name] = d.Items
-	}
-
-	cfg.Subpackages, err = replaceSubpackages(replacer, datas, cfg, cfg.Subpackages)
+	cfg, err = replaceConfiguration(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
 
-	cfg.Environment = replaceImageConfig(replacer, cfg.Environment)
-
-	cfg.Test = replaceTest(replacer, cfg.Test)
-
-	cfg.Data = nil // TODO: zero this out or not?
+	// Overwrite commit if not set.
+	detectedCommit := detectCommit(ctx, configurationDirPath)
+	if cfg.Package.Commit == "" {
+		cfg.Package.Commit = detectedCommit
+	}
+	for i := range cfg.Subpackages {
+		if cfg.Subpackages[i].Commit == "" {
+			cfg.Subpackages[i].Commit = detectedCommit
+		}
+	}
 
 	// TODO: validate that subpackage ranges have been consumed and applied
 

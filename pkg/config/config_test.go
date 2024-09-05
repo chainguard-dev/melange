@@ -66,6 +66,8 @@ test:
       packages:
         - ${{package.name}}-config
         - replacement-provides-${{vars.short-package-version}}
+    environment:
+      LD_LIBRARY_PATH: "/usr/local/${{vars.foo}}"
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -113,6 +115,8 @@ test:
 	}, cfg.Test.Environment.Contents.Packages)
 
 	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")
+
+	require.Equal(t, "/usr/local/FOO", cfg.Test.Environment.Environment["LD_LIBRARY_PATH"])
 }
 
 func Test_rangeSubstitutions(t *testing.T) {

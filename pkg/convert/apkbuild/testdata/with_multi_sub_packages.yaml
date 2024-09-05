@@ -8,14 +8,19 @@ package:
 environment: {}
 pipeline:
   - uses: autoconf/configure
+
   - uses: autoconf/make
+
   - uses: autoconf/make-install
+
   - uses: strip
+
 subpackages:
   - name: test-pkg-doc
     pipeline:
       - uses: split/manpages
     description: test-pkg manpages
+
   - name: test-pkg-dev
     pipeline:
       - uses: split/dev
@@ -23,3 +28,9 @@ subpackages:
       runtime:
         - test-pkg
     description: test-pkg dev
+
+test:
+  environment: {}
+  pipeline:
+    - name: Verify test-pkg installation, please improve the test as needed
+      runs: test-pkg --version || exit 1

@@ -39,6 +39,10 @@ pipeline:
       output_flag=''
       [ -n '${{inputs.output}}' ] && output_flag='--output ${{inputs.output}}'
 
+      # If it exist, remove the signing_key from gemspec by default since it leads to
+      # build failures as the key is not available in the build environment and is not needed.
+      sed -i '/signing_key/d' ${{inputs.gem}}.gemspec || true
+
       gem build \
         ${{inputs.gem}}.gemspec \
         ${output_flag} \

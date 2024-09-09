@@ -1,0 +1,28 @@
+package:
+  name: ruby3.2-json
+  version: 2.7.2
+  epoch: 1
+  description: Tests for ruby3.2-json using Ruby test pipelines
+
+pipeline:
+
+# Test ruby/require, and ruby/test pipelines
+test:
+  environment:
+    contents:
+      packages:
+        - ruby-3.2
+  pipeline:
+    # Test require with command
+    - uses: ruby/test
+      with:
+        command: ruby -e "require 'json'"
+    # Test require directly
+    - uses: ruby/require
+      with:
+        require: json
+    # Test require with multiple requires
+    - uses: ruby/require
+      with:
+        requires: |
+          require 'json'

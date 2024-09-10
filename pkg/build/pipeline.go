@@ -81,6 +81,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture,
 		config.SubstitutionPackageVersion:     pkg.Version,
 		config.SubstitutionPackageEpoch:       strconv.FormatUint(pkg.Epoch, 10),
 		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
+		config.SubstitutionTargetsOutdir:      "/home/build/melange-out",
 		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 	}

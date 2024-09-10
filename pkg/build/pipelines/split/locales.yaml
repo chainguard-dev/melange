@@ -14,7 +14,7 @@ pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"
       if [ -n "${{inputs.package}}" ]; then
-        PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
+        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
       fi
 
       if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then

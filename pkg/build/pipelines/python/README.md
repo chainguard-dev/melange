@@ -1,6 +1,13 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [python/build-wheel](#pythonbuild-wheel)
+- [python/build](#pythonbuild)
+- [python/import](#pythonimport)
+- [python/install](#pythoninstall)
+- [python/test](#pythontest)
+
 ## python/build-wheel
 
 Build a Python wheel

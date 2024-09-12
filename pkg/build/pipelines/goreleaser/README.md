@@ -1,6 +1,9 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [goreleaser/build](#goreleaserbuild)
+
 ## goreleaser/build
 
 Run a build using the GoReleaser

@@ -1,6 +1,10 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [maven/configure-mirror](#mavenconfigure-mirror)
+- [maven/pombump](#mavenpombump)
+
 ## maven/configure-mirror
 
 Configure GCP Maven Central mirror for faster downloads

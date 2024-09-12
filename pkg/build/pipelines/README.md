@@ -5,6 +5,12 @@ new built-in pipelines, consult [Creating a new built-in pipeline](/docs/PIPELIN
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [fetch](#fetch)
+- [git-checkout](#git-checkout)
+- [patch](#patch)
+- [strip](#strip)
+
 ## fetch
 
 Fetch and extract external object into workspace

@@ -1,6 +1,9 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [cargo/build](#cargobuild)
+
 ## cargo/build
 
 Compile an auditable rust binary with Cargo

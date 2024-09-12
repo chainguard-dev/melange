@@ -1,6 +1,10 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [pecl/install](#peclinstall)
+- [pecl/phpize](#peclphpize)
+
 ## pecl/install
 
 Installs and enables a PHP PECL module.

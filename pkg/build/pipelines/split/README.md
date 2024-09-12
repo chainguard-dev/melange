@@ -1,6 +1,14 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [split/debug](#splitdebug)
+- [split/dev](#splitdev)
+- [split/infodir](#splitinfodir)
+- [split/locales](#splitlocales)
+- [split/manpages](#splitmanpages)
+- [split/static](#splitstatic)
+
 ## split/debug
 
 Split debug files

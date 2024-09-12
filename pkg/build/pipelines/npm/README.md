@@ -1,6 +1,9 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [npm/install](#npminstall)
+
 ## npm/install
 
 Install a portable npm package.

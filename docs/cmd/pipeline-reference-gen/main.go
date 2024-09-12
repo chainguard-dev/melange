@@ -19,7 +19,12 @@ import (
 var (
 	pipelineDir = flag.String("pipeline-dir", "", "The directory to search for pipeline files")
 
-	tmpl = template.Must(template.New("").Parse(tmplRaw))
+	tmpl = template.Must(template.New("").Funcs(template.FuncMap{
+		"anchor": func(s string) string {
+			out := strings.ReplaceAll(s, "/", "")
+			return out
+		},
+	}).Parse(tmplRaw))
 
 	//go:embed template.md.tmpl
 	tmplRaw string

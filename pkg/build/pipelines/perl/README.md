@@ -1,6 +1,10 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [perl/cleanup](#perlcleanup)
+- [perl/make](#perlmake)
+
 ## perl/cleanup
 
 Clean up installation files

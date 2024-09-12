@@ -1,6 +1,11 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [autoconf/configure](#autoconfconfigure)
+- [autoconf/make-install](#autoconfmake-install)
+- [autoconf/make](#autoconfmake)
+
 ## autoconf/configure
 
 Run autoconf configure script

@@ -1,6 +1,11 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [ruby/build](#rubybuild)
+- [ruby/clean](#rubyclean)
+- [ruby/install](#rubyinstall)
+
 ## ruby/build
 
 Build a ruby gem

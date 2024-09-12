@@ -1,6 +1,9 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [R/build](#Rbuild)
+
 ## R/build
 
 Run a build using the R package manager

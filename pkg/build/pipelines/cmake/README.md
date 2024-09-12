@@ -1,6 +1,11 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [cmake/build](#cmakebuild)
+- [cmake/configure](#cmakeconfigure)
+- [cmake/install](#cmakeinstall)
+
 ## cmake/build
 
 Build a CMake project

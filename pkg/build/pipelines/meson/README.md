@@ -1,6 +1,11 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [meson/compile](#mesoncompile)
+- [meson/configure](#mesonconfigure)
+- [meson/install](#mesoninstall)
+
 ## meson/compile
 
 Compile project with meson

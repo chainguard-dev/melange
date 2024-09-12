@@ -1,6 +1,11 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+
+- [go/build](#gobuild)
+- [go/bump](#gobump)
+- [go/install](#goinstall)
+
 ## go/build
 
 Run a build using the go compiler

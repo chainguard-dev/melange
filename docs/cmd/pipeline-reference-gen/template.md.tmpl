@@ -1,6 +1,10 @@
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
+{{ range . }}
+- [{{ .Name }}](#{{ anchor .Name }})
+{{- end }}
+
 {{ range . -}}
 ## {{ .Name }}
 

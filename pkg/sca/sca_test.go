@@ -210,7 +210,7 @@ func TestRubySca(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := config.Dependencies{Runtime: []string{"ruby-3.2"}}
+	want := config.Dependencies{Runtime: []string{"ruby-3.2-base"}}
 
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)

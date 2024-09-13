@@ -5,8 +5,7 @@ import (
 	"bytes"
 	"context"
 
-	//nolint:gosec
-	"crypto/sha1"
+	"crypto"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -74,18 +73,22 @@ type KeyApkSigner struct {
 	KeyPassphrase string
 }
 
-func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
-	//nolint:gosec
-	digest := sha1.New()
+const melangeApkDigest = crypto.SHA1
 
-	_, err := digest.Write(control)
+// const melangeApkDigest = crypto.SHA256
+
+func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
+
+	controlDigest, err := sign.HashData(control, melangeApkDigest)
 	if err != nil {
 		return nil, err
 	}
-
-	return sign.RSASignSHA1Digest(digest.Sum(nil), s.KeyFile, s.KeyPassphrase)
+	return sign.RSASignDigest(controlDigest, melangeApkDigest, s.KeyFile, s.KeyPassphrase)
 }
 
 func (s KeyApkSigner) SignatureName() string {
+	if melangeApkDigest == crypto.SHA256 {
+		return fmt.Sprintf(".SIGN.RSA256.%s.pub", filepath.Base(s.KeyFile))
+	}
 	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(s.KeyFile))
 }

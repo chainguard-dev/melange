@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/sha1"
+	"crypto"
 	"fmt"
 	"io"
 	"os"
@@ -54,24 +54,24 @@ func TestAPK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sigName != ".SIGN.RSA."+testPubkey {
+	melangeApkDigest := crypto.SHA1
+	prefix := ".SIGN.RSA."
+	// melangeApkDigest := crypto.SHA256
+	// prefix := ".SIGN.RSA256."
+	if sigName != prefix+testPubkey {
 		t.Fatalf("unexpected signature name %s", sigName)
 	}
-	//nolint:gosec we do have to use SHA1 here
-	digest := computeSHA1Digest(controlData)
+	digest, err := signature.HashData(controlData, melangeApkDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
 	pubKey, err := os.ReadFile("testdata/" + testPubkey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := signature.RSAVerifySHA1Digest(digest, sig, pubKey); err != nil {
+	if err := signature.RSAVerifyDigest(digest, melangeApkDigest, sig, pubKey); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func computeSHA1Digest(data []byte) []byte {
-	digest := sha1.New()
-	_, _ = digest.Write(data)
-	return digest.Sum(nil)
 }
 
 func parseAPK(ctx context.Context, apkPath string) (control []byte, sigName string, sig []byte, err error) {

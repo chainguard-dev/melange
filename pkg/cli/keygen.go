@@ -66,8 +66,8 @@ func keygen() *cobra.Command {
 func KeygenCmd(ctx context.Context, keyName string, bitSize int) error {
 	log := clog.FromContext(ctx)
 
-	if bitSize < 4096 {
-		return errors.New("key size is less than 4096 bits, this is not considered safe")
+	if bitSize < 2048 {
+		return errors.New("key size is less than 2048 bits, this is not considered safe")
 	}
 
 	kc := &KeygenContext{

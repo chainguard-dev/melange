@@ -4,7 +4,7 @@ go 1.23.1
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.0
-	chainguard.dev/apko v0.18.0
+	chainguard.dev/apko v0.18.1
 	cloud.google.com/go/storage v1.43.0
 	dagger.io/dagger v0.12.7
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
@@ -47,7 +47,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
-	sigs.k8s.io/release-utils v0.8.4
+	sigs.k8s.io/release-utils v0.8.5
 )
 
 require (
@@ -205,7 +205,7 @@ require (
 	google.golang.org/grpc v1.66.1 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.31.0 // indirect
+	k8s.io/apimachinery v0.31.1 // indirect
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )

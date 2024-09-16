@@ -29,7 +29,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/log"
+	"github.com/chainguard-dev/clog"
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
 	"gopkg.in/ini.v1"
@@ -570,7 +570,7 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 		return err
 	}
 
-	log := log.FromContext(ctx)
+	log := clog.FromContext(ctx)
 	fsys := os.DirFS(path)
 
 	if err := lintPackageFS(ctx, packageName, fsys, warn); err != nil {
@@ -582,6 +582,7 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 
 // Lint the given APK at the given path
 func LintAPK(ctx context.Context, path string, require, warn []string) error {
+	log := clog.FromContext(ctx)
 	if err := checkLinters(append(require, warn...)); err != nil {
 		return err
 	}

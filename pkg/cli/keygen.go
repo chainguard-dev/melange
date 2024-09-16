@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/chainguard-dev/clog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -64,6 +65,11 @@ func keygen() *cobra.Command {
 
 func KeygenCmd(ctx context.Context, keyName string, bitSize int) error {
 	log := clog.FromContext(ctx)
+
+	if bitSize < 4096 {
+		return errors.New("key size is less than 4096 bits, this is not considered safe")
+	}
+
 	kc := &KeygenContext{
 		KeyName: keyName,
 		BitSize: bitSize,

@@ -43,7 +43,6 @@ import (
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
 	"github.com/chainguard-dev/clog"
-	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"go.opentelemetry.io/otel"
@@ -282,7 +281,8 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
-	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
+	log := clog.FromContext(ctx)
+	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
 	if err != nil {
 		return err

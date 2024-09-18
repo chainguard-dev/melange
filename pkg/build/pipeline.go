@@ -205,6 +205,17 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		log.Infof("running step %q", id)
 	}
 
+	slogs := []any{}
+	if pipeline.Name != "" {
+		slogs = append(slogs, "name", pipeline.Name)
+	}
+	if pipeline.Uses != "" {
+		slogs = append(slogs, "uses", pipeline.Uses)
+	}
+	if len(slogs) != 0 {
+		ctx = clog.WithLogger(ctx, log.With(slogs...))
+	}
+
 	command := buildEvalRunCommand(pipeline, debugOption, workdir, pipeline.Runs)
 	if err := r.runner.Run(ctx, r.config, envOverride, command...); err != nil {
 		if err := r.maybeDebug(ctx, pipeline.Runs, envOverride, command, workdir, err); err != nil {

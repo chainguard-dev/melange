@@ -827,6 +827,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if !b.IsBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
 
+			ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
+
 			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 			}

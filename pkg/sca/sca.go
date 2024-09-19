@@ -187,7 +187,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shared object dependencies...")
 
-	depends := map[string][]string{}
 	fsys, err := hdl.Filesystem()
 	if err != nil {
 		return err
@@ -310,7 +309,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if strings.Contains(lib, ".so.") {
 				log.Infof("  found lib %s for %s", lib, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-				depends[lib] = append(depends[lib], path)
 			}
 		}
 

@@ -206,7 +206,7 @@ func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pi
 
 func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline, parent map[string]string) error {
 	log := clog.FromContext(ctx)
-	uses, with := pipeline.Uses, maps.Clone(pipeline.With)
+	name, uses, with := pipeline.Name, pipeline.Uses, maps.Clone(pipeline.With)
 
 	if uses != "" {
 		var data []byte
@@ -239,6 +239,9 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 				return fmt.Errorf("undefined input %q to pipeline %q", k, pipeline.Uses)
 			}
 		}
+
+		// We want to keep the original name here because loading the pipeline will overwrite it.
+		pipeline.Name = name
 	}
 
 	if parent != nil {

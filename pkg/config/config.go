@@ -614,7 +614,7 @@ type Schedule struct {
 	Period Period `json:"period,omitempty" yaml:"period,omitempty"`
 }
 
-func (schedule Schedule) getScheduleMessage() (string, error) {
+func (schedule Schedule) GetScheduleMessage() (string, error) {
 	switch schedule.Period {
 	case Daily:
 		return "Scheduled daily update check", nil

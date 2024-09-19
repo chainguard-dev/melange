@@ -424,12 +424,12 @@ func TestGetScheduleMessage(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, err := test.schedule.getScheduleMessage()
+		result, err := test.schedule.GetScheduleMessage()
 		if (err != nil) != test.err {
-			t.Errorf("getScheduleMessage(%v) returned error %v, expected error: %v", test.schedule, err, test.err)
+			t.Errorf("GetScheduleMessage(%v) returned error %v, expected error: %v", test.schedule, err, test.err)
 		}
 		if result != test.expected {
-			t.Errorf("getScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
+			t.Errorf("GetScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
 		}
 	}
 }

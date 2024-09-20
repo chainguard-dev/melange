@@ -189,8 +189,14 @@ pipeline:
           if [ -z "$tag" ]; then
               foundcommit=$(git rev-parse --verify HEAD)
               if [ -n "$expcommit" ] && [ "$expcommit" != "$foundcommit" ]; then
-                  fail "expected commit $expcommit on ${branch:-HEAD}," \
-                      " got $foundcommit"
+                  if [ "$depth" = "-1" ]; then
+                      msg "expected commit $expcommit on ${branch:-HEAD}," \
+                          "got $foundcommit, performing reset"
+                      vr git reset --hard "$expcommit"
+                  else
+                      fail "expected commit $expcommit on ${branch:-HEAD}," \
+                           "got $foundcommit, set depth to -1 to attempt a reset"
+                  fi
               fi
               msg "tip of ${branch:-HEAD} is commit $foundcommit"
               process_cherry_picks "$cherry_pick" || fail "failed to apply cherry-pick"

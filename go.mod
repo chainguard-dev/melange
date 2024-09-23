@@ -4,15 +4,15 @@ go 1.23.1
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.0
-	chainguard.dev/apko v0.19.1
+	chainguard.dev/apko v0.19.2
 	cloud.google.com/go/storage v1.43.0
-	dagger.io/dagger v0.13.1
+	dagger.io/dagger v0.13.3
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.1.1
 	github.com/charmbracelet/log v0.4.0
-	github.com/docker/cli v27.3.0+incompatible
-	github.com/docker/docker v27.3.0+incompatible
+	github.com/docker/cli v27.3.1+incompatible
+	github.com/docker/docker v27.3.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.2
 	github.com/go-git/go-git/v5 v5.12.0
@@ -22,7 +22,7 @@ require (
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/invopop/jsonschema v0.12.0
 	github.com/joho/godotenv v1.5.1
-	github.com/klauspost/compress v1.17.9
+	github.com/klauspost/compress v1.17.10
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30
 	github.com/opencontainers/image-spec v1.1.0

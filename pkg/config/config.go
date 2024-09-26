@@ -810,9 +810,19 @@ func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_
 	}
 }
 
+func replaceImageContents(r *strings.Replacer, in apko_types.ImageContents) apko_types.ImageContents {
+	return apko_types.ImageContents{
+		BuildRepositories:   replaceAll(r, in.BuildRepositories),
+		RuntimeRepositories: replaceAll(r, in.RuntimeRepositories),
+		Keyring:             replaceAll(r, in.Keyring),
+		Packages:            replaceAll(r, in.Packages),
+		BaseImage:           in.BaseImage, // TODO
+	}
+}
+
 func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) apko_types.ImageConfiguration {
 	return apko_types.ImageConfiguration{
-		Contents:    in.Contents, // TODO
+		Contents:    replaceImageContents(r, in.Contents),
 		Entrypoint:  replaceEntrypoint(r, in.Entrypoint),
 		Cmd:         r.Replace(in.Cmd),
 		StopSignal:  r.Replace(in.StopSignal),

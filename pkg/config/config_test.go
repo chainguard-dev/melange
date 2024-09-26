@@ -145,6 +145,13 @@ subpackages:
     dependencies:
       runtime:
         - wow-some-kinda-dynamically-linked-library-i-guess=1.0
+    test:
+      environment:
+        contents:
+          packages:
+            - python3
+            - ${{range.value}}-default-jvm
+            - R
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -154,6 +161,7 @@ subpackages:
 	}
 	require.Equal(t, cfg.Subpackages[0].Dependencies.Runtime[0], "wow-some-kinda-dynamically-linked-library-i-guess=1.0")
 	require.True(t, cfg.Subpackages[0].Options.NoProvides)
+	require.Equal(t, cfg.Subpackages[0].Test.Environment.Contents.Packages[1], "A-default-jvm")
 }
 
 func Test_rangeSubstitutionsPriorities(t *testing.T) {

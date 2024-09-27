@@ -58,7 +58,7 @@ func WithBuildDate(s string) Option {
 	return func(bc *Build) error {
 		// default to 0 for reproducibility
 		if s == "" {
-			bc.SourceDateEpoch = time.Unix(0, 0)
+			bc.SourceDateEpoch = time.Unix(315532800, 0)
 			return nil
 		}
 

@@ -148,7 +148,7 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 
 		bb := &build.Build{
 			WorkspaceDir:    dir,
-			SourceDateEpoch: time.Unix(0, 0),
+			SourceDateEpoch: time.Unix(315532800, 0),
 			Configuration:   *cfg,
 		}
 

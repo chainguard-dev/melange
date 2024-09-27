@@ -343,10 +343,10 @@ func TestSourceDateEpoch(t *testing.T) {
 			want:        time.Unix(1234567890, 0),
 		},
 		{
-			name:            "0",
-			sourceDateEpoch: "0",
+			name:            "Min time",
+			sourceDateEpoch: "315532800",
 			defaultTime:     time.Unix(1234567890, 0),
-			want:            time.Unix(0, 0),
+			want:            time.Unix(315532800, 0),
 		},
 		{
 			name:            "1234567890",
@@ -369,12 +369,12 @@ func TestSourceDateEpoch(t *testing.T) {
 			got, err := sourceDateEpoch(tt.defaultTime)
 			if err != nil {
 				if !tt.wantErr {
-					t.Fatalf("SourceDateEpoch() error = %v, wantErr %v", err, tt.wantErr)
+					t.Fatalf("%s: SourceDateEpoch() error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				}
 				return
 			}
 			if !got.Equal(tt.want) {
-				t.Errorf("SourceDateEpoch() = %v, want %v", got, tt.want)
+				t.Errorf("%s: SourceDateEpoch() = %v, want %v", tt.name, got, tt.want)
 			}
 		})
 	}

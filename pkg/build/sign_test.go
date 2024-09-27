@@ -19,7 +19,7 @@ const MockName = "mockiavelli"
 
 func TestEmitSignature(t *testing.T) {
 	ctx := slogtest.Context(t)
-	sde := time.Unix(12345678, 0)
+	sde := time.Unix(1234567890, 0)
 
 	controlData := []byte("donkey")
 

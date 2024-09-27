@@ -380,8 +380,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	return nil
 }
 
-// TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
-var generateRuntimePkgConfigDeps = false
+// TODO(xnox): Note remove this feature flag, once successful
+// note this can generate depends on pc: files that do not exist in
+// wolfi, however package install tests will catch that in presubmit
+var generateRuntimePkgConfigDeps = true
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.

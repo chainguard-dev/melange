@@ -441,28 +441,28 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		if isInDir(path, []string{"usr/local/lib/pkgconfig/", "usr/local/share/pkgconfig/", "usr/lib/pkgconfig/", "usr/lib64/pkgconfig/", "usr/share/pkgconfig/"}) {
 			log.Infof("  found pkg-config %s for %s", pcName, path)
 			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
+
+			if generateRuntimePkgConfigDeps {
+				// TODO(kaniini): Capture version relationships here too.  In practice, this does not matter
+				// so much though for us.
+				for _, dep := range pkg.Requires {
+					log.Infof("  found pkg-config dependency (requires) %s for %s", dep.Identifier, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+				}
+
+				for _, dep := range pkg.RequiresPrivate {
+					log.Infof("  found pkg-config dependency (requires private) %s for %s", dep.Identifier, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+				}
+
+				for _, dep := range pkg.RequiresInternal {
+					log.Infof("  found pkg-config dependency (requires internal) %s for %s", dep.Identifier, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+				}
+			}
 		} else {
 			log.Infof("  found vendored pkg-config %s for %s", pcName, path)
 			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
-		}
-
-		if generateRuntimePkgConfigDeps {
-			// TODO(kaniini): Capture version relationships here too.  In practice, this does not matter
-			// so much though for us.
-			for _, dep := range pkg.Requires {
-				log.Infof("  found pkg-config dependency (requires) %s for %s", dep.Identifier, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
-			}
-
-			for _, dep := range pkg.RequiresPrivate {
-				log.Infof("  found pkg-config dependency (requires private) %s for %s", dep.Identifier, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
-			}
-
-			for _, dep := range pkg.RequiresInternal {
-				log.Infof("  found pkg-config dependency (requires internal) %s for %s", dep.Identifier, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
-			}
 		}
 
 		return nil

@@ -1,0 +1,9 @@
+package:
+  name: test-enabled-and-exclude-reason
+  version: 1.0.0
+
+pipeline:
+
+test:
+  enabled: false
+  exclude-reason: "This test is disabled because for testing purposes."

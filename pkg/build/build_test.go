@@ -349,6 +349,12 @@ func TestSourceDateEpoch(t *testing.T) {
 			want:            time.Unix(315532800, 0),
 		},
 		{
+			name:            "Below min time",
+			sourceDateEpoch: "0",
+			defaultTime:     time.Unix(1234567890, 0),
+			wantErr:         true,
+		},
+		{
 			name:            "1234567890",
 			sourceDateEpoch: "1234567890",
 			defaultTime:     time.Unix(0, 0),

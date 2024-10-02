@@ -3,6 +3,7 @@ name: Install a portable npm package.
 needs:
   packages:
     - nodejs
+    - npm
     - busybox
 
 inputs:
@@ -19,7 +20,7 @@ inputs:
   prefix:
     description: |
       The -prefix argument to pass to npm install; where /bin and /lib will be copied to.
-    default: "${{targets.contextdir}}/usr/"
+    default: "${{targets.contextdir}}/usr/local/"
 
   overrides:
     description: |

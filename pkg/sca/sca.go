@@ -310,7 +310,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if lib == "libcuda.so.1" {
 				continue
 			}
-			if strings.Contains(lib, ".so.") {
+			if strings.Contains(lib, ".so") {
 				log.Infof("  found lib %s for %s", lib, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
 			}

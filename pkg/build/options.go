@@ -384,3 +384,11 @@ func WithIgnoreSignatures(ignore bool) Option {
 		return nil
 	}
 }
+
+// WithCleanup indicates whether to clean up the build environment after the build is complete.
+func WithCleanup(c bool) Option {
+	return func(b *Build) error {
+		b.Cleanup = c
+		return nil
+	}
+}

@@ -32,6 +32,7 @@ melange test [flags]
       --arch strings                  architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
       --cache-dir string              directory used for cached inputs
       --cache-source string           directory or bucket used for preloading the cache
+      --cleanup                       when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
       --debug                         enables debug logging of test pipelines (sets -x for steps)
       --debug-runner                  when enabled, the builder pod will persist after the build succeeds or fails
       --env-file string               file to use for preloaded environment variables

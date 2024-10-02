@@ -13,6 +13,7 @@ test:
     contents:
       packages:
         - busybox
+        - python-3
   pipeline:
     - uses: python/import
       with:

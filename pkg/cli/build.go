@@ -76,6 +76,7 @@ func buildCmd() *cobra.Command {
 	var libc string
 	var lintRequire, lintWarn []string
 	var ignoreSignatures bool
+	var cleanup bool
 
 	var traceFile string
 
@@ -157,6 +158,7 @@ func buildCmd() *cobra.Command {
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
 				build.WithIgnoreSignatures(ignoreSignatures),
+				build.WithCleanup(cleanup),
 			}
 
 			if len(args) > 0 {
@@ -224,6 +226,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	cmd.Flags().BoolVar(&cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")

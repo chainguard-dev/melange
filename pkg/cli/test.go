@@ -48,6 +48,7 @@ func test() *cobra.Command {
 	var interactive bool
 	var runner string
 	var extraTestPackages []string
+	var cleanup bool
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -78,6 +79,7 @@ func test() *cobra.Command {
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
+				build.WithTestCleanup(cleanup),
 			}
 
 			if len(args) > 0 {
@@ -129,6 +131,7 @@ func test() *cobra.Command {
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
+	cmd.Flags().BoolVar(&cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
 
 	return cmd
 }

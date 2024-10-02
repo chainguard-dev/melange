@@ -51,6 +51,7 @@ type Test struct {
 	PipelineDirs      []string
 	SourceDir         string
 	GuestDir          string
+	Cleanup           bool
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
@@ -376,6 +377,10 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
 		t.GuestDir = guestDir
+
+		if t.Cleanup {
+			defer os.RemoveAll(guestDir)
+		}
 	}
 
 	imgRef := ""

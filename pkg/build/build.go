@@ -67,6 +67,7 @@ type Build struct {
 	PipelineDirs          []string
 	SourceDir             string
 	GuestDir              string
+	Cleanup               bool
 	SigningKey            string
 	SigningPassphrase     string
 	Namespace             string
@@ -703,6 +704,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
 		b.GuestDir = guestDir
+
+		if b.Cleanup {
+			defer os.RemoveAll(guestDir)
+		}
 	}
 
 	log.Infof("evaluating pipelines for package requirements")

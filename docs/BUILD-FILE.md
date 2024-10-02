@@ -4,7 +4,7 @@ This documents the melange build file structure, fields, when, and why to use va
 
 # High level structure overview
 
-The following are the high level sections for the build file, with detailed descriptions for each of them, and their fields in the sections following.
+The following are the high level sections for the build file, with detailed descriptions for each of them, and their fields in the sections following. 
 
  ## Required
  ### package
@@ -292,8 +292,16 @@ environment:
       - go
 ```
 
-TODO(vaikas): Are there ways to control which version of the packages gets
-installed?
+To specify a version for packages, you can use the following syntax:
+```
+environment:
+  packages:
+    - go>1.21    # install anything newer than 1.21, excluding 1.21
+    - foo=~4.5.6 # install any version with a name starting with "4.5.6" (e.g., 4.5.6-r7)
+    - python3    # install the latest stable version of python3.
+```
+For additional information, see the [Chainguard Academy article](https://edu.chainguard.dev/open-source/wolfi/apk-version-selection/).
+
 
 ## environment
 environment allows you to control environmental variables to set while running

@@ -93,8 +93,8 @@ github.com/chainguard-dev/git-urls v1.0.2 h1:pSpT7ifrpc5X55n4aTTm7FFUE+ZQHKiqpiw
 github.com/chainguard-dev/git-urls v1.0.2/go.mod h1:rbGgj10OS7UgZlbzdUQIQpT0k/D4+An04HJY7Ol+Y/o=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2vgQC024I9/boh9r1ihVv8Z14+pbvWqXeYMCnZJpc=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10/go.mod h1:1p6+MesLcjKeON5BRWa7I87mvAY0QmKjgginIM3w6BI=
-github.com/chainguard-dev/yam v0.2.0 h1:bESHGGjFwoMw7pDJsH9wIqifA3RWL1x913FoKUa1O2s=
-github.com/chainguard-dev/yam v0.2.0/go.mod h1:9e11nxggF3gzC8hxdZ/kTew4GjUvecufQOim3gnbnZ4=
+github.com/chainguard-dev/yam v0.2.1 h1:8XIGpx7WvaeiqPVB/DlT4G4AaOGEj6HSpGE/q86ySoM=
+github.com/chainguard-dev/yam v0.2.1/go.mod h1:9e11nxggF3gzC8hxdZ/kTew4GjUvecufQOim3gnbnZ4=
 github.com/charmbracelet/lipgloss v0.12.1 h1:/gmzszl+pedQpjCOH+wFkZr/N90Snz40J/NR7A0zQcs=
 github.com/charmbracelet/lipgloss v0.12.1/go.mod h1:V2CiwIuhx9S1S1ZlADfOj9HmxeMAORuz5izHb0zGbB8=
 github.com/charmbracelet/log v0.4.0 h1:G9bQAcx8rWA2T3pWvx7YtPTPwgqpk7D68BX21IRW8ZM=

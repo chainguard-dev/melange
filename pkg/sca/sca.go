@@ -439,7 +439,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		pcName := filepath.Base(path)
 		pcName, _ = strings.CutSuffix(pcName, ".pc")
 
-		if isInDir(path, []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}) {
+		if isInDir(path, []string{"usr/local/lib/pkgconfig/", "usr/local/share/pkgconfig/", "usr/lib/pkgconfig/", "usr/lib64/pkgconfig/", "usr/share/pkgconfig/"}) {
 			log.Infof("  found pkg-config %s for %s", pcName, path)
 			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
 		} else {

@@ -24,6 +24,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -266,6 +267,21 @@ func TestConfigurationLoad(t *testing.T) {
 							With: map[string]string{"test-with": "test-with-value"},
 						},
 					},
+				},
+			},
+		},
+		{
+			name:       "test-enabled-and-exclude-reason",
+			requireErr: require.NoError,
+			expected: &config.Configuration{
+				Package: config.Package{
+					Name:      "test-enabled-and-exclude-reason",
+					Version:   "1.0.0",
+					Resources: &config.Resources{},
+				},
+				Test: &config.Test{
+					Enabled:       util.Pointer(false),
+					ExcludeReason: "This test is disabled because for testing purposes.",
 				},
 			},
 		},

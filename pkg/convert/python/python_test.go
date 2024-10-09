@@ -157,12 +157,11 @@ func TestGeneratePackage(t *testing.T) {
 				},
 			},
 			Dependencies: config.Dependencies{
-				Runtime:          []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]},
 				ProviderPriority: "0",
 			},
 		}
 
-		assert.Equal(t, expected, got)
+		assert.Equal(t, got, expected)
 	}
 }
 

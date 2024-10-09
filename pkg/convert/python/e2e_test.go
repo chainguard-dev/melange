@@ -49,7 +49,7 @@ func TestGenerateManifest(t *testing.T) {
 		assert.Equal(t, got.Package.Version, "1.29.78")
 		assert.EqualValues(t, got.Package.Epoch, 0)
 		assert.Equal(t, got.Package.Description, "Low-level, data-driven core of boto 3.")
-		assert.Equal(t, got.Package.Dependencies.Runtime, []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]})
+		assert.Equal(t, []string(nil), got.Package.Dependencies.Runtime)
 		assert.Equal(t, "0", got.Package.Dependencies.ProviderPriority)
 
 		// Check Package.Copyright
@@ -61,7 +61,7 @@ func TestGenerateManifest(t *testing.T) {
 			"build-base",
 			"busybox",
 			"ca-certificates-bundle",
-			"py3-supported-pip",
+			"py3-supported-build-base-dev",
 			"wolfi-base",
 		})
 
@@ -138,7 +138,7 @@ func TestGenerateManifestPreserveURI(t *testing.T) {
 		assert.Equal(t, got.Package.Description,
 			"Backported and Experimental Type Hints for Python 3.8+",
 		)
-		assert.Equal(t, []string{}, got.Package.Dependencies.Runtime)
+		assert.Equal(t, []string(nil), got.Package.Dependencies.Runtime)
 		assert.Equal(t, "0", got.Package.Dependencies.ProviderPriority)
 
 		// Check Package.Copyright
@@ -150,7 +150,7 @@ func TestGenerateManifestPreserveURI(t *testing.T) {
 			"build-base",
 			"busybox",
 			"ca-certificates-bundle",
-			"py3-supported-pip",
+			"py3-supported-build-base-dev",
 			"wolfi-base",
 		})
 

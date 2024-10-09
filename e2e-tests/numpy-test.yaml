@@ -12,7 +12,7 @@ test:
     # TODO(pnasrat): fix to use multiple python
     contents:
       packages:
-        - python-3.12
+        - python-3.12-base
   pipeline:
     # Test import with command (python -c "import numpy")
     - uses: python/test

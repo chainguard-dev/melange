@@ -157,12 +157,11 @@ func TestGeneratePackage(t *testing.T) {
 				},
 			},
 			Dependencies: config.Dependencies{
-				Runtime:          []string{"py" + versions[i] + "-jmespath", "py" + versions[i] + "-python-dateutil", "py" + versions[i] + "-urllib3", "python-" + versions[i]},
 				ProviderPriority: "0",
 			},
 		}
 
-		assert.Equal(t, expected, got)
+		assert.Equal(t, got, expected)
 	}
 }
 
@@ -292,7 +291,7 @@ func TestGenerateEnvironment(t *testing.T) {
 				"build-base",
 				"busybox",
 				"ca-certificates-bundle",
-				"py3-supported-pip",
+				"py3-supported-build-base-dev",
 				"wolfi-base",
 			},
 		},
@@ -316,7 +315,7 @@ func TestGenerateEnvironment(t *testing.T) {
 				"build-base",
 				"busybox",
 				"ca-certificates-bundle",
-				"py3-supported-pip",
+				"py3-supported-build-base-dev",
 				"wolfi-base",
 			},
 		},

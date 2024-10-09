@@ -244,7 +244,7 @@ func (c *PythonContext) findDep(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		p.Dependencies = append(p.Dependencies, "py"+c.PythonVersion+"-"+dep)
+		p.Dependencies = append(p.Dependencies, "py${{range.key}}-"+dep)
 		// if dep is not already visited then check if it has deps
 		_, found := c.ToGenerate[dep]
 		if !found {
@@ -344,7 +344,6 @@ func (c *PythonContext) generatePackage(ctx context.Context, pack Package, versi
 		Description: pack.Info.Summary,
 		Copyright:   []config.Copyright{},
 		Dependencies: config.Dependencies{
-			Runtime:          pack.Dependencies,
 			ProviderPriority: "0",
 		},
 	}
@@ -366,7 +365,7 @@ func (c *PythonContext) generateEnvironment(ctx context.Context, pack Package) a
 		"build-base",
 		"busybox",
 		"ca-certificates-bundle",
-		"py3-supported-pip",
+		"py3-supported-build-base-dev",
 		"wolfi-base",
 	}
 
@@ -470,6 +469,7 @@ func (c *PythonContext) generateRange(ctx context.Context) []config.RangeData {
 			"3.10": "310",
 			"3.11": "311",
 			"3.12": "312",
+			"3.13": "300", // Update this when 3.13 goes live
 		}},
 	}
 }

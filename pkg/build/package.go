@@ -210,6 +210,14 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
+	locked, err := json.Marshal(pc.Build.resolvedApkoConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal apko config: %w", err)
+	}
+	if err := fsys.WriteFile(".BUILD.apko.json", locked, 0644); err != nil {
+		return nil, fmt.Errorf("unable to write .apko.lock.json: %w", err)
+	}
+
 	if scriptlets := pc.Scriptlets; scriptlets != nil {
 		if scriptlets.Trigger.Script != "" {
 			// #nosec G306 -- scriptlets must be executable

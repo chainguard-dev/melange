@@ -260,8 +260,11 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			return nil
 		}
 
-		if mode.Perm()&0555 != 0555 {
-			return nil
+		// At least rust has .so files that are not executable
+		if !strings.Contains(path, ".so") {
+			if mode.Perm()&0555 != 0555 {
+				return nil
+			}
 		}
 
 		basename := filepath.Base(path)

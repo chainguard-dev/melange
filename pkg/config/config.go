@@ -166,20 +166,20 @@ func (cfg *Configuration) applySubstitutionsForPriorities() error {
 	var err error
 	cfg.Package.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ProviderPriority)
 	if err != nil {
-		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
+		return fmt.Errorf("failed to apply replacement to provider-priority %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
 	}
 	cfg.Package.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ReplacesPriority)
 	if err != nil {
-		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
+		return fmt.Errorf("failed to apply replacement to replaces-priority %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
 	}
 	for _, sp := range cfg.Subpackages {
 		sp.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ProviderPriority)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ProviderPriority, err)
+			return fmt.Errorf("failed to apply replacement to provider-priority %q: %w", sp.Dependencies.ProviderPriority, err)
 		}
 		sp.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ReplacesPriority)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ReplacesPriority, err)
+			return fmt.Errorf("failed to apply replacement to replaces-priority %q: %w", sp.Dependencies.ReplacesPriority, err)
 		}
 	}
 	return nil

@@ -106,6 +106,8 @@ type Build struct {
 
 	// mutated by Compile
 	externalRefs []purl.PackageURL
+
+	resolvedApkoConfig apko_types.ImageConfiguration
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -237,6 +239,26 @@ func (b *Build) Close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
+func (b *Build) resolveConfig(ctx context.Context, bc *apko_build.Context) error {
+	ic := bc.ImageConfiguration()
+	pkgs, _, err := bc.BuildPackageList(ctx)
+	if err != nil {
+		return fmt.Errorf("resolving package versions: %w", err)
+	}
+	resolved := make([]string, 0, len(pkgs))
+	for _, pkg := range pkgs {
+		resolved = append(resolved, fmt.Sprintf("%s=%s", pkg.Name, pkg.Version))
+	}
+	ic.Contents.Packages = resolved
+	ic.Archs = []apko_types.Architecture{b.Arch}
+	ic.Contents.BuildRepositories = append(ic.Contents.BuildRepositories, b.ExtraRepos...)
+	ic.Contents.Keyring = append(ic.Contents.Keyring, b.ExtraKeys...)
+
+	b.resolvedApkoConfig = ic
+
+	return nil
+}
+
 // BuildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
 func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
@@ -271,6 +293,10 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 
 	bc.Summarize(ctx)
 	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to Summarize
+
+	if err := b.resolveConfig(ctx, bc); err != nil {
+		return "", fmt.Errorf("locking apko config: %w", err)
+	}
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {

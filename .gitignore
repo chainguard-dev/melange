@@ -15,6 +15,16 @@
 # vendor/
 .vscode/*
 
+# emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
 melange
 melange.rsa
 melange.rsa.pub

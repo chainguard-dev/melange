@@ -49,7 +49,7 @@ func TestGenerateManifest(t *testing.T) {
 		assert.Equal(t, got.Package.Version, "1.29.78")
 		assert.EqualValues(t, got.Package.Epoch, 0)
 		assert.Equal(t, got.Package.Description, "Low-level, data-driven core of boto 3.")
-		assert.Equal(t, got.Package.Dependencies.Runtime, []string)
+		assert.Equal(t, got.Package.Dependencies.Runtime, []string{})
 		assert.Equal(t, got.Package.Dependencies.ProviderPriority, "0")
 
 		// Check Package.Copyright

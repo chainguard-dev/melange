@@ -29,7 +29,7 @@ pipeline:
         if [ "$type" != ET_DYN ]; then
           continue
         fi
-        dst=${{targets.contextdir}}/usr/lib/debug/${src#"$PACKAGE_DIR"/*/}.debug
+        dst=${{targets.contextdir}}/usr/lib/debug/${src#"$PACKAGE_DIR"/}.debug
         mkdir -p "${dst%/*}"
         ino=$(stat -c %i "$src")
         if ! [ -e "$PACKAGE_DIR/.dbg-tmp/$ino" ]; then

@@ -3,13 +3,13 @@ module chainguard.dev/melange
 go 1.23.2
 
 require (
-	al.essio.dev/pkg/shellescape v1.5.0
+	al.essio.dev/pkg/shellescape v1.5.1
 	chainguard.dev/apko v0.19.2
 	cloud.google.com/go/storage v1.44.0
-	dagger.io/dagger v0.13.3
+	dagger.io/dagger v0.13.5
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.1
+	github.com/chainguard-dev/yam v0.2.2
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v27.3.1+incompatible
 	github.com/docker/docker v27.3.1+incompatible
@@ -22,7 +22,7 @@ require (
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/invopop/jsonschema v0.12.0
 	github.com/joho/godotenv v1.5.1
-	github.com/klauspost/compress v1.17.10
+	github.com/klauspost/compress v1.17.11
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30
 	github.com/opencontainers/image-spec v1.1.0

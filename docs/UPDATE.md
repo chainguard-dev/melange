@@ -30,6 +30,8 @@ update:
     identifier: 38 # Mandatory, ID number for release monitor
     strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
     strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
+    version-filter-prefix: v17.2 # Optional, filter to apply when searching versions with a prefix
+    version-filter-contains: foo # Optional, filter to apply when searching versions with any match
 ```
 
 ## GitHub
@@ -53,7 +55,9 @@ update:
     strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
     strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
     use-tag: true # Optional, override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
-    tag-filter: foo # Optional, filter to apply when searching tags on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
+    tag-filter: foo # Deprecated: Use tag-filter-prefix instead
+    tag-filter-prefix: v17.2 # Optional, filter to apply when searching tags with a prefix on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
+    tag-filter-contains: foo # Optional, filter to apply when searching tags with any match on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
 ```
 
 ## Git
@@ -79,6 +83,8 @@ update:
   git:
     tag-filter-prefix: v17.2
     strip-prefix: v
+    strip-suffix: ignore_me
+    tag-filter-contains: foo
   schedule:
     period: daily
     reason: upstream project does not support tags or releases

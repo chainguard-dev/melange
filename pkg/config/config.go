@@ -518,6 +518,10 @@ type ReleaseMonitor struct {
 	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
 	// If the version in release monitor contains a suffix which should be ignored
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
+	// Filter to apply when searching version on a Release Monitoring
+	VersionFilterContains string `json:"version-filter-contains,omitempty" yaml:"version-filter-contains,omitempty"`
+	// Filter to apply when searching version Release Monitoring
+	VersionFilterPrefix string `json:"version-filter-prefix,omitempty" yaml:"version-filter-prefix,omitempty"`
 }
 
 // VersionHandler is an interface that defines methods for retrieving version filtering and stripping parameters.
@@ -599,6 +603,26 @@ func (ghm *GitHubMonitor) GetTagFilterPrefix() string {
 // GetTagFilterContains returns the substring filter to apply when searching tags in GitHubMonitor.
 func (ghm *GitHubMonitor) GetTagFilterContains() string {
 	return ghm.TagFilterContains
+}
+
+// GetStripPrefix returns the prefix that should be stripped from the ReleaseMonitor version.
+func (rm *ReleaseMonitor) GetStripPrefix() string {
+	return rm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix that should be stripped from the ReleaseMonitor version.
+func (rm *ReleaseMonitor) GetStripSuffix() string {
+	return rm.StripSuffix
+}
+
+// GetTagFilterPrefix returns the prefix filter to apply when searching versions in ReleaseMonitor.
+func (rm *ReleaseMonitor) GetTagFilterPrefix() string {
+	return rm.VersionFilterPrefix
+}
+
+// GetTagFilterContains returns the substring filter to apply when searching versions in ReleaseMonitor.
+func (rm *ReleaseMonitor) GetTagFilterContains() string {
+	return rm.VersionFilterContains
 }
 
 // VersionTransform allows mapping the package version to an APK version

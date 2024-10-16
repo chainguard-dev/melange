@@ -608,7 +608,7 @@ func sonameLibver(soname string) string {
 func getShbang(fp io.Reader) (string, error) {
 	// python3 and sh are symlinks and generateCmdProviders currently only considers
 	// regular files. Since nothing will fulfill such a depend, do not generate one.
-	ignores := map[string]bool{"python3": true, "python": true, "sh": true}
+	ignores := map[string]bool{"python3": true, "python": true, "sh": true, "awk": true}
 
 	buf := make([]byte, 80)
 	blen, err := io.ReadFull(fp, buf)

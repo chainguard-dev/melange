@@ -344,6 +344,12 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("compiling test pipelines: %w", err)
 	}
 
+	if t.Runner.Name() == container.QemuName {
+		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
+			"melange-microvm-init",
+		}...)
+	}
+
 	// Filter out any subpackages with false If conditions.
 	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
 		result, err := shouldRun(sp.If)
@@ -413,7 +419,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		log.Info("No source directory specified, skipping workspace population")
 	} else {
 		// Prepare workspace directory
-		if err := os.MkdirAll(t.WorkspaceDir, 0755); err != nil {
+		if err := os.MkdirAll(t.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
@@ -562,6 +568,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		PackageName:  pkgName,
 		Mounts:       mounts,
 		Capabilities: caps,
+		WorkspaceDir: t.WorkspaceDir,
 		Environment:  map[string]string{},
 		RunAs:        imgcfg.Accounts.RunAs,
 	}
@@ -586,7 +593,7 @@ func (t *Test) guestFS(ctx context.Context, suffix string) (apkofs.FullFS, error
 	// Test by having a suffix, so we get a clean guest directory for each of
 	// them.
 	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-	if err := os.MkdirAll(guestDir, 0755); err != nil {
+	if err := os.MkdirAll(guestDir, 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir -p %s: %w", guestDir, err)
 	}
 

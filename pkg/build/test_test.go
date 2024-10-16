@@ -59,6 +59,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 		Environment:  map[string]string{"HOME": "/root"},
 		PackageName:  testPkgName,
 		ImgRef:       testImgRef,
+		WorkspaceDir: "/workspace",
 		Capabilities: container.Capabilities{Networking: true},
 		Mounts: []container.BindMount{
 			{Source: testWorkspaceDir, Destination: homeBuild},

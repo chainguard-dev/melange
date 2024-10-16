@@ -344,6 +344,13 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("compiling test pipelines: %w", err)
 	}
 
+	if t.Runner.Name() == container.QemuName {
+		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
+			"melange-microvm-init",
+		}...)
+	}
+
+
 	// Filter out any subpackages with false If conditions.
 	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
 		result, err := shouldRun(sp.If)
@@ -562,6 +569,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		PackageName:  pkgName,
 		Mounts:       mounts,
 		Capabilities: caps,
+		WorkspaceDir: t.WorkspaceDir,
 		Environment:  map[string]string{},
 		RunAs:        imgcfg.Accounts.RunAs,
 	}

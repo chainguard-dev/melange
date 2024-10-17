@@ -1,6 +1,7 @@
 package apkbuild
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ import (
 	"chainguard.dev/melange/pkg/manifest"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
+	"mvdan.cc/sh/v3/syntax"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
@@ -461,6 +464,7 @@ func (c *Context) buildFetchStep(ctx context.Context, converter ApkConvertor) er
 }
 
 // maps APKBUILD values to mconvert
+// Question: Should not we return an error here for better error handling?
 func (c ApkConvertor) mapconvert() {
 	c.GeneratedMelangeConfig.Package.Name = c.Apkbuild.Pkgname
 	c.GeneratedMelangeConfig.Package.Description = c.Apkbuild.Pkgdesc
@@ -499,33 +503,45 @@ func (c ApkConvertor) mapconvert() {
 		c.GeneratedMelangeConfig.Package.Scriptlets = &scriptlets
 	}
 
-	// if c.Apkbuild.Funcs["build"] != nil {
-	//	// todo lets check the command and add the correct cmake | make | meson mconvert pipelines
-	//	//build := c.Apkbuild.Funcs["build"]
-	//}
+	if c.Apkbuild.Funcs["build"] != nil {
+		var output bytes.Buffer
+		printer := syntax.NewPrinter()
+		err := printer.Print(&output, c.Apkbuild.Funcs["build"])
+		if err != nil {
+			fmt.Errorf("failed to print build function: %w", err)
+		}
 
-	// switch c.Apkbuild.BuilderType {
-	//
-	// case BuilderTypeCMake:
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/configure"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/build"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/install"})
-	//
-	// case BuilderTypeMeson:
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/configure"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/compile"})
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/install"})
-	//
-	// case BuilderTypeMake:
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/configure"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make-install"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "strip"})
+		outputStr := output.String()
 
-	//default:
-	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "# FIXME"})
-	//
-	//}
+		// Define the regular expression to find options in the form of -<option>=<value> or --<option>=<value>
+		re := regexp.MustCompile(`--?\w[-\w]*=[^\\\s]+`)
+
+		// Find all matches
+		matches := re.FindAllString(outputStr, -1)
+
+		// Join matches into a single string separated by space and backslash
+		opts := strings.Join(matches, " \\\n")
+
+		switch {
+		case strings.Contains(outputStr, "cmake"):
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/configure"})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/build"})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "cmake/install"})
+		case strings.Contains(outputStr, "meson"):
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/configure", With: map[string]string{
+				"opts": opts,
+			}})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/compile"})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/install"})
+		case strings.Contains(outputStr, "autoconf"):
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/configure"})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make"})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make-install"})
+			c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "strip"})
+			// default:
+			// return "unknown", nil
+		}
+	}
 
 	for _, subPackage := range c.Apkbuild.Subpackages {
 		subpackage := config.Subpackage{

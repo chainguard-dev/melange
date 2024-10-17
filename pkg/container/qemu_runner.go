@@ -99,6 +99,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 		nil,
 		stderr,
 		stdout,
+		false,
 		args,
 	)
 	if err != nil {
@@ -126,6 +127,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		os.Stdin,
 		os.Stderr,
 		os.Stdout,
+		true,
 		args,
 	)
 	if err != nil {
@@ -191,6 +193,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
+		false,
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
@@ -231,6 +234,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		nil,
 		outFile,
+		false,
 		[]string{"sh", "-c", "cd /home/build && tar cvzf - melange-out"},
 	)
 	if err != nil {
@@ -446,6 +450,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
+		false,
 		[]string{"sh", "-c", "cp -r /mnt/* /home/build"},
 	)
 }
@@ -608,7 +613,7 @@ func checkSSHServer(address string) error {
 func sendSSHCommand(ctx context.Context, user, address string,
 	cfg *Config, extraVars map[string]string,
 	stdin io.Reader, stderr, stdout io.Writer,
-	command []string,
+	tty bool, command []string,
 ) error {
 	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
 	if err != nil {
@@ -661,6 +666,20 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	session.Stdin = stdin
 	session.Stderr = stderr
 	session.Stdout = stdout
+
+	if tty {
+		clog.FromContext(ctx).Debug("requesting tty instance")
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          0,     // disable echoing
+			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		}
+		// Request pseudo terminal
+		if err := session.RequestPty("xterm", 40, 80, modes); err != nil {
+			clog.FromContext(ctx).Errorf("request for pseudo terminal failed: %s", err)
+			return err
+		}
+	}
 
 	b64cmd := base64.StdEncoding.EncodeToString([]byte(shellescape.QuoteCommand(command)))
 	cmd := strings.Join(

@@ -200,7 +200,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		defer stop()
 	}
 
-	if id := identity(pipeline); id != "???" {
+	if id := identity(pipeline); id != unidentifiablePipeline {
 		log.Infof("running step %q", id)
 	}
 

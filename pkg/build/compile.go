@@ -28,6 +28,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const unidentifiablePipeline = "???"
+
 func (t *Test) Compile(ctx context.Context) error {
 	cfg := t.Configuration
 
@@ -324,7 +326,8 @@ func identity(p *config.Pipeline) string {
 	if p.Uses != "" {
 		return p.Uses
 	}
-	return "???"
+
+	return unidentifiablePipeline
 }
 
 func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) error {

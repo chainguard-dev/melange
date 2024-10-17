@@ -188,6 +188,9 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.ConfigFileRepositoryCommit == "" {
 		return nil, fmt.Errorf("config file repository commit was not set")
 	}
+	if b.Runner == nil {
+		return nil, fmt.Errorf("no runner was specified")
+	}
 
 	parsedCfg, err := config.ParseConfiguration(ctx,
 		b.ConfigFile,

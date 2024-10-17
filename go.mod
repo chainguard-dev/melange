@@ -2,6 +2,8 @@ module chainguard.dev/melange
 
 go 1.23.2
 
+toolchain go1.23.2
+
 require (
 	al.essio.dev/pkg/shellescape v1.5.1
 	chainguard.dev/apko v0.19.2
@@ -29,6 +31,7 @@ require (
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20230130182539-4dbf7e3e865e
+	github.com/spdx/tools-golang v0.5.5
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	github.com/yookoala/realpath v1.0.0

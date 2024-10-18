@@ -198,9 +198,9 @@ func WithTestAuth(domain, user, pass string) TestOption {
 }
 
 // If true, the test will clean up the test environment after the test is complete.
-func WithTestCleanup(c bool) TestOption {
+func WithTestRemove(c bool) TestOption {
 	return func(t *Test) error {
-		t.Cleanup = c
+		t.Remove = c
 		return nil
 	}
 }

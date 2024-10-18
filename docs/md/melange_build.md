@@ -34,7 +34,6 @@ melange build [flags]
       --build-option strings                                    build options to enable
       --cache-dir string                                        directory used for cached inputs (default "./melange-cache/")
       --cache-source string                                     directory or bucket used for preloading the cache
-      --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
       --cpu string                                              default CPU resources to use for builds
       --create-build-log                                        creates a package.log file containing a list of packages that were built by the command
       --debug                                                   enables debug logging of build pipelines
@@ -59,7 +58,7 @@ melange build [flags]
       --package-append strings                                  extra packages to install for each of the build environments
       --pipeline-dir string                                     directory used to extend defined built-in pipelines
   -r, --repository-append strings                               path to extra repositories to include in the build environment
-      --rm                                                      clean up intermediate artifacts (e.g. container images)
+      --rm                                                      clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
       --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --signing-key string                                      key to use for signing
       --source-dir string                                       directory used for included sources

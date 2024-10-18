@@ -51,7 +51,7 @@ type Test struct {
 	PipelineDirs      []string
 	SourceDir         string
 	GuestDir          string
-	Cleanup           bool
+	Remove            bool
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
@@ -384,7 +384,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		}
 		t.GuestDir = guestDir
 
-		if t.Cleanup {
+		if t.Remove {
 			defer os.RemoveAll(guestDir)
 		}
 	}

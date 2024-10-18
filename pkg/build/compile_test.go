@@ -71,8 +71,12 @@ func TestInheritWorkdir(t *testing.T) {
 
 func TestCompileTest(t *testing.T) {
 	test := &Test{
-		Package: "main",
 		Configuration: config.Configuration{
+			Package: config.Package{
+				Name:    "main",
+				Version: "1.2.3",
+				Epoch:   4,
+			},
 			Test: &config.Test{
 				Environment: apko_types.ImageConfiguration{
 					Contents: apko_types.ImageContents{
@@ -107,11 +111,11 @@ func TestCompileTest(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main-base", "main", "main-need"}; !slices.Equal(got, want) {
+	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main-base", "main=1.2.3-r4", "main-need"}; !slices.Equal(got, want) {
 		t.Errorf("main test packages: want %v, got %v", want, got)
 	}
 
-	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage-base", "subpackage", "subpackage-need"}; !slices.Equal(got, want) {
+	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage-base", "subpackage=1.2.3-r4", "subpackage-need"}; !slices.Equal(got, want) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
 	}
 }

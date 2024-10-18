@@ -157,7 +157,7 @@ integration:
 test: integration
 
 .PHONY: test-e2e
-test-e2e: test generate
+test-e2e: generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
 	go test -tags e2e ./... -race
 	cd e2e-tests && ./run-tests
 

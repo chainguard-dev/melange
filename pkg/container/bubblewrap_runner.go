@@ -175,7 +175,7 @@ type bubblewrapOCILoader struct {
 	guestDir string
 }
 
-func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
 	defer span.End()
 
@@ -230,7 +230,7 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 	return guestDir, nil
 }
 
-func (b bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
+func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	clog.FromContext(ctx).Infof("removing image path %s", ref)
 	if b.remove {
 		os.RemoveAll(b.guestDir)

@@ -14,7 +14,7 @@ import (
 
 	"io"
 
-	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/pkg/container"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -37,10 +37,11 @@ func TestBuild_BuildPackage(t *testing.T) {
 
 			t.Run("builds successfully", func(t *testing.T) {
 				ctx := context.Background()
-				r, err := docker.NewRunner(ctx) // TODO: is access to Docker a safe assumption in CI?
-				if err != nil {
-					t.Fatalf("creating docker runner: %v", err)
-				}
+				r := container.QemuRunner()
+				// r, err := docker.NewRunner(ctx) // TODO: is access to Docker a safe assumption in CI?
+				// if err != nil {
+				// 	t.Fatalf("creating docker runner: %v", err)
+				// }
 
 				b, err := New(
 					ctx,

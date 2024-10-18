@@ -34,6 +34,7 @@ melange build [flags]
       --build-option strings                                    build options to enable
       --cache-dir string                                        directory used for cached inputs (default "./melange-cache/")
       --cache-source string                                     directory or bucket used for preloading the cache
+      --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
       --cpu string                                              default CPU resources to use for builds
       --create-build-log                                        creates a package.log file containing a list of packages that were built by the command
       --debug                                                   enables debug logging of build pipelines
@@ -43,11 +44,14 @@ melange build [flags]
       --empty-workspace                                         whether the build workspace should be empty
       --env-file string                                         file to use for preloaded environment variables
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
+      --git-commit string                                       commit hash of the git repository containing the build config file (defaults to detecting HEAD)
+      --git-repo-url string                                     URL of the git repository containing the build config file (defaults to detecting from configured git remotes)
       --guest-dir string                                        directory used for the build environment guest
   -h, --help                                                    help for build
       --ignore-signatures                                       ignore repository signature verification
   -i, --interactive                                             when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings                                  path to extra keys to include in the build environment keyring
+      --license string                                          license to use for the build config file itself (default "NOASSERTION")
       --lint-require strings                                    linters that must pass (default [dev,infodir,tempdir,varempty])
       --lint-warn strings                                       linters that will generate warnings (default [object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,worldwrite])
       --memory string                                           default memory resources to use for builds

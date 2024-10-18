@@ -15,6 +15,7 @@ import (
 	"io"
 
 	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/container/docker"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -37,11 +38,11 @@ func TestBuild_BuildPackage(t *testing.T) {
 
 			t.Run("builds successfully", func(t *testing.T) {
 				ctx := context.Background()
-				r := container.QemuRunner()
-				// r, err := docker.NewRunner(ctx) // TODO: is access to Docker a safe assumption in CI?
-				// if err != nil {
-				// 	t.Fatalf("creating docker runner: %v", err)
-				// }
+
+				// NOTE: Ideally we have one runner that works everywhere to make it easier to
+				// work on these tests. But until then, we'll try to use the most appropriate
+				// runner for the environment.
+				r := getRunner(ctx, t)
 
 				b, err := New(
 					ctx,
@@ -116,4 +117,23 @@ func TestBuild_BuildPackage(t *testing.T) {
 			})
 		})
 	}
+}
+
+func getRunner(ctx context.Context, t *testing.T) container.Runner {
+	t.Helper()
+
+	if r := container.BubblewrapRunner(true); r.TestUsability(ctx) {
+		return r
+	}
+
+	r, err := docker.NewRunner(ctx)
+	if err != nil {
+		t.Fatalf("creating docker runner: %v", err)
+	}
+	if r.TestUsability(ctx) {
+		return r
+	}
+
+	t.Fatal("no usable runner found")
+	return nil
 }

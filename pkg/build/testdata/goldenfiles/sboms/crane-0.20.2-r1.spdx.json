@@ -54,7 +54,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128",
+      "SPDXID": "SPDXRef-Package-github.com-google-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128",
       "name": "go-containerregistry",
       "versionInfo": "v0.20.2",
       "filesAnalyzed": false,
@@ -81,7 +81,7 @@
     {
       "spdxElementId": "SPDXRef-Package-crane-0.20.2-r1",
       "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-Package-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128"
+      "relatedSpdxElement": "SPDXRef-Package-github.com-google-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128"
     }
   ]
 }

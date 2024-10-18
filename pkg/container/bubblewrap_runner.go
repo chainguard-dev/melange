@@ -49,7 +49,7 @@ func (bw *bubblewrap) Close() error {
 	return nil
 }
 
-// Name name of the runner
+// Name of the runner.
 func (bw *bubblewrap) Name() string {
 	return BubblewrapName
 }

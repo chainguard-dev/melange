@@ -83,6 +83,7 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 	baseargs = append(baseargs, "--unshare-pid", "--die-with-parent",
 		"--dev", "/dev",
 		"--proc", "/proc",
+		"--ro-bind", "/sys", "/sys",
 		"--chdir", runnerWorkdir,
 		"--clearenv")
 

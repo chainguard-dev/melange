@@ -79,6 +79,7 @@ func test() *cobra.Command {
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
+				build.WithTestRemove(remove),
 			}
 
 			if len(args) > 0 {

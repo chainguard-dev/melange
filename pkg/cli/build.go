@@ -76,7 +76,6 @@ func buildCmd() *cobra.Command {
 	var libc string
 	var lintRequire, lintWarn []string
 	var ignoreSignatures bool
-	var cleanup bool
 
 	var traceFile string
 
@@ -113,7 +112,7 @@ func buildCmd() *cobra.Command {
 				ctx = tctx
 			}
 
-			r, err := getRunner(ctx, runner)
+			r, err := getRunner(ctx, runner, remove)
 			if err != nil {
 				return err
 			}
@@ -158,7 +157,6 @@ func buildCmd() *cobra.Command {
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
 				build.WithIgnoreSignatures(ignoreSignatures),
-				build.WithCleanup(cleanup),
 			}
 
 			if len(args) > 0 {
@@ -217,7 +215,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
+	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
 	cmd.Flags().StringVar(&disk, "disk", "", "disk size to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
@@ -226,7 +224,6 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
-	cmd.Flags().BoolVar(&cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
@@ -234,11 +231,11 @@ func buildCmd() *cobra.Command {
 	return cmd
 }
 
-func getRunner(ctx context.Context, runner string) (container.Runner, error) {
+func getRunner(ctx context.Context, runner string, remove bool) (container.Runner, error) {
 	if runner != "" {
 		switch runner {
 		case "bubblewrap":
-			return container.BubblewrapRunner(), nil
+			return container.BubblewrapRunner(remove), nil
 		case "qemu":
 			return container.QemuRunner(), nil
 		case "docker":
@@ -252,7 +249,7 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 
 	switch runtime.GOOS {
 	case "linux":
-		return container.BubblewrapRunner(), nil
+		return container.BubblewrapRunner(remove), nil
 	case "darwin":
 		// darwin is the same as default, but we want to keep it explicit
 		fallthrough

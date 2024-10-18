@@ -67,7 +67,6 @@ type Build struct {
 	PipelineDirs          []string
 	SourceDir             string
 	GuestDir              string
-	Cleanup               bool
 	SigningKey            string
 	SigningPassphrase     string
 	Namespace             string
@@ -705,7 +704,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 		b.GuestDir = guestDir
 
-		if b.Cleanup {
+		if b.Remove {
 			defer os.RemoveAll(guestDir)
 		}
 	}

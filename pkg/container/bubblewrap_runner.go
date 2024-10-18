@@ -37,11 +37,12 @@ var _ Debugger = (*bubblewrap)(nil)
 const BubblewrapName = "bubblewrap"
 
 type bubblewrap struct {
+	remove bool // if true, clean up temp dirs on close.
 }
 
 // BubblewrapRunner returns a Bubblewrap Runner implementation.
-func BubblewrapRunner() Runner {
-	return &bubblewrap{}
+func BubblewrapRunner(remove bool) Runner {
+	return &bubblewrap{remove: remove}
 }
 
 func (bw *bubblewrap) Close() error {
@@ -139,7 +140,7 @@ func (bw *bubblewrap) TestUsability(ctx context.Context) bool {
 
 // OCIImageLoader used to load OCI images in, if needed. bubblewrap does not need it.
 func (bw *bubblewrap) OCIImageLoader() Loader {
-	return &bubblewrapOCILoader{}
+	return &bubblewrapOCILoader{remove: bw.remove}
 }
 
 // TempDir returns the base for temporary directory. For bubblewrap, this is empty.
@@ -169,9 +170,12 @@ func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadClo
 	return nil, nil
 }
 
-type bubblewrapOCILoader struct{}
+type bubblewrapOCILoader struct {
+	remove   bool
+	guestDir string
+}
 
-func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
 	defer span.End()
 
@@ -181,6 +185,7 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
+	b.guestDir = guestDir
 	rc, err := layer.Uncompressed()
 	if err != nil {
 		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
@@ -225,7 +230,10 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 	return guestDir, nil
 }
 
-func (b bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
+func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	clog.FromContext(ctx).Infof("removing image path %s", ref)
+	if b.remove {
+		os.RemoveAll(b.guestDir)
+	}
 	return os.RemoveAll(ref)
 }

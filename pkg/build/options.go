@@ -299,7 +299,7 @@ func WithInteractive(interactive bool) Option {
 }
 
 // WithRemove indicates whether the the build will clean up after itself.
-// This includes deleting any intermediate artifacts like container images.
+// This includes deleting any intermediate artifacts like container images and temp workspace and guest dirs.
 func WithRemove(remove bool) Option {
 	return func(b *Build) error {
 		b.Remove = remove
@@ -381,14 +381,6 @@ func WithLibcFlavorOverride(libc string) Option {
 func WithIgnoreSignatures(ignore bool) Option {
 	return func(b *Build) error {
 		b.IgnoreSignatures = ignore
-		return nil
-	}
-}
-
-// WithCleanup indicates whether to clean up the build environment after the build is complete.
-func WithCleanup(c bool) Option {
-	return func(b *Build) error {
-		b.Cleanup = c
 		return nil
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"iter"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -446,8 +447,23 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string)
 
 	case "git-checkout":
 		repo := with["repository"]
+		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
+
+		// We'll use all available data to ensure our SBOM's package ID is unique, even
+		// when the same repo is git-checked out multiple times.
+		var idComponents []string
+		repoCleaned := func() string {
+			s := strings.TrimPrefix(repo, "https://")
+			s = strings.TrimPrefix(s, "http://")
+			return s
+		}()
+		for _, component := range []string{repoCleaned, branch, tag, expectedCommit} {
+			if component != "" {
+				idComponents = append(idComponents, component)
+			}
+		}
 
 		if strings.HasPrefix(repo, "https://github.com/") {
 			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
@@ -475,6 +491,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string)
 				}
 
 				return &sbom.Package{
+					IDComponents:    idComponents,
 					Name:            name,
 					Version:         v,
 					LicenseDeclared: licenseDeclared,
@@ -492,7 +509,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string)
 		}
 
 		// Create nice looking package name, last component of uri, without .git
-		name := strings.TrimSuffix(filepath.Base(repo), ".git")
+		name := strings.TrimSuffix(path.Base(repo), ".git")
 
 		// Encode vcs_url with git+ prefix and @commit suffix
 		vcsUrl := "git+" + repo
@@ -518,6 +535,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string)
 		}
 
 		return &sbom.Package{
+			IDComponents:    idComponents,
 			Name:            name,
 			Version:         version,
 			LicenseDeclared: licenseDeclared,

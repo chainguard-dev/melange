@@ -37,6 +37,15 @@ import (
 // process. It is later converted to an SPDX package, but it doesn't expose
 // fields that are invariant in the SPDX output.
 type Package struct {
+	// IDComponents lets the consumer specify additional bits of data that should be
+	// included in the generation of the eventual SBOM package ID. By default, this
+	// slice has a length of zero, in which case only the package's name and version
+	// will be used. But sometimes it's necessary to include more bits of data to
+	// ensure package IDs remain unique. If this slice's length is non-zero, only
+	// these values will be used when producing the ID (via calling the ID method)
+	// (i.e. name and version would need to be added explicitly to this slice).
+	IDComponents []string
+
 	// The name of the origin package, a subpackage, or any other kind of (e.g.
 	// non-APK) package for inclusion in the SBOM.
 	Name string
@@ -111,9 +120,17 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 // ID returns the unique identifier for this package. It implements the Element
 // interface.
 func (p Package) ID() string {
-	return stringToIdentifier(
-		fmt.Sprintf("SPDXRef-Package-%s-%s", p.Name, p.Version),
-	)
+	if len(p.IDComponents) == 0 {
+		return stringToIdentifier(
+			fmt.Sprintf("SPDXRef-Package-%s-%s", p.Name, p.Version),
+		)
+	}
+
+	id := "SPDXRef-Package"
+	for _, component := range p.IDComponents {
+		id += "-" + component
+	}
+	return stringToIdentifier(id)
 }
 
 func (p Package) getChecksums() []spdx.Checksum {

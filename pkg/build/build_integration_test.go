@@ -30,11 +30,12 @@ func TestBuild_BuildPackage(t *testing.T) {
 		},
 	}
 
+	const arch = "x86_64"
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := t.TempDir()
 			p := filepath.Join("testdata", "build_configs", tt.name) + ".yaml"
-			const arch = "aarch64"
 
 			t.Run("builds successfully", func(t *testing.T) {
 				ctx := context.Background()

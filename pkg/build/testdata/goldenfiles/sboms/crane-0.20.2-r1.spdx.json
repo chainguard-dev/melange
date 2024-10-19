@@ -30,7 +30,7 @@
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:apk/wolfi/crane@0.20.2-r1?arch=aarch64",
+          "referenceLocator": "pkg:apk/wolfi/crane@0.20.2-r1?arch=x86_64",
           "referenceType": "purl"
         }
       ]

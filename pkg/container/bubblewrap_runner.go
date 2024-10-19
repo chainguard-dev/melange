@@ -34,11 +34,7 @@ import (
 
 var _ Debugger = (*bubblewrap)(nil)
 
-const (
-	BubblewrapName = "bubblewrap"
-	DefaultUID     = "1000"
-	DefaultGID     = "1000"
-)
+const BubblewrapName = "bubblewrap"
 
 type bubblewrap struct {
 }
@@ -89,14 +85,13 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		"--chdir", runnerWorkdir,
 		"--clearenv")
 
+	baseargs = append(baseargs, "--unshare-user")
 	if cfg.RunAs != "" {
-		baseargs = append(baseargs, "--unshare-user")
 		baseargs = append(baseargs, "--uid", cfg.RunAs)
+		baseargs = append(baseargs, "--gid", cfg.RunAs)
 	} else {
-		// TODO: we may want to inherit the apko.ImageConfiguration.Accounts to match passwd.
-		baseargs = append(baseargs, "--unshare-user")
-		baseargs = append(baseargs, "--uid", DefaultUID)
-		baseargs = append(baseargs, "--gid", DefaultGID)
+		baseargs = append(baseargs, "--uid", "0")
+		baseargs = append(baseargs, "--gid", "0")
 	}
 
 	if !debug {

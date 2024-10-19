@@ -85,6 +85,9 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		"--chdir", runnerWorkdir,
 		"--clearenv")
 
+	// Set caps as for the current thread bounding capability set.
+	baseargs = append(baseargs, "--cap-add", "all")
+
 	baseargs = append(baseargs, "--unshare-user")
 	if cfg.RunAs != "" {
 		baseargs = append(baseargs, "--uid", cfg.RunAs)

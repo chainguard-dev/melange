@@ -38,6 +38,11 @@ func TestBubblewrapCmd(t *testing.T) {
 			config:       &Config{RunAs: "65535"},
 			expectedArgs: fmt.Sprintf("--unshare-user --uid %s --gid %s", "65535", "65535"),
 		},
+		{
+			name:         "Set capabilities",
+			config:       new(Config),
+			expectedArgs: "--cap-add all",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

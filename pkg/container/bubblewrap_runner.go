@@ -34,7 +34,10 @@ import (
 
 var _ Debugger = (*bubblewrap)(nil)
 
-const BubblewrapName = "bubblewrap"
+const (
+	BubblewrapName = "bubblewrap"
+	buildUserID    = "1000"
+)
 
 type bubblewrap struct {
 }
@@ -85,16 +88,18 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		"--chdir", runnerWorkdir,
 		"--clearenv")
 
-	// Set caps as for the current thread bounding capability set.
-	baseargs = append(baseargs, "--cap-add", "all")
-
-	baseargs = append(baseargs, "--unshare-user")
+	// If we need to run as an user, we run as that user.
 	if cfg.RunAs != "" {
+		baseargs = append(baseargs, "--unshare-user")
 		baseargs = append(baseargs, "--uid", cfg.RunAs)
 		baseargs = append(baseargs, "--gid", cfg.RunAs)
-	} else {
-		baseargs = append(baseargs, "--uid", "0")
-		baseargs = append(baseargs, "--gid", "0")
+		// Else if we're not using melange as root, we force the use of the
+		// Apko build user. This avoids problems on machines where default
+		// regular user is NOT 1000.
+	} else if os.Getuid() > 0 {
+		baseargs = append(baseargs, "--unshare-user")
+		baseargs = append(baseargs, "--uid", buildUserID)
+		baseargs = append(baseargs, "--gid", buildUserID)
 	}
 
 	if !debug {

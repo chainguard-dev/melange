@@ -94,6 +94,7 @@ func buildCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			log := clog.FromContext(ctx)
 
 			if traceFile != "" {
 				w, err := os.Create(traceFile)
@@ -110,7 +111,7 @@ func buildCmd() *cobra.Command {
 
 				defer func() {
 					if err := tp.Shutdown(context.WithoutCancel(ctx)); err != nil {
-						clog.FromContext(ctx).Errorf("shutting down trace provider: %v", err)
+						log.Errorf("shutting down trace provider: %v", err)
 					}
 				}()
 
@@ -126,18 +127,20 @@ func buildCmd() *cobra.Command {
 
 			// Favor explicit, user-provided information for the git provenance of the
 			// melange build definition. As a fallback, detect this from local git state.
+			// Git auto-detection should be "best effort" and not fail the build if it
+			// fails.
 			if configFileGitCommit == "" || configFileGitRepoURL == "" {
 				gs, err := detectGitState(ctx)
 				if err != nil {
-					return fmt.Errorf("detecting git state: %w", err)
-				}
-
-				if configFileGitCommit == "" {
-					configFileGitCommit = gs.commit
-				}
-				if configFileGitRepoURL == "" {
-					// To form e.g. "github.com/wolfi-dev/os"
-					configFileGitRepoURL = fmt.Sprintf("https://%s/%s/%s", gs.repoHost, gs.repoPathParent, gs.repoName)
+					log.Warnf("failed to auto-detect git information: %v", err)
+				} else {
+					if configFileGitCommit == "" {
+						configFileGitCommit = gs.commit
+					}
+					if configFileGitRepoURL == "" {
+						// To form e.g. "github.com/wolfi-dev/os"
+						configFileGitRepoURL = fmt.Sprintf("https://%s/%s/%s", gs.repoHost, gs.repoPathParent, gs.repoName)
+					}
 				}
 			}
 

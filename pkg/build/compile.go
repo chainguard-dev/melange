@@ -75,7 +75,7 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Append the subpackage that we're testing to be installed.
 		version := fmt.Sprintf("%s-r%d", t.Configuration.Package.Version, t.Configuration.Package.Epoch)
-		te.Packages = append(te.Packages, sp.Name+"="+version)
+		te.Packages = append(te.Packages, sp.Name+"~"+version)
 
 		if err := test.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
@@ -97,7 +97,7 @@ func (t *Test) Compile(ctx context.Context) error {
 			te.Packages = append(te.Packages, t.Package)
 		} else {
 			version := fmt.Sprintf("%s-r%d", t.Configuration.Package.Version, t.Configuration.Package.Epoch)
-			te.Packages = append(te.Packages, t.Configuration.Package.Name+"="+version)
+			te.Packages = append(te.Packages, t.Configuration.Package.Name+"~"+version)
 		}
 
 		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {

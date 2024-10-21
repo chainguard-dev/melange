@@ -34,6 +34,27 @@ func WithConfig(configFile string) Option {
 	}
 }
 
+func WithConfigFileRepositoryURL(u string) Option {
+	return func(b *Build) error {
+		b.ConfigFileRepositoryURL = u
+		return nil
+	}
+}
+
+func WithConfigFileRepositoryCommit(hash string) Option {
+	return func(b *Build) error {
+		b.ConfigFileRepositoryCommit = hash
+		return nil
+	}
+}
+
+func WithConfigFileLicense(license string) Option {
+	return func(b *Build) error {
+		b.ConfigFileLicense = license
+		return nil
+	}
+}
+
 // WithLintRequire sets required linter checks.
 func WithLintRequire(linters []string) Option {
 	return func(b *Build) error {

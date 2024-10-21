@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,6 +33,8 @@ import (
 	"chainguard.dev/melange/pkg/container/docker"
 	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -76,6 +79,10 @@ func buildCmd() *cobra.Command {
 	var libc string
 	var lintRequire, lintWarn []string
 	var ignoreSignatures bool
+	var cleanup bool
+	var configFileGitCommit string
+	var configFileGitRepoURL string
+	var configFileLicense string
 
 	var traceFile string
 
@@ -87,6 +94,7 @@ func buildCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			log := clog.FromContext(ctx)
 
 			if traceFile != "" {
 				w, err := os.Create(traceFile)
@@ -103,7 +111,7 @@ func buildCmd() *cobra.Command {
 
 				defer func() {
 					if err := tp.Shutdown(context.WithoutCancel(ctx)); err != nil {
-						clog.FromContext(ctx).Errorf("shutting down trace provider: %v", err)
+						log.Errorf("shutting down trace provider: %v", err)
 					}
 				}()
 
@@ -115,6 +123,25 @@ func buildCmd() *cobra.Command {
 			r, err := getRunner(ctx, runner, remove)
 			if err != nil {
 				return err
+			}
+
+			// Favor explicit, user-provided information for the git provenance of the
+			// melange build definition. As a fallback, detect this from local git state.
+			// Git auto-detection should be "best effort" and not fail the build if it
+			// fails.
+			if configFileGitCommit == "" || configFileGitRepoURL == "" {
+				gs, err := detectGitState(ctx)
+				if err != nil {
+					log.Warnf("failed to auto-detect git information: %v", err)
+				} else {
+					if configFileGitCommit == "" {
+						configFileGitCommit = gs.commit
+					}
+					if configFileGitRepoURL == "" {
+						// To form e.g. "github.com/wolfi-dev/os"
+						configFileGitRepoURL = fmt.Sprintf("https://%s/%s/%s", gs.repoHost, gs.repoPathParent, gs.repoName)
+					}
+				}
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -157,6 +184,9 @@ func buildCmd() *cobra.Command {
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
 				build.WithIgnoreSignatures(ignoreSignatures),
+				build.WithConfigFileRepositoryCommit(configFileGitCommit),
+				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
+				build.WithConfigFileLicense(configFileLicense),
 			}
 
 			if len(args) > 0 {
@@ -224,11 +254,100 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	cmd.Flags().BoolVar(&cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
+	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
+	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
+	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
 
 	return cmd
+}
+
+type gitState struct {
+	// The current git commit, from which we're building packages. e.g. "0c1f2c1f3fe13e8b01f4fccbc5880525739d74a2".
+	commit string
+
+	// e.g. "github.com" (as in from "github.com/wolfi-dev/os")
+	repoHost string
+
+	// e.g. "wolfi-dev"
+	repoPathParent string
+
+	// e.g. "os"
+	repoName string
+}
+
+// Detect the git state of the current directory
+func detectGitState(_ context.Context) (*gitState, error) {
+	allowedRepoOwners := []string{
+		"wolfi-dev",
+		"chainguard-dev",
+	}
+
+	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return nil, fmt.Errorf("opening git repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("determining HEAD: %w", err)
+	}
+	commit := head.Hash().String()
+
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return nil, fmt.Errorf("getting remotes: %w", err)
+	}
+	for _, r := range remotes {
+		for _, u := range r.Config().URLs {
+			ep, err := transport.NewEndpoint(u)
+			if err != nil {
+				// This URL isn't usable for detection, but we should keep trying.
+				continue
+			}
+
+			host, repoPathParent, repoName := parseGitTransportEndpoint(ep)
+			if host != "github.com" {
+				continue
+			}
+			if !slices.Contains(allowedRepoOwners, repoPathParent) {
+				continue
+			}
+			if repoName == "" {
+				continue
+			}
+
+			return &gitState{
+				repoHost:       host,
+				repoPathParent: repoPathParent,
+				repoName:       repoName,
+				commit:         commit,
+			}, nil
+		}
+	}
+
+	return nil, errors.New("no usable git remote found")
+}
+
+func parseGitTransportEndpoint(ep *transport.Endpoint) (host string, repoPathParent string, repoName string) {
+	if ep == nil {
+		return
+	}
+
+	p := ep.Path
+	p = strings.TrimSuffix(p, ".git")
+	p = strings.TrimPrefix(p, "/")
+	parts := strings.Split(p, "/")
+	if len(parts) < 2 {
+		return
+	}
+
+	host = ep.Host
+	repoPathParent, repoName = parts[0], parts[1]
+	return
 }
 
 func getRunner(ctx context.Context, runner string, remove bool) (container.Runner, error) {

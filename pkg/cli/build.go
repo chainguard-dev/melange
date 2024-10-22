@@ -96,6 +96,11 @@ func buildCmd() *cobra.Command {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
 
+			var buildConfigFilePath string
+			if len(args) > 0 {
+				buildConfigFilePath = args[0] // e.g. "crane.yaml"
+			}
+
 			if traceFile != "" {
 				w, err := os.Create(traceFile)
 				if err != nil {
@@ -130,17 +135,17 @@ func buildCmd() *cobra.Command {
 			// Git auto-detection should be "best effort" and not fail the build if it
 			// fails.
 			if configFileGitCommit == "" || configFileGitRepoURL == "" {
-				gs, err := detectGitState(ctx)
+				gs, err := detectGitState(ctx, buildConfigFilePath)
 				if err != nil {
-					log.Warnf("failed to auto-detect git information: %v", err)
-				} else {
-					if configFileGitCommit == "" {
-						configFileGitCommit = gs.commit
-					}
-					if configFileGitRepoURL == "" {
-						// To form e.g. "github.com/wolfi-dev/os"
-						configFileGitRepoURL = fmt.Sprintf("https://%s/%s/%s", gs.repoHost, gs.repoPathParent, gs.repoName)
-					}
+					log.Warnf("failed to auto-detect all git information: %v", err)
+				}
+
+				if configFileGitCommit == "" {
+					configFileGitCommit = gs.commit
+				}
+				if configFileGitRepoURL == "" {
+					// To form e.g. "github.com/wolfi-dev/os"
+					configFileGitRepoURL = fmt.Sprintf("https://%s/%s/%s", gs.repoHost, gs.repoPathParent, gs.repoName)
 				}
 			}
 
@@ -190,10 +195,10 @@ func buildCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				options = append(options, build.WithConfig(args[0]))
+				options = append(options, build.WithConfig(buildConfigFilePath))
 
 				if sourceDir == "" {
-					sourceDir = filepath.Dir(args[0])
+					sourceDir = filepath.Dir(buildConfigFilePath)
 				}
 			}
 
@@ -279,27 +284,39 @@ type gitState struct {
 	repoName string
 }
 
-// Detect the git state of the current directory
-func detectGitState(_ context.Context) (*gitState, error) {
+// Detect the git state from the build config file's parent directory.
+func detectGitState(ctx context.Context, buildConfigFilePath string) (*gitState, error) {
+	// Establish fallback values in case we error out early.
+	gs := &gitState{
+		commit:         "unknown",
+		repoHost:       "unknown",
+		repoPathParent: "unknown",
+		repoName:       "unknown",
+	}
+
 	allowedRepoOwners := []string{
 		"wolfi-dev",
 		"chainguard-dev",
 	}
 
-	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	repoDir := filepath.Dir(buildConfigFilePath)
+	clog.FromContext(ctx).Debugf("detecting git state from %q", repoDir)
+
+	repo, err := git.PlainOpenWithOptions(repoDir, &git.PlainOpenOptions{DetectDotGit: true})
 	if err != nil {
-		return nil, fmt.Errorf("opening git repository: %w", err)
+		return gs, fmt.Errorf("opening git repository: %w", err)
 	}
 
 	head, err := repo.Head()
 	if err != nil {
-		return nil, fmt.Errorf("determining HEAD: %w", err)
+		return gs, fmt.Errorf("determining HEAD: %w", err)
 	}
 	commit := head.Hash().String()
+	gs.commit = commit
 
 	remotes, err := repo.Remotes()
 	if err != nil {
-		return nil, fmt.Errorf("getting remotes: %w", err)
+		return gs, fmt.Errorf("getting remotes: %w", err)
 	}
 	for _, r := range remotes {
 		for _, u := range r.Config().URLs {
@@ -313,23 +330,23 @@ func detectGitState(_ context.Context) (*gitState, error) {
 			if host != "github.com" {
 				continue
 			}
+			gs.repoHost = host
+
 			if !slices.Contains(allowedRepoOwners, repoPathParent) {
 				continue
 			}
+			gs.repoPathParent = repoPathParent
+
 			if repoName == "" {
 				continue
 			}
+			gs.repoName = repoName
 
-			return &gitState{
-				repoHost:       host,
-				repoPathParent: repoPathParent,
-				repoName:       repoName,
-				commit:         commit,
-			}, nil
+			return gs, nil
 		}
 	}
 
-	return nil, errors.New("no usable git remote found")
+	return gs, errors.New("no usable git remote found")
 }
 
 func parseGitTransportEndpoint(ep *transport.Endpoint) (host string, repoPathParent string, repoName string) {

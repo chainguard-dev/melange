@@ -534,7 +534,7 @@ func (b Build) getBuildConfigPURL(ctx context.Context) (*purl.PackageURL, error)
 	if !found {
 		clog.FromContext(ctx).Warnf("unable to extract namespace and name from %q", b.ConfigFileRepositoryURL)
 		namespace = "unknown"
-		name = "unknown"git
+		name = "unknown"
 	}
 
 	u := &purl.PackageURL{

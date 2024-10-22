@@ -183,10 +183,10 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
 	if b.ConfigFileRepositoryURL == "" {
-		return nil, fmt.Errorf("config file repository URL was not set")
+		log.Warnf("config file repository URL was not set")
 	}
 	if b.ConfigFileRepositoryCommit == "" {
-		return nil, fmt.Errorf("config file repository commit was not set")
+		log.Warnf("config file repository commit was not set")
 	}
 	if b.Runner == nil {
 		return nil, fmt.Errorf("no runner was specified")

@@ -402,7 +402,7 @@ type Pipeline struct {
 // upstream project into the build. This function helps with generating SBOMs
 // for the package being built. If the pipeline step is not a fetch or
 // git-checkout step, this function returns nil and no error.
-func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string) (*sbom.Package, error) {
+func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string, uniqueID string) (*sbom.Package, error) {
 	// TODO: It'd be great to detect the license from the source code itself. Such a
 	//  feature could even eliminate the need for the package's license field in the
 	//  build configuration.
@@ -438,11 +438,17 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string)
 			return nil, err
 		}
 
+		idComponents := []string{pkgName, pkgVersion}
+		if uniqueID != "" {
+			idComponents = append(idComponents, uniqueID)
+		}
+
 		return &sbom.Package{
-			Name:      pkgName,
-			Version:   pkgVersion,
-			Namespace: supplier,
-			PURL:      pu,
+			IDComponents: idComponents,
+			Name:         pkgName,
+			Version:      pkgVersion,
+			Namespace:    supplier,
+			PURL:         pu,
 		}, nil
 
 	case "git-checkout":
@@ -463,6 +469,9 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string)
 			if component != "" {
 				idComponents = append(idComponents, component)
 			}
+		}
+		if uniqueID != "" {
+			idComponents = append(idComponents, uniqueID)
 		}
 
 		if strings.HasPrefix(repo, "https://github.com/") {

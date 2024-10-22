@@ -529,10 +529,12 @@ func (b *Build) IsBuildLess() bool {
 
 // getBuildConfigPURL determines the package URL for the melange config file
 // itself.
-func (b Build) getBuildConfigPURL() (*purl.PackageURL, error) {
+func (b Build) getBuildConfigPURL(ctx context.Context) (*purl.PackageURL, error) {
 	namespace, name, found := strings.Cut(strings.TrimPrefix(b.ConfigFileRepositoryURL, "https://github.com/"), "/")
 	if !found {
-		return nil, fmt.Errorf("extracting namespace and name from %s", b.ConfigFileRepositoryURL)
+		clog.FromContext(ctx).Warnf("unable to extract namespace and name from %q", b.ConfigFileRepositoryURL)
+		namespace = "unknown"
+		name = "unknown"git
 	}
 
 	u := &purl.PackageURL{
@@ -754,7 +756,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return !result
 	})
 
-	if err := b.addSBOMPackageForBuildConfigFile(); err != nil {
+	if err := b.addSBOMPackageForBuildConfigFile(ctx); err != nil {
 		return fmt.Errorf("adding SBOM package for build config file: %w", err)
 	}
 
@@ -1022,8 +1024,8 @@ func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
 	return nil
 }
 
-func (b *Build) addSBOMPackageForBuildConfigFile() error {
-	buildConfigPURL, err := b.getBuildConfigPURL()
+func (b *Build) addSBOMPackageForBuildConfigFile(ctx context.Context) error {
+	buildConfigPURL, err := b.getBuildConfigPURL(ctx)
 	if err != nil {
 		return fmt.Errorf("getting PURL for build config: %w", err)
 	}

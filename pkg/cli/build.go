@@ -96,6 +96,8 @@ func buildCmd() *cobra.Command {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
 
+			buildConfigFilePath := args[0] // e.g. "crane.yaml"
+
 			if traceFile != "" {
 				w, err := os.Create(traceFile)
 				if err != nil {
@@ -190,10 +192,10 @@ func buildCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				options = append(options, build.WithConfig(args[0]))
+				options = append(options, build.WithConfig(buildConfigFilePath))
 
 				if sourceDir == "" {
-					sourceDir = filepath.Dir(args[0])
+					sourceDir = filepath.Dir(buildConfigFilePath)
 				}
 			}
 
@@ -279,14 +281,16 @@ type gitState struct {
 	repoName string
 }
 
-// Detect the git state of the current directory
-func detectGitState(_ context.Context) (*gitState, error) {
+// Detect the git state from the build config file's parent directory.
+func detectGitState(_ context.Context, buildConfigFilePath string) (*gitState, error) {
 	allowedRepoOwners := []string{
 		"wolfi-dev",
 		"chainguard-dev",
 	}
 
-	repo, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{DetectDotGit: true})
+	repoDir := filepath.Dir(buildConfigFilePath)
+
+	repo, err := git.PlainOpenWithOptions(repoDir, &git.PlainOpenOptions{DetectDotGit: true})
 	if err != nil {
 		return nil, fmt.Errorf("opening git repository: %w", err)
 	}

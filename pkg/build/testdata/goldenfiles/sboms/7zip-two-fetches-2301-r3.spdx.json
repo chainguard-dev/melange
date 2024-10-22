@@ -1,0 +1,110 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-7zip-two-fetches-2301-r3",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "0001-01-01T00:00:00Z",
+    "creators": [
+      "Tool: melange (devel)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/aac0a1c9478955b98366443d654718707b4c3a03",
+  "documentDescribes": [
+    "SPDXRef-Package-7zip-two-fetches-2301-r3"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "name": "7zip-two-fetches",
+      "versionInfo": "2301-r3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LGPL-2.0-only",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "copyrightText": "\n",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/wolfi/7zip-two-fetches@2301-r3?arch=x86_64",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-testdata-buildC95configs-7zip-two-fetches.yaml-c0ffee",
+      "name": "testdata/build_configs/7zip-two-fetches.yaml",
+      "versionInfo": "c0ffee",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/wolfi-dev/os@c0ffee#testdata/build_configs/7zip-two-fetches.yaml",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301",
+      "name": "7zip-two-fetches",
+      "versionInfo": "2301",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:generic/7zip-two-fetches@2301?checksum=sha512%3Ae39f660c023aa65e55388be225b5591fe2a5c9138693f3c9107e2eb4ce97fafde118d3375e01ada99d29de9633f56221b5b3d640c982178884670cd84c8aa986\u0026download_url=https%3A%2F%2F7-zip.org%2Fa%2F7z2301-src.tar.xz",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301",
+      "name": "7zip-two-fetches",
+      "versionInfo": "2301",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:generic/7zip-two-fetches@2301?checksum=sha512%3Ae39f660c023aa65e55388be225b5591fe2a5c9138693f3c9107e2eb4ce97fafde118d3375e01ada99d29de9633f56221b5b3d640c982178884670cd84c8aa986\u0026download_url=https%3A%2F%2F7-zip.org%2Fa%2F7z2301-src.tar.xz",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "relationshipType": "DESCRIBED_BY",
+      "relatedSpdxElement": "SPDXRef-Package-testdata-buildC95configs-7zip-two-fetches.yaml-c0ffee"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301"
+    }
+  ]
+}

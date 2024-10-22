@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 	"io"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/container/docker"
 	"github.com/google/go-cmp/cmp"
@@ -27,6 +29,10 @@ func TestBuild_BuildPackage(t *testing.T) {
 		{
 			name:            "crane",
 			expectedVersion: "0.20.2-r1",
+		},
+		{
+			name:            "7zip-two-fetches",
+			expectedVersion: "2301-r3",
 		},
 	}
 
@@ -114,6 +120,22 @@ func TestBuild_BuildPackage(t *testing.T) {
 					if diff := cmp.Diff(expected, actual); diff != "" {
 						t.Fatalf("SBOMs differ: \n%s\n", diff)
 					}
+
+					t.Run("unique SPDX IDs", func(t *testing.T) {
+						doc := new(spdx.Document)
+						err := json.Unmarshal(actual, doc)
+						if err != nil {
+							t.Fatalf("unmarshalling SBOM: %v", err)
+						}
+
+						ids := make(map[string]struct{})
+						for _, p := range doc.Packages {
+							if _, ok := ids[p.ID]; ok {
+								t.Errorf("duplicate SPDX ID found: %s", p.ID)
+							}
+							ids[p.ID] = struct{}{}
+						}
+					})
 				})
 			})
 		})

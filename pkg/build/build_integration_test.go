@@ -117,9 +117,11 @@ func TestBuild_BuildPackage(t *testing.T) {
 						t.Fatalf("reading actual SBOM: %v", err)
 					}
 
-					if diff := cmp.Diff(expected, actual); diff != "" {
-						t.Fatalf("SBOMs differ: \n%s\n", diff)
-					}
+					t.Run("goldenfile diff", func(t *testing.T) {
+						if diff := cmp.Diff(expected, actual); diff != "" {
+							t.Errorf("SBOMs differ: \n%s\n", diff)
+						}
+					})
 
 					t.Run("unique SPDX IDs", func(t *testing.T) {
 						doc := new(spdx.Document)

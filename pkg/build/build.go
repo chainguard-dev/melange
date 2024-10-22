@@ -831,8 +831,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
 		}
 
-		for _, p := range pipelines {
-			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace)
+		for i, p := range pipelines {
+			uniqueID := strconv.Itoa(i)
+			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
 			if err != nil {
 				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
 			}

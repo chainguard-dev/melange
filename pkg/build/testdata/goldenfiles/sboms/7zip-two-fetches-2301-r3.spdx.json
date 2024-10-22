@@ -54,7 +54,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301",
+      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-0",
       "name": "7zip-two-fetches",
       "versionInfo": "2301",
       "filesAnalyzed": false,
@@ -72,7 +72,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301",
+      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-1",
       "name": "7zip-two-fetches",
       "versionInfo": "2301",
       "filesAnalyzed": false,
@@ -99,12 +99,12 @@
     {
       "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
       "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301"
+      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301-0"
     },
     {
       "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
       "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301"
+      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301-1"
     }
   ]
 }

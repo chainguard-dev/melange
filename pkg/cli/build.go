@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 	"time"
 
@@ -34,7 +33,6 @@ import (
 	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -134,19 +132,19 @@ func buildCmd() *cobra.Command {
 			// melange build definition. As a fallback, detect this from local git state.
 			// Git auto-detection should be "best effort" and not fail the build if it
 			// fails.
-			if configFileGitCommit == "" || configFileGitRepoURL == "" {
-				gs, err := detectGitState(ctx, buildConfigFilePath)
+			if configFileGitCommit == "" {
+				log.Infof("git commit for build config not provided, attempting to detect automatically")
+				commit, err := detectGitHead(ctx, buildConfigFilePath)
 				if err != nil {
-					log.Warnf("failed to auto-detect all git information: %v", err)
+					log.Warnf("unable to detect commit for build config file: %v", err)
+					configFileGitCommit = "unknown"
+				} else {
+					configFileGitCommit = commit
 				}
-
-				if configFileGitCommit == "" {
-					configFileGitCommit = gs.commit
-				}
-				if configFileGitRepoURL == "" {
-					// To form e.g. "github.com/wolfi-dev/os"
-					configFileGitRepoURL = fmt.Sprintf("https://%s/%s/%s", gs.repoHost, gs.repoPathParent, gs.repoName)
-				}
+			}
+			if configFileGitRepoURL == "" {
+				log.Warnf("git repository URL for build config not provided")
+				configFileGitRepoURL = "https://unknown/unknown/unknown"
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -270,101 +268,22 @@ func buildCmd() *cobra.Command {
 	return cmd
 }
 
-type gitState struct {
-	// The current git commit, from which we're building packages. e.g. "0c1f2c1f3fe13e8b01f4fccbc5880525739d74a2".
-	commit string
-
-	// e.g. "github.com" (as in from "github.com/wolfi-dev/os")
-	repoHost string
-
-	// e.g. "wolfi-dev"
-	repoPathParent string
-
-	// e.g. "os"
-	repoName string
-}
-
 // Detect the git state from the build config file's parent directory.
-func detectGitState(ctx context.Context, buildConfigFilePath string) (*gitState, error) {
-	// Establish fallback values in case we error out early.
-	gs := &gitState{
-		commit:         "unknown",
-		repoHost:       "unknown",
-		repoPathParent: "unknown",
-		repoName:       "unknown",
-	}
-
-	allowedRepoOwners := []string{
-		"wolfi-dev",
-		"chainguard-dev",
-	}
-
+func detectGitHead(ctx context.Context, buildConfigFilePath string) (string, error) {
 	repoDir := filepath.Dir(buildConfigFilePath)
 	clog.FromContext(ctx).Debugf("detecting git state from %q", repoDir)
 
 	repo, err := git.PlainOpenWithOptions(repoDir, &git.PlainOpenOptions{DetectDotGit: true})
 	if err != nil {
-		return gs, fmt.Errorf("opening git repository: %w", err)
+		return "", fmt.Errorf("opening git repository: %w", err)
 	}
 
 	head, err := repo.Head()
 	if err != nil {
-		return gs, fmt.Errorf("determining HEAD: %w", err)
+		return "", fmt.Errorf("determining HEAD: %w", err)
 	}
 	commit := head.Hash().String()
-	gs.commit = commit
-
-	remotes, err := repo.Remotes()
-	if err != nil {
-		return gs, fmt.Errorf("getting remotes: %w", err)
-	}
-	for _, r := range remotes {
-		for _, u := range r.Config().URLs {
-			ep, err := transport.NewEndpoint(u)
-			if err != nil {
-				// This URL isn't usable for detection, but we should keep trying.
-				continue
-			}
-
-			host, repoPathParent, repoName := parseGitTransportEndpoint(ep)
-			if host != "github.com" {
-				continue
-			}
-			gs.repoHost = host
-
-			if !slices.Contains(allowedRepoOwners, repoPathParent) {
-				continue
-			}
-			gs.repoPathParent = repoPathParent
-
-			if repoName == "" {
-				continue
-			}
-			gs.repoName = repoName
-
-			return gs, nil
-		}
-	}
-
-	return gs, errors.New("no usable git remote found")
-}
-
-func parseGitTransportEndpoint(ep *transport.Endpoint) (host string, repoPathParent string, repoName string) {
-	if ep == nil {
-		return
-	}
-
-	p := ep.Path
-	p = strings.TrimSuffix(p, ".git")
-	p = strings.TrimPrefix(p, "/")
-	parts := strings.Split(p, "/")
-	if len(parts) < 2 {
-		return
-	}
-
-	host = ep.Host
-	repoPathParent, repoName = parts[0], parts[1]
-	return
+	return commit, nil
 }
 
 func getRunner(ctx context.Context, runner string, remove bool) (container.Runner, error) {

@@ -2,6 +2,7 @@ name: Compile an auditable rust binary with Cargo
 
 needs:
   packages:
+    - build-base
     - busybox
     - cargo-auditable
     - rust

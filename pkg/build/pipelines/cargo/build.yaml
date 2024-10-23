@@ -14,7 +14,7 @@ inputs:
       the apk will be in prefix / install-dir / output
 
   opts:
-    default: "--release"
+    default: --release
     description: |
       Options to pass to cargo build. Defaults to release
 

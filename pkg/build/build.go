@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -294,7 +295,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
 		apko_build.WithExtraPackages(b.ExtraPackages),
-		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
 	if err != nil {

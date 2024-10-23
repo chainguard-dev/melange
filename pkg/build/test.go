@@ -27,6 +27,7 @@ import (
 	"slices"
 	"strings"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
@@ -148,7 +149,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraBuildRepos(t.ExtraRepos),
 		apko_build.WithExtraPackages(t.ExtraTestPackages),
-		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithCache(t.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp))
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)

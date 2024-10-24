@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.1
-	chainguard.dev/apko v0.19.3-0.20241022221321-4e38dc838f9c
+	chainguard.dev/apko v0.19.3-0.20241023212034-700686f00ad5
 	cloud.google.com/go/storage v1.45.0
 	dagger.io/dagger v0.13.5
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
@@ -44,7 +44,7 @@ require (
 	golang.org/x/sys v0.26.0
 	golang.org/x/text v0.19.0
 	golang.org/x/time v0.7.0
-	google.golang.org/api v0.202.0
+	google.golang.org/api v0.203.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
@@ -144,7 +144,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/letsencrypt/boulder v0.0.0-20241021211548-844334e04aef // indirect
+	github.com/letsencrypt/boulder v0.0.0-20241023221324-e5edb7077fc1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -177,11 +177,13 @@ require (
 	github.com/sigstore/sigstore v1.8.10 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
+	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
+	github.com/tmc/dot v0.2.0 // indirect
 	github.com/u-root/u-root v0.14.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect
@@ -219,7 +221,7 @@ require (
 	google.golang.org/grpc/stats/opentelemetry v0.0.0-20240907200651-3ffb98b2c93a // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.31.1 // indirect
+	k8s.io/apimachinery v0.31.2 // indirect
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
 )

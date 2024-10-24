@@ -241,7 +241,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		log.Infof("applying configuration patches for build option %s", optName)
 
 		if opt, ok := b.Configuration.Options[optName]; ok {
-			if err := b.ApplyBuildOption(opt); err != nil {
+			if err := b.applyBuildOption(opt); err != nil {
 				return nil, err
 			}
 		}
@@ -270,11 +270,11 @@ func (b *Build) Close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// BuildGuest invokes apko to build the guest environment, returning a reference to the image
+// buildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
-func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
+func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
 	defer span.End()
 
 	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
@@ -303,7 +303,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 
 	bc.Summarize(ctx)
-	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to Summarize
+	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to summarize
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {
@@ -364,8 +364,8 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	return nil
 }
 
-// ApplyBuildOption applies a patch described by a BuildOption to a package build.
-func (b *Build) ApplyBuildOption(bo config.BuildOption) error {
+// applyBuildOption applies a patch described by a BuildOption to a package build.
+func (b *Build) applyBuildOption(bo config.BuildOption) error {
 	// Patch the variables block.
 	if b.Configuration.Vars == nil {
 		b.Configuration.Vars = make(map[string]string)
@@ -435,7 +435,7 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 	return ignorePatterns, nil
 }
 
-func (b *Build) OverlayBinSh() error {
+func (b *Build) overlayBinSh() error {
 	if b.BinShOverlay == "" {
 		return nil
 	}
@@ -521,10 +521,10 @@ func fetchBucket(ctx context.Context, cacheSource string, cmm CacheMembershipMap
 	return tmp, nil
 }
 
-// IsBuildLess returns true if the build context does not actually do any building.
+// isBuildLess returns true if the build context does not actually do any building.
 // TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
 // in the pipeline.
-func (b *Build) IsBuildLess() bool {
+func (b *Build) isBuildLess() bool {
 	return len(b.Configuration.Pipeline) == 0
 }
 
@@ -549,9 +549,9 @@ func (b Build) getBuildConfigPURL() (*purl.PackageURL, error) {
 	return u, nil
 }
 
-func (b *Build) PopulateCache(ctx context.Context) error {
+func (b *Build) populateCache(ctx context.Context) error {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
+	ctx, span := otel.Tracer("melange").Start(ctx, "populateCache")
 	defer span.End()
 
 	if b.CacheDir == "" {
@@ -625,9 +625,9 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 	return nil
 }
 
-func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
+func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
-	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
 	defer span.End()
 
 	ignorePatterns, err := b.loadIgnoreRules(ctx)
@@ -676,7 +676,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
 
-	b.Summarize(ctx)
+	b.summarize(ctx)
 
 	namespace := b.Namespace
 	if namespace == "" {
@@ -762,7 +762,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	pr := &pipelineRunner{
 		interactive: b.Interactive,
 		debug:       b.Debug,
-		config:      b.WorkspaceConfig(ctx),
+		config:      b.workspaceConfig(ctx),
 		runner:      b.Runner,
 	}
 
@@ -775,7 +775,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
+		if err := b.populateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}
@@ -785,9 +785,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	linterQueue := []linterTarget{}
-	cfg := b.WorkspaceConfig(ctx)
+	cfg := b.workspaceConfig(ctx)
 
-	if !b.IsBuildLess() {
+	if !b.isBuildLess() {
 		// Prepare guest directory
 		if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
@@ -796,7 +796,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		log.Infof("building workspace in '%s' with apko", b.GuestDir)
 
 		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
-		imgRef, err := b.BuildGuest(ctx, b.Configuration.Environment, guestFS)
+		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
@@ -806,11 +806,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
 		// Probably needs help from apko.
-		if err := b.OverlayBinSh(); err != nil {
+		if err := b.overlayBinSh(); err != nil {
 			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 		}
 
-		if err := b.PopulateCache(ctx); err != nil {
+		if err := b.populateCache(ctx); err != nil {
 			return fmt.Errorf("unable to populate cache: %w", err)
 		}
 
@@ -858,7 +858,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
-		if !b.IsBuildLess() {
+		if !b.isBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
 
 			ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
@@ -883,7 +883,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	fsys := apkofs.DirFS(b.WorkspaceDir)
-	if err := b.RetrieveWorkspace(ctx, fsys); err != nil {
+	if err := b.retrieveWorkspace(ctx, fsys); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
@@ -945,7 +945,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	if !b.IsBuildLess() {
+	if !b.isBuildLess() {
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
 			log.Warnf("unable to clean guest container: %s", err)
@@ -1058,37 +1058,25 @@ func (b *Build) SummarizePaths(ctx context.Context) {
 	}
 }
 
-func (b *Build) Summarize(ctx context.Context) {
+func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange is building:")
 	log.Infof("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
 
-// BuildFlavor determines if a build context uses glibc or musl, it returns
+// buildFlavor determines if a build context uses glibc or musl, it returns
 // "gnu" for GNU systems, and "musl" for musl systems.
-func (b *Build) BuildFlavor() string {
+func (b *Build) buildFlavor() string {
 	if b.Libc == "" {
 		return "gnu"
 	}
 	return b.Libc
 }
 
-// BuildTripletGnu returns the GNU autoconf build triplet, for example
-// `x86_64-pc-linux-gnu`.
-func (b *Build) BuildTripletGnu() string {
-	return b.Arch.ToTriplet(b.BuildFlavor())
-}
-
-// BuildTripletRust returns the Rust/Cargo build triplet, for example
-// `x86_64-unknown-linux-gnu`.
-func (b *Build) BuildTripletRust() string {
-	return b.Arch.ToRustTriplet(b.BuildFlavor())
-}
-
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
-	if b.IsBuildLess() {
+	if b.isBuildLess() {
 		return &container.Config{
 			Arch:         b.Arch,
 			WorkspaceDir: b.WorkspaceDir,
@@ -1144,7 +1132,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	return &cfg
 }
 
-func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
+func (b *Build) workspaceConfig(ctx context.Context) *container.Config {
 	if b.containerConfig == nil {
 		b.containerConfig = b.buildWorkspaceConfig(ctx)
 	}
@@ -1152,11 +1140,11 @@ func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
 	return b.containerConfig
 }
 
-// RetrieveWorkspace retrieves the workspace from the container and unpacks it
+// retrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
-func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
-	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
+func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "retrieveWorkspace")
 	defer span.End()
 
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)

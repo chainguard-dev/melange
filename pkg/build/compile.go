@@ -113,7 +113,7 @@ func (t *Test) Compile(ctx context.Context) error {
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
 func (b *Build) Compile(ctx context.Context) error {
 	cfg := b.Configuration
-	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.BuildFlavor(), b.EnabledBuildOptions)
+	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
 	if err != nil {
 		return err
 	}

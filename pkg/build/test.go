@@ -134,7 +134,7 @@ func (t *Test) Close() error {
 // Returns the imgRef for the created image, or error.
 func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
 	defer span.End()
 
 	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
@@ -229,7 +229,7 @@ func (t *Test) IsTestless() bool {
 
 func (t *Test) PopulateCache(ctx context.Context) error {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
+	ctx, span := otel.Tracer("melange").Start(ctx, "populateCache")
 	defer span.End()
 
 	if t.CacheDir == "" {
@@ -300,7 +300,7 @@ func (t *Test) PopulateCache(ctx context.Context) error {
 
 func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
-	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
 	defer span.End()
 
 	if t.SourceDir == "" {

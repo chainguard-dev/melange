@@ -37,7 +37,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kballard/go-shellquote"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
@@ -45,6 +44,7 @@ import (
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/kballard/go-shellquote"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
 )
@@ -54,9 +54,7 @@ var _ Debugger = (*qemu)(nil)
 const QemuName = "qemu"
 
 const (
-	defaultDiskSize   = "50Gi"
-	SSHPortRangeStart = 10000
-	SSHPortRangeEnd   = 50000
+	defaultDiskSize = "50Gi"
 )
 
 type qemu struct{}

@@ -3,7 +3,6 @@ module chainguard.dev/melange
 go 1.23.2
 
 require (
-	al.essio.dev/pkg/shellescape v1.5.1
 	chainguard.dev/apko v0.19.3-0.20241024194130-395e8223bdf4
 	cloud.google.com/go/storage v1.45.0
 	dagger.io/dagger v0.13.5

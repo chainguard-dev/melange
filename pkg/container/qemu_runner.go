@@ -350,7 +350,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// use kvm on linux, and Hypervisor.framework on macOS
 	if runtime.GOOS == "linux" {
-		baseargs = append(baseargs, "-enable-kvm")
+		if _, err := os.Stat("/dev/kvm"); err == nil {
+			baseargs = append(baseargs, "-accel", "kvm")
+		}
 	} else if runtime.GOOS == "darwin" {
 		baseargs = append(baseargs, "-accel", "hvf")
 	}

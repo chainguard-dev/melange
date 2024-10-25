@@ -466,6 +466,8 @@ func getKernelPath(ctx context.Context, cfg *Config) (string, string, error) {
 			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_IMAGE file detected, using: %s", kernelVar)
 			kernel = kernelVar
 		}
+	} else if _, err := os.Stat(kernel); err != nil {
+		return "", "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE and QEMU_KERNEL_MODULES if needed")
 	}
 
 	return kernel, cfg.ImgRef, nil

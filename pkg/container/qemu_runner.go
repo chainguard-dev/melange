@@ -798,14 +798,11 @@ func getAvailableMemoryKB() int {
 }
 
 func randomPortN() (int, error) {
-	for port := SSHPortRangeStart; port <= SSHPortRangeEnd; port++ {
-		address := fmt.Sprintf("localhost:%d", port)
-		listener, err := net.Listen("tcp", address)
-		if err == nil {
-			listener.Close()
-			return port, nil
-		}
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return 0, fmt.Errorf("no open port found")
 	}
+	defer l.Close()
 
-	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
+	return l.Addr().(*net.TCPAddr).Port, nil
 }

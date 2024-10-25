@@ -37,7 +37,7 @@ import (
 	"strings"
 	"time"
 
-	"al.essio.dev/pkg/shellescape"
+	"github.com/kballard/go-shellquote"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
@@ -683,15 +683,9 @@ func sendSSHCommand(ctx context.Context, user, address string,
 		}
 	}
 
-	b64cmd := base64.StdEncoding.EncodeToString([]byte(shellescape.QuoteCommand(command)))
-	cmd := strings.Join(
-		[]string{
-			"_c=$(echo " + b64cmd + "| base64 -d) || exit 97",
-			"eval set -- \"$_c\" || exit 98",
-			"exec \"$@\"",
-		}, " ;")
+	cmd := shellquote.Join(command...)
 
-	clog.FromContext(ctx).Infof("running (%d) %v", len(command), command)
+	clog.FromContext(ctx).Infof("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to run command %v: %s", command, err)

@@ -166,7 +166,7 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.StartPod")
 	defer span.End()
 
-	port, err := randpomPortN()
+	port, err := randomPortN()
 	if err != nil {
 		return err
 	}
@@ -801,7 +801,7 @@ func getAvailableMemoryKB() int {
 	return mem
 }
 
-func randpomPortN() (int, error) {
+func randomPortN() (int, error) {
 	for port := SSHPortRangeStart; port <= SSHPortRangeEnd; port++ {
 		address := fmt.Sprintf("localhost:%d", port)
 		listener, err := net.Listen("tcp", address)

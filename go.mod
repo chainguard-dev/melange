@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.1
-	chainguard.dev/apko v0.19.3-0.20241024194130-395e8223bdf4
+	chainguard.dev/apko v0.19.3
 	cloud.google.com/go/storage v1.45.0
 	dagger.io/dagger v0.13.5
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f

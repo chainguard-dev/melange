@@ -47,6 +47,7 @@ import (
 	"github.com/kballard/go-shellquote"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 var _ Debugger = (*qemu)(nil)
@@ -181,6 +182,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer span.End()
 	defer os.Remove(cfg.ImgRef)
 	defer os.Remove(cfg.Disk)
+	defer os.Remove(cfg.SSHHostKey)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -252,7 +254,8 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	// create an initramfs from the layer
 	guestInitramfs, err := os.CreateTemp("", "melange-guest-*.initramfs.cpio")
 	if err != nil {
-		return ref, fmt.Errorf("failed to create guest dir: %w", err)
+		clog.FromContext(ctx).Errorf("failed to create guest dir: %v", err)
+		return ref, err
 	}
 
 	// in case of some kernel images, we also need the /lib/modules directory to load
@@ -271,7 +274,8 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 
 	err = apko_cpio.FromLayer(layer, guestInitramfs)
 	if err != nil {
-		return ref, fmt.Errorf("failed to create cpio initramfs: %w", err)
+		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
+		return ref, err
 	}
 
 	return guestInitramfs.Name(), nil
@@ -427,12 +431,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			break
 		}
 		try++
+		time.Sleep(time.Millisecond * 200)
 	}
 	if try >= retries {
 		// ensure cleanup of resources
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
 		return fmt.Errorf("qemu: could not start VM, timeout reached")
+	}
+
+	err = getHostKey(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("qemu: could not get VM host key")
 	}
 
 	// default to root user but if a different user is specified
@@ -612,6 +622,59 @@ func checkSSHServer(address string) error {
 	return nil
 }
 
+func getHostKey(ctx context.Context, cfg *Config) error {
+	var hostKey ssh.PublicKey
+
+	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
+		return err
+	}
+
+	// Create SSH client configuration
+	config := &ssh.ClientConfig{
+		User: "build",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-ctr"},
+		},
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			hostKey = key
+			return nil // Accept the host key for the purpose of retrieving it
+		},
+	}
+
+	// Connect to the SSH server
+	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+	defer client.Close()
+
+	// Write the host key to the known_hosts file
+	hostKeyLine := fmt.Sprintf("%s %s %s\n", cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()))
+	clog.FromContext(ctx).Infof("host-key: %s", hostKeyLine)
+
+	knownHost, err := os.CreateTemp("", "known_hosts_*")
+	if err != nil {
+		clog.FromContext(ctx).Errorf("host-key fetch - failed to create random known_hosts file: %v", err)
+		return err
+	}
+	defer knownHost.Close()
+
+	cfg.SSHHostKey = knownHost.Name()
+
+	_, err = knownHost.Write([]byte(hostKeyLine))
+	if err != nil {
+		clog.FromContext(ctx).Errorf("host-key fetch - failed to write to known_hosts file: %v", err)
+		return err
+	}
+	return nil
+}
+
 func sendSSHCommand(ctx context.Context, user, address string,
 	cfg *Config, extraVars map[string]string,
 	stdin io.Reader, stderr, stdout io.Writer,
@@ -620,6 +683,12 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
+		return err
+	}
+
+	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
 		return err
 	}
 
@@ -632,7 +701,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 		Config: ssh.Config{
 			Ciphers: []string{"aes128-ctr"},
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // equivalent to StrictHostKeyChecking=no
+		HostKeyCallback: hostKeyCallback,
 	}
 
 	// Connect to the SSH server

@@ -55,6 +55,7 @@ type Config struct {
 	CPU, Memory  string
 	SSHKey       []byte
 	SSHAddress   string
+	SSHHostKey   string
 	Disk         string
 	Timeout      time.Duration
 }

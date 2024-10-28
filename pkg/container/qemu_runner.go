@@ -322,6 +322,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// we need to fallback to -machine virt, if not machine has been specified
 	if !microvm {
 		baseargs = append(baseargs, "-machine", "virt")
+		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+			baseargs = append(baseargs, "-machine", "virt,virtualization=true")
+		} else if _, err := os.Stat("/dev/kvm"); err == nil {
+			baseargs = append(baseargs, "-machine", "virt")
+		}
 	}
 
 	baseargs = append(baseargs, "-kernel", kernelPath)
@@ -352,7 +357,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// use kvm on linux, and Hypervisor.framework on macOS
 	if runtime.GOOS == "linux" {
-		if _, err := os.Stat("/dev/kvm"); err == nil {
+		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+			baseargs = append(baseargs, "-accel", "tcg,thread=multi")
+		} else if _, err := os.Stat("/dev/kvm"); err == nil {
 			baseargs = append(baseargs, "-accel", "kvm")
 		}
 	} else if runtime.GOOS == "darwin" {

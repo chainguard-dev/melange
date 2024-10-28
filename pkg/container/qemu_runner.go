@@ -310,7 +310,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		"/usr/share/qemu/bios-microvm.bin",
 		"/usr/share/seabios/bios-microvm.bin",
 	} {
-		if _, err := os.Stat(p); err == nil {
+		if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
 			// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
 			baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
 			baseargs = append(baseargs, "-bios", p)
@@ -359,7 +359,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-accel", "hvf")
 	}
 
-	baseargs = append(baseargs, "-cpu", "host")
+	if cfg.CPUModel != "" {
+		baseargs = append(baseargs, "-cpu", cfg.CPUModel)
+	} else {
+		baseargs = append(baseargs, "-cpu", "host")
+	}
+
 	baseargs = append(baseargs, "-daemonize")
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise

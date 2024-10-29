@@ -8,10 +8,6 @@ pipeline:
 
 # Test ruby/require, and ruby/test pipelines
 test:
-  environment:
-    contents:
-      packages:
-        - ruby-3.2
   pipeline:
     # Test require with command
     - uses: ruby/test

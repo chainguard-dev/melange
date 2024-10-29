@@ -2,12 +2,15 @@ name: Test a Ruby package require, with optional load clause
 
 needs:
   packages:
-    - ${{inputs.ruby}}
+    - ruby-${{inputs.version}}
 
 inputs:
   ruby:
     description: Which Ruby to use
-    default: ruby
+    default: DEFAULT
+  version:
+    description: Which Ruby version to use
+    default: 3.2
   require:
     description: |
       The package to require.
@@ -40,7 +43,7 @@ pipeline:
         fi
       }
 
-      if [ "$RUBY" = "ruby" ]; then
+      if [ "$RUBY" = "DEFAULT" ]; then
           glob="/usr/bin/ruby-3.[0-9][0-9] /usr/bin/ruby-3.[789] /usr/bin/ruby"
           n=0
           for p in $glob; do

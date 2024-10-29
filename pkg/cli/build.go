@@ -304,7 +304,8 @@ func getRunner(ctx context.Context, runner string, remove bool) (container.Runne
 
 	switch runtime.GOOS {
 	case "linux":
-		return container.BubblewrapRunner(remove), nil
+		// linux is the same as default, but we want to keep it explicit
+		fallthrough
 	case "darwin":
 		// darwin is the same as default, but we want to keep it explicit
 		fallthrough

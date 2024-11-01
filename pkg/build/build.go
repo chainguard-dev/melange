@@ -112,6 +112,7 @@ type Build struct {
 	Remove                bool
 	LintRequire, LintWarn []string
 	DefaultCPU            string
+	DefaultCPUModel       string
 	DefaultDisk           string
 	DefaultMemory         string
 	DefaultTimeout        time.Duration
@@ -198,6 +199,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		config.WithEnvFileForParsing(b.EnvFile),
 		config.WithVarsFileForParsing(b.VarsFile),
 		config.WithDefaultCPU(b.DefaultCPU),
+		config.WithDefaultCPUModel(b.DefaultCPUModel),
 		config.WithDefaultDisk(b.DefaultDisk),
 		config.WithDefaultMemory(b.DefaultMemory),
 		config.WithDefaultTimeout(b.DefaultTimeout),
@@ -770,7 +772,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		log.Infof("empty workspace requested")
 	} else {
 		// Prepare workspace directory
-		if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
+		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
@@ -789,7 +791,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	if !b.isBuildLess() {
 		// Prepare guest directory
-		if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
+		if err := os.MkdirAll(b.GuestDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
 		}
 
@@ -1002,7 +1004,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
 	apkFSPath := filepath.Join(b.WorkspaceDir, melangeOutputDirName, pkgName)
 	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
-	if err := os.MkdirAll(sbomDirPath, os.FileMode(0755)); err != nil {
+	if err := os.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
 		return fmt.Errorf("creating SBOM directory: %w", err)
 	}
 
@@ -1121,6 +1123,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 
 	if b.Configuration.Package.Resources != nil {
 		cfg.CPU = b.Configuration.Package.Resources.CPU
+		cfg.CPUModel = b.Configuration.Package.Resources.CPUModel
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}

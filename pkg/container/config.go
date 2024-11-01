@@ -43,18 +43,19 @@ type Capabilities struct {
 }
 
 type Config struct {
-	PackageName  string
-	Mounts       []BindMount
-	Capabilities Capabilities
-	Environment  map[string]string
-	ImgRef       string
-	PodID        string
-	Arch         apko_types.Architecture
-	RunAs        string
-	WorkspaceDir string
-	CPU, Memory  string
-	SSHKey       []byte
-	SSHAddress   string
-	Disk         string
-	Timeout      time.Duration
+	PackageName           string
+	Mounts                []BindMount
+	Capabilities          Capabilities
+	Environment           map[string]string
+	ImgRef                string
+	PodID                 string
+	Arch                  apko_types.Architecture
+	RunAs                 string
+	WorkspaceDir          string
+	CPU, CPUModel, Memory string
+	SSHKey                []byte
+	SSHAddress            string
+	SSHHostKey            string
+	Disk                  string
+	Timeout               time.Duration
 }

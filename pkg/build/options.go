@@ -351,6 +351,13 @@ func WithCPU(cpu string) Option {
 	}
 }
 
+func WithCPUModel(cpumodel string) Option {
+	return func(b *Build) error {
+		b.DefaultCPUModel = cpumodel
+		return nil
+	}
+}
+
 func WithDisk(disk string) Option {
 	return func(b *Build) error {
 		b.DefaultDisk = disk

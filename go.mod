@@ -3,7 +3,6 @@ module chainguard.dev/melange
 go 1.23.2
 
 require (
-	al.essio.dev/pkg/shellescape v1.5.1
 	chainguard.dev/apko v0.19.4
 	cloud.google.com/go/storage v1.45.0
 	dagger.io/dagger v0.13.6
@@ -22,6 +21,7 @@ require (
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/invopop/jsonschema v0.12.0
 	github.com/joho/godotenv v1.5.1
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.11
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30

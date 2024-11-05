@@ -124,6 +124,42 @@ melange keygen
 
 And then pass the `--signing-key` argument to `melange build`.
 
+### Tips for building on Ubuntu
+
+1. Non-native builds will fail unless `qemu-user-static` is installed:
+
+```
+2024/11/04 17:58:21 INFO installing wget (1.24.5-r0)
+2024/11/04 17:58:21 WARN /etc/os-release is missing
+2024/11/04 17:58:22 INFO built image layer tarball as /tmp/apko-temp-2053276993/apko-aarch64.tar.gz
+2024/11/04 17:58:22 INFO using /tmp/apko-temp-2053276993/apko-aarch64.tar.gz for image layer
+2024/11/04 17:58:23 INFO ImgRef = /tmp/melange-guest-749444813
+2024/11/04 17:58:23 WARN bwrap: execvp /bin/sh: Exec format error
+2024/11/04 17:58:23 INFO deleting guest dir /tmp/melange-guest-1329218525
+2024/11/04 17:58:23 INFO deleting workspace dir /tmp/melange-workspace-2108047943
+2024/11/04 17:58:23 INFO removing image path /tmp/melange-guest-749444813
+2024/11/04 17:58:23 ERRO failed to build package: unable to start pod: exit status 1
+```
+
+You can install `qemu-user-static` with `sudo apt install qemu-user-static`.
+
+2. `melange build` may be blocked by AppArmor, an issue similar to those described in [LP: #2046844](https://launchpad.net/bugs/2046844). You can unblock it by adding an apparmor profile, such as:
+
+```
+$ cat /etc/apparmor.d/melange
+abi <abi/4.0>,
+include <tunables/global>
+
+profile melange /home/user/go/bin/melange flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/melange>
+}
+```
+Modify the path to the `melange` binary as appropriate. Then run `sudo systemctl reload apparmor`.
+
+
 ## Debugging melange Builds
 
 To include debug-level information on melange builds, edit your `melange.yaml` file and include `set -x` in your pipeline. You can add this flag at any point of your pipeline commands to further debug a specific section of your build.

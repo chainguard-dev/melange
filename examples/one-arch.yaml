@@ -30,10 +30,10 @@ test:
       packages:
         - busybox
   pipeline:
-    - if: ${{targets.architecture == "x86_64"}}
+    - if: ${{build.arch}} == "x86_64"
       runs: |
         echo hello test
-    - if: ${{targets.architecture == "arm64"}}
+    - if: ${{build.arch}} == "aarch64"
       runs: |
         echo "BAD ARCHITECTURE"
         exit 1

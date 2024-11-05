@@ -291,6 +291,9 @@ func (b *Build) Close(ctx context.Context) error {
 
 // buildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
+//
+// NB: This has side effects! This mutates Build by overwriting Configuration.Environment with
+// a locked version (packages resolved to versions) so we can record which packages were used.
 func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
@@ -308,15 +311,34 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		}...)
 	}
 
-	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(imgConfig),
+	// Work around LockImageConfiguration assuming multi-arch.
+	imgConfig.Archs = []apko_types.Architecture{b.Arch}
+
+	opts := []apko_build.Option{apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
 		apko_build.WithExtraPackages(b.ExtraPackages),
 		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
-		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
+		apko_build.WithIgnoreSignatures(b.IgnoreSignatures),
+	}
+
+	locked, warn, err := apko_build.LockImageConfiguration(ctx, imgConfig, opts...)
+	if err != nil {
+		return "", fmt.Errorf("unable to lock image configuration: %w", err)
+	}
+
+	for k, v := range warn {
+		log.Warnf("Unable to lock package %s: %s", k, v)
+	}
+
+	// Overwrite the environment with the locked one.
+	b.Configuration.Environment = *locked
+
+	opts = append(opts, apko_build.WithImageConfiguration(*locked))
+
+	bc, err := apko_build.New(ctx, guestFS, opts...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}

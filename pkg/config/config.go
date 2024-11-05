@@ -1521,7 +1521,7 @@ func validatePipelines(ps []Pipeline) error {
 }
 
 func validateDependenciesPriorities(deps Dependencies) error {
-	priorities := []string{deps.ProviderPriority, deps.ProviderPriority}
+	priorities := []string{deps.ProviderPriority, deps.ReplacesPriority}
 	for _, priority := range priorities {
 		if priority == "" {
 			continue

@@ -587,6 +587,27 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 	return nil
 }
 
+// Add man-db as a dep for any doc package
+func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for -doc package...")
+	if !strings.HasSuffix(hdl.PackageName(), "-doc") {
+		return nil
+	}
+	// Do not add a man-db dependency if one already exists.
+	for _, dep := range hdl.BaseDependencies().Runtime {
+		if dep == "man-db" {
+			log.Warnf("%s: man-db dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+			return nil
+		}
+	}
+
+	log.Infof("  found -doc package, generating man-db dependency")
+	generated.Runtime = append(generated.Runtime, "man-db")
+
+	return nil
+}
+
 func sonameLibver(soname string) string {
 	parts := strings.Split(soname, ".so.")
 	if len(parts) < 2 {
@@ -709,6 +730,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
+		generateDocDeps,
 		generatePkgConfigDeps,
 		generatePythonDeps,
 		generateRubyDeps,

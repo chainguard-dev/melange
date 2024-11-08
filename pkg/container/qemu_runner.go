@@ -321,11 +321,14 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// we need to fallback to -machine virt, if not machine has been specified
 	if !microvm {
-		baseargs = append(baseargs, "-machine", "virt")
-		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
-			baseargs = append(baseargs, "-machine", "virt,virtualization=true")
-		} else if _, err := os.Stat("/dev/kvm"); err == nil {
+		// aarch64 supports virt machine type, let's use that if we're on it, else
+		// if we're on x86 arch, but without microvm machine type, let's go to q35
+		if cfg.Arch.ToAPK() == "aarch64" {
 			baseargs = append(baseargs, "-machine", "virt")
+		} else if cfg.Arch.ToAPK() == "x86_64" {
+			baseargs = append(baseargs, "-machine", "q35")
+		} else {
+			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
 	}
 
@@ -370,6 +373,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-cpu", cfg.CPUModel)
 	} else {
 		baseargs = append(baseargs, "-cpu", "host")
+		// we cant use `-cpu host` when architecture does not match between host
+		// and guest
+		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+			// let's use a recent default for those
+			if cfg.Arch.ToAPK() == "aarch64" {
+				baseargs = append(baseargs, "-cpu", "cortex-a76")
+			} else if cfg.Arch.ToAPK() == "x86_64" {
+				baseargs = append(baseargs, "-cpu", "Haswell-v4")
+			} else {
+				return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
+			}
+		}
 	}
 
 	baseargs = append(baseargs, "-daemonize")

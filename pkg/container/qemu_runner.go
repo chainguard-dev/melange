@@ -376,8 +376,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		// we cant use `-cpu host` when architecture does not match between host
 		// and guest
 		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
-		// let's use a recent default for those
-		baseargs = append(baseargs, "-cpu", "max")
+			// let's use a recent default for those
+			baseargs = append(baseargs, "-cpu", "max")
 			if cfg.Arch.ToAPK() == "aarch64" {
 				baseargs = append(baseargs, "-cpu", "cortex-a76")
 			} else if cfg.Arch.ToAPK() == "x86_64" {

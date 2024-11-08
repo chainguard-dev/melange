@@ -473,7 +473,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		false,
-		[]string{"sh", "-c", "cp -r /mnt/* /home/build"},
+		[]string{"sh", "-c", "cp -r /mnt/. /home/build"},
 	)
 }
 

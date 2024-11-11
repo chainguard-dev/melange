@@ -783,7 +783,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	clog.FromContext(ctx).Infof("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command %v: %s", command, err)
+		clog.FromContext(ctx).Errorf("Failed to run command: %v", err)
 		return err
 	}
 

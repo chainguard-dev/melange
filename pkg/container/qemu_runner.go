@@ -76,9 +76,8 @@ func (bw *qemu) Name() string {
 
 // Run runs a Qemu task given a Config and command string.
 func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
-	clog.InfoContextf(ctx, "running command %s", strings.Join(args, " "))
-
 	log := clog.FromContext(ctx)
+	log.Debugf("running command %s", strings.Join(args, " "))
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()

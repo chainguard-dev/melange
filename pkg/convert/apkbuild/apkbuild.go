@@ -24,7 +24,6 @@ import (
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/convert/wolfios"
-	"chainguard.dev/melange/pkg/util"
 	"gitlab.alpinelinux.org/alpine/go/apkbuild"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
@@ -96,7 +95,7 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 
 	// reverse map order, so we generate the lowest transitive dependency first
 	// this will help to build convert configs in the correct order
-	util.ReverseSlice(c.OrderedKeys)
+	slices.Reverse(c.OrderedKeys)
 
 	// loop over map and generate convert config for each
 	for i, key := range c.OrderedKeys {
@@ -229,17 +228,17 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 func (c Context) transitiveDependencyList(convertor ApkConvertor) []string {
 	var dependencies []string
 	for _, depends := range convertor.Apkbuild.Depends {
-		if !util.Contains(dependencies, depends.Pkgname) {
+		if !slices.Contains(dependencies, depends.Pkgname) {
 			dependencies = append(dependencies, depends.Pkgname)
 		}
 	}
 	for _, depends := range convertor.Apkbuild.Makedepends {
-		if !util.Contains(dependencies, depends.Pkgname) {
+		if !slices.Contains(dependencies, depends.Pkgname) {
 			dependencies = append(dependencies, depends.Pkgname)
 		}
 	}
 	for _, depends := range convertor.Apkbuild.DependsDev {
-		if !util.Contains(dependencies, depends.Pkgname) {
+		if !slices.Contains(dependencies, depends.Pkgname) {
 			dependencies = append(dependencies, depends.Pkgname)
 		}
 	}

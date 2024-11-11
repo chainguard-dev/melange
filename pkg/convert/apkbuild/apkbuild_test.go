@@ -6,11 +6,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
-
-	"chainguard.dev/melange/pkg/util"
 
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
@@ -36,7 +35,7 @@ func TestGetApkDependencies(t *testing.T) {
 	// Start a local HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// assert requests dependency is in the list of test files
-		assert.True(t, util.Contains(filenames, req.URL.String()), "requests file does not match any test files")
+		assert.True(t, slices.Contains(filenames, req.URL.String()), "requests file does not match any test files")
 
 		// send response to be tested
 		data, err := os.ReadFile(filepath.Join("testdata", "deps", "/"+req.URL.String()))

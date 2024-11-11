@@ -18,8 +18,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
-	"os"
+	"io"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -170,24 +172,29 @@ func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml
 	log.Infof("  uri: %s", uriNode.Value)
 	log.Infof("  evaluated: %s", evaluatedURI)
 
-	downloadedFile, err := util.DownloadFile(ctx, evaluatedURI)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, evaluatedURI, nil)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(downloadedFile)
-	log.Infof("  fetched-as: %s", downloadedFile)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch %s: %s", evaluatedURI, resp.Status)
+	}
+	defer resp.Body.Close()
 
-	// Calculate SHA2-256 and SHA2-512 hashes.
-	fileSHA256, err := util.HashFile(downloadedFile, sha256.New())
-	if err != nil {
+	sha256 := sha256.New()
+	sha512 := sha512.New()
+	mw := io.MultiWriter(sha256, sha512)
+	if _, err := io.Copy(mw, resp.Body); err != nil {
 		return err
 	}
+	fileSHA256 := hex.EncodeToString(sha256.Sum(nil))
 	log.Infof("  expected-sha256: %s", fileSHA256)
 
-	fileSHA512, err := util.HashFile(downloadedFile, sha512.New())
-	if err != nil {
-		return err
-	}
+	fileSHA512 := hex.EncodeToString(sha512.Sum(nil))
 	log.Infof("  expected-sha512: %s", fileSHA512)
 
 	// Update expected hash nodes.

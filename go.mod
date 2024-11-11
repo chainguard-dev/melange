@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.23.2
 
 require (
-	chainguard.dev/apko v0.19.7
+	chainguard.dev/apko v0.19.9
 	cloud.google.com/go/storage v1.46.0
 	dagger.io/dagger v0.13.7
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f

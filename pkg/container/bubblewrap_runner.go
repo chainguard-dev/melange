@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -70,6 +71,27 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, envOverride map[stri
 	execCmd.Stderr = stderr
 
 	return execCmd.Run()
+}
+
+func (bw *bubblewrap) testUnshareUser(ctx context.Context) error {
+	execCmd := exec.CommandContext(ctx, "bwrap", "--unshare-user", "true")
+	execCmd.Env = append(os.Environ(), "LANG=C")
+	out, err := execCmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+
+	if !bytes.Contains(out, []byte("setting up uid map")) {
+		return nil
+	}
+
+	return fmt.Errorf("%s\n",
+		strings.Join([]string{
+			"Unable to execute 'bwrap --unshare-user true'.",
+			"Command failed with: ",
+			"  " + string(out),
+			"See https://github.com/chainguard-dev/melange/issues/1508 for fix",
+		}, "\n"))
 }
 
 func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverride map[string]string, args ...string) *exec.Cmd {
@@ -145,6 +167,11 @@ func (bw *bubblewrap) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
 	if _, err := exec.LookPath("bwrap"); err != nil {
 		log.Warnf("cannot use bubblewrap for containers: bwrap not found on $PATH")
+		return false
+	}
+
+	if err := bw.testUnshareUser(ctx); err != nil {
+		log.Warnf("%s", err)
 		return false
 	}
 

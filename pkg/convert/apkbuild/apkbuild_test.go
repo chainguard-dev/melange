@@ -6,11 +6,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
-
-	"chainguard.dev/melange/pkg/util"
 
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
@@ -36,7 +35,7 @@ func TestGetApkDependencies(t *testing.T) {
 	// Start a local HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// assert requests dependency is in the list of test files
-		assert.True(t, util.Contains(filenames, req.URL.String()), "requests file does not match any test files")
+		assert.True(t, slices.Contains(filenames, req.URL.String()), "requests file does not match any test files")
 
 		// send response to be tested
 		data, err := os.ReadFile(filepath.Join("testdata", "deps", "/"+req.URL.String()))
@@ -281,6 +280,14 @@ func Test_context_mapconvert(t *testing.T) {
 
 			assert.NoError(t, err)
 
+			// Ensure that the generated configuration contains the test block
+			assert.NotNil(t, config.Test, "Test block should be created in the generated config")
+			// assert.Nil(t, config.Test.Environment, "Expected environment to be nil or empty")
+
+			// Ensure that the test block contains the version-check pipeline
+			assert.NotEmpty(t, config.Test.Pipeline, "Test pipeline should not be empty")
+
+			// Check that the generated YAML matches the expected YAML
 			assert.YAMLEqf(t, string(expected), string(actual), "generated convert yaml not the same as expected")
 		})
 	}

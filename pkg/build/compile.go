@@ -25,9 +25,10 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
-	purl "github.com/package-url/packageurl-go"
 	"gopkg.in/yaml.v3"
 )
+
+const unidentifiablePipeline = "???"
 
 func (t *Test) Compile(ctx context.Context) error {
 	cfg := t.Configuration
@@ -112,7 +113,7 @@ func (t *Test) Compile(ctx context.Context) error {
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
 func (b *Build) Compile(ctx context.Context) error {
 	cfg := b.Configuration
-	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.BuildFlavor(), b.EnabledBuildOptions)
+	sm, err := NewSubstitutionMap(&cfg, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
 	if err != nil {
 		return err
 	}
@@ -178,16 +179,12 @@ func (b *Build) Compile(ctx context.Context) error {
 		te.Packages = append(te.Packages, b.Configuration.Package.Name)
 	}
 
-	b.externalRefs = c.ExternalRefs
-
 	return nil
 }
 
 type Compiled struct {
 	PipelineDirs []string
-
 	Needs        []string
-	ExternalRefs []purl.PackageURL
 }
 
 func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
@@ -206,7 +203,7 @@ func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pi
 
 func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline, parent map[string]string) error {
 	log := clog.FromContext(ctx)
-	uses, with := pipeline.Uses, maps.Clone(pipeline.With)
+	name, uses, with := pipeline.Name, pipeline.Uses, maps.Clone(pipeline.With)
 
 	if uses != "" {
 		var data []byte
@@ -239,6 +236,9 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 				return fmt.Errorf("undefined input %q to pipeline %q", k, pipeline.Uses)
 			}
 		}
+
+		// We want to keep the original name here because loading the pipeline will overwrite it.
+		pipeline.Name = name
 	}
 
 	if parent != nil {
@@ -284,14 +284,6 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		}
 	}
 
-	// Compute external refs for this pipeline.
-	externalRefs, err := computeExternalRefs(uses, mutated)
-	if err != nil {
-		return fmt.Errorf("computing external refs: %w", err)
-	}
-
-	c.ExternalRefs = append(c.ExternalRefs, externalRefs...)
-
 	for i := range pipeline.Pipeline {
 		p := &pipeline.Pipeline[i]
 
@@ -334,7 +326,8 @@ func identity(p *config.Pipeline) string {
 	if p.Uses != "" {
 		return p.Uses
 	}
-	return "???"
+
+	return unidentifiablePipeline
 }
 
 func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) error {

@@ -66,6 +66,8 @@ test:
       packages:
         - ${{package.name}}-config
         - replacement-provides-${{vars.short-package-version}}
+    environment:
+      LD_LIBRARY_PATH: "/usr/local/${{vars.foo}}"
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -113,6 +115,8 @@ test:
 	}, cfg.Test.Environment.Contents.Packages)
 
 	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")
+
+	require.Equal(t, "/usr/local/FOO", cfg.Test.Environment.Environment["LD_LIBRARY_PATH"])
 }
 
 func Test_rangeSubstitutions(t *testing.T) {
@@ -141,6 +145,13 @@ subpackages:
     dependencies:
       runtime:
         - wow-some-kinda-dynamically-linked-library-i-guess=1.0
+    test:
+      environment:
+        contents:
+          packages:
+            - python3
+            - ${{range.value}}-default-jvm
+            - R
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -150,6 +161,7 @@ subpackages:
 	}
 	require.Equal(t, cfg.Subpackages[0].Dependencies.Runtime[0], "wow-some-kinda-dynamically-linked-library-i-guess=1.0")
 	require.True(t, cfg.Subpackages[0].Options.NoProvides)
+	require.Equal(t, cfg.Subpackages[0].Test.Environment.Contents.Packages[1], "A-default-jvm")
 }
 
 func Test_rangeSubstitutionsPriorities(t *testing.T) {
@@ -420,12 +432,12 @@ func TestGetScheduleMessage(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, err := test.schedule.getScheduleMessage()
+		result, err := test.schedule.GetScheduleMessage()
 		if (err != nil) != test.err {
-			t.Errorf("getScheduleMessage(%v) returned error %v, expected error: %v", test.schedule, err, test.err)
+			t.Errorf("GetScheduleMessage(%v) returned error %v, expected error: %v", test.schedule, err, test.err)
 		}
 		if result != test.expected {
-			t.Errorf("getScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
+			t.Errorf("GetScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
 		}
 	}
 }

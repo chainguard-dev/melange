@@ -711,6 +711,14 @@
         "strip-suffix": {
           "type": "string",
           "description": "If the version in release monitor contains a suffix which should be ignored"
+        },
+        "version-filter-contains": {
+          "type": "string",
+          "description": "Filter to apply when searching version on a Release Monitoring"
+        },
+        "version-filter-prefix": {
+          "type": "string",
+          "description": "Filter to apply when searching version Release Monitoring"
         }
       },
       "additionalProperties": false,

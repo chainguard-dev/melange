@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,11 +19,11 @@ import (
 	rlhttp "chainguard.dev/melange/pkg/http"
 	"chainguard.dev/melange/pkg/manifest"
 	"github.com/chainguard-dev/clog"
+	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/convert/wolfios"
-	"chainguard.dev/melange/pkg/util"
 	"gitlab.alpinelinux.org/alpine/go/apkbuild"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
@@ -93,7 +95,7 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 
 	// reverse map order, so we generate the lowest transitive dependency first
 	// this will help to build convert configs in the correct order
-	util.ReverseSlice(c.OrderedKeys)
+	slices.Reverse(c.OrderedKeys)
 
 	// loop over map and generate convert config for each
 	for i, key := range c.OrderedKeys {
@@ -226,29 +228,152 @@ func (c Context) buildMapOfDependencies(ctx context.Context, apkBuildURI, pkgNam
 func (c Context) transitiveDependencyList(convertor ApkConvertor) []string {
 	var dependencies []string
 	for _, depends := range convertor.Apkbuild.Depends {
-		if !util.Contains(dependencies, depends.Pkgname) {
+		if !slices.Contains(dependencies, depends.Pkgname) {
 			dependencies = append(dependencies, depends.Pkgname)
 		}
 	}
 	for _, depends := range convertor.Apkbuild.Makedepends {
-		if !util.Contains(dependencies, depends.Pkgname) {
+		if !slices.Contains(dependencies, depends.Pkgname) {
 			dependencies = append(dependencies, depends.Pkgname)
 		}
 	}
 	for _, depends := range convertor.Apkbuild.DependsDev {
-		if !util.Contains(dependencies, depends.Pkgname) {
+		if !slices.Contains(dependencies, depends.Pkgname) {
 			dependencies = append(dependencies, depends.Pkgname)
 		}
 	}
 	return dependencies
 }
 
+// Helper function to check if a URL belongs to GitHub and extract the owner/repo
+func getGitHubIdentifierFromURL(packageURL string) (string, bool) {
+	u, err := url.Parse(packageURL)
+	if err != nil || u.Host != "github.com" {
+		// Not a GitHub URL
+		return "", false
+	}
+	// Extract the owner and repo from the URL path
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 2 {
+		// Invalid GitHub URL format
+		return "", false
+	}
+	owner, repo := parts[0], parts[1]
+	return path.Join(owner, repo), true
+}
+
+// Helper function to set up the update block based on the fetch source
+func (c *Context) setupUpdateBlock(packageURL string, packageVersion string, converter *ApkConvertor) {
+	// Check if the package was fetched from GitHub
+	if identifier, isGitHub := getGitHubIdentifierFromURL(packageURL); isGitHub {
+
+		// Enable GitHub monitoring
+		converter.GeneratedMelangeConfig.Update = config.Update{
+			Enabled: true,
+			GitHubMonitor: &config.GitHubMonitor{
+				Identifier: identifier, // Set the owner/repo identifier
+				// To add logic to improve this check
+				// StripPrefix:     "v",        // Strip "v" from tags like "v1.2.3"
+				// TagFilterPrefix: "v",        // Filter tags with a "v" prefix
+			},
+		}
+	} else {
+		// Fallback to release-monitoring.org if it's not a GitHub package
+		converter.GeneratedMelangeConfig.Update = config.Update{
+			Enabled: true,
+			ReleaseMonitor: &config.ReleaseMonitor{
+				Identifier: 12345, // Example ID, replace this with actual logic to get the ID
+			},
+		}
+	}
+}
+
+// Helper function to fetch the commit hash for a specific tag from a GitHub repository
+func getCommitForTagFromGitHub(repoURL, tag string) (string, error) {
+	// Parse the repository URL to extract the owner and repo name
+	u, err := url.Parse(repoURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid repository URL: %w", err)
+	}
+
+	// Assume the URL is in the form of "https://github.com/owner/repo"
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid GitHub repository URL format")
+	}
+	owner, repo := parts[0], parts[1]
+
+	// Build the API URL for fetching the tags in the repository
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
+
+	// Send the request to the GitHub API
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return "", fmt.Errorf("error fetching tag information: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Parse the JSON response
+	var tagResponse struct {
+		Object struct {
+			Sha string `json:"sha"`
+		} `json:"object"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tagResponse); err != nil {
+		return "", fmt.Errorf("error parsing GitHub response: %w", err)
+	}
+
+	// Return the commit SHA associated with the tag
+	return tagResponse.Object.Sha, nil
+}
+
 // add pipeline fetch steps, validate checksums and generate mconvert expected sha
-func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) error {
+func (c *Context) buildFetchStep(ctx context.Context, converter ApkConvertor) error {
 	log := clog.FromContext(ctx)
 
 	apkBuild := converter.Apkbuild
 
+	// Check if the package URL is available
+	if apkBuild.Url != "" {
+		// Check if the URL belongs to GitHub
+		if _, isGitHub := getGitHubIdentifierFromURL(apkBuild.Url); isGitHub {
+			// GitHub URL, proceed with git-checkout pipeline
+			_, err := url.ParseRequestURI(apkBuild.Url)
+			if err != nil {
+				return fmt.Errorf("parsing URI %s: %w", apkBuild.Url, err)
+			}
+
+			// Fetch the commit hash for the package version tag
+			expectedCommit, err := getCommitForTagFromGitHub(apkBuild.Url, apkBuild.Pkgver) // Using the package version as the tag
+			if err != nil {
+				return fmt.Errorf("error fetching commit for tag: %w", err)
+			}
+
+			// Create a basic git-checkout pipeline
+			pipeline := config.Pipeline{
+				Uses: "melange/git-checkout",
+				With: map[string]string{
+					"repository":      apkBuild.Url,
+					"tag":             "${{package.version}}", // The version as the tag or branch reference
+					"expected-commit": expectedCommit,         // Use the dynamically fetched commit
+				},
+			}
+
+			// Add the pipeline to the generated configuration
+			converter.GeneratedMelangeConfig.Pipeline = append(converter.GeneratedMelangeConfig.Pipeline, pipeline)
+
+			// Set up the update block based on the package source (GitHub or release-monitoring)
+			c.setupUpdateBlock(apkBuild.Url, apkBuild.Pkgver, &converter)
+
+			log.Infof("Using git-checkout pipeline for package %s with repository %s and expected commit %s", converter.Pkgname, apkBuild.Url, expectedCommit)
+			return nil
+		} else {
+			log.Infof("Package URL is not from GitHub, falling back to tar.gz method")
+		}
+	}
+
+	// Fallback to fetching tar.gz if URL is missing or not GitHub
+	log.Infof("No valid GitHub URL found for package %s, using tar.gz method", converter.Pkgname)
 	if len(apkBuild.Source) == 0 {
 		log.Infof("skip adding pipeline for package %s, no source URL found", converter.Pkgname)
 		return nil
@@ -257,7 +382,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 		return fmt.Errorf("no package version")
 	}
 
-	// there can be multiple sources, let's add them all so, it's easier for users to remove from generated files if not needed
+	// Loop over sources and add fetch steps for tarball
 	for _, source := range apkBuild.Source {
 		location := source.Location
 
@@ -266,9 +391,14 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 			return fmt.Errorf("parsing URI %s: %w", location, err)
 		}
 
-		req, _ := http.NewRequestWithContext(ctx, "GET", location, nil)
-		resp, err := c.Client.Do(req)
+		// Create a request using standard http.NewRequestWithContext
+		req, err := http.NewRequestWithContext(ctx, "GET", location, nil)
+		if err != nil {
+			return fmt.Errorf("creating request for URI %s: %w", location, err)
+		}
 
+		// Use RLHTTPClient to send the request with rate limiting
+		resp, err := c.Client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed getting URI %s: %w", location, err)
 		}
@@ -287,7 +417,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 
 		var expectedSha string
 		if !failed {
-			// validate the source we are using matches the correct sha512 in the APKBIULD
+			// Validate the source matches the sha512 in the APKBUILD
 			validated := false
 			for _, shas := range apkBuild.Sha512sums {
 				if shas.Source == source.Filename {
@@ -300,7 +430,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 				}
 			}
 
-			// now generate the 256 sha we need for a mconvert config
+			// Now generate the 256 sha for the convert config
 			if !validated {
 				expectedSha = "SHA512 DOES NOT MATCH SOURCE - VALIDATE MANUALLY"
 				log.Infof("source %s expected sha512 do not match!", source.Filename)
@@ -314,6 +444,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 			expectedSha = "FIXME - SOURCE URL NOT VALID"
 		}
 
+		// Fallback to using the fetch pipeline with tarball location
 		pipeline := config.Pipeline{
 			Uses: "fetch",
 			With: map[string]string{
@@ -322,6 +453,7 @@ func (c Context) buildFetchStep(ctx context.Context, converter ApkConvertor) err
 			},
 		}
 		converter.GeneratedMelangeConfig.Pipeline = append(converter.GeneratedMelangeConfig.Pipeline, pipeline)
+
 	}
 
 	return nil
@@ -333,6 +465,22 @@ func (c ApkConvertor) mapconvert() {
 	c.GeneratedMelangeConfig.Package.Description = c.Apkbuild.Pkgdesc
 	c.GeneratedMelangeConfig.Package.Version = c.Apkbuild.Pkgver
 	c.GeneratedMelangeConfig.Package.Epoch = 0
+
+	// Add the version-check test block
+	testPipeline := config.Pipeline{
+		Name: "Verify " + c.Apkbuild.Pkgname + " installation, please improve the test as needed",
+		Runs: fmt.Sprintf("%s --version || exit 1", c.Apkbuild.Pkgname), // Basic version check
+	}
+
+	// Add the test block to the generated config
+	testBlock := &config.Test{
+		Pipeline: []config.Pipeline{
+			testPipeline,
+		},
+	}
+
+	// Add the test block to the configuration
+	c.GeneratedMelangeConfig.Test = testBlock
 
 	copyright := config.Copyright{
 		License: c.Apkbuild.License,
@@ -479,11 +627,7 @@ func contains(s []string, str string) bool {
 }
 
 func (c ApkConvertor) write(ctx context.Context, orderNumber, outdir string) error {
-	actual, err := yaml.Marshal(&c.GeneratedMelangeConfig)
-	if err != nil {
-		return fmt.Errorf("marshalling mconvert configuration: %w", err)
-	}
-
+	// Ensure output directory exists
 	if _, err := os.Stat(outdir); os.IsNotExist(err) {
 		err = os.MkdirAll(outdir, os.ModePerm)
 		if err != nil {
@@ -491,24 +635,30 @@ func (c ApkConvertor) write(ctx context.Context, orderNumber, outdir string) err
 		}
 	}
 
-	// write the mconvert config, prefix with our guessed order along with zero to help users easily rename / reorder generated files
-	mconvertFile := filepath.Join(outdir, orderNumber+"0-"+c.Apkbuild.Pkgname+".yaml")
-	f, err := os.Create(mconvertFile)
+	// Prepare the file path for the YAML output
+	manifestFile := filepath.Join(outdir, fmt.Sprintf("%s0-%s.yaml", orderNumber, c.Apkbuild.Pkgname))
+	f, err := os.Create(manifestFile)
 	if err != nil {
-		return fmt.Errorf("creating file %s: %w", mconvertFile, err)
+		return fmt.Errorf("creating file %s: %w", manifestFile, err)
 	}
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("# Generated from %s\n", c.GeneratedMelangeConfig.GeneratedFromComment))
-	if err != nil {
-		return fmt.Errorf("creating writing to file %s: %w", mconvertFile, err)
+	// Write the initial comment to the YAML file
+	if _, err := f.WriteString(fmt.Sprintf("# Generated from %s\n", c.GeneratedMelangeConfig.GeneratedFromComment)); err != nil {
+		return fmt.Errorf("writing to file %s: %w", manifestFile, err)
 	}
 
-	_, err = f.WriteString(string(actual))
-	if err != nil {
-		return fmt.Errorf("creating writing to file %s: %w", mconvertFile, err)
+	// Marshal the configuration into a YAML node for formatting
+	var n yaml.Node
+	if err := n.Encode(c.GeneratedMelangeConfig); err != nil {
+		return fmt.Errorf("encoding YAML to node: %w", err)
 	}
 
-	clog.FromContext(ctx).Infof("Generated melange config: %s", mconvertFile)
+	// Use the formatted YAML encoder to write the YAML data
+	if err := formatted.NewEncoder(f).AutomaticConfig().Encode(&n); err != nil {
+		return fmt.Errorf("encoding formatted YAML to file %s: %w", manifestFile, err)
+	}
+
+	clog.FromContext(ctx).Infof("Generated melange config with update block: %s", manifestFile)
 	return nil
 }

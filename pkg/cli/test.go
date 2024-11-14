@@ -48,6 +48,7 @@ func test() *cobra.Command {
 	var interactive bool
 	var runner string
 	var extraTestPackages []string
+	var remove bool
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -57,7 +58,7 @@ func test() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			r, err := getRunner(ctx, runner)
+			r, err := getRunner(ctx, runner, remove)
 			if err != nil {
 				return err
 			}
@@ -78,6 +79,7 @@ func test() *cobra.Command {
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
+				build.WithTestRemove(remove),
 			}
 
 			if len(args) > 0 {
@@ -129,6 +131,7 @@ func test() *cobra.Command {
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
+	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 
 	return cmd
 }
@@ -185,7 +188,7 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 				log.Infof("ERROR: failed to test package. the test environment has been preserved:")
 				bc.SummarizePaths(ctx)
 
-				return fmt.Errorf("failed to build package: %w", err)
+				return fmt.Errorf("failed to test package: %w", err)
 			}
 			return nil
 		})

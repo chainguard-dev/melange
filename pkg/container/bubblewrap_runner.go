@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -34,21 +35,25 @@ import (
 
 var _ Debugger = (*bubblewrap)(nil)
 
-const BubblewrapName = "bubblewrap"
+const (
+	BubblewrapName = "bubblewrap"
+	buildUserID    = "1000"
+)
 
 type bubblewrap struct {
+	remove bool // if true, clean up temp dirs on close.
 }
 
 // BubblewrapRunner returns a Bubblewrap Runner implementation.
-func BubblewrapRunner() Runner {
-	return &bubblewrap{}
+func BubblewrapRunner(remove bool) Runner {
+	return &bubblewrap{remove: remove}
 }
 
 func (bw *bubblewrap) Close() error {
 	return nil
 }
 
-// Name name of the runner
+// Name of the runner.
 func (bw *bubblewrap) Name() string {
 	return BubblewrapName
 }
@@ -68,6 +73,27 @@ func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, envOverride map[stri
 	return execCmd.Run()
 }
 
+func (bw *bubblewrap) testUnshareUser(ctx context.Context) error {
+	execCmd := exec.CommandContext(ctx, "bwrap", "--unshare-user", "true")
+	execCmd.Env = append(os.Environ(), "LANG=C")
+	out, err := execCmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+
+	if !bytes.Contains(out, []byte("setting up uid map")) {
+		return nil
+	}
+
+	return fmt.Errorf("%s\n",
+		strings.Join([]string{
+			"Unable to execute 'bwrap --unshare-user true'.",
+			"Command failed with: ",
+			"  " + string(out),
+			"See https://github.com/chainguard-dev/melange/issues/1508 for fix",
+		}, "\n"))
+}
+
 func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverride map[string]string, args ...string) *exec.Cmd {
 	baseargs := []string{}
 
@@ -82,12 +108,22 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 	baseargs = append(baseargs, "--unshare-pid", "--die-with-parent",
 		"--dev", "/dev",
 		"--proc", "/proc",
+		"--ro-bind", "/sys", "/sys",
 		"--chdir", runnerWorkdir,
 		"--clearenv")
 
+	// If we need to run as an user, we run as that user.
 	if cfg.RunAs != "" {
 		baseargs = append(baseargs, "--unshare-user")
 		baseargs = append(baseargs, "--uid", cfg.RunAs)
+		baseargs = append(baseargs, "--gid", cfg.RunAs)
+		// Else if we're not using melange as root, we force the use of the
+		// Apko build user. This avoids problems on machines where default
+		// regular user is NOT 1000.
+	} else if os.Getuid() > 0 {
+		baseargs = append(baseargs, "--unshare-user")
+		baseargs = append(baseargs, "--uid", buildUserID)
+		baseargs = append(baseargs, "--gid", buildUserID)
 	}
 
 	if !debug {
@@ -134,12 +170,17 @@ func (bw *bubblewrap) TestUsability(ctx context.Context) bool {
 		return false
 	}
 
+	if err := bw.testUnshareUser(ctx); err != nil {
+		log.Warnf("%s", err)
+		return false
+	}
+
 	return true
 }
 
 // OCIImageLoader used to load OCI images in, if needed. bubblewrap does not need it.
 func (bw *bubblewrap) OCIImageLoader() Loader {
-	return &bubblewrapOCILoader{}
+	return &bubblewrapOCILoader{remove: bw.remove}
 }
 
 // TempDir returns the base for temporary directory. For bubblewrap, this is empty.
@@ -169,9 +210,12 @@ func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadClo
 	return nil, nil
 }
 
-type bubblewrapOCILoader struct{}
+type bubblewrapOCILoader struct {
+	remove   bool
+	guestDir string
+}
 
-func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
+func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
 	defer span.End()
 
@@ -181,6 +225,7 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
+	b.guestDir = guestDir
 	rc, err := layer.Uncompressed()
 	if err != nil {
 		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
@@ -225,7 +270,10 @@ func (b bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch
 	return guestDir, nil
 }
 
-func (b bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
+func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	clog.FromContext(ctx).Infof("removing image path %s", ref)
+	if b.remove {
+		os.RemoveAll(b.guestDir)
+	}
 	return os.RemoveAll(ref)
 }

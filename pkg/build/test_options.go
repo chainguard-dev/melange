@@ -196,3 +196,11 @@ func WithTestAuth(domain, user, pass string) TestOption {
 		return nil
 	}
 }
+
+// If true, the test will clean up the test environment after the test is complete.
+func WithTestRemove(c bool) TestOption {
+	return func(t *Test) error {
+		t.Remove = c
+		return nil
+	}
+}

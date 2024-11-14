@@ -16,7 +16,6 @@ package index
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -255,25 +254,6 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 		if err := sign.SignIndex(ctx, idx.SigningKey, idx.IndexFile); err != nil {
 			return fmt.Errorf("failed to sign apk index: %w", err)
 		}
-	}
-
-	return nil
-}
-
-func (idx *Index) WriteJSONIndex(destinationFile string) error {
-	outFile, err := os.Create(destinationFile)
-	if err != nil {
-		return fmt.Errorf("failed to create index JSON file: %w", err)
-	}
-	defer outFile.Close()
-
-	jsonData, err := json.MarshalIndent(idx.Index, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to write index as JSON: %w", err)
-	}
-
-	if _, err := outFile.Write(jsonData); err != nil {
-		return fmt.Errorf("failed to write index as JSON: %w", err)
 	}
 
 	return nil

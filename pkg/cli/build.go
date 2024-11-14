@@ -32,6 +32,7 @@ import (
 	"chainguard.dev/melange/pkg/container/docker"
 	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -70,12 +71,16 @@ func buildCmd() *cobra.Command {
 	var interactive bool
 	var remove bool
 	var runner string
-	var cpu, memory, disk string
+	var cpu, cpumodel, memory, disk string
 	var timeout time.Duration
 	var extraPackages []string
 	var libc string
 	var lintRequire, lintWarn []string
 	var ignoreSignatures bool
+	var cleanup bool
+	var configFileGitCommit string
+	var configFileGitRepoURL string
+	var configFileLicense string
 
 	var traceFile string
 
@@ -87,6 +92,12 @@ func buildCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			log := clog.FromContext(ctx)
+
+			var buildConfigFilePath string
+			if len(args) > 0 {
+				buildConfigFilePath = args[0] // e.g. "crane.yaml"
+			}
 
 			if traceFile != "" {
 				w, err := os.Create(traceFile)
@@ -103,7 +114,7 @@ func buildCmd() *cobra.Command {
 
 				defer func() {
 					if err := tp.Shutdown(context.WithoutCancel(ctx)); err != nil {
-						clog.FromContext(ctx).Errorf("shutting down trace provider: %v", err)
+						log.Errorf("shutting down trace provider: %v", err)
 					}
 				}()
 
@@ -112,9 +123,28 @@ func buildCmd() *cobra.Command {
 				ctx = tctx
 			}
 
-			r, err := getRunner(ctx, runner)
+			r, err := getRunner(ctx, runner, remove)
 			if err != nil {
 				return err
+			}
+
+			// Favor explicit, user-provided information for the git provenance of the
+			// melange build definition. As a fallback, detect this from local git state.
+			// Git auto-detection should be "best effort" and not fail the build if it
+			// fails.
+			if configFileGitCommit == "" {
+				log.Infof("git commit for build config not provided, attempting to detect automatically")
+				commit, err := detectGitHead(ctx, buildConfigFilePath)
+				if err != nil {
+					log.Warnf("unable to detect commit for build config file: %v", err)
+					configFileGitCommit = "unknown"
+				} else {
+					configFileGitCommit = commit
+				}
+			}
+			if configFileGitRepoURL == "" {
+				log.Warnf("git repository URL for build config not provided")
+				configFileGitRepoURL = "https://unknown/unknown/unknown"
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
@@ -152,18 +182,22 @@ func buildCmd() *cobra.Command {
 				build.WithLintRequire(lintRequire),
 				build.WithLintWarn(lintWarn),
 				build.WithCPU(cpu),
+				build.WithCPUModel(cpumodel),
 				build.WithDisk(disk),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
 				build.WithIgnoreSignatures(ignoreSignatures),
+				build.WithConfigFileRepositoryCommit(configFileGitCommit),
+				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
+				build.WithConfigFileLicense(configFileLicense),
 			}
 
 			if len(args) > 0 {
-				options = append(options, build.WithConfig(args[0]))
+				options = append(options, build.WithConfig(buildConfigFilePath))
 
 				if sourceDir == "" {
-					sourceDir = filepath.Dir(args[0])
+					sourceDir = filepath.Dir(buildConfigFilePath)
 				}
 			}
 
@@ -215,8 +249,9 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
+	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
+	cmd.Flags().StringVar(&cpumodel, "cpumodel", "host", "default memory resources to use for builds")
 	cmd.Flags().StringVar(&disk, "disk", "", "disk size to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
@@ -224,6 +259,10 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	cmd.Flags().BoolVar(&cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
+	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
+	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
+	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
@@ -231,11 +270,29 @@ func buildCmd() *cobra.Command {
 	return cmd
 }
 
-func getRunner(ctx context.Context, runner string) (container.Runner, error) {
+// Detect the git state from the build config file's parent directory.
+func detectGitHead(ctx context.Context, buildConfigFilePath string) (string, error) {
+	repoDir := filepath.Dir(buildConfigFilePath)
+	clog.FromContext(ctx).Debugf("detecting git state from %q", repoDir)
+
+	repo, err := git.PlainOpenWithOptions(repoDir, &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return "", fmt.Errorf("opening git repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("determining HEAD: %w", err)
+	}
+	commit := head.Hash().String()
+	return commit, nil
+}
+
+func getRunner(ctx context.Context, runner string, remove bool) (container.Runner, error) {
 	if runner != "" {
 		switch runner {
 		case "bubblewrap":
-			return container.BubblewrapRunner(), nil
+			return container.BubblewrapRunner(remove), nil
 		case "qemu":
 			return container.QemuRunner(), nil
 		case "docker":
@@ -249,7 +306,7 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 
 	switch runtime.GOOS {
 	case "linux":
-		return container.BubblewrapRunner(), nil
+		return container.BubblewrapRunner(remove), nil
 	case "darwin":
 		// darwin is the same as default, but we want to keep it explicit
 		fallthrough

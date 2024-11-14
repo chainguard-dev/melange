@@ -20,7 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"iter"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -29,14 +31,17 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/pkg/sbom"
+	purl "github.com/package-url/packageurl-go"
 
 	"github.com/chainguard-dev/clog"
-	"github.com/go-git/go-git/v5"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/util"
 )
+
+const purlTypeAPK = "apk"
 
 type Trigger struct {
 	// Optional: The script to run
@@ -91,7 +96,7 @@ type Package struct {
 	Version string `json:"version" yaml:"version"`
 	// The monotone increasing epoch of the package
 	Epoch uint64 `json:"epoch" yaml:"epoch"`
-	// A human readable description of the package
+	// A human-readable description of the package
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// The URL to the package's homepage
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
@@ -118,23 +123,45 @@ type Package struct {
 }
 
 type Resources struct {
-	CPU    string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
-	Memory string `json:"memory,omitempty" yaml:"memory,omitempty"`
-	Disk   string `json:"disk,omitempty" yaml:"disk,omitempty"`
+	CPU      string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
+	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
+	Memory   string `json:"memory,omitempty" yaml:"memory,omitempty"`
+	Disk     string `json:"disk,omitempty" yaml:"disk,omitempty"`
 }
 
-// PackageURL returns the package URL ("purl") for the package. For more
-// information, see https://github.com/package-url/purl-spec#purl.
-func (p Package) PackageURL(distro string) string {
-	const typ = "apk"
-	version := fmt.Sprintf("%s-r%d", p.Version, p.Epoch)
+// PackageURL returns the package URL ("purl") for the APK (origin) package.
+func (p Package) PackageURL(distro, arch string) *purl.PackageURL {
+	return newAPKPackageURL(distro, p.Name, p.FullVersion(), arch)
+}
 
-	return fmt.Sprintf("pkg:%s/%s/%s@%s",
-		typ,
-		distro,
-		p.Name,
-		version,
-	)
+// PackageURLForSubpackage returns the package URL ("purl") for the APK
+// subpackage.
+func (p Package) PackageURLForSubpackage(distro, arch, subpackage string) *purl.PackageURL {
+	return newAPKPackageURL(distro, subpackage, p.FullVersion(), arch)
+}
+
+func newAPKPackageURL(distro, name, version, arch string) *purl.PackageURL {
+	u := &purl.PackageURL{
+		Type:      purlTypeAPK,
+		Namespace: distro,
+		Name:      name,
+		Version:   version,
+	}
+
+	if arch != "" {
+		u.Qualifiers = append(u.Qualifiers, purl.Qualifier{
+			Key:   "arch",
+			Value: arch,
+		})
+	}
+
+	return u
+}
+
+// FullVersion returns the full version of the APK package produced by the
+// build, including the epoch.
+func (p Package) FullVersion() string {
+	return fmt.Sprintf("%s-r%d", p.Version, p.Epoch)
 }
 
 func (cfg *Configuration) applySubstitutionsForProvides() error {
@@ -154,7 +181,7 @@ func (cfg *Configuration) applySubstitutionsForProvides() error {
 			var err error
 			sp.Dependencies.Provides[i], err = util.MutateStringFromMap(nw, prov)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to provides %q: %w", prov, err)
+				return fmt.Errorf("failed to apply replacement to %q provides %q: %w", sp.Name, prov, err)
 			}
 		}
 	}
@@ -166,20 +193,20 @@ func (cfg *Configuration) applySubstitutionsForPriorities() error {
 	var err error
 	cfg.Package.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ProviderPriority)
 	if err != nil {
-		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
+		return fmt.Errorf("failed to apply replacement to provider priority %q: %w", cfg.Package.Dependencies.ProviderPriority, err)
 	}
 	cfg.Package.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.ReplacesPriority)
 	if err != nil {
-		return fmt.Errorf("failed to apply replacement to provides %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
+		return fmt.Errorf("failed to apply replacement to replaces priority %q: %w", cfg.Package.Dependencies.ReplacesPriority, err)
 	}
 	for _, sp := range cfg.Subpackages {
 		sp.Dependencies.ProviderPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ProviderPriority)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ProviderPriority, err)
+			return fmt.Errorf("failed to apply replacement to %q provider priority %q: %w", sp.Name, sp.Dependencies.ProviderPriority, err)
 		}
 		sp.Dependencies.ReplacesPriority, err = util.MutateStringFromMap(nw, sp.Dependencies.ReplacesPriority)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to provides %q: %w", sp.Dependencies.ReplacesPriority, err)
+			return fmt.Errorf("failed to apply replacement to %q replaces priority %q: %w", sp.Name, sp.Dependencies.ReplacesPriority, err)
 		}
 	}
 	return nil
@@ -194,15 +221,15 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 		var err error
 		cfg.Package.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
 		if err != nil {
-			return fmt.Errorf("failed to apply replacement to runtime %q: %w", runtime, err)
+			return fmt.Errorf("failed to apply replacement to runtime dependency %q: %w", runtime, err)
 		}
 	}
-	for _, srt := range cfg.Subpackages {
-		for i, runtime := range srt.Dependencies.Runtime {
+	for _, sp := range cfg.Subpackages {
+		for i, runtime := range sp.Dependencies.Runtime {
 			var err error
-			srt.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
+			sp.Dependencies.Runtime[i], err = util.MutateStringFromMap(nw, runtime)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to runtime %q: %w", runtime, err)
+				return fmt.Errorf("failed to apply replacement to %q runtime dependency %q: %w", sp.Name, runtime, err)
 			}
 		}
 	}
@@ -218,12 +245,12 @@ func (cfg *Configuration) applySubstitutionsForReplaces() error {
 			return fmt.Errorf("failed to apply replacement to replaces %q: %w", replaces, err)
 		}
 	}
-	for _, srt := range cfg.Subpackages {
-		for i, replaces := range srt.Dependencies.Replaces {
+	for _, sp := range cfg.Subpackages {
+		for i, replaces := range sp.Dependencies.Replaces {
 			var err error
-			srt.Dependencies.Replaces[i], err = util.MutateStringFromMap(nw, replaces)
+			sp.Dependencies.Replaces[i], err = util.MutateStringFromMap(nw, replaces)
 			if err != nil {
-				return fmt.Errorf("failed to apply replacement to replaces %q: %w", replaces, err)
+				return fmt.Errorf("failed to apply replacement to %q replaces %q: %w", sp.Name, replaces, err)
 			}
 		}
 	}
@@ -251,6 +278,17 @@ func (cfg *Configuration) applySubstitutionsForPackages() error {
 			}
 		}
 	}
+	for _, sp := range cfg.Subpackages {
+		if sp.Test != nil {
+			for i, runtime := range sp.Test.Environment.Contents.Packages {
+				var err error
+				sp.Test.Environment.Contents.Packages[i], err = util.MutateStringFromMap(nw, runtime)
+				if err != nil {
+					return fmt.Errorf("failed to apply replacement to subpackage %q test %q: %w", sp.Name, runtime, err)
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -265,9 +303,9 @@ type Copyright struct {
 	LicensePath string `json:"license-path,omitempty" yaml:"license-path,omitempty"`
 }
 
-// LicenseExpression returns an SPDX license expression formed from the
-// data in the copyright structs found in the conf. Its a simple OR for now.
-func (p *Package) LicenseExpression() string {
+// LicenseExpression returns an SPDX license expression formed from the data in
+// the copyright structs found in the conf. It's a simple OR for now.
+func (p Package) LicenseExpression() string {
 	licenseExpression := ""
 	if p.Copyright == nil {
 		return licenseExpression
@@ -281,9 +319,13 @@ func (p *Package) LicenseExpression() string {
 	return licenseExpression
 }
 
-// Returns array of ExtractedLicensingInfos formed from the data in
-// the copyright structs found in the conf.
-func (p *Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
+// LicensingInfos looks at the `Package.Copyright[].LicensePath` fields of the
+// parsed build configuration for the package. If this value has been set,
+// LicensingInfos opens the file at this path from the build's workspace
+// directory, and reads in the license content. LicensingInfos then returns a
+// map of the `Copyright.License` field to the string content of the file from
+// `.LicensePath`.
+func (p Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
 	licenseInfos := make(map[string]string)
 	for _, cp := range p.Copyright {
 		if cp.LicensePath != "" {
@@ -299,7 +341,7 @@ func (p *Package) LicensingInfos(WorkspaceDir string) (map[string]string, error)
 
 // FullCopyright returns the concatenated copyright expressions defined
 // in the configuration file.
-func (p *Package) FullCopyright() string {
+func (p Package) FullCopyright() string {
 	copyright := ""
 	for _, cp := range p.Copyright {
 		copyright += cp.Attestation + "\n"
@@ -333,7 +375,7 @@ type Pipeline struct {
 	Runs string `json:"runs,omitempty" yaml:"runs,omitempty"`
 	// Optional: The list of pipelines to run.
 	//
-	// Each pipeline runs in it's own context that is not shared between other
+	// Each pipeline runs in its own context that is not shared between other
 	// pipelines. To share context between pipelines, nest a pipeline within an
 	// existing pipeline. This can be useful when you wish to share common
 	// configuration, such as an alternative `working-directory`.
@@ -354,6 +396,167 @@ type Pipeline struct {
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
 	// Optional: environment variables to override the apko environment
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+}
+
+// SBOMPackageForUpstreamSource returns an SBOM package for the upstream source
+// of the package, if this Pipeline step was used to bring source code from an
+// upstream project into the build. This function helps with generating SBOMs
+// for the package being built. If the pipeline step is not a fetch or
+// git-checkout step, this function returns nil and no error.
+func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string, uniqueID string) (*sbom.Package, error) {
+	// TODO: It'd be great to detect the license from the source code itself. Such a
+	//  feature could even eliminate the need for the package's license field in the
+	//  build configuration.
+
+	uses, with := p.Uses, p.With
+
+	switch uses {
+	case "fetch":
+		args := make(map[string]string)
+		args["download_url"] = with["uri"]
+
+		expectedSHA256 := with["expected-sha256"]
+		if len(expectedSHA256) > 0 {
+			args["checksum"] = "sha256:" + expectedSHA256
+		}
+		expectedSHA512 := with["expected-sha512"]
+		if len(expectedSHA512) > 0 {
+			args["checksum"] = "sha512:" + expectedSHA512
+		}
+
+		// These get defaulted correctly from within the fetch pipeline definition
+		// (YAML) itself.
+		pkgName := with["purl-name"]
+		pkgVersion := with["purl-version"]
+
+		pu := &purl.PackageURL{
+			Type:       "generic",
+			Name:       pkgName,
+			Version:    pkgVersion,
+			Qualifiers: purl.QualifiersFromMap(args),
+		}
+		if err := pu.Normalize(); err != nil {
+			return nil, err
+		}
+
+		idComponents := []string{pkgName, pkgVersion}
+		if uniqueID != "" {
+			idComponents = append(idComponents, uniqueID)
+		}
+
+		return &sbom.Package{
+			IDComponents: idComponents,
+			Name:         pkgName,
+			Version:      pkgVersion,
+			Namespace:    supplier,
+			PURL:         pu,
+		}, nil
+
+	case "git-checkout":
+		repo := with["repository"]
+		branch := with["branch"]
+		tag := with["tag"]
+		expectedCommit := with["expected-commit"]
+
+		// We'll use all available data to ensure our SBOM's package ID is unique, even
+		// when the same repo is git-checked out multiple times.
+		var idComponents []string
+		repoCleaned := func() string {
+			s := strings.TrimPrefix(repo, "https://")
+			s = strings.TrimPrefix(s, "http://")
+			return s
+		}()
+		for _, component := range []string{repoCleaned, branch, tag, expectedCommit} {
+			if component != "" {
+				idComponents = append(idComponents, component)
+			}
+		}
+		if uniqueID != "" {
+			idComponents = append(idComponents, uniqueID)
+		}
+
+		if strings.HasPrefix(repo, "https://github.com/") {
+			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
+
+			// Prefer tag to commit, but use only ONE of these.
+
+			versions := []string{
+				tag,
+				expectedCommit,
+			}
+
+			for _, v := range versions {
+				if v == "" {
+					continue
+				}
+
+				pu := &purl.PackageURL{
+					Type:      purl.TypeGithub,
+					Namespace: namespace,
+					Name:      name,
+					Version:   v,
+				}
+				if err := pu.Normalize(); err != nil {
+					return nil, err
+				}
+
+				return &sbom.Package{
+					IDComponents:    idComponents,
+					Name:            name,
+					Version:         v,
+					LicenseDeclared: licenseDeclared,
+					Namespace:       namespace,
+					PURL:            pu,
+				}, nil
+			}
+
+			// If we get here, we have a GitHub repo but no tag or commit. Without version
+			// information, we can't create a sensible SBOM package.
+			//
+			// TODO: Decide if this should be an error condition.
+
+			return nil, nil
+		}
+
+		// Create nice looking package name, last component of uri, without .git
+		name := strings.TrimSuffix(path.Base(repo), ".git")
+
+		// Encode vcs_url with git+ prefix and @commit suffix
+		vcsUrl := "git+" + repo
+
+		if len(expectedCommit) > 0 {
+			vcsUrl += "@" + expectedCommit
+		}
+
+		// Use tag as version
+		version := ""
+		if len(tag) > 0 {
+			version = tag
+		}
+
+		pu := purl.PackageURL{
+			Type:       "generic",
+			Name:       name,
+			Version:    version,
+			Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
+		}
+		if err := pu.Normalize(); err != nil {
+			return nil, err
+		}
+
+		return &sbom.Package{
+			IDComponents:    idComponents,
+			Name:            name,
+			Version:         version,
+			LicenseDeclared: licenseDeclared,
+			Namespace:       supplier,
+			PURL:            &pu,
+		}, nil
+	}
+
+	// This is not a fetch or git-checkout step.
+
+	return nil, nil
 }
 
 type Subpackage struct {
@@ -382,26 +585,8 @@ type Subpackage struct {
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 }
 
-// PackageURL returns the package URL ("purl") for the subpackage. For more
-// information, see https://github.com/package-url/purl-spec#purl.
-func (spkg Subpackage) PackageURL(distro, packageVersionWithRelease string) string {
-	const typ = "apk"
-
-	return fmt.Sprintf("pkg:%s/%s/%s@%s",
-		typ,
-		distro,
-		spkg.Name,
-		packageVersionWithRelease,
-	)
-}
-
-type SBOM struct {
-	// Optional: The language of the generated SBOM
-	Language string `json:"language" yaml:"language"`
-}
-
 type Input struct {
-	// Optional: The human readable description of the input
+	// Optional: The human-readable description of the input
 	Description string `json:"description,omitempty"`
 	// Optional: The default value of the input. Required when the input is.
 	Default string `json:"default,omitempty"`
@@ -440,6 +625,22 @@ type Configuration struct {
 	root *yaml.Node
 }
 
+// AllPackageNames returns a sequence of all package names in the configuration,
+// i.e. the origin package name and the names of all subpackages.
+func (cfg Configuration) AllPackageNames() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if !yield(cfg.Package.Name) {
+			return
+		}
+
+		for _, sp := range cfg.Subpackages {
+			if !yield(sp.Name) {
+				return
+			}
+		}
+	}
+}
+
 type Test struct {
 	// Additional Environment necessary for test.
 	// Environment.Contents.Packages automatically get
@@ -451,7 +652,9 @@ type Test struct {
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
 }
 
-// Name returns a name for the configuration, using the package name.
+// Name returns a name for the configuration, using the package name. This
+// implements the configs.Configuration interface in wolfictl and is important
+// to keep as long as that package is in use.
 func (cfg Configuration) Name() string {
 	return cfg.Package.Name
 }
@@ -507,6 +710,10 @@ type ReleaseMonitor struct {
 	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
 	// If the version in release monitor contains a suffix which should be ignored
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
+	// Filter to apply when searching version on a Release Monitoring
+	VersionFilterContains string `json:"version-filter-contains,omitempty" yaml:"version-filter-contains,omitempty"`
+	// Filter to apply when searching version Release Monitoring
+	VersionFilterPrefix string `json:"version-filter-prefix,omitempty" yaml:"version-filter-prefix,omitempty"`
 }
 
 // VersionHandler is an interface that defines methods for retrieving version filtering and stripping parameters.
@@ -514,8 +721,8 @@ type ReleaseMonitor struct {
 type VersionHandler interface {
 	GetStripPrefix() string
 	GetStripSuffix() string
-	GetTagFilterPrefix() string
-	GetTagFilterContains() string
+	GetFilterPrefix() string
+	GetFilterContains() string
 }
 
 // GitHubMonitor indicates using the GitHub API
@@ -560,13 +767,13 @@ func (gm *GitMonitor) GetStripSuffix() string {
 	return gm.StripSuffix
 }
 
-// GetTagFilterPrefix returns the prefix filter to apply when searching tags in GitMonitor.
-func (gm *GitMonitor) GetTagFilterPrefix() string {
+// GetFilterPrefix returns the prefix filter to apply when searching tags in GitMonitor.
+func (gm *GitMonitor) GetFilterPrefix() string {
 	return gm.TagFilterPrefix
 }
 
-// GetTagFilterContains returns the substring filter to apply when searching tags in GitMonitor.
-func (gm *GitMonitor) GetTagFilterContains() string {
+// GetFilterContains returns the substring filter to apply when searching tags in GitMonitor.
+func (gm *GitMonitor) GetFilterContains() string {
 	return gm.TagFilterContains
 }
 
@@ -580,14 +787,34 @@ func (ghm *GitHubMonitor) GetStripSuffix() string {
 	return ghm.StripSuffix
 }
 
-// GetTagFilterPrefix returns the prefix filter to apply when searching tags in GitHubMonitor.
-func (ghm *GitHubMonitor) GetTagFilterPrefix() string {
+// GetFilterPrefix returns the prefix filter to apply when searching tags in GitHubMonitor.
+func (ghm *GitHubMonitor) GetFilterPrefix() string {
 	return ghm.TagFilterPrefix
 }
 
-// GetTagFilterContains returns the substring filter to apply when searching tags in GitHubMonitor.
-func (ghm *GitHubMonitor) GetTagFilterContains() string {
+// GetFilterContains returns the substring filter to apply when searching tags in GitHubMonitor.
+func (ghm *GitHubMonitor) GetFilterContains() string {
 	return ghm.TagFilterContains
+}
+
+// GetStripPrefix returns the prefix that should be stripped from the ReleaseMonitor version.
+func (rm *ReleaseMonitor) GetStripPrefix() string {
+	return rm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix that should be stripped from the ReleaseMonitor version.
+func (rm *ReleaseMonitor) GetStripSuffix() string {
+	return rm.StripSuffix
+}
+
+// GetFilterPrefix returns the prefix filter to apply when searching versions in ReleaseMonitor.
+func (rm *ReleaseMonitor) GetFilterPrefix() string {
+	return rm.VersionFilterPrefix
+}
+
+// GetFilterContains returns the substring filter to apply when searching versions in ReleaseMonitor.
+func (rm *ReleaseMonitor) GetFilterContains() string {
+	return rm.VersionFilterContains
 }
 
 // VersionTransform allows mapping the package version to an APK version
@@ -614,7 +841,7 @@ type Schedule struct {
 	Period Period `json:"period,omitempty" yaml:"period,omitempty"`
 }
 
-func (schedule Schedule) getScheduleMessage() (string, error) {
+func (schedule Schedule) GetScheduleMessage() (string, error) {
 	switch schedule.Period {
 	case Daily:
 		return "Scheduled daily update check", nil
@@ -656,10 +883,11 @@ type Dependencies struct {
 type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
-	filesystem        fs.FS
-	envFilePath       string
-	cpu, memory, disk string
-	timeout           time.Duration
+	filesystem                  fs.FS
+	envFilePath                 string
+	cpu, cpumodel, memory, disk string
+	timeout                     time.Duration
+	commit                      string
 
 	varsFilePath string
 }
@@ -684,6 +912,12 @@ func WithDefaultCPU(cpu string) ConfigurationParsingOption {
 	}
 }
 
+func WithDefaultCPUModel(cpumodel string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.cpumodel = cpumodel
+	}
+}
+
 func WithDefaultDisk(disk string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.disk = disk
@@ -705,6 +939,12 @@ func WithFS(filesystem fs.FS) ConfigurationParsingOption {
 	}
 }
 
+func WithCommit(hash string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.commit = hash
+	}
+}
+
 // WithEnvFileForParsing set the paths from which to read an environment file.
 func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 	return func(options *configOptions) {
@@ -718,26 +958,6 @@ func WithVarsFileForParsing(path string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.varsFilePath = path
 	}
-}
-
-func detectCommit(ctx context.Context, dirPath string) string {
-	log := clog.FromContext(ctx)
-	// Best-effort detection of current commit, to be used when not specified in the config file
-
-	// TODO: figure out how to use an abstract FS
-	repo, err := git.PlainOpen(dirPath)
-	if err != nil {
-		log.Debugf("unable to detect git commit for build configuration: %v", err)
-		return ""
-	}
-
-	head, err := repo.Head()
-	if err != nil {
-		return ""
-	}
-
-	commit := head.Hash().String()
-	return commit
 }
 
 // buildConfigMap builds a map used to prepare a replacer for variable substitution.
@@ -798,6 +1018,43 @@ func replaceMap(r *strings.Replacer, in map[string]string) map[string]string {
 	return replacedWith
 }
 
+func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_types.ImageEntrypoint {
+	return apko_types.ImageEntrypoint{
+		Type:          in.Type,
+		Command:       r.Replace(in.Command),
+		ShellFragment: r.Replace(in.ShellFragment),
+		Services:      replaceMap(r, in.Services),
+	}
+}
+
+func replaceImageContents(r *strings.Replacer, in apko_types.ImageContents) apko_types.ImageContents {
+	return apko_types.ImageContents{
+		BuildRepositories:   replaceAll(r, in.BuildRepositories),
+		RuntimeRepositories: replaceAll(r, in.RuntimeRepositories),
+		Keyring:             replaceAll(r, in.Keyring),
+		Packages:            replaceAll(r, in.Packages),
+		BaseImage:           in.BaseImage, // TODO
+	}
+}
+
+func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) apko_types.ImageConfiguration {
+	return apko_types.ImageConfiguration{
+		Contents:    replaceImageContents(r, in.Contents),
+		Entrypoint:  replaceEntrypoint(r, in.Entrypoint),
+		Cmd:         r.Replace(in.Cmd),
+		StopSignal:  r.Replace(in.StopSignal),
+		WorkDir:     r.Replace(in.WorkDir),
+		Accounts:    in.Accounts, // TODO
+		Archs:       in.Archs,    // TODO
+		Environment: replaceMap(r, in.Environment),
+		Paths:       in.Paths, // TODO
+		VCSUrl:      r.Replace(in.VCSUrl),
+		Annotations: replaceMap(r, in.Annotations),
+		Include:     in.Include, // TODO
+		Volumes:     replaceAll(r, in.Volumes),
+	}
+}
+
 func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 	return Pipeline{
 		Name:        r.Replace(in.Name),
@@ -811,7 +1068,7 @@ func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 		If:          r.Replace(in.If),
 		Assertions:  in.Assertions,
 		WorkDir:     r.Replace(in.WorkDir),
-		Environment: in.Environment,
+		Environment: replaceMap(r, in.Environment),
 	}
 }
 
@@ -832,7 +1089,7 @@ func replaceTest(r *strings.Replacer, in *Test) *Test {
 		return nil
 	}
 	return &Test{
-		Environment: in.Environment,
+		Environment: replaceImageConfig(r, in.Environment),
 		Pipeline:    replacePipelines(r, in.Pipeline),
 	}
 }
@@ -856,10 +1113,10 @@ func replaceScriptlets(r *strings.Replacer, in *Scriptlets) *Scriptlets {
 	}
 }
 
-// default to detectedCommit unless commit is explicitly specified
-func replaceCommit(detectedCommit string, in string) string {
+// default to value of in parameter unless commit is explicitly specified.
+func replaceCommit(commit string, in string) string {
 	if in == "" {
-		return detectedCommit
+		return commit
 	}
 	return in
 }
@@ -874,14 +1131,14 @@ func replaceDependencies(r *strings.Replacer, in Dependencies) Dependencies {
 	}
 }
 
-func replacePackage(r *strings.Replacer, detectedCommit string, in Package) Package {
+func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 	return Package{
 		Name:               r.Replace(in.Name),
 		Version:            r.Replace(in.Version),
 		Epoch:              in.Epoch,
 		Description:        r.Replace(in.Description),
 		URL:                r.Replace(in.URL),
-		Commit:             replaceCommit(detectedCommit, in.Commit),
+		Commit:             replaceCommit(commit, in.Commit),
 		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
 		Copyright:          in.Copyright,
 		Dependencies:       replaceDependencies(r, in.Dependencies),
@@ -982,7 +1239,7 @@ func (cfg *Configuration) propagatePipelines() {
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
-func ParseConfiguration(ctx context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
+func ParseConfiguration(_ context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
 	configurationDirPath := filepath.Dir(configurationFilePath)
 	options.include(opts...)
@@ -1057,9 +1314,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 
 	replacer := replacerFromMap(configMap)
 
-	detectedCommit := detectCommit(ctx, configurationDirPath)
-
-	cfg.Package = replacePackage(replacer, detectedCommit, cfg.Package)
+	cfg.Package = replacePackage(replacer, options.commit, cfg.Package)
 
 	cfg.Pipeline = replacePipelines(replacer, cfg.Pipeline)
 
@@ -1072,6 +1327,10 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
+
+	cfg.Environment = replaceImageConfig(replacer, cfg.Environment)
+
+	cfg.Test = replaceTest(replacer, cfg.Test)
 
 	cfg.Data = nil // TODO: zero this out or not?
 
@@ -1156,6 +1415,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	if options.cpu != "" {
 		cfg.Package.Resources.CPU = options.cpu
 	}
+	if options.cpumodel != "" {
+		cfg.Package.Resources.CPUModel = options.cpumodel
+	}
 	if options.memory != "" {
 		cfg.Package.Resources.Memory = options.memory
 	}
@@ -1201,7 +1463,7 @@ func (cfg Configuration) validate() error {
 	// TODO: try to validate value of .package.version
 
 	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
-		return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+		return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 	}
 	if err := validatePipelines(cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
@@ -1227,7 +1489,7 @@ func (cfg Configuration) validate() error {
 			return ErrInvalidConfiguration{Problem: fmt.Errorf("subpackage name %q (subpackages index: %d) must match regex %q", sp.Name, i, packageNameRegex)}
 		}
 		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
-			return ErrInvalidConfiguration{Problem: errors.New("prioritiy must convert to integer")}
+			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
 		if err := validatePipelines(sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
@@ -1259,7 +1521,7 @@ func validatePipelines(ps []Pipeline) error {
 }
 
 func validateDependenciesPriorities(deps Dependencies) error {
-	priorities := []string{deps.ProviderPriority, deps.ProviderPriority}
+	priorities := []string{deps.ProviderPriority, deps.ReplacesPriority}
 	for _, priority := range priorities {
 		if priority == "" {
 			continue
@@ -1270,24 +1532,6 @@ func validateDependenciesPriorities(deps Dependencies) error {
 		}
 	}
 	return nil
-}
-
-// PackageURLs returns a list of package URLs ("purls") for the given
-// configuration. The first PURL is always the origin package, and any subsequent
-// items are the PURLs for the Configuration's subpackages. For more information
-// on PURLs, see https://github.com/package-url/purl-spec#purl.
-func (cfg Configuration) PackageURLs(distro string) []string {
-	var purls []string
-
-	p := cfg.Package
-	purls = append(purls, p.PackageURL(distro))
-
-	for _, subpackage := range cfg.Subpackages {
-		version := fmt.Sprintf("%s-r%d", p.Version, p.Epoch)
-		purls = append(purls, subpackage.PackageURL(distro, version))
-	}
-
-	return purls
 }
 
 // Summarize lists the dependencies that are configured in a dependency set.

@@ -27,7 +27,9 @@ inputs:
     description: |
       Enable debug mode, which will print out the diffs of the pom.xml file after running pombump
     default: false
-
+  show-dependency-tree:
+    default: false
+    description: Display a dependency tree for the existing pom.xml file
 
 pipeline:
   - runs: |
@@ -50,6 +52,10 @@ pipeline:
 
       if [ -n "${{inputs.properties}}" ]; then
         PROPERTIES_FLAG="--properties ${{inputs.properties}}"
+      fi
+      
+      if [ "${{inputs.show-dependency-tree}}" = "true" ]; then
+        mvn dependency:tree
       fi
 
       pombump ${{inputs.pom}} $PATCH_FILE_FLAG $PROPERTIES_FILE_FLAG $DEPENDENCIES_FLAG $PROPERTIES_FLAG > "${{inputs.pom}}.new"

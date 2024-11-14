@@ -37,17 +37,17 @@ import (
 	"strings"
 	"time"
 
-	"al.essio.dev/pkg/shellescape"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
 	"github.com/chainguard-dev/clog"
-	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/kballard/go-shellquote"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 var _ Debugger = (*qemu)(nil)
@@ -55,9 +55,7 @@ var _ Debugger = (*qemu)(nil)
 const QemuName = "qemu"
 
 const (
-	defaultDiskSize   = "50Gi"
-	SSHPortRangeStart = 10000
-	SSHPortRangeEnd   = 50000
+	defaultDiskSize = "50Gi"
 )
 
 type qemu struct{}
@@ -78,9 +76,8 @@ func (bw *qemu) Name() string {
 
 // Run runs a Qemu task given a Config and command string.
 func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
-	clog.InfoContextf(ctx, "running command %s", strings.Join(args, " "))
-
 	log := clog.FromContext(ctx)
+	log.Debugf("running command %s", strings.Join(args, " "))
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
@@ -100,6 +97,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 		nil,
 		stderr,
 		stdout,
+		false,
 		args,
 	)
 	if err != nil {
@@ -127,6 +125,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		os.Stdin,
 		os.Stderr,
 		os.Stdout,
+		true,
 		args,
 	)
 	if err != nil {
@@ -165,7 +164,7 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.StartPod")
 	defer span.End()
 
-	port, err := randpomPortN()
+	port, err := randomPortN()
 	if err != nil {
 		return err
 	}
@@ -182,6 +181,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer span.End()
 	defer os.Remove(cfg.ImgRef)
 	defer os.Remove(cfg.Disk)
+	defer os.Remove(cfg.SSHHostKey)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -192,6 +192,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
+		false,
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
@@ -232,6 +233,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		nil,
 		outFile,
+		false,
 		[]string{"sh", "-c", "cd /home/build && tar cvzf - melange-out"},
 	)
 	if err != nil {
@@ -251,7 +253,8 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	// create an initramfs from the layer
 	guestInitramfs, err := os.CreateTemp("", "melange-guest-*.initramfs.cpio")
 	if err != nil {
-		return ref, fmt.Errorf("failed to create guest dir: %w", err)
+		clog.FromContext(ctx).Errorf("failed to create guest dir: %v", err)
+		return ref, err
 	}
 
 	// in case of some kernel images, we also need the /lib/modules directory to load
@@ -270,7 +273,8 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 
 	err = apko_cpio.FromLayer(layer, guestInitramfs)
 	if err != nil {
-		return ref, fmt.Errorf("failed to create cpio initramfs: %w", err)
+		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
+		return ref, err
 	}
 
 	return guestInitramfs.Name(), nil
@@ -282,7 +286,8 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
-	clog.FromContext(ctx).Debug("qemu: ssh - create ssh key pair")
+	log := clog.FromContext(ctx)
+	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
 	if err != nil {
 		return err
@@ -304,7 +309,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		"/usr/share/qemu/bios-microvm.bin",
 		"/usr/share/seabios/bios-microvm.bin",
 	} {
-		if _, err := os.Stat(p); err == nil {
+		if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
 			// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
 			baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
 			baseargs = append(baseargs, "-bios", p)
@@ -315,7 +320,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// we need to fallback to -machine virt, if not machine has been specified
 	if !microvm {
-		baseargs = append(baseargs, "-machine", "virt")
+		// aarch64 supports virt machine type, let's use that if we're on it, else
+		// if we're on x86 arch, but without microvm machine type, let's go to q35
+		if cfg.Arch.ToAPK() == "aarch64" {
+			baseargs = append(baseargs, "-machine", "virt")
+		} else if cfg.Arch.ToAPK() == "x86_64" {
+			baseargs = append(baseargs, "-machine", "q35")
+		} else {
+			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
+		}
 	}
 
 	baseargs = append(baseargs, "-kernel", kernelPath)
@@ -346,12 +359,33 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// use kvm on linux, and Hypervisor.framework on macOS
 	if runtime.GOOS == "linux" {
-		baseargs = append(baseargs, "-enable-kvm")
+		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+			baseargs = append(baseargs, "-accel", "tcg,thread=multi")
+		} else if _, err := os.Stat("/dev/kvm"); err == nil {
+			baseargs = append(baseargs, "-accel", "kvm")
+		}
 	} else if runtime.GOOS == "darwin" {
 		baseargs = append(baseargs, "-accel", "hvf")
 	}
 
-	baseargs = append(baseargs, "-cpu", "host")
+	if cfg.CPUModel != "" {
+		baseargs = append(baseargs, "-cpu", cfg.CPUModel)
+	} else {
+		baseargs = append(baseargs, "-cpu", "host")
+		// we cant use `-cpu host` when architecture does not match between host
+		// and guest
+		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+			// let's use a recent default for those
+			if cfg.Arch.ToAPK() == "aarch64" {
+				baseargs = append(baseargs, "-cpu", "cortex-a76")
+			} else if cfg.Arch.ToAPK() == "x86_64" {
+				baseargs = append(baseargs, "-cpu", "Haswell-v4")
+			} else {
+				return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
+			}
+		}
+	}
+
 	baseargs = append(baseargs, "-daemonize")
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise
@@ -423,12 +457,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			break
 		}
 		try++
+		time.Sleep(time.Millisecond * 200)
 	}
 	if try >= retries {
 		// ensure cleanup of resources
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
 		return fmt.Errorf("qemu: could not start VM, timeout reached")
+	}
+
+	err = getHostKey(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("qemu: could not get VM host key")
 	}
 
 	// default to root user but if a different user is specified
@@ -446,7 +486,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
-		[]string{"sh", "-c", "cp -r /mnt/* /home/build"},
+		false,
+		[]string{"sh", "-c", "cp -r /mnt/. /home/build"},
 	)
 }
 
@@ -459,6 +500,8 @@ func getKernelPath(ctx context.Context, cfg *Config) (string, string, error) {
 			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_IMAGE file detected, using: %s", kernelVar)
 			kernel = kernelVar
 		}
+	} else if _, err := os.Stat(kernel); err != nil {
+		return "", "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE and QEMU_KERNEL_MODULES if needed")
 	}
 
 	return kernel, cfg.ImgRef, nil
@@ -605,14 +648,73 @@ func checkSSHServer(address string) error {
 	return nil
 }
 
+func getHostKey(ctx context.Context, cfg *Config) error {
+	var hostKey ssh.PublicKey
+
+	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
+		return err
+	}
+
+	// Create SSH client configuration
+	config := &ssh.ClientConfig{
+		User: "build",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-ctr"},
+		},
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			hostKey = key
+			return nil // Accept the host key for the purpose of retrieving it
+		},
+	}
+
+	// Connect to the SSH server
+	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+	defer client.Close()
+
+	// Write the host key to the known_hosts file
+	hostKeyLine := fmt.Sprintf("%s %s %s\n", cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()))
+	clog.FromContext(ctx).Infof("host-key: %s", hostKeyLine)
+
+	knownHost, err := os.CreateTemp("", "known_hosts_*")
+	if err != nil {
+		clog.FromContext(ctx).Errorf("host-key fetch - failed to create random known_hosts file: %v", err)
+		return err
+	}
+	defer knownHost.Close()
+
+	cfg.SSHHostKey = knownHost.Name()
+
+	_, err = knownHost.Write([]byte(hostKeyLine))
+	if err != nil {
+		clog.FromContext(ctx).Errorf("host-key fetch - failed to write to known_hosts file: %v", err)
+		return err
+	}
+	return nil
+}
+
 func sendSSHCommand(ctx context.Context, user, address string,
 	cfg *Config, extraVars map[string]string,
 	stdin io.Reader, stderr, stdout io.Writer,
-	command []string,
+	tty bool, command []string,
 ) error {
 	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
+		return err
+	}
+
+	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
 		return err
 	}
 
@@ -625,7 +727,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 		Config: ssh.Config{
 			Ciphers: []string{"aes128-ctr"},
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // equivalent to StrictHostKeyChecking=no
+		HostKeyCallback: hostKeyCallback,
 	}
 
 	// Connect to the SSH server
@@ -662,18 +764,26 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	session.Stderr = stderr
 	session.Stdout = stdout
 
-	b64cmd := base64.StdEncoding.EncodeToString([]byte(shellescape.QuoteCommand(command)))
-	cmd := strings.Join(
-		[]string{
-			"_c=$(echo " + b64cmd + "| base64 -d) || exit 97",
-			"eval set -- \"$_c\" || exit 98",
-			"exec \"$@\"",
-		}, " ;")
+	if tty {
+		clog.FromContext(ctx).Debug("requesting tty instance")
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          0,     // disable echoing
+			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		}
+		// Request pseudo terminal
+		if err := session.RequestPty("xterm", 40, 80, modes); err != nil {
+			clog.FromContext(ctx).Errorf("request for pseudo terminal failed: %s", err)
+			return err
+		}
+	}
 
-	clog.FromContext(ctx).Infof("running (%d) %v", len(command), command)
+	cmd := shellquote.Join(command...)
+
+	clog.FromContext(ctx).Infof("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command %v: %s", command, err)
+		clog.FromContext(ctx).Errorf("Failed to run command: %v", err)
 		return err
 	}
 
@@ -782,15 +892,12 @@ func getAvailableMemoryKB() int {
 	return mem
 }
 
-func randpomPortN() (int, error) {
-	for port := SSHPortRangeStart; port <= SSHPortRangeEnd; port++ {
-		address := fmt.Sprintf("localhost:%d", port)
-		listener, err := net.Listen("tcp", address)
-		if err == nil {
-			listener.Close()
-			return port, nil
-		}
+func randomPortN() (int, error) {
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return 0, fmt.Errorf("no open port found")
 	}
+	defer l.Close()
 
-	return 0, fmt.Errorf("no open port found in range %d-%d", SSHPortRangeStart, SSHPortRangeEnd)
+	return l.Addr().(*net.TCPAddr).Port, nil
 }

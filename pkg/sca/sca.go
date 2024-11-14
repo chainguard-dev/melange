@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -188,7 +187,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shared object dependencies...")
 
-	depends := map[string][]string{}
 	fsys, err := hdl.Filesystem()
 	if err != nil {
 		return err
@@ -308,10 +306,13 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 
 		for _, lib := range libs {
+			// Cuda is a dangling library, which must come from the host
+			if lib == "libcuda.so.1" {
+				continue
+			}
 			if strings.Contains(lib, ".so.") {
 				log.Infof("  found lib %s for %s", lib, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
-				depends[lib] = append(depends[lib], path)
 			}
 		}
 
@@ -353,17 +354,19 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		if err != nil {
 			return nil
 		}
-		var cgo, boringcrypto bool
+		var cgo, fipscrypto bool
+		// current RHEL/golang-fips; current microsoft/go; old microsoft/go
+		fipsexperiments := []string{"boringcrypto", "systemcrypto", "opensslcrypto"}
 		for _, setting := range buildinfo.Settings {
 			if setting.Key == "CGO_ENABLED" && setting.Value == "1" {
 				cgo = true
 			}
-			if setting.Key == "GOEXPERIMENT" && setting.Value == "boringcrypto" {
-				boringcrypto = true
+			if setting.Key == "GOEXPERIMENT" && slices.Contains(fipsexperiments, setting.Value) {
+				fipscrypto = true
 			}
 		}
 		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
-		if cgo && boringcrypto {
+		if cgo && fipscrypto {
 			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
 			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
 			generated.Runtime = append(generated.Runtime, "so:libssl.so.3")
@@ -377,10 +380,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	return nil
 }
 
-var pkgConfigVersionRegexp = regexp.MustCompile("-(alpha|beta|rc|pre)")
-
-// TODO(kaniini): Turn this feature on once enough of Wolfi is built with provider data.
-var generateRuntimePkgConfigDeps = false
+// TODO(xnox): Note remove this feature flag, once successful
+// note this can generate depends on pc: files that do not exist in
+// wolfi, however package install tests will catch that in presubmit
+var generateRuntimePkgConfigDeps = true
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
@@ -437,37 +440,31 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		pcName := filepath.Base(path)
 		pcName, _ = strings.CutSuffix(pcName, ".pc")
 
-		// TODO: https://github.com/chainguard-dev/melange/issues/1172
-		sigh := func(ver string) string {
-			return strings.TrimSuffix(ver, "-release")
-		}
-
-		apkVersion := pkgConfigVersionRegexp.ReplaceAllString(pkg.Version, "_$1")
-		if isInDir(path, []string{"lib/pkgconfig/", "usr/lib/pkgconfig/", "lib64/pkgconfig/", "usr/lib64/pkgconfig/"}) {
+		if isInDir(path, []string{"usr/local/lib/pkgconfig/", "usr/local/share/pkgconfig/", "usr/lib/pkgconfig/", "usr/lib64/pkgconfig/", "usr/share/pkgconfig/"}) {
 			log.Infof("  found pkg-config %s for %s", pcName, path)
-			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
+			generated.Provides = append(generated.Provides, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
+
+			if generateRuntimePkgConfigDeps {
+				// TODO(kaniini): Capture version relationships here too.  In practice, this does not matter
+				// so much though for us.
+				for _, dep := range pkg.Requires {
+					log.Infof("  found pkg-config dependency (requires) %s for %s", dep.Identifier, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+				}
+
+				for _, dep := range pkg.RequiresPrivate {
+					log.Infof("  found pkg-config dependency (requires private) %s for %s", dep.Identifier, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+				}
+
+				for _, dep := range pkg.RequiresInternal {
+					log.Infof("  found pkg-config dependency (requires internal) %s for %s", dep.Identifier, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
+				}
+			}
 		} else {
 			log.Infof("  found vendored pkg-config %s for %s", pcName, path)
-			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, sigh(apkVersion)))
-		}
-
-		if generateRuntimePkgConfigDeps {
-			// TODO(kaniini): Capture version relationships here too.  In practice, this does not matter
-			// so much though for us.
-			for _, dep := range pkg.Requires {
-				log.Infof("  found pkg-config dependency (requires) %s for %s", dep.Identifier, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
-			}
-
-			for _, dep := range pkg.RequiresPrivate {
-				log.Infof("  found pkg-config dependency (requires private) %s for %s", dep.Identifier, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
-			}
-
-			for _, dep := range pkg.RequiresInternal {
-				log.Infof("  found pkg-config dependency (requires internal) %s for %s", dep.Identifier, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("pc:%s", dep.Identifier))
-			}
+			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
 		}
 
 		return nil
@@ -590,6 +587,27 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 	return nil
 }
 
+// Add man-db as a dep for any doc package
+func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for -doc package...")
+	if !strings.HasSuffix(hdl.PackageName(), "-doc") {
+		return nil
+	}
+	// Do not add a man-db dependency if one already exists.
+	for _, dep := range hdl.BaseDependencies().Runtime {
+		if dep == "man-db" {
+			log.Warnf("%s: man-db dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+			return nil
+		}
+	}
+
+	log.Infof("  found -doc package, generating man-db dependency")
+	generated.Runtime = append(generated.Runtime, "man-db")
+
+	return nil
+}
+
 func sonameLibver(soname string) string {
 	parts := strings.Split(soname, ".so.")
 	if len(parts) < 2 {
@@ -608,10 +626,10 @@ func sonameLibver(soname string) string {
 	return libver
 }
 
-func getShbang(fp fs.File) (string, error) {
+func getShbang(fp io.Reader) (string, error) {
 	// python3 and sh are symlinks and generateCmdProviders currently only considers
 	// regular files. Since nothing will fulfill such a depend, do not generate one.
-	ignores := map[string]bool{"python3": true, "python": true, "sh": true}
+	ignores := map[string]bool{"python3": true, "python": true, "sh": true, "awk": true}
 
 	buf := make([]byte, 80)
 	blen, err := io.ReadFull(fp, buf)
@@ -629,7 +647,12 @@ func getShbang(fp fs.File) (string, error) {
 		return "", nil
 	}
 
-	toks := strings.Fields(string(buf[2 : blen-2]))
+	line1 := string(buf[2:blen])
+	endl := strings.Index(line1, "\n")
+	if endl >= 0 {
+		line1 = line1[:endl]
+	}
+	toks := strings.Fields(line1)
 	bin := toks[0]
 
 	// if #! is '/usr/bin/env foo', then use next arg as the dep
@@ -707,6 +730,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
+		generateDocDeps,
 		generatePkgConfigDeps,
 		generatePythonDeps,
 		generateRubyDeps,

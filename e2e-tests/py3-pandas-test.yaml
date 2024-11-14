@@ -12,7 +12,8 @@ test:
   environment:
     contents:
       packages:
-        - python3
+        - busybox
+        - python-3
   pipeline:
     - uses: python/import
       with:

@@ -145,12 +145,19 @@ log-%:
 lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
 	$(GOLANGCI_LINT_BIN) run --verbose --concurrency 4 --skip-dirs .modcache ./...
 
-.PHONY: test
-test:
+.PHONY: unit
+unit:
 	go test ./... -race
 
+.PHONY: integration
+integration:
+	go test ./... -race -tags=integration
+
+.PHONY: test
+test: integration
+
 .PHONY: test-e2e
-test-e2e: test generate
+test-e2e: generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
 	go test -tags e2e ./... -race
 	cd e2e-tests && ./run-tests
 

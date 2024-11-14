@@ -27,6 +27,7 @@ import (
 	"slices"
 	"strings"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
@@ -51,6 +52,7 @@ type Test struct {
 	PipelineDirs      []string
 	SourceDir         string
 	GuestDir          string
+	Remove            bool
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
@@ -132,7 +134,7 @@ func (t *Test) Close() error {
 // Returns the imgRef for the created image, or error.
 func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
 	defer span.End()
 
 	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
@@ -147,7 +149,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraBuildRepos(t.ExtraRepos),
 		apko_build.WithExtraPackages(t.ExtraTestPackages),
-		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithCache(t.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp))
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
@@ -227,7 +229,7 @@ func (t *Test) IsTestless() bool {
 
 func (t *Test) PopulateCache(ctx context.Context) error {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
+	ctx, span := otel.Tracer("melange").Start(ctx, "populateCache")
 	defer span.End()
 
 	if t.CacheDir == "" {
@@ -298,7 +300,7 @@ func (t *Test) PopulateCache(ctx context.Context) error {
 
 func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
-	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
 	defer span.End()
 
 	if t.SourceDir == "" {
@@ -343,6 +345,12 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("compiling test pipelines: %w", err)
 	}
 
+	if t.Runner.Name() == container.QemuName {
+		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
+			"melange-microvm-init",
+		}...)
+	}
+
 	// Filter out any subpackages with false If conditions.
 	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
 		result, err := shouldRun(sp.If)
@@ -376,6 +384,10 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
 		t.GuestDir = guestDir
+
+		if t.Remove {
+			defer os.RemoveAll(guestDir)
+		}
 	}
 
 	imgRef := ""
@@ -408,7 +420,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		log.Info("No source directory specified, skipping workspace population")
 	} else {
 		// Prepare workspace directory
-		if err := os.MkdirAll(t.WorkspaceDir, 0755); err != nil {
+		if err := os.MkdirAll(t.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
@@ -557,6 +569,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		PackageName:  pkgName,
 		Mounts:       mounts,
 		Capabilities: caps,
+		WorkspaceDir: t.WorkspaceDir,
 		Environment:  map[string]string{},
 		RunAs:        imgcfg.Accounts.RunAs,
 	}
@@ -581,7 +594,7 @@ func (t *Test) guestFS(ctx context.Context, suffix string) (apkofs.FullFS, error
 	// Test by having a suffix, so we get a clean guest directory for each of
 	// them.
 	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-	if err := os.MkdirAll(guestDir, 0755); err != nil {
+	if err := os.MkdirAll(guestDir, 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir -p %s: %w", guestDir, err)
 	}
 

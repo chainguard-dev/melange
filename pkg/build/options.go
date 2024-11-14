@@ -34,6 +34,27 @@ func WithConfig(configFile string) Option {
 	}
 }
 
+func WithConfigFileRepositoryURL(u string) Option {
+	return func(b *Build) error {
+		b.ConfigFileRepositoryURL = u
+		return nil
+	}
+}
+
+func WithConfigFileRepositoryCommit(hash string) Option {
+	return func(b *Build) error {
+		b.ConfigFileRepositoryCommit = hash
+		return nil
+	}
+}
+
+func WithConfigFileLicense(license string) Option {
+	return func(b *Build) error {
+		b.ConfigFileLicense = license
+		return nil
+	}
+}
+
 // WithLintRequire sets required linter checks.
 func WithLintRequire(linters []string) Option {
 	return func(b *Build) error {
@@ -299,7 +320,7 @@ func WithInteractive(interactive bool) Option {
 }
 
 // WithRemove indicates whether the the build will clean up after itself.
-// This includes deleting any intermediate artifacts like container images.
+// This includes deleting any intermediate artifacts like container images and temp workspace and guest dirs.
 func WithRemove(remove bool) Option {
 	return func(b *Build) error {
 		b.Remove = remove
@@ -326,6 +347,13 @@ func WithPackageCacheDir(apkCacheDir string) Option {
 func WithCPU(cpu string) Option {
 	return func(b *Build) error {
 		b.DefaultCPU = cpu
+		return nil
+	}
+}
+
+func WithCPUModel(cpumodel string) Option {
+	return func(b *Build) error {
+		b.DefaultCPUModel = cpumodel
 		return nil
 	}
 }

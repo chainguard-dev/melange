@@ -28,12 +28,12 @@ jobs:
           - sshfs.yaml
 
     steps:
-      - uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version-file: "go.mod"
       - name: Build package
@@ -57,43 +57,6 @@ jobs:
 
             # TODO: Make this an image.
             docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
-          done
-
-      - name: Verify SBOM External Refs (git-checkout)
-        if: matrix.example == 'git-checkout.yaml'
-        run: |
-          set -euxo pipefail
-          tar -Oxf packages/x86_64/git-checkout*.apk var/lib/db/sbom > git-checkout.sbom.json
-
-          # Verify APK ref
-          grep '"pkg:apk/unknown/git-checkout@v0.0.1-r0?arch=x86_64"' git-checkout.sbom.json
-
-          # Verify github tag ref
-          grep '"pkg:github/puerco/hello.git@v0.0.1"' sbom.json git-checkout.sbom.json
-
-          # Verify github sha ref
-          grep '"pkg:github/puerco/hello.git@a73c4feb284dc6ed1e5758740f717f99dcd4c9d7"' git-checkout.sbom.json
-
-          # Verify generic git ref
-          grep '"pkg:generic/hello@v0.0.1?vcs_url=git%2Bhttps%3A%2F%2Fgitlab.com%2Fxnox%2Fhello.git%40a73c4feb284dc6ed1e5758740f717f99dcd4c9d7"' git-checkout.sbom.json
-
-          # Verify ConfigFile ref
-          grep '"pkg:github/chainguard-dev/melange@${{github.sha}}#examples/git-checkout.yaml"' git-checkout.sbom.json
-
-      - name: Verify SBOM External Refs (gnu-hello)
-        if: matrix.example == 'gnu-hello.yaml'
-        run: |
-          set -euxo pipefail
-          tar -Oxf packages/x86_64/hello-2*.apk var/lib/db/sbom > hello.sbom.json
-
-          # Verify generic fetch ref
-          grep '"pkg:generic/hello@2.12?checksum=sha256%3Acf04af86dc085268c5f4470fbae49b18afbc221b78096aab842d934a76bad0ab\\u0026download_url=https%3A%2F%2Fftp.gnu.org%2Fgnu%2Fhello%2Fhello-2.12.tar.gz"' hello.sbom.json
-
-      - name: Check packages can be installed with apk
-        run: |
-          set -euxo pipefail
-          for f in packages/x86_64/*.apk; do
-            docker run --rm -v $(pwd):/work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted /work/$f
           done
 
   bootstrap:
@@ -120,11 +83,14 @@ jobs:
           apk upgrade -Ua
           apk add go cosign build-base git bubblewrap
 
-      - uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+        with:
+          go-version-file: "go.mod"
       - name: Mark workspace as a safe repository
         run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
       - name: Build bootstrap melange tool (stage1)

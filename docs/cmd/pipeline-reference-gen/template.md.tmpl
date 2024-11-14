@@ -1,0 +1,21 @@
+<!-- start:pipeline-reference-gen -->
+# Pipeline Reference
+
+{{ range . }}
+- [{{ .Name }}](#{{ anchor .Name }})
+{{- end }}
+
+{{ range . -}}
+## {{ .Name }}
+
+{{ .Pipeline.Name }}
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+{{ range $key, $value := .Pipeline.Inputs -}}
+| {{ $key }} | {{ $value.Required }} | {{ $value.Description }} | {{ $value.Default }} |
+{{ end }}
+{{ end }}
+<!-- end:pipeline-reference-gen -->

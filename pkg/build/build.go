@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,14 +32,14 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/filesystem"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
@@ -55,11 +56,27 @@ import (
 	"chainguard.dev/melange/pkg/sbom"
 )
 
+const melangeOutputDirName = "melange-out"
+
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 type Build struct {
-	Configuration   config.Configuration
-	ConfigFile      string
+	Configuration config.Configuration
+
+	// The name of the build configuration file, e.g. "crane.yaml".
+	ConfigFile string
+
+	// The URL of the git repository where the build configuration file is stored,
+	// e.g. "https://github.com/wolfi-dev/os".
+	ConfigFileRepositoryURL string
+
+	// The commit hash of the git repository corresponding to the current state of
+	// the build configuration file.
+	ConfigFileRepositoryCommit string
+
+	// The SPDX license string to use for the build configuration file.
+	ConfigFileLicense string
+
 	SourceDateEpoch time.Time
 	WorkspaceDir    string
 	WorkspaceIgnore string
@@ -95,6 +112,7 @@ type Build struct {
 	Remove                bool
 	LintRequire, LintWarn []string
 	DefaultCPU            string
+	DefaultCPUModel       string
 	DefaultDisk           string
 	DefaultMemory         string
 	DefaultTimeout        time.Duration
@@ -103,8 +121,10 @@ type Build struct {
 
 	EnabledBuildOptions []string
 
-	// mutated by Compile
-	externalRefs []purl.PackageURL
+	// Initialized in New and mutated throughout the build process as we gain
+	// visibility into our packages' (including subpackages') composition. This is
+	// how we get "build-time" SBOMs!
+	SBOMGroup *SBOMGroup
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -164,21 +184,36 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.ConfigFile == "" {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
+	if b.ConfigFileRepositoryURL == "" {
+		return nil, fmt.Errorf("config file repository URL was not set")
+	}
+	if b.ConfigFileRepositoryCommit == "" {
+		return nil, fmt.Errorf("config file repository commit was not set")
+	}
+	if b.Runner == nil {
+		return nil, fmt.Errorf("no runner was specified")
+	}
 
 	parsedCfg, err := config.ParseConfiguration(ctx,
 		b.ConfigFile,
 		config.WithEnvFileForParsing(b.EnvFile),
 		config.WithVarsFileForParsing(b.VarsFile),
 		config.WithDefaultCPU(b.DefaultCPU),
+		config.WithDefaultCPUModel(b.DefaultCPUModel),
 		config.WithDefaultDisk(b.DefaultDisk),
 		config.WithDefaultMemory(b.DefaultMemory),
 		config.WithDefaultTimeout(b.DefaultTimeout),
+		config.WithCommit(b.ConfigFileRepositoryCommit),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	b.Configuration = *parsedCfg
+
+	// Now that we can find out the names of all the packages we'll be producing, we
+	// can start tracking SBOM data for each of them, using our SBOMGroup type.
+	b.SBOMGroup = NewSBOMGroup(slices.Collect(b.Configuration.AllPackageNames())...)
 
 	if len(b.Configuration.Package.TargetArchitecture) == 1 &&
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
@@ -196,6 +231,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 		b.SourceDateEpoch = t
 	}
+	b.SBOMGroup.SetCreatedTime(b.SourceDateEpoch)
 
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
@@ -207,7 +243,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		log.Infof("applying configuration patches for build option %s", optName)
 
 		if opt, ok := b.Configuration.Options[optName]; ok {
-			if err := b.ApplyBuildOption(opt); err != nil {
+			if err := b.applyBuildOption(opt); err != nil {
 				return nil, err
 			}
 		}
@@ -236,11 +272,11 @@ func (b *Build) Close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// BuildGuest invokes apko to build the guest environment, returning a reference to the image
+// buildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
-func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
+func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
 	defer span.End()
 
 	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
@@ -261,7 +297,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
 		apko_build.WithExtraPackages(b.ExtraPackages),
-		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
 	if err != nil {
@@ -269,7 +305,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 
 	bc.Summarize(ctx)
-	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to Summarize
+	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to summarize
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {
@@ -330,8 +366,8 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	return nil
 }
 
-// ApplyBuildOption applies a patch described by a BuildOption to a package build.
-func (b *Build) ApplyBuildOption(bo config.BuildOption) error {
+// applyBuildOption applies a patch described by a BuildOption to a package build.
+func (b *Build) applyBuildOption(bo config.BuildOption) error {
 	// Patch the variables block.
 	if b.Configuration.Vars == nil {
 		b.Configuration.Vars = make(map[string]string)
@@ -401,7 +437,7 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 	return ignorePatterns, nil
 }
 
-func (b *Build) OverlayBinSh() error {
+func (b *Build) overlayBinSh() error {
 	if b.BinShOverlay == "" {
 		return nil
 	}
@@ -487,72 +523,37 @@ func fetchBucket(ctx context.Context, cacheSource string, cmm CacheMembershipMap
 	return tmp, nil
 }
 
-// IsBuildLess returns true if the build context does not actually do any building.
+// isBuildLess returns true if the build context does not actually do any building.
 // TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
 // in the pipeline.
-func (b *Build) IsBuildLess() bool {
+func (b *Build) isBuildLess() bool {
 	return len(b.Configuration.Pipeline) == 0
 }
 
-// ConfigFileExternalRef calculates ExternalRef for the melange config
-// file itself.
-func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
-	// configFile must exist
-	configpath, err := filepath.Abs(b.ConfigFile)
-	if err != nil {
-		return nil, err
+// getBuildConfigPURL determines the package URL for the melange config file
+// itself.
+func (b Build) getBuildConfigPURL() (*purl.PackageURL, error) {
+	namespace, name, found := strings.Cut(strings.TrimPrefix(b.ConfigFileRepositoryURL, "https://github.com/"), "/")
+	if !found {
+		return nil, fmt.Errorf("extracting namespace and name from %s", b.ConfigFileRepositoryURL)
 	}
-	// If not a git repository, skip
-	opt := &git.PlainOpenOptions{DetectDotGit: true}
-	r, err := git.PlainOpenWithOptions(configpath, opt)
-	if err != nil {
-		return nil, nil
-	}
-	// If no remote origin, skip (local git repo)
-	remote, err := r.Remote("origin")
-	if err != nil {
-		return nil, nil
-	}
-	repository := remote.Config().URLs[0]
-	// Only supports github-actions style https github checkouts
-	if !strings.HasPrefix(repository, "https://github.com/") {
-		return nil, nil
-	}
-	namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
 
-	// Head must exist
-	ref, err := r.Head()
-	if err != nil {
-		return nil, err
-	}
-	version := ref.Hash()
-
-	// Try to get configfile as subpath in the repository
-	s, ok := r.Storer.(*filesystem.Storage)
-	if !ok {
-		return nil, errors.New("Repository storage is not filesystem.Storage")
-	}
-	base := filepath.Dir(s.Filesystem().Root())
-	subpath, err := filepath.Rel(base, configpath)
-	if err != nil {
-		return nil, err
-	}
-	newpurl := &purl.PackageURL{
-		Type:      "github",
+	u := &purl.PackageURL{
+		Type:      purl.TypeGithub,
 		Namespace: namespace,
 		Name:      name,
-		Version:   version.String(),
-		Subpath:   subpath,
+		Version:   b.ConfigFileRepositoryCommit,
+		Subpath:   b.ConfigFile,
 	}
-	if err := newpurl.Normalize(); err != nil {
-		return nil, err
+	if err := u.Normalize(); err != nil {
+		return nil, fmt.Errorf("normalizing PURL: %w", err)
 	}
-	return newpurl, nil
+	return u, nil
 }
 
-func (b *Build) PopulateCache(ctx context.Context) error {
+func (b *Build) populateCache(ctx context.Context) error {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
+	ctx, span := otel.Tracer("melange").Start(ctx, "populateCache")
 	defer span.End()
 
 	if b.CacheDir == "" {
@@ -626,9 +627,9 @@ func (b *Build) PopulateCache(ctx context.Context) error {
 	return nil
 }
 
-func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
+func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
-	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
 	defer span.End()
 
 	ignorePatterns, err := b.loadIgnoreRules(ctx)
@@ -677,7 +678,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
 
-	b.Summarize(ctx)
+	b.summarize(ctx)
+
+	namespace := b.Namespace
+	if namespace == "" {
+		namespace = "unknown"
+	}
 
 	if to := b.Configuration.Package.Timeout; to > 0 {
 		tctx, cancel := context.WithTimeoutCause(ctx, to,
@@ -687,6 +693,38 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	pkg := &b.Configuration.Package
+	arch := b.Arch.ToAPK()
+
+	// Add the APK package(s) to their respective SBOMs. We do this early in the
+	// build process so that we can later add more kinds of packages that relate to
+	// these packages, as we learn more during the build.
+	for _, sp := range b.Configuration.Subpackages {
+		sp := sp
+		spSBOM := b.SBOMGroup.Document(sp.Name)
+
+		apkSubPkg := &sbom.Package{
+			Name:            sp.Name,
+			Version:         pkg.FullVersion(),
+			Copyright:       pkg.FullCopyright(),
+			LicenseDeclared: pkg.LicenseExpression(),
+			Namespace:       namespace,
+			Arch:            arch,
+			PURL:            pkg.PackageURLForSubpackage(namespace, arch, sp.Name),
+		}
+		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
+	}
+
+	pSBOM := b.SBOMGroup.Document(pkg.Name)
+	apkPkg := &sbom.Package{
+		Name:            pkg.Name,
+		Version:         pkg.FullVersion(),
+		Copyright:       pkg.FullCopyright(),
+		LicenseDeclared: pkg.LicenseExpression(),
+		Namespace:       namespace,
+		Arch:            arch,
+		PURL:            pkg.PackageURL(namespace, arch),
+	}
+	pSBOM.AddPackageAndSetDescribed(apkPkg)
 
 	if b.GuestDir == "" {
 		guestDir, err := os.MkdirTemp(b.Runner.TempDir(), "melange-guest-*")
@@ -694,6 +732,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
 		b.GuestDir = guestDir
+
+		if b.Remove {
+			defer os.RemoveAll(guestDir)
+		}
 	}
 
 	log.Infof("evaluating pipelines for package requirements")
@@ -715,22 +757,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return !result
 	})
 
-	configFileRef, err := b.ConfigFileExternalRef()
-	if err != nil {
-		return fmt.Errorf("failed to create ExternalRef for configfile: %w", err)
-	}
-
-	if configFileRef != nil {
-		// In SPDX v3 there is dedicate field for this
-		// https://spdx.github.io/spdx-spec/v3.0/model/Build/Properties/configSourceUri/
-		log.Infof("adding external ref %s for ConfigFile", configFileRef)
-		b.externalRefs = append(b.externalRefs, *configFileRef)
+	if err := b.addSBOMPackageForBuildConfigFile(); err != nil {
+		return fmt.Errorf("adding SBOM package for build config file: %w", err)
 	}
 
 	pr := &pipelineRunner{
 		interactive: b.Interactive,
 		debug:       b.Debug,
-		config:      b.WorkspaceConfig(ctx),
+		config:      b.workspaceConfig(ctx),
 		runner:      b.Runner,
 	}
 
@@ -738,33 +772,33 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		log.Infof("empty workspace requested")
 	} else {
 		// Prepare workspace directory
-		if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
+		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
 		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
+		if err := b.populateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, b.Configuration.Package.Name), 0o755); err != nil {
 		return err
 	}
 
 	linterQueue := []linterTarget{}
-	cfg := b.WorkspaceConfig(ctx)
+	cfg := b.workspaceConfig(ctx)
 
-	if !b.IsBuildLess() {
+	if !b.isBuildLess() {
 		// Prepare guest directory
-		if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
+		if err := os.MkdirAll(b.GuestDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
 		}
 
 		log.Infof("building workspace in '%s' with apko", b.GuestDir)
 
 		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
-		imgRef, err := b.BuildGuest(ctx, b.Configuration.Environment, guestFS)
+		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
@@ -774,11 +808,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
 		// Probably needs help from apko.
-		if err := b.OverlayBinSh(); err != nil {
+		if err := b.overlayBinSh(); err != nil {
 			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 		}
 
-		if err := b.PopulateCache(ctx); err != nil {
+		if err := b.populateCache(ctx); err != nil {
 			return fmt.Errorf("unable to populate cache: %w", err)
 		}
 
@@ -795,8 +829,24 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// run the main pipeline
 		log.Debug("running the main pipeline")
-		if err := pr.runPipelines(ctx, b.Configuration.Pipeline); err != nil {
+		pipelines := b.Configuration.Pipeline
+		if err := pr.runPipelines(ctx, pipelines); err != nil {
 			return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
+		}
+
+		for i, p := range pipelines {
+			uniqueID := strconv.Itoa(i)
+			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
+			if err != nil {
+				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
+			}
+
+			if pkg == nil {
+				// This particular pipeline step doesn't tell us about the upstream source code.
+				continue
+			}
+
+			b.SBOMGroup.AddUpstreamSourcePackage(pkg)
 		}
 
 		// add the main package to the linter queue
@@ -807,23 +857,20 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	namespace := b.Namespace
-	if namespace == "" {
-		namespace = "unknown"
-	}
-
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
-		if !b.IsBuildLess() {
+		if !b.isBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
+
+			ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
 
 			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 			}
 		}
 
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
 			return err
 		}
 
@@ -837,8 +884,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
-	fs := apkofs.DirFS(b.WorkspaceDir)
-	if err := b.RetrieveWorkspace(ctx, fs); err != nil {
+	fsys := apkofs.DirFS(b.WorkspaceDir)
+	if err := b.retrieveWorkspace(ctx, fsys); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
@@ -846,7 +893,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)
-		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
+		path := filepath.Join(b.WorkspaceDir, melangeOutputDirName, lt.pkgName)
 
 		// Downgrade disabled checks from required to warn
 		require := slices.DeleteFunc(b.LintRequire, func(s string) bool {
@@ -861,46 +908,29 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	licensinginfos, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
+	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("gathering licensing infos: %w", err)
 	}
+	b.SBOMGroup.SetLicensingInfos(li)
 
-	// generate SBOMs for subpackages
+	// Convert the SBOMs we've been working on to their SPDX representation, and
+	// write them to disk. We'll handle any subpackages first, and then the main
+	// package, but the order doesn't really matter.
+
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
-
-		log.Infof("generating SBOM for subpackage %s", sp.Name)
-		if err := sbom.Generate(ctx, &sbom.Spec{
-			Path:            filepath.Join(b.WorkspaceDir, "melange-out", sp.Name),
-			PackageName:     sp.Name,
-			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-			License:         b.Configuration.Package.LicenseExpression(),
-			LicensingInfos:  licensinginfos,
-			ExternalRefs:    b.externalRefs,
-			Copyright:       b.Configuration.Package.FullCopyright(),
-			Namespace:       namespace,
-			Arch:            b.Arch.ToAPK(),
-			SourceDateEpoch: b.SourceDateEpoch,
-		}); err != nil {
-			return fmt.Errorf("writing SBOMs: %w", err)
+		spSBOM := b.SBOMGroup.Document(sp.Name)
+		spdxDoc := spSBOM.ToSPDX(ctx)
+		log.Infof("writing SBOM for subpackage %s", sp.Name)
+		if err := b.writeSBOM(sp.Name, &spdxDoc); err != nil {
+			return fmt.Errorf("writing SBOM for %s: %w", sp.Name, err)
 		}
 	}
 
-	log.Infof("generating SBOM for %s", b.Configuration.Package.Name)
-	if err := sbom.Generate(ctx, &sbom.Spec{
-		Path:            filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name),
-		PackageName:     b.Configuration.Package.Name,
-		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-		License:         b.Configuration.Package.LicenseExpression(),
-		LicensingInfos:  licensinginfos,
-		ExternalRefs:    b.externalRefs,
-		Copyright:       b.Configuration.Package.FullCopyright(),
-		Namespace:       namespace,
-		Arch:            b.Arch.ToAPK(),
-		SourceDateEpoch: b.SourceDateEpoch,
-	}); err != nil {
-		return fmt.Errorf("writing SBOMs: %w", err)
+	spdxDoc := pSBOM.ToSPDX(ctx)
+	log.Infof("writing SBOM for %s", pkg.Name)
+	if err := b.writeSBOM(pkg.Name, &spdxDoc); err != nil {
+		return fmt.Errorf("writing SBOM for %s: %w", pkg.Name, err)
 	}
 
 	// emit main package
@@ -917,7 +947,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	if !b.IsBuildLess() {
+	if !b.isBuildLess() {
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
 			log.Warnf("unable to clean guest container: %s", err)
@@ -963,13 +993,62 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := idx.GenerateIndex(ctx); err != nil {
 			return fmt.Errorf("unable to generate index: %w", err)
 		}
-
-		if err := idx.WriteJSONIndex(filepath.Join(packageDir, "APKINDEX.json")); err != nil {
-			return fmt.Errorf("unable to generate JSON index: %w", err)
-		}
 	}
 
 	return nil
+}
+
+// writeSBOM encodes the given SPDX document to JSON and writes it to the
+// filesystem in the directory `/var/lib/db/sbom`. The pkgName parameter should
+// be set to the name of the origin package or subpackage.
+func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
+	apkFSPath := filepath.Join(b.WorkspaceDir, melangeOutputDirName, pkgName)
+	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
+	if err := os.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
+		return fmt.Errorf("creating SBOM directory: %w", err)
+	}
+
+	pkgVersion := b.Configuration.Package.FullVersion()
+	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
+	f, err := os.Create(sbomPath)
+	if err != nil {
+		return fmt.Errorf("opening SBOM file for writing: %w", err)
+	}
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(true)
+
+	if err := enc.Encode(doc); err != nil {
+		return fmt.Errorf("encoding SPDX SBOM: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Build) addSBOMPackageForBuildConfigFile() error {
+	buildConfigPURL, err := b.getBuildConfigPURL()
+	if err != nil {
+		return fmt.Errorf("getting PURL for build config: %w", err)
+	}
+
+	b.SBOMGroup.AddBuildConfigurationPackage(&sbom.Package{
+		Name:            b.ConfigFile,
+		Version:         b.ConfigFileRepositoryCommit,
+		LicenseDeclared: b.ConfigFileLicense,
+		Namespace:       b.Namespace,
+		Arch:            "", // This field doesn't make sense in this context
+		PURL:            buildConfigPURL,
+	})
+
+	return nil
+}
+
+func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
+	return filepath.Join(
+		sbomDirPath,
+		fmt.Sprintf("%s-%s.spdx.json", pkgName, pkgVersion),
+	)
 }
 
 func (b *Build) SummarizePaths(ctx context.Context) {
@@ -981,37 +1060,25 @@ func (b *Build) SummarizePaths(ctx context.Context) {
 	}
 }
 
-func (b *Build) Summarize(ctx context.Context) {
+func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange is building:")
 	log.Infof("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
 
-// BuildFlavor determines if a build context uses glibc or musl, it returns
+// buildFlavor determines if a build context uses glibc or musl, it returns
 // "gnu" for GNU systems, and "musl" for musl systems.
-func (b *Build) BuildFlavor() string {
+func (b *Build) buildFlavor() string {
 	if b.Libc == "" {
 		return "gnu"
 	}
 	return b.Libc
 }
 
-// BuildTripletGnu returns the GNU autoconf build triplet, for example
-// `x86_64-pc-linux-gnu`.
-func (b *Build) BuildTripletGnu() string {
-	return b.Arch.ToTriplet(b.BuildFlavor())
-}
-
-// BuildTripletRust returns the Rust/Cargo build triplet, for example
-// `x86_64-unknown-linux-gnu`.
-func (b *Build) BuildTripletRust() string {
-	return b.Arch.ToRustTriplet(b.BuildFlavor())
-}
-
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
-	if b.IsBuildLess() {
+	if b.isBuildLess() {
 		return &container.Config{
 			Arch:         b.Arch,
 			WorkspaceDir: b.WorkspaceDir,
@@ -1056,6 +1123,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 
 	if b.Configuration.Package.Resources != nil {
 		cfg.CPU = b.Configuration.Package.Resources.CPU
+		cfg.CPUModel = b.Configuration.Package.Resources.CPUModel
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}
@@ -1067,7 +1135,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	return &cfg
 }
 
-func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
+func (b *Build) workspaceConfig(ctx context.Context) *container.Config {
 	if b.containerConfig == nil {
 		b.containerConfig = b.buildWorkspaceConfig(ctx)
 	}
@@ -1075,11 +1143,11 @@ func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
 	return b.containerConfig
 }
 
-// RetrieveWorkspace retrieves the workspace from the container and unpacks it
+// retrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
-func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
-	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
+func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "retrieveWorkspace")
 	defer span.End()
 
 	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)

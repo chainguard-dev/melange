@@ -161,7 +161,8 @@ pipeline:
 
           [ "$depth" = "-1" ] || depthflag="--depth=$depth"
 
-          workdir=$(mktemp -d)
+          workdir=$(mktemp -u)
+          mkdir $workdir
           rcfile=$(mktemp)
           mkdir -p "$dest"
           dest_fullpath=$(realpath "$dest")

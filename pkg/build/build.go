@@ -186,6 +186,10 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to create workspace dir: %w", err)
 		}
+		err = os.Chmod(tmpdir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("unable to change permissions to workspace directory: %w", err)
+		}
 		b.WorkspaceDir = tmpdir
 	}
 
@@ -795,6 +799,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("unable to make guest directory: %w", err)
 		}
+		err = os.Chmod(guestDir, 0o755)
+		if err != nil {
+			return fmt.Errorf("unable to change permissions to guest directory: %w", err)
+		}
 		b.GuestDir = guestDir
 
 		if b.Remove {
@@ -924,6 +932,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
+
 		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
 			return err
 		}

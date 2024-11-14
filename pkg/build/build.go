@@ -860,6 +860,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
+		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
+			return err
+		}
+
 		if !b.isBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
 
@@ -868,10 +872,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 			}
-		}
-
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
-			return err
 		}
 
 		// add the main package to the linter queue

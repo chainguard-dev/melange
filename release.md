@@ -1,45 +1,19 @@
 # Melange Release Process
 
-## Patch releases
-
-The most common type of release of Melange is a patch release. Generally we should aim to do these as often as necessary to release _backward compatible_ changes, especially to release updated dependencies to fix vulnerabilities.
-
 To cut a release:
-- go to https://github.com/chainguard-dev/melange/releases/new
-- click "Choose a tag" then "Find or create a new tag"
-- type a new patch version tag for the latest minor version
-  - for example, if the latest version is `v0.5.5`, create a patch release `v0.5.6`
-- click "Create new tag: v0.X.Y on publish"
-  - you can leave the release title empty
-- click "Generate release notes"
-  - make any editorial changes to the release notes you think are relevant
-- make sure "Set as the latest release" is checked
-- click **"Publish release"**
 
-### Monitor the release automation
+1. Go to https://github.com/chainguard-dev/melange/actions/workflows/release.yaml.
+2. Click on the `Run workflow` button.
+3. In the dropdown, ensure that the `main` branch is selected.
+4. In the dropdown, click on the `Run workflow` button.
+5. Wait for the workflow to complete successfully.
 
-Once the tag is pushed, the [`Create Release` action](https://github.com/chainguard-dev/melange/actions/workflows/release.yaml)
-will attach the appropriate release artifacts and update release notes.
+### Useful things to know
 
-At the time of this writing, the release job takes 20 to 30 minutes to execute.
+#### Detecting whether a new release is needed
 
-Make any editorial changes to the release notes you think are necessary.
-You may want to highlight certain changes or remove items that aren't interesting.
+The release workflow checks to see if there are any changes since the last release. If there are no changes, the workflow will end execution early and not create a new release.
 
-Once the `Release` action has been completed successfully, find your release on
-the [releases page](https://github.com/chainguard-dev/melange/releases)
+#### Automatic triggering
 
-## Minor releases
-
-Occasionally there are large or breaking changes to Melange that we want to highlight with a new minor release.
-A minor release should be cut shortly after a breaking change is made, so that regular patch releases don't release breaking changes.
-
-The process for cutting a release is exactly the same as above, except that you should pick a new minor version.
-
-For example, if the latest version is `v0.5.5`, create a minor release `v0.6.0`.
-
-## Homebrew
-
-Our release pipeline automate the process to update our [homebrew tap](https://github.com/chainguard-dev/homebrew-tap/blob/main/Formula/melange.rb),
-but it does not update the [Homebrew-core upstream repository](https://github.com/Homebrew/homebrew-core/blob/master/Formula/m/melange.rb) for that one
-we need to open a manual Pull Request.
+In addition to being triggerable manually (as described at the top of this document), the workflow also runs automatically every night. Just like with manual triggering, if there are no new changes since the last release, the workflow will end early without creating a new release.

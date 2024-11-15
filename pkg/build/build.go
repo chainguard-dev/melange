@@ -58,6 +58,22 @@ import (
 
 const melangeOutputDirName = "melange-out"
 
+var shellEmptyDir = []string{
+	"sh", "-c",
+	`d="$1";
+[ $# -eq 1 ] || { echo "must provide dir. got $# args."; exit 1; }
+cd "$d" || { echo "failed cd '$d'"; exit 1; }
+set --
+for e in * .*; do
+  [ "$e" = "." -o "$e" = ".." -o "$e" = "*" ] && continue
+  set -- "$@" "$e"
+done
+[ $# -gt 0 ] || { echo "nothing to cleanup. $d was empty."; exit 0; }
+echo "cleaning Workspace by removing $# file/directories in $d"
+rm -Rf "$@"`,
+	"shellEmptyDir",
+}
+
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 type Build struct {
@@ -947,19 +963,22 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
+	// clean build environment
+	log.Debugf("cleaning workspacedir")
+	cleanEnv := map[string]string{}
+	if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir)...); err != nil {
+		log.Warnf("unable to clean workspace: %s", err)
+	}
+	// if the Runner used WorkspaceDir as WorkDir, then this will be empty already.
+	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
+		log.Warnf("unable to clean workspace: %s", err)
+	}
+
 	if !b.isBuildLess() {
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
 			log.Warnf("unable to clean guest container: %s", err)
 		}
-	}
-
-	// clean build environment
-	// TODO(epsilon-phase): implement a way to clean up files that are not owned by the user
-	// that is running melange. files created inside the build not owned by the build user are
-	// not be possible to delete with this strategy.
-	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
-		log.Warnf("unable to clean workspace: %s", err)
 	}
 
 	// generate APKINDEX.tar.gz and sign it

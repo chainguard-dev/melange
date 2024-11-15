@@ -34,6 +34,8 @@ import (
 	"github.com/chainguard-dev/clog"
 )
 
+const WorkDir = "/home/build"
+
 func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
 	nw := maps.Clone(sm.Substitutions)
 
@@ -187,7 +189,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		envOverride[k] = v
 	}
 
-	workdir := "/home/build"
+	workdir := WorkDir
 	if pipeline.WorkDir != "" {
 		workdir = pipeline.WorkDir
 	}

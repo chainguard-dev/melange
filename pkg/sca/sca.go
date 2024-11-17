@@ -587,23 +587,54 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 	return nil
 }
 
-// Add man-db as a dep for any doc package
+// For a documentation package add a dependency on man-db and / or texinfo as appropriate
 func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for -doc package...")
 	if !strings.HasSuffix(hdl.PackageName(), "-doc") {
 		return nil
 	}
-	// Do not add a man-db dependency if one already exists.
-	for _, dep := range hdl.BaseDependencies().Runtime {
-		if dep == "man-db" {
-			log.Warnf("%s: man-db dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
-			return nil
-		}
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
 	}
 
-	log.Infof("  found -doc package, generating man-db dependency")
-	generated.Runtime = append(generated.Runtime, "man-db")
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if isInDir(path, []string{"usr/share/man"}) {
+
+			// Do not add a man-db dependency if one already exists.
+			for _, dep := range hdl.BaseDependencies().Runtime {
+				if dep == "man-db" {
+					log.Warnf("%s: man-db dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+				}
+			}
+
+			log.Infof("  found files in /usr/share/man/ in package, generating man-db dependency")
+			generated.Runtime = append(generated.Runtime, "man-db")
+		}
+
+		if isInDir(path, []string{"usr/share/info"}) {
+
+			// Do not add a texinfo dependency if one already exists.
+			for _, dep := range hdl.BaseDependencies().Runtime {
+				if dep == "texinfo" {
+					log.Warnf("%s: texinfo dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+				}
+			}
+
+			log.Infof("  found files in /usr/share/info/ in package, generating texinfo dependency")
+			generated.Runtime = append(generated.Runtime, "texinfo")
+		}
+		return nil
+
+	}); err != nil {
+		return err
+	}
 
 	return nil
 }

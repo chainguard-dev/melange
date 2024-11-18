@@ -16,4 +16,4 @@ The release workflow checks to see if there are any changes since the last relea
 
 #### Automatic triggering
 
-In addition to being triggerable manually (as described at the top of this document), the workflow also runs automatically every night. Just like with manual triggering, if there are no new changes since the last release, the workflow will end early without creating a new release.
+In addition to being triggerable manually (as described at the top of this document), the workflow also runs automatically every Monday at midnight UTC. Just like with manual triggering, if there are no new changes since the last release, the workflow will end early without creating a new release.

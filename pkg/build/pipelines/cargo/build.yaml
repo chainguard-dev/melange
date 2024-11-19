@@ -36,11 +36,16 @@ inputs:
       Directory where binaries will be installed
     default: bin
 
+  output-dir:
+    description: |
+      Directory where the binaris will be placed after building. Defaults to target/release
+    default: target/release
+
 pipeline:
   - runs: |
       # Installation directory should always be bin as we are producing a binary
       INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}"
-      OUTPUT_PATH="target/release"
+      OUTPUT_PATH="${{inputs.output-dir}}"
 
       # Enter target package directory
       cd "${{inputs.modroot}}"

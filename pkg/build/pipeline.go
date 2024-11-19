@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -142,6 +143,22 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 		if data[k] == "" {
 			data[k] = v.Default
 		}
+		if k == "expected-sha256" && data[k] != "" {
+			if !matchValidShaChars(data[k]) {
+				return data, fmt.Errorf("checksum input %q for pipeline contains invalid characters", k)
+			}
+			if len(data[k]) != 64 {
+				return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+			}
+		}
+		if k == "expected-sha512" && data[k] != "" {
+			if !matchValidShaChars(data[k]) {
+				return data, fmt.Errorf("checksum input %q for pipeline contains invalid characters", k)
+			}
+			if len(data[k]) != 128 {
+				return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+			}
+		}
 
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
@@ -149,6 +166,11 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	}
 
 	return data, nil
+}
+
+func matchValidShaChars(s string) bool {
+	match, _ := regexp.MatchString("^[a-fA-F0-9]+$", s)
+	return match
 }
 
 // Build a script to run as part of evalRun
@@ -277,7 +299,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 	signal.Ignore(os.Interrupt)
 
 	// Populate $HOME/.ash_history with the current command so you can hit up arrow to repeat it.
-	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0o644); err != nil {
 		return fmt.Errorf("failed to write history file: %w", err)
 	}
 

@@ -32,7 +32,7 @@ convert gem fluentd
 ```
       --base-uri-format string   URI to use for querying gems for provided package name (default "https://rubygems.org/api/v1/gems/%s.json")
   -h, --help                     help for gem
-      --ruby-version string      version of ruby to use throughout generated manifests (default "3.2")
+      --ruby-version string      version of ruby to use throughout generated manifests (default "3.3")
 ```
 
 ### Options inherited from parent commands

@@ -143,10 +143,6 @@ func TestGenerateManifest(t *testing.T) {
 
 	gemctx.RubyVersion = DefaultRubyVersion
 
-	// Add additionalReposities and additionalKeyrings
-	gemctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os"}
-	gemctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}
-
 	// Read the gem meta into
 	data, err := os.ReadFile(filepath.Join(gemMetaDir, "async.json"))
 	assert.NoError(t, err)
@@ -171,19 +167,17 @@ func TestGenerateManifest(t *testing.T) {
 	assert.Equal(t, "MIT", got.Package.Copyright[0].License)
 
 	// Check Environment
-	assert.Equal(t, []string{"https://packages.wolfi.dev/os"}, got.Environment.Contents.BuildRepositories)
-	assert.Equal(t, []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"}, got.Environment.Contents.Keyring)
 	assert.Equal(t, []string{
 		"build-base",
 		"busybox",
 		"ca-certificates-bundle",
 		"git",
-		fmt.Sprintf("ruby-%s", DefaultRubyVersion),
-		fmt.Sprintf("ruby-%s-dev", DefaultRubyVersion),
+		"ruby-${{vars.rubyMM}}",
+		"ruby-${{vars.rubyMM}}-dev",
 	}, got.Environment.Contents.Packages)
 
 	// Check Pipeline
-	assert.Equal(t, 5, len(got.Pipeline))
+	assert.Equal(t, 4, len(got.Pipeline))
 
 	// Check Pipeline - fetch
 	assert.Equal(t, "fetch", got.Pipeline[0].Uses)
@@ -191,33 +185,25 @@ func TestGenerateManifest(t *testing.T) {
 	//       directory, which is just a tarball of the async.json, not the
 	//       actual artifact. It's simply used for testing.
 	assert.Equal(t, map[string]string{
-		"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s/archive/refs/tags/v2.3.1.tar.gz | sha256sum", server.URL),
 		"expected-sha256": "2481a44fc272b64a4a1775edf57c52b5367c8a07afd7996901d3c57c77542e6c",
 		"uri":             fmt.Sprintf("%s/archive/refs/tags/v${{package.version}}.tar.gz", server.URL),
 	}, got.Pipeline[0].With)
 
-	// Check Pipeline - patch
-	assert.Equal(t, "patch", got.Pipeline[1].Uses)
-	assert.Equal(t, map[string]string{
-		"README":  "This is only required if the gemspec is using a signing key",
-		"patches": "patches/${{package.name}}.patch",
-	}, got.Pipeline[1].With)
-
 	// Check Pipeline - ruby/build
-	assert.Equal(t, "ruby/build", got.Pipeline[2].Uses)
+	assert.Equal(t, "ruby/build", got.Pipeline[1].Uses)
 	assert.Equal(t, map[string]string{
 		"gem": "${{vars.gem}}",
-	}, got.Pipeline[2].With)
+	}, got.Pipeline[1].With)
 
 	// Check Pipeline - ruby/install
-	assert.Equal(t, "ruby/install", got.Pipeline[3].Uses)
+	assert.Equal(t, "ruby/install", got.Pipeline[2].Uses)
 	assert.Equal(t, map[string]string{
 		"gem":     "${{vars.gem}}",
 		"version": "${{package.version}}",
-	}, got.Pipeline[3].With)
+	}, got.Pipeline[2].With)
 
 	// Check Pipeline - ruby/clean
-	assert.Equal(t, "ruby/clean", got.Pipeline[4].Uses)
+	assert.Equal(t, "ruby/clean", got.Pipeline[3].Uses)
 }
 
 // TestGeneratePackage tests when a gem has multiple licenses
@@ -252,29 +238,22 @@ func TestGeneratePackage(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
-// TestGenerateEnvironment tests when there are additional keyring and
-// repository entries
 func TestGenerateEnvironment(t *testing.T) {
 	expected := apkotypes.ImageConfiguration{
 		Contents: apkotypes.ImageContents{
-			BuildRepositories: []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"},
-			Keyring:           []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"},
 			Packages: []string{
 				"build-base",
 				"busybox",
 				"ca-certificates-bundle",
 				"git",
-				fmt.Sprintf("ruby-%s", DefaultRubyVersion),
-				fmt.Sprintf("ruby-%s-dev", DefaultRubyVersion),
+				"ruby-${{vars.rubyMM}}",
+				"ruby-${{vars.rubyMM}}-dev",
 			},
 		},
 	}
 
 	gemctx := testGemContext("unused")
 
-	// Add additionalReposities and additionalKeyrings
-	gemctx.AdditionalRepositories = []string{"https://packages.wolfi.dev/os", "local /github/workspace/packages"}
-	gemctx.AdditionalKeyrings = []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub", "melange.rsa.pub"}
 	gemctx.RubyVersion = DefaultRubyVersion
 
 	got := gemctx.generateEnvironment()

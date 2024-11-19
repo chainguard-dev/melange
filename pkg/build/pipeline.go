@@ -145,10 +145,16 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 			if !matchValidShaChars(data[k]) {
 				return data, fmt.Errorf("checksum input %q for pipeline contains invalid characters", k)
 			}
+			if len(data[k]) != 64 {
+				return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+			}
 		}
 		if k == "expected-sha512" && data[k] != "" {
 			if !matchValidShaChars(data[k]) {
 				return data, fmt.Errorf("checksum input %q for pipeline contains invalid characters", k)
+			}
+			if len(data[k]) != 128 {
+				return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
 			}
 		}
 

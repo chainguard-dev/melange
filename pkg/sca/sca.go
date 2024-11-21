@@ -183,6 +183,57 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string,
 	return "", "", nil
 }
 
+func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	if !strings.Contains(path, ".so") {
+		return nil
+	}
+
+	targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path)
+	if err != nil {
+		return nil
+	}
+
+	targetFS, err := hdl.FilesystemForRelative(targetPkg)
+	if err != nil {
+		return nil
+	}
+
+	if realPath != "" {
+		rawFile, err := targetFS.Open(realPath)
+		if err != nil {
+			return nil
+		}
+		defer rawFile.Close()
+
+		seekableFile, ok := rawFile.(io.ReaderAt)
+		if !ok {
+			return nil
+		}
+
+		ef, err := elf.NewFile(seekableFile)
+		if err != nil {
+			return nil
+		}
+		defer ef.Close()
+
+		sonames, err := ef.DynString(elf.DT_SONAME)
+		// most likely SONAME is not set on this object
+		if err != nil {
+			log.Warnf("library %s lacks SONAME", path)
+			return nil
+		}
+
+		for _, soname := range sonames {
+			log.Infof("  found soname %s for %s", soname, path)
+
+			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+		}
+	}
+
+	return nil
+}
+
 func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shared object dependencies...")
@@ -205,58 +256,16 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		mode := fi.Mode()
 
 		// If it is a symlink, lets check and see if it is a library SONAME.
-		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
-			if !strings.Contains(path, ".so") {
-				return nil
+		isLink := mode.Type()&fs.ModeSymlink == fs.ModeSymlink
+
+		if isLink {
+			if err := processSymlinkSo(ctx, hdl, path, generated); err != nil {
+				return err
 			}
-
-			targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path)
-			if err != nil {
-				return nil
-			}
-
-			targetFS, err := hdl.FilesystemForRelative(targetPkg)
-			if err != nil {
-				return nil
-			}
-
-			if realPath != "" {
-				rawFile, err := targetFS.Open(realPath)
-				if err != nil {
-					return nil
-				}
-				defer rawFile.Close()
-
-				seekableFile, ok := rawFile.(io.ReaderAt)
-				if !ok {
-					return nil
-				}
-
-				ef, err := elf.NewFile(seekableFile)
-				if err != nil {
-					return nil
-				}
-				defer ef.Close()
-
-				sonames, err := ef.DynString(elf.DT_SONAME)
-				// most likely SONAME is not set on this object
-				if err != nil {
-					log.Warnf("library %s lacks SONAME", path)
-					return nil
-				}
-
-				for _, soname := range sonames {
-					log.Infof("  found soname %s for %s", soname, path)
-
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
-				}
-			}
-
-			return nil
 		}
 
 		// If it is not a regular file, we are finished processing it.
-		if !mode.IsRegular() {
+		if !mode.IsRegular() && !isLink {
 			return nil
 		}
 

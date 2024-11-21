@@ -1,4 +1,5 @@
 # melange
+smosertest
 
 Build apk packages using declarative pipelines.
 

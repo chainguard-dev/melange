@@ -8,6 +8,9 @@ To cut a release:
 4. In the dropdown, click on the `Run workflow` button.
 5. Wait for the workflow to complete successfully.
 
+After workflow completes the new release will show up in [tags](https://github.com/chainguard-dev/melange/tags)
+and [releases](https://github.com/chainguard-dev/melange/releases).
+
 ### Useful things to know
 
 #### Detecting whether a new release is needed

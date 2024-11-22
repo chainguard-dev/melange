@@ -48,6 +48,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"k8s.io/kube-openapi/pkg/util/sets"
+	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
@@ -1081,7 +1082,7 @@ func (b *Build) SummarizePaths(ctx context.Context) {
 
 func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange is building:")
+	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
 	log.Infof("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }

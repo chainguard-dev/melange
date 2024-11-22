@@ -168,7 +168,6 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 			}
 		}
 
-
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}

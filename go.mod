@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.23.2
 
 require (
-	chainguard.dev/apko v0.20.0
+	chainguard.dev/apko v0.20.1
 	cloud.google.com/go/storage v1.47.0
 	dagger.io/dagger v0.14.0
 	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
@@ -44,7 +44,7 @@ require (
 	golang.org/x/sys v0.27.0
 	golang.org/x/text v0.20.0
 	golang.org/x/time v0.8.0
-	google.golang.org/api v0.206.0
+	google.golang.org/api v0.207.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
@@ -214,7 +214,7 @@ require (
 	golang.org/x/net v0.31.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/term v0.26.0 // indirect
-	google.golang.org/genproto v0.0.0-20241104194629-dd2ea8efbc28 // indirect
+	google.golang.org/genproto v0.0.0-20241113202542-65e8d215514f // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241113202542-65e8d215514f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241113202542-65e8d215514f // indirect
 	google.golang.org/grpc v1.68.0 // indirect

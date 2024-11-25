@@ -361,6 +361,8 @@ type PipelineAssertions struct {
 }
 
 type Pipeline struct {
+	// Optional: A condition to evaluate before running the pipeline
+	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: A user defined name for the pipeline
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Optional: A named reusable pipeline to run
@@ -386,8 +388,6 @@ type Pipeline struct {
 	Needs *Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
 	// Optional: Labels to apply to the pipeline
 	Label string `json:"label,omitempty" yaml:"label,omitempty"`
-	// Optional: A condition to evaluate before running the pipeline
-	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: Assertions to evaluate whether the pipeline was successful
 	Assertions *PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
 	// Optional: The working directory of the pipeline

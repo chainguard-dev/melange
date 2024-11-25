@@ -16,16 +16,19 @@ package build
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 	"gopkg.in/yaml.v3"
+	"mvdan.cc/sh/v3/syntax"
 )
 
 const unidentifiablePipeline = "???"
@@ -277,6 +280,12 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		return fmt.Errorf("mutating runs: %w", err)
 	}
 
+	// Drop any comments to avoid leaking things into .melange.json.
+	pipeline.Runs, err = stripComments(pipeline.Runs)
+	if err != nil {
+		return fmt.Errorf("stripping runs comments: %w", err)
+	}
+
 	if pipeline.If != "" {
 		pipeline.If, err = util.MutateAndQuoteStringFromMap(mutated, pipeline.If)
 		if err != nil {
@@ -359,4 +368,31 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 	}
 
 	return nil
+}
+
+func stripComments(runs string) (string, error) {
+	parser := syntax.NewParser(syntax.KeepComments(false))
+	printer := syntax.NewPrinter()
+
+	builder := strings.Builder{}
+
+	// The KeepComments(false) option drops comments, including the shebang.
+	// We don't want to do that, so keep the first line if it starts with #!
+	if idx := strings.IndexRune(runs, '\n'); idx != -1 {
+		firstLine := runs[0 : idx+1]
+		if strings.HasPrefix(firstLine, "#!") {
+			builder.WriteString(firstLine)
+		}
+	}
+
+	var perr error
+	if err := parser.Stmts(strings.NewReader(runs), func(stmt *syntax.Stmt) bool {
+		perr = printer.Print(&builder, stmt)
+		builder.WriteRune('\n')
+		return perr == nil
+	}); err != nil || perr != nil {
+		return "", errors.Join(err, perr)
+	}
+
+	return builder.String(), nil
 }

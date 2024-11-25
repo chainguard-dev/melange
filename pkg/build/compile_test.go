@@ -52,6 +52,7 @@ func TestInheritWorkdir(t *testing.T) {
 				WorkDir: "/work",
 				Pipeline: []config.Pipeline{{}, {
 					WorkDir: "/do-not-inherit",
+					Runs:    "#!/bin/bash\n# hunter2\necho $SECRET",
 				}},
 			}},
 		},
@@ -66,6 +67,9 @@ func TestInheritWorkdir(t *testing.T) {
 	}
 	if got, want := build.Configuration.Pipeline[0].Pipeline[1].WorkDir, "/do-not-inherit"; want != got {
 		t.Fatalf("workdir[1]: want %q, got %q", want, got)
+	}
+	if got, want := build.Configuration.Pipeline[0].Pipeline[1].Runs, "#!/bin/bash\necho $SECRET\n"; want != got {
+		t.Fatalf("runs[1]: should strip comments, want %q, got %q", want, got)
 	}
 }
 

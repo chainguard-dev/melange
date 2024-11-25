@@ -42,6 +42,7 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
+	"gopkg.in/yaml.v3"
 )
 
 // pgzip's default is GOMAXPROCS(0)
@@ -208,6 +209,17 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	fsys := memfs.New()
 	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
+	}
+
+	var melangeBuf bytes.Buffer
+	enc := yaml.NewEncoder(&melangeBuf)
+	enc.SetIndent(2) // To align with `yam` a little better.
+
+	if err := enc.Encode(pc.Build.Configuration); err != nil {
+		return nil, fmt.Errorf("marshalling config: %w", err)
+	}
+	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0644); err != nil {
+		return nil, fmt.Errorf("writing .melange.yaml: %w", err)
 	}
 
 	if scriptlets := pc.Scriptlets; scriptlets != nil {

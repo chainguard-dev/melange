@@ -119,3 +119,32 @@ func TestCompileTest(t *testing.T) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
 	}
 }
+
+func Test_stripComments(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{"# foo\n", ""},
+		{"\n", ""},
+		{"#!/bin/bash\n", "#!/bin/bash\n"},
+		{"#!/bin/bash\n# foo\n", "#!/bin/bash\n"},
+		{"#!/bin/bash\nfoo\n", "#!/bin/bash\nfoo\n"},
+		{"#!/bin/bash\nfoo\n# bar\n", "#!/bin/bash\nfoo\n"},
+		{"#!/bin/bash\nfoo\nbar\n", "#!/bin/bash\nfoo\nbar\n"},
+		{"#!/bin/bash\nfoo\n# bar\nbaz\n", "#!/bin/bash\nfoo\nbaz\n"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.in, func(t *testing.T) {
+			got, err := stripComments(test.in)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got != test.want {
+				t.Errorf("stripComments(%q): want %q, got %q", test.in, test.want, got)
+			}
+		})
+	}
+}

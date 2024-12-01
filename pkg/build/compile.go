@@ -103,7 +103,7 @@ func (t *Test) Compile(ctx context.Context) error {
 		}
 
 		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
-			return fmt.Errorf("compiling main pipelines: %w", err)
+			return fmt.Errorf("compiling main test pipelines: %w", err)
 		}
 
 		// Append anything the main package test needs.
@@ -172,7 +172,7 @@ func (b *Build) Compile(ctx context.Context) error {
 		}
 
 		if err := tc.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
-			return fmt.Errorf("compiling main pipelines: %w", err)
+			return fmt.Errorf("compiling main test pipelines: %w", err)
 		}
 
 		te := &b.Configuration.Test.Environment.Contents

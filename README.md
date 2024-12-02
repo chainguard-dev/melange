@@ -149,6 +149,7 @@ Melange provides the following default substitutions which can be referenced in 
 | `${{package.epoch}}`        | Package epoch                                                            |
 | `${{package.full-version}}` | `${{package.version}}-r${{package.epoch}}`                               |
 | `${{package.description}}`  | Package description                                                      |
+| `${{package.srcdir}}`       | Package source directory (`--source-dir`)                                |
 | `${{targets.outdir}}`       | Directory where targets will be stored                                   |
 | `${{targets.contextdir}}`   | Directory where targets will be stored for main packages and subpackages |
 | `${{targets.destdir}}`      | Directory where targets will be stored for main                          |

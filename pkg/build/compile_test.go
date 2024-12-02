@@ -147,4 +147,15 @@ func Test_stripComments(t *testing.T) {
 			}
 		})
 	}
+
+	wantErr := `1:13: not a valid test operator: -m:
+> if [[ uname -m == 'x86_64']]; then
+              ^`
+
+	got, err := stripComments("if [[ uname -m == 'x86_64']]; then")
+	if err == nil {
+		t.Errorf("expected error, got %q", got)
+	} else if err.Error() != wantErr {
+		t.Errorf("want:\n%s\ngot:\n%s", wantErr, err)
+	}
 }

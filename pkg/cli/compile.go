@@ -25,6 +25,7 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
+	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 )
@@ -63,6 +64,9 @@ func compile() *cobra.Command {
 	var cpu, memory string
 	var timeout time.Duration
 	var extraPackages []string
+	var configFileGitCommit string
+	var configFileGitRepoURL string
+	var configFileLicense string
 
 	cmd := &cobra.Command{
 		Use:     "compile",
@@ -72,6 +76,31 @@ func compile() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			log := clog.FromContext(ctx)
+
+			var buildConfigFilePath string
+			if len(args) > 0 {
+				buildConfigFilePath = args[0] // e.g. "crane.yaml"
+			}
+
+			// Favor explicit, user-provided information for the git provenance of the
+			// melange build definition. As a fallback, detect this from local git state.
+			// Git auto-detection should be "best effort" and not fail the build if it
+			// fails.
+			if configFileGitCommit == "" {
+				log.Infof("git commit for build config not provided, attempting to detect automatically")
+				commit, err := detectGitHead(ctx, buildConfigFilePath)
+				if err != nil {
+					log.Warnf("unable to detect commit for build config file: %v", err)
+					configFileGitCommit = "unknown"
+				} else {
+					configFileGitCommit = commit
+				}
+			}
+			if configFileGitRepoURL == "" {
+				log.Warnf("git repository URL for build config not provided")
+				configFileGitRepoURL = "https://unknown/unknown/unknown"
+			}
 
 			arch := apko_types.ParseArchitecture(archstr)
 			options := []build.Option{
@@ -108,6 +137,9 @@ func compile() *cobra.Command {
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
+				build.WithConfigFileRepositoryCommit(configFileGitCommit),
+				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
+				build.WithConfigFileLicense(configFileLicense),
 			}
 
 			if len(args) > 0 {
@@ -176,6 +208,10 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
 
+	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
+	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
+	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
+
 	return cmd
 }
 
@@ -191,7 +227,7 @@ func CompileCmd(ctx context.Context, opts ...build.Option) error {
 	defer bc.Close(ctx)
 
 	if err := bc.Compile(ctx); err != nil {
-		return fmt.Errorf("failed to compile package: %w", err)
+		return fmt.Errorf("failed to compile %s: %w", bc.ConfigFile, err)
 	}
 
 	return json.NewEncoder(os.Stdout).Encode(bc.Configuration)

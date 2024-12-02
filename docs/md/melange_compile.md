@@ -43,10 +43,13 @@ melange compile [flags]
       --env-file string             file to use for preloaded environment variables
       --fail-on-lint-warning        turns linter warnings into failures
       --generate-index              whether to generate APKINDEX.tar.gz (default true)
+      --git-commit string           commit hash of the git repository containing the build config file (defaults to detecting HEAD)
+      --git-repo-url string         URL of the git repository containing the build config file (defaults to detecting from configured git remotes)
       --guest-dir string            directory used for the build environment guest
   -h, --help                        help for compile
   -i, --interactive                 when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings      path to extra keys to include in the build environment keyring
+      --license string              license to use for the build config file itself (default "NOASSERTION")
       --log-policy strings          logging policy to use (default [builtin:stderr])
       --memory string               default memory resources to use for builds
       --namespace string            namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")

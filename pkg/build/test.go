@@ -343,7 +343,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	log.Infof("evaluating pipelines for package requirements")
 	if err := t.Compile(ctx); err != nil {
-		return fmt.Errorf("compiling test pipelines: %w", err)
+		return fmt.Errorf("compiling %s tests: %w", t.ConfigFile, err)
 	}
 
 	if t.Runner.Name() == container.QemuName {

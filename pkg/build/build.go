@@ -207,9 +207,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.ConfigFileRepositoryCommit == "" {
 		return nil, fmt.Errorf("config file repository commit was not set")
 	}
-	if b.Runner == nil {
-		return nil, fmt.Errorf("no runner was specified")
-	}
 
 	parsedCfg, err := config.ParseConfiguration(ctx,
 		b.ConfigFile,
@@ -717,6 +714,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
 
+	if b.Runner == nil {
+		return fmt.Errorf("no runner was specified")
+	}
+
 	b.summarize(ctx)
 
 	namespace := b.Namespace
@@ -779,7 +780,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	log.Infof("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
-		return fmt.Errorf("compiling build: %w", err)
+		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
 	}
 
 	// Filter out any subpackages with false If conditions.

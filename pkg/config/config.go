@@ -120,6 +120,11 @@ type Package struct {
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	// Optional: Resources to allocate to the build.
 	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	// Optional: The ecosystem this package is built with
+	Ecosystem string `json:"ecosystem,omitempty" yaml:"ecosystem,omitempty"`
+	// Optional: The group this package belongs to
+	Group string `json:"group,omitempty" yaml:"group,omitempty"`
 }
 
 type Resources struct {

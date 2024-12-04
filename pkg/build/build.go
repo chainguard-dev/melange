@@ -135,6 +135,7 @@ type Build struct {
 	DefaultTimeout        time.Duration
 	Auth                  map[string]options.Auth
 	IgnoreSignatures      bool
+	VolumeMounts          []container.BindMount
 
 	EnabledBuildOptions []string
 
@@ -1144,6 +1145,10 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		} else {
 			log.Infof("--cache-dir %s not a dir; skipping", b.CacheDir)
 		}
+	}
+
+	for _, vm := range b.VolumeMounts {
+		mounts = append(mounts, container.BindMount{Source: vm.Source, Destination: vm.Destination})
 	}
 
 	// TODO(kaniini): Disable networking capability according to the pipeline requirements.

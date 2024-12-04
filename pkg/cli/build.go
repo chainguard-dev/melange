@@ -81,6 +81,7 @@ func buildCmd() *cobra.Command {
 	var configFileGitCommit string
 	var configFileGitRepoURL string
 	var configFileLicense string
+	var volume []string
 
 	var traceFile string
 
@@ -205,6 +206,14 @@ func buildCmd() *cobra.Command {
 				options = append(options, build.WithSourceDir(sourceDir))
 			}
 
+			for _, volumeMount := range volume {
+				parts := strings.SplitN(volumeMount, ":", 2)
+				if len(parts) != 2 {
+					return fmt.Errorf("volume mounts must be in the form 'src:dest' (got %q)", volumeMount)
+				}
+				options = append(options, build.WithVolumeMounts(parts[0], parts[1]))
+			}
+
 			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
 				// Fine, no auth.
 			} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
@@ -263,6 +272,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
 	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
 	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
+	cmd.Flags().StringSliceVarP(&volume, "volume", "v", []string{}, "bind mount a volume(s) into the container (e.g., /host:/container)")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")

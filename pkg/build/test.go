@@ -69,6 +69,7 @@ type Test struct {
 	Interactive       bool
 	Auth              map[string]options.Auth
 	IgnoreSignatures  bool
+	VolumeMounts      []container.BindMount
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -559,6 +560,10 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		} else {
 			return nil, fmt.Errorf("--cache-dir %s not a dir", t.CacheDir)
 		}
+	}
+
+	for _, vm := range t.VolumeMounts {
+		mounts = append(mounts, container.BindMount{Source: vm.Source, Destination: vm.Destination})
 	}
 
 	// TODO(kaniini): Disable networking capability according to the pipeline requirements.

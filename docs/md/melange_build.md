@@ -71,6 +71,7 @@ melange build [flags]
       --timeout duration                                        default timeout for builds
       --trace string                                            where to write trace output
       --vars-file string                                        file to use for preloaded build configuration variables
+  -v, --volume strings                                          bind mount a volume(s) into the container (e.g., /host:/container)
       --workspace-dir string                                    directory used for the workspace at /home/build
 ```
 

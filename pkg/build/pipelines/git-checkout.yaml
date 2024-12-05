@@ -62,7 +62,7 @@ pipeline:
       process_cherry_picks() {
         local cpicksf="$1" oifs="$IFS" count=0
         local fetched_branches=""
-        local sdate=${SOURCE_DATE_EPOCH:-0}
+        local sdate=${SOURCE_DATE_EPOCH:-315532800}
         if [ "$sdate" -lt 315532800 ]; then
             msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
             sdate=315532800

@@ -3,6 +3,7 @@ name: Install a portable npm package.
 needs:
   packages:
     - nodejs
+    - npm
     - busybox
 
 inputs:

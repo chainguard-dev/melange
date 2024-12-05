@@ -222,10 +222,15 @@ func (t *Test) OverlayBinSh(suffix string) error {
 	return nil
 }
 
-// IsTestless returns true if the test context does not actually do any
-// testing.
-func (t *Test) IsTestless() bool {
-	return t.Configuration.Test == nil || len(t.Configuration.Test.Pipeline) == 0
+// IsTestsDisabled returns true if the test context is manually disabled.
+func (t *Test) IsTestsDisabled() bool {
+	return t.Configuration.Test != nil && t.Configuration.Test.Enabled != nil && !*t.Configuration.Test.Enabled
+}
+
+// IsTestable returns true if the test context does have a test pipeline to run
+// and it is enabled.
+func (t *Test) IsTestable() bool {
+	return t.Configuration.Test != nil && len(t.Configuration.Test.Pipeline) > 0 && !t.IsTestsDisabled()
 }
 
 func (t *Test) PopulateCache(ctx context.Context) error {
@@ -399,8 +404,8 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return err
 	}
 
-	// If there are no 'main' test pipelines, we can skip building the guest.
-	if !t.IsTestless() {
+	// Test the package if it has a test pipeline enabled.
+	if t.IsTestable() {
 		imgRef, err = t.BuildGuest(ctx, t.Configuration.Test.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
@@ -446,7 +451,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		runner:      t.Runner,
 	}
 
-	if !t.IsTestless() {
+	if t.IsTestable() {
 		cfg.Arch = t.Arch
 
 		if err := t.Runner.StartPod(ctx, cfg); err != nil {

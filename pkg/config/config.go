@@ -642,6 +642,8 @@ func (cfg Configuration) AllPackageNames() iter.Seq[string] {
 }
 
 type Test struct {
+	// Optional: Toggle if tests should occur
+	Enabled *bool `json:"enabled" yaml:"enabled,omitempty"`
 	// Additional Environment necessary for test.
 	// Environment.Contents.Packages automatically get
 	// package.dependencies.runtime added to it. So, if your test needs
@@ -650,6 +652,8 @@ type Test struct {
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
+	// Optional: ExcludeReason is required if enabled=false, to explain why tests are disabled.
+	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
 }
 
 // Name returns a name for the configuration, using the package name. This
@@ -1089,8 +1093,10 @@ func replaceTest(r *strings.Replacer, in *Test) *Test {
 		return nil
 	}
 	return &Test{
-		Environment: replaceImageConfig(r, in.Environment),
-		Pipeline:    replacePipelines(r, in.Pipeline),
+		Enabled:       in.Enabled,
+		Environment:   replaceImageConfig(r, in.Environment),
+		Pipeline:      replacePipelines(r, in.Pipeline),
+		ExcludeReason: r.Replace(in.ExcludeReason),
 	}
 }
 

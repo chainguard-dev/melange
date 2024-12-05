@@ -43,3 +43,8 @@ func Dedup[S ~[]E, E cmp.Ordered](s S) S {
 	slices.Sort(s)
 	return slices.Compact(s)
 }
+
+// Pointer returns a pointer to the value passed in.
+func Pointer[T any](d T) *T {
+	return &d
+}

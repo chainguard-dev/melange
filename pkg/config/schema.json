@@ -852,6 +852,10 @@
     },
     "Test": {
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Optional: Toggle if tests should occur"
+        },
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
           "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank."
@@ -862,11 +866,16 @@
           },
           "type": "array",
           "description": "Required: The list of pipelines that test the produced package."
+        },
+        "exclude-reason": {
+          "type": "string",
+          "description": "Optional: ExcludeReason is required if enabled=false, to explain why tests are disabled."
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
+        "enabled",
         "environment",
         "pipeline"
       ]

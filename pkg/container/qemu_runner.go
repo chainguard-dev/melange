@@ -358,14 +358,14 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	// use kvm on linux, and Hypervisor.framework on macOS
-	if runtime.GOOS == "linux" {
-		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
-			baseargs = append(baseargs, "-accel", "tcg,thread=multi")
-		} else if _, err := os.Stat("/dev/kvm"); err == nil {
+	if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+		baseargs = append(baseargs, "-accel", "tcg,thread=multi")
+	} else {
+		if runtime.GOOS == "linux" {
 			baseargs = append(baseargs, "-accel", "kvm")
+		} else if runtime.GOOS == "darwin" {
+			baseargs = append(baseargs, "-accel", "hvf")
 		}
-	} else if runtime.GOOS == "darwin" {
-		baseargs = append(baseargs, "-accel", "hvf")
 	}
 
 	if cfg.CPUModel != "" {

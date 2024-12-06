@@ -251,7 +251,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
-	cmd.Flags().StringVar(&cpumodel, "cpumodel", "host", "default memory resources to use for builds")
+	cmd.Flags().StringVar(&cpumodel, "cpumodel", "", "default memory resources to use for builds")
 	cmd.Flags().StringVar(&disk, "disk", "", "disk size to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")

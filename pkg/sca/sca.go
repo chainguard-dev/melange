@@ -548,7 +548,7 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	return nil
 }
 
-// generateRubyDeps generates a ruby-X.Y dependency for packages which ship
+// generateRubyDeps generates a ruby-X.Y-base dependency for packages which ship
 // Ruby gems.
 func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
@@ -590,8 +590,8 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		}
 	}
 
-	log.Infof("  found ruby gem, generating ruby-%s dependency", rubyGemVer)
-	generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s", rubyGemVer))
+	log.Infof("  found ruby gem, generating ruby-%s-base dependency", rubyGemVer)
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s-base", rubyGemVer))
 
 	return nil
 }
@@ -669,7 +669,7 @@ func sonameLibver(soname string) string {
 func getShbang(fp io.Reader) (string, error) {
 	// python3 and sh are symlinks and generateCmdProviders currently only considers
 	// regular files. Since nothing will fulfill such a depend, do not generate one.
-	ignores := map[string]bool{"python3": true, "python": true, "sh": true, "awk": true}
+	ignores := map[string]bool{"python3": true, "python": true, "ruby": true, "sh": true, "awk": true}
 
 	buf := make([]byte, 80)
 	blen, err := io.ReadFull(fp, buf)

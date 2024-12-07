@@ -25,7 +25,8 @@ package:
 update:
   enabled: true # provide a flag to easily prevent a package from receiving auto update PRs
   manual: true # indicates that this package should be manually updated, usually taking care over special version numbers which can be hard to automate
-  shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+  shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java 
+  require-sequential: true # Default: false - indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
   release-monitor:
     identifier: 38 # Mandatory, ID number for release monitor
     strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
@@ -50,6 +51,7 @@ update:
   enabled: true # provide a flag to easily toggle a package from receiving auto update PRs
   manual: true # indicates that this package should be manually updated, usually taking care over special version numbers which can be hard to automate
   shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+  require-sequential: true # Default: false - indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
   github: # alternative today is `release_monitor:`
     identifier: sigstore/cosign # Mandatory, org/repo for github
     strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored

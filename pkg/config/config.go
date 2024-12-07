@@ -681,6 +681,8 @@ type Update struct {
 	// Indicates that this package should be manually updated, usually taking
 	// care over special version numbers
 	Manual bool `json:"manual,omitempty" yaml:"manual"`
+	// Indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
+	RequireSequential bool `json:"require-sequential,omitempty" yaml:"require-sequential"`
 	// Indicate that an update to this package requires an epoch bump of
 	// downstream dependencies, e.g. golang, java
 	Shared bool `json:"shared,omitempty" yaml:"shared,omitempty"`

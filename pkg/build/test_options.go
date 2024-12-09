@@ -204,3 +204,10 @@ func WithTestRemove(c bool) TestOption {
 		return nil
 	}
 }
+
+func WithTestVolumeMount(src, dest string) TestOption {
+	return func(t *Test) error {
+		t.VolumeMounts = append(t.VolumeMounts, container.BindMount{Source: src, Destination: dest})
+		return nil
+	}
+}

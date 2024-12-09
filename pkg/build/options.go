@@ -412,3 +412,11 @@ func WithIgnoreSignatures(ignore bool) Option {
 		return nil
 	}
 }
+
+// WithVolumeMounts adds a volume mount to the build environment.
+func WithVolumeMounts(src, dest string) Option {
+	return func(b *Build) error {
+		b.VolumeMounts = append(b.VolumeMounts, container.BindMount{Source: src, Destination: dest})
+		return nil
+	}
+}

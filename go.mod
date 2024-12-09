@@ -6,7 +6,7 @@ require (
 	chainguard.dev/apko v0.20.1
 	cloud.google.com/go/storage v1.47.0
 	dagger.io/dagger v0.14.0
-	github.com/chainguard-dev/clog v1.5.1-0.20240811185937-4c523ae4593f
+	github.com/chainguard-dev/clog v1.5.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.3
 	github.com/charmbracelet/log v0.4.0

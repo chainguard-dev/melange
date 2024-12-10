@@ -62,16 +62,27 @@ const melangeOutputDirName = "melange-out"
 var shellEmptyDir = []string{
 	"sh", "-c",
 	`d="$1";
-[ $# -eq 1 ] || { echo "must provide dir. got $# args."; exit 1; }
+exclude="$2";
+[ $# -eq 2 ] || { echo "must provide dir and exclude pattern. got $# args."; exit 1; }
 cd "$d" || { echo "failed cd '$d'"; exit 1; }
+echo "excluding directory pattern: $exclude"
 set --
 for e in * .*; do
   [ "$e" = "." -o "$e" = ".." -o "$e" = "*" ] && continue
+  case "$e" in
+	$exclude) echo "excluding $e"; continue ;;
+  esac
   set -- "$@" "$e"
 done
 [ $# -gt 0 ] || { echo "nothing to cleanup. $d was empty."; exit 0; }
 echo "cleaning Workspace by removing $# file/directories in $d"
-rm -Rf "$@"`,
+for item in "$@"; do
+  if [ "$item" != "$exclude" ]; then
+	rm -Rf "$item"
+  else
+	echo "skipping removing excluded item: $item"
+  fi
+done`,
 	"shellEmptyDir",
 }
 
@@ -991,12 +1002,40 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// clean build environment
 	log.Debugf("cleaning workspacedir")
 	cleanEnv := map[string]string{}
-	if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir)...); err != nil {
+	var destinations []string
+	for _, vm := range b.VolumeMounts {
+		destinations = append(destinations, vm.Destination)
+		dir := filepath.Dir(vm.Destination)
+		for dir != "." && dir != "/" {
+			destinations = append(destinations, dir)
+			dir = filepath.Dir(dir)
+		}
+	}
+	excludeDirs := strings.Join(destinations, "|")
+	fmt.Println("Excluding directories:", excludeDirs)
+
+	if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir, excludeDirs)...); err != nil {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
-	// if the Runner used WorkspaceDir as WorkDir, then this will be empty already.
-	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
-		log.Warnf("unable to clean workspace: %s", err)
+	// if the Runner used WorkspaceDir as WorkDir, then this will be empty already (save for excludes).
+	entries, err := os.ReadDir(b.WorkspaceDir)
+	if err != nil {
+		log.Warnf("unable to read workspace directory: %s", err)
+	} else {
+		for _, entry := range entries {
+			excluded := false
+			for _, excludeDir := range destinations {
+				if entry.Name() == filepath.Base(excludeDir) {
+					excluded = true
+					break
+				}
+			}
+			if !excluded {
+				if err := os.RemoveAll(filepath.Join(b.WorkspaceDir, entry.Name())); err != nil {
+					log.Warnf("unable to clean workspace entry %s: %s", entry.Name(), err)
+				}
+			}
+		}
 	}
 
 	if !b.isBuildLess() {

@@ -49,6 +49,7 @@ func test() *cobra.Command {
 	var runner string
 	var extraTestPackages []string
 	var remove bool
+	var volume []string
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -93,6 +94,14 @@ func test() *cobra.Command {
 				options = append(options, build.WithTestSourceDir(sourceDir))
 			}
 
+			for _, volumeMount := range volume {
+				parts := strings.SplitN(volumeMount, ":", 2)
+				if len(parts) != 2 {
+					return fmt.Errorf("volume mounts must be in the form 'src:dest' (got %q)", volumeMount)
+				}
+				options = append(options, build.WithTestVolumeMount(parts[0], parts[1]))
+			}
+
 			for i := range pipelineDirs {
 				options = append(options, build.WithTestPipelineDir(pipelineDirs[i]))
 			}
@@ -132,6 +141,7 @@ func test() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
+	cmd.Flags().StringSliceVarP(&volume, "volume", "v", []string{}, "bind mount a volume(s) into the container (e.g., /host:/container)")
 
 	return cmd
 }

@@ -47,6 +47,7 @@ melange test [flags]
       --source-dir string             directory used for included sources
       --test-option strings           build options to enable
       --test-package-append strings   extra packages to install for each of the test environments
+  -v, --volume strings                bind mount a volume(s) into the container (e.g., /host:/container)
       --workspace-dir string          directory used for the workspace at /home/build
 ```
 

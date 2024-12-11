@@ -30,7 +30,8 @@ pipeline:
         usr/share/aclocal usr/share/gettext \
         usr/bin/*-config usr/bin/*_config usr/share/vala/vapi \
         usr/share/gir-[0-9]* usr/share/qt*/mkspecs \
-        usr/lib/qt*/mkspecs usr/lib/cmake \
+        usr/lib/qt*/mkspecs \
+        usr/lib/cmake usr/share/cmake \
         usr/lib/glade/modules usr/share/glade/catalogs \
         $(find . -name include -type d) \
         $(find $libdirs -name '*.a' 2>/dev/null) \

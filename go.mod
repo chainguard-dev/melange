@@ -5,7 +5,7 @@ go 1.23.3
 require (
 	chainguard.dev/apko v0.20.2
 	cloud.google.com/go/storage v1.48.0
-	dagger.io/dagger v0.14.0
+	dagger.io/dagger v0.15.0
 	github.com/chainguard-dev/clog v1.5.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.4
@@ -69,7 +69,7 @@ require (
 	cloud.google.com/go/iam v1.2.2 // indirect
 	cloud.google.com/go/monitoring v1.21.2 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/99designs/gqlgen v0.17.55 // indirect
+	github.com/99designs/gqlgen v0.17.57 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.24.1 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.48.1 // indirect
@@ -77,7 +77,7 @@ require (
 	github.com/Khan/genqlient v0.7.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
-	github.com/adrg/xdg v0.5.1 // indirect
+	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -187,7 +187,7 @@ require (
 	github.com/u-root/u-root v0.14.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.17 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.19 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect

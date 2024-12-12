@@ -99,6 +99,14 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
 	}
+	// Add process kernel capabilities to the container if configured.
+	if len(cfg.Capabilities.CapAdd) > 0 {
+		hostConfig.CapAdd = cfg.Capabilities.CapAdd
+	}
+	// Drop process kernel capabilities from the container if configured.
+	if len(cfg.Capabilities.CapDrop) > 0 {
+		hostConfig.CapDrop = cfg.Capabilities.CapDrop
+	}
 
 	platform := &image_spec.Platform{
 		Architecture: cfg.Arch.String(),

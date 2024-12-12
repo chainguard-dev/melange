@@ -26,6 +26,14 @@ inputs:
       Before building, the cargo pipeline wil cd into this directory. Defaults
       to current working directory
 
+  rustflags:
+    default: ""
+    required: false
+    description: |
+      Rustc flags to be passed to pass to all compiler invocations that Cargo performs.
+      In contrast with cargo rustc, this is useful for passing a flag to all compiler instances.
+      This string is split by whitespace.
+
   prefix:
     default: usr
     description: |
@@ -51,7 +59,7 @@ pipeline:
       cd "${{inputs.modroot}}"
 
       # Build and install package(s)
-      cargo auditable build --target-dir target ${{inputs.opts}}
+      RUSTFLAGS="${{inputs.rustflags}}" cargo auditable build --target-dir target ${{inputs.opts}}
       if [[ ! -z "${{inputs.output}}" ]]; then
         install -Dm755 "${OUTPUT_PATH}/${{inputs.output}}" "${INSTALL_PATH}/${{inputs.output}}"
       else

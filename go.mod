@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.23.3
 
 require (
-	chainguard.dev/apko v0.20.2
+	chainguard.dev/apko v0.21.0
 	cloud.google.com/go/storage v1.48.0
 	dagger.io/dagger v0.15.0
 	github.com/chainguard-dev/clog v1.5.1
@@ -47,7 +47,7 @@ require (
 	google.golang.org/api v0.211.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
+	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f
 	mvdan.cc/sh/v3 v3.10.0
 	sigs.k8s.io/release-utils v0.8.5
 	sigs.k8s.io/yaml v1.4.0
@@ -145,7 +145,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/letsencrypt/boulder v0.0.0-20241211003930-40e100c2970c // indirect
+	github.com/letsencrypt/boulder v0.0.0-20241211193855-1ddd4633f5c0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -223,6 +223,6 @@ require (
 	google.golang.org/grpc/stats/opentelemetry v0.0.0-20240907200651-3ffb98b2c93a // indirect
 	google.golang.org/protobuf v1.35.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.31.4 // indirect
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
+	k8s.io/apimachinery v0.32.0 // indirect
+	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 )

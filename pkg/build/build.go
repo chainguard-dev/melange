@@ -321,13 +321,18 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures),
 	}
 
-	locked, warn, err := apko_build.LockImageConfiguration(ctx, imgConfig, opts...)
+	configs, warn, err := apko_build.LockImageConfiguration(ctx, imgConfig, opts...)
 	if err != nil {
 		return "", fmt.Errorf("unable to lock image configuration: %w", err)
 	}
 
 	for k, v := range warn {
 		log.Warnf("Unable to lock package %s: %s", k, v)
+	}
+
+	locked, ok := configs["index"]
+	if !ok {
+		return "", errors.New("missing locked config")
 	}
 
 	// Overwrite the environment with the locked one.

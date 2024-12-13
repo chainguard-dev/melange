@@ -203,6 +203,14 @@ docs-repo:
 	go run docs/main.go --baseurl /docs/md/ --suffix .md --out docs/md
 
 ##################
+# docs-pipeline - This creates documents for pipelines.
+##################
+.PHONY: docs-pipeline
+docs-pipeline:
+	@cd pkg/build/pipelines && \
+		go run ../../../docs/cmd/pipeline-reference-gen/main.go --pipeline-dir .
+
+##################
 # help
 ##################
 

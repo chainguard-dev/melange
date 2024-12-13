@@ -5,7 +5,7 @@ go 1.23.3
 require (
 	chainguard.dev/apko v0.21.0
 	cloud.google.com/go/storage v1.48.0
-	dagger.io/dagger v0.15.0
+	dagger.io/dagger v0.15.1
 	github.com/chainguard-dev/clog v1.5.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.4

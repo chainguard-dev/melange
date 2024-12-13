@@ -245,6 +245,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	}
 
 	if parent != nil {
+		
 		with = util.RightJoinMap(parent, with)
 	}
 

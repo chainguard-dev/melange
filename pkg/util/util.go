@@ -14,16 +14,9 @@
 
 package util
 
-import (
-	"cmp"
-	"slices"
-)
-
 // Given a left and right map, perform a right join and return the result
 func RightJoinMap(left map[string]string, right map[string]string) map[string]string {
-	// this is the worst case possible length, assuming no overlaps.
-	length := len(left) + len(right)
-	output := make(map[string]string, length)
+	output := map[string]string{}
 
 	// copy the left-side first
 	for k, v := range left {
@@ -36,10 +29,4 @@ func RightJoinMap(left map[string]string, right map[string]string) map[string]st
 	}
 
 	return output
-}
-
-// Dedup wraps slices.Sort and slices.Compact to deduplicate a slice.
-func Dedup[S ~[]E, E cmp.Ordered](s S) S {
-	slices.Sort(s)
-	return slices.Compact(s)
 }

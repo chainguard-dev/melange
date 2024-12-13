@@ -35,7 +35,6 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/ini.v1"
@@ -151,16 +150,16 @@ func TestExecableSharedObjects(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
+		Runtime: []string{
 			"so:ld-linux-aarch64.so.1",
 			"so:libc.so.6",
 			"so:libcap.so.2",
 			"so:libpsx.so.2",
-		}),
-		Provides: util.Dedup([]string{
+		},
+		Provides: []string{
 			"so:libcap.so.2=2",
 			"so:libpsx.so.2=2",
-		}),
+		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
@@ -181,18 +180,22 @@ func TestVendoredPkgConfig(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
+		Runtime: []string{
 			// We only include libecpg_compat.so.3 to test that "libexec" isn't treated as a library directory.
 			// These are dependencies of libecpg_compat.so.3, but if we had the whole neon APK it would look different.
-			"so:libecpg.so.6", "so:libpgtypes.so.3", "so:libpq.so.5", "so:libc.so.6", "so:ld-linux-aarch64.so.1",
-		}),
-		Vendored: util.Dedup([]string{
-			"so:libecpg_compat.so.3=3",
+			"so:ld-linux-aarch64.so.1",
+			"so:libc.so.6",
+			"so:libecpg.so.6",
+			"so:libpgtypes.so.3",
+			"so:libpq.so.5",
+		},
+		Vendored: []string{
 			"pc:libecpg=4604-r0",
 			"pc:libecpg_compat=4604-r0",
 			"pc:libpgtypes=4604-r0",
 			"pc:libpq=4604-r0",
-		}),
+			"so:libecpg_compat.so.3=3",
+		},
 	}
 
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -252,7 +255,7 @@ func TestUnstableSonames(t *testing.T) {
 	}
 
 	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
+		Runtime: []string{
 			"so:ld-linux-aarch64.so.1",
 			"so:libaws-c-auth.so.1.0.0",
 			"so:libaws-c-cal.so.1.0.0",
@@ -262,7 +265,7 @@ func TestUnstableSonames(t *testing.T) {
 			"so:libaws-c-s3.so.0unstable",
 			"so:libaws-checksums.so.1.0.0",
 			"so:libc.so.6",
-		}),
+		},
 		Provides: []string{"so:libaws-c-s3.so.0unstable=0"},
 	}
 
@@ -278,13 +281,13 @@ func TestShbangDeps(t *testing.T) {
 	defer th.exp.Close()
 
 	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
+		Runtime: []string{
 			"cmd:bash",
 			"cmd:envDashSCmd",
 			"cmd:python3.12",
 			"so:ld-linux-x86-64.so.2",
 			"so:libc.so.6",
-		}),
+		},
 		Provides: nil,
 	}
 

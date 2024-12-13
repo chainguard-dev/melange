@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 )
@@ -36,13 +35,13 @@ func TestGoFipsBinDeps(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
+		Runtime: []string{
 			"openssl-config-fipshardened",
 			"so:ld-linux-x86-64.so.2",
 			"so:libc.so.6",
 			"so:libcrypto.so.3",
 			"so:libssl.so.3",
-		}),
+		},
 		Provides: []string{"cmd:go-fips-bin=0.0.1-r0"},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {

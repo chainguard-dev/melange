@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -36,7 +37,6 @@ import (
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
-	"chainguard.dev/melange/pkg/util"
 
 	"chainguard.dev/apko/pkg/apk/tarball"
 	"github.com/chainguard-dev/clog"
@@ -342,15 +342,15 @@ func (pc *PackageBuild) GenerateDependencies(ctx context.Context, hdl sca.SCAHan
 	unvendored := removeSelfProvidedDeps(generated.Runtime, generated.Vendored)
 
 	newruntime := append(pc.Dependencies.Runtime, unvendored...)
-	pc.Dependencies.Runtime = util.Dedup(newruntime)
+	pc.Dependencies.Runtime = slices.Compact(slices.Sorted(slices.Values(newruntime)))
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
-	pc.Dependencies.Provides = util.Dedup(newprovides)
+	pc.Dependencies.Provides = slices.Compact(slices.Sorted(slices.Values(newprovides)))
 
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 
 	// Sets .PKGINFO `# vendored = ...` comments; does not affect resolution.
-	pc.Dependencies.Vendored = util.Dedup(generated.Vendored)
+	pc.Dependencies.Vendored = slices.Compact(slices.Sorted(slices.Values(generated.Vendored)))
 
 	pc.Dependencies.Summarize(ctx)
 

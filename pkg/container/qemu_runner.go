@@ -450,9 +450,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	try := 0
 	for try <= retries {
 		if err := ctx.Err(); err != nil {
-				return fmt.Errorf("checking SSH server: %w", err)		
+			return fmt.Errorf("checking SSH server: %w", err)
 		}
-		
+
 		try++
 		time.Sleep(time.Millisecond * 500)
 

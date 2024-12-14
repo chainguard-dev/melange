@@ -32,7 +32,6 @@ import (
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/util"
 )
 
 var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
@@ -783,9 +782,9 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		}
 	}
 
-	generated.Runtime = util.Dedup(generated.Runtime)
-	generated.Provides = util.Dedup(generated.Provides)
-	generated.Vendored = util.Dedup(generated.Vendored)
+	generated.Runtime = slices.Compact(slices.Sorted(slices.Values(generated.Runtime)))
+	generated.Provides = slices.Compact(slices.Sorted(slices.Values(generated.Provides)))
+	generated.Vendored = slices.Compact(slices.Sorted(slices.Values(generated.Vendored)))
 
 	if hdl.Options().NoCommands {
 		generated.Provides = slices.DeleteFunc(generated.Provides, func(s string) bool {

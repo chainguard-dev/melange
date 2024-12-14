@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/fs"
 	"iter"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -1220,7 +1221,9 @@ func (p *Pipeline) propagateChildPipelines() {
 			p.Pipeline[idx].WorkDir = p.WorkDir
 		}
 
-		p.Pipeline[idx].Environment = util.RightJoinMap(p.Environment, p.Pipeline[idx].Environment)
+		m := maps.Clone(p.Environment)
+		maps.Copy(m, p.Pipeline[idx].Environment)
+		p.Pipeline[idx].Environment = m
 
 		p.Pipeline[idx].propagateChildPipelines()
 	}

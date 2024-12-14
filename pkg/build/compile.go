@@ -245,7 +245,9 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	}
 
 	if parent != nil {
-		with = util.RightJoinMap(parent, with)
+		m := maps.Clone(parent)
+		maps.Copy(m, with)
+		with = m
 	}
 
 	validated, err := validateWith(with, pipeline.Inputs)

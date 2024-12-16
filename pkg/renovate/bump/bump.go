@@ -105,8 +105,8 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 			epochNode.Value = fmt.Sprintf("%d", epoch+1)
 		}
 
-		versionNode.Value = bcfg.TargetVersion
-		versionNode.Style = yaml.FlowStyle
+		versionNode.Value = strings.TrimSpace(bcfg.TargetVersion)
+		versionNode.Style = yaml.DoubleQuotedStyle
 		versionNode.Tag = "!!str"
 
 		rc.Vars[config.SubstitutionPackageVersion] = bcfg.TargetVersion

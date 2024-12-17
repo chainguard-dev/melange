@@ -77,7 +77,6 @@ func (bw *qemu) Name() string {
 // Run runs a Qemu task given a Config and command string.
 func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
 	log := clog.FromContext(ctx)
-	log.Debugf("running command %s", strings.Join(args, " "))
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
@@ -450,14 +449,21 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	retries := 6000
 	try := 0
 	for try <= retries {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("checking SSH server: %w", err)
+		}
+
+		try++
+		time.Sleep(time.Millisecond * 500)
+
 		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up, try %d of %d", try, retries)
 		// Attempt to connect to the address
 		err = checkSSHServer(cfg.SSHAddress)
 		if err == nil {
 			break
+		} else {
+			clog.FromContext(ctx).Debug(err.Error())
 		}
-		try++
-		time.Sleep(time.Millisecond * 200)
 	}
 	if try >= retries {
 		// ensure cleanup of resources
@@ -495,9 +501,9 @@ func getKernelPath(ctx context.Context, cfg *Config) (string, string, error) {
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
 	kernel := "/boot/vmlinuz"
 	if kernelVar, ok := os.LookupEnv("QEMU_KERNEL_IMAGE"); ok {
-		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL_IMAGE env set")
+		clog.FromContext(ctx).Debug("qemu: QEMU_KERNEL_IMAGE env set")
 		if _, err := os.Stat(kernelVar); err == nil {
-			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_IMAGE file detected, using: %s", kernelVar)
+			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_IMAGE file detected, using: %s", kernelVar)
 			kernel = kernelVar
 		}
 	} else if _, err := os.Stat(kernel); err != nil {
@@ -620,32 +626,31 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 // this avoids the ssh client trying to connect on a booting server.
 func checkSSHServer(address string) error {
 	// Establish a connection to the address
-	conn, err := net.DialTimeout("tcp", address, time.Millisecond*500)
+	conn, err := net.DialTimeout("tcp", address, time.Second)
 	if err != nil {
-		return err
+		return fmt.Errorf("dial: %w", err)
 	}
 	defer conn.Close()
 
 	// Set a deadline for the connection
-	err = conn.SetDeadline(time.Now().Add(time.Millisecond * 500))
+	err = conn.SetDeadline(time.Now().Add(time.Second * 15))
 	if err != nil {
 		return err
 	}
-
 	// Read the SSH banner
 	buffer := make([]byte, 255)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		return err
+		return fmt.Errorf("conn read: %w", err)
 	}
 
 	// Check if the banner starts with "SSH-"
 	banner := string(buffer[:n])
-	if len(banner) >= 4 && banner[:4] == "SSH-" {
-		return err
+	if strings.Contains(banner, "SSH-2.0-OpenSSH") {
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("ssh: unknown connection error")
 }
 
 func getHostKey(ctx context.Context, cfg *Config) error {
@@ -664,7 +669,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 			ssh.PublicKeys(signer),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr"},
+			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
 		},
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			hostKey = key
@@ -725,7 +730,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 			ssh.PublicKeys(signer),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr"},
+			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
 		},
 		HostKeyCallback: hostKeyCallback,
 	}
@@ -780,7 +785,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 
 	cmd := shellquote.Join(command...)
 
-	clog.FromContext(ctx).Infof("running (%d) %v", len(command), cmd)
+	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to run command: %v", err)

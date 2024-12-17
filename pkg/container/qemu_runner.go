@@ -646,7 +646,7 @@ func checkSSHServer(address string) error {
 
 	// Check if the banner starts with "SSH-"
 	banner := string(buffer[:n])
-	if len(banner) >= 4 && strings.Contains(banner, "SSH-2.0-OpenSSH") {
+	if strings.Contains(banner, "SSH-2.0-OpenSSH") {
 		return nil
 	}
 

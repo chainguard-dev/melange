@@ -100,7 +100,7 @@ pipeline:
   - runs: |
       cd "${{inputs.modroot}}"
 
-      // check if modroot is set correctly by checking go.mod file exist
+      # check if modroot is set correctly by checking go.mod file exist
       if [ ! -e go.mod ]; then
         echo "go.mod not found in ${{inputs.modroot}}"
         exit 1

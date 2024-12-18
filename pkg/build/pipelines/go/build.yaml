@@ -98,16 +98,22 @@ inputs:
 
 pipeline:
   - runs: |
+      cd "${{inputs.modroot}}"
+
+      # check if modroot is set correctly by checking go.mod file exist
+      if [ ! -e go.mod ]; then
+        echo "go.mod not found in ${{inputs.modroot}}"
+        exit 1
+      fi
+
       "${{inputs.tidy}}" && go mod tidy
-      
+
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 
       # Take advantage of melange's buid cache for downloaded modules
       export GOMODCACHE=/var/cache/melange/gomodcache
-
-      cd "${{inputs.modroot}}"
 
       # Install any specified dependencies
       if [ ! "${{inputs.deps}}" == "" ]; then

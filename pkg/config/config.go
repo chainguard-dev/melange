@@ -595,6 +595,7 @@ type Input struct {
 	Required bool `json:"required,omitempty"`
 }
 
+// Capabilities is the configuration for Linux capabilities for the runner.
 type Capabilities struct {
 	// Linux process capabilities to add to the pipeline container.
 	Add []string `json:"add,omitempty" yaml:"add,omitempty"`

@@ -1176,10 +1176,10 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}
 	if b.Configuration.Capabilities.Add != nil {
-		cfg.Capabilities.CapAdd = b.Configuration.Capabilities.Add
+		cfg.Capabilities.Add = b.Configuration.Capabilities.Add
 	}
 	if b.Configuration.Capabilities.Drop != nil {
-		cfg.Capabilities.CapDrop = b.Configuration.Capabilities.Drop
+		cfg.Capabilities.Drop = b.Configuration.Capabilities.Drop
 	}
 
 	for k, v := range b.Configuration.Environment.Environment {

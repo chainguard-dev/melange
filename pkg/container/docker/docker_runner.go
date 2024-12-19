@@ -100,12 +100,12 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 		Mounts: mounts,
 	}
 	// Add process kernel capabilities to the container if configured.
-	if len(cfg.Capabilities.CapAdd) > 0 {
-		hostConfig.CapAdd = cfg.Capabilities.CapAdd
+	if len(cfg.Capabilities.Add) > 0 {
+		hostConfig.CapAdd = cfg.Capabilities.Add
 	}
 	// Drop process kernel capabilities from the container if configured.
-	if len(cfg.Capabilities.CapDrop) > 0 {
-		hostConfig.CapDrop = cfg.Capabilities.CapDrop
+	if len(cfg.Capabilities.Drop) > 0 {
+		hostConfig.CapDrop = cfg.Capabilities.Drop
 	}
 
 	platform := &image_spec.Platform{

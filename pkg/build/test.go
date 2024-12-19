@@ -575,10 +575,10 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		RunAs:        imgcfg.Accounts.RunAs,
 	}
 	if t.Configuration.Capabilities.Add != nil {
-		cfg.Capabilities.CapAdd = t.Configuration.Capabilities.Add
+		cfg.Capabilities.Add = t.Configuration.Capabilities.Add
 	}
 	if t.Configuration.Capabilities.Drop != nil {
-		cfg.Capabilities.CapDrop = t.Configuration.Capabilities.Drop
+		cfg.Capabilities.Drop = t.Configuration.Capabilities.Drop
 	}
 
 	for k, v := range imgcfg.Environment {

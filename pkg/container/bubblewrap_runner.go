@@ -133,14 +133,14 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		baseargs = append(baseargs, "--cap-add", c)
 	}
 	// Add additional process kernel capabilities to the container as configured.
-	if cfg.Capabilities.CapAdd != nil {
-		for _, c := range cfg.Capabilities.CapAdd {
+	if cfg.Capabilities.Add != nil {
+		for _, c := range cfg.Capabilities.Add {
 			baseargs = append(baseargs, "--cap-add", c)
 		}
 	}
 	// Drop process kernel capabilities from the container as configured.
-	if cfg.Capabilities.CapDrop != nil {
-		for _, c := range cfg.Capabilities.CapDrop {
+	if cfg.Capabilities.Drop != nil {
+		for _, c := range cfg.Capabilities.Drop {
 			baseargs = append(baseargs, "--cap-drop", c)
 		}
 	}

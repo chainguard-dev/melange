@@ -25,11 +25,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"chainguard.dev/melange/internal/logwriter"
+
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/internal/logwriter"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	moby "github.com/moby/moby/oci/caps"
 	"go.opentelemetry.io/otel"
 )
 
@@ -124,6 +126,23 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		baseargs = append(baseargs, "--unshare-user")
 		baseargs = append(baseargs, "--uid", buildUserID)
 		baseargs = append(baseargs, "--gid", buildUserID)
+	}
+
+	// Add Docker runner-parity kernel capabilities to the container.
+	for _, c := range moby.DefaultCapabilities() {
+		baseargs = append(baseargs, "--cap-add", c)
+	}
+	// Add additional process kernel capabilities to the container as configured.
+	if cfg.Capabilities.Add != nil {
+		for _, c := range cfg.Capabilities.Add {
+			baseargs = append(baseargs, "--cap-add", c)
+		}
+	}
+	// Drop process kernel capabilities from the container as configured.
+	if cfg.Capabilities.Drop != nil {
+		for _, c := range cfg.Capabilities.Drop {
+			baseargs = append(baseargs, "--cap-drop", c)
+		}
 	}
 
 	if !debug {

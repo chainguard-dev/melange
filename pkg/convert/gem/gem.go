@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -169,7 +171,13 @@ func (c *GemContext) findDependencies(ctx context.Context) error {
 		return err
 	}
 	log.Infof("[%s] Add to generate list", c.ToCheck[0])
-	c.ToGenerate[c.ToCheck[0]] = g
+	// This should be ruby3 once the files are multi-versioned
+	_, err = os.Stat(filepath.Join(c.OutDir, "ruby"+DefaultRubyVersion+"-"+g.Name+".yaml"))
+	if err == nil {
+		log.Infof("[%s] Package already exists, skipping", g.Name)
+	} else {
+		c.ToGenerate[c.ToCheck[0]] = g
+	}
 	c.ToCheck = c.ToCheck[1:]
 
 	log.Infof("[%s] Check for dependencies", g.Name)

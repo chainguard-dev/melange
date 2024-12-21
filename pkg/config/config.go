@@ -1348,10 +1348,11 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	}
 	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 
+	gid1000 := uint32(1000)
 	usr := apko_types.User{
 		UserName: "build",
 		UID:      1000,
-		GID:      1000,
+		GID:      apko_types.GID(&gid1000),
 	}
 	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
 

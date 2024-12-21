@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.23.3
 
 require (
-	chainguard.dev/apko v0.22.2
+	chainguard.dev/apko v0.22.4
 	cloud.google.com/go/storage v1.49.0
 	dagger.io/dagger v0.15.1
 	github.com/chainguard-dev/clog v1.5.1
@@ -59,7 +59,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.16.1 // indirect
+	cel.dev/expr v0.16.2 // indirect
 	chainguard.dev/go-grpc-kit v0.17.7 // indirect
 	chainguard.dev/sdk v0.1.29 // indirect
 	cloud.google.com/go v0.116.0 // indirect
@@ -194,7 +194,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/contrib/detectors/gcp v1.29.0 // indirect
+	go.opentelemetry.io/contrib/detectors/gcp v1.31.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.57.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.0.0-20240518090000-14441aefdf88 // indirect
@@ -207,10 +207,10 @@ require (
 	go.opentelemetry.io/otel/log v0.3.0 // indirect
 	go.opentelemetry.io/otel/metric v1.33.0 // indirect
 	go.opentelemetry.io/otel/sdk/log v0.3.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.29.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.33.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	go.step.sm/crypto v0.55.0 // indirect
+	go.step.sm/crypto v0.56.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
@@ -220,9 +220,8 @@ require (
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
-	google.golang.org/grpc v1.68.1 // indirect
-	google.golang.org/grpc/stats/opentelemetry v0.0.0-20240907200651-3ffb98b2c93a // indirect
-	google.golang.org/protobuf v1.35.2 // indirect
+	google.golang.org/grpc v1.69.2 // indirect
+	google.golang.org/protobuf v1.36.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/apimachinery v0.32.0 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect

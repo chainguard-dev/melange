@@ -37,6 +37,7 @@ var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.T
 // TestConfiguration_Load is the main set of tests for loading a configuration
 // file. When in doubt, add your test here.
 func TestConfiguration_Load(t *testing.T) {
+	gid1000 := uint32(1000)
 	tests := []struct {
 		name                string
 		skipConfigCleanStep bool
@@ -208,7 +209,7 @@ func TestConfiguration_Load(t *testing.T) {
 						"GOPATH":     "/var/cache/melange/go",
 					},
 					Accounts: apko_types.ImageAccounts{
-						Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: 1000}},
+						Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: apko_types.GID(&gid1000)}},
 						Groups: []apko_types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
 					},
 				},
@@ -282,10 +283,11 @@ package:
 		},
 		Subpackages: []config.Subpackage{},
 	}
+	gid1000 := uint32(1000)
 	expected.Environment.Accounts.Users = []apko_types.User{{
 		UserName: "build",
 		UID:      1000,
-		GID:      1000,
+		GID:      apko_types.GID(&gid1000),
 	}}
 	expected.Environment.Accounts.Groups = []apko_types.Group{{
 		GroupName: "build",

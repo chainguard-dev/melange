@@ -25,6 +25,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30
+	github.com/moby/moby v27.4.0+incompatible
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1
@@ -93,6 +94,8 @@ require (
 	github.com/cloudflare/circl v1.5.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20240905190251-b4127c9b8d78 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
+	github.com/containerd/containerd v1.7.24 // indirect
+	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20231217050601-ba74d44ecf5f // indirect

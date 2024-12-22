@@ -1175,6 +1175,12 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}
+	if b.Configuration.Capabilities.Add != nil {
+		cfg.Capabilities.Add = b.Configuration.Capabilities.Add
+	}
+	if b.Configuration.Capabilities.Drop != nil {
+		cfg.Capabilities.Drop = b.Configuration.Capabilities.Drop
+	}
 
 	for k, v := range b.Configuration.Environment.Environment {
 		cfg.Environment[k] = v

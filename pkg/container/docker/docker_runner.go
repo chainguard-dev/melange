@@ -36,8 +36,12 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -51,18 +55,28 @@ const (
 
 // docker is a Runner implementation that uses the docker library.
 type docker struct {
-	cli *client.Client
+	cli    *client.Client
+	remote name.Reference
 }
 
 // NewRunner returns a Docker Runner implementation.
-func NewRunner(ctx context.Context) (mcontainer.Runner, error) {
+func NewRunner(ctx context.Context, remote string) (mcontainer.Runner, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
 
+	var ref name.Reference
+	if remote != "" {
+		ref, err = name.ParseReference(remote)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &docker{
-		cli: cli,
+		cli:    cli,
+		remote: ref,
 	}, nil
 }
 
@@ -166,7 +180,8 @@ func (dk *docker) TestUsability(ctx context.Context) bool {
 // OCIImageLoader create a loader to load an OCI image into the docker daemon.
 func (dk *docker) OCIImageLoader() mcontainer.Loader {
 	return &dockerLoader{
-		cli: dk.cli,
+		cli:    dk.cli,
+		remote: dk.remote,
 	}
 }
 
@@ -355,10 +370,13 @@ func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config) (io.
 }
 
 type dockerLoader struct {
-	cli *client.Client
+	cli    *client.Client
+	remote name.Reference
 }
 
 func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (string, error) {
+	log := clog.FromContext(ctx)
+
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.LoadImage")
 	defer span.End()
 
@@ -370,6 +388,37 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	img, err := apko_oci.BuildImageFromLayer(ctx, empty.Image, layer, bc.ImageConfiguration(), creationTime, arch)
 	if err != nil {
 		return "", err
+	}
+
+	if d.remote != nil {
+		digest, err := img.Digest()
+		if err != nil {
+			return "", err
+		}
+		if err := remote.Push(d.remote, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+			return "", err
+		}
+		log.Infof("pushed image %s", d.remote.Context().Digest(digest.String()).String())
+
+		// We replicate what apko.LoadImage does here, by tagging the remote image with `repo:digest`.
+		// This is a workaround for docker, since it doesn't actually load digests until the image is pulled.
+		rawtag := fmt.Sprintf("%s:%s", d.remote.String(), digest.Hex)
+		log.Debugf("tagging image %s", rawtag)
+		tag, err := name.NewTag(rawtag)
+		if err != nil {
+			return "", err
+		}
+		if err := remote.Tag(tag, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+			return "", err
+		}
+		log.Infof("tagged image %s", tag)
+
+		// Load into local docker daemon with same name.
+		log.Infof("saving OCI image locally: %s", tag.String())
+		if _, err := daemon.Write(tag, img, daemon.WithContext(ctx)); err != nil {
+			return tag.String(), fmt.Errorf("failed to save OCI image locally: %w", err)
+		}
+		return tag.String(), nil
 	}
 
 	ref, err := apko_oci.LoadImage(ctx, img, []string{"melange:latest"})
@@ -388,6 +437,15 @@ func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if d.remote != nil {
+		r, err := name.ParseReference(ref)
+		if err != nil {
+			return err
+		}
+		log.Infof("deleting %s", r.String())
+		return remote.Delete(r, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	}
 
 	for _, resp := range resps {

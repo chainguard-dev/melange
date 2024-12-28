@@ -81,6 +81,7 @@ func buildCmd() *cobra.Command {
 	var configFileGitCommit string
 	var configFileGitRepoURL string
 	var configFileLicense string
+	var dockerRemote string
 
 	var traceFile string
 
@@ -123,7 +124,10 @@ func buildCmd() *cobra.Command {
 				ctx = tctx
 			}
 
-			r, err := getRunner(ctx, runner, remove)
+			r, err := getRunner(ctx, runner, RunnerOptions{
+				BubblewrapRemove: remove,
+				DockerRemote:     dockerRemote,
+			})
 			if err != nil {
 				return err
 			}
@@ -263,6 +267,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
 	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
 	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
+	cmd.Flags().StringVar(&dockerRemote, "docker-remote", "", "remote to use for docker images, if empty images are loaded to local docker socket")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
@@ -288,15 +293,20 @@ func detectGitHead(ctx context.Context, buildConfigFilePath string) (string, err
 	return commit, nil
 }
 
-func getRunner(ctx context.Context, runner string, remove bool) (container.Runner, error) {
+type RunnerOptions struct {
+	BubblewrapRemove bool
+	DockerRemote     string
+}
+
+func getRunner(ctx context.Context, runner string, opts RunnerOptions) (container.Runner, error) {
 	if runner != "" {
 		switch runner {
 		case "bubblewrap":
-			return container.BubblewrapRunner(remove), nil
+			return container.BubblewrapRunner(opts.BubblewrapRemove), nil
 		case "qemu":
 			return container.QemuRunner(), nil
 		case "docker":
-			return docker.NewRunner(ctx)
+			return docker.NewRunner(ctx, opts.DockerRemote)
 		case "experimentaldagger":
 			return dagger.NewRunner(ctx)
 		default:
@@ -306,12 +316,12 @@ func getRunner(ctx context.Context, runner string, remove bool) (container.Runne
 
 	switch runtime.GOOS {
 	case "linux":
-		return container.BubblewrapRunner(remove), nil
+		return container.BubblewrapRunner(opts.BubblewrapRemove), nil
 	case "darwin":
 		// darwin is the same as default, but we want to keep it explicit
 		fallthrough
 	default:
-		return docker.NewRunner(ctx)
+		return docker.NewRunner(ctx, opts.DockerRemote)
 	}
 }
 

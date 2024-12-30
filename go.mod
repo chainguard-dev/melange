@@ -49,7 +49,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f
 	mvdan.cc/sh/v3 v3.10.0
-	sigs.k8s.io/release-utils v0.8.5
+	sigs.k8s.io/release-utils v0.9.0
 	sigs.k8s.io/yaml v1.4.0
 )
 

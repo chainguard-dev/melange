@@ -39,6 +39,7 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -1378,8 +1379,8 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	}
 
 	const (
-		defaultEnvVarHOME       = "/home/build"
-		defaultEnvVarGOPATH     = "/home/build/.cache/go"
+		defaultEnvVarHOME       = container.DefaultWorkspaceDir
+		defaultEnvVarGOPATH     = container.DefaultWorkspaceDir + "/.cache/go"
 		defaultEnvVarGOMODCACHE = "/var/cache/melange/gomodcache"
 	)
 

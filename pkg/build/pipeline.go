@@ -27,7 +27,7 @@ import (
 	"strconv"
 	"strings"
 
-	apko_types "chainguard.dev/apko/pkg/build/types"
+	apkoTypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
@@ -74,7 +74,7 @@ func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMa
 	return &SubstitutionMap{nw}
 }
 
-func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
 	pkg := cfg.Package
 
 	nw := map[string]string{
@@ -139,39 +139,26 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	if data == nil {
 		data = make(map[string]string)
 	}
-
 	for k, v := range inputs {
 		if data[k] == "" {
 			data[k] = v.Default
 		}
-		if k == "expected-sha256" && data[k] != "" {
-			if !matchValidShaChars(data[k]) {
-				return data, fmt.Errorf("checksum input %q for pipeline contains invalid characters", k)
-			}
-			if len(data[k]) != 64 {
-				return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
-			}
-		}
-		if k == "expected-sha512" && data[k] != "" {
-			if !matchValidShaChars(data[k]) {
-				return data, fmt.Errorf("checksum input %q for pipeline contains invalid characters", k)
-			}
-			if len(data[k]) != 128 {
-				return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+		if data[k] != "" {
+			switch k {
+			case "expected-sha256", "expected-sha512":
+				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
+					return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+				}
+			case "expected-commit":
+				if !matchValidShaChars(data[k]) || len(data[k]) != 40 {
+					return data, fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha lengt", k)
+				}
 			}
 		}
-		if k == "expected-commit" && data[k] != "" {
-			if !matchValidShaChars(data[k]) {
-				return data, fmt.Errorf("expectec commit %q for pipeline contains invalid characters", k)
-			}
-			if len(data[k]) != 40 {
-				return data, fmt.Errorf("expected commit %q for pipeline, invalid length", k)
-			}
-		}
-
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
+
 	}
 
 	return data, nil
@@ -333,6 +320,18 @@ func shouldRun(ifs string) (bool, error) {
 	}
 
 	return result, nil
+}
+
+func expectedShaLength(shaType string) int {
+	switch shaType {
+	case "expected-sha256":
+		return 64
+	case "expected-sha512":
+		return 128
+	case "expected-commit":
+		return 40
+	}
+	return 0
 }
 
 //go:embed pipelines/*

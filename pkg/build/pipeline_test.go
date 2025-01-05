@@ -172,3 +172,63 @@ func TestAllPipelines(t *testing.T) {
 		})
 	}
 }
+
+func Test_validateWith(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        map[string]string
+		inputs      map[string]config.Input
+		expected    map[string]string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid SHA256 checksum",
+			data: map[string]string{
+				"expected-sha256": "a3c2567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			},
+			inputs: map[string]config.Input{
+				"expected-sha256": {Default: "", Required: true},
+			},
+			expected: map[string]string{
+				"expected-sha256": "a3c2567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid SHA256 length",
+			data: map[string]string{
+				"expected-sha256": "abcdef",
+			},
+			inputs: map[string]config.Input{
+				"expected-sha256": {Default: "", Required: true},
+			},
+			expectError: true,
+			errorMsg:    "checksum input \"expected-sha256\" for pipeline, invalid length",
+		},
+		{
+			name: "Missing required input",
+			data: map[string]string{},
+			inputs: map[string]config.Input{
+				"expected-commit": {Default: "", Required: true},
+			},
+			expectError: true,
+			errorMsg:    "required input \"expected-commit\" for pipeline is missing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := validateWith(tt.data, tt.inputs)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.EqualError(t, err, tt.errorMsg)
+				return // Skip further checks if error is expected
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

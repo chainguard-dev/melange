@@ -61,17 +61,12 @@ func (c *RLHTTPClient) GetArtifactSHA256(ctx context.Context, artifactURI string
 	}
 
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%d when getting %s", resp.StatusCode, artifactURI)
 	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("reading body: %w", err)
-	}
-
 	h256 := sha256.New()
-	h256.Write(body)
+	if _, err := io.Copy(h256, resp.Body); err != nil {
+		return "", fmt.Errorf("hashing %s: %w", artifactURI, err)
+	}
 	return fmt.Sprintf("%x", h256.Sum(nil)), nil
 }

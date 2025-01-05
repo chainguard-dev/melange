@@ -23,7 +23,6 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -165,8 +164,13 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 }
 
 func matchValidShaChars(s string) bool {
-	match, _ := regexp.MatchString("^[a-fA-F0-9]+$", s)
-	return match
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c >= '0' && c <= '9') && !(c >= 'a' && c <= 'f') && !(c >= 'A' && c <= 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 // Build a script to run as part of evalRun

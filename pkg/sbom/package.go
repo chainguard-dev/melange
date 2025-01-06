@@ -20,7 +20,6 @@ package sbom
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -174,10 +173,6 @@ func (p Package) getExternalRefs() []spdx.ExternalRef {
 	return result
 }
 
-// invalidIDCharsRe is a regular expression that matches characters not
-// considered valid in SPDX identifiers.
-var invalidIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
-
 // stringToIdentifier converts a string to a valid SPDX identifier by replacing
 // invalid characters. Colons and slashes are replaced by dashes, and all other
 // invalid characters are replaced by their Unicode code point prefixed with
@@ -189,20 +184,21 @@ var invalidIDCharsRe = regexp.MustCompile(`[^a-zA-Z0-9-.]+`)
 //	"foo/bar" -> "foo-bar"
 //	"foo bar" -> "fooC32bar"
 func stringToIdentifier(in string) string {
-	in = strings.ReplaceAll(in, ":", "-")
-	in = strings.ReplaceAll(in, "/", "-")
+	var sb strings.Builder
+	sb.Grow(len(in))
 
-	invalidCharReplacer := func(s string) string {
-		sb := strings.Builder{}
-		for _, r := range s {
+	for _, r := range in {
+		switch {
+		case r == ':' || r == '/':
+			sb.WriteRune('-')
+		case r == '-' || r == '.' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
+			sb.WriteRune(r)
+		default:
 			sb.WriteString(encodeInvalidRune(r))
 		}
-		return sb.String()
 	}
-
-	return invalidIDCharsRe.ReplaceAllStringFunc(in, invalidCharReplacer)
+	return sb.String()
 }
-
 func encodeInvalidRune(r rune) string {
 	return "C" + strconv.Itoa(int(r))
 }

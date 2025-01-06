@@ -41,7 +41,7 @@ type MonitorFinder struct {
 func (mf *MonitorFinder) FindMonitor(ctx context.Context, pkg string) (*Item, error) {
 	var items *Items
 	url := fmt.Sprintf(searchFmt, pkg)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

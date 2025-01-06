@@ -149,7 +149,7 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 					return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
 				}
 			case "expected-commit":
-				if !matchValidShaChars(data[k]) || len(data[k]) != 40 {
+				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
 					return data, fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha length", k)
 				}
 			}

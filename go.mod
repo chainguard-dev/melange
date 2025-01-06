@@ -19,7 +19,7 @@ require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/google/go-github/v54 v54.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
-	github.com/invopop/jsonschema v0.12.0
+	github.com/invopop/jsonschema v0.13.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.11

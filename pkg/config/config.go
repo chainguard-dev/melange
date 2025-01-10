@@ -595,12 +595,23 @@ type Input struct {
 	Required bool `json:"required,omitempty"`
 }
 
-// The root melange configuration
+// Capabilities is the configuration for Linux capabilities for the runner.
+type Capabilities struct {
+	// Linux process capabilities to add to the pipeline container.
+	Add []string `json:"add,omitempty" yaml:"add,omitempty"`
+	// Linux process capabilities to drop from the pipeline container.
+	Drop []string `json:"drop,omitempty" yaml:"drop,omitempty"`
+}
+
+// Configuration is the root melange configuration.
 type Configuration struct {
 	// Package metadata
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
 	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: Linux capabilities configuration to apply to the melange runner.
+	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.

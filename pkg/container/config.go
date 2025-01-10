@@ -40,6 +40,8 @@ type BindMount struct {
 
 type Capabilities struct {
 	Networking bool
+	Add        []string // List of kernel capabilities to add to the container.
+	Drop       []string // List of kernel capabilities to drop from the container.
 }
 
 type Config struct {

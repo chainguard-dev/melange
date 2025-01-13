@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -270,9 +271,17 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		}
 	}
 
-	err = apko_cpio.FromLayer(layer, guestInitramfs)
-	if err != nil {
+	// We see issues with qemu launching the initrd when the size of the
+	// uncompressed CPIO exceeds ~2G and change (very suspiciously around
+	// max signed int32), so take the performance hit of compressing the initrd
+	// (a double hit b/c the kernel will decompress).
+	gzw := gzip.NewWriter(guestInitramfs)
+	if err := apko_cpio.FromLayer(layer, gzw); err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
+		return ref, err
+	}
+	if err := gzw.Close(); err != nil {
+		clog.FromContext(ctx).Errorf("failed to close gzip writer: %v", err)
 		return ref, err
 	}
 

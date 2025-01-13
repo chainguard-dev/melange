@@ -1361,8 +1361,7 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	if cfg.Test != nil {
 		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
 	}
-	for i := range cfg.Subpackages {
-		sub := &cfg.Subpackages[i]
+	for _, sub := range cfg.Subpackages {
 		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
 			continue
 		}
@@ -1379,8 +1378,7 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	if cfg.Test != nil {
 		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)
 	}
-	for i := range cfg.Subpackages {
-		sub := &cfg.Subpackages[i]
+	for _, sub := range cfg.Subpackages {
 		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
 			continue
 		}

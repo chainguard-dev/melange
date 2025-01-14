@@ -72,18 +72,9 @@ jobs:
           version: latest
           install-only: true
 
-      # Federate to create a token to authenticate with the homebrew-tap repository.
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
-        if: steps.check.outputs.need_release == 'yes'
-        id: octo-sts
-        with:
-          scope: chainguard-dev/homebrew-tap
-          identity: melange
-
       - name: Release
         if: steps.check.outputs.need_release == 'yes'
         run: make release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
           TAG: ${{ steps.check.outputs.existing_tag || steps.create_tag.outputs.new_tag }}

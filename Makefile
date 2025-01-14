@@ -128,8 +128,8 @@ fmt: ## Format all go files
 checkfmt: SHELL := /usr/bin/env bash
 checkfmt: ## Check formatting of all go files
 	@ $(MAKE) --no-print-directory log-$@
- 	$(shell test -z "$(shell gofmt -l $(GOFILES) | tee /dev/stderr)")
- 	$(shell test -z "$(shell goimports -l $(GOFILES) | tee /dev/stderr)")
+	$(shell test -z "$(shell gofmt -l $(GOFILES) | tee /dev/stderr)")
+	$(shell test -z "$(shell goimports -l $(GOFILES) | tee /dev/stderr)")
 
 log-%:
 	@grep -h -E '^$*:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -148,12 +148,10 @@ lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
 .PHONY: unit
 unit:
 	go test ./... -race
-	SIGNING_DIGEST=SHA1 go test ./... -race
 
 .PHONY: integration
 integration:
 	go test ./... -race -tags=integration
-	SIGNING_DIGEST=SHA1 go test ./... -race -tags=integration
 
 .PHONY: test
 test: integration

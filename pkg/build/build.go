@@ -30,6 +30,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -74,6 +75,10 @@ echo "cleaning Workspace by removing $# file/directories in $d"
 rm -Rf "$@"`,
 	"shellEmptyDir",
 }
+
+var gccLinkTemplate = `*link:
++ --package-metadata={"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.Arch.ToAPK}}"}
+`
 
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
@@ -678,6 +683,20 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 		return err
 	}
 
+	// Write out build settings into workspacedir
+	// For now, just the gcc spec file and just link settings.
+	// In the future can control debug symbol generation, march/mtune, etc.
+	specFile, err := os.Create(filepath.Join(b.WorkspaceDir, ".melange.gcc.spec"))
+	if err != nil {
+		return err
+	}
+	specTemplate := template.New("gccSpecFile")
+	if err := template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b); err != nil {
+		return err
+	}
+	if err := specFile.Close(); err != nil {
+		return err
+	}
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err

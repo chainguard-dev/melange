@@ -8,6 +8,11 @@ pipeline:
 
 # Test python/import, and python/test pipelines
 test:
+  environment:
+    # TODO(pnasrat): fix to use multiple python
+    contents:
+      packages:
+        - python-3.12-base
   pipeline:
     # Test import directly (python -c "import numpy")
     - uses: python/import

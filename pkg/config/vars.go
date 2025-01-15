@@ -27,6 +27,7 @@ const (
 	SubstitutionPackageFullVersion    = "${{package.full-version}}"
 	SubstitutionPackageEpoch          = "${{package.epoch}}"
 	SubstitutionPackageDescription    = "${{package.description}}"
+	SubstitutionPackageSrcdir         = "${{package.srcdir}}"
 	SubstitutionTargetsOutdir         = "${{targets.outdir}}"
 	SubstitutionTargetsDestdir        = "${{targets.destdir}}"
 	SubstitutionTargetsContextdir     = "${{targets.contextdir}}"

@@ -222,7 +222,7 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 func downloadFile(ctx context.Context, uri string) (string, error) {
 	targetFile, err := os.CreateTemp("", "melange-update-*")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer targetFile.Close()
 
@@ -234,9 +234,9 @@ func downloadFile(ctx context.Context, uri string) (string, error) {
 		},
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
 	// Set accept header to match the expected MIME types and avoid 403's for some servers like https://www.netfilter.org
@@ -244,13 +244,13 @@ func downloadFile(ctx context.Context, uri string) (string, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to fetch URL %s: %w", uri, err)
 	}
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("got %s when fetching %s", resp.Status, uri)
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code %d (%s) when fetching %s", resp.StatusCode, resp.Status, uri)
 	}
 
 	if _, err := io.Copy(targetFile, resp.Body); err != nil {

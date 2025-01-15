@@ -30,6 +30,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -48,6 +49,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"k8s.io/kube-openapi/pkg/util/sets"
+	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
@@ -57,6 +59,26 @@ import (
 )
 
 const melangeOutputDirName = "melange-out"
+
+var shellEmptyDir = []string{
+	"sh", "-c",
+	`d="$1";
+[ $# -eq 1 ] || { echo "must provide dir. got $# args."; exit 1; }
+cd "$d" || { echo "failed cd '$d'"; exit 1; }
+set --
+for e in * .*; do
+  [ "$e" = "." -o "$e" = ".." -o "$e" = "*" ] && continue
+  set -- "$@" "$e"
+done
+[ $# -gt 0 ] || { echo "nothing to cleanup. $d was empty."; exit 0; }
+echo "cleaning Workspace by removing $# file/directories in $d"
+rm -Rf "$@"`,
+	"shellEmptyDir",
+}
+
+var gccLinkTemplate = `*link:
++ --package-metadata={"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.Arch.ToAPK}}"}
+`
 
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
@@ -190,9 +212,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.ConfigFileRepositoryCommit == "" {
 		return nil, fmt.Errorf("config file repository commit was not set")
 	}
-	if b.Runner == nil {
-		return nil, fmt.Errorf("no runner was specified")
-	}
 
 	parsedCfg, err := config.ParseConfiguration(ctx,
 		b.ConfigFile,
@@ -274,6 +293,9 @@ func (b *Build) Close(ctx context.Context) error {
 
 // buildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
+//
+// NB: This has side effects! This mutates Build by overwriting Configuration.Environment with
+// a locked version (packages resolved to versions) so we can record which packages were used.
 func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
@@ -291,15 +313,39 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		}...)
 	}
 
-	bc, err := apko_build.New(ctx, guestFS,
-		apko_build.WithImageConfiguration(imgConfig),
+	// Work around LockImageConfiguration assuming multi-arch.
+	imgConfig.Archs = []apko_types.Architecture{b.Arch}
+
+	opts := []apko_build.Option{apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
 		apko_build.WithExtraPackages(b.ExtraPackages),
 		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
-		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
+		apko_build.WithIgnoreSignatures(b.IgnoreSignatures),
+	}
+
+	configs, warn, err := apko_build.LockImageConfiguration(ctx, imgConfig, opts...)
+	if err != nil {
+		return "", fmt.Errorf("unable to lock image configuration: %w", err)
+	}
+
+	for k, v := range warn {
+		log.Warnf("Unable to lock package %s: %s", k, v)
+	}
+
+	locked, ok := configs["index"]
+	if !ok {
+		return "", errors.New("missing locked config")
+	}
+
+	// Overwrite the environment with the locked one.
+	b.Configuration.Environment = *locked
+
+	opts = append(opts, apko_build.WithImageConfiguration(*locked))
+
+	bc, err := apko_build.New(ctx, guestFS, opts...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
@@ -637,6 +683,20 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 		return err
 	}
 
+	// Write out build settings into workspacedir
+	// For now, just the gcc spec file and just link settings.
+	// In the future can control debug symbol generation, march/mtune, etc.
+	specFile, err := os.Create(filepath.Join(b.WorkspaceDir, ".melange.gcc.spec"))
+	if err != nil {
+		return err
+	}
+	specTemplate := template.New("gccSpecFile")
+	if err := template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b); err != nil {
+		return err
+	}
+	if err := specFile.Close(); err != nil {
+		return err
+	}
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -677,6 +737,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
+
+	if b.Runner == nil {
+		return fmt.Errorf("no runner was specified")
+	}
 
 	b.summarize(ctx)
 
@@ -740,7 +804,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	log.Infof("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
-		return fmt.Errorf("compiling build: %w", err)
+		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
 	}
 
 	// Filter out any subpackages with false If conditions.
@@ -860,6 +924,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
+		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
+			return err
+		}
+
 		if !b.isBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
 
@@ -868,10 +936,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 			}
-		}
-
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
-			return err
 		}
 
 		// add the main package to the linter queue
@@ -947,19 +1011,22 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
+	// clean build environment
+	log.Debugf("cleaning workspacedir")
+	cleanEnv := map[string]string{}
+	if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir)...); err != nil {
+		log.Warnf("unable to clean workspace: %s", err)
+	}
+	// if the Runner used WorkspaceDir as WorkDir, then this will be empty already.
+	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
+		log.Warnf("unable to clean workspace: %s", err)
+	}
+
 	if !b.isBuildLess() {
 		// clean build guest container
 		if err := os.RemoveAll(b.GuestDir); err != nil {
 			log.Warnf("unable to clean guest container: %s", err)
 		}
-	}
-
-	// clean build environment
-	// TODO(epsilon-phase): implement a way to clean up files that are not owned by the user
-	// that is running melange. files created inside the build not owned by the build user are
-	// not be possible to delete with this strategy.
-	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
-		log.Warnf("unable to clean workspace: %s", err)
 	}
 
 	// generate APKINDEX.tar.gz and sign it
@@ -1062,7 +1129,7 @@ func (b *Build) SummarizePaths(ctx context.Context) {
 
 func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange is building:")
+	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
 	log.Infof("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
@@ -1126,6 +1193,12 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.CPUModel = b.Configuration.Package.Resources.CPUModel
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
+	}
+	if b.Configuration.Capabilities.Add != nil {
+		cfg.Capabilities.Add = b.Configuration.Capabilities.Add
+	}
+	if b.Configuration.Capabilities.Drop != nil {
+		cfg.Capabilities.Drop = b.Configuration.Capabilities.Drop
 	}
 
 	for k, v := range b.Configuration.Environment.Environment {

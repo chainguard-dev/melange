@@ -22,6 +22,21 @@ type ApkSigner interface {
 	SignatureName() string
 }
 
+var melangeApkDigest crypto.Hash
+
+func init() {
+	melangeApkDigest = crypto.SHA256
+	if digest, ok := os.LookupEnv("SIGNING_DIGEST"); ok {
+		switch digest {
+		case "SHA256":
+		case "SHA1":
+			melangeApkDigest = crypto.SHA1
+		default:
+			panic(fmt.Errorf("unsupported SIGNING_DIGEST"))
+		}
+	}
+}
+
 func EmitSignature(ctx context.Context, signer ApkSigner, controlData []byte, sde time.Time) ([]byte, error) {
 	_, span := otel.Tracer("melange").Start(ctx, "EmitSignature")
 	defer span.End()
@@ -73,12 +88,7 @@ type KeyApkSigner struct {
 	KeyPassphrase string
 }
 
-const melangeApkDigest = crypto.SHA1
-
-// const melangeApkDigest = crypto.SHA256
-
 func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
-
 	controlDigest, err := sign.HashData(control, melangeApkDigest)
 	if err != nil {
 		return nil, err

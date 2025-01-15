@@ -63,6 +63,9 @@ func allPaths(fn func(ctx context.Context, pkgname, path string) error) func(ctx
 			if err := ctx.Err(); err != nil {
 				return err
 			}
+			if err != nil {
+				return err
+			}
 			if d.IsDir() {
 				// Ignore directories
 				return nil
@@ -286,7 +289,6 @@ func worldWriteableLinter(ctx context.Context, pkgname string, fsys fs.FS) error
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-
 		if err != nil {
 			return err
 		}
@@ -389,9 +391,12 @@ func strippedLinter(ctx context.Context, _ string, fsys fs.FS) error {
 	})
 }
 
-func emptyLinter(_ context.Context, pkgname string, fsys fs.FS) error {
+func emptyLinter(ctx context.Context, pkgname string, fsys fs.FS) error {
 	foundfile := false
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}

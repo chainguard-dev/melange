@@ -32,7 +32,6 @@ import (
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/util"
 )
 
 var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
@@ -183,6 +182,57 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string,
 	return "", "", nil
 }
 
+func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies) error {
+	log := clog.FromContext(ctx)
+	if !strings.Contains(path, ".so") {
+		return nil
+	}
+
+	targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path)
+	if err != nil {
+		return nil
+	}
+
+	targetFS, err := hdl.FilesystemForRelative(targetPkg)
+	if err != nil {
+		return nil
+	}
+
+	if realPath != "" {
+		rawFile, err := targetFS.Open(realPath)
+		if err != nil {
+			return nil
+		}
+		defer rawFile.Close()
+
+		seekableFile, ok := rawFile.(io.ReaderAt)
+		if !ok {
+			return nil
+		}
+
+		ef, err := elf.NewFile(seekableFile)
+		if err != nil {
+			return nil
+		}
+		defer ef.Close()
+
+		sonames, err := ef.DynString(elf.DT_SONAME)
+		// most likely SONAME is not set on this object
+		if err != nil {
+			log.Warnf("library %s lacks SONAME", path)
+			return nil
+		}
+
+		for _, soname := range sonames {
+			log.Infof("  found soname %s for %s", soname, path)
+
+			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+		}
+	}
+
+	return nil
+}
+
 func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shared object dependencies...")
@@ -205,58 +255,16 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		mode := fi.Mode()
 
 		// If it is a symlink, lets check and see if it is a library SONAME.
-		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
-			if !strings.Contains(path, ".so") {
-				return nil
+		isLink := mode.Type()&fs.ModeSymlink == fs.ModeSymlink
+
+		if isLink {
+			if err := processSymlinkSo(ctx, hdl, path, generated); err != nil {
+				return err
 			}
-
-			targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path)
-			if err != nil {
-				return nil
-			}
-
-			targetFS, err := hdl.FilesystemForRelative(targetPkg)
-			if err != nil {
-				return nil
-			}
-
-			if realPath != "" {
-				rawFile, err := targetFS.Open(realPath)
-				if err != nil {
-					return nil
-				}
-				defer rawFile.Close()
-
-				seekableFile, ok := rawFile.(io.ReaderAt)
-				if !ok {
-					return nil
-				}
-
-				ef, err := elf.NewFile(seekableFile)
-				if err != nil {
-					return nil
-				}
-				defer ef.Close()
-
-				sonames, err := ef.DynString(elf.DT_SONAME)
-				// most likely SONAME is not set on this object
-				if err != nil {
-					log.Warnf("library %s lacks SONAME", path)
-					return nil
-				}
-
-				for _, soname := range sonames {
-					log.Infof("  found soname %s for %s", soname, path)
-
-					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
-				}
-			}
-
-			return nil
 		}
 
 		// If it is not a regular file, we are finished processing it.
-		if !mode.IsRegular() {
+		if !mode.IsRegular() && !isLink {
 			return nil
 		}
 
@@ -587,23 +595,54 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 	return nil
 }
 
-// Add man-db as a dep for any doc package
+// For a documentation package add a dependency on man-db and / or texinfo as appropriate
 func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for -doc package...")
 	if !strings.HasSuffix(hdl.PackageName(), "-doc") {
 		return nil
 	}
-	// Do not add a man-db dependency if one already exists.
-	for _, dep := range hdl.BaseDependencies().Runtime {
-		if dep == "man-db" {
-			log.Warnf("%s: man-db dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
-			return nil
-		}
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
 	}
 
-	log.Infof("  found -doc package, generating man-db dependency")
-	generated.Runtime = append(generated.Runtime, "man-db")
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if isInDir(path, []string{"usr/share/man"}) {
+
+			// Do not add a man-db dependency if one already exists.
+			for _, dep := range hdl.BaseDependencies().Runtime {
+				if dep == "man-db" {
+					log.Warnf("%s: man-db dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+				}
+			}
+
+			log.Infof("  found files in /usr/share/man/ in package, generating man-db dependency")
+			generated.Runtime = append(generated.Runtime, "man-db")
+		}
+
+		if isInDir(path, []string{"usr/share/info"}) {
+
+			// Do not add a texinfo dependency if one already exists.
+			for _, dep := range hdl.BaseDependencies().Runtime {
+				if dep == "texinfo" {
+					log.Warnf("%s: texinfo dependency already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+				}
+			}
+
+			log.Infof("  found files in /usr/share/info/ in package, generating texinfo dependency")
+			generated.Runtime = append(generated.Runtime, "texinfo")
+		}
+		return nil
+
+	}); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -743,9 +782,9 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		}
 	}
 
-	generated.Runtime = util.Dedup(generated.Runtime)
-	generated.Provides = util.Dedup(generated.Provides)
-	generated.Vendored = util.Dedup(generated.Vendored)
+	generated.Runtime = slices.Compact(slices.Sorted(slices.Values(generated.Runtime)))
+	generated.Provides = slices.Compact(slices.Sorted(slices.Values(generated.Provides)))
+	generated.Vendored = slices.Compact(slices.Sorted(slices.Values(generated.Vendored)))
 
 	if hdl.Options().NoCommands {
 		generated.Provides = slices.DeleteFunc(generated.Provides, func(s string) bool {

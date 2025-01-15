@@ -14,10 +14,6 @@ test:
       packages:
         - python-3.12-base
   pipeline:
-    # Test import with command (python -c "import numpy")
-    - uses: python/test
-      with:
-        command: python3.12 -c "import numpy"
     # Test import directly (python -c "import numpy")
     - uses: python/import
       with:

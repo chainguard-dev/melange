@@ -52,6 +52,7 @@ func TestInheritWorkdir(t *testing.T) {
 				WorkDir: "/work",
 				Pipeline: []config.Pipeline{{}, {
 					WorkDir: "/do-not-inherit",
+					Runs:    "#!/bin/bash\n# hunter2\necho $SECRET",
 				}},
 			}},
 		},
@@ -66,6 +67,9 @@ func TestInheritWorkdir(t *testing.T) {
 	}
 	if got, want := build.Configuration.Pipeline[0].Pipeline[1].WorkDir, "/do-not-inherit"; want != got {
 		t.Fatalf("workdir[1]: want %q, got %q", want, got)
+	}
+	if got, want := build.Configuration.Pipeline[0].Pipeline[1].Runs, "#!/bin/bash\necho $SECRET\n"; want != got {
+		t.Fatalf("runs[1]: should strip comments, want %q, got %q", want, got)
 	}
 }
 
@@ -113,5 +117,45 @@ func TestCompileTest(t *testing.T) {
 
 	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage-base", "subpackage", "subpackage-need"}; !slices.Equal(got, want) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
+	}
+}
+
+func Test_stripComments(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{"# foo\n", ""},
+		{"\n", ""},
+		{"#!/bin/bash\n", "#!/bin/bash\n"},
+		{"#!/bin/bash\n# foo\n", "#!/bin/bash\n"},
+		{"#!/bin/bash\nfoo\n", "#!/bin/bash\nfoo\n"},
+		{"#!/bin/bash\nfoo\n# bar\n", "#!/bin/bash\nfoo\n"},
+		{"#!/bin/bash\nfoo\nbar\n", "#!/bin/bash\nfoo\nbar\n"},
+		{"#!/bin/bash\nfoo\n# bar\nbaz\n", "#!/bin/bash\nfoo\nbaz\n"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.in, func(t *testing.T) {
+			got, err := stripComments(test.in)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got != test.want {
+				t.Errorf("stripComments(%q): want %q, got %q", test.in, test.want, got)
+			}
+		})
+	}
+
+	wantErr := `1:13: not a valid test operator: -m:
+> if [[ uname -m == 'x86_64']]; then
+              ^`
+
+	got, err := stripComments("if [[ uname -m == 'x86_64']]; then")
+	if err == nil {
+		t.Errorf("expected error, got %q", got)
+	} else if err.Error() != wantErr {
+		t.Errorf("want:\n%s\ngot:\n%s", wantErr, err)
 	}
 }

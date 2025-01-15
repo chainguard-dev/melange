@@ -1,0 +1,27 @@
+package:
+  name: busybox
+  version: 0.1.0
+  epoch: 0
+
+capabilities:
+  add:
+    - CAP_NET_ADMIN
+  drop:
+    - CAP_SYS_ADMIN
+
+pipeline:
+  # Here your build pipeline.
+  # Capabilities are added/dropped to both build and test pipelines.
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - iproute2
+  pipeline:
+    # Note: you can't do it with bubblewrap runner,
+    # as it shares the host network namespace.
+    - name: Simulate a test attempting to create network interfaces
+      runs: |
+        ip link add dev myinterface type dummy

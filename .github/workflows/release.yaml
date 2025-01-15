@@ -1,13 +1,13 @@
-name: Create Release
+name: Release
 
 on:
-  push:
-    tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+  schedule:
+    - cron: '0 0 * * 1' # every Monday at 00:00 UTC
+  workflow_dispatch:
 
 jobs:
-  cli:
-    name: Release the CLI
+  release:
+    name: Release
     runs-on: ubuntu-latest
 
     # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
@@ -16,75 +16,65 @@ jobs:
       contents: write
 
     steps:
-      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      - uses: step-security/harden-runner@c95a14d0e5bab51a9f56296a4eb0e416910cd350 # v2.10.3
         with:
           egress-policy: audit
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
+      - name: Check if any changes since last release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch --tags
+          TAG=$(git tag --points-at HEAD)
+          if [ -z "$TAG" ]; then
+            echo "No tag points at HEAD, so we need a new tag and then a new release."
+            echo "need_release=yes" >> $GITHUB_OUTPUT
+          else
+            RELEASE=$(gh release view "$TAG" --json tagName --jq '.tagName' || echo "none")
+            if [ "$RELEASE" == "$TAG" ]; then
+              echo "A release exists for tag $TAG, which has the latest changes, so no need for a new tag or release."
+              echo "need_release=no" >> $GITHUB_OUTPUT
+            else
+              echo "Tag $TAG exists, but no release is associated. Need a new release."
+              echo "need_release=yes" >> $GITHUB_OUTPUT
+              echo "existing_tag=$TAG" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Bump version and push tag
+        id: create_tag
+        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
+        if: steps.check.outputs.need_release == 'yes' && steps.check.outputs.existing_tag == ''
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        if: steps.check.outputs.need_release == 'yes'
+        with:
+          ref: ${{ steps.check.outputs.existing_tag || steps.create_tag.outputs.new_tag }}
+
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        if: steps.check.outputs.need_release == 'yes'
         with:
           go-version-file: './go.mod'
           check-latest: true
 
+      # Cosign is used by goreleaser to sign release artifacts.
       - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+        if: steps.check.outputs.need_release == 'yes'
 
       - uses: goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf # v6.1.0
+        if: steps.check.outputs.need_release == 'yes'
         with:
           version: latest
           install-only: true
 
-      # Federate to create a token to authenticate with the homebrew-tap repository.
-      - uses: octo-sts/action@6177b4481c00308b3839969c3eca88c96a91775f # v1.0.0
-        id: octo-sts
-        with:
-          scope: chainguard-dev/homebrew-tap
-          identity: melange
-
       - name: Release
+        if: steps.check.outputs.need_release == 'yes'
         run: make release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
-
-  ko-build:
-    name: Release melange image
-    runs-on: ubuntu-latest
-    needs:
-      - cli
-
-    # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
-    permissions:
-      id-token: write
-      packages: write
-      contents: read
-
-    env:
-      KO_DOCKER_REPO: ghcr.io/${{ github.repository }}
-      COSIGN_YES: "true"
-
-    steps:
-      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
-        with:
-          go-version-file: './go.mod'
-          check-latest: true
-
-      - uses: ko-build/setup-ko@3aebd0597dc1e9d1a26bcfdb7cbeb19c131d3037 # v0.7
-
-      - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
-
-      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ github.token }}
-
-      - name: Publish/Sign melange image
-        run: |
-          make sign-image
+          TAG: ${{ steps.check.outputs.existing_tag || steps.create_tag.outputs.new_tag }}

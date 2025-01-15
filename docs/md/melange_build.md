@@ -36,7 +36,7 @@ melange build [flags]
       --cache-source string                                     directory or bucket used for preloading the cache
       --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
       --cpu string                                              default CPU resources to use for builds
-      --cpumodel string                                         default memory resources to use for builds (default "host")
+      --cpumodel string                                         default memory resources to use for builds
       --create-build-log                                        creates a package.log file containing a list of packages that were built by the command
       --debug                                                   enables debug logging of build pipelines
       --debug-runner                                            when enabled, the builder pod will persist after the build succeeds or fails

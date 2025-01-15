@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -36,12 +37,12 @@ import (
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
-	"chainguard.dev/melange/pkg/util"
 
 	"chainguard.dev/apko/pkg/apk/tarball"
 	"github.com/chainguard-dev/clog"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
+	"gopkg.in/yaml.v3"
 )
 
 // pgzip's default is GOMAXPROCS(0)
@@ -210,6 +211,17 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
+	var melangeBuf bytes.Buffer
+	enc := yaml.NewEncoder(&melangeBuf)
+	enc.SetIndent(2) // To align with `yam` a little better.
+
+	if err := enc.Encode(pc.Build.Configuration); err != nil {
+		return nil, fmt.Errorf("marshalling config: %w", err)
+	}
+	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0644); err != nil {
+		return nil, fmt.Errorf("writing .melange.yaml: %w", err)
+	}
+
 	if scriptlets := pc.Scriptlets; scriptlets != nil {
 		if scriptlets.Trigger.Script != "" {
 			// #nosec G306 -- scriptlets must be executable
@@ -330,15 +342,15 @@ func (pc *PackageBuild) GenerateDependencies(ctx context.Context, hdl sca.SCAHan
 	unvendored := removeSelfProvidedDeps(generated.Runtime, generated.Vendored)
 
 	newruntime := append(pc.Dependencies.Runtime, unvendored...)
-	pc.Dependencies.Runtime = util.Dedup(newruntime)
+	pc.Dependencies.Runtime = slices.Compact(slices.Sorted(slices.Values(newruntime)))
 
 	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
-	pc.Dependencies.Provides = util.Dedup(newprovides)
+	pc.Dependencies.Provides = slices.Compact(slices.Sorted(slices.Values(newprovides)))
 
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 
 	// Sets .PKGINFO `# vendored = ...` comments; does not affect resolution.
-	pc.Dependencies.Vendored = util.Dedup(generated.Vendored)
+	pc.Dependencies.Vendored = slices.Compact(slices.Sorted(slices.Values(generated.Vendored)))
 
 	pc.Dependencies.Summarize(ctx)
 

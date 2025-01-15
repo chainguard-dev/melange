@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/fs"
 	"iter"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -361,6 +362,8 @@ type PipelineAssertions struct {
 }
 
 type Pipeline struct {
+	// Optional: A condition to evaluate before running the pipeline
+	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: A user defined name for the pipeline
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Optional: A named reusable pipeline to run
@@ -386,8 +389,6 @@ type Pipeline struct {
 	Needs *Needs `json:"needs,omitempty" yaml:"needs,omitempty"`
 	// Optional: Labels to apply to the pipeline
 	Label string `json:"label,omitempty" yaml:"label,omitempty"`
-	// Optional: A condition to evaluate before running the pipeline
-	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: Assertions to evaluate whether the pipeline was successful
 	Assertions *PipelineAssertions `json:"assertions,omitempty" yaml:"assertions,omitempty"`
 	// Optional: The working directory of the pipeline
@@ -594,12 +595,23 @@ type Input struct {
 	Required bool `json:"required,omitempty"`
 }
 
-// The root melange configuration
+// Capabilities is the configuration for Linux capabilities for the runner.
+type Capabilities struct {
+	// Linux process capabilities to add to the pipeline container.
+	Add []string `json:"add,omitempty" yaml:"add,omitempty"`
+	// Linux process capabilities to drop from the pipeline container.
+	Drop []string `json:"drop,omitempty" yaml:"drop,omitempty"`
+}
+
+// Configuration is the root melange configuration.
 type Configuration struct {
 	// Package metadata
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
 	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: Linux capabilities configuration to apply to the melange runner.
+	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.
@@ -681,6 +693,8 @@ type Update struct {
 	// Indicates that this package should be manually updated, usually taking
 	// care over special version numbers
 	Manual bool `json:"manual,omitempty" yaml:"manual"`
+	// Indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
+	RequireSequential bool `json:"require-sequential,omitempty" yaml:"require-sequential"`
 	// Indicate that an update to this package requires an epoch bump of
 	// downstream dependencies, e.g. golang, java
 	Shared bool `json:"shared,omitempty" yaml:"shared,omitempty"`
@@ -1218,7 +1232,9 @@ func (p *Pipeline) propagateChildPipelines() {
 			p.Pipeline[idx].WorkDir = p.WorkDir
 		}
 
-		p.Pipeline[idx].Environment = util.RightJoinMap(p.Environment, p.Pipeline[idx].Environment)
+		m := maps.Clone(p.Environment)
+		maps.Copy(m, p.Pipeline[idx].Environment)
+		p.Pipeline[idx].Environment = m
 
 		p.Pipeline[idx].propagateChildPipelines()
 	}
@@ -1343,10 +1359,11 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	}
 	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 
+	gid1000 := uint32(1000)
 	usr := apko_types.User{
 		UserName: "build",
 		UID:      1000,
-		GID:      1000,
+		GID:      apko_types.GID(&gid1000),
 	}
 	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
 

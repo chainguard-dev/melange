@@ -26,13 +26,15 @@ import (
 	"strconv"
 	"strings"
 
-	apko_types "chainguard.dev/apko/pkg/build/types"
+	apkoTypes "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 )
+
+const WorkDir = "/home/build"
 
 func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
 	nw := maps.Clone(sm.Substitutions)
@@ -71,7 +73,7 @@ func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMa
 	return &SubstitutionMap{nw}
 }
 
-func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
 	pkg := cfg.Package
 
 	nw := map[string]string{
@@ -79,6 +81,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture,
 		config.SubstitutionPackageVersion:     pkg.Version,
 		config.SubstitutionPackageEpoch:       strconv.FormatUint(pkg.Epoch, 10),
 		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
+		config.SubstitutionPackageSrcdir:      "/home/build",
 		config.SubstitutionTargetsOutdir:      "/home/build/melange-out",
 		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
@@ -135,18 +138,39 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	if data == nil {
 		data = make(map[string]string)
 	}
-
 	for k, v := range inputs {
 		if data[k] == "" {
 			data[k] = v.Default
 		}
-
+		if data[k] != "" {
+			switch k {
+			case "expected-sha256", "expected-sha512":
+				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
+					return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+				}
+			case "expected-commit":
+				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
+					return data, fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha length", k)
+				}
+			}
+		}
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
+
 	}
 
 	return data, nil
+}
+
+func matchValidShaChars(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !(c >= '0' && c <= '9') && !(c >= 'a' && c <= 'f') && !(c >= 'A' && c <= 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 // Build a script to run as part of evalRun
@@ -187,7 +211,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		envOverride[k] = v
 	}
 
-	workdir := "/home/build"
+	workdir := WorkDir
 	if pipeline.WorkDir != "" {
 		workdir = pipeline.WorkDir
 	}
@@ -202,17 +226,6 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	if id := identity(pipeline); id != unidentifiablePipeline {
 		log.Infof("running step %q", id)
-	}
-
-	slogs := []any{}
-	if pipeline.Name != "" {
-		slogs = append(slogs, "name", pipeline.Name)
-	}
-	if pipeline.Uses != "" {
-		slogs = append(slogs, "uses", pipeline.Uses)
-	}
-	if len(slogs) != 0 {
-		ctx = clog.WithLogger(ctx, log.With(slogs...))
 	}
 
 	command := buildEvalRunCommand(pipeline, debugOption, workdir, pipeline.Runs)
@@ -275,7 +288,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 	signal.Ignore(os.Interrupt)
 
 	// Populate $HOME/.ash_history with the current command so you can hit up arrow to repeat it.
-	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0o644); err != nil {
 		return fmt.Errorf("failed to write history file: %w", err)
 	}
 
@@ -311,6 +324,18 @@ func shouldRun(ifs string) (bool, error) {
 	}
 
 	return result, nil
+}
+
+func expectedShaLength(shaType string) int {
+	switch shaType {
+	case "expected-sha256":
+		return 64
+	case "expected-sha512":
+		return 128
+	case "expected-commit":
+		return 40
+	}
+	return 0
 }
 
 //go:embed pipelines/*

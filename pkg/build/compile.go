@@ -16,16 +16,19 @@ package build
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 	"gopkg.in/yaml.v3"
+	"mvdan.cc/sh/v3/syntax"
 )
 
 const unidentifiablePipeline = "???"
@@ -47,7 +50,7 @@ func (t *Test) Compile(ctx context.Context) error {
 
 	// We want to evaluate this but not accumulate its deps.
 	if err := ignore.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
-		return fmt.Errorf("compiling main pipelines: %w", err)
+		return fmt.Errorf("compiling package %q pipelines: %w", t.Package, err)
 	}
 
 	for i, sp := range cfg.Subpackages {
@@ -100,7 +103,7 @@ func (t *Test) Compile(ctx context.Context) error {
 		}
 
 		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
-			return fmt.Errorf("compiling main pipelines: %w", err)
+			return fmt.Errorf("compiling %q test pipelines: %w", t.Package, err)
 		}
 
 		// Append anything the main package test needs.
@@ -123,7 +126,7 @@ func (b *Build) Compile(ctx context.Context) error {
 	}
 
 	if err := c.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
-		return fmt.Errorf("compiling main pipelines: %w", err)
+		return fmt.Errorf("compiling %q pipelines: %w", cfg.Package.Name, err)
 	}
 
 	for i, sp := range cfg.Subpackages {
@@ -132,7 +135,7 @@ func (b *Build) Compile(ctx context.Context) error {
 		if sp.If != "" {
 			sp.If, err = util.MutateAndQuoteStringFromMap(sm.Substitutions, sp.If)
 			if err != nil {
-				return fmt.Errorf("mutating subpackage if: %w", err)
+				return fmt.Errorf("mutating subpackage %q, if: %w", sp.Name, err)
 			}
 		}
 
@@ -169,7 +172,7 @@ func (b *Build) Compile(ctx context.Context) error {
 		}
 
 		if err := tc.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
-			return fmt.Errorf("compiling main pipelines: %w", err)
+			return fmt.Errorf("compiling %q test pipelines: %w", cfg.Package.Name, err)
 		}
 
 		te := &b.Configuration.Test.Environment.Contents
@@ -242,7 +245,9 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	}
 
 	if parent != nil {
-		with = util.RightJoinMap(parent, with)
+		m := maps.Clone(parent)
+		maps.Copy(m, with)
+		with = m
 	}
 
 	validated, err := validateWith(with, pipeline.Inputs)
@@ -275,6 +280,12 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	pipeline.Runs, err = util.MutateStringFromMap(mutated, pipeline.Runs)
 	if err != nil {
 		return fmt.Errorf("mutating runs: %w", err)
+	}
+
+	// Drop any comments to avoid leaking things into .melange.json.
+	pipeline.Runs, err = stripComments(pipeline.Runs)
+	if err != nil {
+		return fmt.Errorf("stripping runs comments: %w", err)
 	}
 
 	if pipeline.If != "" {
@@ -359,4 +370,52 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 	}
 
 	return nil
+}
+
+func maybeIncludeSyntaxError(runs string, err error) error {
+	var perr syntax.ParseError
+	if !errors.As(err, &perr) {
+		return err
+	}
+
+	line := perr.Pos.Line()
+	lines := strings.Split(runs, "\n")
+	if line <= 0 || line > uint(len(lines)) {
+		return err
+	}
+
+	padding := len("> ") + int(perr.Pos.Col())
+
+	// For example...
+	// 14:13: not a valid test operator: -m
+	// > if [[ uname -m == 'x86_64']]; then
+	//               ^
+	return fmt.Errorf("%w:\n> %s\n%*s", err, lines[line-1], padding, "^")
+}
+
+func stripComments(runs string) (string, error) {
+	parser := syntax.NewParser(syntax.KeepComments(false))
+	printer := syntax.NewPrinter()
+
+	builder := strings.Builder{}
+
+	// The KeepComments(false) option drops comments, including the shebang.
+	// We don't want to do that, so keep the first line if it starts with #!
+	if idx := strings.IndexRune(runs, '\n'); idx != -1 {
+		firstLine := runs[0 : idx+1]
+		if strings.HasPrefix(firstLine, "#!") {
+			builder.WriteString(firstLine)
+		}
+	}
+
+	var perr error
+	if err := parser.Stmts(strings.NewReader(runs), func(stmt *syntax.Stmt) bool {
+		perr = printer.Print(&builder, stmt)
+		builder.WriteRune('\n')
+		return perr == nil
+	}); err != nil || perr != nil {
+		return "", maybeIncludeSyntaxError(runs, errors.Join(err, perr))
+	}
+
+	return builder.String(), nil
 }

@@ -2,9 +2,9 @@ package sbom
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"hash/fnv"
 	"time"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
@@ -85,7 +85,7 @@ func (d Document) getSPDXName() string {
 }
 
 func (d Document) getSPDXNamespace() string {
-	h := sha1.New()
+	h := fnv.New128a()
 	h.Write([]byte(fmt.Sprintf("apk-%s-%s", d.Describes.Namespace, d.Describes.Version)))
 	hexHash := hex.EncodeToString(h.Sum(nil))
 

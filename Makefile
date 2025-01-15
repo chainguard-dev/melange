@@ -117,7 +117,7 @@ GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
 	set -e ;
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.63.4;
 
 .PHONY: fmt
 fmt: ## Format all go files
@@ -148,10 +148,12 @@ lint: checkfmt setup-golangci-lint ## Run linters and checks like golangci-lint
 .PHONY: unit
 unit:
 	go test ./... -race
+	SIGNING_DIGEST=SHA1 go test ./... -race
 
 .PHONY: integration
 integration:
 	go test ./... -race -tags=integration
+	SIGNING_DIGEST=SHA1 go test ./... -race -tags=integration
 
 .PHONY: test
 test: integration

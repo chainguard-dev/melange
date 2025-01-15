@@ -36,6 +36,7 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
+	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
@@ -342,7 +343,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	log.Infof("evaluating pipelines for package requirements")
 	if err := t.Compile(ctx); err != nil {
-		return fmt.Errorf("compiling test pipelines: %w", err)
+		return fmt.Errorf("compiling %s tests: %w", t.ConfigFile, err)
 	}
 
 	if t.Runner.Name() == container.QemuName {
@@ -535,7 +536,7 @@ func (t *Test) SummarizePaths(ctx context.Context) {
 
 func (t *Test) Summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange is testing:")
+	log.Infof("melange %s is testing:", version.GetVersionInfo().GitVersion)
 	log.Infof("  configuration file: %s", t.ConfigFile)
 	t.SummarizePaths(ctx)
 }
@@ -572,6 +573,12 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		WorkspaceDir: t.WorkspaceDir,
 		Environment:  map[string]string{},
 		RunAs:        imgcfg.Accounts.RunAs,
+	}
+	if t.Configuration.Capabilities.Add != nil {
+		cfg.Capabilities.Add = t.Configuration.Capabilities.Add
+	}
+	if t.Configuration.Capabilities.Drop != nil {
+		cfg.Capabilities.Drop = t.Configuration.Capabilities.Drop
 	}
 
 	for k, v := range imgcfg.Environment {

@@ -24,9 +24,9 @@ func TestBump_versions(t *testing.T) {
 		newVersion      string
 		expectedVersion string
 	}{
-		{name: "float_issue.yaml", newVersion: "7.0.1", expectedVersion: "version: 7.0.1"},
-		{name: "quoted.yaml", newVersion: "7.0.1", expectedVersion: "version: 7.0.1"},
-		{name: "major_minor_patch.yaml", newVersion: "7.0.1", expectedVersion: "version: 7.0.1"},
+		{name: "float_issue.yaml", newVersion: "7.0.1", expectedVersion: `version: "7.0.1"`},
+		{name: "quoted.yaml", newVersion: "7.0.1", expectedVersion: `version: "7.0.1"`},
+		{name: "major_minor_patch.yaml", newVersion: "7.0.1", expectedVersion: `version: "7.0.1"`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

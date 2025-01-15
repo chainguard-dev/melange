@@ -694,7 +694,9 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	if err := template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b); err != nil {
 		return err
 	}
-
+	if err := specFile.Close(); err != nil {
+		return err
+	}
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err

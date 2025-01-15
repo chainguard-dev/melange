@@ -691,8 +691,7 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 		return err
 	}
 	specTemplate := template.New("gccSpecFile")
-	err = template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b)
-	if err != nil {
+	if err := template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b); err != nil {
 		return err
 	}
 

@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	DefaultRubyVersion   = "3.2"
+	DefaultRubyVersion   = "3.3"
 	DefaultBaseURIFormat = "https://rubygems.org/api/v1/gems/%s.json"
 )
 
@@ -249,7 +249,7 @@ func (c *GemContext) generatePackage(g GemMeta) config.Package {
 	pkg := config.Package{
 		Epoch:       0,
 		Name:        fmt.Sprintf("ruby%s-%s", c.RubyVersion, g.Name),
-		Description: g.Info,
+		Description: strings.Split(g.Info, "\n")[0],
 		Version:     g.Version,
 		Copyright:   []config.Copyright{},
 		Dependencies: config.Dependencies{
@@ -279,18 +279,10 @@ func (c *GemContext) generateEnvironment() apkotypes.ImageConfiguration {
 				"busybox",
 				"ca-certificates-bundle",
 				"git",
-				fmt.Sprintf("ruby-%s", c.RubyVersion),
-				fmt.Sprintf("ruby-%s-dev", c.RubyVersion),
+				"ruby-${{vars.rubyMM}}",
+				"ruby-${{vars.rubyMM}}-dev",
 			},
 		},
-	}
-
-	if len(c.AdditionalRepositories) > 0 {
-		env.Contents.BuildRepositories = append(env.Contents.BuildRepositories, c.AdditionalRepositories...)
-	}
-
-	if len(c.AdditionalKeyrings) > 0 {
-		env.Contents.Keyring = append(env.Contents.Keyring, c.AdditionalKeyrings...)
 	}
 
 	return env
@@ -323,16 +315,10 @@ func (c *GemContext) generatePipeline(ctx context.Context, g GemMeta) []config.P
 			Uses: "fetch",
 			With: map[string]string{
 				"uri":             strings.ReplaceAll(artifactURI, g.Version, "${{package.version}}"),
-				"README":          fmt.Sprintf("CONFIRM WITH: curl -L %s | sha256sum", artifactURI),
 				"expected-sha256": artifactSHA,
 			},
-		}, {
-			Uses: "patch",
-			With: map[string]string{
-				"README":  "This is only required if the gemspec is using a signing key",
-				"patches": "patches/${{package.name}}.patch",
-			},
-		}, {
+		},
+		{
 			Uses: "ruby/build",
 			With: map[string]string{
 				"gem": "${{vars.gem}}",
@@ -382,6 +368,7 @@ func (c *GemContext) getGemArtifactSHA(ctx context.Context, artifactURI string) 
 // generateVars handles generating the Vars field of the melange manifest
 func (c *GemContext) generateVars(g GemMeta) map[string]string {
 	return map[string]string{
-		"gem": g.Name,
+		"gem":    g.Name,
+		"rubyMM": "3.3",
 	}
 }

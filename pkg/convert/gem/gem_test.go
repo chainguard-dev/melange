@@ -106,6 +106,9 @@ func TestFindDependencies(t *testing.T) {
 	gemctx := testGemContext(server.URL + "/%s.json")
 	gemctx.ToCheck = []string{"async"}
 
+	// Verify that if the file exists the dependecy isn't created
+	_, _ = os.OpenFile("ruby"+DefaultRubyVersion+"-timers.yaml", os.O_RDONLY|os.O_CREATE, 0666)
+
 	// Build list of dependencies
 	err = gemctx.findDependencies(slogtest.Context(t))
 	assert.NoError(t, err)
@@ -113,11 +116,18 @@ func TestFindDependencies(t *testing.T) {
 	for _, gem := range gems {
 		gemName := strings.TrimSuffix(gem.Name(), ".json")
 		_, ok := gemctx.ToGenerate[gemName]
-		assert.True(t, ok)
+
+		if gemName == "timers" {
+			assert.False(t, ok)
+		} else {
+			assert.True(t, ok)
+		}
 
 		// Remove dependency from the list
 		delete(gemctx.ToGenerate, gemName)
 	}
+	os.Remove("ruby" + DefaultRubyVersion + "-timers.yaml")
+
 	// The dependency list should be empty
 	assert.Empty(t, gemctx.ToGenerate)
 }

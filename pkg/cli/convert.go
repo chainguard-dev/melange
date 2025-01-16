@@ -76,7 +76,6 @@ func convert() *cobra.Command {
 
 	cmd.AddCommand(
 		ApkBuild(),
-		GemBuild(),
 		PythonBuild(),
 	)
 	return cmd

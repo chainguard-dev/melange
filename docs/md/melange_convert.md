@@ -40,5 +40,4 @@ Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild 
 
 * [melange](/docs/md/melange.md)	 - 
 * [melange convert apkbuild](/docs/md/melange_convert_apkbuild.md)	 - Converts an APKBUILD package into a melange.yaml
-* [melange convert gem](/docs/md/melange_convert_gem.md)	 - Converts an gem into a melange.yaml
 

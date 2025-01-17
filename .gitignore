@@ -27,3 +27,5 @@ melange.images
 dist/
 tags
 ctags
+
+.DS_Store

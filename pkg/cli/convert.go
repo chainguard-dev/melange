@@ -15,12 +15,8 @@
 package cli
 
 import (
-	"context"
 	"fmt"
-	"os"
 
-	"chainguard.dev/melange/pkg/convert/relmon"
-	"github.com/google/go-github/v54/github"
 	"github.com/spf13/cobra"
 )
 
@@ -77,36 +73,8 @@ func convert() *cobra.Command {
 	cmd.AddCommand(
 		ApkBuild(),
 		GemBuild(),
-		PythonBuild(),
 	)
 	return cmd
-}
-
-func getGithubClient(ctx context.Context, cmd *cobra.Command) (*github.Client, error) {
-	useGithub, err := cmd.Flags().GetBool("use-github")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get use-github flag: %w", err)
-	}
-	if !useGithub {
-		return nil, nil
-	}
-	// TODO(vaikas): Do the right auth stuff here if we want to keep doing this.
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		return github.NewTokenClient(ctx, os.Getenv("GITHUB_TOKEN")), nil
-	}
-	// Just return the default client for now.
-	return github.NewClient(nil), nil
-}
-
-func getRelaseMonitoringClient(cmd *cobra.Command) (*relmon.MonitorFinder, error) {
-	useRelMon, err := cmd.Flags().GetBool("use-relmon")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get use-relmon flag: %w", err)
-	}
-	if !useRelMon {
-		return nil, nil
-	}
-	return relmon.NewMonitorFinder(), nil
 }
 
 // Helper function for getting the out-dir, additional-repositories and

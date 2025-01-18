@@ -275,9 +275,9 @@ func (b *Build) Close(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	errs := []error{}
 	if b.Remove {
-		log.Infof("deleting guest dir %s", b.GuestDir)
+		log.Debugf("deleting guest dir %s", b.GuestDir)
 		errs = append(errs, os.RemoveAll(b.GuestDir))
-		log.Infof("deleting workspace dir %s", b.WorkspaceDir)
+		log.Debugf("deleting workspace dir %s", b.WorkspaceDir)
 		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
 		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
 			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(context.WithoutCancel(ctx), b.containerConfig.ImgRef))
@@ -368,7 +368,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.Remove(layerTarGZ)
 
-	log.Infof("using %s for image layer", layerTarGZ)
+	log.Debugf("using %s for image layer", layerTarGZ)
 
 	ref, err := loader.LoadImage(ctx, layer, b.Arch, bc)
 	if err != nil {
@@ -802,7 +802,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	log.Infof("evaluating pipelines for package requirements")
+	log.Debugf("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
 	}
@@ -868,7 +868,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		cfg.ImgRef = imgRef
-		log.Infof("ImgRef = %s", cfg.ImgRef)
+		log.Debugf("ImgRef = %s", cfg.ImgRef)
 
 		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
 		// Probably needs help from apko.
@@ -1166,7 +1166,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
-			log.Infof("--cache-dir %s not a dir; skipping", b.CacheDir)
+			log.Debugf("--cache-dir %s not a dir; skipping", b.CacheDir)
 		}
 	}
 

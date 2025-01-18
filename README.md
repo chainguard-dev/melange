@@ -28,7 +28,7 @@ the form of OCI container images with [apko][apko].
 
 ## Installation
 
-You can install Melange from Homebrew:
+You can install [Melange](https://formulae.brew.sh/formula/melange) from [Homebrew](https://brew.sh/):
 
 ```shell
 brew install melange

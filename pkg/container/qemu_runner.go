@@ -289,7 +289,7 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 }
 
 func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
-	clog.FromContext(ctx).Infof("removing image path %s", ref)
+	clog.FromContext(ctx).Debugf("removing image path %s", ref)
 	return os.RemoveAll(ref)
 }
 

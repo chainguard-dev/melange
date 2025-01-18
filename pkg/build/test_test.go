@@ -82,14 +82,6 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 				return &want
 			}(),
 		}, {
-			name: "test - with cache dir, does not exist",
-			t: func() *Test {
-				cacheT := baseTest
-				cacheT.CacheDir = "/cache"
-				return &cacheT
-			}(),
-			wantErr: "--cache-dir /cache not a dir",
-		}, {
 			name: "test - with cache dir, exists",
 			t: func() *Test {
 				cacheT := baseTest

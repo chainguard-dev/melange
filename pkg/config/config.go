@@ -1526,6 +1526,10 @@ func validatePipelines(ps []Pipeline) error {
 			return fmt.Errorf("pipeline cannot contain both uses %q and runs", p.Uses)
 		}
 
+		if p.Uses != "" && len(p.Pipeline) > 0 {
+			return fmt.Errorf("pipeline cannot contain both uses %q and a pipeline", p.Uses)
+		}
+
 		if len(p.With) > 0 && p.Runs != "" {
 			return fmt.Errorf("pipeline cannot contain both with and runs")
 		}

@@ -407,6 +407,14 @@ func TestValidatePipelines(t *testing.T) {
 			},
 			wantErr: true,
 		},
+
+		{
+			name: "invalid pipeline with both uses and pipeline",
+			p: []Pipeline{
+				{Uses: "deploy", Pipeline: []Pipeline{{Runs: "somescript.sh"}}},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

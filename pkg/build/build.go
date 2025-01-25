@@ -1083,6 +1083,10 @@ func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
 	if err := os.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
 		return fmt.Errorf("creating SBOM directory: %w", err)
 	}
+	err := os.Chmod(sbomDirPath, 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to set permissions for SBOM directory: %w", err)
+	}
 
 	pkgVersion := b.Configuration.Package.FullVersion()
 	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)

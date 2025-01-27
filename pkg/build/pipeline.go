@@ -67,6 +67,7 @@ type SubstitutionMap struct {
 
 func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMap {
 	nw := maps.Clone(sm.Substitutions)
+	nw[config.SubstitutionSubPkgName] = subpkg.Name
 	nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", subpkg.Name)
 	nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
 

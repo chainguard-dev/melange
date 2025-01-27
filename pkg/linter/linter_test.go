@@ -80,6 +80,12 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: mkfile(t, "var/run/test.txt"),
 		linter:  "tempdir",
+	}, {
+		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
+		linter:  "pkgconf",
+	}, {
+		dirFunc: mkfile(t, "usr/share/pkgconfig/test.txt"),
+		linter:  "pkgconf",
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

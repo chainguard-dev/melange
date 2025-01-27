@@ -176,6 +176,11 @@ var linterMap = map[string]linter{
 		Explain:         "Remove all test directories from the package",
 		defaultBehavior: Warn,
 	},
+	"pkgconf": {
+		LinterFunc:      allPaths(pkgconfTestLinter),
+		Explain:         "This package provides files in a pkgconfig directory, please add the pkgconf test pipeline",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -536,6 +541,15 @@ func pythonTestLinter(_ context.Context, _ string, fsys fs.FS) error {
 		}
 	}
 
+	return nil
+}
+
+var PkgconfDirRegex = regexp.MustCompile("^usr/(lib|share)/pkgconfig/")
+
+func pkgconfTestLinter(_ context.Context, _, path string) error {
+        if PkgconfDirRegex.MatchString(path) {
+		return fmt.Errorf("pkgconfig directory found")
+	}
 	return nil
 }
 

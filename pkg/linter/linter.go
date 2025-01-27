@@ -547,7 +547,7 @@ func pythonTestLinter(_ context.Context, _ string, fsys fs.FS) error {
 var PkgconfDirRegex = regexp.MustCompile("^usr/(lib|share)/pkgconfig/")
 
 func pkgconfTestLinter(_ context.Context, _, path string) error {
-        if PkgconfDirRegex.MatchString(path) {
+	if PkgconfDirRegex.MatchString(path) {
 		return fmt.Errorf("pkgconfig directory found")
 	}
 	return nil

@@ -59,6 +59,9 @@ subpackages:
         - subpackage-bar=${{vars.bar}}
       replaces:
         - james=${{package.name}}
+    test:
+      pipeline:
+        - runs: echo "${{subpkg.name}} test case"
 
 test:
   environment:

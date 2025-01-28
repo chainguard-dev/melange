@@ -176,6 +176,11 @@ var linterMap = map[string]linter{
 		Explain:         "Remove all test directories from the package",
 		defaultBehavior: Warn,
 	},
+	"usrmerge": {
+		LinterFunc:      allPaths(usrmergeLinter),
+		Explain:         "Move binary to /usr/{bin,lib/sbin}",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -652,4 +657,20 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 		log.Warn(err.Error())
 	}
 	return lintPackageFS(ctx, pkgname, exp.TarFS, require)
+}
+
+func usrmergeLinter(_ context.Context, _, path string) error {
+	if strings.HasPrefix(path, "sbin") {
+		return fmt.Errorf("package writes to /sbin in violation of usrmerge")
+	}
+
+	if strings.HasPrefix(path, "lib") {
+		return fmt.Errorf("package writes to /lib in violation of usrmerge")
+	}
+
+	if strings.HasPrefix(path, "bin") {
+		return fmt.Errorf("package writes to /bin in violation of usrmerge")
+	}
+
+	return nil
 }

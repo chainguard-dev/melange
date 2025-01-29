@@ -86,7 +86,7 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: mkfile(t, "usr/share/pkgconfig/test.txt"),
 		linter:  "pkgconf",
-  }, {
+	}, {
 		dirFunc: mkfile(t, "sbin/test.sh"),
 		linter:  "usrmerge",
 	}} {

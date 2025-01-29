@@ -179,8 +179,8 @@ var linterMap = map[string]linter{
 	"pkgconf": {
 		LinterFunc:      allPaths(pkgconfTestLinter),
 		Explain:         "This package provides files in a pkgconfig directory, please add the pkgconf test pipeline",
-    defaultBehavior: Warn,
-  },
+		defaultBehavior: Warn,
+	},
 	"usrmerge": {
 		LinterFunc:      allPaths(usrmergeLinter),
 		Explain:         "Move binary to /usr/{bin,lib/sbin}",

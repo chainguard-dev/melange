@@ -81,6 +81,12 @@ func TestLinters(t *testing.T) {
 		dirFunc: mkfile(t, "var/run/test.txt"),
 		linter:  "tempdir",
 	}, {
+		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
+		linter:  "pkgconf",
+	}, {
+		dirFunc: mkfile(t, "usr/share/pkgconfig/test.txt"),
+		linter:  "pkgconf",
+	}, {
 		dirFunc: mkfile(t, "sbin/test.sh"),
 		linter:  "usrmerge",
 	}} {

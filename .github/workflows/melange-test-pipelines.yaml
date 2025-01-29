@@ -41,7 +41,7 @@ jobs:
     needs:
       - build-melange
     # TODO: Set up a larger runner for this.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     permissions:
       contents: read

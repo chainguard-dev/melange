@@ -31,6 +31,7 @@ const (
 	SubstitutionTargetsOutdir         = "${{targets.outdir}}"
 	SubstitutionTargetsDestdir        = "${{targets.destdir}}"
 	SubstitutionTargetsContextdir     = "${{targets.contextdir}}"
+	SubstitutionSubPkgName            = "${{subpkg.name}}"
 	SubstitutionSubPkgDir             = "${{targets.subpkgdir}}"
 	SubstitutionHostTripletGnu        = "${{host.triplet.gnu}}"
 	SubstitutionHostTripletRust       = "${{host.triplet.rust}}"

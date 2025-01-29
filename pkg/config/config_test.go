@@ -59,6 +59,9 @@ subpackages:
         - subpackage-bar=${{vars.bar}}
       replaces:
         - james=${{package.name}}
+    test:
+      pipeline:
+        - runs: echo "${{subpkg.name}} test case"
 
 test:
   environment:
@@ -404,6 +407,14 @@ func TestValidatePipelines(t *testing.T) {
 			name: "invalid pipeline with both with and runs",
 			p: []Pipeline{
 				{Runs: "somescript.sh", With: map[string]string{"param": "value"}},
+			},
+			wantErr: true,
+		},
+
+		{
+			name: "invalid pipeline with both uses and pipeline",
+			p: []Pipeline{
+				{Uses: "deploy", Pipeline: []Pipeline{{Runs: "somescript.sh"}}},
 			},
 			wantErr: true,
 		},

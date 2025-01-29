@@ -237,6 +237,25 @@ func (cfg *Configuration) applySubstitutionsForRuntime() error {
 	return nil
 }
 
+func (cfg *Configuration) applySubstitutionsForInstallIf() error {
+	nw := buildConfigMap(cfg)
+	if err := cfg.PerformVarSubstitutions(nw); err != nil {
+		return fmt.Errorf("applying variable substitutions for installif: %w", err)
+	}
+	var err error
+	cfg.Package.Dependencies.InstallIf, err = util.MutateStringFromMap(nw, cfg.Package.Dependencies.InstallIf)
+	if err != nil {
+		return fmt.Errorf("failed to apply replacement to installif %q: %w", cfg.Package.Dependencies.InstallIf, err)
+	}
+	for _, sp := range cfg.Subpackages {
+		sp.Dependencies.InstallIf, err = util.MutateStringFromMap(nw, sp.Dependencies.InstallIf)
+		if err != nil {
+			return fmt.Errorf("failed to apply replacement to installif %q: %w", sp.Dependencies.InstallIf, err)
+		}
+	}
+	return nil
+}
+
 func (cfg *Configuration) applySubstitutionsForReplaces() error {
 	nw := buildConfigMap(cfg)
 	for i, replaces := range cfg.Package.Dependencies.Replaces {
@@ -888,7 +907,8 @@ type Dependencies struct {
 	// Optional: An integer string compared against other equal package provides used to
 	// determine priority of file replacements
 	ReplacesPriority string `json:"replaces-priority,omitempty" yaml:"replaces-priority,omitempty"`
-
+	// Optional: Expression indicating conditions under which to also install this package.
+	InstallIf string `json:"install-if,omitempty" yaml:"install-if,omitempty"`
 	// List of self-provided dependencies found outside of lib directories
 	// ("lib", "usr/lib", "lib64", or "usr/lib64").
 	Vendored []string `json:"-" yaml:"-"`
@@ -1142,6 +1162,7 @@ func replaceDependencies(r *strings.Replacer, in Dependencies) Dependencies {
 		Replaces:         replaceAll(r, in.Replaces),
 		ProviderPriority: r.Replace(in.ProviderPriority),
 		ReplacesPriority: r.Replace(in.ReplacesPriority),
+		InstallIf:        r.Replace(in.InstallIf),
 	}
 }
 
@@ -1411,6 +1432,9 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 		return nil, err
 	}
 	if err := cfg.applySubstitutionsForReplaces(); err != nil {
+		return nil, err
+	}
+	if err := cfg.applySubstitutionsForInstallIf(); err != nil {
 		return nil, err
 	}
 	if err := cfg.applySubstitutionsForPackages(); err != nil {

@@ -1,6 +1,6 @@
 # e2e-tests
 .yaml files in this directory will be built by melange via
-the 'run-tests' script.
+the 'run-tests' script that you can run with `make test-e2e`.
 
 Melange options are based on yaml file name.
 

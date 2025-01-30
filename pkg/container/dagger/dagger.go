@@ -17,6 +17,7 @@ package dagger
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,8 +38,7 @@ import (
 )
 
 const (
-	DaggerName   = "dagger"
-	imageTarName = "image.tar"
+	DaggerName = "dagger"
 )
 
 type daggerRunner struct {
@@ -98,11 +98,11 @@ func (d *daggerRunner) Run(ctx context.Context, cfg *container.Config, envOverri
 
 // TestUsability implements Runner.
 func (d *daggerRunner) TestUsability(ctx context.Context) bool {
-	// TODO: d.client.CheckVersionCompatibility()
-	return true
+	_, err := d.client.Version(ctx)
+	return err == nil
 }
 
-// OCIImageLoader used to load OCI images in, if needed. dagger does not need it.
+// OCIImageLoader used to load OCI images in, if needed.
 func (d *daggerRunner) OCIImageLoader() container.Loader {
 	return &daggerLoader{
 		client: d.client,
@@ -121,15 +121,18 @@ func (d *daggerRunner) StartPod(ctx context.Context, cfg *container.Config) erro
 	_, span := otel.Tracer("melange").Start(ctx, "dagger.StartPod")
 	defer span.End()
 
-	// Initialize the Container from disk
-	imgPath := filepath.Join(d.tmpDir, imageTarName)
-	d.container = d.client.Container().Import(d.client.Host().File(imgPath))
+	platform := cfg.Arch.ToOCIPlatform().String()
+
+	d.container = d.client.
+		Container(dagger.ContainerOpts{
+			Platform: dagger.Platform(platform),
+		}).
+		Import(d.client.Host().File(tarPath(d.tmpDir, cfg.Arch)))
 
 	// Add our cache dir
-	d.container = d.container.WithMountedCache("/var/cache/melange/", d.client.CacheVolume("build-cache"))
+	d.container = d.container.WithMountedCache("/var/cache/melange/", d.client.CacheVolume("build-cache-"+platform))
 
 	for _, mnt := range cfg.Mounts {
-
 		// We skip mounting in some files that we don't need in this mode
 		if mnt.Source == container.DefaultResolvConfPath {
 			continue
@@ -164,14 +167,19 @@ func (d *daggerRunner) TerminatePod(ctx context.Context, cfg *container.Config) 
 
 // WorkspaceTar implements Runner.
 func (d *daggerRunner) WorkspaceTar(ctx context.Context, cfg *container.Config) (io.ReadCloser, error) {
-	clog.FromContext(ctx).Infof("Exporting dagger workspace to %s", cfg.WorkspaceDir)
+	clog.FromContext(ctx).Infof("exporting dagger workspace to %s", cfg.WorkspaceDir)
 
 	ctx, span := otel.Tracer("melange").Start(ctx, "dagger.Export")
 	defer span.End()
 
 	output := d.container.Directory("/home/build/melange-out")
 
-	if _, err := output.Export(ctx, cfg.WorkspaceDir+"/melange-out"); err != nil {
+	_, err := output.Export(
+		ctx,
+		cfg.WorkspaceDir+"/melange-out",
+		dagger.DirectoryExportOpts{Wipe: true},
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -202,13 +210,24 @@ func (d *daggerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
-	tarPath := filepath.Join(d.tmpDir, imageTarName)
+	tarPath := tarPath(d.tmpDir, arch)
 	if err := tarball.WriteToFile(tarPath, ref, img); err != nil {
 		return "", err
 	}
+	clog.FromContext(ctx).Infof("Write tarball to %s: DONE", tarPath)
+
 	return ref.String(), nil
 }
 
 func (d *daggerLoader) RemoveImage(ctx context.Context, ref string) error {
-	return os.Remove(filepath.Join(d.tmpDir, imageTarName))
+	return nil
+}
+
+func tarPath(tmpDir string, arch apko_types.Architecture) string {
+	return filepath.Join(tmpDir, imageTarName(arch))
+}
+
+func imageTarName(arch apko_types.Architecture) string {
+	platform := arch.ToOCIPlatform()
+	return fmt.Sprintf("image-%s-%s.tar", platform.OS, platform.Architecture)
 }

@@ -1367,6 +1367,15 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 		Members:   []string{"build"},
 	}
 	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
+	if cfg.Test != nil {
+		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
+	}
+	for _, sub := range cfg.Subpackages {
+		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
+			continue
+		}
+		sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
+	}
 
 	gid1000 := uint32(1000)
 	usr := apko_types.User{
@@ -1375,6 +1384,15 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 		GID:      apko_types.GID(&gid1000),
 	}
 	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+	if cfg.Test != nil {
+		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)
+	}
+	for _, sub := range cfg.Subpackages {
+		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
+			continue
+		}
+		sub.Test.Environment.Accounts.Users = append(sub.Test.Environment.Accounts.Users, usr)
+	}
 
 	// Merge environment file if needed.
 	if envFile := options.envFilePath; envFile != "" {

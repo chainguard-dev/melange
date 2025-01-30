@@ -39,6 +39,25 @@ const (
 	homeBuild        = "/home/build"
 )
 
+var (
+	gid1000 = uint32(1000)
+)
+
+func defaultEnv(opts ...func(*apko_types.ImageConfiguration)) apko_types.ImageConfiguration {
+	env := apko_types.ImageConfiguration{
+		Accounts: types.ImageAccounts{
+			Groups: []types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
+			Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: &gid1000}},
+		},
+	}
+
+	for _, opt := range opts {
+		opt(&env)
+	}
+
+	return env
+}
+
 func TestBuildWorkspaceConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	// realpath is used to get the real path of the temp dir
@@ -151,6 +170,7 @@ func TestConfigurationLoad(t *testing.T) {
 					Resources: &config.Resources{},
 				},
 				Test: &config.Test{
+					Environment: defaultEnv(),
 					Pipeline: []config.Pipeline{
 						{
 							Name: "hello",
@@ -161,6 +181,7 @@ func TestConfigurationLoad(t *testing.T) {
 				Subpackages: []config.Subpackage{{
 					Name: "cats",
 					Test: &config.Test{
+						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{{
 							Runs: "cats are angry",
 						}},
@@ -168,6 +189,7 @@ func TestConfigurationLoad(t *testing.T) {
 				}, {
 					Name: "dogs",
 					Test: &config.Test{
+						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{{
 							Runs: "dogs are loyal",
 						}},
@@ -175,6 +197,7 @@ func TestConfigurationLoad(t *testing.T) {
 				}, {
 					Name: "turtles",
 					Test: &config.Test{
+						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{{
 							Runs: "turtles are slow",
 						}},
@@ -182,6 +205,7 @@ func TestConfigurationLoad(t *testing.T) {
 				}, {
 					Name: "donatello",
 					Test: &config.Test{
+						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{
 							{
 								Runs: "donatello's color is purple",
@@ -194,46 +218,54 @@ func TestConfigurationLoad(t *testing.T) {
 					},
 				}, {
 					Name: "leonardo",
-					Test: &config.Test{Pipeline: []config.Pipeline{
-						{
-							Runs: "leonardo's color is blue",
-						},
-						{
-							Uses: "go/build",
-							With: map[string]string{"packages": "blue"},
-						},
-					}},
+					Test: &config.Test{
+						Environment: defaultEnv(),
+						Pipeline: []config.Pipeline{
+							{
+								Runs: "leonardo's color is blue",
+							},
+							{
+								Uses: "go/build",
+								With: map[string]string{"packages": "blue"},
+							},
+						}},
 				}, {
 					Name: "michelangelo",
-					Test: &config.Test{Pipeline: []config.Pipeline{
-						{
-							Runs: "michelangelo's color is orange",
-						},
-						{
-							Uses: "go/build",
-							With: map[string]string{"packages": "orange"},
-						},
-					}},
+					Test: &config.Test{
+						Environment: defaultEnv(),
+						Pipeline: []config.Pipeline{
+							{
+								Runs: "michelangelo's color is orange",
+							},
+							{
+								Uses: "go/build",
+								With: map[string]string{"packages": "orange"},
+							},
+						}},
 				}, {
 					Name: "raphael",
-					Test: &config.Test{Pipeline: []config.Pipeline{
-						{
-							Runs: "raphael's color is red",
-						},
-						{
-							Uses: "go/build",
-							With: map[string]string{"packages": "red"},
-						},
-					}},
+					Test: &config.Test{
+						Environment: defaultEnv(),
+						Pipeline: []config.Pipeline{
+							{
+								Runs: "raphael's color is red",
+							},
+							{
+								Uses: "go/build",
+								With: map[string]string{"packages": "red"},
+							},
+						}},
 				}, {
 					Name: "simple",
-					Test: &config.Test{Pipeline: []config.Pipeline{
-						{
-							Runs: "simple-runs",
-						}, {
-							Uses: "simple-uses",
-						},
-					}},
+					Test: &config.Test{
+						Environment: defaultEnv(),
+						Pipeline: []config.Pipeline{
+							{
+								Runs: "simple-runs",
+							}, {
+								Uses: "simple-uses",
+							},
+						}},
 				}},
 			},
 		}, {
@@ -246,11 +278,9 @@ func TestConfigurationLoad(t *testing.T) {
 					Resources: &config.Resources{},
 				},
 				Test: &config.Test{
-					Environment: types.ImageConfiguration{
-						Contents: types.ImageContents{
-							Packages: []string{"busybox", "python-3"},
-						},
-					},
+					Environment: defaultEnv(func(env *apko_types.ImageConfiguration) {
+						env.Contents.Packages = []string{"busybox", "python-3"}
+					}),
 					Pipeline: []config.Pipeline{
 						{
 							Runs: "python3 ./py3-pandas-test.py\n",

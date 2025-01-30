@@ -54,22 +54,10 @@ func TestAPK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	melangeApkDigest := crypto.SHA256
-	prefix := ".SIGN.RSA256."
-	if digest, ok := os.LookupEnv("SIGNING_DIGEST"); ok {
-		switch digest {
-		case "SHA256":
-		case "SHA1":
-			melangeApkDigest = crypto.SHA1
-			prefix = ".SIGN.RSA."
-		default:
-			t.Fatalf("unsupported SIGNING_DIGEST")
-		}
-	}
-	if sigName != prefix+testPubkey {
+	if sigName != ".SIGN.RSA256."+testPubkey {
 		t.Fatalf("unexpected signature name %s", sigName)
 	}
-	digest, err := signature.HashData(controlData, melangeApkDigest)
+	digest, err := signature.HashData(controlData, crypto.SHA256)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +65,7 @@ func TestAPK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := signature.RSAVerifyDigest(digest, melangeApkDigest, sig, pubKey); err != nil {
+	if err := signature.RSAVerifyDigest(digest, crypto.SHA256, sig, pubKey); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -345,7 +345,16 @@ func (p Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) 
 func (p Package) FullCopyright() string {
 	copyright := ""
 	for _, cp := range p.Copyright {
-		copyright += cp.Attestation + "\n"
+		if cp.Attestation != "" {
+			copyright += cp.Attestation + "\n"
+		}
+	}
+	// No copyright found, instead of ommitting the field declare
+	// that no determination was attempted, which is better than a
+	// whitespace (which should also be interpreted as
+	// NOASSERTION)
+	if copyright == "" {
+		copyright = "NOASSERTION"
 	}
 	return copyright
 }

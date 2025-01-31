@@ -132,11 +132,32 @@ type Package struct {
 	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
+// CPE stores values used to produce a CPE to describe the package, suitable for
+// matching against NVD records.
+//
+// For Melange, the "part" attribute should always be interpreted as "a" (for
+// "application").
+type CPE struct {
+	Vendor  string
+	Product string
+}
+
 type Resources struct {
 	CPU      string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
 	Memory   string `json:"memory,omitempty" yaml:"memory,omitempty"`
 	Disk     string `json:"disk,omitempty" yaml:"disk,omitempty"`
+}
+
+// CPEString returns the CPE string for the package, suitable for matching
+// against NVD records.
+func (p Package) CPEString() string {
+	return fmt.Sprintf(
+		"cpe:2.3:a:%s:%s:%s:*:*:*:*:*:*:*:*",
+		p.CPE.Vendor,
+		p.CPE.Product,
+		p.Version,
+	)
 }
 
 // PackageURL returns the package URL ("purl") for the APK (origin) package.
@@ -655,21 +676,6 @@ type Configuration struct {
 
 	// Parsed AST for this configuration
 	root *yaml.Node
-}
-
-// CPE stores values used to produce a CPE to describe the package, suitable for
-// matching against NVD records.
-//
-// For Melange, the "part" attribute should always be interpreted as "a" (for
-// "application").
-type CPE struct {
-	Vendor  string
-	Product string
-}
-
-// String returns a CPE string for the package.
-func (c CPE) String() string {
-	return fmt.Sprintf("cpe:2.3:a:%s:%s:*:*:*:*:*:*:*:*", c.Vendor, c.Product)
 }
 
 // AllPackageNames returns a sequence of all package names in the configuration,

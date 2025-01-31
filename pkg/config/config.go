@@ -636,8 +636,6 @@ type Configuration struct {
 	// Optional: A list of transformations to create for the builtin template
 	// variables
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
-	// Optional: Deviations to the build
-	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`

@@ -74,7 +74,7 @@ func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMa
 	return &SubstitutionMap{nw}
 }
 
-func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, flavor string) (*SubstitutionMap, error) {
 	pkg := cfg.Package
 
 	nw := map[string]string{
@@ -120,16 +120,6 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, 
 	for _, pn := range packageNames {
 		k := fmt.Sprintf("${{targets.package.%s}}", pn)
 		nw[k] = fmt.Sprintf("/home/build/melange-out/%s", pn)
-	}
-
-	for k := range cfg.Options {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", k)
-		nw[nk] = "false"
-	}
-
-	for _, opt := range buildOpts {
-		nk := fmt.Sprintf("${{options.%s.enabled}}", opt)
-		nw[nk] = "true"
 	}
 
 	return &SubstitutionMap{nw}, nil

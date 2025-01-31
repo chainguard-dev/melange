@@ -66,7 +66,7 @@ func Test_substitutionMap(t *testing.T) {
 					},
 				},
 			}
-			m, err := NewSubstitutionMap(&cfg, "", "", nil)
+			m, err := NewSubstitutionMap(&cfg, "", "")
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, m.Substitutions["${{vars.mangled-package-version}}"])
 		})
@@ -92,7 +92,7 @@ func Test_MutateWith(t *testing.T) {
 				Epoch:   tc.epoch,
 			},
 		}
-		sm, err := NewSubstitutionMap(&cfg, "", "", nil)
+		sm, err := NewSubstitutionMap(&cfg, "", "")
 		require.NoError(t, err)
 		got, err := sm.MutateWith(map[string]string{})
 		if err != nil {
@@ -128,7 +128,7 @@ func Test_substitutionNeedPackages(t *testing.T) {
 	pipelineDirs := []string{"pipelines"}
 
 	c := &Compiled{PipelineDirs: pipelineDirs}
-	sm, err := NewSubstitutionMap(&cfg, "", "", nil)
+	sm, err := NewSubstitutionMap(&cfg, "", "")
 	require.NoError(t, err)
 
 	err = c.CompilePipelines(ctx, sm, cfg.Pipeline)

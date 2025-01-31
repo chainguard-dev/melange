@@ -122,6 +122,9 @@ type Package struct {
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	// The CPE field values to be used for matching against NVD vulnerability
+	// records, if known.
+	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -654,6 +657,21 @@ type Configuration struct {
 	root *yaml.Node
 }
 
+// CPE stores values used to produce a CPE to describe the package, suitable for
+// matching against NVD records.
+//
+// For Melange, the "part" attribute should always be interpreted as "a" (for
+// "application").
+type CPE struct {
+	Vendor  string
+	Product string
+}
+
+// String returns a CPE string for the package.
+func (c CPE) String() string {
+	return fmt.Sprintf("cpe:2.3:a:%s:%s:*:*:*:*:*:*:*:*", c.Vendor, c.Product)
+}
+
 // AllPackageNames returns a sequence of all package names in the configuration,
 // i.e. the origin package name and the names of all subpackages.
 func (cfg Configuration) AllPackageNames() iter.Seq[string] {
@@ -1177,6 +1195,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		Options:            in.Options,
 		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
 		Checks:             in.Checks,
+		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
 	}

@@ -154,6 +154,9 @@ origin = {{.OriginName}}
 pkgdesc = {{.Description}}
 url = {{.URL}}
 commit = {{.Commit}}
+{{- if .Build.Namespace }}
+maintainer = {{.Build.Namespace}}
+{{- end }}
 {{- if ne .Build.SourceDateEpoch.Unix 0 }}
 builddate = {{ .Build.SourceDateEpoch.Unix }}
 {{- end}}

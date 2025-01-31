@@ -78,6 +78,7 @@ type PackageBuild struct {
 	Description   string
 	URL           string
 	Commit        string
+	CPE           string
 }
 
 func pkgFromSub(sub *config.Subpackage) *config.Package {
@@ -93,6 +94,13 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 }
 
 func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
+	log := clog.FromContext(ctx)
+
+	renderedCPE, err := pkg.CPEString()
+	if err != nil {
+		log.Infof("unable to generate CPE string for package %s: %v", pkg.Name, err)
+	}
+
 	pc := PackageBuild{
 		Build:        b,
 		Origin:       &b.Configuration.Package,
@@ -106,6 +114,7 @@ func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 		Description:  pkg.Description,
 		URL:          pkg.URL,
 		Commit:       pkg.Commit,
+		CPE:          renderedCPE,
 	}
 
 	if !b.StripOriginName {
@@ -181,6 +190,9 @@ replaces_priority = {{ .Dependencies.ReplacesPriority }}
 {{- if .Scriptlets}}{{ if .Scriptlets.Trigger.Paths }}
 triggers = {{ range $item := .Scriptlets.Trigger.Paths }}{{ $item }} {{ end }}
 {{- end }}{{ end }}
+{{- if .CPE }}
+# cpe = {{ .CPE }}
+{{- end }}
 datahash = {{.DataHash}}
 `
 

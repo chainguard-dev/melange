@@ -36,10 +36,7 @@ const unidentifiablePipeline = "???"
 func (t *Test) Compile(ctx context.Context) error {
 	cfg := t.Configuration
 
-	// TODO: Make this parameter go away when we revisit subtitutions.
-	flavor := "gnu"
-
-	sm, err := NewSubstitutionMap(&cfg, t.Arch, flavor)
+	sm, err := NewSubstitutionMap(&cfg, t.Arch, "gnu")
 	if err != nil {
 		return err
 	}

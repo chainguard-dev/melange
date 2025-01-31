@@ -15,25 +15,26 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "BuildOption": {
+    "Capabilities": {
       "properties": {
-        "Vars": {
-          "additionalProperties": {
+        "add": {
+          "items": {
             "type": "string"
           },
-          "type": "object"
+          "type": "array",
+          "description": "Linux process capabilities to add to the pipeline container."
         },
-        "Environment": {
-          "$ref": "#/$defs/EnvironmentOption"
+        "drop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to drop from the pipeline container."
         }
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "Vars",
-        "Environment"
-      ],
-      "description": "BuildOption describes an optional deviation to a package build."
+      "description": "Capabilities is the configuration for Linux capabilities for the runner."
     },
     "Checks": {
       "properties": {
@@ -57,6 +58,10 @@
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
           "description": "The specification for the packages build environment"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities",
+          "description": "Optional: Linux capabilities configuration to apply to the melange runner."
         },
         "pipeline": {
           "items": {
@@ -97,13 +102,6 @@
           "type": "array",
           "description": "Optional: A list of transformations to create for the builtin template\nvariables"
         },
-        "options": {
-          "additionalProperties": {
-            "$ref": "#/$defs/BuildOption"
-          },
-          "type": "object",
-          "description": "Optional: Deviations to the build"
-        },
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the main package."
@@ -115,20 +113,7 @@
         "package",
         "environment"
       ],
-      "description": "The root melange configuration"
-    },
-    "ContentsOption": {
-      "properties": {
-        "Packages": {
-          "$ref": "#/$defs/ListOption"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Packages"
-      ],
-      "description": "ContentsOption describes an optional deviation to an apko environment's contents block."
+      "description": "Configuration is the root melange configuration."
     },
     "Copyright": {
       "properties": {
@@ -194,23 +179,14 @@
         "replaces-priority": {
           "type": "string",
           "description": "Optional: An integer string compared against other equal package provides used to\ndetermine priority of file replacements"
+        },
+        "install-if": {
+          "type": "string",
+          "description": "Optional: Expression indicating conditions under which to also install this package."
         }
       },
       "additionalProperties": false,
       "type": "object"
-    },
-    "EnvironmentOption": {
-      "properties": {
-        "Contents": {
-          "$ref": "#/$defs/ContentsOption"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Contents"
-      ],
-      "description": "EnvironmentOption describes an optional deviation to an apko environment."
     },
     "GitHubMonitor": {
       "properties": {
@@ -430,7 +406,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "description": "Optional: The human readable description of the input"
+          "description": "Optional: The human-readable description of the input"
         },
         "default": {
           "type": "string",
@@ -443,29 +419,6 @@
       },
       "additionalProperties": false,
       "type": "object"
-    },
-    "ListOption": {
-      "properties": {
-        "Add": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Remove": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Add",
-        "Remove"
-      ],
-      "description": "ListOption describes an optional deviation to a list, for example, a list of packages."
     },
     "Needs": {
       "properties": {
@@ -499,7 +452,7 @@
         },
         "description": {
           "type": "string",
-          "description": "A human readable description of the package"
+          "description": "A human-readable description of the package"
         },
         "url": {
           "type": "string",
@@ -608,6 +561,10 @@
     },
     "Pipeline": {
       "properties": {
+        "if": {
+          "type": "string",
+          "description": "Optional: A condition to evaluate before running the pipeline"
+        },
         "name": {
           "type": "string",
           "description": "Optional: A user defined name for the pipeline"
@@ -632,7 +589,7 @@
             "$ref": "#/$defs/Pipeline"
           },
           "type": "array",
-          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in it's own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
+          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in its own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
         },
         "inputs": {
           "additionalProperties": {
@@ -648,10 +605,6 @@
         "label": {
           "type": "string",
           "description": "Optional: Labels to apply to the pipeline"
-        },
-        "if": {
-          "type": "string",
-          "description": "Optional: A condition to evaluate before running the pipeline"
         },
         "assertions": {
           "$ref": "#/$defs/PipelineAssertions",
@@ -731,6 +684,9 @@
     "Resources": {
       "properties": {
         "cpu": {
+          "type": "string"
+        },
+        "cpumodel": {
           "type": "string"
         },
         "memory": {
@@ -897,6 +853,10 @@
         "manual": {
           "type": "boolean",
           "description": "Indicates that this package should be manually updated, usually taking\ncare over special version numbers"
+        },
+        "require-sequential": {
+          "type": "boolean",
+          "description": "Indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs"
         },
         "shared": {
           "type": "boolean",

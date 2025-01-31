@@ -31,7 +31,6 @@ melange build [flags]
       --apk-cache-dir string                                    directory used for cached apk packages (default is system-defined cache directory)
       --arch strings                                            architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
       --build-date string                                       date used for the timestamps of the files inside the image
-      --build-option strings                                    build options to enable
       --cache-dir string                                        directory used for cached inputs (default "./melange-cache/")
       --cache-source string                                     directory or bucket used for preloading the cache
       --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
@@ -54,7 +53,7 @@ melange build [flags]
   -k, --keyring-append strings                                  path to extra keys to include in the build environment keyring
       --license string                                          license to use for the build config file itself (default "NOASSERTION")
       --lint-require strings                                    linters that must pass (default [dev,infodir,tempdir,varempty])
-      --lint-warn strings                                       linters that will generate warnings (default [object,opt,pkgconf,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,usrmerge,worldwrite])
+      --lint-warn strings                                       linters that will generate warnings (default [empty,object,opt,pkgconf,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,usrmerge,worldwrite])
       --memory string                                           default memory resources to use for builds
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")

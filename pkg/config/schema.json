@@ -179,10 +179,6 @@
         "replaces-priority": {
           "type": "string",
           "description": "Optional: An integer string compared against other equal package provides used to\ndetermine priority of file replacements"
-        },
-        "install-if": {
-          "type": "string",
-          "description": "Optional: Expression indicating conditions under which to also install this package."
         }
       },
       "additionalProperties": false,

@@ -113,7 +113,6 @@ type Build struct {
 	EmptyWorkspace        bool
 	OutDir                string
 	Arch                  apko_types.Architecture
-	Libc                  string
 	ExtraKeys             []string
 	ExtraRepos            []string
 	ExtraPackages         []string
@@ -1088,15 +1087,6 @@ func (b *Build) summarize(ctx context.Context) {
 	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
 	log.Infof("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
-}
-
-// buildFlavor determines if a build context uses glibc or musl, it returns
-// "gnu" for GNU systems, and "musl" for musl systems.
-func (b *Build) buildFlavor() string {
-	if b.Libc == "" {
-		return "gnu"
-	}
-	return b.Libc
 }
 
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {

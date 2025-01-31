@@ -386,14 +386,6 @@ func WithAuth(domain, user, pass string) Option {
 	}
 }
 
-// WithLibcFlavorOverride sets the libc flavor for the build.
-func WithLibcFlavorOverride(libc string) Option {
-	return func(b *Build) error {
-		b.Libc = libc
-		return nil
-	}
-}
-
 // WithIgnoreIndexSignatures sets whether to ignore repository signature verification.
 func WithIgnoreSignatures(ignore bool) Option {
 	return func(b *Build) error {

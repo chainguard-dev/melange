@@ -159,7 +159,7 @@ var linterMap = map[string]linter{
 	"empty": {
 		LinterFunc:      emptyLinter,
 		Explain:         "Verify that this package is supposed to be empty; if it is, disable this linter; otherwise check the build",
-		defaultBehavior: Warn,
+		defaultBehavior: Ignore, // TODO: Needs to ignore packages that specify no-provides.
 	},
 	"python/docs": {
 		LinterFunc:      pythonDocsLinter,

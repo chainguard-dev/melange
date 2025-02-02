@@ -5,6 +5,11 @@ needs:
     - wget
 
 inputs:
+  attribution-paths:
+    description: |
+      List of paths containing attributions or notices that are
+      required to be presented.
+
   strip-components:
     description: |
       The number of path components to strip while extracting.

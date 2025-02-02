@@ -898,21 +898,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
 		}
 
-		for i, p := range pipelines {
-			uniqueID := strconv.Itoa(i)
-			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-			if err != nil {
-				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-			}
-
-			if pkg == nil {
-				// This particular pipeline step doesn't tell us about the upstream source code.
-				continue
-			}
-
-			b.SBOMGroup.AddUpstreamSourcePackage(pkg)
-		}
-
 		// add the main package to the linter queue
 		lintTarget := linterTarget{
 			pkgName:  b.Configuration.Package.Name,
@@ -970,6 +955,23 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := linter.LintBuild(ctx, lt.pkgName, path, require, warn); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
+	}
+
+	// Move here, after the build workspace is extracted, to have
+	// access to licenses & files
+	for i, p := range b.Configuration.Pipeline {
+		uniqueID := strconv.Itoa(i)
+		pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID, b.WorkspaceDir)
+		if err != nil {
+			return fmt.Errorf("creating SBOM package for upstream source: %w", err)
+		}
+
+		if pkg == nil {
+			// This particular pipeline step doesn't tell us about the upstream source code.
+			continue
+		}
+
+		b.SBOMGroup.AddUpstreamSourcePackage(pkg)
 	}
 
 	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)

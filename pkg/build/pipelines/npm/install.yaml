@@ -4,6 +4,7 @@ needs:
   packages:
     - nodejs
     - busybox
+    - npm
 
 inputs:
   package:

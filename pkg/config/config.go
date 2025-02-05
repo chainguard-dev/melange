@@ -638,6 +638,8 @@ type Configuration struct {
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
+	// Optional: Disables filtering of common pre-release tags
+	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`

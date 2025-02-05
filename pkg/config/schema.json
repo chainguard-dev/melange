@@ -104,6 +104,10 @@
           "type": "object",
           "description": "Optional: Deviations to the build"
         },
+        "enable-prerelease-tags": {
+          "type": "boolean",
+          "description": "Optional: Disables filtering of common pre-release tags"
+        },
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the main package."

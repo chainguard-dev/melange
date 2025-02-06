@@ -47,7 +47,7 @@ func defaultEnv(opts ...func(*apko_types.ImageConfiguration)) apko_types.ImageCo
 	env := apko_types.ImageConfiguration{
 		Accounts: types.ImageAccounts{
 			Groups: []types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
-			Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: &gid1000}},
+			Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: apko_types.GID(&gid1000)}},
 		},
 	}
 

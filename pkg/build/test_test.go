@@ -32,14 +32,13 @@ import (
 )
 
 const (
+	buildUser        = "build"
+	etcResolveConf   = "/etc/resolv.conf"
+	homeBuild        = "/home/build"
 	testImgRef       = "testImageRef"
 	testPkgName      = "testPkgName"
 	testWorkspaceDir = "/workspace"
-	etcResolveConf   = "/etc/resolv.conf"
-	homeBuild        = "/home/build"
 )
-
-const buildUser = "build"
 
 var gid1000 = uint32(1000)
 

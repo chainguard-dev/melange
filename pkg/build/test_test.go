@@ -32,21 +32,20 @@ import (
 )
 
 const (
+	buildUser        = "build"
+	etcResolveConf   = "/etc/resolv.conf"
+	homeBuild        = "/home/build"
 	testImgRef       = "testImageRef"
 	testPkgName      = "testPkgName"
 	testWorkspaceDir = "/workspace"
-	etcResolveConf   = "/etc/resolv.conf"
-	homeBuild        = "/home/build"
 )
 
-var (
-	gid1000 = uint32(1000)
-)
+var gid1000 = uint32(1000)
 
 func defaultEnv(opts ...func(*apko_types.ImageConfiguration)) apko_types.ImageConfiguration {
 	env := apko_types.ImageConfiguration{
 		Accounts: types.ImageAccounts{
-			Groups: []types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
+			Groups: []types.Group{{GroupName: "build", GID: 1000, Members: []string{buildUser}}},
 			Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: apko_types.GID(&gid1000)}},
 		},
 	}

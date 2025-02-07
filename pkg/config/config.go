@@ -42,7 +42,10 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
-const purlTypeAPK = "apk"
+const (
+	buildUser   = "build"
+	purlTypeAPK = "apk"
+)
 
 type Trigger struct {
 	// Optional: The script to run
@@ -1360,12 +1363,19 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	cfg.Data = nil // TODO: zero this out or not?
 
 	// TODO: validate that subpackage ranges have been consumed and applied
-
+	grpName := buildUser
 	grp := apko_types.Group{
-		GroupName: "build",
+		GroupName: grpName,
 		GID:       1000,
-		Members:   []string{"build"},
+		Members:   []string{buildUser},
 	}
+
+	usr := apko_types.User{
+		UserName: buildUser,
+		UID:      1000,
+		GID:      apko_types.GID(&grp.GID),
+	}
+
 	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 	if cfg.Test != nil {
 		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
@@ -1377,12 +1387,6 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 		sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
 	}
 
-	gid1000 := uint32(1000)
-	usr := apko_types.User{
-		UserName: "build",
-		UID:      1000,
-		GID:      apko_types.GID(&gid1000),
-	}
 	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
 	if cfg.Test != nil {
 		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)

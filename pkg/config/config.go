@@ -1076,7 +1076,7 @@ func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) a
 		Paths:       in.Paths, // TODO
 		VCSUrl:      r.Replace(in.VCSUrl),
 		Annotations: replaceMap(r, in.Annotations),
-		Include:     in.Include, // TODO
+		Include:     in.Include, //nolint:staticcheck // TODO
 		Volumes:     replaceAll(r, in.Volumes),
 	}
 }

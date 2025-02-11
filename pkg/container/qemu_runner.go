@@ -260,9 +260,9 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	// in case of some kernel images, we also need the /lib/modules directory to load
 	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
 	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
-		clog.FromContext(ctx).Info("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
+		clog.FromContext(ctx).Debugf("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
 		if _, err := os.Stat(qemuModule); err == nil {
-			clog.FromContext(ctx).Infof("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
+			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
 			layer, err = injectKernelModules(ctx, layer, qemuModule)
 			if err != nil {
 				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
@@ -422,7 +422,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// if no size is specified, let's go for a default
 	if cfg.Disk == "" {
-		clog.FromContext(ctx).Infof("qemu: no disk space specified, using default: %s", defaultDiskSize)
+		clog.FromContext(ctx).Debugf("qemu: no disk space specified, using default: %s", defaultDiskSize)
 		cfg.Disk = defaultDiskSize
 	}
 
@@ -442,7 +442,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
-	clog.FromContext(ctx).Infof("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
+	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
 	output, err := qemuCmd.CombinedOutput()
 	if err != nil {
@@ -465,7 +465,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		try++
 		time.Sleep(time.Millisecond * 500)
 
-		clog.FromContext(ctx).Infof("qemu: waiting for ssh to come up, try %d of %d", try, retries)
+		clog.FromContext(ctx).Debugf("qemu: waiting for ssh to come up, try %d of %d", try, retries)
 		// Attempt to connect to the address
 		err = checkSSHServer(cfg.SSHAddress)
 		if err == nil {
@@ -625,7 +625,7 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 	// we need bytes
 	size = size * 1024
 
-	clog.FromContext(ctx).Infof("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
+	clog.FromContext(ctx).Debugf("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
 	return diskName.Name(), os.Truncate(diskName.Name(), size)
 }
 
@@ -696,7 +696,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 
 	// Write the host key to the known_hosts file
 	hostKeyLine := fmt.Sprintf("%s %s %s\n", cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()))
-	clog.FromContext(ctx).Infof("host-key: %s", hostKeyLine)
+	clog.FromContext(ctx).Debugf("host-key: %s", hostKeyLine)
 
 	knownHost, err := os.CreateTemp("", "known_hosts_*")
 	if err != nil {

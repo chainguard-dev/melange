@@ -105,7 +105,7 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 		err = c.buildFetchStep(ctx, apkConverter)
 		if err != nil {
 			// lets not error if we can't automatically add the fetch step
-			log.Infof("skipping fetch step for %s", err.Error())
+			log.Errorf("skipping fetch step for %s", err.Error())
 		}
 
 		// maps the APKBUILD values to convert config

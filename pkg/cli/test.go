@@ -185,7 +185,7 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 
 		errg.Go(func() error {
 			if err := bc.TestPackage(ctx); err != nil {
-				log.Infof("ERROR: failed to test package. the test environment has been preserved:")
+				log.Errorf("ERROR: failed to test package. the test environment has been preserved:")
 				bc.SummarizePaths(ctx)
 
 				return fmt.Errorf("failed to test package: %w", err)

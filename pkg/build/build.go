@@ -833,7 +833,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	if b.EmptyWorkspace {
-		log.Infof("empty workspace requested")
+		log.Debugf("empty workspace requested")
 	} else {
 		// Prepare workspace directory
 		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {
@@ -1120,17 +1120,17 @@ func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
 
 func (b *Build) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: %s", b.WorkspaceDir)
+	log.Debugf("  workspace dir: %s", b.WorkspaceDir)
 
 	if b.GuestDir != "" {
-		log.Infof("  guest dir: %s", b.GuestDir)
+		log.Debugf("  guest dir: %s", b.GuestDir)
 	}
 }
 
 func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
-	log.Infof("  configuration file: %s", b.ConfigFile)
+	log.Debugf("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
 
@@ -1161,7 +1161,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		if fi, err := os.Stat(b.CacheDir); err == nil && fi.IsDir() {
 			mountSource, err := realpath.Realpath(b.CacheDir)
 			if err != nil {
-				log.Infof("could not resolve path for --cache-dir: %s", err)
+				log.Errorf("could not resolve path for --cache-dir: %s", err)
 			}
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})

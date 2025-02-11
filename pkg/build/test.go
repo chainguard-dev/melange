@@ -527,17 +527,17 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 func (t *Test) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: %s", t.WorkspaceDir)
+	log.Debugf("  workspace dir: %s", t.WorkspaceDir)
 
 	if t.GuestDir != "" {
-		log.Infof("  guest dir: %s", t.GuestDir)
+		log.Debugf("  guest dir: %s", t.GuestDir)
 	}
 }
 
 func (t *Test) Summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange %s is testing:", version.GetVersionInfo().GitVersion)
-	log.Infof("  configuration file: %s", t.ConfigFile)
+	log.Debugf("  configuration file: %s", t.ConfigFile)
 	t.SummarizePaths(ctx)
 }
 

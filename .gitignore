@@ -29,3 +29,7 @@ tags
 ctags
 
 .DS_Store
+
+
+x86_64/**
+aarch64/**

@@ -416,7 +416,7 @@ func TestValidatePipelines(t *testing.T) {
 			p: []Pipeline{
 				{Uses: "deploy", Pipeline: []Pipeline{{Runs: "somescript.sh"}}},
 			},
-			wantErr: true,
+			wantErr: false, // only a warning.
 		},
 	}
 

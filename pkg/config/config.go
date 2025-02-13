@@ -810,6 +810,8 @@ type Configuration struct {
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.
 	Subpackages []Subpackage `json:"subpackages,omitempty" yaml:"subpackages,omitempty"`
+	// Optional: The list of finalize pipelines to execute
+	Finalize []Pipeline `json:"finalize,omitempty" yaml:"finalize,omitempty"`
 	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline
 	Data []RangeData `json:"data,omitempty" yaml:"data,omitempty"`

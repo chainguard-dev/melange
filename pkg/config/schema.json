@@ -35,6 +35,27 @@
       ],
       "description": "BuildOption describes an optional deviation to a package build."
     },
+    "Capabilities": {
+      "properties": {
+        "add": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to add to the pipeline container."
+        },
+        "drop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to drop from the pipeline container."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capabilities is the configuration for Linux capabilities for the runner."
+    },
     "Checks": {
       "properties": {
         "disabled": {
@@ -57,6 +78,10 @@
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
           "description": "The specification for the packages build environment"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities",
+          "description": "Optional: Linux capabilities configuration to apply to the melange runner."
         },
         "pipeline": {
           "items": {
@@ -115,7 +140,7 @@
         "package",
         "environment"
       ],
-      "description": "The root melange configuration"
+      "description": "Configuration is the root melange configuration."
     },
     "ContentsOption": {
       "properties": {
@@ -430,7 +455,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "description": "Optional: The human readable description of the input"
+          "description": "Optional: The human-readable description of the input"
         },
         "default": {
           "type": "string",
@@ -499,7 +524,7 @@
         },
         "description": {
           "type": "string",
-          "description": "A human readable description of the package"
+          "description": "A human-readable description of the package"
         },
         "url": {
           "type": "string",
@@ -608,6 +633,10 @@
     },
     "Pipeline": {
       "properties": {
+        "if": {
+          "type": "string",
+          "description": "Optional: A condition to evaluate before running the pipeline"
+        },
         "name": {
           "type": "string",
           "description": "Optional: A user defined name for the pipeline"
@@ -632,7 +661,7 @@
             "$ref": "#/$defs/Pipeline"
           },
           "type": "array",
-          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in it's own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
+          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in its own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
         },
         "inputs": {
           "additionalProperties": {
@@ -648,10 +677,6 @@
         "label": {
           "type": "string",
           "description": "Optional: Labels to apply to the pipeline"
-        },
-        "if": {
-          "type": "string",
-          "description": "Optional: A condition to evaluate before running the pipeline"
         },
         "assertions": {
           "$ref": "#/$defs/PipelineAssertions",
@@ -731,6 +756,9 @@
     "Resources": {
       "properties": {
         "cpu": {
+          "type": "string"
+        },
+        "cpumodel": {
           "type": "string"
         },
         "memory": {
@@ -897,6 +925,10 @@
         "manual": {
           "type": "boolean",
           "description": "Indicates that this package should be manually updated, usually taking\ncare over special version numbers"
+        },
+        "require-sequential": {
+          "type": "boolean",
+          "description": "Indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs"
         },
         "shared": {
           "type": "boolean",

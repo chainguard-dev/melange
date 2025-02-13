@@ -1267,7 +1267,7 @@ func (cfg *Configuration) propagatePipelines() {
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
-func ParseConfiguration(_ context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
+func ParseConfiguration(ctx context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
 	configurationDirPath := filepath.Dir(configurationFilePath)
 	options.include(opts...)
@@ -1474,7 +1474,7 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
-	if err = cfg.validate(); err != nil {
+	if err = cfg.validate(ctx); err != nil {
 		return nil, fmt.Errorf("validating configuration %q: %w", cfg.Package.Name, err)
 	}
 
@@ -1499,7 +1499,7 @@ func (e ErrInvalidConfiguration) Unwrap() error {
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z\d][a-zA-Z\d+_.-]*$`)
 
-func (cfg Configuration) validate() error {
+func (cfg Configuration) validate(ctx context.Context) error {
 	if !packageNameRegex.MatchString(cfg.Package.Name) {
 		return ErrInvalidConfiguration{Problem: fmt.Errorf("package name must match regex %q", packageNameRegex)}
 	}
@@ -1513,7 +1513,7 @@ func (cfg Configuration) validate() error {
 	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
 		return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 	}
-	if err := validatePipelines(cfg.Pipeline); err != nil {
+	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 
@@ -1539,7 +1539,7 @@ func (cfg Configuration) validate() error {
 		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
-		if err := validatePipelines(sp.Pipeline); err != nil {
+		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1547,7 +1547,8 @@ func (cfg Configuration) validate() error {
 	return nil
 }
 
-func validatePipelines(ps []Pipeline) error {
+func validatePipelines(ctx context.Context, ps []Pipeline) error {
+	log := clog.FromContext(ctx)
 	for _, p := range ps {
 		if p.With != nil && p.Uses == "" {
 			return fmt.Errorf("pipeline contains with but no uses")
@@ -1558,14 +1559,14 @@ func validatePipelines(ps []Pipeline) error {
 		}
 
 		if p.Uses != "" && len(p.Pipeline) > 0 {
-			return fmt.Errorf("pipeline cannot contain both uses %q and a pipeline", p.Uses)
+			log.Warnf("pipeline %q contains both uses and a pipeline", p.Name)
 		}
 
 		if len(p.With) > 0 && p.Runs != "" {
 			return fmt.Errorf("pipeline cannot contain both with and runs")
 		}
 
-		if err := validatePipelines(p.Pipeline); err != nil {
+		if err := validatePipelines(ctx, p.Pipeline); err != nil {
 			return err
 		}
 	}

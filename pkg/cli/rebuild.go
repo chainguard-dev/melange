@@ -31,6 +31,8 @@ func rebuild() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 		Short:             "Rebuild a melange package.",
+		Long:              "THIS IS AN EXPERIMENTAL FEATURE",
+		Hidden:            true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			r, err := docker.NewRunner(ctx)

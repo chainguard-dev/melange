@@ -30,7 +30,6 @@ toc: true
 * [melange lint](/docs/md/melange_lint.md)	 - EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors
 * [melange package-version](/docs/md/melange_package-version.md)	 - Report the target package for a YAML configuration file
 * [melange query](/docs/md/melange_query.md)	 - Query a Melange YAML file for information
-* [melange rebuild](/docs/md/melange_rebuild.md)	 - Rebuild a melange package.
 * [melange scan](/docs/md/melange_scan.md)	 - Scan an existing APK to regenerate .PKGINFO
 * [melange sign](/docs/md/melange_sign.md)	 - Sign an APK package
 * [melange sign-index](/docs/md/melange_sign-index.md)	 - Sign an APK index

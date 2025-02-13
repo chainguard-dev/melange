@@ -37,10 +37,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -103,7 +103,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -776,6 +776,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			disabled: sp.Checks.Disabled,
 		}
 		linterQueue = append(linterQueue, lintTarget)
+	}
+
+	// Run finalize pipelines
+	if !b.isBuildLess() && len(b.Configuration.Finalize) > 0 {
+		log.Infof("running finalize pipelines for %s", pkg.Name)
+		if err := pr.runPipelines(ctx, b.Configuration.Finalize); err != nil {
+			return fmt.Errorf("unable to run finalize pipelines for %s: %v", pkg.Name, err)
+		}
 	}
 
 	// Store metadata for use after the workspace is loaded into memory

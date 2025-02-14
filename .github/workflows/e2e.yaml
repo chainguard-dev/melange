@@ -165,8 +165,9 @@ jobs:
           cd examples/
           ../melange build minimal.yaml --arch=x86_64 --empty-workspace --namespace=wolfi
 
+          # This is a hack so that we can build `minimal.yaml` again, remove this when we get the path from the SBOM.
           mv packages/x86_64/minimal-0.0.1-r0.apk ../orig.apk
-          ../melange rebuild orig.apk
+          ../melange rebuild ../orig.apk
 
       - name: Diff filesystem
         run: |

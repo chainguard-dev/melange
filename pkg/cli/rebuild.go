@@ -50,6 +50,7 @@ func rebuild() *cobra.Command {
 				}
 
 				// The name of this file gets included in the SBOM, so it must match the original file name.
+				// TODO: Get this path from the SBOM.
 				f, err := os.Create(fmt.Sprintf("%s.yaml", cfg.Package.Name))
 				if err != nil {
 					return fmt.Errorf("failed to create temporary file: %v", err)

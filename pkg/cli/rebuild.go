@@ -53,6 +53,7 @@ func rebuild() *cobra.Command {
 				cfg.Environment.Contents.RuntimeRepositories = append(cfg.Environment.Contents.RuntimeRepositories, "https://packages.wolfi.dev/os")
 				cfg.Environment.Contents.Keyring = append(cfg.Environment.Contents.Keyring, "https://packages.wolfi.dev/os/wolfi-signing.rsa.pub")
 
+				// The name of this file gets included in the SBOM, so it must match the original file name.
 				f, err := os.Create(fmt.Sprintf("%s.yaml", cfg.Package.Name))
 				if err != nil {
 					return fmt.Errorf("failed to create temporary file: %v", err)

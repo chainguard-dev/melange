@@ -22,23 +22,34 @@ if [ $# -eq 0 ]; then
     set -- *.yaml
 fi
 
+key="local-melange.rsa"
+if [ -f "$key" -a -f "$key.pub" ]; then
+    echo "using existing $key"
+else
+    melange keygen "$key" ||
+        { echo "failed to create local-melange signing key"; exit 1; }
+fi
+
 fails=""
 for yaml in "$@"; do
   args=""
-  op=""
+  ops=""
   base=${yaml%.yaml}
   case "$base" in
+    *-build-test)
+      ops="build test"
+      ;;
     *-nopkg-test)
-      op="test"
+      ops="test"
       args="$args --test-package-append busybox"
       args="$args --test-package-append=python-3"
       ;;
     *-test)
-      op="test"
+      ops="test"
       args="${base%-test}"
       ;;
     *-build)
-      op="build"
+      ops="build"
       ;;
     *)
       echo "ERROR: Unexpected input '$yaml'."
@@ -46,14 +57,23 @@ for yaml in "$@"; do
       ;;
   esac
 
-  vrc "Testing $base from $yaml" \
-    ${MELANGE} "$op" \
-      --arch=x86_64 --source-dir=./test-fixtures \
-      $yaml \
-      ${args} \
-      "--repository-append=https://packages.wolfi.dev/os" \
-      "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
-      fails="${fails} $yaml"
+  for op in $ops; do
+    opargs=""
+    case "$op" in
+        build) opargs="--signing-key=$PWD/$key";;
+    esac
+
+    vrc "Testing $base from $yaml for $op" \
+      ${MELANGE} "$op" \
+        --arch=x86_64 --source-dir=./test-fixtures \
+        "$yaml" \
+        ${args} $opargs \
+        "--keyring-append=$PWD/$key.pub" \
+        "--repository-append=$PWD/packages" \
+        "--repository-append=https://packages.wolfi.dev/os" \
+        "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
+        fails="${fails} $yaml/$op"
+  done
 done
 
 if [ -z "$fails" ]; then

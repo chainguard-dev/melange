@@ -165,6 +165,7 @@ jobs:
 
           mv packages/x86_64/minimal-0.0.1-r0.apk orig.apk
           ./melange rebuild orig.apk
+
       - name: Diff filesystem
         run: |
           echo ::group::original
@@ -183,7 +184,7 @@ jobs:
           tar -Oxf orig.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
           echo ::endgroup::
           echo ::group::rebuilt
-          tar -tvf x86_64/minimal-0.0.1-r0.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
+          tar -tvf x86_64/minimal-0.0.1-r0.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json # TODO: jq it
           echo ::endgroup::
           diff \
             <(tar -Oxf orig.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) \

@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1378,8 +1379,14 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		GID:      apko_types.GID(&grp.GID),
 	}
 
-	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
-	if cfg.Test != nil {
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Groups, func(g apko_types.Group) bool {
+		return g.GroupName == grpName
+	}) {
+		cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Groups, func(g apko_types.Group) bool {
+		return g.GroupName == grpName
+	}) {
 		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
 	}
 	for _, sub := range cfg.Subpackages {
@@ -1389,8 +1396,10 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
 	}
 
-	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
-	if cfg.Test != nil {
+	if !slices.Contains(cfg.Environment.Accounts.Users, usr) {
+		cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+	}
+	if cfg.Test != nil && !slices.Contains(cfg.Test.Environment.Accounts.Users, usr) {
 		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)
 	}
 	for _, sub := range cfg.Subpackages {

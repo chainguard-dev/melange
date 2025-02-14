@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
+	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v3"
@@ -27,6 +30,7 @@ import (
 
 func rebuild() *cobra.Command {
 	var runner string
+	var archstrs []string
 	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,
@@ -49,9 +53,17 @@ func rebuild() *cobra.Command {
 					return fmt.Errorf("failed to get config for %s: %v", a, err)
 				}
 
+				cfgpurl, err := purl.FromString(cfgpkg.ExternalRefs[0].Locator)
+				if err != nil {
+					return fmt.Errorf("failed to parse package URL %q: %v", cfgpkg.ExternalRefs[0].Locator, err)
+				}
+
 				// The name of this file gets included in the SBOM, so it must match the original file name.
 				// TODO: Get this path from the SBOM.
-				f, err := os.Create(fmt.Sprintf("%s.yaml", cfg.Package.Name))
+				if err := os.MkdirAll(filepath.Dir(cfgpurl.Subpath), 0755); err != nil {
+					return fmt.Errorf("failed to create directory for temporary file: %v", err)
+				}
+				f, err := os.Create(cfgpurl.Subpath)
 				if err != nil {
 					return fmt.Errorf("failed to create temporary file: %v", err)
 				}
@@ -59,12 +71,12 @@ func rebuild() *cobra.Command {
 					return fmt.Errorf("failed to encode stripped config: %v", err)
 				}
 				defer f.Close()
-				defer os.Remove(f.Name())
+				defer os.Remove(f.Name()) // TODO: THIS IS DESTRUCTIVE!! We need to make a copy and not have that mess up the path we embed into the SBOM's Purls.
 
 				if err := BuildCmd(ctx,
-					[]apko_types.Architecture{apko_types.Architecture("amd64")},          // TODO configurable, or detect
-					build.WithConfigFileRepositoryURL("https://github.com/wolfi-dev/os"), // TODO get this from the package SBOM
-					build.WithNamespace("wolfi"),                                         // TODO get this from the package SBOM
+					apko_types.ParseArchitectures(archstrs),
+					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
+					build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
 					build.WithConfigFileRepositoryCommit(cfgpkg.Version),
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
@@ -79,6 +91,7 @@ func rebuild() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
+	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	return cmd
 }
 
@@ -143,11 +156,10 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 			for _, p := range doc.Packages {
 				if strings.HasSuffix(p.Name, ".yaml") {
 					cfgpkg = &p
-					break
 				}
 			}
 			if cfgpkg == nil {
-				return nil, nil, nil, fmt.Errorf("failed to find config package info in SBOM: %v", err)
+				return nil, nil, nil, errors.New("failed to find config package info in SBOM")
 			}
 
 		default:

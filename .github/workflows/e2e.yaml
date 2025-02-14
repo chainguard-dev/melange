@@ -155,7 +155,7 @@ jobs:
           _EOF_
 
           apk upgrade -Ua
-          apk add go build-base git bubblewrap
+          apk add go build-base git bubblewrap jq
 
       - run: |
           make melange
@@ -164,31 +164,26 @@ jobs:
 
           mv packages/x86_64/minimal-0.0.1-r0.apk orig.apk
           ./melange rebuild orig.apk
-
-          # Diff filesystem
-          echo ::group::filesystem diff
+      - name: Diff filesystem
+        run: |
           diff \
             <(tar -tvf orig.apk | sort) \
             <(tar -tvf x86_64/minimal-0.0.1-r0.apk | sort) || true
-          echo ::endgroup::
 
-          # Diff SBOM
-          echo ::group::sbom diff
+      - name: Diff SBOM
+        run: |
           diff \
             <(tar -Oxf orig.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) \
             <(tar -tvf x86_64/minimal-0.0.1-r0.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) || true
-          echo ::endgroup::
 
-          # Diff .melange.yaml
-          echo ::group::.melange.yaml diff
+      - name: Diff .melange.yaml
+        run: |
           diff \
             <(tar -Oxf orig.apk .melange.yaml) \
             <(tar -Oxf x86_64/minimal-0.0.1-r0.apk .melange.yaml) || true
-          echo ::endgroup::
 
-          # Diff .PKGINFO
-          echo ::group::.PKGINFO diff
+      - name: Diff .PKGINFO
+        run: |
           diff \
             <(tar -Oxf orig.apk .PKGINFO) \
             <(tar -Oxf x86_64/minimal-0.0.1-r0.apk .PKGINFO) || true
-          echo ::endgroup::

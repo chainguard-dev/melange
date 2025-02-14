@@ -157,7 +157,8 @@ jobs:
           apk upgrade -Ua
           apk add go build-base git bubblewrap jq
 
-      - run: |
+      - name: Build and rebuild
+        run: |
           make melange
           ./melange keygen
           ./melange build examples/minimal.yaml --arch=x86_64 --empty-workspace
@@ -166,24 +167,48 @@ jobs:
           ./melange rebuild orig.apk
       - name: Diff filesystem
         run: |
+          echo ::group::original
+          tar -tvf orig.apk | sort
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -tvf x86_64/minimal-0.0.1-r0.apk | sort
+          echo ::endgroup::
           diff \
             <(tar -tvf orig.apk | sort) \
             <(tar -tvf x86_64/minimal-0.0.1-r0.apk | sort) || true
 
       - name: Diff SBOM
         run: |
+          echo ::group::original
+          tar -Oxf orig.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -tvf x86_64/minimal-0.0.1-r0.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
+          echo ::endgroup::
           diff \
             <(tar -Oxf orig.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) \
             <(tar -tvf x86_64/minimal-0.0.1-r0.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) || true
 
       - name: Diff .melange.yaml
         run: |
+          echo ::group::original
+          tar -Oxf orig.apk .melange.yaml
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf x86_64/minimal-0.0.1-r0.apk .melange.yaml
+          echo ::endgroup::
           diff \
             <(tar -Oxf orig.apk .melange.yaml) \
             <(tar -Oxf x86_64/minimal-0.0.1-r0.apk .melange.yaml) || true
 
       - name: Diff .PKGINFO
         run: |
+          echo ::group::original
+          tar -Oxf orig.apk .PKGINFO
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf x86_64/minimal-0.0.1-r0.apk .PKGINFO
+          echo ::endgroup::
           diff \
             <(tar -Oxf orig.apk .PKGINFO) \
             <(tar -Oxf x86_64/minimal-0.0.1-r0.apk .PKGINFO) || true

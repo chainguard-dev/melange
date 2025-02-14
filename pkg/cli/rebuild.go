@@ -69,6 +69,7 @@ func rebuild() *cobra.Command {
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 					build.WithRunner(r),
+					build.WithOutDir("./packages/"), // TODO configurable?
 					build.WithConfig(f.Name())); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
 				}

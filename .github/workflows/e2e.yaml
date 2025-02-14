@@ -168,7 +168,7 @@ jobs:
           # This is a hack so that we can build `minimal.yaml` again, remove this when we get the path from the SBOM.
           mv packages/x86_64/minimal-0.0.1-r0.apk ../original.apk
           ../melange rebuild ../original.apk
-          mv packages/x86_64/minimal-0.0.1-r0.apk ../rebuilt.apk
+          mv x86_64/minimal-0.0.1-r0.apk ../rebuilt.apk
 
       - name: Diff filesystem
         run: |

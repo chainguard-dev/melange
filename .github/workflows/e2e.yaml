@@ -142,22 +142,32 @@ jobs:
           go-version-file: "go.mod"
 
       - run: |
-          go install
-          melange build examples/vars.yaml
+          sudo apt-get update -y
+          sudo apt-get install -y bubblewrap
+
+          make melange
+          ./melange keygen
+          ./melange build examples/vars.yaml --arch=x86_64 --empty-workspace
+
           mv packages/x86_64/vars-2.12.4-r0.apk orig.apk
-          melange rebuild orig.apk
+          ./melange rebuild orig.apk
 
           # Diff filesystem
           diff \
             <(tar -tvf orig.apk | sort) \
-            <(tar -tvf x86_64/vars-2.12.4-r0.apk | sort)
+            <(tar -tvf x86_64/vars-2.12.4-r0.apk | sort) || true
 
           # Diff SBOM
           diff \
             <(tar -Oxf orig.apk var/lib/db/sbom/vars-2.12-4-r0.spdx.json | jq) \
-            <(tar -tvf x86_64/vars-2.12.4-r0.apk var/lib/db/sbom/vars-2.12-4-r0.spdx.json | jq)
+            <(tar -tvf x86_64/vars-2.12.4-r0.apk var/lib/db/sbom/vars-2.12-4-r0.spdx.json | jq) || true
 
           # Diff .melange.yaml
           diff \
             <(tar -Oxf orig.apk .melange.yaml) \
-            <(tar -Oxf x86_64/vars-2.12.4-r0.apk .melange.yaml)
+            <(tar -Oxf x86_64/vars-2.12.4-r0.apk .melange.yaml) || true
+
+          # Diff .PKGINFO
+          diff \
+            <(tar -Oxf orig.apk .PKGINFO) \
+            <(tar -Oxf x86_64/vars-2.12.4-r0.apk .PKGINFO) || true

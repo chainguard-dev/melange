@@ -285,16 +285,6 @@ func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
 	}
 }
 
-// WithCreateBuildLog indicates whether to generate a package.log file containing the
-// list of packages that were built.  Some packages may have been skipped
-// during the build if , so it can be hard to know exactly which packages were built
-func WithCreateBuildLog(createBuildLog bool) Option {
-	return func(b *Build) error {
-		b.CreateBuildLog = createBuildLog
-		return nil
-	}
-}
-
 // WithDebug indicates whether debug logging of pipelines should be enabled.
 func WithDebug(debug bool) Option {
 	return func(b *Build) error {

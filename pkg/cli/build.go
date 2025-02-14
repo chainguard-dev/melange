@@ -65,7 +65,6 @@ func buildCmd() *cobra.Command {
 	var varsFile string
 	var purlNamespace string
 	var buildOption []string
-	var createBuildLog bool
 	var debug bool
 	var debugRunner bool
 	var interactive bool
@@ -173,7 +172,6 @@ func buildCmd() *cobra.Command {
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
 				build.WithEnabledBuildOptions(buildOption),
-				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),
 				build.WithInteractive(interactive),
@@ -245,7 +243,6 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
-	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")

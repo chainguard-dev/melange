@@ -119,7 +119,6 @@ type Build struct {
 	ExtraPackages         []string
 	DependencyLog         string
 	BinShOverlay          string
-	CreateBuildLog        bool
 	CacheDir              string
 	ApkCacheDir           string
 	CacheSource           string

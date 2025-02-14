@@ -180,7 +180,7 @@ jobs:
           echo ::endgroup::
           diff \
             <(tar -tvf original.apk | sort) \
-            <(tar -tvf rebuilt.apk | sort) || true
+            <(tar -tvf rebuilt.apk | sort) && echo "No diff!"
 
       - name: Diff SBOM
         run: |
@@ -192,7 +192,7 @@ jobs:
           echo ::endgroup::
           diff \
             <(tar -Oxf original.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) \
-            <(tar -Oxf rebuilt.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) || true
+            <(tar -Oxf rebuilt.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) && echo "No diff!"
 
       - name: Diff .melange.yaml
         run: |
@@ -204,7 +204,7 @@ jobs:
           echo ::endgroup::
           diff \
             <(tar -Oxf original.apk .melange.yaml) \
-            <(tar -Oxf rebuilt.apk .melange.yaml) || true
+            <(tar -Oxf rebuilt.apk .melange.yaml) && echo "No diff!"
 
       - name: Diff .PKGINFO
         run: |
@@ -216,4 +216,4 @@ jobs:
           echo ::endgroup::
           diff \
             <(tar -Oxf original.apk .PKGINFO) \
-            <(tar -Oxf rebuilt.apk .PKGINFO) || true
+            <(tar -Oxf rebuilt.apk .PKGINFO) && echo "No diff!"

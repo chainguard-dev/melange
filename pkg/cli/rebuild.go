@@ -29,7 +29,7 @@ import (
 
 func rebuild() *cobra.Command {
 	var runner string
-	var archstrs []string
+	var archstrs []string // TODO: Detect this from the APK somehow?
 	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,

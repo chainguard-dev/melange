@@ -166,21 +166,29 @@ jobs:
           ./melange rebuild orig.apk
 
           # Diff filesystem
+          echo ::group::filesystem diff
           diff \
             <(tar -tvf orig.apk | sort) \
             <(tar -tvf x86_64/hello-2.12.4-r0.apk | sort) || true
+          echo ::endgroup::
 
           # Diff SBOM
+          echo ::group::sbom diff
           diff \
             <(tar -Oxf orig.apk var/lib/db/sbom/hello-2.12-4-r0.spdx.json | jq) \
             <(tar -tvf x86_64/hello-2.12.4-r0.apk var/lib/db/sbom/hello-2.12-4-r0.spdx.json | jq) || true
+          echo ::endgroup::
 
           # Diff .melange.yaml
+          echo ::group::.melange.yaml diff
           diff \
             <(tar -Oxf orig.apk .melange.yaml) \
             <(tar -Oxf x86_64/hello-2.12.4-r0.apk .melange.yaml) || true
+          echo ::endgroup::
 
           # Diff .PKGINFO
+          echo ::group::.PKGINFO diff
           diff \
             <(tar -Oxf orig.apk .PKGINFO) \
             <(tar -Oxf x86_64/hello-2.12.4-r0.apk .PKGINFO) || true
+          echo ::endgroup::

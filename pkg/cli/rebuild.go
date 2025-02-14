@@ -16,7 +16,6 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/container/docker"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v3"
@@ -27,7 +26,8 @@ import (
 // TODO: Add `--diff` flag to show the differences between the original and rebuilt packages, or document how to do it with shell commands.
 
 func rebuild() *cobra.Command {
-	return &cobra.Command{
+	var runner string
+	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
@@ -37,9 +37,10 @@ func rebuild() *cobra.Command {
 		Hidden:            true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			r, err := docker.NewRunner(ctx)
+
+			r, err := getRunner(ctx, runner, true)
 			if err != nil {
-				return fmt.Errorf("failed to create docker runner: %v", err)
+				return fmt.Errorf("failed to create runner: %v", err)
 			}
 
 			for _, a := range args {
@@ -69,7 +70,7 @@ func rebuild() *cobra.Command {
 					build.WithConfigFileRepositoryCommit(cfgpkg.Version),
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
-					build.WithRunner(r), // TODO configurable
+					build.WithRunner(r),
 					build.WithConfig(f.Name())); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
 				}
@@ -78,6 +79,8 @@ func rebuild() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
+	return cmd
 }
 
 func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Package, error) {

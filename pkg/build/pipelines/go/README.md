@@ -19,6 +19,7 @@ Run a build using the go compiler
 | buildmode | false | The -buildmode flag value. See "go help buildmode" for more information.  | default |
 | deps | false | space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3  |  |
 | experiments | false | A comma-separated list of Golang experiment names (ex: loopvar) to use when building the binary.  |  |
+| extra-args | false | A space-separated list of extra arguments for go build command.  |  |
 | go-package | false | The go package to install  | go |
 | install-dir | false | Directory where binaries will be installed  | bin |
 | ldflags | false | List of [pattern=]arg to append to the go compiler with -ldflags |  |

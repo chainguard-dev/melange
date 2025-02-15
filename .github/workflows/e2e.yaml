@@ -171,6 +171,7 @@ jobs:
           mv packages/x86_64/minimal-0.0.1-r0.apk ../rebuilt.apk
 
       - name: Diff filesystem
+        if: always()
         run: |
           echo ::group::original
           tar -tvf original.apk | sort
@@ -183,6 +184,7 @@ jobs:
             <(tar -tvf rebuilt.apk | sort) && echo "No diff!"
 
       - name: Diff SBOM
+        if: always()
         run: |
           echo ::group::original
           tar -Oxf original.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
@@ -195,6 +197,7 @@ jobs:
             <(tar -Oxf rebuilt.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) && echo "No diff!"
 
       - name: Diff .melange.yaml
+        if: always()
         run: |
           echo ::group::original
           tar -Oxf original.apk .melange.yaml
@@ -207,6 +210,7 @@ jobs:
             <(tar -Oxf rebuilt.apk .melange.yaml) && echo "No diff!"
 
       - name: Diff .PKGINFO
+        if: always()
         run: |
           echo ::group::original
           tar -Oxf original.apk .PKGINFO
@@ -217,3 +221,10 @@ jobs:
           diff \
             <(tar -Oxf original.apk .PKGINFO) \
             <(tar -Oxf rebuilt.apk .PKGINFO) && echo "No diff!"
+
+      - name: Diff digest
+        if: always()
+        run: |
+          diff \
+            <(sha256sum original.apk | cut -d' ' -f1) \
+            <(sha256sum rebuilt.apk | cut -d' ' -f1) && echo "No diff!"

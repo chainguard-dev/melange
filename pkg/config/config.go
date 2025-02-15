@@ -102,6 +102,8 @@ type Package struct {
 	Epoch uint64 `json:"epoch" yaml:"epoch"`
 	// A human-readable description of the package
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Annotations for this package
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// The URL to the package's homepage
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the package build configuration
@@ -1165,6 +1167,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		Version:            r.Replace(in.Version),
 		Epoch:              in.Epoch,
 		Description:        r.Replace(in.Description),
+		Annotations:        replaceMap(r, in.Annotations),
 		URL:                r.Replace(in.URL),
 		Commit:             replaceCommit(commit, in.Commit),
 		TargetArchitecture: replaceAll(r, in.TargetArchitecture),

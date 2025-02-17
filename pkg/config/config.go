@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1378,26 +1379,36 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		GID:      apko_types.GID(&grp.GID),
 	}
 
-	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
-	if cfg.Test != nil {
+	sameGroup := func(g apko_types.Group) bool { return g.GroupName == grpName }
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Groups, sameGroup) {
+		cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Groups, sameGroup) {
 		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
 	}
 	for _, sub := range cfg.Subpackages {
 		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
 			continue
 		}
-		sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
+		if !slices.ContainsFunc(sub.Test.Environment.Accounts.Groups, sameGroup) {
+			sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
+		}
 	}
 
-	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
-	if cfg.Test != nil {
+	sameUser := func(u apko_types.User) bool { return u.UserName == buildUser }
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Users, sameUser) {
+		cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Users, sameUser) {
 		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)
 	}
 	for _, sub := range cfg.Subpackages {
 		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
 			continue
 		}
-		sub.Test.Environment.Accounts.Users = append(sub.Test.Environment.Accounts.Users, usr)
+		if !slices.ContainsFunc(sub.Test.Environment.Accounts.Users, sameUser) {
+			sub.Test.Environment.Accounts.Users = append(sub.Test.Environment.Accounts.Users, usr)
+		}
 	}
 
 	// Merge environment file if needed.

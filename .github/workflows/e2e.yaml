@@ -124,3 +124,107 @@ jobs:
           sha256sum stage2/x86_64/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
       - name: Verify operation of stage3 melange
         run: melange version
+
+  rebuild:
+    name: test rebuild
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    container:
+      image: alpine:latest
+      options: |
+        --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
+
+    steps:
+      - uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        with:
+          go-version-file: "go.mod"
+
+      - name: Fetch dependencies
+        run: |
+          cat >/etc/apk/repositories <<_EOF_
+          https://dl-cdn.alpinelinux.org/alpine/edge/main
+          https://dl-cdn.alpinelinux.org/alpine/edge/community
+          https://dl-cdn.alpinelinux.org/alpine/edge/testing
+          _EOF_
+
+          apk upgrade -Ua
+          apk add go build-base git bubblewrap jq
+
+      - name: Build and rebuild
+        run: |
+          make melange
+          ./melange keygen
+
+          cd examples/
+          ../melange build minimal.yaml --arch=x86_64 --empty-workspace --namespace=wolfi
+
+          # This is a hack so that we can build `minimal.yaml` again, remove this when we get the path from the SBOM.
+          mv packages/x86_64/minimal-0.0.1-r0.apk ../original.apk
+          ../melange rebuild ../original.apk --arch=x86_64
+          mv packages/x86_64/minimal-0.0.1-r0.apk ../rebuilt.apk
+
+      - name: Diff filesystem
+        if: always()
+        run: |
+          echo ::group::original
+          tar -tvf original.apk | sort
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -tvf rebuilt.apk | sort
+          echo ::endgroup::
+          diff \
+            <(tar -tvf original.apk | sort) \
+            <(tar -tvf rebuilt.apk | sort) && echo "No diff!"
+
+      - name: Diff SBOM
+        if: always()
+        run: |
+          echo ::group::original
+          tar -Oxf original.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf rebuilt.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq
+          echo ::endgroup::
+          diff \
+            <(tar -Oxf original.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) \
+            <(tar -Oxf rebuilt.apk var/lib/db/sbom/minimal-0.0.1-r0.spdx.json | jq) && echo "No diff!"
+
+      - name: Diff .melange.yaml
+        if: always()
+        run: |
+          echo ::group::original
+          tar -Oxf original.apk .melange.yaml
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf rebuilt.apk .melange.yaml
+          echo ::endgroup::
+          diff \
+            <(tar -Oxf original.apk .melange.yaml) \
+            <(tar -Oxf rebuilt.apk .melange.yaml) && echo "No diff!"
+
+      - name: Diff .PKGINFO
+        if: always()
+        run: |
+          echo ::group::original
+          tar -Oxf original.apk .PKGINFO
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf rebuilt.apk .PKGINFO
+          echo ::endgroup::
+          diff \
+            <(tar -Oxf original.apk .PKGINFO) \
+            <(tar -Oxf rebuilt.apk .PKGINFO) && echo "No diff!"
+
+      - name: Diff digest
+        if: always()
+        run: |
+          diff \
+            <(sha256sum original.apk | cut -d' ' -f1) \
+            <(sha256sum rebuilt.apk | cut -d' ' -f1) && echo "No diff!"

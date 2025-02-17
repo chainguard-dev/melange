@@ -346,6 +346,28 @@ pipeline:
 	require.Equal(t, "https://example.com/foo-0.0.1.zip", cfg.Pipeline[1].Pipeline[0].Pipeline[2].With["uri"])
 }
 
+func Test_packageAnnotations(t *testing.T) {
+	ctx := slogtest.Context(t)
+	fp := filepath.Join(os.TempDir(), "melange-test-packageAnnotations")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: annotations-workdir
+  version: 0.0.1
+  epoch: 1
+  annotations:
+    cgr.dev/ecosystem: python
+
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, "python", cfg.Package.Annotations["cgr.dev/ecosystem"])
+}
+
 func TestDuplicateSubpackage(t *testing.T) {
 	ctx := slogtest.Context(t)
 

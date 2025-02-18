@@ -45,7 +45,7 @@ require (
 	golang.org/x/sys v0.30.0
 	golang.org/x/text v0.22.0
 	golang.org/x/time v0.10.0
-	google.golang.org/api v0.220.0
+	google.golang.org/api v0.221.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f

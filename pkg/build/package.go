@@ -115,24 +115,6 @@ func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 	return pc.EmitPackage(ctx)
 }
 
-// AppendBuildLog will create or append a list of packages that were built by melange build
-func (pc *PackageBuild) AppendBuildLog(dir string) error {
-	if !pc.Build.CreateBuildLog {
-		return nil
-	}
-
-	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	// separate with pipe so it is easy to parse
-	_, err = f.WriteString(fmt.Sprintf("%s|%s|%s|%s-r%d\n", pc.Arch, pc.OriginName, pc.PackageName, pc.Origin.Version, pc.Origin.Epoch))
-	return err
-}
-
 func (pc *PackageBuild) Identity() string {
 	return fmt.Sprintf("%s-%s-r%d", pc.PackageName, pc.Origin.Version, pc.Origin.Epoch)
 }
@@ -539,11 +521,6 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	log.Infof("wrote %s", outFile.Name())
-
-	// add the package to the build log if requested
-	if err := pc.AppendBuildLog(""); err != nil {
-		log.Warnf("unable to append package log: %s", err)
-	}
 
 	return nil
 }

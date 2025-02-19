@@ -37,6 +37,15 @@ The following are the high level sections for the build file, with detailed desc
 
    Deviations to the build
 
+### finalize
+
+   List of pipelines to execute after main `pipeline` and `subpackages`
+   are processed.
+
+   The pipelines can used substitutions available in the package build.
+   Pipelines should use `${{targets.outdir}}` to determine the location
+   of package and subpackage directories.
+
 # package
 
 Details about the particular package that will be used to find and use it.

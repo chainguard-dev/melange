@@ -23,6 +23,13 @@ environment:
     packages:
       - busybox
 
+data:
+  - name: greetings
+    items:
+      english: hello
+      hawaiian: aloha
+      latvian: sveiki
+
 pipeline:
   - name: install greeter
     runs: |
@@ -37,35 +44,21 @@ pipeline:
       chmod 755 "$bdir/greeter"
 
 subpackages:
-  - name: ${{package.name}}-hello
-    description: standard greeting
+  - range: greetings
+    name: ${{package.name}}-${{range.key}}
+    description: Greet in ${{range.key}}
     dependencies:
       runtime:
         - ${{package.name}}
     pipeline:
       - runs: |
           mkdir -p "${{targets.contextdir}}/usr/bin"
-          ln -s greeter "${{targets.contextdir}}/usr/bin/hello"
+          ln -s greeter ${{targets.contextdir}}/usr/bin/${{range.value}}
     test:
       pipeline:
         - runs: |
             ${{vars.tester-blob}}
-            testrun hello
-
-  - name: ${{package.name}}-aloha
-    description: hawaiian greeting
-    dependencies:
-      runtime:
-        - ${{package.name}}
-    pipeline:
-      - runs: |
-          mkdir -p "${{targets.contextdir}}/usr/bin"
-          ln -s greeter "${{targets.contextdir}}/usr/bin/aloha"
-    test:
-      pipeline:
-        - runs: |
-            ${{vars.tester-blob}}
-            testrun aloha
+            testrun ${{range.value}}
 
 finalize:
   - name: "write /etc/finalized"

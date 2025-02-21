@@ -122,6 +122,9 @@ type Package struct {
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	// The CPE field values to be used for matching against NVD vulnerability
+	// records, if known.
+	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -129,11 +132,99 @@ type Package struct {
 	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
+// CPE stores values used to produce a CPE to describe the package, suitable for
+// matching against NVD records.
+//
+// Based on the spec found at
+// https://nvlpubs.nist.gov/nistpubs/Legacy/IR/nistir7695.pdf.
+//
+// For Melange, the "part" attribute should always be interpreted as "a" (for
+// "application") unless otherwise specified.
+//
+// The "Version" and "Update" fields have been intentionally left out of the CPE
+// struct to avoid confusion with the version information of the package itself.
+type CPE struct {
+	Part      string `json:"part,omitempty" yaml:"part,omitempty"`
+	Vendor    string `json:"vendor,omitempty" yaml:"vendor,omitempty"`
+	Product   string `json:"product,omitempty" yaml:"product,omitempty"`
+	Edition   string `json:"edition,omitempty" yaml:"edition,omitempty"`
+	Language  string `json:"language,omitempty" yaml:"language,omitempty"`
+	SWEdition string `json:"sw_edition,omitempty" yaml:"sw_edition,omitempty"`
+	TargetSW  string `json:"target_sw,omitempty" yaml:"target_sw,omitempty"`
+	TargetHW  string `json:"target_hw,omitempty" yaml:"target_hw,omitempty"`
+	Other     string `json:"other,omitempty" yaml:"other,omitempty"`
+}
+
 type Resources struct {
 	CPU      string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
 	Memory   string `json:"memory,omitempty" yaml:"memory,omitempty"`
 	Disk     string `json:"disk,omitempty" yaml:"disk,omitempty"`
+}
+
+// CPEString returns the CPE string for the package, suitable for matching
+// against NVD records.
+func (p Package) CPEString() (string, error) {
+	const anyValue = "*"
+
+	part := anyValue
+	if p.CPE.Part != "" {
+		part = p.CPE.Part
+	}
+	vendor := anyValue
+	if p.CPE.Vendor != "" {
+		vendor = p.CPE.Vendor
+	}
+	product := anyValue
+	if p.CPE.Product != "" {
+		product = p.CPE.Product
+	}
+	edition := anyValue
+	if p.CPE.Edition != "" {
+		edition = p.CPE.Edition
+	}
+	language := anyValue
+	if p.CPE.Language != "" {
+		language = p.CPE.Language
+	}
+	swEdition := anyValue
+	if p.CPE.SWEdition != "" {
+		swEdition = p.CPE.SWEdition
+	}
+	targetSW := anyValue
+	if p.CPE.TargetSW != "" {
+		targetSW = p.CPE.TargetSW
+	}
+	targetHW := anyValue
+	if p.CPE.TargetHW != "" {
+		targetHW = p.CPE.TargetHW
+	}
+	other := anyValue
+	if p.CPE.Other != "" {
+		other = p.CPE.Other
+	}
+
+	// Last-mile validation to avoid headaches downstream of this.
+	if vendor == anyValue {
+		return "", fmt.Errorf("vendor value must be exactly specified")
+	}
+	if product == anyValue {
+		return "", fmt.Errorf("product value must be exactly specified")
+	}
+
+	return fmt.Sprintf(
+		"cpe:2.3:%s:%s:%s:%s:*:%s:%s:%s:%s:%s:%s",
+		part,
+		vendor,
+		product,
+		p.Version,
+		edition,
+		language,
+		swEdition,
+		targetSW,
+		targetHW,
+		other,
+	), nil
 }
 
 // PackageURL returns the package URL ("purl") for the APK (origin) package.
@@ -1177,6 +1268,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		Options:            in.Options,
 		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
 		Checks:             in.Checks,
+		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
 	}

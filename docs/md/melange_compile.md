@@ -35,7 +35,6 @@ melange compile [flags]
       --cache-dir string            directory used for cached inputs (default "./melange-cache/")
       --cache-source string         directory or bucket used for preloading the cache
       --cpu string                  default CPU resources to use for builds
-      --create-build-log            creates a package.log file containing a list of packages that were built by the command
       --debug                       enables debug logging of build pipelines
       --debug-runner                when enabled, the builder pod will persist after the build succeeds or fails
       --dependency-log string       log dependencies to a specified file

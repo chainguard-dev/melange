@@ -234,7 +234,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		outFile,
 		false,
-		[]string{"sh", "-c", "cd /home/build && tar cvzf - melange-out"},
+		[]string{"sh", "-c", "cd /home/build && tar cvpzf - --xattrs --acls melange-out"},
 	)
 	if err != nil {
 		return nil, err

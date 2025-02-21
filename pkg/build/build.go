@@ -967,7 +967,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return a == b
 		})
 
-		if err := linter.LintBuild(ctx, lt.pkgName, path, require, warn); err != nil {
+		if err := linter.LintBuild(ctx, &b.Configuration, lt.pkgName, path, require, warn); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}

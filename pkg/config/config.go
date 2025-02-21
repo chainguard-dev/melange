@@ -1563,9 +1563,21 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	return nil
 }
 
+func pipelineName(p Pipeline, i int) string {
+	if p.Name != "" {
+		return strconv.Quote(p.Name)
+	}
+
+	if p.Uses != "" {
+		return strconv.Quote(p.Uses)
+	}
+
+	return fmt.Sprintf("[%d]", i)
+}
+
 func validatePipelines(ctx context.Context, ps []Pipeline) error {
 	log := clog.FromContext(ctx)
-	for _, p := range ps {
+	for i, p := range ps {
 		if p.With != nil && p.Uses == "" {
 			return fmt.Errorf("pipeline contains with but no uses")
 		}
@@ -1575,7 +1587,7 @@ func validatePipelines(ctx context.Context, ps []Pipeline) error {
 		}
 
 		if p.Uses != "" && len(p.Pipeline) > 0 {
-			log.Warnf("pipeline %q contains both uses and a pipeline", p.Name)
+			log.Warnf("pipeline %s contains both uses and a pipeline", pipelineName(p, i))
 		}
 
 		if len(p.With) > 0 && p.Runs != "" {
@@ -1583,7 +1595,7 @@ func validatePipelines(ctx context.Context, ps []Pipeline) error {
 		}
 
 		if err := validatePipelines(ctx, p.Pipeline); err != nil {
-			return err
+			return fmt.Errorf("validating pipeline %s children: %w", pipelineName(p, i), err)
 		}
 	}
 	return nil

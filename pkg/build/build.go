@@ -316,11 +316,14 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	// Work around LockImageConfiguration assuming multi-arch.
 	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 
+	// Modify imgConfig so that the extra repos/keys/packages passed as flags are reflected in the resulting .melange.yaml.
+	appendUniq := func(a, b []string) []string { return slices.Compact(slices.Sorted(slices.Values(append(a, b...)))) }
+	imgConfig.Contents.RuntimeRepositories = appendUniq(imgConfig.Contents.RuntimeRepositories, b.ExtraRepos)
+	imgConfig.Contents.Keyring = appendUniq(imgConfig.Contents.Keyring, b.ExtraKeys)
+	imgConfig.Contents.Packages = appendUniq(imgConfig.Contents.Packages, b.ExtraPackages)
+
 	opts := []apko_build.Option{apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
-		apko_build.WithExtraKeys(b.ExtraKeys),
-		apko_build.WithExtraBuildRepos(b.ExtraRepos),
-		apko_build.WithExtraPackages(b.ExtraPackages),
 		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures),

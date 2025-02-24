@@ -62,6 +62,7 @@ subpackages:
     test:
       pipeline:
         - runs: echo "${{subpkg.name}} test case"
+        - runs: echo "context.name=${{context.name}}"
 
 test:
   environment:
@@ -71,6 +72,8 @@ test:
         - replacement-provides-${{vars.short-package-version}}
     environment:
       LD_LIBRARY_PATH: "/usr/local/${{vars.foo}}"
+  pipeline:
+    - runs: "echo context.name=${{context.name}}"
 `), 0644); err != nil {
 		t.Fatal(err)
 	}

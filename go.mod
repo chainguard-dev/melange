@@ -3,12 +3,12 @@ module chainguard.dev/melange
 go 1.23.4
 
 require (
-	chainguard.dev/apko v0.25.0
+	chainguard.dev/apko v0.25.1
 	cloud.google.com/go/storage v1.50.0
 	dagger.io/dagger v0.15.3
 	github.com/chainguard-dev/clog v1.6.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.7
+	github.com/chainguard-dev/yam v0.2.9
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v27.5.1+incompatible
 	github.com/docker/docker v27.5.1+incompatible
@@ -31,7 +31,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20241019191636-4ef911798f9b
 	github.com/spdx/tools-golang v0.5.5
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3

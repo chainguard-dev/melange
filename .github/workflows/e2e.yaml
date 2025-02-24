@@ -121,7 +121,27 @@ jobs:
           mv packages stage3
       - name: Ensure melange package is reproducible
         run: |
-          sha256sum stage2/x86_64/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
+          # echo compare stage2 and stage3
+          set -- stage2/x86_64/*.apk
+          if sha256sum "$@" | sed -e 's:stage2/:stage3/:g' | sha256sum -c; then
+            echo "PASS: stage2 == stage3 for $*"
+            sha256sum stage2/x86_64/*.apk
+            sha256sum stage3/x86_64/*.apk
+            exit 0
+          fi
+          set +x
+          echo "FATAL: stage2 and stage3 differed for $*."
+          for s2apk in $* ; do
+             s3apk=stage3/${s2apk#stage2/}
+             echo "== $s2apk -> $s3apk =="
+             tar -Oxf $s2apk .PKGINFO > stage2.info
+             tar -Oxf $s3apk .PKGINFO > stage3.info
+             diff -u stage2.info stage3.info || :
+             tar -tf $s2apk > stage2.flist
+             tar -tf $s3apk > stage3.flist
+             diff -u stage2.flist stage3.flist || :
+          done
+          exit 1
       - name: Verify operation of stage3 melange
         run: melange version
 

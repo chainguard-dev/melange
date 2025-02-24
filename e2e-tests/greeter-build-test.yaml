@@ -60,12 +60,31 @@ subpackages:
             ${{vars.tester-blob}}
             testrun ${{range.value}}
 
+finalize:
+  - name: "write /etc/finalized"
+    runs: |
+      ( cd "${{targets.outdir}}" && find . ! -type d )
+      etcd="${{targets.outdir}}/${{package.name}}/etc"
+      mkdir -p "$etcd"
+      echo "finalized-${{package.name}}" > "$etcd/finalized"
+
 test:
   pipeline:
     - name: test-greeter
       runs: |
         ${{vars.tester-blob}}
         testrun greeter howdy
+    - name: test-finalized
+      runs: |
+        set +f
+        f="/etc/finalized"
+        [ -e "$f" ] || { echo "FAIL: $f is not present"; exit 1; }
+        [ -f "$f" ] || { echo "FAIL: $f was not a file"; exit 1; }
+        exp="finalized-${{package.name}}"
+        read content < "$f" || { echo "FAIL: failed to read from $f"; exit 1; }
+        [ "$content" = "$exp" ] ||
+          { echo "$f contained '$content'. expected '$exp'"; exit 1; }
+        echo "PASS: $f existed and had expected content '$exp'"
 
 vars:
   tester-blob: |

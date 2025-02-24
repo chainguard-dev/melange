@@ -125,6 +125,8 @@ jobs:
           set -- stage2/x86_64/*.apk
           if sha256sum "$@" | sed -e 's:stage2/:stage3/:g' | sha256sum -c; then
             echo "PASS: stage2 == stage3 for $*"
+            sha256sum stage2/x86_64/*.apk
+            sha256sum stage3/x86_64/*.apk
             exit 0
           fi
           set +x

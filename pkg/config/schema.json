@@ -36,6 +36,27 @@
       "type": "object",
       "description": "Capabilities is the configuration for Linux capabilities for the runner."
     },
+    "Capabilities": {
+      "properties": {
+        "add": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to add to the pipeline container."
+        },
+        "drop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to drop from the pipeline container."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capabilities is the configuration for Linux capabilities for the runner."
+    },
     "Checks": {
       "properties": {
         "disabled": {

@@ -10,6 +10,11 @@ inputs:
       The number of path components to strip while extracting.
     default: 1
 
+  fuzz:
+    description: |
+      Sets the maximum fuzz factor. This option only applies to context diffs, and causes patch to ignore up to that many lines in looking for places to install a hunk.
+    default: 2
+
   patches:
     description: |
       A list of patches to apply, as a whitespace delimited string.
@@ -33,5 +38,5 @@ pipeline:
       fi
 
       grep -v -E '^(#|$)' $series | (while read patchfile; do
-        patch '-p${{inputs.strip-components}}' --verbose < $patchfile
+        patch '-p${{inputs.strip-components}}' --fuzz=${{inputs.fuzz}} --verbose < $patchfile
       done)

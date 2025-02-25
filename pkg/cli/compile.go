@@ -87,7 +87,7 @@ func compile() *cobra.Command {
 			// Git auto-detection should be "best effort" and not fail the build if it
 			// fails.
 			if configFileGitCommit == "" {
-				log.Infof("git commit for build config not provided, attempting to detect automatically")
+				log.Debugf("git commit for build config not provided, attempting to detect automatically")
 				commit, err := detectGitHead(ctx, buildConfigFilePath)
 				if err != nil {
 					log.Warnf("unable to detect commit for build config file: %v", err)

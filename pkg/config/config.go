@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,7 +43,10 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
-const purlTypeAPK = "apk"
+const (
+	buildUser   = "build"
+	purlTypeAPK = "apk"
+)
 
 type Trigger struct {
 	// Optional: The script to run
@@ -99,6 +103,8 @@ type Package struct {
 	Epoch uint64 `json:"epoch" yaml:"epoch"`
 	// A human-readable description of the package
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Annotations for this package
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// The URL to the package's homepage
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the package build configuration
@@ -636,6 +642,8 @@ type Configuration struct {
 	// Optional: A list of transformations to create for the builtin template
 	// variables
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
+	// Optional: Disables filtering of common pre-release tags
+	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
@@ -1071,7 +1079,7 @@ func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) a
 		Paths:       in.Paths, // TODO
 		VCSUrl:      r.Replace(in.VCSUrl),
 		Annotations: replaceMap(r, in.Annotations),
-		Include:     in.Include, // TODO
+		Include:     in.Include, //nolint:staticcheck // TODO
 		Volumes:     replaceAll(r, in.Volumes),
 	}
 }
@@ -1158,6 +1166,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		Version:            r.Replace(in.Version),
 		Epoch:              in.Epoch,
 		Description:        r.Replace(in.Description),
+		Annotations:        replaceMap(r, in.Annotations),
 		URL:                r.Replace(in.URL),
 		Commit:             replaceCommit(commit, in.Commit),
 		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
@@ -1262,7 +1271,7 @@ func (cfg *Configuration) propagatePipelines() {
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
-func ParseConfiguration(_ context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
+func ParseConfiguration(ctx context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
 	configurationDirPath := filepath.Dir(configurationFilePath)
 	options.include(opts...)
@@ -1358,21 +1367,50 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	cfg.Data = nil // TODO: zero this out or not?
 
 	// TODO: validate that subpackage ranges have been consumed and applied
-
+	grpName := buildUser
 	grp := apko_types.Group{
-		GroupName: "build",
+		GroupName: grpName,
 		GID:       1000,
-		Members:   []string{"build"},
+		Members:   []string{buildUser},
 	}
-	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 
-	gid1000 := uint32(1000)
 	usr := apko_types.User{
-		UserName: "build",
+		UserName: buildUser,
 		UID:      1000,
-		GID:      apko_types.GID(&gid1000),
+		GID:      apko_types.GID(&grp.GID),
 	}
-	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+
+	sameGroup := func(g apko_types.Group) bool { return g.GroupName == grpName }
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Groups, sameGroup) {
+		cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Groups, sameGroup) {
+		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
+	}
+	for _, sub := range cfg.Subpackages {
+		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
+			continue
+		}
+		if !slices.ContainsFunc(sub.Test.Environment.Accounts.Groups, sameGroup) {
+			sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
+		}
+	}
+
+	sameUser := func(u apko_types.User) bool { return u.UserName == buildUser }
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Users, sameUser) {
+		cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Users, sameUser) {
+		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)
+	}
+	for _, sub := range cfg.Subpackages {
+		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
+			continue
+		}
+		if !slices.ContainsFunc(sub.Test.Environment.Accounts.Users, sameUser) {
+			sub.Test.Environment.Accounts.Users = append(sub.Test.Environment.Accounts.Users, usr)
+		}
+	}
 
 	// Merge environment file if needed.
 	if envFile := options.envFilePath; envFile != "" {
@@ -1450,7 +1488,7 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
-	if err = cfg.validate(); err != nil {
+	if err = cfg.validate(ctx); err != nil {
 		return nil, fmt.Errorf("validating configuration %q: %w", cfg.Package.Name, err)
 	}
 
@@ -1475,7 +1513,7 @@ func (e ErrInvalidConfiguration) Unwrap() error {
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z\d][a-zA-Z\d+_.-]*$`)
 
-func (cfg Configuration) validate() error {
+func (cfg Configuration) validate(ctx context.Context) error {
 	if !packageNameRegex.MatchString(cfg.Package.Name) {
 		return ErrInvalidConfiguration{Problem: fmt.Errorf("package name must match regex %q", packageNameRegex)}
 	}
@@ -1489,7 +1527,7 @@ func (cfg Configuration) validate() error {
 	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
 		return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 	}
-	if err := validatePipelines(cfg.Pipeline); err != nil {
+	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 
@@ -1515,7 +1553,7 @@ func (cfg Configuration) validate() error {
 		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
-		if err := validatePipelines(sp.Pipeline); err != nil {
+		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1523,8 +1561,21 @@ func (cfg Configuration) validate() error {
 	return nil
 }
 
-func validatePipelines(ps []Pipeline) error {
-	for _, p := range ps {
+func pipelineName(p Pipeline, i int) string {
+	if p.Name != "" {
+		return strconv.Quote(p.Name)
+	}
+
+	if p.Uses != "" {
+		return strconv.Quote(p.Uses)
+	}
+
+	return fmt.Sprintf("[%d]", i)
+}
+
+func validatePipelines(ctx context.Context, ps []Pipeline) error {
+	log := clog.FromContext(ctx)
+	for i, p := range ps {
 		if p.With != nil && p.Uses == "" {
 			return fmt.Errorf("pipeline contains with but no uses")
 		}
@@ -1534,15 +1585,15 @@ func validatePipelines(ps []Pipeline) error {
 		}
 
 		if p.Uses != "" && len(p.Pipeline) > 0 {
-			return fmt.Errorf("pipeline cannot contain both uses %q and a pipeline", p.Uses)
+			log.Warnf("pipeline %s contains both uses and a pipeline", pipelineName(p, i))
 		}
 
 		if len(p.With) > 0 && p.Runs != "" {
 			return fmt.Errorf("pipeline cannot contain both with and runs")
 		}
 
-		if err := validatePipelines(p.Pipeline); err != nil {
-			return err
+		if err := validatePipelines(ctx, p.Pipeline); err != nil {
+			return fmt.Errorf("validating pipeline %s children: %w", pipelineName(p, i), err)
 		}
 	}
 	return nil

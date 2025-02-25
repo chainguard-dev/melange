@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,9 +39,44 @@ func TestLinters(t *testing.T) {
 		}
 	}
 
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Name: "pkgconf",
+		},
+	}
+
+	goodCfg := &config.Configuration{
+		Package: config.Package{
+			Name: "pkgconf",
+		},
+		Test: &config.Test{
+			Pipeline: []config.Pipeline{{
+				Uses: "test/pkgconf",
+			}},
+		},
+	}
+
+	subpkgCfg := &config.Configuration{
+		Package: config.Package{
+			Name: "not-pkgconf",
+		},
+		Subpackages: []config.Subpackage{{
+			Name: "also-not-pkgconf",
+		}, {
+			Name: "pkgconf",
+			Test: &config.Test{
+				Pipeline: []config.Pipeline{{
+					Uses: "test/pkgconf",
+				}},
+			},
+		}},
+	}
+
 	for _, c := range []struct {
+		cfg     *config.Configuration
 		dirFunc func() string
-		linter  string
+		linter  string // NB: Also the package name for this test, but that's weird!
+		pass    bool
 	}{{
 		dirFunc: t.TempDir,
 		linter:  "empty",
@@ -83,9 +119,21 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
 		linter:  "pkgconf",
+		cfg:     cfg,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
+		linter:  "pkgconf",
+		cfg:     goodCfg,
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
+		linter:  "pkgconf",
+		cfg:     subpkgCfg,
+		pass:    true,
 	}, {
 		dirFunc: mkfile(t, "usr/share/pkgconfig/test.txt"),
 		linter:  "pkgconf",
+		cfg:     cfg,
 	}, {
 		dirFunc: mkfile(t, "sbin/test.sh"),
 		linter:  "usrmerge",
@@ -94,10 +142,15 @@ func TestLinters(t *testing.T) {
 		t.Run(c.linter, func(t *testing.T) {
 			dir := c.dirFunc()
 			// In required mode, it should raise an error.
-			assert.Error(t, LintBuild(ctx, c.linter, dir, []string{c.linter}, nil))
+			err := LintBuild(ctx, c.cfg, c.linter, dir, []string{c.linter}, nil)
+			if c.pass {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
 
 			// In warn mode, it should never raise an error.
-			assert.NoError(t, LintBuild(ctx, c.linter, dir, nil, []string{c.linter}))
+			assert.NoError(t, LintBuild(ctx, c.cfg, c.linter, dir, nil, []string{c.linter}))
 		})
 	}
 }
@@ -116,32 +169,32 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, os.MkdirAll(packagedir, 0700))
 
 	// One package should not trip it
-	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// Egg info files should not count
 	_, err := os.Create(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// dist info files should not count
 	_, err = os.Create(filepath.Join(pythonPathdir, "foodist-0.1-py3.14.dist-info"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// pth files should not count
 	_, err = os.Create(filepath.Join(pythonPathdir, "foopth-0.1-py3.14.pth"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// .so files duplicate with a dir should not count
 	_, err = os.Create(filepath.Join(pythonPathdir, "foo.so"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// __pycache__ dirs should not count
 	err = os.MkdirAll(filepath.Join(pythonPathdir, "__pycache__"), 0700)
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// Make another "package" (at this point we should have 2)
 	packagedir = filepath.Join(pythonPathdir, "bar")
@@ -149,7 +202,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Two should trip it
-	assert.Error(t, LintBuild(ctx, "multiple", dir, linters, nil))
+	assert.Error(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 }
 
 func Test_pythonTestLinter(t *testing.T) {
@@ -167,14 +220,14 @@ func Test_pythonTestLinter(t *testing.T) {
 	assert.NoError(t, os.MkdirAll(packagedir, 0700))
 
 	// One package should not trip it
-	assert.NoError(t, LintBuild(ctx, "python-test", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "python-test", dir, linters, nil))
 
 	// Create docs
 	docsdir := filepath.Join(pythonPathdir, "test")
 	assert.NoError(t, os.MkdirAll(docsdir, 0700))
 
 	// This should trip
-	assert.Error(t, LintBuild(ctx, "python-test", dir, linters, nil))
+	assert.Error(t, LintBuild(ctx, nil, "python-test", dir, linters, nil))
 }
 
 func Test_setUidGidLinter(t *testing.T) {
@@ -187,7 +240,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
 	assert.NoError(t, os.Chmod(filePath, 0770|fs.ModeSetuid|fs.ModeSetgid))
-	assert.NoError(t, LintBuild(ctx, "setuidgid", t.TempDir(), linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "setuidgid", t.TempDir(), linters, nil))
 }
 
 func Test_worldWriteLinter(t *testing.T) {
@@ -199,7 +252,7 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, os.MkdirAll(filepath.Join(dir, "usr", "lib"), 0777))
 
 	// Ensure 777 dirs don't trigger it
-	assert.NoError(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
 
 	// Create test file
 	filePath := filepath.Join(dir, "usr", "lib", "test.txt")
@@ -211,21 +264,21 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Linter should not trigger
-	assert.NoError(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
+	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
 
 	// Set writeable bit (but not executable bit)
 	err = os.Chmod(filePath, 0776)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	assert.Error(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
+	assert.Error(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
 
 	// Set writeable and executable bit
 	err = os.Chmod(filePath, 0777)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	assert.Error(t, LintBuild(ctx, "worldwrite", dir, linters, nil))
+	assert.Error(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
 }
 
 func Test_lintApk(t *testing.T) {

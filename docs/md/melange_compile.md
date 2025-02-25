@@ -31,7 +31,6 @@ melange compile [flags]
       --apk-cache-dir string        directory used for cached apk packages (default is system-defined cache directory)
       --arch string                 architectures to compile for
       --build-date string           date used for the timestamps of the files inside the image
-      --build-option strings        build options to enable
       --cache-dir string            directory used for cached inputs (default "./melange-cache/")
       --cache-source string         directory or bucket used for preloading the cache
       --cpu string                  default CPU resources to use for builds

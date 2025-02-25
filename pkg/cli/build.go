@@ -64,7 +64,6 @@ func buildCmd() *cobra.Command {
 	var envFile string
 	var varsFile string
 	var purlNamespace string
-	var buildOption []string
 	var createBuildLog bool
 	var debug bool
 	var debugRunner bool
@@ -74,7 +73,6 @@ func buildCmd() *cobra.Command {
 	var cpu, cpumodel, memory, disk string
 	var timeout time.Duration
 	var extraPackages []string
-	var libc string
 	var lintRequire, lintWarn []string
 	var ignoreSignatures bool
 	var cleanup bool
@@ -172,7 +170,6 @@ func buildCmd() *cobra.Command {
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
-				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),
@@ -186,7 +183,6 @@ func buildCmd() *cobra.Command {
 				build.WithDisk(disk),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
-				build.WithLibcFlavorOverride(libc),
 				build.WithIgnoreSignatures(ignoreSignatures),
 				build.WithConfigFileRepositoryCommit(configFileGitCommit),
 				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
@@ -239,8 +235,6 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
-	cmd.Flags().StringVar(&libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")
-	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")

@@ -83,7 +83,7 @@ var gccLinkTemplate = `*link:
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 type Build struct {
-	Configuration config.Configuration
+	Configuration *config.Configuration
 
 	// The name of the build configuration file, e.g. "crane.yaml".
 	ConfigFile string
@@ -213,22 +213,23 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		return nil, fmt.Errorf("config file repository commit was not set")
 	}
 
-	parsedCfg, err := config.ParseConfiguration(ctx,
-		b.ConfigFile,
-		config.WithEnvFileForParsing(b.EnvFile),
-		config.WithVarsFileForParsing(b.VarsFile),
-		config.WithDefaultCPU(b.DefaultCPU),
-		config.WithDefaultCPUModel(b.DefaultCPUModel),
-		config.WithDefaultDisk(b.DefaultDisk),
-		config.WithDefaultMemory(b.DefaultMemory),
-		config.WithDefaultTimeout(b.DefaultTimeout),
-		config.WithCommit(b.ConfigFileRepositoryCommit),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	if b.Configuration == nil {
+		parsedCfg, err := config.ParseConfiguration(ctx,
+			b.ConfigFile,
+			config.WithEnvFileForParsing(b.EnvFile),
+			config.WithVarsFileForParsing(b.VarsFile),
+			config.WithDefaultCPU(b.DefaultCPU),
+			config.WithDefaultCPUModel(b.DefaultCPUModel),
+			config.WithDefaultDisk(b.DefaultDisk),
+			config.WithDefaultMemory(b.DefaultMemory),
+			config.WithDefaultTimeout(b.DefaultTimeout),
+			config.WithCommit(b.ConfigFileRepositoryCommit),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
+		}
+		b.Configuration = parsedCfg
 	}
-
-	b.Configuration = *parsedCfg
 
 	// Now that we can find out the names of all the packages we'll be producing, we
 	// can start tracking SBOM data for each of them, using our SBOMGroup type.
@@ -967,7 +968,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return a == b
 		})
 
-		if err := linter.LintBuild(ctx, &b.Configuration, lt.pkgName, path, require, warn); err != nil {
+		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, path, require, warn); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}

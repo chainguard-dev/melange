@@ -43,7 +43,7 @@ jobs:
 
           make melange
           ./melange keygen
-          ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
+          ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace --repository-append=https://apk.cgr.dev/chainguard
 
       - name: Check SBOM Conformance
         run: |

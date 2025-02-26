@@ -95,7 +95,7 @@ jobs:
           make melange
           ./melange keygen
 
-          cd examples/
+          cd $(basename ${{matrix.cfg}})
           ../melange build ${{matrix.cfg}} --arch=x86_64 --namespace=wolfi
 
           # This is a hack so that we can build `minimal.yaml` again, remove this when we get the path from the SBOM.

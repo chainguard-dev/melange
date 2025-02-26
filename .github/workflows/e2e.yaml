@@ -71,7 +71,7 @@ jobs:
           - melange.yaml
 
     container:
-      image: chainguard/wolfi-base:latest
+      image: alpine:latest
       options: |
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 

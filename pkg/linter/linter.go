@@ -33,6 +33,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
 	"gopkg.in/ini.v1"
+	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/apko/pkg/apk/auth"
 	"chainguard.dev/apko/pkg/apk/expandapk"
@@ -700,7 +701,7 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 		return fmt.Errorf("pkgname is nonexistent")
 	}
 
-	cfg, err := parseMelangeYaml(ctx, exp.ControlFS)
+	cfg, err := parseMelangeYaml(exp.ControlFS)
 	if err != nil {
 		// TODO: Consider making this fatal if the universe gets rebuilt with new melange.
 		clog.FromContext(ctx).Warnf("parsing .melange.yaml: %v", err)
@@ -713,32 +714,20 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 	return lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require)
 }
 
-func parseMelangeYaml(ctx context.Context, fsys fs.FS) (*config.Configuration, error) {
+func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 	my, err := fsys.Open(".melange.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("could not open .melange.yaml file: %w", err)
 	}
 	defer my.Close()
 
-	tmp, err := os.CreateTemp("", ".melange.yaml")
-	if err != nil {
-		return nil, fmt.Errorf("creating temp file: %w", err)
+	// We expect the file to be complete, so we don't need to post-process
+	// it with any of the options available in ParseConfiguration.
+	var cfg config.Configuration
+	if err := yaml.NewDecoder(my).Decode(&cfg); err != nil {
+		return nil, err
 	}
-	defer os.Remove(tmp.Name())
-
-	if _, err := io.Copy(tmp, my); err != nil {
-		return nil, fmt.Errorf("copying .melange.yaml: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return nil, fmt.Errorf("closing temp file: %w", err)
-	}
-
-	cfg, err := config.ParseConfiguration(ctx, tmp.Name())
-	if err != nil {
-		return nil, fmt.Errorf("parsing .melange.yaml: %w", err)
-	}
-
-	return cfg, nil
+	return &cfg, nil
 }
 
 func usrmergeLinter(_ context.Context, _ *config.Configuration, _, path string) error {

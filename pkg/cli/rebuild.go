@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -57,21 +56,6 @@ func rebuild() *cobra.Command {
 					return fmt.Errorf("failed to parse package URL %q: %v", cfgpkg.ExternalRefs[0].Locator, err)
 				}
 
-				// The name of this file gets included in the SBOM, so it must match the original file name.
-				// TODO: Get this path from the SBOM.
-				if err := os.MkdirAll(filepath.Dir(cfgpurl.Subpath), 0755); err != nil {
-					return fmt.Errorf("failed to create directory for temporary file: %v", err)
-				}
-				f, err := os.Create(cfgpurl.Subpath)
-				if err != nil {
-					return fmt.Errorf("failed to create temporary file: %v", err)
-				}
-				if err := yaml.NewEncoder(f).Encode(cfg); err != nil {
-					return fmt.Errorf("failed to encode stripped config: %v", err)
-				}
-				defer f.Close()
-				defer os.Remove(f.Name()) // TODO: THIS IS DESTRUCTIVE!! We need to make a copy and not have that mess up the path we embed into the SBOM's Purls.
-
 				if err := BuildCmd(ctx,
 					apko_types.ParseArchitectures(archstrs),
 					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
@@ -81,7 +65,7 @@ func rebuild() *cobra.Command {
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 					build.WithRunner(r),
 					build.WithOutDir("./packages/"), // TODO configurable?
-					build.WithConfig(f.Name())); err != nil {
+					build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
 				}
 			}

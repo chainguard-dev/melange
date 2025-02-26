@@ -1,4 +1,4 @@
-name: e2e melange bootstrap + build
+name: e2e tests
 
 on:
   push:
@@ -57,102 +57,21 @@ jobs:
             docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
           done
 
-  bootstrap:
-    name: bootstrap package
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    container:
-      image: alpine:latest
-      options: |
-        --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
-
-    steps:
-      - name: Fetch dependencies
-        run: |
-          cat >/etc/apk/repositories <<_EOF_
-          https://dl-cdn.alpinelinux.org/alpine/edge/main
-          https://dl-cdn.alpinelinux.org/alpine/edge/community
-          https://dl-cdn.alpinelinux.org/alpine/edge/testing
-          _EOF_
-
-          apk upgrade -Ua
-          apk add go cosign build-base git bubblewrap
-
-      - uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
-        with:
-          go-version-file: "go.mod"
-      - name: Mark workspace as a safe repository
-        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
-      - name: Build bootstrap melange tool (stage1)
-        run: make melange
-      - name: Generate a package signing keypair
-        run: |
-          ./melange keygen
-          mv melange.rsa.pub /etc/apk/keys
-      - name: Prepare build workspace for stage2
-        run: |
-          git clone . workspace-stage2/x86_64
-      - name: Build stage2 melange package with bootstrap melange
-        run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage2/
-      - name: Install stage2 melange package
-        run: apk add ./packages/x86_64/melange-*.apk
-      - name: Move stage2 artifacts to stage2 directory
-        run: |
-          mv packages stage2
-      - name: Verify operation of stage2 melange
-        run: melange version
-      - name: Prepare build workspace for stage3
-        run: |
-          git clone . workspace-stage3/x86_64
-      - name: Build stage3 melange package with stage2 melange
-        run: melange build --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage3/
-      - name: Install stage3 melange package
-        run: apk add ./packages/x86_64/melange-*.apk
-      - name: Move stage3 artifacts to stage3 directory
-        run: |
-          mv packages stage3
-      - name: Ensure melange package is reproducible
-        run: |
-          # echo compare stage2 and stage3
-          set -- stage2/x86_64/*.apk
-          if sha256sum "$@" | sed -e 's:stage2/:stage3/:g' | sha256sum -c; then
-            echo "PASS: stage2 == stage3 for $*"
-            sha256sum stage2/x86_64/*.apk
-            sha256sum stage3/x86_64/*.apk
-            exit 0
-          fi
-          set +x
-          echo "FATAL: stage2 and stage3 differed for $*."
-          for s2apk in $* ; do
-             s3apk=stage3/${s2apk#stage2/}
-             echo "== $s2apk -> $s3apk =="
-             tar -Oxf $s2apk .PKGINFO > stage2.info
-             tar -Oxf $s3apk .PKGINFO > stage3.info
-             diff -u stage2.info stage3.info || :
-             tar -tf $s2apk > stage2.flist
-             tar -tf $s3apk > stage3.flist
-             diff -u stage2.flist stage3.flist || :
-          done
-          exit 1
-      - name: Verify operation of stage3 melange
-        run: melange version
-
   rebuild:
     name: test rebuild
     runs-on: ubuntu-latest
     permissions:
       contents: read
 
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+          - examples/minimal.yaml
+          - melange.yaml
+
     container:
-      image: alpine:latest
+      image: chainguard/wolfi-base:latest
       options: |
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
@@ -168,12 +87,6 @@ jobs:
 
       - name: Fetch dependencies
         run: |
-          cat >/etc/apk/repositories <<_EOF_
-          https://dl-cdn.alpinelinux.org/alpine/edge/main
-          https://dl-cdn.alpinelinux.org/alpine/edge/community
-          https://dl-cdn.alpinelinux.org/alpine/edge/testing
-          _EOF_
-
           apk upgrade -Ua
           apk add go build-base git bubblewrap jq
 
@@ -183,10 +96,7 @@ jobs:
           ./melange keygen
 
           cd examples/
-          ../melange build minimal.yaml --arch=x86_64 --empty-workspace --namespace=wolfi
-
-          # This is a hack so that we can build `minimal.yaml` again, remove this when we get the path from the SBOM.
-          mv packages/x86_64/minimal-0.0.1-r0.apk ../original.apk
+          ../melange build ${{matrix.cfg}} --arch=x86_64 --namespace=wolfi
           ../melange rebuild ../original.apk --arch=x86_64
           mv packages/x86_64/minimal-0.0.1-r0.apk ../rebuilt.apk
 

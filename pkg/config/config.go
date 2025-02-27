@@ -155,6 +155,10 @@ type CPE struct {
 	Other     string `json:"other,omitempty" yaml:"other,omitempty"`
 }
 
+func (cpe CPE) IsZero() bool {
+	return cpe == CPE{}
+}
+
 type Resources struct {
 	CPU      string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
@@ -1652,6 +1656,10 @@ func (cfg Configuration) validate(ctx context.Context) error {
 		}
 	}
 
+	if err := validateCPE(cfg.Package.CPE); err != nil {
+		return ErrInvalidConfiguration{Problem: fmt.Errorf("CPE validation: %w", err)}
+	}
+
 	return nil
 }
 
@@ -1704,6 +1712,65 @@ func validateDependenciesPriorities(deps Dependencies) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func validateCPE(cpe CPE) error {
+	if cpe.Part != "" && cpe.Part != "a" {
+		return fmt.Errorf("invalid CPE part (must be 'a' for application, if specified): %q", cpe.Part)
+	}
+
+	if (cpe.Vendor == "") != (cpe.Product == "") {
+		return errors.New("vendor and product must each be set if the other is set")
+	}
+
+	const all = "*"
+	if cpe.Vendor == all {
+		return fmt.Errorf("invalid CPE vendor: %q", cpe.Vendor)
+	}
+	if cpe.Product == all {
+		return fmt.Errorf("invalid CPE product: %q", cpe.Product)
+	}
+
+	if err := validateCPEField(cpe.Vendor); err != nil {
+		return fmt.Errorf("invalid vendor: %w", err)
+	}
+	if err := validateCPEField(cpe.Product); err != nil {
+		return fmt.Errorf("invalid product: %w", err)
+	}
+	if err := validateCPEField(cpe.Edition); err != nil {
+		return fmt.Errorf("invalid edition: %w", err)
+	}
+	if err := validateCPEField(cpe.Language); err != nil {
+		return fmt.Errorf("invalid language: %w", err)
+	}
+	if err := validateCPEField(cpe.SWEdition); err != nil {
+		return fmt.Errorf("invalid software edition: %w", err)
+	}
+	if err := validateCPEField(cpe.TargetSW); err != nil {
+		return fmt.Errorf("invalid target software: %w", err)
+	}
+	if err := validateCPEField(cpe.TargetHW); err != nil {
+		return fmt.Errorf("invalid target hardware: %w", err)
+	}
+	if err := validateCPEField(cpe.Other); err != nil {
+		return fmt.Errorf("invalid other field: %w", err)
+	}
+
+	return nil
+}
+
+var cpeFieldRegex = regexp.MustCompile(`^[a-z\d][a-z\d+_.-]*$`)
+
+func validateCPEField(val string) error {
+	if val == "" {
+		return nil
+	}
+
+	if !cpeFieldRegex.MatchString(val) {
+		return fmt.Errorf("invalid CPE field value %q, must match regex %q", val, cpeFieldRegex.String())
+	}
+
 	return nil
 }
 

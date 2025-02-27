@@ -9,6 +9,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_validateCPE(t *testing.T) {
+	cases := []struct {
+		name    string
+		cpe     CPE
+		wantErr bool
+	}{
+		{
+			name:    "minimally valid",
+			cpe:     CPE{Vendor: "b", Product: "c"},
+			wantErr: false,
+		},
+		{
+			name:    "product without vendor",
+			cpe:     CPE{Product: "c"},
+			wantErr: true,
+		},
+		{
+			name:    "vendor without product",
+			cpe:     CPE{Vendor: "b"},
+			wantErr: true,
+		},
+		{
+			name:    "valid with additional fields set",
+			cpe:     CPE{Part: "a", Vendor: "b", Product: "c", TargetSW: "d", TargetHW: "e"},
+			wantErr: false,
+		},
+		{
+			name:    "invalid part",
+			cpe:     CPE{Part: "h", Vendor: "b", Product: "c"},
+			wantErr: true,
+		},
+		{
+			name:    "invalid characters",
+			cpe:     CPE{Vendor: "b", Product: "c:5"},
+			wantErr: true,
+		},
+		{
+			name:    "more invalid characters",
+			cpe:     CPE{Vendor: "B!", Product: "c"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCPE(tt.cpe)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func Test_applySubstitution(t *testing.T) {
 	ctx := slogtest.Context(t)
 

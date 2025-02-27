@@ -1,0 +1,40 @@
+name: Get coverage percentage with llvm-cov report
+
+needs:
+  packages:
+    - ${{inputs.package}}
+
+inputs:
+  package:
+    description: The llvm package to install
+    default: llvm-19
+  object:
+    description: The path to the coverage executable or object file
+    default: ""
+  ignore-filename-regex:
+    description: Exclude source code files from the report with file paths that match the given regular expression
+    default: ""
+
+pipeline:
+  - runs: |
+      llvm-profdata merge \
+        --sparse default_*.profraw \
+        --output default.profdata
+      obj="${{inputs.object}}"
+      # Fallback to rough autodetection.
+      if [ -z "${obj}" ]; then
+        obj="/$(apk info -L ${{package.name}} 2>/dev/null | grep 'bin\/')"
+      elif ![ -f "${obj}" ]; then
+        obj=$(command -v ${obj})
+      fi
+      if [ -z "${obj}" ]; then
+        echo "Object not found. Required for llvm-cov report --object argument."
+        exit 1
+      fi
+      echo -n "Statements coverage: "
+      llvm-cov report \
+         --ignore-filename-regex="${{inputs.ignore-filename-regex}}" \
+         --instr-profile=default.profdata \
+         --object "${obj}" \
+         --summary-only 2>/dev/null \
+         | tail -1 | awk '{print $7}'

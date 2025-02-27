@@ -117,7 +117,7 @@ GOLANGCI_LINT_BIN = $(GOLANGCI_LINT_DIR)/golangci-lint
 setup-golangci-lint:
 	rm -f $(GOLANGCI_LINT_BIN) || :
 	set -e ;
-	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.63.4;
+	GOBIN=$(GOLANGCI_LINT_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5;
 
 .PHONY: fmt
 fmt: ## Format all go files

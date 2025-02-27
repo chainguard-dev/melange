@@ -35,7 +35,7 @@ func TestCompileEmpty(t *testing.T) {
 	}
 
 	build := &Build{
-		Configuration: config.Configuration{
+		Configuration: &config.Configuration{
 			Subpackages: []config.Subpackage{{}},
 		},
 	}
@@ -47,7 +47,7 @@ func TestCompileEmpty(t *testing.T) {
 
 func TestInheritWorkdir(t *testing.T) {
 	build := &Build{
-		Configuration: config.Configuration{
+		Configuration: &config.Configuration{
 			Pipeline: []config.Pipeline{{
 				WorkDir: "/work",
 				Pipeline: []config.Pipeline{{}, {

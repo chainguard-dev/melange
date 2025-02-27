@@ -311,6 +311,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	if b.Runner.Name() == container.QemuName {
 		b.ExtraPackages = append(b.ExtraPackages, []string{
 			"melange-microvm-init",
+			"gnutar", // needed for xattrs/acls when extracting built files in vm
 		}...)
 	}
 

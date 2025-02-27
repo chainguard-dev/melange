@@ -14,10 +14,23 @@ inputs:
 pipeline:
   - working-directory: ${{targets.contextdir}}
     runs: |
-      scanelf --recursive --nobanner --osabi --etype "ET_DYN,ET_EXEC" . \
-        | while read type osabi filename; do
+      scanelf --recursive --nobanner --etype "ET_DYN,ET_EXEC" \
+        --format "%I %a" . \
+        | while read osabi arch filename; do
+
+        # Do not attempt to strip foreign arch binaries
+        case "${{build.arch}}" in
+          x86_64)
+            [ "$arch" = "EM_X86_64" ] || continue
+            ;;
+          aarch64)
+            [ "$arch" = "EM_AARCH64" ] || continue
+            ;;
+        esac
 
         [ "$osabi" != "STANDALONE" ] || continue
+
         # scanelf may have picked up a temp file so verify that file still exists
-        strip ${{inputs.opts}} "${filename}" || [ ! -e "$filename" ]
+        [ -e "$filename" ] || continue
+        strip ${{inputs.opts}} "${filename}"
       done

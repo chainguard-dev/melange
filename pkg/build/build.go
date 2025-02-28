@@ -1013,22 +1013,26 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	// clean build environment
-	log.Debugf("cleaning workspacedir")
-	cleanEnv := map[string]string{}
-	if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir)...); err != nil {
-		log.Warnf("unable to clean workspace: %s", err)
-	}
-	// if the Runner used WorkspaceDir as WorkDir, then this will be empty already.
-	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
-		log.Warnf("unable to clean workspace: %s", err)
-	}
-
-	if !b.isBuildLess() {
-		// clean build guest container
-		if err := os.RemoveAll(b.GuestDir); err != nil {
-			log.Warnf("unable to clean guest container: %s", err)
+	if b.Remove {
+		// clean build environment
+		log.Debugf("cleaning workspacedir")
+		cleanEnv := map[string]string{}
+		if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir)...); err != nil {
+			log.Warnf("unable to clean workspace: %s", err)
 		}
+		// if the Runner used WorkspaceDir as WorkDir, then this will be empty already.
+		if err = os.RemoveAll(b.WorkspaceDir); err != nil {
+			log.Warnf("unable to clean workspace: %s", err)
+		}
+
+		if !b.isBuildLess() {
+			// clean build guest container
+			if err := os.RemoveAll(b.GuestDir); err != nil {
+				log.Warnf("unable to clean guest container: %s", err)
+			}
+		}
+	} else {
+		log.Infof("skipping cleaning workspacedir")
 	}
 
 	// generate APKINDEX.tar.gz and sign it

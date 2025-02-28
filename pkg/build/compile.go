@@ -47,6 +47,7 @@ func (t *Test) Compile(ctx context.Context) error {
 
 	ignore := &Compiled{
 		PipelineDirs: t.PipelineDirs,
+		Environment:  make(map[string]string),
 	}
 
 	// We want to evaluate this but not accumulate its deps.
@@ -74,36 +75,46 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		test := &Compiled{
 			PipelineDirs: t.PipelineDirs,
+			Environment:  make(map[string]string),
 		}
 
-		te := &cfg.Subpackages[i].Test.Environment.Contents
+		te := &cfg.Subpackages[i].Test.Environment
 
 		// Append the subpackage that we're testing to be installed.
-		te.Packages = append(te.Packages, sp.Name)
+		te.Contents.Packages = append(te.Contents.Packages, sp.Name)
 
 		if err := test.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
 
 		// Append anything this subpackage test needs.
-		te.Packages = append(te.Packages, test.Needs...)
+		te.Contents.Packages = append(te.Contents.Packages, test.Needs...)
 
 		// Sort and remove duplicates.
-		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+		te.Contents.Packages = slices.Compact(slices.Sorted(slices.Values(te.Contents.Packages)))
+
+		// Append the environment this subpackage test needs.
+		if te.Environment == nil {
+			te.Environment = make(map[string]string)
+		}
+		for k, v := range test.Environment {
+			te.Environment[k] = v
+		}
 	}
 
 	if cfg.Test != nil {
 		test := &Compiled{
 			PipelineDirs: t.PipelineDirs,
+			Environment:  make(map[string]string),
 		}
 
-		te := &t.Configuration.Test.Environment.Contents
+		te := &t.Configuration.Test.Environment
 
 		// Append the main test package to be installed unless explicitly specified by the command line.
 		if t.Package != "" {
-			te.Packages = append(te.Packages, t.Package)
+			te.Contents.Packages = append(te.Contents.Packages, t.Package)
 		} else {
-			te.Packages = append(te.Packages, t.Configuration.Package.Name)
+			te.Contents.Packages = append(te.Contents.Packages, t.Configuration.Package.Name)
 		}
 
 		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
@@ -111,10 +122,18 @@ func (t *Test) Compile(ctx context.Context) error {
 		}
 
 		// Append anything the main package test needs.
-		te.Packages = append(te.Packages, test.Needs...)
+		te.Contents.Packages = append(te.Contents.Packages, test.Needs...)
 
 		// Sort and remove duplicates.
-		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+		te.Contents.Packages = slices.Compact(slices.Sorted(slices.Values(te.Contents.Packages)))
+
+		// Append the environment the main package test needs.
+		if te.Environment == nil {
+			te.Environment = make(map[string]string)
+		}
+		for k, v := range test.Environment {
+			te.Environment[k] = v
+		}
 	}
 
 	return nil
@@ -130,6 +149,7 @@ func (b *Build) Compile(ctx context.Context) error {
 
 	c := &Compiled{
 		PipelineDirs: b.PipelineDirs,
+		Environment:  make(map[string]string),
 	}
 
 	if err := c.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
@@ -156,43 +176,71 @@ func (b *Build) Compile(ctx context.Context) error {
 
 		tc := &Compiled{
 			PipelineDirs: b.PipelineDirs,
+			Environment:  make(map[string]string),
 		}
 		if err := tc.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
 
-		te := &cfg.Subpackages[i].Test.Environment.Contents
+		te := &cfg.Subpackages[i].Test.Environment
 
 		// Append the subpackage that we're testing to be installed.
-		te.Packages = append(te.Packages, sp.Name)
+		te.Contents.Packages = append(te.Contents.Packages, sp.Name)
 
 		// Append anything this subpackage test needs.
-		te.Packages = append(te.Packages, tc.Needs...)
+		te.Contents.Packages = append(te.Contents.Packages, tc.Needs...)
 
 		// Sort and remove duplicates.
-		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+		te.Contents.Packages = slices.Compact(slices.Sorted(slices.Values(te.Contents.Packages)))
+
+		// Append environment this subpackage test needs.
+		if te.Environment == nil {
+			te.Environment = make(map[string]string)
+		}
+		for k, v := range tc.Environment {
+			te.Environment[k] = v
+		}
 	}
 
-	ic := &b.Configuration.Environment.Contents
-	ic.Packages = append(ic.Packages, c.Needs...)
+	ic := &b.Configuration.Environment
+
+	// Append anything the main package build needs.
+	ic.Contents.Packages = append(ic.Contents.Packages, c.Needs...)
+	// Append any environment the main package build needs.
+	if ic.Environment == nil {
+		ic.Environment = make(map[string]string)
+	}
+	for k, v := range c.Environment {
+		ic.Environment[k] = v
+	}
 
 	if cfg.Test != nil {
 		tc := &Compiled{
 			PipelineDirs: b.PipelineDirs,
+			Environment:  make(map[string]string),
 		}
 
 		if err := tc.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling %q test pipelines: %w", cfg.Package.Name, err)
 		}
 
-		te := &b.Configuration.Test.Environment.Contents
-		te.Packages = append(te.Packages, tc.Needs...)
+		te := &b.Configuration.Test.Environment
+
+		// Append anything the main package test needs.
+		te.Contents.Packages = append(te.Contents.Packages, tc.Needs...)
+		// Append environment the main package test needs.
+		if te.Environment == nil {
+			te.Environment = make(map[string]string)
+		}
+		for k, v := range tc.Environment {
+			te.Environment[k] = v
+		}
 
 		// This can be overridden by the command line but in the context of a build, just use the main package.
-		te.Packages = append(te.Packages, b.Configuration.Package.Name)
+		te.Contents.Packages = append(te.Contents.Packages, b.Configuration.Package.Name)
 
 		// Sort and remove duplicates.
-		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+		te.Contents.Packages = slices.Compact(slices.Sorted(slices.Values(te.Contents.Packages)))
 	}
 
 	return nil
@@ -201,6 +249,7 @@ func (b *Build) Compile(ctx context.Context) error {
 type Compiled struct {
 	PipelineDirs []string
 	Needs        []string
+	Environment  map[string]string
 }
 
 func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
@@ -210,6 +259,10 @@ func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pi
 		}
 
 		if err := c.gatherDeps(ctx, &pipelines[i]); err != nil {
+			return fmt.Errorf("gathering deps for Pipeline[%d]: %w", i, err)
+		}
+
+		if err := c.gatherEnvironment(ctx, &pipelines[i]); err != nil {
 			return fmt.Errorf("gathering deps for Pipeline[%d]: %w", i, err)
 		}
 	}
@@ -279,6 +332,12 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	if pipeline.Needs != nil {
 		for i := range pipeline.Needs.Packages {
 			pipeline.Needs.Packages[i], err = util.MutateStringFromMap(mutated, pipeline.Needs.Packages[i])
+			if err != nil {
+				return fmt.Errorf("mutating needs: %w", err)
+			}
+		}
+		for k, _ := range pipeline.Needs.Environment {
+			pipeline.Needs.Environment[k], err = util.MutateStringFromMap(mutated, pipeline.Needs.Environment[k])
 			if err != nil {
 				return fmt.Errorf("mutating needs: %w", err)
 			}
@@ -356,6 +415,33 @@ func identity(p *config.Pipeline) string {
 	return unidentifiablePipeline
 }
 
+func (c *Compiled) gatherEnvironment(ctx context.Context, pipeline *config.Pipeline) error {
+	log := clog.FromContext(ctx)
+
+	id := identity(pipeline)
+
+	if pipeline.Needs != nil {
+		if pipeline.Needs.Environment != nil {
+			if c.Environment == nil {
+				c.Environment = map[string]string{}
+			}
+			for k, v := range pipeline.Needs.Environment {
+				log.Debugf("  adding environment %q=%q for pipeline %q", k, v, id)
+				c.Environment[k] = v
+			}
+		}
+		pipeline.Needs = nil
+	}
+
+	for _, p := range pipeline.Pipeline {
+		if err := c.gatherEnvironment(ctx, &p); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) error {
 	log := clog.FromContext(ctx)
 
@@ -374,8 +460,6 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 			log.Debugf("  adding package %q for pipeline %q", pkg, id)
 		}
 		c.Needs = append(c.Needs, pipeline.Needs.Packages...)
-
-		pipeline.Needs = nil
 	}
 
 	for _, p := range pipeline.Pipeline {

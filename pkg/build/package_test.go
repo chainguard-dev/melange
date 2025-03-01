@@ -70,6 +70,7 @@ func Test_GenerateControlData(t *testing.T) {
 		pb: &PackageBuild{
 			Build: &Build{
 				SourceDateEpoch: time.Unix(0, 0),
+				Namespace:       "wolfi",
 			},
 			Origin:        pkg,
 			PackageName:   "glibc",
@@ -90,6 +91,7 @@ origin = bigbang
 pkgdesc = I'm a unit test
 url = https://chainguard.dev
 commit = deadbeef
+maintainer = wolfi
 datahash = baadf00d
 `,
 	}, {

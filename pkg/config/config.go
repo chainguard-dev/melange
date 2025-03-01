@@ -463,6 +463,8 @@ func (p Package) FullCopyright() string {
 type Needs struct {
 	// A list of packages needed by this pipeline
 	Packages []string
+	// A list of environment variables to inject to the build or test config.
+	Environment map[string]string
 }
 
 type PipelineAssertions struct {

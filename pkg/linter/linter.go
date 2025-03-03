@@ -183,6 +183,11 @@ var linterMap = map[string]linter{
 		Explain:         "This package provides files in a pkgconfig directory, please add the pkgconf test pipeline",
 		defaultBehavior: Warn,
 	},
+	"lddcheck": {
+		LinterFunc:      allPaths(lddcheckTestLinter),
+		Explain:         "This package provides shared object files, please add the ldd-check test pipeline",
+		defaultBehavior: Warn,
+	},
 	"usrmerge": {
 		LinterFunc:      allPaths(usrmergeLinter),
 		Explain:         "Move binary to /usr/{bin,lib/sbin}",
@@ -591,6 +596,52 @@ func pkgconfTestLinter(_ context.Context, cfg *config.Configuration, pkgname, pa
 	}
 
 	return fmt.Errorf("pkgconfig directory found")
+}
+
+var isSharedObjectFileRegex = regexp.MustCompile(`\.so$`)
+
+func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
+	if !isSharedObjectFileRegex.MatchString(path) {
+		return nil
+	}
+
+	if cfg == nil {
+		return fmt.Errorf("shared object found and missing .melange.yaml")
+	}
+
+	if cfg.Package.Name == pkgname {
+		if cfg.Test != nil {
+			for _, test := range cfg.Test.Pipeline {
+				if test.Uses == "test/ldd-check" {
+					return nil
+  				} else if test.Uses == "test/tw/ldd-check" {
+  					return nil
+				}
+			}
+		}
+	} else {
+		for _, p := range cfg.Subpackages {
+			if p.Name != pkgname {
+				continue
+			}
+
+			if p.Test == nil {
+				break
+			}
+
+			for _, test := range p.Test.Pipeline {
+				if test.Uses == "test/ldd-check" {
+					return nil
+  				} else if test.Uses == "test/tw/ldd-check" {
+  					return nil
+				}
+			}
+
+			break
+		}
+	}
+
+	return fmt.Errorf("shared object found")
 }
 
 func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {

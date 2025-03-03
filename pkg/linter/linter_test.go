@@ -45,7 +45,7 @@ func TestLinters(t *testing.T) {
 		},
 	}
 
-	goodCfg := &config.Configuration{
+	tpkgconfCfg := &config.Configuration{
 		Package: config.Package{
 			Name: "pkgconf",
 		},
@@ -56,7 +56,7 @@ func TestLinters(t *testing.T) {
 		},
 	}
 
-	subpkgCfg := &config.Configuration{
+	subpkgtpkgconfCfg := &config.Configuration{
 		Package: config.Package{
 			Name: "not-pkgconf",
 		},
@@ -67,6 +67,33 @@ func TestLinters(t *testing.T) {
 			Test: &config.Test{
 				Pipeline: []config.Pipeline{{
 					Uses: "test/pkgconf",
+				}},
+			},
+		}},
+	}
+
+	tlddcheckCfg := &config.Configuration{
+		Package: config.Package{
+			Name: "ldd-check-test-pkg",
+		},
+		Test: &config.Test{
+			Pipeline: []config.Pipeline{{
+				Uses: "test/ldd-check",
+			}},
+		},
+	}
+
+	subpkgtlddcheckCfg := &config.Configuration{
+		Package: config.Package{
+			Name: "ldd-check-test-pkg2",
+		},
+		Subpackages: []config.Subpackage{{
+			Name: "ldd-check-test-subpkg",
+		}, {
+			Name: "ldd-check",
+			Test: &config.Test{
+				Pipeline: []config.Pipeline{{
+					Uses: "test/ldd-check",
 				}},
 			},
 		}},
@@ -123,17 +150,31 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
 		linter:  "pkgconf",
-		cfg:     goodCfg,
+		cfg:     tpkgconfCfg,
 		pass:    true,
 	}, {
 		dirFunc: mkfile(t, "usr/lib/pkgconfig/test.txt"),
 		linter:  "pkgconf",
-		cfg:     subpkgCfg,
+		cfg:     subpkgtpkgconfCfg,
 		pass:    true,
 	}, {
 		dirFunc: mkfile(t, "usr/share/pkgconfig/test.txt"),
 		linter:  "pkgconf",
 		cfg:     cfg,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/test.so"),
+		linter:  "lddcheck",
+		cfg:     cfg,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/test.so"),
+		linter:  "lddcheck",
+		cfg:     tlddcheckCfg,
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/test.so"),
+		linter:  "lddcheck",
+		cfg:     subpkgtlddcheckCfg,
+		pass:    true,
 	}, {
 		dirFunc: mkfile(t, "sbin/test.sh"),
 		linter:  "usrmerge",

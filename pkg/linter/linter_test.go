@@ -83,6 +83,17 @@ func TestLinters(t *testing.T) {
 		},
 	}
 
+	ttwlddcheckCfg := &config.Configuration{
+		Package: config.Package{
+			Name: "lddcheck",
+		},
+		Test: &config.Test{
+			Pipeline: []config.Pipeline{{
+				Uses: "test/tw/ldd-check",
+			}},
+		},
+	}
+
 	subpkgtlddcheckCfg := &config.Configuration{
 		Package: config.Package{
 			Name: "not-lddcheck",
@@ -169,6 +180,11 @@ func TestLinters(t *testing.T) {
 		dirFunc: mkfile(t, "usr/lib/test.so"),
 		linter:  "lddcheck",
 		cfg:     tlddcheckCfg,
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/test.so"),
+		linter:  "lddcheck",
+		cfg:     ttwlddcheckCfg,
 		pass:    true,
 	}, {
 		dirFunc: mkfile(t, "usr/lib/test.so"),

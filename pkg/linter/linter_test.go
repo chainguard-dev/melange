@@ -74,7 +74,7 @@ func TestLinters(t *testing.T) {
 
 	tlddcheckCfg := &config.Configuration{
 		Package: config.Package{
-			Name: "ldd-check-test-pkg",
+			Name: "lddcheck",
 		},
 		Test: &config.Test{
 			Pipeline: []config.Pipeline{{
@@ -85,12 +85,12 @@ func TestLinters(t *testing.T) {
 
 	subpkgtlddcheckCfg := &config.Configuration{
 		Package: config.Package{
-			Name: "ldd-check-test-pkg2",
+			Name: "not-lddcheck",
 		},
 		Subpackages: []config.Subpackage{{
-			Name: "ldd-check-test-subpkg",
+			Name: "also-not-lddcheck",
 		}, {
-			Name: "ldd-check",
+			Name: "lddcheck",
 			Test: &config.Test{
 				Pipeline: []config.Pipeline{{
 					Uses: "test/ldd-check",

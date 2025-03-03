@@ -8,7 +8,7 @@ require (
 	dagger.io/dagger v0.15.3
 	github.com/chainguard-dev/clog v1.6.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.9
+	github.com/chainguard-dev/yam v0.2.10
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v28.0.1+incompatible
 	github.com/docker/docker v27.5.1+incompatible
@@ -26,7 +26,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30
 	github.com/moby/moby v28.0.1+incompatible
-	github.com/opencontainers/image-spec v1.1.0
+	github.com/opencontainers/image-spec v1.1.1
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20241019191636-4ef911798f9b

@@ -614,8 +614,8 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 			for _, test := range cfg.Test.Pipeline {
 				if test.Uses == "test/ldd-check" {
 					return nil
-  				} else if test.Uses == "test/tw/ldd-check" {
-  					return nil
+				} else if test.Uses == "test/tw/ldd-check" {
+					return nil
 				}
 			}
 		}
@@ -632,8 +632,8 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 			for _, test := range p.Test.Pipeline {
 				if test.Uses == "test/ldd-check" {
 					return nil
-  				} else if test.Uses == "test/tw/ldd-check" {
-  					return nil
+				} else if test.Uses == "test/tw/ldd-check" {
+					return nil
 				}
 			}
 

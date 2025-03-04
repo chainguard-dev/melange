@@ -11,7 +11,7 @@ require (
 	github.com/chainguard-dev/yam v0.2.10
 	github.com/charmbracelet/log v0.4.0
 	github.com/docker/cli v28.0.1+incompatible
-	github.com/docker/docker v27.5.1+incompatible
+	github.com/docker/docker v28.0.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.2
 	github.com/go-git/go-git/v5 v5.14.0

@@ -16,7 +16,7 @@ require (
 	github.com/github/go-spdx/v2 v2.3.2
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.20.3
+	github.com/google/go-containerregistry v0.20.4-0.20250225234217-098045d5e61f
 	github.com/google/go-github/v54 v54.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/invopop/jsonschema v0.13.0

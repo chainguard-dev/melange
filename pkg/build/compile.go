@@ -36,10 +36,7 @@ const unidentifiablePipeline = "???"
 func (t *Test) Compile(ctx context.Context) error {
 	cfg := t.Configuration
 
-	// TODO: Make this parameter go away when we revisit subtitutions.
-	flavor := "gnu"
-
-	sm, err := NewSubstitutionMap(&cfg, t.Arch, flavor, nil)
+	sm, err := NewSubstitutionMap(&cfg, t.Arch, "gnu")
 	if err != nil {
 		return err
 	}
@@ -116,7 +113,7 @@ func (t *Test) Compile(ctx context.Context) error {
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
 func (b *Build) Compile(ctx context.Context) error {
 	cfg := b.Configuration
-	sm, err := NewSubstitutionMap(cfg, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
+	sm, err := NewSubstitutionMap(&cfg, b.Arch, "gnu")
 	if err != nil {
 		return err
 	}

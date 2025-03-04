@@ -15,25 +15,26 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "BuildOption": {
+    "Capabilities": {
       "properties": {
-        "Vars": {
-          "additionalProperties": {
+        "add": {
+          "items": {
             "type": "string"
           },
-          "type": "object"
+          "type": "array",
+          "description": "Linux process capabilities to add to the pipeline container."
         },
-        "Environment": {
-          "$ref": "#/$defs/EnvironmentOption"
+        "drop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to drop from the pipeline container."
         }
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "Vars",
-        "Environment"
-      ],
-      "description": "BuildOption describes an optional deviation to a package build."
+      "description": "Capabilities is the configuration for Linux capabilities for the runner."
     },
     "Capabilities": {
       "properties": {
@@ -122,17 +123,6 @@
           "type": "array",
           "description": "Optional: A list of transformations to create for the builtin template\nvariables"
         },
-        "options": {
-          "additionalProperties": {
-            "$ref": "#/$defs/BuildOption"
-          },
-          "type": "object",
-          "description": "Optional: Deviations to the build"
-        },
-        "enable-prerelease-tags": {
-          "type": "boolean",
-          "description": "Optional: Disables filtering of common pre-release tags"
-        },
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the main package."
@@ -145,19 +135,6 @@
         "environment"
       ],
       "description": "Configuration is the root melange configuration."
-    },
-    "ContentsOption": {
-      "properties": {
-        "Packages": {
-          "$ref": "#/$defs/ListOption"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Packages"
-      ],
-      "description": "ContentsOption describes an optional deviation to an apko environment's contents block."
     },
     "Copyright": {
       "properties": {
@@ -227,19 +204,6 @@
       },
       "additionalProperties": false,
       "type": "object"
-    },
-    "EnvironmentOption": {
-      "properties": {
-        "Contents": {
-          "$ref": "#/$defs/ContentsOption"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Contents"
-      ],
-      "description": "EnvironmentOption describes an optional deviation to an apko environment."
     },
     "GitHubMonitor": {
       "properties": {
@@ -472,29 +436,6 @@
       },
       "additionalProperties": false,
       "type": "object"
-    },
-    "ListOption": {
-      "properties": {
-        "Add": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Remove": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "Add",
-        "Remove"
-      ],
-      "description": "ListOption describes an optional deviation to a list, for example, a list of packages."
     },
     "Needs": {
       "properties": {

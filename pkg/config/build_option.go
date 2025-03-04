@@ -26,14 +26,3 @@ type ListOption struct {
 type ContentsOption struct {
 	Packages ListOption `yaml:"packages,omitempty"`
 }
-
-// EnvironmentOption describes an optional deviation to an apko environment.
-type EnvironmentOption struct {
-	Contents ContentsOption `yaml:"contents,omitempty"`
-}
-
-// BuildOption describes an optional deviation to a package build.
-type BuildOption struct {
-	Vars        map[string]string `yaml:"vars,omitempty"`
-	Environment EnvironmentOption `yaml:"environment,omitempty"`
-}

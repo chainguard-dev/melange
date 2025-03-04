@@ -113,7 +113,6 @@ type Build struct {
 	EmptyWorkspace        bool
 	OutDir                string
 	Arch                  apko_types.Architecture
-	Libc                  string
 	ExtraKeys             []string
 	ExtraRepos            []string
 	ExtraPackages         []string
@@ -140,8 +139,6 @@ type Build struct {
 	DefaultTimeout        time.Duration
 	Auth                  map[string]options.Auth
 	IgnoreSignatures      bool
-
-	EnabledBuildOptions []string
 
 	// Initialized in New and mutated throughout the build process as we gain
 	// visibility into our packages' (including subpackages') composition. This is
@@ -256,17 +253,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), GetAllRunners())
-	}
-
-	// Apply build options to the context.
-	for _, optName := range b.EnabledBuildOptions {
-		log.Infof("applying configuration patches for build option %s", optName)
-
-		if opt, ok := b.Configuration.Options[optName]; ok {
-			if err := b.applyBuildOption(opt); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	return &b, nil
@@ -408,37 +394,6 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 
 	if err := os.Chmod(destPath, perm); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// applyBuildOption applies a patch described by a BuildOption to a package build.
-func (b *Build) applyBuildOption(bo config.BuildOption) error {
-	// Patch the variables block.
-	if b.Configuration.Vars == nil {
-		b.Configuration.Vars = make(map[string]string)
-	}
-
-	for k, v := range bo.Vars {
-		b.Configuration.Vars[k] = v
-	}
-
-	// Patch the build environment configuration.
-	lo := bo.Environment.Contents.Packages
-	b.Configuration.Environment.Contents.Packages = append(b.Configuration.Environment.Contents.Packages, lo.Add...)
-
-	for _, pkg := range lo.Remove {
-		pkgList := b.Configuration.Environment.Contents.Packages
-
-		for pos, ppkg := range pkgList {
-			if pkg == ppkg {
-				pkgList[pos] = pkgList[len(pkgList)-1]
-				pkgList = pkgList[:len(pkgList)-1]
-			}
-		}
-
-		b.Configuration.Environment.Contents.Packages = pkgList
 	}
 
 	return nil
@@ -1133,15 +1088,6 @@ func (b *Build) summarize(ctx context.Context) {
 	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
 	log.Debugf("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
-}
-
-// buildFlavor determines if a build context uses glibc or musl, it returns
-// "gnu" for GNU systems, and "musl" for musl systems.
-func (b *Build) buildFlavor() string {
-	if b.Libc == "" {
-		return "gnu"
-	}
-	return b.Libc
 }
 
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {

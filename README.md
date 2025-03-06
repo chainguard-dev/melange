@@ -94,6 +94,21 @@ pipeline:
   - uses: autoconf/make
   - uses: autoconf/make-install
   - uses: strip
+
+subpackages:
+  - name: "hello-doc"
+    description: "Documentation for hello"
+    pipeline:
+      - uses: split/manpages
+
+test:
+  environment:
+    contents:
+      packages:
+  pipeline:
+    - runs: |
+        hello
+        hello --version
 ```
 
 We can build this with:

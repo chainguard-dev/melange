@@ -598,7 +598,7 @@ func pkgconfTestLinter(_ context.Context, cfg *config.Configuration, pkgname, pa
 	return fmt.Errorf("pkgconfig directory found")
 }
 
-var isSharedObjectFileRegex = regexp.MustCompile(`\.so$`)
+var isSharedObjectFileRegex = regexp.MustCompile(`\.so(?:\.[0-9]+)*$`)
 
 func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
 	if !isSharedObjectFileRegex.MatchString(path) {
@@ -612,9 +612,7 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 	if cfg.Package.Name == pkgname {
 		if cfg.Test != nil {
 			for _, test := range cfg.Test.Pipeline {
-				if test.Uses == "test/ldd-check" {
-					return nil
-				} else if test.Uses == "test/tw/ldd-check" {
+				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
 					return nil
 				}
 			}
@@ -630,9 +628,7 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 			}
 
 			for _, test := range p.Test.Pipeline {
-				if test.Uses == "test/ldd-check" {
-					return nil
-				} else if test.Uses == "test/tw/ldd-check" {
+				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
 					return nil
 				}
 			}

@@ -173,7 +173,7 @@ func TestLinters(t *testing.T) {
 		linter:  "pkgconf",
 		cfg:     cfg,
 	}, {
-		dirFunc: mkfile(t, "usr/lib/test.so"),
+		dirFunc: mkfile(t, "usr/lib/test.so.1"),
 		linter:  "lddcheck",
 		cfg:     cfg,
 	}, {

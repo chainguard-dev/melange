@@ -100,6 +100,9 @@ subpackages:
     description: "Documentation for hello"
     pipeline:
       - uses: split/manpages
+    test:
+      pipeline:
+        - uses: test/docs
 
 test:
   environment:

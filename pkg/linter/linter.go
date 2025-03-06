@@ -189,9 +189,9 @@ var linterMap = map[string]linter{
 		defaultBehavior: Warn,
 	},
 	"usrmerge": {
-		LinterFunc:      allPaths(usrmergeLinter),
-		Explain:         "Move binary to /usr/{bin,lib/sbin}",
-		defaultBehavior: Warn,
+		LinterFunc:      usrmergeLinter,
+		Explain:         "Move binary to /usr/{bin,sbin}",
+		defaultBehavior: Require,
 	},
 }
 
@@ -777,18 +777,36 @@ func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 	return &cfg, nil
 }
 
-func usrmergeLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "sbin") {
-		return fmt.Errorf("package writes to /sbin in violation of usrmerge")
-	}
+func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if isIgnoredPath(path) {
+			return nil
+		}
 
-	if strings.HasPrefix(path, "lib") {
-		return fmt.Errorf("package writes to /lib in violation of usrmerge")
-	}
+		// We don't really care if a package is re-adding a symlink and this catches wolfi-baselayout
+		// without special casing it with the package name.
+		if path == "sbin" || path == "bin" {
+			if d.IsDir() || d.Type().IsRegular() {
+				return fmt.Errorf("package contains non-symlink file at /sbin or /bin in violation of usrmerge")
+			} else {
+				return nil
+			}
+		}
 
-	if strings.HasPrefix(path, "bin") {
-		return fmt.Errorf("package writes to /bin in violation of usrmerge")
-	}
+		if strings.HasPrefix(path, "sbin") {
+			return fmt.Errorf("package writes to /sbin in violation of usrmerge: %s", path)
+		}
 
-	return nil
+		if strings.HasPrefix(path, "bin") {
+			return fmt.Errorf("package writes to /bin in violation of usrmerge: %s", path)
+		}
+
+		return nil
+	})
 }

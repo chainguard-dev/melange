@@ -1,7 +1,7 @@
 ---
 title: "melange lint"
 slug: melange_lint
-url: /docs/md/melange_lint.md
+url: /open-source/melange/reference/melange_lint/
 draft: false
 images: []
 type: "article"
@@ -29,8 +29,8 @@ melange lint [flags]
 
 ```
   -h, --help                   help for lint
-      --lint-require strings   linters that must pass (default [dev,infodir,tempdir,varempty])
-      --lint-warn strings      linters that will generate warnings (default [lddcheck,object,opt,pkgconf,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,usrmerge,worldwrite])
+      --lint-require strings   linters that must pass (default [dev,infodir,tempdir,usrmerge,varempty])
+      --lint-warn strings      linters that will generate warnings (default [object,opt,pkgconf,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,worldwrite])
 ```
 
 ### Options inherited from parent commands
@@ -41,5 +41,5 @@ melange lint [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

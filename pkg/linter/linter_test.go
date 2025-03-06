@@ -194,6 +194,33 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: mkfile(t, "sbin/test.sh"),
 		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "sbin"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "bin"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/sbin")), 0700))
+			_ = os.Symlink("/sbin", "/dev/null")
+			return d
+		},
+		linter: "usrmerge",
+		pass:   true,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/bin")), 0700))
+			_ = os.Symlink("/bin", "/dev/null")
+			return d
+		},
+		linter: "usrmerge",
+		pass:   true,
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

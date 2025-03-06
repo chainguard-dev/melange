@@ -30,6 +30,7 @@ import (
 	"strings"
 	"text/template"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 
 	"github.com/klauspost/compress/gzip"
@@ -368,7 +369,7 @@ func combine(out io.Writer, inputs ...io.Reader) error {
 }
 
 // TODO(kaniini): generate APKv3 packages
-func (pc *PackageBuild) calculateInstalledSize(fsys fs.FS) error {
+func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -388,7 +389,7 @@ func (pc *PackageBuild) calculateInstalledSize(fsys fs.FS) error {
 	return nil
 }
 
-func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys fs.FS, userinfofs fs.FS, remapUIDs map[int]int, remapGIDs map[int]int, w io.WriteSeeker) error {
+func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS, userinfofs apkofs.FullFS, remapUIDs map[int]int, remapGIDs map[int]int, w io.WriteSeeker) error {
 	log := clog.FromContext(ctx)
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
@@ -442,10 +443,13 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	log.Info("generating package " + pc.Identity())
 
 	// filesystem for the data package
-	fsys := readlinkFS(pc.WorkspaceSubdir())
+	fsys, err := apkofs.Sub(pc.Build.WorkspaceDirFS, filepath.Join(melangeOutputDirName, pc.PackageName))
+	if err != nil {
+		return fmt.Errorf("failed to return filesystem for workspace subtree: %w", err)
+	}
 
 	// provide the tar writer etc/passwd and etc/group of guest filesystem
-	userinfofs := os.DirFS(pc.Build.GuestDir)
+	userinfofs := apkofs.DirFS(pc.Build.GuestDir)
 
 	hdl := &SCABuildInterface{
 		PackageBuild: pc,

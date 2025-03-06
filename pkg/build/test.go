@@ -349,6 +349,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	if t.Runner.Name() == container.QemuName {
 		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
 			"melange-microvm-init",
+			"gnutar",
 		}...)
 	}
 

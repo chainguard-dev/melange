@@ -24,6 +24,17 @@ needs:
     - wget
 ```
 
+Each pipeline can also declare additional environment variables that are required for the build, such that all the pipelines will inherit it.
+For example with the following:
+
+```yaml
+needs:
+  environment:
+    FOO: bar
+```
+
+not only the specific pipeline but also all the pipelines of the build environment  will inherit the additional environment variable.
+
 ## Where does Melange build?
 
 The melange build process involves three normally distinct directories.
@@ -75,7 +86,7 @@ persist.
 The build process is as follows. The core routine is [`BuildPackage()`](../pkg/build/build.go#L716).
 
 1. Create the temporary working directory, known internally as the "guest directory" or `GuestDir`.
-1. Evaluate each step in the pipeline to see if it has a `needs` section. If so, then add its listed packages to the build time package requirements defined in `environment.contents`.
+1. Evaluate each step in the pipeline to see if it has a `needs` section. If so, then add its listed packages to the build time package requirements defined in `environment.contents` and the listed environment variables to the build time environment defined in `environment.environment`
 1. Use [apko](https://github.com/chainguard-dev/apko) to create a tar stream of the packages listed in `environment.contents` and lay them out onto the workspace directory.
 1. Overlay `/bin/sh`. This is an optimization step, and is not discussed here. Read [Shell Overlay](./SHELL-OVERLAY.md) for more information.
 1. Populate the build cache. This is an optimization step, and is not discussed here. Read [Build Cache](./BUILD-CACHE.md) for more information.

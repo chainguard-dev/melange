@@ -98,6 +98,9 @@ pipeline:
 subpackages:
   - name: "hello-doc"
     description: "Documentation for hello"
+    dependencies:
+      runtime:
+        - foo
     pipeline:
       - uses: split/manpages
     test:
@@ -108,6 +111,7 @@ test:
   environment:
     contents:
       packages:
+        - bar
   pipeline:
     - runs: |
         hello

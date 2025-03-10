@@ -1,7 +1,7 @@
 cel.dev/expr v0.19.0 h1:lXuo+nDhpyJSpWxpPVi5cPUwzKb+dsdOiw6IreM5yt0=
 cel.dev/expr v0.19.0/go.mod h1:MrpN08Q+lEBs+bGYdLxxHkZoUSsCp0nSKTs0nTymJgw=
-chainguard.dev/apko v0.25.2-0.20250225192758-581904a29f4a h1:QqlKR/xlGrwDZfbAM/Nx2YU6anq2Z49kLmOffIEarME=
-chainguard.dev/apko v0.25.2-0.20250225192758-581904a29f4a/go.mod h1:yuj+hEMD6KbQuGBlbsmh6AgUhFdqbGVrLcDvbnrC+DY=
+chainguard.dev/apko v0.25.2 h1:aDVtikFWGuzZD6nYcdLjO+oVEWLr5dz9tfkgJEXlIqM=
+chainguard.dev/apko v0.25.2/go.mod h1:4i/zhP74WpHcGV8t9bQCueokNY27M9QRtocELa3aG8Y=
 chainguard.dev/go-grpc-kit v0.17.7 h1:TqHua7er5k8m6WM96y0Tm7IoLLkuZ5vh3+5SR1gruKg=
 chainguard.dev/go-grpc-kit v0.17.7/go.mod h1:JroMzTY9mdhKe/bvtyChgfECaNh80+bMZH3HS+TGXHw=
 chainguard.dev/sdk v0.1.31 h1:Blvpa0Ji/tC1VVV8/l8UyQe022LoRxZLfgasyFE1EhQ=
@@ -85,8 +85,8 @@ github.com/census-instrumentation/opencensus-proto v0.4.1 h1:iKLQ0xPNFxR/2hzXZMr
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chainguard-dev/clog v1.6.1 h1:CeOhEqKQsO/QMESgOTqv/miI27P1eNcgGgL7uiofOvU=
-github.com/chainguard-dev/clog v1.6.1/go.mod h1:4+WFhRMsGH79etYXY3plYdp+tCz/KCkU8fAr0HoaPvs=
+github.com/chainguard-dev/clog v1.7.0 h1:guPznsK8vLHvzz1QJe2yU6MFeYaiSOFOQBYw4OXu+g8=
+github.com/chainguard-dev/clog v1.7.0/go.mod h1:4+WFhRMsGH79etYXY3plYdp+tCz/KCkU8fAr0HoaPvs=
 github.com/chainguard-dev/git-urls v1.0.2 h1:pSpT7ifrpc5X55n4aTTm7FFUE+ZQHKiqpiwNkJrVcKQ=
 github.com/chainguard-dev/git-urls v1.0.2/go.mod h1:rbGgj10OS7UgZlbzdUQIQpT0k/D4+An04HJY7Ol+Y/o=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2vgQC024I9/boh9r1ihVv8Z14+pbvWqXeYMCnZJpc=

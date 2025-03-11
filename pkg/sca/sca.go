@@ -15,10 +15,12 @@
 package sca
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"debug/buildinfo"
 	"debug/elf"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -72,9 +74,10 @@ type SCAHandle interface {
 	BaseDependencies() config.Dependencies
 }
 
-// DependencyGenerator takes an SCAHandle and config.Dependencies pointer and returns
-// findings based on analysis.
-type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies) error
+// DependencyGenerator takes an SCAHandle, config.Dependencies pointer
+// and a list of paths to be appended to libDirs and returns findings
+// based on analysis.
+type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies, []string) error
 
 func isInDir(path string, dirs []string) bool {
 	mydir := filepath.Dir(path)
@@ -86,7 +89,83 @@ func isInDir(path string, dirs []string) bool {
 	return false
 }
 
-func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+// getLdSoConfDLibPaths will iterate over the files being installed by
+// the package and all its subpackages, and for each configuration
+// file found under /etc/ld.so.conf.d/ it will parse the file and add
+// its contents to a string vector.  This vector will ultimately
+// contain all extra paths that will be considered by ld when doing
+// symbol resolution.
+func getLdSoConfDLibPaths(ctx context.Context, hdl SCAHandle) ([]string, error) {
+	var extraLibPaths []string
+	targetPackageNames := hdl.RelativeNames()
+
+	log := clog.FromContext(ctx)
+
+	log.Info("scanning for ld.so.conf.d files...")
+
+	for _, pkgName := range targetPackageNames {
+		fsys, err := hdl.FilesystemForRelative(pkgName)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := fs.WalkDir(fsys, "etc/ld.so.conf.d", func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return fs.SkipAll
+				}
+				return err
+			}
+
+			// We're only interested in files whose suffix is ".conf"
+			if !strings.HasSuffix(path, ".conf") {
+				return nil
+			}
+
+			fi, err := d.Info()
+			if err != nil {
+				return err
+			}
+
+			if !fi.Mode().IsRegular() {
+				return nil
+			}
+
+			log.Infof("  found ld.so.conf.d file %s", path)
+
+			fd, err := fsys.Open(path)
+			if err != nil {
+				return err
+			}
+			defer fd.Close()
+
+			scanner := bufio.NewScanner(fd)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line == "" || line[0] != '/' {
+					continue
+				}
+				// Strip the initial slash since
+				// libDirs paths need to be relative.
+				line = line[1:]
+				log.Infof("    found extra lib path %s", line)
+				extraLibPaths = append(extraLibPaths, line)
+			}
+
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	return extraLibPaths, nil
+}
+
+func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 
 	log.Info("scanning for commands...")
@@ -149,7 +228,7 @@ func findInterpreter(bin *elf.File) (string, error) {
 
 // dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
 // directories.
-func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string, error) {
+func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []string) (string, string, error) {
 	targetPackageNames := hdl.RelativeNames()
 
 	pkgFS, err := hdl.Filesystem()
@@ -164,13 +243,15 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string,
 
 	realPath = filepath.Base(realPath)
 
+	expandedLibDirs := append(libDirs, extraLibDirs...)
+
 	for _, pkgName := range targetPackageNames {
 		baseFS, err := hdl.FilesystemForRelative(pkgName)
 		if err != nil {
 			return "", "", err
 		}
 
-		for _, libDir := range libDirs {
+		for _, libDir := range expandedLibDirs {
 			testPath := filepath.Join(libDir, realPath)
 
 			if _, err := baseFS.Stat(testPath); err == nil {
@@ -182,13 +263,13 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string) (string, string,
 	return "", "", nil
 }
 
-func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies) error {
+func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	if !strings.Contains(path, ".so") {
 		return nil
 	}
 
-	targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path)
+	targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path, extraLibDirs)
 	if err != nil {
 		return nil
 	}
@@ -233,7 +314,7 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 	return nil
 }
 
-func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shared object dependencies...")
 
@@ -241,6 +322,8 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	if err != nil {
 		return err
 	}
+
+	expandedLibDirs := append(libDirs, extraLibDirs...)
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -258,7 +341,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		isLink := mode.Type()&fs.ModeSymlink == fs.ModeSymlink
 
 		if isLink {
-			if err := processSymlinkSo(ctx, hdl, path, generated); err != nil {
+			if err := processSymlinkSo(ctx, hdl, path, generated, extraLibDirs); err != nil {
 				return err
 			}
 		}
@@ -349,7 +432,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			for _, soname := range sonames {
 				libver := sonameLibver(soname)
 
-				if isInDir(path, libDirs) {
+				if isInDir(path, expandedLibDirs) {
 					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
 				} else {
 					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
@@ -395,7 +478,7 @@ var generateRuntimePkgConfigDeps = true
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
-func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for pkg-config data...")
 
@@ -485,7 +568,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 
 // generatePythonDeps generates a python-3.X-base dependency for packages which ship
 // Python modules.
-func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for python modules...")
 
@@ -549,7 +632,7 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 
 // generateRubyDeps generates a ruby-X.Y dependency for packages which ship
 // Ruby gems.
-func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for ruby gems...")
 
@@ -596,7 +679,7 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 }
 
 // For a documentation package add a dependency on man-db and / or texinfo as appropriate
-func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for -doc package...")
 	if !strings.HasSuffix(hdl.PackageName(), "-doc") {
@@ -720,7 +803,7 @@ func getShbang(fp io.Reader) (string, error) {
 	return bin, nil
 }
 
-func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shbang deps...")
 
@@ -774,6 +857,11 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	extraLibDirs, err := getLdSoConfDLibPaths(ctx, hdl)
+	if err != nil {
+		return err
+	}
+
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
@@ -785,7 +873,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 	}
 
 	for _, gen := range generators {
-		if err := gen(ctx, hdl, generated); err != nil {
+		if err := gen(ctx, hdl, generated, extraLibDirs); err != nil {
 			return err
 		}
 	}

@@ -41,5 +41,5 @@ melange lint [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange_lint.md)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

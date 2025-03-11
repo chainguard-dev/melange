@@ -1,7 +1,7 @@
 ---
 title: "melange build"
 slug: melange_build
-url: /open-source/melange/reference/melange_build/
+url: /docs/md/melange_build.md
 draft: false
 images: []
 type: "article"
@@ -82,5 +82,5 @@ melange build [flags]
 
 ### SEE ALSO
 
-* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

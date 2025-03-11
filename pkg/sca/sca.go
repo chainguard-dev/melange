@@ -15,6 +15,7 @@
 package sca
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"debug/buildinfo"
@@ -84,6 +85,84 @@ func isInDir(path string, dirs []string) bool {
 		}
 	}
 	return false
+}
+
+// getLdSoConfDLibPaths will iterate over the files being installed by
+// the package and all its subpackages, and for each configuration
+// file found under /etc/ld.so.conf.d/ it will parse the file and add
+// its contents to a string vector.  This vector will ultimately
+// contain all extra paths that will be considered by ld when doing
+// symbol resolution.
+func getLdSoConfDLibPaths(ctx context.Context, hdl SCAHandle) ([]string, error) {
+	var extraLibPaths []string
+	targetPackageNames := hdl.RelativeNames()
+
+	log := clog.FromContext(ctx)
+
+	log.Info("scanning for ld.so.conf.d files...")
+
+	for _, pkgName := range targetPackageNames {
+		fsys, err := hdl.FilesystemForRelative(pkgName)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// We're only interested in files inside /etc/ld.so.conf.d/...
+			if !isInDir(path, []string{"etc/ld.so.conf.d"}) {
+				return nil
+			}
+
+			// ... and whose suffix is ".conf"...
+			if !strings.HasSuffix(path, ".conf") {
+				return nil
+			}
+
+			fi, err := d.Info()
+			if err != nil {
+				return err
+			}
+
+			if !fi.Mode().IsRegular() {
+				return nil
+			}
+
+			log.Infof("  found ld.so.conf.d file %s", path)
+
+			fd, err := fsys.Open(path)
+			if err != nil {
+				return err
+			}
+			defer fd.Close()
+
+			scanner := bufio.NewScanner(fd)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line[0] != '/' {
+					continue
+				}
+				// Strip the initial slash since
+				// libDirs paths need to be relative.
+				line = line[1:]
+				log.Infof("    found extra lib path %s", line)
+				extraLibPaths = append(extraLibPaths, line)
+			}
+
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	return extraLibPaths, nil
 }
 
 func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
@@ -766,6 +845,17 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 // Analyze runs the SCA analyzers on a given SCA handle, modifying the generated dependencies
 // set as needed.
 func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies) error {
+	var oldLibDirs []string
+
+	extraLibPaths, err := getLdSoConfDLibPaths(ctx, hdl)
+	if err != nil {
+		return err
+	}
+	if extraLibPaths != nil {
+		oldLibDirs = libDirs
+		libDirs = append(libDirs, extraLibPaths...)
+	}
+
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
@@ -802,6 +892,10 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 
 	if hdl.Options().NoProvides {
 		generated.Provides = nil
+	}
+
+	if oldLibDirs != nil {
+		libDirs = oldLibDirs
 	}
 
 	return nil

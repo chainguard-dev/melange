@@ -83,7 +83,7 @@ var gccLinkTemplate = `*link:
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 type Build struct {
-	Configuration config.Configuration
+	Configuration *config.Configuration
 
 	// The name of the build configuration file, e.g. "crane.yaml".
 	ConfigFile string
@@ -213,22 +213,23 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		return nil, fmt.Errorf("config file repository commit was not set")
 	}
 
-	parsedCfg, err := config.ParseConfiguration(ctx,
-		b.ConfigFile,
-		config.WithEnvFileForParsing(b.EnvFile),
-		config.WithVarsFileForParsing(b.VarsFile),
-		config.WithDefaultCPU(b.DefaultCPU),
-		config.WithDefaultCPUModel(b.DefaultCPUModel),
-		config.WithDefaultDisk(b.DefaultDisk),
-		config.WithDefaultMemory(b.DefaultMemory),
-		config.WithDefaultTimeout(b.DefaultTimeout),
-		config.WithCommit(b.ConfigFileRepositoryCommit),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	if b.Configuration == nil {
+		parsedCfg, err := config.ParseConfiguration(ctx,
+			b.ConfigFile,
+			config.WithEnvFileForParsing(b.EnvFile),
+			config.WithVarsFileForParsing(b.VarsFile),
+			config.WithDefaultCPU(b.DefaultCPU),
+			config.WithDefaultCPUModel(b.DefaultCPUModel),
+			config.WithDefaultDisk(b.DefaultDisk),
+			config.WithDefaultMemory(b.DefaultMemory),
+			config.WithDefaultTimeout(b.DefaultTimeout),
+			config.WithCommit(b.ConfigFileRepositoryCommit),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
+		}
+		b.Configuration = parsedCfg
 	}
-
-	b.Configuration = *parsedCfg
 
 	// Now that we can find out the names of all the packages we'll be producing, we
 	// can start tracking SBOM data for each of them, using our SBOMGroup type.
@@ -275,9 +276,9 @@ func (b *Build) Close(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	errs := []error{}
 	if b.Remove {
-		log.Infof("deleting guest dir %s", b.GuestDir)
+		log.Debugf("deleting guest dir %s", b.GuestDir)
 		errs = append(errs, os.RemoveAll(b.GuestDir))
-		log.Infof("deleting workspace dir %s", b.WorkspaceDir)
+		log.Debugf("deleting workspace dir %s", b.WorkspaceDir)
 		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
 		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
 			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(context.WithoutCancel(ctx), b.containerConfig.ImgRef))
@@ -368,7 +369,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.Remove(layerTarGZ)
 
-	log.Infof("using %s for image layer", layerTarGZ)
+	log.Debugf("using %s for image layer", layerTarGZ)
 
 	ref, err := loader.LoadImage(ctx, layer, b.Arch, bc)
 	if err != nil {
@@ -802,7 +803,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	log.Infof("evaluating pipelines for package requirements")
+	log.Debugf("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
 	}
@@ -833,7 +834,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	if b.EmptyWorkspace {
-		log.Infof("empty workspace requested")
+		log.Debugf("empty workspace requested")
 	} else {
 		// Prepare workspace directory
 		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {
@@ -868,7 +869,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		cfg.ImgRef = imgRef
-		log.Infof("ImgRef = %s", cfg.ImgRef)
+		log.Debugf("ImgRef = %s", cfg.ImgRef)
 
 		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
 		// Probably needs help from apko.
@@ -967,7 +968,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return a == b
 		})
 
-		if err := linter.LintBuild(ctx, lt.pkgName, path, require, warn); err != nil {
+		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, path, require, warn); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}
@@ -1120,17 +1121,17 @@ func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
 
 func (b *Build) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: %s", b.WorkspaceDir)
+	log.Debugf("  workspace dir: %s", b.WorkspaceDir)
 
 	if b.GuestDir != "" {
-		log.Infof("  guest dir: %s", b.GuestDir)
+		log.Debugf("  guest dir: %s", b.GuestDir)
 	}
 }
 
 func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
-	log.Infof("  configuration file: %s", b.ConfigFile)
+	log.Debugf("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
 
@@ -1161,12 +1162,12 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		if fi, err := os.Stat(b.CacheDir); err == nil && fi.IsDir() {
 			mountSource, err := realpath.Realpath(b.CacheDir)
 			if err != nil {
-				log.Infof("could not resolve path for --cache-dir: %s", err)
+				log.Errorf("could not resolve path for --cache-dir: %s", err)
 			}
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
-			log.Infof("--cache-dir %s not a dir; skipping", b.CacheDir)
+			log.Debugf("--cache-dir %s not a dir; skipping", b.CacheDir)
 		}
 	}
 

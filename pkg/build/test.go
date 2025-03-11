@@ -173,7 +173,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.Remove(layerTarGZ)
 
-	log.Infof("using %s for image layer", layerTarGZ)
+	log.Debugf("using %s for image layer", layerTarGZ)
 
 	ref, err := loader.LoadImage(ctx, layer, t.Arch, bc)
 	if err != nil {
@@ -341,7 +341,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	pkg := &t.Configuration.Package
 
-	log.Infof("evaluating pipelines for package requirements")
+	log.Debugf("evaluating pipelines for package requirements")
 	if err := t.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling %s tests: %w", t.ConfigFile, err)
 	}
@@ -527,17 +527,17 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 func (t *Test) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: %s", t.WorkspaceDir)
+	log.Debugf("  workspace dir: %s", t.WorkspaceDir)
 
 	if t.GuestDir != "" {
-		log.Infof("  guest dir: %s", t.GuestDir)
+		log.Debugf("  guest dir: %s", t.GuestDir)
 	}
 }
 
 func (t *Test) Summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Infof("melange %s is testing:", version.GetVersionInfo().GitVersion)
-	log.Infof("  configuration file: %s", t.ConfigFile)
+	log.Debugf("  configuration file: %s", t.ConfigFile)
 	t.SummarizePaths(ctx)
 }
 
@@ -557,7 +557,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
-			return nil, fmt.Errorf("--cache-dir %s not a dir", t.CacheDir)
+			log.Debugf("--cache-dir %s not a dir; skipping", t.CacheDir)
 		}
 	}
 
@@ -590,7 +590,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 	}
 
 	cfg.ImgRef = imgRef
-	log.Infof("ImgRef = %s", cfg.ImgRef)
+	log.Debugf("ImgRef = %s", cfg.ImgRef)
 
 	return &cfg, nil
 }

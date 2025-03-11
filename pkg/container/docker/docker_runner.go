@@ -164,7 +164,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *mcontainer.Config) erro
 func (dk *docker) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
 	if _, err := dk.cli.Ping(ctx); err != nil {
-		log.Infof("cannot use docker for containers: %v", err)
+		log.Errorf("cannot use docker for containers: %v", err)
 		return false
 	}
 

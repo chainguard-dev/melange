@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,7 +43,10 @@ import (
 	"chainguard.dev/melange/pkg/util"
 )
 
-const purlTypeAPK = "apk"
+const (
+	buildUser   = "build"
+	purlTypeAPK = "apk"
+)
 
 type Trigger struct {
 	// Optional: The script to run
@@ -99,6 +103,8 @@ type Package struct {
 	Epoch uint64 `json:"epoch" yaml:"epoch"`
 	// A human-readable description of the package
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Annotations for this package
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// The URL to the package's homepage
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the package build configuration
@@ -116,6 +122,9 @@ type Package struct {
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	// The CPE field values to be used for matching against NVD vulnerability
+	// records, if known.
+	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -123,11 +132,103 @@ type Package struct {
 	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
+// CPE stores values used to produce a CPE to describe the package, suitable for
+// matching against NVD records.
+//
+// Based on the spec found at
+// https://nvlpubs.nist.gov/nistpubs/Legacy/IR/nistir7695.pdf.
+//
+// For Melange, the "part" attribute should always be interpreted as "a" (for
+// "application") unless otherwise specified.
+//
+// The "Version" and "Update" fields have been intentionally left out of the CPE
+// struct to avoid confusion with the version information of the package itself.
+type CPE struct {
+	Part      string `json:"part,omitempty" yaml:"part,omitempty"`
+	Vendor    string `json:"vendor,omitempty" yaml:"vendor,omitempty"`
+	Product   string `json:"product,omitempty" yaml:"product,omitempty"`
+	Edition   string `json:"edition,omitempty" yaml:"edition,omitempty"`
+	Language  string `json:"language,omitempty" yaml:"language,omitempty"`
+	SWEdition string `json:"sw_edition,omitempty" yaml:"sw_edition,omitempty"`
+	TargetSW  string `json:"target_sw,omitempty" yaml:"target_sw,omitempty"`
+	TargetHW  string `json:"target_hw,omitempty" yaml:"target_hw,omitempty"`
+	Other     string `json:"other,omitempty" yaml:"other,omitempty"`
+}
+
+func (cpe CPE) IsZero() bool {
+	return cpe == CPE{}
+}
+
 type Resources struct {
 	CPU      string `json:"cpu,omitempty" yaml:"cpu,omitempty"`
 	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
 	Memory   string `json:"memory,omitempty" yaml:"memory,omitempty"`
 	Disk     string `json:"disk,omitempty" yaml:"disk,omitempty"`
+}
+
+// CPEString returns the CPE string for the package, suitable for matching
+// against NVD records.
+func (p Package) CPEString() (string, error) {
+	const anyValue = "*"
+
+	part := anyValue
+	if p.CPE.Part != "" {
+		part = p.CPE.Part
+	}
+	vendor := anyValue
+	if p.CPE.Vendor != "" {
+		vendor = p.CPE.Vendor
+	}
+	product := anyValue
+	if p.CPE.Product != "" {
+		product = p.CPE.Product
+	}
+	edition := anyValue
+	if p.CPE.Edition != "" {
+		edition = p.CPE.Edition
+	}
+	language := anyValue
+	if p.CPE.Language != "" {
+		language = p.CPE.Language
+	}
+	swEdition := anyValue
+	if p.CPE.SWEdition != "" {
+		swEdition = p.CPE.SWEdition
+	}
+	targetSW := anyValue
+	if p.CPE.TargetSW != "" {
+		targetSW = p.CPE.TargetSW
+	}
+	targetHW := anyValue
+	if p.CPE.TargetHW != "" {
+		targetHW = p.CPE.TargetHW
+	}
+	other := anyValue
+	if p.CPE.Other != "" {
+		other = p.CPE.Other
+	}
+
+	// Last-mile validation to avoid headaches downstream of this.
+	if vendor == anyValue {
+		return "", fmt.Errorf("vendor value must be exactly specified")
+	}
+	if product == anyValue {
+		return "", fmt.Errorf("product value must be exactly specified")
+	}
+
+	return fmt.Sprintf(
+		"cpe:2.3:%s:%s:%s:%s:*:%s:%s:%s:%s:%s:%s",
+		part,
+		vendor,
+		product,
+		p.Version,
+		edition,
+		language,
+		swEdition,
+		targetSW,
+		targetHW,
+		other,
+	), nil
 }
 
 // PackageURL returns the package URL ("purl") for the APK (origin) package.
@@ -345,7 +446,16 @@ func (p Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) 
 func (p Package) FullCopyright() string {
 	copyright := ""
 	for _, cp := range p.Copyright {
-		copyright += cp.Attestation + "\n"
+		if cp.Attestation != "" {
+			copyright += cp.Attestation + "\n"
+		}
+	}
+	// No copyright found, instead of ommitting the field declare
+	// that no determination was attempted, which is better than a
+	// whitespace (which should also be interpreted as
+	// NOASSERTION)
+	if copyright == "" {
+		copyright = "NOASSERTION"
 	}
 	return copyright
 }
@@ -629,6 +739,8 @@ type Configuration struct {
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
+	// Optional: Disables filtering of common pre-release tags
+	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
@@ -1064,7 +1176,7 @@ func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) a
 		Paths:       in.Paths, // TODO
 		VCSUrl:      r.Replace(in.VCSUrl),
 		Annotations: replaceMap(r, in.Annotations),
-		Include:     in.Include, // TODO
+		Include:     in.Include, //nolint:staticcheck // TODO
 		Volumes:     replaceAll(r, in.Volumes),
 	}
 }
@@ -1151,6 +1263,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		Version:            r.Replace(in.Version),
 		Epoch:              in.Epoch,
 		Description:        r.Replace(in.Description),
+		Annotations:        replaceMap(r, in.Annotations),
 		URL:                r.Replace(in.URL),
 		Commit:             replaceCommit(commit, in.Commit),
 		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
@@ -1159,6 +1272,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		Options:            in.Options,
 		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
 		Checks:             in.Checks,
+		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
 	}
@@ -1255,7 +1369,7 @@ func (cfg *Configuration) propagatePipelines() {
 }
 
 // ParseConfiguration returns a decoded build Configuration using the parsing options provided.
-func ParseConfiguration(_ context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
+func ParseConfiguration(ctx context.Context, configurationFilePath string, opts ...ConfigurationParsingOption) (*Configuration, error) {
 	options := &configOptions{}
 	configurationDirPath := filepath.Dir(configurationFilePath)
 	options.include(opts...)
@@ -1351,21 +1465,50 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	cfg.Data = nil // TODO: zero this out or not?
 
 	// TODO: validate that subpackage ranges have been consumed and applied
-
+	grpName := buildUser
 	grp := apko_types.Group{
-		GroupName: "build",
+		GroupName: grpName,
 		GID:       1000,
-		Members:   []string{"build"},
+		Members:   []string{buildUser},
 	}
-	cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
 
-	gid1000 := uint32(1000)
 	usr := apko_types.User{
-		UserName: "build",
+		UserName: buildUser,
 		UID:      1000,
-		GID:      apko_types.GID(&gid1000),
+		GID:      apko_types.GID(&grp.GID),
 	}
-	cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+
+	sameGroup := func(g apko_types.Group) bool { return g.GroupName == grpName }
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Groups, sameGroup) {
+		cfg.Environment.Accounts.Groups = append(cfg.Environment.Accounts.Groups, grp)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Groups, sameGroup) {
+		cfg.Test.Environment.Accounts.Groups = append(cfg.Test.Environment.Accounts.Groups, grp)
+	}
+	for _, sub := range cfg.Subpackages {
+		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
+			continue
+		}
+		if !slices.ContainsFunc(sub.Test.Environment.Accounts.Groups, sameGroup) {
+			sub.Test.Environment.Accounts.Groups = append(sub.Test.Environment.Accounts.Groups, grp)
+		}
+	}
+
+	sameUser := func(u apko_types.User) bool { return u.UserName == buildUser }
+	if !slices.ContainsFunc(cfg.Environment.Accounts.Users, sameUser) {
+		cfg.Environment.Accounts.Users = append(cfg.Environment.Accounts.Users, usr)
+	}
+	if cfg.Test != nil && !slices.ContainsFunc(cfg.Test.Environment.Accounts.Users, sameUser) {
+		cfg.Test.Environment.Accounts.Users = append(cfg.Test.Environment.Accounts.Users, usr)
+	}
+	for _, sub := range cfg.Subpackages {
+		if sub.Test == nil || len(sub.Test.Pipeline) == 0 {
+			continue
+		}
+		if !slices.ContainsFunc(sub.Test.Environment.Accounts.Users, sameUser) {
+			sub.Test.Environment.Accounts.Users = append(sub.Test.Environment.Accounts.Users, usr)
+		}
+	}
 
 	// Merge environment file if needed.
 	if envFile := options.envFilePath; envFile != "" {
@@ -1443,7 +1586,7 @@ func ParseConfiguration(_ context.Context, configurationFilePath string, opts ..
 	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
-	if err = cfg.validate(); err != nil {
+	if err = cfg.validate(ctx); err != nil {
 		return nil, fmt.Errorf("validating configuration %q: %w", cfg.Package.Name, err)
 	}
 
@@ -1468,7 +1611,7 @@ func (e ErrInvalidConfiguration) Unwrap() error {
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z\d][a-zA-Z\d+_.-]*$`)
 
-func (cfg Configuration) validate() error {
+func (cfg Configuration) validate(ctx context.Context) error {
 	if !packageNameRegex.MatchString(cfg.Package.Name) {
 		return ErrInvalidConfiguration{Problem: fmt.Errorf("package name must match regex %q", packageNameRegex)}
 	}
@@ -1482,7 +1625,7 @@ func (cfg Configuration) validate() error {
 	if err := validateDependenciesPriorities(cfg.Package.Dependencies); err != nil {
 		return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 	}
-	if err := validatePipelines(cfg.Pipeline); err != nil {
+	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 
@@ -1508,16 +1651,33 @@ func (cfg Configuration) validate() error {
 		if err := validateDependenciesPriorities(sp.Dependencies); err != nil {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
-		if err := validatePipelines(sp.Pipeline); err != nil {
+		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
+	}
+
+	if err := validateCPE(cfg.Package.CPE); err != nil {
+		return ErrInvalidConfiguration{Problem: fmt.Errorf("CPE validation: %w", err)}
 	}
 
 	return nil
 }
 
-func validatePipelines(ps []Pipeline) error {
-	for _, p := range ps {
+func pipelineName(p Pipeline, i int) string {
+	if p.Name != "" {
+		return strconv.Quote(p.Name)
+	}
+
+	if p.Uses != "" {
+		return strconv.Quote(p.Uses)
+	}
+
+	return fmt.Sprintf("[%d]", i)
+}
+
+func validatePipelines(ctx context.Context, ps []Pipeline) error {
+	log := clog.FromContext(ctx)
+	for i, p := range ps {
 		if p.With != nil && p.Uses == "" {
 			return fmt.Errorf("pipeline contains with but no uses")
 		}
@@ -1526,12 +1686,16 @@ func validatePipelines(ps []Pipeline) error {
 			return fmt.Errorf("pipeline cannot contain both uses %q and runs", p.Uses)
 		}
 
+		if p.Uses != "" && len(p.Pipeline) > 0 {
+			log.Warnf("pipeline %s contains both uses and a pipeline", pipelineName(p, i))
+		}
+
 		if len(p.With) > 0 && p.Runs != "" {
 			return fmt.Errorf("pipeline cannot contain both with and runs")
 		}
 
-		if err := validatePipelines(p.Pipeline); err != nil {
-			return err
+		if err := validatePipelines(ctx, p.Pipeline); err != nil {
+			return fmt.Errorf("validating pipeline %s children: %w", pipelineName(p, i), err)
 		}
 	}
 	return nil
@@ -1548,6 +1712,65 @@ func validateDependenciesPriorities(deps Dependencies) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func validateCPE(cpe CPE) error {
+	if cpe.Part != "" && cpe.Part != "a" {
+		return fmt.Errorf("invalid CPE part (must be 'a' for application, if specified): %q", cpe.Part)
+	}
+
+	if (cpe.Vendor == "") != (cpe.Product == "") {
+		return errors.New("vendor and product must each be set if the other is set")
+	}
+
+	const all = "*"
+	if cpe.Vendor == all {
+		return fmt.Errorf("invalid CPE vendor: %q", cpe.Vendor)
+	}
+	if cpe.Product == all {
+		return fmt.Errorf("invalid CPE product: %q", cpe.Product)
+	}
+
+	if err := validateCPEField(cpe.Vendor); err != nil {
+		return fmt.Errorf("invalid vendor: %w", err)
+	}
+	if err := validateCPEField(cpe.Product); err != nil {
+		return fmt.Errorf("invalid product: %w", err)
+	}
+	if err := validateCPEField(cpe.Edition); err != nil {
+		return fmt.Errorf("invalid edition: %w", err)
+	}
+	if err := validateCPEField(cpe.Language); err != nil {
+		return fmt.Errorf("invalid language: %w", err)
+	}
+	if err := validateCPEField(cpe.SWEdition); err != nil {
+		return fmt.Errorf("invalid software edition: %w", err)
+	}
+	if err := validateCPEField(cpe.TargetSW); err != nil {
+		return fmt.Errorf("invalid target software: %w", err)
+	}
+	if err := validateCPEField(cpe.TargetHW); err != nil {
+		return fmt.Errorf("invalid target hardware: %w", err)
+	}
+	if err := validateCPEField(cpe.Other); err != nil {
+		return fmt.Errorf("invalid other field: %w", err)
+	}
+
+	return nil
+}
+
+var cpeFieldRegex = regexp.MustCompile(`^[a-z\d][a-z\d+_.-]*$`)
+
+func validateCPEField(val string) error {
+	if val == "" {
+		return nil
+	}
+
+	if !cpeFieldRegex.MatchString(val) {
+		return fmt.Errorf("invalid CPE field value %q, must match regex %q", val, cpeFieldRegex.String())
+	}
+
 	return nil
 }
 

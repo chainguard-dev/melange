@@ -76,6 +76,11 @@ inputs:
       when building the binary.
     default: ""
 
+  extra-args:
+    description: |
+      A space-separated list of extra arguments to pass to the go build command.
+    default: ""
+
   amd64:
     description: |
       GOAMD64 microarchitecture level to use
@@ -129,4 +134,4 @@ pipeline:
       [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
       [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
 
-      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.packages}}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.extra-args}} ${{inputs.packages}}

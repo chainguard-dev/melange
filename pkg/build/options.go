@@ -21,6 +21,7 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -30,6 +31,15 @@ type Option func(*Build) error
 func WithConfig(configFile string) Option {
 	return func(b *Build) error {
 		b.ConfigFile = configFile
+		return nil
+	}
+}
+
+// WithConfiguration sets the configuration used for the package build context, and the filename that should be reported for that.
+func WithConfiguration(config *config.Configuration, filename string) Option {
+	return func(b *Build) error {
+		b.ConfigFile = filename
+		b.Configuration = config
 		return nil
 	}
 }

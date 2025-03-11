@@ -9,6 +9,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_validateCPE(t *testing.T) {
+	cases := []struct {
+		name    string
+		cpe     CPE
+		wantErr bool
+	}{
+		{
+			name:    "minimally valid",
+			cpe:     CPE{Vendor: "b", Product: "c"},
+			wantErr: false,
+		},
+		{
+			name:    "product without vendor",
+			cpe:     CPE{Product: "c"},
+			wantErr: true,
+		},
+		{
+			name:    "vendor without product",
+			cpe:     CPE{Vendor: "b"},
+			wantErr: true,
+		},
+		{
+			name:    "valid with additional fields set",
+			cpe:     CPE{Part: "a", Vendor: "b", Product: "c", TargetSW: "d", TargetHW: "e"},
+			wantErr: false,
+		},
+		{
+			name:    "invalid part",
+			cpe:     CPE{Part: "h", Vendor: "b", Product: "c"},
+			wantErr: true,
+		},
+		{
+			name:    "invalid characters",
+			cpe:     CPE{Vendor: "b", Product: "c:5"},
+			wantErr: true,
+		},
+		{
+			name:    "more invalid characters",
+			cpe:     CPE{Vendor: "B!", Product: "c"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCPE(tt.cpe)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func Test_applySubstitution(t *testing.T) {
 	ctx := slogtest.Context(t)
 
@@ -59,6 +112,10 @@ subpackages:
         - subpackage-bar=${{vars.bar}}
       replaces:
         - james=${{package.name}}
+    test:
+      pipeline:
+        - runs: echo "${{subpkg.name}} test case"
+        - runs: echo "context.name=${{context.name}}"
 
 test:
   environment:
@@ -68,6 +125,8 @@ test:
         - replacement-provides-${{vars.short-package-version}}
     environment:
       LD_LIBRARY_PATH: "/usr/local/${{vars.foo}}"
+  pipeline:
+    - runs: "echo context.name=${{context.name}}"
 `), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -343,6 +402,28 @@ pipeline:
 	require.Equal(t, "https://example.com/foo-0.0.1.zip", cfg.Pipeline[1].Pipeline[0].Pipeline[2].With["uri"])
 }
 
+func Test_packageAnnotations(t *testing.T) {
+	ctx := slogtest.Context(t)
+	fp := filepath.Join(os.TempDir(), "melange-test-packageAnnotations")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: annotations-workdir
+  version: 0.0.1
+  epoch: 1
+  annotations:
+    cgr.dev/ecosystem: python
+
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, "python", cfg.Package.Annotations["cgr.dev/ecosystem"])
+}
+
 func TestDuplicateSubpackage(t *testing.T) {
 	ctx := slogtest.Context(t)
 
@@ -407,11 +488,20 @@ func TestValidatePipelines(t *testing.T) {
 			},
 			wantErr: true,
 		},
+
+		{
+			name: "invalid pipeline with both uses and pipeline",
+			p: []Pipeline{
+				{Uses: "deploy", Pipeline: []Pipeline{{Runs: "somescript.sh"}}},
+			},
+			wantErr: false, // only a warning.
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePipelines(tt.p)
+			ctx := slogtest.Context(t)
+			err := validatePipelines(ctx, tt.p)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validatePipelines() error = %v, wantErr %v", err, tt.wantErr)
 			}

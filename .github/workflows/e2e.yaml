@@ -1,4 +1,4 @@
-name: e2e melange bootstrap + build
+name: e2e tests
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
 jobs:
   examples:
     name: build examples
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     permissions:
       contents: read
@@ -28,12 +28,12 @@ jobs:
           - sshfs.yaml
 
     steps:
-      - uses: step-security/harden-runner@c95a14d0e5bab51a9f56296a4eb0e416910cd350 # v2.10.3
+      - uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version-file: "go.mod"
       - name: Build package
@@ -43,7 +43,7 @@ jobs:
 
           make melange
           ./melange keygen
-          ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace
+          ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace --repository-append=https://apk.cgr.dev/chainguard
 
       - name: Check SBOM Conformance
         run: |
@@ -57,12 +57,18 @@ jobs:
             docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
           done
 
-  bootstrap:
-    name: bootstrap package
+  rebuild:
+    name: rebuild
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+          - examples/minimal.yaml
+          - melange.yaml
 
     container:
       image: alpine:latest
@@ -70,57 +76,86 @@ jobs:
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
     steps:
-      - name: Fetch dependencies
-        run: |
-          cat >/etc/apk/repositories <<_EOF_
-          https://dl-cdn.alpinelinux.org/alpine/edge/main
-          https://dl-cdn.alpinelinux.org/alpine/edge/community
-          https://dl-cdn.alpinelinux.org/alpine/edge/testing
-          _EOF_
-
-          apk upgrade -Ua
-          apk add go cosign build-base git bubblewrap
-
-      - uses: step-security/harden-runner@c95a14d0e5bab51a9f56296a4eb0e416910cd350 # v2.10.3
+      - uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version-file: "go.mod"
-      - name: Mark workspace as a safe repository
-        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
-      - name: Build bootstrap melange tool (stage1)
-        run: make melange
-      - name: Generate a package signing keypair
+
+      - name: Fetch dependencies
         run: |
+          apk upgrade -Ua
+          apk add go build-base git bubblewrap jq
+
+      - name: Build and rebuild
+        run: |
+          make melange
           ./melange keygen
-          mv melange.rsa.pub /etc/apk/keys
-      - name: Prepare build workspace for stage2
+
+          ./melange build ${{matrix.cfg}} --arch=x86_64 --namespace=wolfi
+          mv packages/x86_64/*.apk original.apk
+
+          ./melange rebuild original.apk --arch=x86_64
+          mv packages/x86_64/*.apk rebuilt.apk
+
+      - name: Diff filesystem
+        if: always()
         run: |
-          git clone . workspace-stage2/x86_64
-      - name: Build stage2 melange package with bootstrap melange
-        run: ./melange build --pipeline-dir=pipelines/ --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage2/
-      - name: Install stage2 melange package
-        run: apk add ./packages/x86_64/melange-*.apk
-      - name: Move stage2 artifacts to stage2 directory
+          echo ::group::original
+          tar -tvf original.apk | sort
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -tvf rebuilt.apk | sort
+          echo ::endgroup::
+          diff \
+            <(tar -tvf original.apk | sort) \
+            <(tar -tvf rebuilt.apk | sort) && echo "No diff!"
+
+      - name: Diff SBOM
+        if: always()
         run: |
-          mv packages stage2
-      - name: Verify operation of stage2 melange
-        run: melange version
-      - name: Prepare build workspace for stage3
+          echo ::group::original
+          tar -Oxf original.apk var/lib/db/sbom/ | jq
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf rebuilt.apk var/lib/db/sbom/ | jq
+          echo ::endgroup::
+          diff \
+            <(tar -Oxf original.apk var/lib/db/sbom/ | jq) \
+            <(tar -Oxf rebuilt.apk var/lib/db/sbom/ | jq) && echo "No diff!"
+
+      - name: Diff .melange.yaml
+        if: always()
         run: |
-          git clone . workspace-stage3/x86_64
-      - name: Build stage3 melange package with stage2 melange
-        run: melange build --signing-key=melange.rsa --arch x86_64 --workspace-dir ${{github.workspace}}/workspace-stage3/
-      - name: Install stage3 melange package
-        run: apk add ./packages/x86_64/melange-*.apk
-      - name: Move stage3 artifacts to stage3 directory
+          echo ::group::original
+          tar -Oxf original.apk .melange.yaml
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf rebuilt.apk .melange.yaml
+          echo ::endgroup::
+          diff \
+            <(tar -Oxf original.apk .melange.yaml) \
+            <(tar -Oxf rebuilt.apk .melange.yaml) && echo "No diff!"
+
+      - name: Diff .PKGINFO
+        if: always()
         run: |
-          mv packages stage3
-      - name: Ensure melange package is reproducible
+          echo ::group::original
+          tar -Oxf original.apk .PKGINFO
+          echo ::endgroup::
+          echo ::group::rebuilt
+          tar -Oxf rebuilt.apk .PKGINFO
+          echo ::endgroup::
+          diff \
+            <(tar -Oxf original.apk .PKGINFO) \
+            <(tar -Oxf rebuilt.apk .PKGINFO) && echo "No diff!"
+
+      - name: Diff digest
+        if: always()
         run: |
-          sha256sum stage2/x86_64/*.apk | sed -e 's:stage2/:stage3/:g' | sha256sum -c
-      - name: Verify operation of stage3 melange
-        run: melange version
+          diff \
+            <(sha256sum original.apk | cut -d' ' -f1) \
+            <(sha256sum rebuilt.apk | cut -d' ' -f1) && echo "No diff!"

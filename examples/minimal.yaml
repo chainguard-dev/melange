@@ -1,6 +1,7 @@
 package:
   name: minimal
   version: 0.0.1
+  epoch: 0
   description: a very basic melange example
 
 environment:

@@ -33,12 +33,14 @@ import (
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
 	"gopkg.in/ini.v1"
+	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/apko/pkg/apk/auth"
 	"chainguard.dev/apko/pkg/apk/expandapk"
+	"chainguard.dev/melange/pkg/config"
 )
 
-type linterFunc func(ctx context.Context, pkgname string, fsys fs.FS) error
+type linterFunc func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error
 
 type linter struct {
 	LinterFunc      linterFunc
@@ -57,8 +59,8 @@ const (
 	Warn
 )
 
-func allPaths(fn func(ctx context.Context, pkgname, path string) error) func(ctx context.Context, pkgname string, fsys fs.FS) error {
-	return func(ctx context.Context, pkgname string, fsys fs.FS) error {
+func allPaths(fn func(ctx context.Context, cfg *config.Configuration, pkgname, path string) error) func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
+	return func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
 		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 			if err := ctx.Err(); err != nil {
 				return err
@@ -70,7 +72,7 @@ func allPaths(fn func(ctx context.Context, pkgname, path string) error) func(ctx
 				// Ignore directories
 				return nil
 			}
-			if err := fn(ctx, pkgname, path); err != nil {
+			if err := fn(ctx, cfg, pkgname, path); err != nil {
 				return fmt.Errorf("%w: %s", err, path)
 			}
 			return nil
@@ -176,6 +178,21 @@ var linterMap = map[string]linter{
 		Explain:         "Remove all test directories from the package",
 		defaultBehavior: Warn,
 	},
+	"pkgconf": {
+		LinterFunc:      allPaths(pkgconfTestLinter),
+		Explain:         "This package provides files in a pkgconfig directory, please add the pkgconf test pipeline",
+		defaultBehavior: Warn,
+	},
+	"lddcheck": {
+		LinterFunc:      allPaths(lddcheckTestLinter),
+		Explain:         "This package provides shared object files, please add the ldd-check test pipeline",
+		defaultBehavior: Warn,
+	},
+	"usrmerge": {
+		LinterFunc:      allPaths(usrmergeLinter),
+		Explain:         "Move binary to /usr/{bin,lib/sbin}",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -183,21 +200,21 @@ func isIgnoredPath(path string) bool {
 	return strings.HasPrefix(path, "var/lib/db/sbom/")
 }
 
-func devLinter(_ context.Context, _, path string) error {
+func devLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "dev/") {
 		return fmt.Errorf("package writes to /dev")
 	}
 	return nil
 }
 
-func optLinter(_ context.Context, _, path string) error {
+func optLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "opt/") {
 		return fmt.Errorf("package writes to /opt")
 	}
 
 	return nil
 }
-func objectLinter(_ context.Context, _, path string) error {
+func objectLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if filepath.Ext(path) == ".o" {
 		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
 	}
@@ -206,14 +223,14 @@ func objectLinter(_ context.Context, _, path string) error {
 
 var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 
-func documentationLinter(_ context.Context, pkgname, path string) error {
+func documentationLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
 	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(pkgname, "-doc") {
 		return errors.New("package contains documentation files but is not a documentation package")
 	}
 	return nil
 }
 
-func isSetUIDOrGIDLinter(ctx context.Context, _ string, fsys fs.FS) error {
+func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -240,21 +257,21 @@ func isSetUIDOrGIDLinter(ctx context.Context, _ string, fsys fs.FS) error {
 	})
 }
 
-func sbomLinter(_ context.Context, _, path string) error {
+func sbomLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "var/lib/db/sbom/") {
 		return fmt.Errorf("package writes to %s", path)
 	}
 	return nil
 }
 
-func infodirLinter(_ context.Context, _, path string) error {
+func infodirLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "usr/share/info/dir/") {
 		return fmt.Errorf("package writes to /usr/share/info/dir/")
 	}
 	return nil
 }
 
-func srvLinter(_ context.Context, _, path string) error {
+func srvLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "srv/") {
 		return fmt.Errorf("package writes to /srv")
 	}
@@ -263,28 +280,28 @@ func srvLinter(_ context.Context, _, path string) error {
 
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 
-func tempDirLinter(_ context.Context, _, path string) error {
+func tempDirLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if isTempDirRegex.MatchString(path) {
 		return fmt.Errorf("package writes to a temp dir")
 	}
 	return nil
 }
 
-func usrLocalLinter(_ context.Context, _, path string) error {
+func usrLocalLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "usr/local/") {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
 	return nil
 }
 
-func varEmptyLinter(_ context.Context, _, path string) error {
+func varEmptyLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if strings.HasPrefix(path, "var/empty/") {
 		return fmt.Errorf("package writes to /var/empty")
 	}
 	return nil
 }
 
-func worldWriteableLinter(ctx context.Context, pkgname string, fsys fs.FS) error {
+func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -320,7 +337,7 @@ var elfMagic = []byte{'\x7f', 'E', 'L', 'F'}
 
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 
-func strippedLinter(ctx context.Context, _ string, fsys fs.FS) error {
+func strippedLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -391,7 +408,7 @@ func strippedLinter(ctx context.Context, _ string, fsys fs.FS) error {
 	})
 }
 
-func emptyLinter(ctx context.Context, pkgname string, fsys fs.FS) error {
+func emptyLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	foundfile := false
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
@@ -451,7 +468,7 @@ func getPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 	return
 }
 
-func pythonDocsLinter(_ context.Context, _ string, fsys fs.FS) error {
+func pythonDocsLinter(_ context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -467,7 +484,7 @@ func pythonDocsLinter(_ context.Context, _ string, fsys fs.FS) error {
 	return nil
 }
 
-func pythonMultiplePackagesLinter(_ context.Context, _ string, fsys fs.FS) error {
+func pythonMultiplePackagesLinter(_ context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -523,7 +540,7 @@ func pythonMultiplePackagesLinter(_ context.Context, _ string, fsys fs.FS) error
 	return nil
 }
 
-func pythonTestLinter(_ context.Context, _ string, fsys fs.FS) error {
+func pythonTestLinter(_ context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	packages, err := getPythonSitePackages(fsys)
 	if err != nil {
 		return err
@@ -539,7 +556,91 @@ func pythonTestLinter(_ context.Context, _ string, fsys fs.FS) error {
 	return nil
 }
 
-func lintPackageFS(ctx context.Context, pkgname string, fsys fs.FS, linters []string) error {
+var PkgconfDirRegex = regexp.MustCompile("^usr/(lib|share)/pkgconfig/")
+
+func pkgconfTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
+	if !PkgconfDirRegex.MatchString(path) {
+		return nil
+	}
+
+	if cfg == nil {
+		return fmt.Errorf("pkgconfig directory found and missing .melange.yaml")
+	}
+
+	if cfg.Package.Name == pkgname {
+		if cfg.Test != nil {
+			for _, test := range cfg.Test.Pipeline {
+				if test.Uses == "test/pkgconf" {
+					return nil
+				}
+			}
+		}
+	} else {
+		for _, p := range cfg.Subpackages {
+			if p.Name != pkgname {
+				continue
+			}
+
+			if p.Test == nil {
+				break
+			}
+
+			for _, test := range p.Test.Pipeline {
+				if test.Uses == "test/pkgconf" {
+					return nil
+				}
+			}
+
+			break
+		}
+	}
+
+	return fmt.Errorf("pkgconfig directory found")
+}
+
+var isSharedObjectFileRegex = regexp.MustCompile(`\.so(?:\.[0-9]+)*$`)
+
+func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
+	if !isSharedObjectFileRegex.MatchString(path) {
+		return nil
+	}
+
+	if cfg == nil {
+		return fmt.Errorf("shared object found and missing .melange.yaml")
+	}
+
+	if cfg.Package.Name == pkgname {
+		if cfg.Test != nil {
+			for _, test := range cfg.Test.Pipeline {
+				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
+					return nil
+				}
+			}
+		}
+	} else {
+		for _, p := range cfg.Subpackages {
+			if p.Name != pkgname {
+				continue
+			}
+
+			if p.Test == nil {
+				break
+			}
+
+			for _, test := range p.Test.Pipeline {
+				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
+					return nil
+				}
+			}
+
+			break
+		}
+	}
+
+	return fmt.Errorf("shared object found")
+}
+
+func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if strings.HasSuffix(pkgname, "-compat") {
 		return nil
@@ -551,7 +652,7 @@ func lintPackageFS(ctx context.Context, pkgname string, fsys fs.FS, linters []st
 			return err
 		}
 		linter := linterMap[linterName]
-		if err := linter.LinterFunc(ctx, linterName, fsys); err != nil {
+		if err := linter.LinterFunc(ctx, cfg, pkgname, fsys); err != nil {
 			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", linterName, pkgname, err, linter.Explain))
 		}
 	}
@@ -570,7 +671,7 @@ func checkLinters(linters []string) error {
 }
 
 // Lint the given build directory at the given path
-func LintBuild(ctx context.Context, packageName string, path string, require, warn []string) error {
+func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, path string, require, warn []string) error {
 	if err := checkLinters(append(require, warn...)); err != nil {
 		return err
 	}
@@ -578,11 +679,11 @@ func LintBuild(ctx context.Context, packageName string, path string, require, wa
 	log := clog.FromContext(ctx)
 	fsys := os.DirFS(path)
 
-	if err := lintPackageFS(ctx, packageName, fsys, warn); err != nil {
+	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
 		log.Warn(err.Error())
 	}
 	log.Infof("linting apk: %s", packageName)
-	return lintPackageFS(ctx, packageName, fsys, require)
+	return lintPackageFS(ctx, cfg, packageName, fsys, require)
 }
 
 // Lint the given APK at the given path
@@ -637,19 +738,57 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 		return fmt.Errorf("could not read from package: %w", err)
 	}
 
-	cfg, err := ini.Load(data)
+	pkginfo, err := ini.Load(data)
 	if err != nil {
 		return fmt.Errorf("could not load .PKGINFO file: %w", err)
 	}
 
-	pkgname := cfg.Section("").Key("pkgname").MustString("")
+	pkgname := pkginfo.Section("").Key("pkgname").MustString("")
 	if pkgname == "" {
 		return fmt.Errorf("pkgname is nonexistent")
 	}
 
+	cfg, err := parseMelangeYaml(exp.ControlFS)
+	if err != nil {
+		// TODO: Consider making this fatal if the universe gets rebuilt with new melange.
+		clog.FromContext(ctx).Warnf("parsing .melange.yaml: %v", err)
+	}
+
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
-	if err := lintPackageFS(ctx, pkgname, exp.TarFS, warn); err != nil {
+	if err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn); err != nil {
 		log.Warn(err.Error())
 	}
-	return lintPackageFS(ctx, pkgname, exp.TarFS, require)
+	return lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require)
+}
+
+func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
+	my, err := fsys.Open(".melange.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("could not open .melange.yaml file: %w", err)
+	}
+	defer my.Close()
+
+	// We expect the file to be complete, so we don't need to post-process
+	// it with any of the options available in ParseConfiguration.
+	var cfg config.Configuration
+	if err := yaml.NewDecoder(my).Decode(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func usrmergeLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+	if strings.HasPrefix(path, "sbin") {
+		return fmt.Errorf("package writes to /sbin in violation of usrmerge")
+	}
+
+	if strings.HasPrefix(path, "lib") {
+		return fmt.Errorf("package writes to /lib in violation of usrmerge")
+	}
+
+	if strings.HasPrefix(path, "bin") {
+		return fmt.Errorf("package writes to /bin in violation of usrmerge")
+	}
+
+	return nil
 }

@@ -1,0 +1,21 @@
+name: Get coverage data with the covdata go tool
+
+# Leave go off here, some packages pin to an older version. Let's just assume this gets injected elsewhere.
+needs:
+  packages:
+    - ${{inputs.package}}
+    - busybox
+    - jq
+
+inputs:
+  package:
+    description: The go package to install
+    default: go
+  cover-dir:
+    description: The GOCOVERDIR path where coverage data files have been generated. It's required to be set as environment variable as well before running the Go binary.
+    default: /home/build
+
+pipeline:
+  - runs: |
+      cov=$(go tool covdata func -i ${{inputs.cover-dir}}  | tail -1 | awk '{print $NF}' | sed 's|%||g')
+      echo "Statements coverage: ${cov}%"

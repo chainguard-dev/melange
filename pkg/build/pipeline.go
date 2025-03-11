@@ -67,6 +67,8 @@ type SubstitutionMap struct {
 
 func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMap {
 	nw := maps.Clone(sm.Substitutions)
+	nw[config.SubstitutionSubPkgName] = subpkg.Name
+	nw[config.SubstitutionContextName] = subpkg.Name
 	nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", subpkg.Name)
 	nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
 
@@ -85,6 +87,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, 
 		config.SubstitutionTargetsOutdir:      "/home/build/melange-out",
 		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
+		config.SubstitutionContextName:        pkg.Name,
 	}
 
 	nw[config.SubstitutionHostTripletGnu] = arch.ToTriplet(flavor)

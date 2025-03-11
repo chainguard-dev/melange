@@ -94,6 +94,28 @@ pipeline:
   - uses: autoconf/make
   - uses: autoconf/make-install
   - uses: strip
+
+subpackages:
+  - name: "hello-doc"
+    description: "Documentation for hello"
+    dependencies:
+      runtime:
+        - foo
+    pipeline:
+      - uses: split/manpages
+    test:
+      pipeline:
+        - uses: test/docs
+
+test:
+  environment:
+    contents:
+      packages:
+        - bar
+  pipeline:
+    - runs: |
+        hello
+        hello --version
 ```
 
 We can build this with:
@@ -150,6 +172,8 @@ Melange provides the following default substitutions which can be referenced in 
 | `${{package.full-version}}` | `${{package.version}}-r${{package.epoch}}`                               |
 | `${{package.description}}`  | Package description                                                      |
 | `${{package.srcdir}}`       | Package source directory (`--source-dir`)                                |
+| `${{subpkg.name}}`          | Subpackage name                                                          |
+| `${{context.name}}`         | main package or subpackage name
 | `${{targets.outdir}}`       | Directory where targets will be stored                                   |
 | `${{targets.contextdir}}`   | Directory where targets will be stored for main packages and subpackages |
 | `${{targets.destdir}}`      | Directory where targets will be stored for main                          |

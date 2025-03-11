@@ -56,6 +56,7 @@ Apply patches
 
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
+| fuzz | false | Sets the maximum fuzz factor. This option only applies to context diffs, and causes patch to ignore up to that many lines in looking for places to install a hunk.  | 2 |
 | patches | false | A list of patches to apply, as a whitespace delimited string.  |  |
 | series | false | A quilt-style patch series file to apply.  |  |
 | strip-components | false | The number of path components to strip while extracting.  | 1 |

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/ld-so-conf-d-test.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/shbang-test.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin.yaml --arch=x86_64
 //go:generate curl -s -o ./testdata/py3-seaborn.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/py3-seaborn.yaml
@@ -56,7 +57,7 @@ func (th *testHandle) Version() string {
 
 func (th *testHandle) RelativeNames() []string {
 	// TODO: Support subpackages?
-	return []string{th.pkg.Origin}
+	return []string{th.pkg.Name}
 }
 
 func (th *testHandle) FilesystemForRelative(pkgName string) (SCAFS, error) {
@@ -334,6 +335,23 @@ func TestGetShbang(t *testing.T) {
 			if td.want != got {
 				t.Errorf("%d - got %d '%s', expected %d '%s'", i, len(got), got, len(td.want), td.want)
 			}
+		}
+	}
+}
+
+func TestLdSoConfD(t *testing.T) {
+	ctx := slogtest.Context(t)
+	// Generated with `go generate ./...`
+	th := handleFromApk(ctx, t, "generated/x86_64/ld-so-conf-d-test-1-r1.apk", "ld-so-conf-d-test.yaml")
+	defer th.exp.Close()
+
+	if extraLibPaths, err := getLdSoConfDLibPaths(ctx, th); err != nil {
+		t.Fatal(err)
+	} else if extraLibPaths == nil {
+		t.Error("getLdSoConfDLibPaths: expected 'my/lib/test', got nil")
+	} else {
+		if extraLibPaths[0] != "my/lib/test" {
+			t.Errorf("getLdSoConfDLibPaths: expected 'my/lib/test', got '%s'", extraLibPaths[0])
 		}
 	}
 }

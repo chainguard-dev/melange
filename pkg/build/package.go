@@ -160,6 +160,9 @@ builddate = {{ .Build.SourceDateEpoch.Unix }}
 {{- range $copyright := .Origin.Copyright }}
 license = {{ $copyright.License }}
 {{- end }}
+{{- if ne .Dependencies.InstallIf "" }}
+install_if = {{.Dependencies.InstallIf}}
+{{- end }}
 {{- range $dep := .Dependencies.Runtime }}
 depend = {{ $dep }}
 {{- end }}
@@ -351,6 +354,8 @@ func (pc *PackageBuild) GenerateDependencies(ctx context.Context, hdl sca.SCAHan
 
 	// Sets .PKGINFO `# vendored = ...` comments; does not affect resolution.
 	pc.Dependencies.Vendored = slices.Compact(slices.Sorted(slices.Values(generated.Vendored)))
+
+	pc.Dependencies.InstallIf = generated.InstallIf
 
 	pc.Dependencies.Summarize(ctx)
 

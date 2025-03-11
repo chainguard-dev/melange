@@ -28,6 +28,10 @@ inputs:
   expected-commit:
     description: |
       The expected commit hash
+  attribution-paths:
+    description: |
+      List of paths containing attributions or notices that are
+      required to be presented.
   recurse-submodules:
     description: |
       Indicates whether --recurse-submodules should be passed to git clone.

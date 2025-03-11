@@ -947,6 +947,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
+	// Run finalize pipelines
+	if !b.isBuildLess() && len(b.Configuration.Finalize) > 0 {
+		log.Infof("running pipelines for %s", pkg.Name)
+		if err := pr.runPipelines(ctx, b.Configuration.Finalize); err != nil {
+			return fmt.Errorf("unable to run finalize pipelines for %s: %v", pkg.Name, err)
+		}
+	}
+
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	fsys := apkofs.DirFS(b.WorkspaceDir)

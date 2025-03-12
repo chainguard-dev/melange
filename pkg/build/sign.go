@@ -22,21 +22,6 @@ type ApkSigner interface {
 	SignatureName() string
 }
 
-var melangeApkDigest crypto.Hash
-
-func init() {
-	melangeApkDigest = crypto.SHA256
-	if digest, ok := os.LookupEnv("SIGNING_DIGEST"); ok {
-		switch digest {
-		case "SHA256":
-		case "SHA1":
-			melangeApkDigest = crypto.SHA1
-		default:
-			panic(fmt.Errorf("unsupported SIGNING_DIGEST"))
-		}
-	}
-}
-
 func EmitSignature(ctx context.Context, signer ApkSigner, controlData []byte, sde time.Time) ([]byte, error) {
 	_, span := otel.Tracer("melange").Start(ctx, "EmitSignature")
 	defer span.End()
@@ -89,16 +74,13 @@ type KeyApkSigner struct {
 }
 
 func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
-	controlDigest, err := sign.HashData(control, melangeApkDigest)
+	controlDigest, err := sign.HashData(control, crypto.SHA256)
 	if err != nil {
 		return nil, err
 	}
-	return sign.RSASignDigest(controlDigest, melangeApkDigest, s.KeyFile, s.KeyPassphrase)
+	return sign.RSASignDigest(controlDigest, crypto.SHA256, s.KeyFile, s.KeyPassphrase)
 }
 
 func (s KeyApkSigner) SignatureName() string {
-	if melangeApkDigest == crypto.SHA256 {
-		return fmt.Sprintf(".SIGN.RSA256.%s.pub", filepath.Base(s.KeyFile))
-	}
-	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(s.KeyFile))
+	return fmt.Sprintf(".SIGN.RSA256.%s.pub", filepath.Base(s.KeyFile))
 }

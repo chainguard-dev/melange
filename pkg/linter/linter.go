@@ -183,10 +183,15 @@ var linterMap = map[string]linter{
 		Explain:         "This package provides files in a pkgconfig directory, please add the pkgconf test pipeline",
 		defaultBehavior: Warn,
 	},
-	"usrmerge": {
-		LinterFunc:      allPaths(usrmergeLinter),
-		Explain:         "Move binary to /usr/{bin,lib/sbin}",
+	"lddcheck": {
+		LinterFunc:      allPaths(lddcheckTestLinter),
+		Explain:         "This package provides shared object files, please add the ldd-check test pipeline",
 		defaultBehavior: Warn,
+	},
+	"usrmerge": {
+		LinterFunc:      usrmergeLinter,
+		Explain:         "Move binary to /usr/{bin,sbin}",
+		defaultBehavior: Require,
 	},
 }
 
@@ -593,6 +598,48 @@ func pkgconfTestLinter(_ context.Context, cfg *config.Configuration, pkgname, pa
 	return fmt.Errorf("pkgconfig directory found")
 }
 
+var isSharedObjectFileRegex = regexp.MustCompile(`\.so(?:\.[0-9]+)*$`)
+
+func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
+	if !isSharedObjectFileRegex.MatchString(path) {
+		return nil
+	}
+
+	if cfg == nil {
+		return fmt.Errorf("shared object found and missing .melange.yaml")
+	}
+
+	if cfg.Package.Name == pkgname {
+		if cfg.Test != nil {
+			for _, test := range cfg.Test.Pipeline {
+				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
+					return nil
+				}
+			}
+		}
+	} else {
+		for _, p := range cfg.Subpackages {
+			if p.Name != pkgname {
+				continue
+			}
+
+			if p.Test == nil {
+				break
+			}
+
+			for _, test := range p.Test.Pipeline {
+				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
+					return nil
+				}
+			}
+
+			break
+		}
+	}
+
+	return fmt.Errorf("shared object found")
+}
+
 func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
 	// If this is a compat package, do nothing.
 	if strings.HasSuffix(pkgname, "-compat") {
@@ -730,18 +777,36 @@ func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 	return &cfg, nil
 }
 
-func usrmergeLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "sbin") {
-		return fmt.Errorf("package writes to /sbin in violation of usrmerge")
-	}
+func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if isIgnoredPath(path) {
+			return nil
+		}
 
-	if strings.HasPrefix(path, "lib") {
-		return fmt.Errorf("package writes to /lib in violation of usrmerge")
-	}
+		// We don't really care if a package is re-adding a symlink and this catches wolfi-baselayout
+		// without special casing it with the package name.
+		if path == "sbin" || path == "bin" {
+			if d.IsDir() || d.Type().IsRegular() {
+				return fmt.Errorf("package contains non-symlink file at /sbin or /bin in violation of usrmerge")
+			} else {
+				return nil
+			}
+		}
 
-	if strings.HasPrefix(path, "bin") {
-		return fmt.Errorf("package writes to /bin in violation of usrmerge")
-	}
+		if strings.HasPrefix(path, "sbin") {
+			return fmt.Errorf("package writes to /sbin in violation of usrmerge: %s", path)
+		}
 
-	return nil
+		if strings.HasPrefix(path, "bin") {
+			return fmt.Errorf("package writes to /bin in violation of usrmerge: %s", path)
+		}
+
+		return nil
+	})
 }

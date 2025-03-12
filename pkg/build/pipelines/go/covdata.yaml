@@ -5,6 +5,7 @@ needs:
   packages:
     - ${{inputs.package}}
     - busybox
+    - jq
 
 inputs:
   package:

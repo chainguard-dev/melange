@@ -960,7 +960,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)
-		path := filepath.Join(b.WorkspaceDir, melangeOutputDirName, lt.pkgName)
+		path := filepath.Join(melangeOutputDirName, lt.pkgName)
 
 		// Downgrade disabled checks from required to warn
 		require := slices.DeleteFunc(b.LintRequire, func(s string) bool {
@@ -975,7 +975,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
+	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDirFS)
 	if err != nil {
 		return fmt.Errorf("gathering licensing infos: %w", err)
 	}
@@ -1072,15 +1072,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 // filesystem in the directory `/var/lib/db/sbom`. The pkgName parameter should
 // be set to the name of the origin package or subpackage.
 func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
-	apkFSPath := filepath.Join(b.WorkspaceDir, melangeOutputDirName, pkgName)
+	apkFSPath := filepath.Join(melangeOutputDirName, pkgName)
 	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
-	if err := os.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
+	if err := b.WorkspaceDirFS.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
 		return fmt.Errorf("creating SBOM directory: %w", err)
 	}
 
 	pkgVersion := b.Configuration.Package.FullVersion()
 	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
-	f, err := os.Create(sbomPath)
+	f, err := b.WorkspaceDirFS.Create(sbomPath)
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}

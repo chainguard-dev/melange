@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/sbom"
 	purl "github.com/package-url/packageurl-go"
@@ -427,11 +428,11 @@ func (p Package) LicenseExpression() string {
 // directory, and reads in the license content. LicensingInfos then returns a
 // map of the `Copyright.License` field to the string content of the file from
 // `.LicensePath`.
-func (p Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
+func (p Package) LicensingInfos(fsys apkofs.FullFS) (map[string]string, error) {
 	licenseInfos := make(map[string]string)
 	for _, cp := range p.Copyright {
 		if cp.LicensePath != "" {
-			content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
+			content, err := fsys.ReadFile(cp.LicensePath)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
 			}

@@ -35,6 +35,40 @@
       ],
       "description": "BuildOption describes an optional deviation to a package build."
     },
+    "CPE": {
+      "properties": {
+        "part": {
+          "type": "string"
+        },
+        "vendor": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string"
+        },
+        "edition": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "sw_edition": {
+          "type": "string"
+        },
+        "target_sw": {
+          "type": "string"
+        },
+        "target_hw": {
+          "type": "string"
+        },
+        "other": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "CPE stores values used to produce a CPE to describe the package, suitable for matching against NVD records."
+    },
     "Capabilities": {
       "properties": {
         "add": {
@@ -530,6 +564,13 @@
           "type": "string",
           "description": "A human-readable description of the package"
         },
+        "annotations": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Annotations for this package"
+        },
         "url": {
           "type": "string",
           "description": "The URL to the package's homepage"
@@ -567,6 +608,10 @@
         "checks": {
           "$ref": "#/$defs/Checks",
           "description": "Optional: enabling, disabling, and configuration of build checks"
+        },
+        "cpe": {
+          "$ref": "#/$defs/CPE",
+          "description": "The CPE field values to be used for matching against NVD vulnerability\nrecords, if known."
         },
         "timeout": {
           "type": "integer",

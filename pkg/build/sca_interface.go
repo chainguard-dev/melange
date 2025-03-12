@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
 )
@@ -54,8 +55,10 @@ func (scabi *SCABuildInterface) Version() string {
 // FilesystemForRelative implements an abstract filesystem for any of the packages being
 // built.
 func (scabi *SCABuildInterface) FilesystemForRelative(pkgName string) (sca.SCAFS, error) {
-	pkgDir := filepath.Join(scabi.PackageBuild.Build.WorkspaceDir, melangeOutputDirName, pkgName)
-	rlFS := readlinkFS(pkgDir)
+	rlFS, err := apkofs.Sub(scabi.PackageBuild.Build.WorkspaceDirFS, filepath.Join(melangeOutputDirName, pkgName))
+	if err != nil {
+		return nil, fmt.Errorf("package build subFS: %w", err)
+	}
 	scaFS, ok := rlFS.(sca.SCAFS)
 	if !ok {
 		return nil, fmt.Errorf("SCAFS not implemented")

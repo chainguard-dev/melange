@@ -668,7 +668,11 @@ func sonameLibver(soname string) string {
 func getShbang(fp io.Reader) (string, error) {
 	// python3 and sh are symlinks and generateCmdProviders currently only considers
 	// regular files. Since nothing will fulfill such a depend, do not generate one.
-	ignores := map[string]bool{"python3": true, "python": true, "sh": true, "awk": true}
+	//
+	// There are multiple variants of luajit; one maintained by OpenResty, and several
+	// per each fluent-bit stream. We don't want to pull in the incorrect variant so do
+	// not generate a dependency on cmd:luajit when found in a shebang.
+	ignores := map[string]bool{"python3": true, "python": true, "sh": true, "awk": true, "luajit": true}
 
 	buf := make([]byte, 80)
 	blen, err := io.ReadFull(fp, buf)

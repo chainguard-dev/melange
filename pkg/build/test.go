@@ -426,7 +426,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
+		if err := t.PopulateWorkspace(ctx, apkofs.DirFS(t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}

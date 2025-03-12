@@ -1130,7 +1130,8 @@ func replaceNeeds(r *strings.Replacer, in *Needs) *Needs {
 		return nil
 	}
 	return &Needs{
-		Packages: replaceAll(r, in.Packages),
+		Packages:    replaceAll(r, in.Packages),
+		Environment: in.Environment,
 	}
 }
 

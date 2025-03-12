@@ -33,7 +33,7 @@ needs:
     FOO: bar
 ```
 
-not only the specific pipeline but also all the pipelines of the build environment  will inherit the additional environment variable.
+not only the specific pipeline but also all the pipelines of the build environment will inherit the additional environment variable.
 
 ## Where does Melange build?
 

@@ -1,9 +1,5 @@
 cel.dev/expr v0.19.0 h1:lXuo+nDhpyJSpWxpPVi5cPUwzKb+dsdOiw6IreM5yt0=
 cel.dev/expr v0.19.0/go.mod h1:MrpN08Q+lEBs+bGYdLxxHkZoUSsCp0nSKTs0nTymJgw=
-chainguard.dev/apko v0.25.2-0.20250225192758-581904a29f4a h1:QqlKR/xlGrwDZfbAM/Nx2YU6anq2Z49kLmOffIEarME=
-chainguard.dev/apko v0.25.2-0.20250225192758-581904a29f4a/go.mod h1:yuj+hEMD6KbQuGBlbsmh6AgUhFdqbGVrLcDvbnrC+DY=
-chainguard.dev/apko v0.25.2 h1:aDVtikFWGuzZD6nYcdLjO+oVEWLr5dz9tfkgJEXlIqM=
-chainguard.dev/apko v0.25.2/go.mod h1:4i/zhP74WpHcGV8t9bQCueokNY27M9QRtocELa3aG8Y=
 chainguard.dev/apko v0.25.3-0.20250312131051-98af90c0e2b4 h1:Da91zUvT3HswHDppnldgsuu+3uJPklZTH8J2r2/jLr8=
 chainguard.dev/apko v0.25.3-0.20250312131051-98af90c0e2b4/go.mod h1:4i/zhP74WpHcGV8t9bQCueokNY27M9QRtocELa3aG8Y=
 chainguard.dev/go-grpc-kit v0.17.7 h1:TqHua7er5k8m6WM96y0Tm7IoLLkuZ5vh3+5SR1gruKg=
@@ -89,8 +85,6 @@ github.com/census-instrumentation/opencensus-proto v0.4.1 h1:iKLQ0xPNFxR/2hzXZMr
 github.com/census-instrumentation/opencensus-proto v0.4.1/go.mod h1:4T9NM4+4Vw91VeyqjLS6ao50K5bOcLKN6Q42XnYaRYw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chainguard-dev/clog v1.6.1 h1:CeOhEqKQsO/QMESgOTqv/miI27P1eNcgGgL7uiofOvU=
-github.com/chainguard-dev/clog v1.6.1/go.mod h1:4+WFhRMsGH79etYXY3plYdp+tCz/KCkU8fAr0HoaPvs=
 github.com/chainguard-dev/clog v1.7.0 h1:guPznsK8vLHvzz1QJe2yU6MFeYaiSOFOQBYw4OXu+g8=
 github.com/chainguard-dev/clog v1.7.0/go.mod h1:4+WFhRMsGH79etYXY3plYdp+tCz/KCkU8fAr0HoaPvs=
 github.com/chainguard-dev/git-urls v1.0.2 h1:pSpT7ifrpc5X55n4aTTm7FFUE+ZQHKiqpiwNkJrVcKQ=
@@ -447,8 +441,6 @@ github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/skeema/knownhosts v1.3.1 h1:X2osQ+RAjK76shCbvhHHHVl3ZlgDm8apHEHFqRjnBY8=
 github.com/skeema/knownhosts v1.3.1/go.mod h1:r7KTdC8l4uxWRyK2TpQZ/1o5HaSzh06ePQNxPwTcfiY=
-github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 h1:JIAuq3EEf9cgbU6AtGPK4CTG3Zf6CKMNqf0MHTggAUA=
-github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
 github.com/sosodev/duration v1.3.1 h1:qtHBDMQ6lvMQsL15g4aopM4HEfOaYuhWBw3NPTtlqq4=
 github.com/sosodev/duration v1.3.1/go.mod h1:RQIBBX0+fMLc/D9+Jb/fwvVmo0eZvDDEERAikUR6SDg=
 github.com/spdx/gordf v0.0.0-20201111095634-7098f93598fb/go.mod h1:uKWaldnbMnjsSAXRurWqqrdyZen1R7kxl8TkmWk2OyM=
@@ -482,8 +474,6 @@ github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qv
 github.com/theupdateframework/go-tuf v0.7.0/go.mod h1:uEB7WSY+7ZIugK6R1hiBMBjQftaFzn7ZCDJcp1tCUug=
 github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 h1:e/5i7d4oYZ+C1wj2THlRK+oAhjeS/TRQwMfkIuet3w0=
 github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399/go.mod h1:LdwHTNJT99C5fTAzDz0ud328OgXz+gierycbcIx2fRs=
-github.com/tmc/dot v0.0.0-20210901225022-f9bc17da75c0 h1:hwIpbdjckSFqmZ6hod7WZgGR7tVVrSUzZrBfNZl7AOg=
-github.com/tmc/dot v0.0.0-20210901225022-f9bc17da75c0/go.mod h1:DV83s9TfD0rgoKcqvDmM+aYdz6BXmTkquwd+bI/8tlo=
 github.com/u-root/u-root v0.14.0 h1:Ka4T10EEML7dQ5XDvO9c3MBN8z4nuSnGjcd1jmU2ivg=
 github.com/u-root/u-root v0.14.0/go.mod h1:hAyZorapJe4qzbLWlAkmSVCJGbfoU9Pu4jpJ1WMluqE=
 github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 h1:pyC9PaHYZFgEKFdlp3G8RaCKgVpHZnecvArXvPXcFkM=

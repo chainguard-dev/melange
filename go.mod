@@ -6,7 +6,7 @@ require (
 	chainguard.dev/apko v0.25.3-0.20250312131051-98af90c0e2b4
 	cloud.google.com/go/storage v1.50.0
 	dagger.io/dagger v0.16.2
-	github.com/chainguard-dev/clog v1.6.1
+	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.10
 	github.com/charmbracelet/log v0.4.0
@@ -181,13 +181,11 @@ require (
 	github.com/sigstore/sigstore v1.8.15 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
-	github.com/tmc/dot v0.0.0-20210901225022-f9bc17da75c0 // indirect
 	github.com/u-root/u-root v0.14.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect

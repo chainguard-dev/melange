@@ -960,7 +960,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)
-		path := filepath.Join(melangeOutputDirName, lt.pkgName)
+		path := filepath.Join(b.WorkspaceDir, melangeOutputDirName, lt.pkgName)
 
 		// Downgrade disabled checks from required to warn
 		require := slices.DeleteFunc(b.LintRequire, func(s string) bool {
@@ -975,7 +975,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDirFS)
+	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
 	if err != nil {
 		return fmt.Errorf("gathering licensing infos: %w", err)
 	}

@@ -311,7 +311,7 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 
 	log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 
-	fsys := os.DirFS(t.SourceDir)
+	fsys := apkofs.DirFS(t.SourceDir)
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

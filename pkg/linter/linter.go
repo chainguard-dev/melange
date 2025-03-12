@@ -29,6 +29,7 @@ import (
 	"slices"
 	"strings"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"github.com/chainguard-dev/clog"
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/maps"
@@ -677,7 +678,7 @@ func LintBuild(ctx context.Context, cfg *config.Configuration, packageName strin
 	}
 
 	log := clog.FromContext(ctx)
-	fsys := os.DirFS(path)
+	fsys := apkofs.DirFS(path)
 
 	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
 		log.Warn(err.Error())

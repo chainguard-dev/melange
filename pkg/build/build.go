@@ -628,7 +628,7 @@ func (b *Build) populateCache(ctx context.Context) error {
 		defer os.RemoveAll(tmp)
 		log.Infof("cache bucket copied to %s", tmp)
 
-		fsys := os.DirFS(tmp)
+		fsys := apkofs.DirFS(tmp)
 
 		// mkdir /var/cache/melange
 		if err := os.MkdirAll(b.CacheDir, 0o755); err != nil {
@@ -844,7 +844,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.populateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
+		if err := b.populateWorkspace(ctx, apkofs.DirFS(b.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}

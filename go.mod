@@ -3,10 +3,10 @@ module chainguard.dev/melange
 go 1.23.4
 
 require (
-	chainguard.dev/apko v0.25.2-0.20250225192758-581904a29f4a
+	chainguard.dev/apko v0.25.3-0.20250312131051-98af90c0e2b4
 	cloud.google.com/go/storage v1.50.0
 	dagger.io/dagger v0.15.3
-	github.com/chainguard-dev/clog v1.6.1
+	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.9
 	github.com/charmbracelet/log v0.4.0
@@ -14,7 +14,7 @@ require (
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.2
-	github.com/go-git/go-git/v5 v5.13.2
+	github.com/go-git/go-git/v5 v5.14.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.3
 	github.com/google/go-github/v54 v54.0.0
@@ -181,11 +181,13 @@ require (
 	github.com/sigstore/sigstore v1.8.15 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
+	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
+	github.com/tmc/dot v0.0.0-20210901225022-f9bc17da75c0 // indirect
 	github.com/u-root/u-root v0.14.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect

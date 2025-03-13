@@ -952,6 +952,17 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	b.WorkspaceDirFS = apkofs.DirFS(b.WorkspaceDir)
+
+	if err := fs.WalkDir(b.WorkspaceDirFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		fmt.Println(path)
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}

@@ -101,6 +101,7 @@ type Build struct {
 
 	SourceDateEpoch time.Time
 	WorkspaceDir    string
+	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
@@ -311,6 +312,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	if b.Runner.Name() == container.QemuName {
 		b.ExtraPackages = append(b.ExtraPackages, []string{
 			"melange-microvm-init",
+			"gnutar",
 		}...)
 	}
 
@@ -626,7 +628,7 @@ func (b *Build) populateCache(ctx context.Context) error {
 		defer os.RemoveAll(tmp)
 		log.Infof("cache bucket copied to %s", tmp)
 
-		fsys := os.DirFS(tmp)
+		fsys := apkofs.DirFS(tmp)
 
 		// mkdir /var/cache/melange
 		if err := os.MkdirAll(b.CacheDir, 0o755); err != nil {
@@ -842,7 +844,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 
 		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.populateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
+		if err := b.populateWorkspace(ctx, apkofs.DirFS(b.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}
@@ -949,8 +951,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
-	fsys := apkofs.DirFS(b.WorkspaceDir)
-	if err := b.retrieveWorkspace(ctx, fsys); err != nil {
+	b.WorkspaceDirFS = apkofs.DirFS(b.WorkspaceDir)
+
+	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
@@ -1070,15 +1073,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 // filesystem in the directory `/var/lib/db/sbom`. The pkgName parameter should
 // be set to the name of the origin package or subpackage.
 func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
-	apkFSPath := filepath.Join(b.WorkspaceDir, melangeOutputDirName, pkgName)
+	apkFSPath := filepath.Join(melangeOutputDirName, pkgName)
 	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
-	if err := os.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
+	if err := b.WorkspaceDirFS.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
 		return fmt.Errorf("creating SBOM directory: %w", err)
 	}
 
 	pkgVersion := b.Configuration.Package.FullVersion()
 	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
-	f, err := os.Create(sbomPath)
+	f, err := b.WorkspaceDirFS.Create(sbomPath)
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}

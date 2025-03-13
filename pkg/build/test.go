@@ -311,7 +311,7 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 
 	log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 
-	fsys := os.DirFS(t.SourceDir)
+	fsys := apkofs.DirFS(t.SourceDir)
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -349,6 +349,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	if t.Runner.Name() == container.QemuName {
 		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
 			"melange-microvm-init",
+			"gnutar",
 		}...)
 	}
 
@@ -425,7 +426,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
+		if err := t.PopulateWorkspace(ctx, apkofs.DirFS(t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}

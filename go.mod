@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.23.4
 
 require (
-	chainguard.dev/apko v0.25.3
+	chainguard.dev/apko v0.25.4
 	cloud.google.com/go/storage v1.51.0
 	dagger.io/dagger v0.16.3
 	github.com/chainguard-dev/clog v1.7.0
@@ -42,7 +42,6 @@ require (
 	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 	golang.org/x/sync v0.12.0
-	golang.org/x/sys v0.31.0
 	golang.org/x/text v0.23.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.225.0
@@ -209,12 +208,13 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
-	go.step.sm/crypto v0.58.1 // indirect
+	go.step.sm/crypto v0.59.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
@@ -222,6 +222,6 @@ require (
 	google.golang.org/grpc v1.71.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.32.2 // indirect
+	k8s.io/apimachinery v0.32.3 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 )

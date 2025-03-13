@@ -731,6 +731,10 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 			return err
 		}
 
+		if d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
+		}
+
 		if !strings.HasPrefix(path, "usr/bin/") && !strings.HasPrefix(path, "bin/") {
 			return nil
 		}

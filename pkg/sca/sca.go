@@ -731,13 +731,7 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 			return err
 		}
 
-		fi, err := d.Info()
-		if err != nil {
-			return err
-		}
-		mode := fi.Mode()
-
-		if mode.Type()&fs.ModeSymlink == fs.ModeSymlink {
+		if d.Type()&fs.ModeSymlink == fs.ModeSymlink {
 			return nil
 		}
 

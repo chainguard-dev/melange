@@ -347,7 +347,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 
 		// If it is not a regular file, we are finished processing it.
-		if !mode.IsRegular() && !isLink {
+		if !mode.IsRegular() {
 			return nil
 		}
 

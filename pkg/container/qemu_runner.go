@@ -32,10 +32,12 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -49,6 +51,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+	"golang.org/x/term"
 )
 
 var _ Debugger = (*qemu)(nil)
@@ -117,22 +120,185 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		user = "build"
 	}
 
-	err := sendSSHCommand(ctx,
-		user,
-		cfg.SSHAddress,
-		cfg,
-		envOverride,
-		os.Stdin,
-		os.Stderr,
-		os.Stdout,
-		true,
-		args,
-	)
+	// handle terminal size, resizing and sigwinch to keep
+	// it updated
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
 	if err != nil {
+		return fmt.Errorf("failed to set terminal to raw mode: %v", err)
+	}
+	defer term.Restore(fd, oldState)
+
+	width, height, err := term.GetSize(fd)
+	if err != nil {
+		return fmt.Errorf("failed to get terminal size: %v", err)
+	}
+
+	winch := make(chan os.Signal, 1)
+	signal.Notify(winch, syscall.SIGWINCH)
+	defer signal.Stop(winch)
+
+	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
 		return err
 	}
 
-	return nil
+	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
+		return err
+	}
+
+	// Create SSH client configuration
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
+		},
+		HostKeyCallback: hostKeyCallback,
+	}
+
+	// Connect to the SSH server
+	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+	defer client.Close()
+
+	// Create a session
+	session, err := client.NewSession()
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to create session: %s", err)
+		return err
+	}
+	defer session.Close()
+
+	// Set environment variables
+	for k, v := range cfg.Environment {
+		err = session.Setenv(k, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	for k, v := range envOverride {
+		err = session.Setenv(k, v)
+		if err != nil {
+			return err
+		}
+	}
+	// Get terminal type from environment
+	termType := os.Getenv("TERM")
+	if termType == "" {
+		termType = "xterm-256color"
+	}
+
+	// Set up comprehensive terminal modes for full functionality
+	modes := ssh.TerminalModes{
+		// Input modes
+		ssh.IGNPAR: 0, // Don't ignore parity errors
+		ssh.PARMRK: 0, // Don't mark parity errors
+		ssh.INPCK:  0, // Disable input parity checking
+		ssh.ISTRIP: 0, // Don't strip high bit off input chars
+		ssh.INLCR:  0, // Don't translate NL to CR on input
+		ssh.IGNCR:  0, // Don't ignore carriage return on input
+		ssh.ICRNL:  1, // Translate carriage return to newline on input
+		ssh.IUCLC:  0, // Don't map uppercase to lowercase on input
+		ssh.IXON:   1, // Enable XON/XOFF flow control on input
+		ssh.IXANY:  0, // Allow any character to restart output
+		ssh.IXOFF:  0, // Disable sending start/stop characters
+
+		// Output modes
+		ssh.OPOST:  1, // Enable output processing
+		ssh.OLCUC:  0, // Don't map lowercase to uppercase on output
+		ssh.ONLCR:  1, // Map NL to CR-NL on output
+		ssh.OCRNL:  0, // Don't map CR to NL on output
+		ssh.ONOCR:  0, // Output CR at column 0
+		ssh.ONLRET: 0, // Don't output CR
+
+		// Control modes
+		ssh.CS7:    0, // Use 8 bit characters
+		ssh.CS8:    1, // Use 8 bit characters
+		ssh.PARENB: 0, // No parity
+		ssh.PARODD: 0, // Not odd parity
+
+		// Local modes
+		ssh.ECHO:    1, // Enable echoing of input characters
+		ssh.ECHOE:   1, // Echo erase character as BS-SP-BS
+		ssh.ECHOK:   1, // Echo NL after kill character
+		ssh.ECHONL:  0, // Don't echo NL
+		ssh.NOFLSH:  0, // Flush after interrupt and quit characters
+		ssh.IEXTEN:  1, // Enable extended input processing
+		ssh.ECHOCTL: 1, // Echo control characters as ^X
+		ssh.ECHOKE:  1, // BS-SP-BS erase entire line on line kill
+		ssh.PENDIN:  0, // Don't redisplay pending input at next read
+
+		// Special control characters
+		ssh.VEOF:     4,   // EOF character (Ctrl-D)
+		ssh.VEOL:     0,   // EOL character
+		ssh.VEOL2:    0,   // Second EOL character
+		ssh.VERASE:   127, // Erase character (DEL)
+		ssh.VWERASE:  23,  // Word erase character (Ctrl-W)
+		ssh.VKILL:    21,  // Line kill character (Ctrl-U)
+		ssh.VREPRINT: 18,  // Reprint character (Ctrl-R)
+		ssh.VINTR:    3,   // Interrupt character (Ctrl-C)
+		ssh.VQUIT:    28,  // Quit character (Ctrl-\)
+		ssh.VSUSP:    26,  // Suspend character (Ctrl-Z)
+		ssh.VDSUSP:   25,  // Delayed suspend (Ctrl-Y)
+		ssh.VSTART:   17,  // Start character (Ctrl-Q)
+		ssh.VSTOP:    19,  // Stop character (Ctrl-S)
+		ssh.VLNEXT:   22,  // Literal next character (Ctrl-V)
+		ssh.VDISCARD: 15,  // Discard character (Ctrl-O)
+
+		// Terminal speed
+		ssh.TTY_OP_ISPEED: 38400, // Input speed
+		ssh.TTY_OP_OSPEED: 38400, // Output speed
+	}
+
+	session.Stdin = os.Stdin
+	session.Stderr = os.Stderr
+	session.Stdout = os.Stdout
+
+	if err := session.RequestPty(termType, height, width, modes); err != nil {
+		clog.FromContext(ctx).Errorf("request for pseudo terminal failed: %s", err)
+		return err
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-winch:
+				newWidth, newHeight, err := term.GetSize(fd)
+				if err != nil {
+					continue
+				}
+				err = session.WindowChange(newHeight, newWidth)
+				if err != nil {
+					clog.FromContext(ctx).Debugf("failed to resize window: %v", err)
+				}
+			}
+		}
+	}()
+
+	// Trigger an initial resize to make sure sizes match
+	winch <- syscall.SIGWINCH
+
+	clog.FromContext(ctx).Debugf("running debug command: %v", args)
+
+	err = session.Shell()
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to start shell: %v", err)
+		return err
+	}
+	// Wait for the session to end
+	return session.Wait()
 }
 
 // TestUsability determines if the Qemu runner can be used

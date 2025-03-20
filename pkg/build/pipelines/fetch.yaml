@@ -109,7 +109,7 @@ pipeline:
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then
-        tar -x '--strip-components=${{inputs.strip-components}}' '-C=${{inputs.directory}}' -f $bn
+        tar -x '--strip-components=${{inputs.strip-components}}' '-C ${{inputs.directory}}' -f $bn
       fi
 
       if [ "${{inputs.delete}}" = "true" ]; then

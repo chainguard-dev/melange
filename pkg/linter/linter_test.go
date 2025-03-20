@@ -238,6 +238,32 @@ func TestLinters(t *testing.T) {
 		},
 		linter: "usrmerge",
 		pass:   true,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "bin"), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "sbin"), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/sbin"), 0700))
+			fmt.Printf("Creating dirs and such\n")
+			f, err := os.Create(filepath.Join(d, "bin/test"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f, "blah")
+			defer f.Close()
+
+			g, err := os.Create(filepath.Join(d, "sbin/test"))
+			assert.NoError(t, err)
+			fmt.Fprintln(g, "blah")
+			defer g.Close()
+
+			h, err := os.Create(filepath.Join(d, "usr/sbin/test"))
+			assert.NoError(t, err)
+			fmt.Fprintln(h, "blah")
+			defer h.Close()
+
+			return d
+		},
+		linter: "usrmerge",
+		pass:   false,
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

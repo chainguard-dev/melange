@@ -779,39 +779,54 @@ func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 }
 
 func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	paths := []string{}
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if err != nil {
 			return err
 		}
+
 		if isIgnoredPath(path) {
-			return nil
+			return filepath.SkipDir
 		}
 
-		// We don't really care if a package is re-adding a symlink and this catches wolfi-baselayout
-		// without special casing it with the package name.
+		// If it's not a directory of interest just skipp the whole tree
+		if path != "." && !strings.HasPrefix(path, "sbin") && !strings.HasPrefix(path, "bin") && !strings.HasPrefix(path, "usr/sbin") {
+			if d.IsDir() && path != "usr" {
+				return filepath.SkipDir
+			}
+		}
+
 		if path == "sbin" || path == "bin" || path == "usr/sbin" {
 			if d.IsDir() || d.Type().IsRegular() {
-				return fmt.Errorf("package contains non-symlink file at /sbin, /bin or /usr/sbin in violation of usrmerge")
-			} else {
+				paths = append(paths, path)
 				return nil
 			}
 		}
 
-		if strings.HasPrefix(path, "sbin") {
-			return fmt.Errorf("package writes to /sbin in violation of usrmerge: %s", path)
-		}
-
-		if strings.HasPrefix(path, "bin") {
-			return fmt.Errorf("package writes to /bin in violation of usrmerge: %s", path)
-		}
-
-		if strings.HasPrefix(path, "usr/sbin") {
-			return fmt.Errorf("package writes to /usr/sbin in violation of usrmerge: %s", path)
+		if strings.HasPrefix(path, "sbin/") || strings.HasPrefix(path, "bin/") || strings.HasPrefix(path, "usr/sbin") {
+			paths = append(paths, path)
 		}
 
 		return nil
 	})
+	if err != nil {
+		fmt.Print("Returned error?")
+		return err
+	}
+
+	if len(paths) > 0 {
+		err_string := "Package contains paths in violation of usrmerge:"
+		for _, path := range paths {
+			err_string = strings.Join([]string{err_string, path}, "\n")
+		}
+		err_string += "\n"
+		return errors.New(err_string)
+
+	}
+
+	return nil
 }

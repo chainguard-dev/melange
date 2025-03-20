@@ -434,8 +434,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 
 				if isInDir(path, expandedLibDirs) {
 					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Provides = append(generated.Provides, fmt.Sprintf("so-ver:%s=%s", soname, hdl.Version()))
 				} else {
 					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so-ver:%s=%s", soname, hdl.Version()))
 				}
 			}
 		}

@@ -127,6 +127,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if err != nil {
 		return fmt.Errorf("failed to set terminal to raw mode: %v", err)
 	}
+	//nolint:errcheck
 	defer term.Restore(fd, oldState)
 
 	width, height, err := term.GetSize(fd)

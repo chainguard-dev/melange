@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"unicode"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"github.com/chainguard-dev/clog"
@@ -430,12 +429,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 
 			for _, soname := range sonames {
-				libver := sonameLibver(soname)
-
 				if isInDir(path, expandedLibDirs) {
-					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, hdl.Version()))
 				} else {
-					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, hdl.Version()))
 				}
 			}
 		}
@@ -728,24 +725,6 @@ func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Depen
 	}
 
 	return nil
-}
-
-func sonameLibver(soname string) string {
-	parts := strings.Split(soname, ".so.")
-	if len(parts) < 2 {
-		return "0"
-	}
-
-	libver := parts[1]
-	for _, r := range libver {
-		if r != '.' && !unicode.IsDigit(r) {
-			// Not a number, 0 should be fine?
-			// TODO: Consider looking at filename?
-			return "0"
-		}
-	}
-
-	return libver
 }
 
 func getShbang(fp io.Reader) (string, error) {

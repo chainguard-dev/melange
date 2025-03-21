@@ -191,7 +191,7 @@ var linterMap = map[string]linter{
 	},
 	"usrmerge": {
 		LinterFunc:      usrmergeLinter,
-		Explain:         "Move binary to /usr/{bin,sbin}",
+		Explain:         "Move file to /usr/bin",
 		defaultBehavior: Require,
 	},
 }
@@ -794,7 +794,7 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 		// without special casing it with the package name.
 		if path == "sbin" || path == "bin" {
 			if d.IsDir() || d.Type().IsRegular() {
-				return fmt.Errorf("package contains non-symlink file at /sbin or /bin in violation of usrmerge")
+				return fmt.Errorf("package contains non-symlink file: (%s) at /sbin or /bin in violation of usrmerge", path)
 			} else {
 				return nil
 			}

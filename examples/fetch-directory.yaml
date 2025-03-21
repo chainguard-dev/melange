@@ -20,4 +20,6 @@ pipeline:
     with:
       uri: https://unofficial-builds.nodejs.org/download/release/v22.9.0/node-v22.9.0-linux-x64-glibc-217.tar.gz
       directory: /home/node/
-      delete: true
+      delete: false
+
+  - runs: ls /home/node/*.tar.gz

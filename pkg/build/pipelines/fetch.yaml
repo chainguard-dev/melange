@@ -10,6 +10,11 @@ inputs:
       The number of path components to strip while extracting.
     default: 1
 
+  directory:
+    description: |
+      The directory to extract the artifact into (passed to `tar -C`)
+    default: .
+
   extract:
     description: |
       Whether to extract the downloaded artifact as a source tarball.
@@ -104,7 +109,7 @@ pipeline:
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then
-        tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
+        tar -x '--strip-components=${{inputs.strip-components}}' -C '${{inputs.directory}}' -f $bn
       fi
 
       if [ "${{inputs.delete}}" = "true" ]; then

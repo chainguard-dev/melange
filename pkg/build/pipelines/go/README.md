@@ -6,7 +6,6 @@
 - [go/build](#gobuild)
 - [go/bump](#gobump)
 - [go/covdata](#gocovdata)
-- [go/install](#goinstall)
 
 ## go/build
 
@@ -61,27 +60,5 @@ Get coverage data with the covdata go tool
 | ---- | -------- | ----------- | ------- |
 | cover-dir | false | The GOCOVERDIR path where coverage data files have been generated. It's required to be set as environment variable as well before running the Go binary. | /home/build |
 | package | false | The go package to install | go |
-
-## go/install
-
-Run a build using the go compiler
-
-### Inputs
-
-| Name | Required | Description | Default |
-| ---- | -------- | ----------- | ------- |
-| amd64 | false | GOAMD64 microarchitecture level to use  | v2 |
-| arm64 | false | GOARM64 microarchitecture level to use  | v8.0 |
-| experiments | false | A comma-separated list of Golang experiment names (ex: loopvar) to use when building the binary.  |  |
-| go-package | false | The go package to install  | go |
-| install-dir | false | Directory where binaries will be installed  | bin |
-| ldflags | false | List of [pattern=]arg to append to the go compiler with -ldflags |  |
-| package | true | Import path to the package  |  |
-| prefix | false | Prefix to relocate binaries  | usr |
-| strip | false | Set of strip ldflags passed to the go compiler | -w |
-| tags | false | A comma-separated list of build tags to append to the go compiler  |  |
-| toolchaintags | false | A comma-separated list of default toolchain go build tags  | netgo,osusergo |
-| version | false | Package version to install. This can be a version tag (v1.0.0), a commit hash or another ref (eg latest or HEAD).  |  |
-
 
 <!-- end:pipeline-reference-gen -->

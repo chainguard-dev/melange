@@ -46,6 +46,7 @@ import (
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
+	"golang.org/x/sys/unix"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"k8s.io/kube-openapi/pkg/util/sets"
@@ -949,9 +950,24 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
+	// Store xattrs for use after the workspace is loaded into memory
+	xattrs, err := storeXattrs(b.WorkspaceDir)
+	if err != nil {
+		return fmt.Errorf("failed to store workspace xattrs: %w", err)
+	}
+
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	b.WorkspaceDirFS = apkofs.DirFS(b.WorkspaceDir)
+
+	// Apply xattrs to files in the new in-memory filesystem
+	for path, attrs := range xattrs {
+		for attr, data := range attrs {
+			if err := b.WorkspaceDirFS.SetXattr(path, attr, data); err != nil {
+				log.Warnf("failed to restore xattr %s on %s: %v\n", attr, path, err)
+			}
+		}
+	}
 
 	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
@@ -1334,4 +1350,67 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 	}
 
 	return time.Unix(sec, 0).UTC(), nil
+}
+
+// Record on-disk xattrs set during package builds in order to apply them in the new in-memory filesystem
+// This will allow in-memory and bind mount runners to persist xattrs correctly
+func storeXattrs(dir string) (map[string]map[string][]byte, error) {
+	xattrs := make(map[string]map[string][]byte)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+
+		size, err := unix.Listxattr(path, nil)
+		if err != nil || size == 0 {
+			return nil
+		}
+
+		buf := make([]byte, size)
+		read, err := unix.Listxattr(path, buf)
+		if err != nil {
+			return nil
+		}
+
+		attrs := stringsFromByteSlice(buf[:read])
+		result := make(map[string][]byte)
+		for _, attr := range attrs {
+			s, err := unix.Getxattr(path, attr, nil)
+			if err != nil {
+				continue
+			}
+
+			data := make([]byte, s)
+			_, err = unix.Getxattr(path, attr, data)
+			if err != nil {
+				continue
+			}
+
+			result[attr] = data
+		}
+		xattrs[relPath] = result
+		return nil
+	})
+
+	return xattrs, err
+}
+
+// stringsFromByteSlice converts a sequence of attributes to a []string.
+// On Linux, each entry is a NULL-terminated string.
+// Taken from golang.org/x/sys/unix/syscall_linux_test.go.
+func stringsFromByteSlice(buf []byte) []string {
+	var result []string
+	off := 0
+	for i, b := range buf {
+		if b == 0 {
+			result = append(result, string(buf[off:i]))
+			off = i + 1
+		}
+	}
+	return result
 }

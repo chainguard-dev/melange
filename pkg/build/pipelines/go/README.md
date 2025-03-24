@@ -1,4 +1,5 @@
 
+
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
@@ -60,5 +61,6 @@ Get coverage data with the covdata go tool
 | ---- | -------- | ----------- | ------- |
 | cover-dir | false | The GOCOVERDIR path where coverage data files have been generated. It's required to be set as environment variable as well before running the Go binary. | /home/build |
 | package | false | The go package to install | go |
+
 
 <!-- end:pipeline-reference-gen -->

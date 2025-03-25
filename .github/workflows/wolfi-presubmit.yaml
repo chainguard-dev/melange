@@ -143,7 +143,7 @@ jobs:
         if: matrix.runner == 'qemu' && matrix.package == 'fping'
         run: |
           for pkg in packages/x86_64/*.apk; do
-            sudo tar --xattrs --xattrs-include='*.*' -xvf "${pkg}" -C packages/x86_64/
+            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/
           done
           getcap packages/x86_64/usr/sbin/fping
 
@@ -158,8 +158,11 @@ jobs:
 
       - name: Test installable and Scan for CVEs
         run: |
-          docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk
-
+          if [[ "${{ matrix.package }}" == "fping" ]]; then
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk; apk add libcap-utils; getcap /usr/sbin/fping"
+          else
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk
+          fi
           # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
           # Do this outside of the loop in one invocation with every package.
           wolfictl scan \

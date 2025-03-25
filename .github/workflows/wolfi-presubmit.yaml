@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build-melange:
@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
-          go-version-file: './go.mod'
+          go-version-file: "./go.mod"
           check-latest: true
 
       - name: build
@@ -63,7 +63,7 @@ jobs:
           - tini
           - lzo
           - bubblewrap
-#          - gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
+          #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
           - gitsign
           - guac
           - mdbook
@@ -114,14 +114,14 @@ jobs:
         if: matrix.runner == 'qemu'
         run: |
           sudo apt-get update
-          sudo apt-get -y install qemu-system qemu-kvm
+          sudo apt-get -y install qemu-system-x86-64 qemu-kvm
 
       - name: Enable KVM group perms
         if: matrix.runner == 'qemu'
         run: |
-            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-            sudo udevadm control --reload-rules
-            sudo udevadm trigger --name-match=kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Make package ${{matrix.package}} with QEMU Runner
         if: matrix.runner == 'qemu'
@@ -134,6 +134,19 @@ jobs:
             MELANGE_EXTRA_OPTS="--runner qemu" \
             package/${{ matrix.package }}
 
+      - name: Run tests to verify xattrs with bubblewrap runner
+        if: matrix.runner == 'bubblewrap' && contains(fromJSON('["coredns", "fping"]'), matrix.package)
+        run: |
+          make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
+
+      - name: Check package ${{ matrix.package }} xattrs for QEMU-built package
+        if: matrix.runner == 'qemu' && matrix.package == 'fping'
+        run: |
+          for pkg in packages/x86_64/*.apk; do
+            sudo tar --xattrs --xattrs-include='*.*' -xvf "${pkg}" -C packages/x86_64/
+          done
+          getcap packages/x86_64/usr/sbin/fping
+
       - name: "Retrieve Wolfi advisory data"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -145,13 +158,13 @@ jobs:
 
       - name: Test installable and Scan for CVEs
         run: |
-            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk
+          docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk
 
-            # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
-            # Do this outside of the loop in one invocation with every package.
-            wolfictl scan \
-            --advisories-repo-dir 'data/wolfi-advisories' \
-            --advisory-filter 'resolved' \
-            --require-zero \
-            packages/x86_64/${{ matrix.package }}-*.apk \
-            2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.
+          # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
+          # Do this outside of the loop in one invocation with every package.
+          wolfictl scan \
+          --advisories-repo-dir 'data/wolfi-advisories' \
+          --advisory-filter 'resolved' \
+          --require-zero \
+          packages/x86_64/${{ matrix.package }}-*.apk \
+          2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.

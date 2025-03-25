@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"chainguard.dev/melange/internal/logwriter"
+	"golang.org/x/sys/unix"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -284,6 +285,16 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			// TODO: Is this correct? We are loading these into the directory, so character devices and such
 			// do not really matter to us, but maybe they should?
 			continue
+		}
+
+		for k, v := range hdr.PAXRecords {
+			if !strings.HasPrefix(k, "SCHILY.xattr.") {
+				continue
+			}
+			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+			if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
+				return ref, fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
+			}
 		}
 	}
 	return guestDir, nil

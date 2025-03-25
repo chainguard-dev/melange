@@ -48,7 +48,6 @@ import (
 	"golang.org/x/exp/maps"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
-	"k8s.io/kube-openapi/pkg/util/sets"
 	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
@@ -240,7 +239,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
 		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
 	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
-		!sets.NewString(b.Configuration.Package.TargetArchitecture...).Has(b.Arch.ToAPK()) {
+		slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
 	}
 

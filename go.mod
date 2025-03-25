@@ -48,7 +48,6 @@ require (
 	google.golang.org/api v0.225.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f
 	mvdan.cc/sh/v3 v3.11.0
 	sigs.k8s.io/release-utils v0.11.0
 	sigs.k8s.io/yaml v1.4.0

@@ -287,16 +287,13 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			continue
 		}
 
-		// only set xattrs if bubblewrap is effectively running as root
-		if os.Geteuid() == 0 {
-			for k, v := range hdr.PAXRecords {
-				if !strings.HasPrefix(k, "SCHILY.xattr.") {
-					continue
-				}
-				attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
-				if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
-					return ref, fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
-				}
+		for k, v := range hdr.PAXRecords {
+			if !strings.HasPrefix(k, "SCHILY.xattr.") {
+				continue
+			}
+			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+			if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
+				return ref, fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
 			}
 		}
 	}

@@ -20,9 +20,6 @@ environment:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     repositories:
       - https://packages.wolfi.dev/os
-
-environment:
-  contents:
     packages:
       - build-base
       - busybox

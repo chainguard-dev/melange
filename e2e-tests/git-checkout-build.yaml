@@ -135,6 +135,23 @@ pipeline:
       cd ..
       rm -R branch-no-expected
 
+  - name: "branch with old expected"
+    working-directory: branch-old-expected
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      # 21cfbec is on the 1.x branch but is not current.
+      expected-commit: 21cfbec4b951b9a0ba0a3bd9365fbb4fe81fa78d
+
+  - name: "check branch with old expected"
+    working-directory: branch-old-expected
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 21cfbec4b951b9a0ba0a3bd9365fbb4fe81fa78d ]
+      cd ..
+      rm -R branch-old-expected
+
   # for an annotated tag you can point to either the commit
   # or the tag object hash object
   - name: "annotated hash"

@@ -15,8 +15,10 @@ inputs:
     default: .
   depth:
     description: |
-      The depth to use when cloning. Set to -1 to not specify depth when cloning.
-    default: 1
+      The depth to use when cloning. Use -1 to get full branch history.
+      If 'branch' and 'expected-commit' are provided the default is -1.
+      Otherwise, default is to use '1' (shallow clone).
+    default: unset
   branch:
     description: |
       The branch to check out, otherwise HEAD is checked out.
@@ -127,10 +129,8 @@ pipeline:
         fi
       }
 
-
-
       main() {
-          local repo=$1 dest=${2:-.} depth=${3:-"-1"} branch=$4
+          local repo=$1 dest=${2:-.} depth=${3:-"unset"} branch=$4
           local tag=$5 expcommit=$6 recurse=${7:-false}
           local cherry_pick="$8"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
@@ -158,6 +158,16 @@ pipeline:
           [ -n "$branch" ] && flags="$flags --branch=$branch"
           [ -n "$tag" ] && flags="$flags --branch=$tag"
           [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
+
+          if [ "$depth" = "unset" ]; then
+            depth=1
+            if [ -n "$branch" -a -n "$expcommit" ]; then
+              # if we're just checking out a specific commit on a branch
+              # then we need to get history, otherwise it will break
+              # if the expected commit is not tip of the branch.
+              depth=-1
+            fi
+          fi
 
           [ "$depth" = "-1" ] || depthflag="--depth=$depth"
 

@@ -17,7 +17,9 @@ package build
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
@@ -83,4 +85,29 @@ func (scabi *SCABuildInterface) Options() config.PackageOption {
 // BaseDependencies returns the base dependencies for the package being built.
 func (scabi *SCABuildInterface) BaseDependencies() config.Dependencies {
 	return scabi.PackageBuild.Dependencies
+}
+
+// InstalledPackages returns a map [package name] => [package version]
+// of the packages installed during build.
+func (scabi *SCABuildInterface) InstalledPackages() map[string]string {
+	pkgVersionMap := make(map[string]string)
+
+	for _, fullpkg := range scabi.PackageBuild.Build.Configuration.Environment.Contents.Packages {
+		pkg, version, _ := strings.Cut(fullpkg, "=")
+		pkgVersionMap[pkg] = version
+	}
+
+	// We also include the packages being built.  They have the
+	// special version string "@CURRENT@" to make it easier for
+	// the SCA to identify them.
+	for _, pkg := range scabi.RelativeNames() {
+		pkgVersionMap[pkg] = "@CURRENT@"
+	}
+
+	return pkgVersionMap
+}
+
+// PkgResolver returns the package resolver for the package/build being analyzed.
+func (scabi *SCABuildInterface) PkgResolver() *apk.PkgResolver {
+	return scabi.PackageBuild.Build.PkgResolver
 }

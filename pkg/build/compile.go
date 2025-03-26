@@ -87,6 +87,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Append anything this subpackage test needs.
 		te.Packages = append(te.Packages, test.Needs...)
+
+		// Sort and remove duplicates.
+		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 	}
 
 	if cfg.Test != nil {
@@ -190,7 +193,6 @@ func (b *Build) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
-
 	}
 
 	return nil

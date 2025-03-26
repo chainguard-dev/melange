@@ -233,15 +233,6 @@ func WithDependencyLog(logFile string) Option {
 	}
 }
 
-// WithBinShOverlay sets a filename to copy from when installing /bin/sh
-// into a build environment.
-func WithBinShOverlay(binShOverlay string) Option {
-	return func(b *Build) error {
-		b.BinShOverlay = binShOverlay
-		return nil
-	}
-}
-
 // WithStripOriginName determines whether the origin name should be stripped
 // from generated packages.  The APK solver uses origin names to flatten
 // possible dependency nodes when solving for a DAG, which means that they

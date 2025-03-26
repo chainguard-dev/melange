@@ -77,7 +77,6 @@ The build process is as follows. The core routine is [`BuildPackage()`](../pkg/b
 1. Create the temporary working directory, known internally as the "guest directory" or `GuestDir`.
 1. Evaluate each step in the pipeline to see if it has a `needs` section. If so, then add its listed packages to the build time package requirements defined in `environment.contents`.
 1. Use [apko](https://github.com/chainguard-dev/apko) to create a tar stream of the packages listed in `environment.contents` and lay them out onto the workspace directory.
-1. Overlay `/bin/sh`. This is an optimization step, and is not discussed here. Read [Shell Overlay](./SHELL-OVERLAY.md) for more information.
 1. Populate the build cache. This is an optimization step, and is not discussed here. Read [Build Cache](./BUILD-CACHE.md) for more information.
 1. Create the workspace directory and bind-mount it into the guest at `/home/build`.
 1. Populate the workspace. This copies over all of the files from the source directory to the workspace. Note that some files or directories can be excluded or ignored from copying to the workspace.

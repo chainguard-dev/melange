@@ -68,6 +68,9 @@ jobs:
       matrix:
         cfg:
           - examples/minimal.yaml
+          - examples/go-build.yaml
+          - examples/cargo-build.yaml
+          - examples/gnu-hello.yaml
           - melange.yaml
 
     container:

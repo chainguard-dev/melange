@@ -111,11 +111,11 @@ func TestCompileTest(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main-base", "main", "main-need"}; !slices.Equal(got, want) {
+	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main", "main-base", "main-need"}; !slices.Equal(got, want) {
 		t.Errorf("main test packages: want %v, got %v", want, got)
 	}
 
-	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage-base", "subpackage", "subpackage-need"}; !slices.Equal(got, want) {
+	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage", "subpackage-base", "subpackage-need"}; !slices.Equal(got, want) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
 	}
 }

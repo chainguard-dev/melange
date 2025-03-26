@@ -21,6 +21,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"chainguard.dev/melange/pkg/cond"
@@ -86,6 +87,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Append anything this subpackage test needs.
 		te.Packages = append(te.Packages, test.Needs...)
+
+		// Sort and remove duplicates.
+		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 	}
 
 	if cfg.Test != nil {
@@ -108,6 +112,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Append anything the main package test needs.
 		te.Packages = append(te.Packages, test.Needs...)
+
+		// Sort and remove duplicates.
+		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 	}
 
 	return nil
@@ -161,6 +168,9 @@ func (b *Build) Compile(ctx context.Context) error {
 
 		// Append anything this subpackage test needs.
 		te.Packages = append(te.Packages, tc.Needs...)
+
+		// Sort and remove duplicates.
+		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 	}
 
 	ic := &b.Configuration.Environment.Contents
@@ -180,6 +190,9 @@ func (b *Build) Compile(ctx context.Context) error {
 
 		// This can be overridden by the command line but in the context of a build, just use the main package.
 		te.Packages = append(te.Packages, b.Configuration.Package.Name)
+
+		// Sort and remove duplicates.
+		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 	}
 
 	return nil

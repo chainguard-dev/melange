@@ -29,6 +29,7 @@ import (
 	"strings"
 	"unicode"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/go-pkgconfig"
@@ -72,6 +73,14 @@ type SCAHandle interface {
 	// BaseDependencies returns the underlying set of declared dependencies before
 	// the SCA engine runs.
 	BaseDependencies() config.Dependencies
+
+	// InstalledPackages returns a map [package name] => [package
+	// version] for all build dependencies installed during build.
+	InstalledPackages() map[string]string
+
+	// PkgResolver returns the package resolver associated with
+	// the current package/build being analyzed.
+	PkgResolver() *apk.PkgResolver
 }
 
 // DependencyGenerator takes an SCAHandle, config.Dependencies pointer

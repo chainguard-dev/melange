@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
@@ -442,6 +443,29 @@ func (s *scaImpl) Options() config.PackageOption {
 
 func (s *scaImpl) BaseDependencies() config.Dependencies {
 	return s.pb.Dependencies
+}
+
+func (s *scaImpl) InstalledPackages() map[string]string {
+	pkgVersionMap := make(map[string]string)
+
+	for _, fullpkg := range s.pb.Build.Configuration.Environment.Contents.Packages {
+		pkg, version, _ := strings.Cut(fullpkg, "=")
+		pkgVersionMap[pkg] = version
+	}
+
+	// We also include the packages being built.
+	for _, pkg := range s.RelativeNames() {
+		pkgVersionMap[pkg] = s.Version()
+	}
+
+	return pkgVersionMap
+}
+
+func (s *scaImpl) PkgResolver() *apk.PkgResolver {
+	if s.pb.Build == nil || s.pb.Build.PkgResolver == nil {
+		return nil
+	}
+	return s.pb.Build.PkgResolver
 }
 
 func isComment(b string) bool {

@@ -21,6 +21,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"chainguard.dev/melange/pkg/cond"
@@ -108,6 +109,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Append anything the main package test needs.
 		te.Packages = append(te.Packages, test.Needs...)
+
+		// Sort and remove duplicates.
+		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 	}
 
 	return nil

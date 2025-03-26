@@ -39,6 +39,10 @@ melange scan bash.yaml
       --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
 ```
 
+### Caveats
+
+`melange scan` is not able to perform the in-depth analysis that a `melange` build does.  The reason is because `melange scan` does not have all the necessary build context (for example, the exact versions of all packages that were installed during build time), and as such it will not be able to, e.g., generate versioned shared library provides and/or depends.
+
 ### SEE ALSO
 
 * [melange](/docs/md/melange.md)	 - 

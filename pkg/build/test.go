@@ -352,7 +352,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			"gnutar",
 		}...)
 	}
-	t.ExtraTestPackages = slices.Compact(slices.Sorted(slices.Values(t.ExtraTestPackages)))
 
 	// Filter out any subpackages with false If conditions.
 	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {

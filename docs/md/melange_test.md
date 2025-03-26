@@ -39,7 +39,6 @@ melange test [flags]
   -h, --help                          help for test
   -i, --interactive                   when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings        path to extra keys to include in the build environment keyring
-      --overlay-binsh string          use specified file as /bin/sh overlay in build environment
       --pipeline-dirs strings         directories used to extend defined built-in pipelines
   -r, --repository-append strings     path to extra repositories to include in the build environment
       --rm                            clean up intermediate artifacts (e.g. container images, temp dirs) (default true)

@@ -272,6 +272,146 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 	return "", "", nil
 }
 
+// determineShlibVersion tries to determine the exact version of the
+// package that provides the shared library shlib.  It does that by:
+//
+// - Asking PkgResolver to calculate the list of packages that provide "so:shlib".
+//
+// - Verifying if any package in that list matches what is currently
+//   installed in the build environment.  The package can offer a
+//   provided shared library whose version is equal or greater than
+//   the one the build requires.
+//
+// - Verifying if the matched package has a versioned shared library
+//   "provides:".
+//
+// If all steps succeed, the package version is returned.
+//
+// If there is a match but the package doesn't currently offer a
+// versioned shared library "provides:", then an empty version is
+// returned.  We can't do versioned "depends:" unless there is a
+// matching "provides:".
+//
+// If no match is found, that's an error.
+func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
+	log := clog.FromContext(ctx)
+
+	// We don't version-depend or provide ld-linux-*.so, otherwise
+	// we'd be required to rebuild all packages that link against
+	// glibc whenever the latter is updated.
+	if strings.HasPrefix(shlib, "ld-linux-x86-64.so") || strings.HasPrefix(shlib, "ld-linux-aarch64.so") {
+		log.Debugf("Skipping %s", shlib)
+		return "", nil
+	}
+
+	pkgResolver := hdl.PkgResolver()
+
+	if pkgResolver == nil {
+		// When we're invoked from "melange scan", there's no
+		// package resolver available.  Just return an empty
+		// version.
+		log.Debugf("Package resolver is nil; returning an empty shlib version")
+		return "", nil
+	}
+
+	// Obtain the list of packages that provide the shared
+	// library.
+	candidates, err := pkgResolver.ResolvePackage("so:" + shlib, map[*apk.RepositoryPackage]string{})
+	if err != nil {
+		if strings.Contains(err.Error(), "nothing provides") {
+			// We can reach here if one of the
+			// (sub)packages we're building provides a new
+			// version of a shared library.  Since this
+			// new (sub)package isn't present in the
+			// current APKINDEX, ResolvePackage() won't be
+			// able to find it.  However, we can return
+			// the current version being built in this
+			// case.
+			return hdl.Version(), nil
+		}
+
+		// This is an unknown error, so we'd better return it.
+		return "", err
+	}
+
+	// Obtain the list of packages currently installed in the
+	// build environment.
+	pkgVersionMap := hdl.InstalledPackages()
+
+	for _, candidate := range candidates {
+		log.Debugf("Verifying if package %s-%s (which provides shlib %s) is the one used to build the package", candidate.PackageName(), candidate.Version, shlib)
+
+		// The version of the package that's installed in the
+		// build environment.
+		installedPackageVersionString, ok := pkgVersionMap[candidate.PackageName()]
+		if !ok {
+			// We don't have the candidate package in the
+			// build environment.  That can happen
+			// e.g. when multiple packages provide the
+			// same shared library.
+			//
+			// Ideally we will see the correct package
+			// later in the loop.
+			continue
+		}
+
+		if installedPackageVersionString == "@CURRENT@" {
+			// This is the package (or one of its
+			// subpackages) being built.  Return the
+			// current version as it is equal or greater
+			// than the one currently in the index.
+			return hdl.Version(), nil
+		} else {
+			// Convert the versions of the candidate and
+			// installed packages to proper structures so
+			// that we can compare them.
+			candidateVersion, err := apk.ParseVersion(candidate.Version)
+			if err != nil {
+				return "", err
+			}
+			installedPackageVersion, err := apk.ParseVersion(installedPackageVersionString)
+			if err != nil {
+				return "", err
+			}
+
+			if apk.CompareVersions(candidateVersion, installedPackageVersion) < 0 {
+				// The candidate package provides an
+				// shlib that is versioned as older
+				// than the one we have in our build
+				// environment.
+				return "", fmt.Errorf("could not find suitable package providing library so-ver:%s>=%s (found so-ver:%s=%s instead)", shlib, installedPackageVersionString, shlib, candidate.Version)
+			}
+
+			// Check if the package actually provides a
+			// versioned shlib, otherwise we can't depend on it.
+			if slices.ContainsFunc(candidate.Provides, func(provides string) bool {
+				providedArtifact, providedVersion, found := strings.Cut(provides, "=")
+				if !found {
+					return false
+				}
+
+				if providedArtifact != "so-ver:" + shlib {
+					return false
+				}
+
+				_, err := apk.ParseVersion(providedVersion)
+				// If we're able to parse the version,
+				// then it's a valid one.
+				return err != nil
+			}) {
+				return installedPackageVersionString, nil
+			}
+
+			// The package (still) doesn't provide a
+			// versioned shlib.  That's ok; just return an
+			// empty version for now.
+			return "", nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find suitable package providing library so:%s", shlib)
+}
+
 func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	if !strings.Contains(path, ".so") {

@@ -271,6 +271,66 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 	return "", "", nil
 }
 
+// determineShlibVersion tries to determine the exact version of the
+// package that provides the shared library shlib.  It does that by:
+//
+// - Asking PkgResolver to calculate the list of packages that provide "so:shlib".
+//
+// - Verifying if any package in that list matches exactly what is
+//   currently installed in the build environment.
+//
+// - Verifying if the matched package has a versioned shared library
+//   "provides:".
+//
+// If all steps succeed, the package version is returned.
+//
+// If there is a match but the package doesn't currently offer a
+// versioned shared library "provides:", then an empty version is
+// returned.  We can't do versioned "depends:" unless there is a
+// matching "provides:".
+//
+// If no match is found, that's an error.
+func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
+	log := clog.FromContext(ctx)
+	pkgResolver := hdl.PkgResolver()
+
+	if pkgResolver == nil {
+		// When we're invoked from "melange scan", there's no
+		// package resolver available.  Just return an empty
+		// version.
+		log.Debugf("Package resolver is nil; returning an empty shlib version")
+		return "", nil
+	}
+
+	candidates, err := pkgResolver.ResolvePackage("so:" + shlib, map[*apk.RepositoryPackage]string{})
+	if err != nil {
+		return "", err
+	}
+
+	pkgVersionMap := hdl.InstalledPackages()
+
+	for _, pkg := range candidates {
+		log.Debugf("Verifying if package %s-%s (which provides shlib %s) is the one used to build the package", pkg.PackageName(), pkg.Version, shlib)
+		version, ok := pkgVersionMap[pkg.PackageName()]
+		if ok && version == pkg.Version {
+			// Check if the package actually provides a
+			// versioned shlib, otherwise we can't depend on it.
+			shlibProvidesWithVersion := "so:" + shlib + "=" + version
+			for _, provide := range pkg.Provides {
+				if provide == shlibProvidesWithVersion {
+					return version, nil
+				}
+			}
+			// The package (still) doesn't provide a
+			// versioned shlib.  That's ok; just return an
+			// empty version for now.
+			return "", nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find suitable package providing library so:%s", shlib)
+}
+
 func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	if !strings.Contains(path, ".so") {

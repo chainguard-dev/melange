@@ -455,7 +455,14 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 		for _, soname := range sonames {
 			log.Infof("  found soname %s for %s", soname, path)
 
-			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+			shlibVer, err := determineShlibVersion(ctx, hdl, soname)
+			if err != nil {
+				return err
+			}
+			if shlibVer != "" {
+				shlibVer = ">="+shlibVer
+			}
+			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s%s", soname, shlibVer))
 		}
 	}
 
@@ -551,7 +558,16 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 			if strings.Contains(lib, ".so.") {
 				log.Infof("  found lib %s for %s", lib, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+
+				shlibVer, err := determineShlibVersion(ctx, hdl, lib)
+				if err != nil {
+					return err
+				}
+				if shlibVer != "" {
+					shlibVer = ">="+shlibVer
+				}
+
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s%s", lib, shlibVer))
 			}
 		}
 

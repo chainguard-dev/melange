@@ -5,6 +5,7 @@ needs:
     - busybox
     - nodejs
     - ${{inputs.npm-package}}
+    - npm
 
 inputs:
   package:
@@ -37,6 +38,17 @@ pipeline:
       if [ ! "${{inputs.npm-package}}" == "npm" ] && [ ! "${{inputs.npm-package}}" == "pnpm" ]; then
           echo "Invalid npm-package '${{inputs.npm-package}}'; must be 'npm' or 'pnpm'."
           exit 1
+      fi
+
+      mkdir -p "${{inputs.prefix}}"/bin
+      mkdir -p "${{inputs.prefix}}"/lib
+      mkdir -p $HOME/.pnpm/store
+      if [ "${{inputs.npm-package}}" == "pnpm" ]; then
+          export PNPM_HOME=~/.pnpm/store
+          export SHELL=sh
+          export ENV=/etc/profile
+          pnpm setup
+          source $ENV
       fi
 
       # Portable global install of the package.
@@ -79,7 +91,11 @@ pipeline:
           rm -rf node_modules
 
           # ... to reinstall non-vulnerable node_modules.
-          ${{inputs.npm-package}} i --install-strategy=shallow .
+          args=""
+          if [ "${{inputs.npm-package}}" == "npm" ]; then
+              args="${args} --install-strategy=shallow "
+          fi
+          ${{inputs.npm-package}} i ${args} .
 
           # Delete artifacts used for & generated from the override install.
           rm -rf package.json package-lock.json node_modules/.package-lock.json

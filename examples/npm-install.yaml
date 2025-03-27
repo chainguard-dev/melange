@@ -27,7 +27,6 @@ pipeline:
     with:
       package: ${{package.name}}
       version: ${{package.version}}
-      npm-package: pnpm
       overrides: |
         yargs@^17.0.0       # If yargs had a CVE fixed in ^17.0.0
         get-stdin@^9.0.0    # If get-stdin had a CVE fixed in ^9.0.0

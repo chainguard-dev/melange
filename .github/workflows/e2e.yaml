@@ -28,6 +28,7 @@ jobs:
           - mbedtls.yaml
           - minimal.yaml
           - npm-install.yaml
+          - pnpm-install.yaml
           - sshfs.yaml
 
     steps:
@@ -75,6 +76,7 @@ jobs:
           - examples/go-build.yaml
           - examples/minimal.yaml
           - examples/npm-install.yaml
+          - examples/pnpm-install.yaml
           - melange.yaml
 
     container:

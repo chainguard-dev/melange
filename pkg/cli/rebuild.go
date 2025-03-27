@@ -3,6 +3,7 @@ package cli
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,11 +25,10 @@ import (
 
 // TODO: Detect when the package is a subpackage (origin is different) and compare against the subpackage after building all packages.
 // TODO: Avoid rebuilding twice when rebuilding two subpackages of the same origin.
-// TODO: Add `--diff` flag to show the differences between the original and rebuilt packages, or document how to do it with shell commands.
 
 func rebuild() *cobra.Command {
-	var runner string
-	var archstrs []string // TODO: Detect this from the APK somehow?
+	var runner, arch string
+	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,
@@ -57,16 +57,24 @@ func rebuild() *cobra.Command {
 				}
 
 				if err := BuildCmd(ctx,
-					apko_types.ParseArchitectures(archstrs),
+					[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
 					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
 					build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
 					build.WithConfigFileRepositoryCommit(cfgpkg.Version),
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 					build.WithRunner(r),
-					build.WithOutDir("./packages/"), // TODO configurable?
+					build.WithOutDir("./rebuilt-packages/"), // TODO configurable?
 					build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
+				}
+
+				if diff {
+					old := a
+					new := fmt.Sprintf("rebuilt-packages/%s/%s-%s-r%d.apk", arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
+					if err := diffAPKs(old, new); err != nil {
+						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)
+					}
 				}
 			}
 
@@ -74,7 +82,8 @@ func rebuild() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	cmd.Flags().StringVar(&arch, "arch", "x86_64", "architecture to build for") // TODO: determine this from the package
+	cmd.Flags().BoolVar(&diff, "diff", true, "show the differences between the original and rebuilt packages; fail if any differences are found")
 	return cmd
 }
 
@@ -154,4 +163,58 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 		}
 	}
 	// unreachable
+}
+
+func diffAPKs(old, new string) error {
+	oldf, err := os.Open(old)
+	if err != nil {
+		return fmt.Errorf("failed to open old APK %s: %v", old, err)
+	}
+	defer oldf.Close()
+	oldm, err := filemap(tar.NewReader(oldf))
+	if err != nil {
+		return fmt.Errorf("failed to create file map for old APK %s: %v", old, err)
+	}
+
+	newf, err := os.Open(new)
+	if err != nil {
+		return fmt.Errorf("failed to open new APK %s: %v", new, err)
+	}
+	defer newf.Close()
+	newm, err := filemap(tar.NewReader(newf))
+	if err != nil {
+		return fmt.Errorf("failed to create file map for new APK %s: %v", new, err)
+	}
+
+	var errs []error
+	for k, v := range oldm {
+		if n, ok := newm[k]; !ok {
+			errs = append(errs, fmt.Errorf("removed: %s", k))
+		} else if v != n {
+			errs = append(errs, fmt.Errorf("changed: %s; %s -> %s", k, v, n))
+		}
+	}
+	for k := range newm {
+		if _, ok := oldm[k]; !ok {
+			errs = append(errs, fmt.Errorf("added: %s", k))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func filemap(tr *tar.Reader) (map[string]string, error) {
+	m := make(map[string]string)
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return m, nil
+		} else if err != nil {
+			return nil, fmt.Errorf("failed to read tar header: %v", err)
+		}
+		d := sha256.New()
+		if _, err := io.Copy(d, tr); err != nil {
+			return nil, fmt.Errorf("failed to hash file %s: %v", hdr.Name, err)
+		}
+		m[hdr.Name] = fmt.Sprintf("%x", d.Sum(nil))
+	}
 }

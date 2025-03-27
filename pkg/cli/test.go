@@ -49,6 +49,7 @@ func test() *cobra.Command {
 	var runner string
 	var extraTestPackages []string
 	var remove bool
+	var dockerRemote string
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -58,7 +59,10 @@ func test() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			r, err := getRunner(ctx, runner, remove)
+			r, err := getRunner(ctx, runner, RunnerOptions{
+				BubblewrapRemove: remove,
+				DockerRemote:     dockerRemote,
+			})
 			if err != nil {
 				return err
 			}
@@ -132,6 +136,7 @@ func test() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
+	cmd.Flags().StringVar(&dockerRemote, "docker-remote", "", "remote to use for docker images, if empty images are loaded to local docker socket")
 
 	return cmd
 }

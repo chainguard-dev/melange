@@ -114,14 +114,14 @@ jobs:
         if: always()
         run: |
           echo ::group::original
-          tar -tvf original.apk | sort
+          tar -tvf original.apk
           echo ::endgroup::
           echo ::group::rebuilt
-          tar -tvf rebuilt.apk | sort
+          tar -tvf rebuilt.apk
           echo ::endgroup::
           diff \
-            <(tar -tvf original.apk | sort) \
-            <(tar -tvf rebuilt.apk | sort) && echo "No diff!"
+            <(tar -tvf original.apk) \
+            <(tar -tvf rebuilt.apk) && echo "No diff!"
 
       - name: Diff SBOM
         if: always()

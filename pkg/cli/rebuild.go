@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -73,7 +74,7 @@ func rebuild() *cobra.Command {
 
 				if diff {
 					old := a
-					new := fmt.Sprintf("%s/%s/%s-%s-r%d.apk", outDir, arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
+					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s-r%d.apk", cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch))
 					if err := diffAPKs(old, new); err != nil {
 						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)
 					}

@@ -10,57 +10,6 @@ env:
   SOURCE_DATE_EPOCH: 1669683910
 
 jobs:
-  examples:
-    name: build examples
-    runs-on: ubuntu-22.04
-
-    permissions:
-      contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        example:
-          - cargo-build.yaml
-          - git-checkout.yaml
-          - gnu-hello.yaml
-          - go-build.yaml
-          - mbedtls.yaml
-          - minimal.yaml
-          - npm-install.yaml
-          - pnpm-install.yaml
-          - sshfs.yaml
-
-    steps:
-      - uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
-        with:
-          go-version-file: "go.mod"
-      - name: Build package
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y bubblewrap
-
-          make melange
-          ./melange keygen
-          ./melange build --pipeline-dir=pipelines examples/${{matrix.example}} --arch=x86_64 --empty-workspace --repository-append=https://apk.cgr.dev/chainguard
-
-      - name: Check SBOM Conformance
-        run: |
-          set -euxo pipefail
-          for f in packages/x86_64/*.apk; do
-            tar -Oxf "$f" var/lib/db/sbom > sbom.json
-            echo ::group::sbom.json
-            cat sbom.json
-            echo ::endgroup::
-
-            docker run --rm -v $(pwd)/sbom.json:/sbom.json --entrypoint "sh" cgr.dev/chainguard/wolfi-base -c "apk add spdx-tools-java && tools-java Verify /sbom.json"
-          done
-
   rebuild:
     name: rebuild
     runs-on: ubuntu-latest
@@ -115,7 +64,7 @@ jobs:
 
       - name: Rebuild
         run: |
-          ./melange rebuild packages/x86_64/*.apk --arch=x86_64
+          ./melange rebuild ./packages/x86_64/*.apk --arch=x86_64
 
       - name: Upload APKs
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1

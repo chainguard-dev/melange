@@ -21,10 +21,14 @@ jobs:
       fail-fast: false
       matrix:
         example:
+          - cargo-build.yaml
           - git-checkout.yaml
           - gnu-hello.yaml
+          - go-build.yaml
           - mbedtls.yaml
           - minimal.yaml
+          - npm-install.yaml
+          - pnpm-install.yaml
           - sshfs.yaml
 
     steps:
@@ -67,11 +71,15 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
-          - examples/minimal.yaml
-          - examples/go-build.yaml
-          - examples/cargo-build.yaml
-          - examples/gnu-hello.yaml
-          - melange.yaml
+          # build and rebuild examples
+          - cargo-build.yaml
+          - gnu-hello.yaml
+          - go-build.yaml
+          - minimal.yaml
+          - npm-install.yaml
+          - pnpm-install.yaml
+
+          - melange.yaml # special; builds melange itself
 
     container:
       image: alpine:latest
@@ -98,7 +106,12 @@ jobs:
           make melange
           ./melange keygen
 
-          ./melange build ${{matrix.cfg}} --arch=x86_64 --namespace=wolfi
+          path=examples/${{matrix.cfg}}
+          if [ "${{matrix.cfg}}" == "melange.yaml" ]; then
+            path="melange.yaml"
+          fi
+
+          ./melange build $path --arch=x86_64 --namespace=wolfi
           mv packages/x86_64/*.apk original.apk
 
           ./melange rebuild original.apk --arch=x86_64
@@ -108,14 +121,14 @@ jobs:
         if: always()
         run: |
           echo ::group::original
-          tar -tvf original.apk | sort
+          tar -tvf original.apk
           echo ::endgroup::
           echo ::group::rebuilt
-          tar -tvf rebuilt.apk | sort
+          tar -tvf rebuilt.apk
           echo ::endgroup::
           diff \
-            <(tar -tvf original.apk | sort) \
-            <(tar -tvf rebuilt.apk | sort) && echo "No diff!"
+            <(tar -tvf original.apk) \
+            <(tar -tvf rebuilt.apk) && echo "No diff!"
 
       - name: Diff SBOM
         if: always()
@@ -162,3 +175,12 @@ jobs:
           diff \
             <(sha256sum original.apk | cut -d' ' -f1) \
             <(sha256sum rebuilt.apk | cut -d' ' -f1) && echo "No diff!"
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        if: always()
+        with:
+          path: |
+            original.apk
+            rebuilt.apk
+          name: rebuild-${{matrix.cfg}}

@@ -82,6 +82,7 @@ package:
       - replacement-provides-foo=${{vars.foo}}
       - replacement-provides-bar=${{vars.bar}}
       - replacement-provides=${{package.full-version}}
+    install-if: docs something=${{package.full-version}}
 
 environment:
   contents:
@@ -134,6 +135,8 @@ test:
 	if err != nil {
 		t.Fatalf("failed to parse configuration: %s", err)
 	}
+	require.Equal(t, "docs something=0.0.1-r7", cfg.Package.Dependencies.InstallIf)
+
 	require.Equal(t, []string{
 		"replacement-provides-version=0.0.1",
 		"replacement-provides-foo=FOO",

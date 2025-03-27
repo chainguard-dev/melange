@@ -2,12 +2,15 @@ package cli
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,6 +19,8 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/clog"
+	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
@@ -24,11 +29,10 @@ import (
 
 // TODO: Detect when the package is a subpackage (origin is different) and compare against the subpackage after building all packages.
 // TODO: Avoid rebuilding twice when rebuilding two subpackages of the same origin.
-// TODO: Add `--diff` flag to show the differences between the original and rebuilt packages, or document how to do it with shell commands.
 
 func rebuild() *cobra.Command {
-	var runner string
-	var archstrs []string // TODO: Detect this from the APK somehow?
+	var runner, outDir string
+	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,
@@ -56,17 +60,32 @@ func rebuild() *cobra.Command {
 					return fmt.Errorf("failed to parse package URL %q: %v", cfgpkg.ExternalRefs[0].Locator, err)
 				}
 
+				if pkginfo.Origin != pkginfo.Name {
+					clog.Warnf("skipping %q because it is a subpackage", a)
+					continue
+				}
+
+				arch := pkginfo.Arch
+
 				if err := BuildCmd(ctx,
-					apko_types.ParseArchitectures(archstrs),
+					[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
 					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
 					build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
 					build.WithConfigFileRepositoryCommit(cfgpkg.Version),
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 					build.WithRunner(r),
-					build.WithOutDir("./packages/"), // TODO configurable?
+					build.WithOutDir(outDir),
 					build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
+				}
+
+				if diff {
+					old := a
+					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s-r%d.apk", cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch))
+					if err := diffAPKs(old, new); err != nil {
+						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)
+					}
 				}
 			}
 
@@ -74,7 +93,8 @@ func rebuild() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
+	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	return cmd
 }
 
@@ -154,4 +174,99 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 		}
 	}
 	// unreachable
+}
+
+func diffAPKs(old, new string) error {
+	oldh, newh := sha256.New(), sha256.New()
+	oldf, err := os.Open(old)
+	if err != nil {
+		return fmt.Errorf("failed to open old APK %s: %v", old, err)
+	}
+	defer oldf.Close()
+	oldgr, err := gzip.NewReader(io.TeeReader(oldf, oldh))
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+	}
+	defer oldgr.Close()
+	oldm, err := filemap(tar.NewReader(oldgr))
+	if err != nil {
+		return fmt.Errorf("failed to create file map for old APK %s: %v", old, err)
+	}
+
+	newf, err := os.Open(new)
+	if err != nil {
+		return fmt.Errorf("failed to open new APK %s: %v", new, err)
+	}
+	defer newf.Close()
+	newgr, err := gzip.NewReader(io.TeeReader(newf, newh))
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+	}
+	defer oldgr.Close()
+	newm, err := filemap(tar.NewReader(newgr))
+	if err != nil {
+		return fmt.Errorf("failed to create file map for new APK %s: %v", new, err)
+	}
+
+	var errs []error
+	for k, o := range oldm {
+		if n, ok := newm[k]; !ok {
+			errs = append(errs, fmt.Errorf("removed: %s", k))
+		} else if o != n {
+			errs = append(errs, fmt.Errorf("changed: %s: digests %s -> %s", k, o.digest, n.digest))
+			if o.contents != n.contents {
+				errs = append(errs, fmt.Errorf("contents diff: %s (-old,new):\n%s", k, cmp.Diff(o.contents, n.contents)))
+			}
+		}
+	}
+	for k := range newm {
+		if _, ok := oldm[k]; !ok {
+			errs = append(errs, fmt.Errorf("added: %s", k))
+		}
+	}
+
+	oldd, newd := fmt.Sprintf("%x", oldh.Sum(nil)), fmt.Sprintf("%x", newh.Sum(nil))
+	if oldd != newd {
+		errs = append(errs, fmt.Errorf("APK digest diff: %s -> %s", oldd, newd))
+	}
+
+	return errors.Join(errs...)
+}
+
+type entry struct{ digest, contents string }
+
+// Some files should especially not have diffs, and so we want to surface those changes even more prominently.
+// Other paths which may have a diff will just be shown as digest changes, and users should inspect those diffs manually.
+func isImportantPath(path string) bool {
+	switch path {
+	case ".PKGINFO", ".melange.yaml":
+		return true
+	}
+	return strings.HasPrefix(path, "var/lib/db/sbom/")
+}
+
+func filemap(tr *tar.Reader) (map[string]entry, error) {
+	m := make(map[string]entry)
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return m, nil
+		} else if err != nil {
+			return nil, fmt.Errorf("failed to read tar header: %v", err)
+		}
+		h := sha256.New()
+		var w io.Writer = h
+		var buf bytes.Buffer
+		if isImportantPath(hdr.Name) {
+			w = io.MultiWriter(w, &buf)
+		}
+		if _, err := io.Copy(w, tr); err != nil {
+			return nil, fmt.Errorf("failed to read tar entry %s: %v", hdr.Name, err)
+		}
+		entry := entry{digest: fmt.Sprintf("%x", h.Sum(nil))}
+		if isImportantPath(hdr.Name) {
+			entry.contents = buf.String()
+		}
+		m[hdr.Name] = entry
+	}
 }

@@ -19,7 +19,7 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
-	"github.com/charmbracelet/log"
+	"github.com/chainguard-dev/clog"
 	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
@@ -61,7 +61,7 @@ func rebuild() *cobra.Command {
 				}
 
 				if pkginfo.Origin != pkginfo.Name {
-					log.Warnf("skipping %q because it is a subpackage", a)
+					clog.Warnf("skipping %q because it is a subpackage", a)
 					continue
 				}
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/json"
@@ -17,6 +18,7 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
@@ -197,11 +199,14 @@ func diffAPKs(old, new string) error {
 	}
 
 	var errs []error
-	for k, v := range oldm {
+	for k, o := range oldm {
 		if n, ok := newm[k]; !ok {
 			errs = append(errs, fmt.Errorf("removed: %s", k))
-		} else if v != n {
-			errs = append(errs, fmt.Errorf("changed: %s; %s -> %s", k, v, n))
+		} else if o != n {
+			errs = append(errs, fmt.Errorf("changed: %s; %s -> %s", k, o, n))
+			if o.contents != n.contents {
+				errs = append(errs, fmt.Errorf("contents: %s:\n%s", k, cmp.Diff(o.contents, n.contents)))
+			}
 		}
 	}
 	for k := range newm {
@@ -212,8 +217,18 @@ func diffAPKs(old, new string) error {
 	return errors.Join(errs...)
 }
 
-func filemap(tr *tar.Reader) (map[string]string, error) {
-	m := make(map[string]string)
+type entry struct{ digest, contents string }
+
+func isImportantPath(path string) bool {
+	switch path {
+	case ".PKGINFO", ".melange.yaml":
+		return true
+	}
+	return strings.HasPrefix(path, "var/lib/db/sbom/")
+}
+
+func filemap(tr *tar.Reader) (map[string]entry, error) {
+	m := make(map[string]entry)
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
@@ -221,10 +236,19 @@ func filemap(tr *tar.Reader) (map[string]string, error) {
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to read tar header: %v", err)
 		}
-		d := sha256.New()
-		if _, err := io.Copy(d, tr); err != nil {
+		h := sha256.New()
+		var w io.Writer = h
+		var buf bytes.Buffer
+		if isImportantPath(hdr.Name) {
+			w = io.MultiWriter(w, &buf)
+		}
+		if _, err := io.Copy(w, tr); err != nil {
 			return nil, fmt.Errorf("failed to hash file %s: %v", hdr.Name, err)
 		}
-		m[hdr.Name] = fmt.Sprintf("%x", d.Sum(nil))
+		entry := entry{digest: fmt.Sprintf("%x", d.Sum(nil))}
+		if isImportantPath(hdr.Name) {
+			entry.contents = buf.String()
+		}
+		m[hdr.Name] = entry
 	}
 }

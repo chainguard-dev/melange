@@ -19,6 +19,7 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/charmbracelet/log"
 	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
@@ -59,6 +60,11 @@ func rebuild() *cobra.Command {
 					return fmt.Errorf("failed to parse package URL %q: %v", cfgpkg.ExternalRefs[0].Locator, err)
 				}
 
+				if pkginfo.Origin != pkginfo.Name {
+					log.Warnf("skipping %q because it is a subpackage", a)
+					continue
+				}
+
 				if err := BuildCmd(ctx,
 					[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
 					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
@@ -86,7 +92,7 @@ func rebuild() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringVar(&arch, "arch", "x86_64", "architecture to build for") // TODO: determine this from the package
-	cmd.Flags().BoolVar(&diff, "diff", true, "show the differences between the original and rebuilt packages; fail if any differences are found")
+	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	return cmd
 }

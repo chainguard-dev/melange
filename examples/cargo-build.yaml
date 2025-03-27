@@ -61,7 +61,7 @@ data:
       pika: 'ochotona princeps'
 
 subpackages:
-  - range: subpackage
+  - range: lagomorphs
     name: "lagomorph-${{range.key}}"
     description: "data about the lagomorph ${{range.value}}"
     pipeline:

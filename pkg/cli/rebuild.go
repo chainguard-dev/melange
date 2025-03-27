@@ -31,7 +31,7 @@ import (
 // TODO: Avoid rebuilding twice when rebuilding two subpackages of the same origin.
 
 func rebuild() *cobra.Command {
-	var runner, arch, outDir string
+	var runner, outDir string
 	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
@@ -65,6 +65,8 @@ func rebuild() *cobra.Command {
 					continue
 				}
 
+				arch := pkginfo.Arch
+
 				if err := BuildCmd(ctx,
 					[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
 					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
@@ -91,7 +93,6 @@ func rebuild() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	cmd.Flags().StringVar(&arch, "arch", "x86_64", "architecture to build for") // TODO: determine this from the package
 	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	return cmd

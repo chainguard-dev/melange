@@ -79,8 +79,8 @@ func rebuild() *cobra.Command {
 						if err != nil {
 							return fmt.Errorf("failed to diff %s and %s: %v", oldfn, newfn, err)
 						}
-						fmt.Println(d)
-						if d != "" {
+						if d != nil {
+							io.Copy(os.Stdout, d)
 							return fmt.Errorf("differences found between %s and %s", oldfn, newfn)
 						}
 					}
@@ -174,22 +174,22 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 	// unreachable
 }
 
-func diffAPKs(old, new string) (string, error) {
+func diffAPKs(old, new string) (*bytes.Buffer, error) {
 	oldf, err := os.Open(old)
 	if err != nil {
-		return "", fmt.Errorf("failed to open old file %s: %v", old, err)
+		return nil, fmt.Errorf("failed to open old file %s: %v", old, err)
 	}
 	defer oldf.Close()
 
 	newf, err := os.Open(new)
 	if err != nil {
-		return "", fmt.Errorf("failed to open new file %s: %v", new, err)
+		return nil, fmt.Errorf("failed to open new file %s: %v", new, err)
 	}
 	defer newf.Close()
 
 	var buf bytes.Buffer
 	if err := tardiff.Diff(oldf, newf, &buf, nil); err != nil {
-		return "", fmt.Errorf("failed to diff %s and %s: %v", old, new, err)
+		return nil, fmt.Errorf("failed to diff %s and %s: %v", old, new, err)
 	}
-	return buf.String(), nil
+	return &buf, nil
 }

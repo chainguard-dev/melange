@@ -2,6 +2,7 @@ package cli
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,7 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
+	tardiff "github.com/containers/tar-diff/pkg/tar-diff"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
@@ -24,11 +26,11 @@ import (
 
 // TODO: Detect when the package is a subpackage (origin is different) and compare against the subpackage after building all packages.
 // TODO: Avoid rebuilding twice when rebuilding two subpackages of the same origin.
-// TODO: Add `--diff` flag to show the differences between the original and rebuilt packages, or document how to do it with shell commands.
 
 func rebuild() *cobra.Command {
 	var runner string
 	var archstrs []string // TODO: Detect this from the APK somehow?
+	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,
@@ -64,9 +66,24 @@ func rebuild() *cobra.Command {
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 					build.WithRunner(r),
-					build.WithOutDir("./packages/"), // TODO configurable?
+					build.WithOutDir("./rebuilt-packages/"), // TODO configurable?
 					build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
+				}
+
+				if diff {
+					for _, arch := range archstrs {
+						newfn := fmt.Sprintf("rebuilt-packages/%s/%s-%s-r%d.tar.gz", arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
+						oldfn := a
+						d, err := diffAPKs(oldfn, newfn)
+						if err != nil {
+							return fmt.Errorf("failed to diff %s and %s: %v", oldfn, newfn, err)
+						}
+						fmt.Println(d)
+						if d != "" {
+							return fmt.Errorf("differences found between %s and %s", oldfn, newfn)
+						}
+					}
 				}
 			}
 
@@ -75,6 +92,7 @@ func rebuild() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	cmd.Flags().BoolVar(&diff, "diff", false, "show the differences between the original and rebuilt packages")
 	return cmd
 }
 
@@ -154,4 +172,24 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 		}
 	}
 	// unreachable
+}
+
+func diffAPKs(old, new string) (string, error) {
+	oldf, err := os.Open(old)
+	if err != nil {
+		return "", fmt.Errorf("failed to open old file %s: %v", old, err)
+	}
+	defer oldf.Close()
+
+	newf, err := os.Open(new)
+	if err != nil {
+		return "", fmt.Errorf("failed to open new file %s: %v", new, err)
+	}
+	defer newf.Close()
+
+	var buf bytes.Buffer
+	if err := tardiff.Diff(oldf, newf, &buf, nil); err != nil {
+		return "", fmt.Errorf("failed to diff %s and %s: %v", old, new, err)
+	}
+	return buf.String(), nil
 }

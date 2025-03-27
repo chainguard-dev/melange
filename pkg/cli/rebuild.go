@@ -245,7 +245,7 @@ func filemap(tr *tar.Reader) (map[string]entry, error) {
 		if _, err := io.Copy(w, tr); err != nil {
 			return nil, fmt.Errorf("failed to hash file %s: %v", hdr.Name, err)
 		}
-		entry := entry{digest: fmt.Sprintf("%x", d.Sum(nil))}
+		entry := entry{digest: fmt.Sprintf("%x", h.Sum(nil))}
 		if isImportantPath(hdr.Name) {
 			entry.contents = buf.String()
 		}

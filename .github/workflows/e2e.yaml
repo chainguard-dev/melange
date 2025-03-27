@@ -50,11 +50,13 @@ jobs:
           apk upgrade -Ua
           apk add go build-base git bubblewrap jq
 
-      - name: Build
+      - name: Build melange
         run: |
           make melange
           ./melange keygen
 
+      - name: Build package
+        run: |
           path=examples/${{matrix.cfg}}
           if [ "${{matrix.cfg}}" == "melange.yaml" ]; then
             path="melange.yaml"
@@ -62,7 +64,7 @@ jobs:
 
           ./melange build $path --arch=x86_64 --namespace=wolfi
 
-      - name: Rebuild
+      - name: Rebuild package
         run: |
           ./melange rebuild ./packages/x86_64/*.apk --arch=x86_64
 

@@ -107,7 +107,7 @@ jobs:
           ./melange keygen
 
           path=examples/${{matrix.cfg}}
-          if [ "$path" == "melange.yaml" ]; then
+          if [ "${{matrix.cfg}}" == "melange.yaml" ]; then
             path="melange.yaml"
           fi
 

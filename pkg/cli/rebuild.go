@@ -29,7 +29,7 @@ import (
 // TODO: Avoid rebuilding twice when rebuilding two subpackages of the same origin.
 
 func rebuild() *cobra.Command {
-	var runner, arch string
+	var runner, arch, outDir string
 	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
@@ -66,14 +66,14 @@ func rebuild() *cobra.Command {
 					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
 					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 					build.WithRunner(r),
-					build.WithOutDir("./rebuilt-packages/"), // TODO configurable?
+					build.WithOutDir(outDir),
 					build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
 					return fmt.Errorf("failed to rebuild %q: %v", a, err)
 				}
 
 				if diff {
 					old := a
-					new := fmt.Sprintf("rebuilt-packages/%s/%s-%s-r%d.apk", arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
+					new := fmt.Sprintf("%s/%s/%s-%s-r%d.apk", outDir, arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
 					if err := diffAPKs(old, new); err != nil {
 						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)
 					}
@@ -86,6 +86,7 @@ func rebuild() *cobra.Command {
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().StringVar(&arch, "arch", "x86_64", "architecture to build for") // TODO: determine this from the package
 	cmd.Flags().BoolVar(&diff, "diff", true, "show the differences between the original and rebuilt packages; fail if any differences are found")
+	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	return cmd
 }
 
@@ -168,12 +169,13 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 }
 
 func diffAPKs(old, new string) error {
+	oldh, newh := sha256.New(), sha256.New()
 	oldf, err := os.Open(old)
 	if err != nil {
 		return fmt.Errorf("failed to open old APK %s: %v", old, err)
 	}
 	defer oldf.Close()
-	oldgr, err := gzip.NewReader(oldf)
+	oldgr, err := gzip.NewReader(io.TeeReader(oldf, oldh))
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
 	}
@@ -188,7 +190,7 @@ func diffAPKs(old, new string) error {
 		return fmt.Errorf("failed to open new APK %s: %v", new, err)
 	}
 	defer newf.Close()
-	newgr, err := gzip.NewReader(newf)
+	newgr, err := gzip.NewReader(io.TeeReader(newf, newh))
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
 	}
@@ -205,7 +207,7 @@ func diffAPKs(old, new string) error {
 		} else if o != n {
 			errs = append(errs, fmt.Errorf("changed: %s: digests %s -> %s", k, o.digest, n.digest))
 			if o.contents != n.contents {
-				errs = append(errs, fmt.Errorf("contents: %s (-old,new):\n%s", k, cmp.Diff(o.contents, n.contents)))
+				errs = append(errs, fmt.Errorf("contents diff: %s (-old,new):\n%s", k, cmp.Diff(o.contents, n.contents)))
 			}
 		}
 	}
@@ -214,6 +216,12 @@ func diffAPKs(old, new string) error {
 			errs = append(errs, fmt.Errorf("added: %s", k))
 		}
 	}
+
+	oldd, newd := fmt.Sprintf("%x", oldh.Sum(nil)), fmt.Sprintf("%x", newh.Sum(nil))
+	if oldd != newd {
+		errs = append(errs, fmt.Errorf("APK digest diff: %s -> %s", oldd, newd))
+	}
+
 	return errors.Join(errs...)
 }
 
@@ -245,7 +253,7 @@ func filemap(tr *tar.Reader) (map[string]entry, error) {
 			w = io.MultiWriter(w, &buf)
 		}
 		if _, err := io.Copy(w, tr); err != nil {
-			return nil, fmt.Errorf("failed to hash file %s: %v", hdr.Name, err)
+			return nil, fmt.Errorf("failed to read tar entry %s: %v", hdr.Name, err)
 		}
 		entry := entry{digest: fmt.Sprintf("%x", h.Sum(nil))}
 		if isImportantPath(hdr.Name) {

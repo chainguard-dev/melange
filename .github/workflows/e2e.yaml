@@ -112,77 +112,16 @@ jobs:
           fi
 
           ./melange build $path --arch=x86_64 --namespace=wolfi
-          mv packages/x86_64/*.apk original.apk
 
       - name: Rebuild
         run: |
-          ./melange rebuild original.apk --arch=x86_64
-          mv rebuilt-packages/x86_64/*.apk rebuilt.apk
-
-      - name: Diff filesystem
-        if: always()
-        run: |
-          echo ::group::original
-          tar -tvf original.apk
-          echo ::endgroup::
-          echo ::group::rebuilt
-          tar -tvf rebuilt.apk
-          echo ::endgroup::
-          diff \
-            <(tar -tvf original.apk) \
-            <(tar -tvf rebuilt.apk) && echo "No diff!"
-
-      - name: Diff SBOM
-        if: always()
-        run: |
-          echo ::group::original
-          tar -Oxf original.apk var/lib/db/sbom/ | jq
-          echo ::endgroup::
-          echo ::group::rebuilt
-          tar -Oxf rebuilt.apk var/lib/db/sbom/ | jq
-          echo ::endgroup::
-          diff \
-            <(tar -Oxf original.apk var/lib/db/sbom/ | jq) \
-            <(tar -Oxf rebuilt.apk var/lib/db/sbom/ | jq) && echo "No diff!"
-
-      - name: Diff .melange.yaml
-        if: always()
-        run: |
-          echo ::group::original
-          tar -Oxf original.apk .melange.yaml
-          echo ::endgroup::
-          echo ::group::rebuilt
-          tar -Oxf rebuilt.apk .melange.yaml
-          echo ::endgroup::
-          diff \
-            <(tar -Oxf original.apk .melange.yaml) \
-            <(tar -Oxf rebuilt.apk .melange.yaml) && echo "No diff!"
-
-      - name: Diff .PKGINFO
-        if: always()
-        run: |
-          echo ::group::original
-          tar -Oxf original.apk .PKGINFO
-          echo ::endgroup::
-          echo ::group::rebuilt
-          tar -Oxf rebuilt.apk .PKGINFO
-          echo ::endgroup::
-          diff \
-            <(tar -Oxf original.apk .PKGINFO) \
-            <(tar -Oxf rebuilt.apk .PKGINFO) && echo "No diff!"
-
-      - name: Diff digest
-        if: always()
-        run: |
-          diff \
-            <(sha256sum original.apk | cut -d' ' -f1) \
-            <(sha256sum rebuilt.apk | cut -d' ' -f1) && echo "No diff!"
+          ./melange rebuild packages/x86_64/*.apk --arch=x86_64
 
       - name: Upload APKs
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         if: always()
         with:
           path: |
-            original.apk
-            rebuilt.apk
+            packages/**
+            rebuilt-packages/**
           name: rebuild-${{matrix.cfg}}

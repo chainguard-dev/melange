@@ -48,7 +48,6 @@ func compile() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var dependencyLog string
-	var overlayBinSh string
 	var envFile string
 	var varsFile string
 	var purlNamespace string
@@ -123,7 +122,6 @@ func compile() *cobra.Command {
 				build.WithExtraRepos(extraRepos),
 				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
-				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
@@ -190,7 +188,6 @@ func compile() *cobra.Command {
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
-	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")

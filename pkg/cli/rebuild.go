@@ -171,7 +171,12 @@ func diffAPKs(old, new string) error {
 		return fmt.Errorf("failed to open old APK %s: %v", old, err)
 	}
 	defer oldf.Close()
-	oldm, err := filemap(tar.NewReader(oldf))
+	oldgr, err := gzip.NewReader(oldf)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+	}
+	defer oldgr.Close()
+	oldm, err := filemap(tar.NewReader(oldgr))
 	if err != nil {
 		return fmt.Errorf("failed to create file map for old APK %s: %v", old, err)
 	}
@@ -181,7 +186,12 @@ func diffAPKs(old, new string) error {
 		return fmt.Errorf("failed to open new APK %s: %v", new, err)
 	}
 	defer newf.Close()
-	newm, err := filemap(tar.NewReader(newf))
+	newgr, err := gzip.NewReader(newf)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+	}
+	defer oldgr.Close()
+	newm, err := filemap(tar.NewReader(newgr))
 	if err != nil {
 		return fmt.Errorf("failed to create file map for new APK %s: %v", new, err)
 	}

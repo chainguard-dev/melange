@@ -71,13 +71,15 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
-          - examples/cargo-build.yaml
-          - examples/gnu-hello.yaml
-          - examples/go-build.yaml
-          - examples/minimal.yaml
-          - examples/npm-install.yaml
-          - examples/pnpm-install.yaml
-          - melange.yaml
+          # build and rebuild examples
+          - cargo-build.yaml
+          - gnu-hello.yaml
+          - go-build.yaml
+          - minimal.yaml
+          - npm-install.yaml
+          - pnpm-install.yaml
+
+          - melange.yaml # special; builds melange itself
 
     container:
       image: alpine:latest
@@ -104,7 +106,12 @@ jobs:
           make melange
           ./melange keygen
 
-          ./melange build ${{matrix.cfg}} --arch=x86_64 --namespace=wolfi
+          path=${{matrix.cfg}}
+          if [ "$path" = "melange.yaml" ]; then
+            path="melange.yaml"
+          fi
+
+          ./melange build $path --arch=x86_64 --namespace=wolfi
           mv packages/x86_64/*.apk original.apk
 
           ./melange rebuild original.apk --arch=x86_64

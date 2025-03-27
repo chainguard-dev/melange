@@ -21,10 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         example:
+          - cargo-build.yaml
           - git-checkout.yaml
           - gnu-hello.yaml
+          - go-build.yaml
           - mbedtls.yaml
           - minimal.yaml
+          - npm-install.yaml
           - sshfs.yaml
 
     steps:
@@ -67,10 +70,11 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
-          - examples/minimal.yaml
-          - examples/go-build.yaml
           - examples/cargo-build.yaml
           - examples/gnu-hello.yaml
+          - examples/go-build.yaml
+          - examples/minimal.yaml
+          - examples/npm-install.yaml
           - melange.yaml
 
     container:

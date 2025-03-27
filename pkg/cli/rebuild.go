@@ -203,9 +203,9 @@ func diffAPKs(old, new string) error {
 		if n, ok := newm[k]; !ok {
 			errs = append(errs, fmt.Errorf("removed: %s", k))
 		} else if o != n {
-			errs = append(errs, fmt.Errorf("changed: %s; %s -> %s", k, o, n))
+			errs = append(errs, fmt.Errorf("changed: %s: digests %s -> %s", k, o.digest, n.digest))
 			if o.contents != n.contents {
-				errs = append(errs, fmt.Errorf("contents: %s:\n%s", k, cmp.Diff(o.contents, n.contents)))
+				errs = append(errs, fmt.Errorf("contents: %s (-old,new):\n%s", k, cmp.Diff(o.contents, n.contents)))
 			}
 		}
 	}
@@ -219,6 +219,8 @@ func diffAPKs(old, new string) error {
 
 type entry struct{ digest, contents string }
 
+// Some files should especially not have diffs, and so we want to surface those changes even more prominently.
+// Other paths which may have a diff will just be shown as digest changes, and users should inspect those diffs manually.
 func isImportantPath(path string) bool {
 	switch path {
 	case ".PKGINFO", ".melange.yaml":

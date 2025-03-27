@@ -73,7 +73,7 @@ func rebuild() *cobra.Command {
 
 				if diff {
 					for _, arch := range archstrs {
-						newfn := fmt.Sprintf("rebuilt-packages/%s/%s-%s-r%d.tar.gz", arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
+						newfn := fmt.Sprintf("rebuilt-packages/%s/%s-%s-r%d.apk", arch, cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch)
 						oldfn := a
 						d, err := diffAPKs(oldfn, newfn)
 						if err != nil {

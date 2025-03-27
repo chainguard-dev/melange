@@ -99,10 +99,10 @@ jobs:
           ./melange keygen
 
           ./melange build ${{matrix.cfg}} --arch=x86_64 --namespace=wolfi
-          mv packages/x86_64/*.apk original.apk
+          ln -s packages/x86_64/*.apk original.apk
 
           ./melange rebuild original.apk --arch=x86_64 --diff
-          mv packages/x86_64/*.apk rebuilt.apk
+          ln -s rebuilt-packages/x86_64/*.apk rebuilt.apk
 
       - name: Diff filesystem
         if: always()

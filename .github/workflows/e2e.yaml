@@ -101,7 +101,7 @@ jobs:
           apk upgrade -Ua
           apk add go build-base git bubblewrap jq
 
-      - name: Build and rebuild
+      - name: Build
         run: |
           make melange
           ./melange keygen
@@ -114,8 +114,10 @@ jobs:
           ./melange build $path --arch=x86_64 --namespace=wolfi
           mv packages/x86_64/*.apk original.apk
 
+      - name: Rebuild
+        run: |
           ./melange rebuild original.apk --arch=x86_64
-          mv packages/x86_64/*.apk rebuilt.apk
+          mv rebuilt-packages/x86_64/*.apk rebuilt.apk
 
       - name: Diff filesystem
         if: always()

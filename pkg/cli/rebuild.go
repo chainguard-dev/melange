@@ -27,9 +27,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TODO: Detect when the package is a subpackage (origin is different) and compare against the subpackage after building all packages.
-// TODO: Avoid rebuilding twice when rebuilding two subpackages of the same origin.
-
 func rebuild() *cobra.Command {
 	var runner, outDir string
 	var diff bool
@@ -49,6 +46,8 @@ func rebuild() *cobra.Command {
 				return fmt.Errorf("failed to create runner: %v", err)
 			}
 
+			origins := make(map[string]bool)
+
 			for _, a := range args {
 				cfg, pkginfo, cfgpkg, err := getConfig(a)
 				if err != nil {
@@ -60,29 +59,32 @@ func rebuild() *cobra.Command {
 					return fmt.Errorf("failed to parse package URL %q: %v", cfgpkg.ExternalRefs[0].Locator, err)
 				}
 
-				if pkginfo.Origin != pkginfo.Name {
-					clog.Warnf("skipping %q because it is a subpackage", a)
-					continue
-				}
-
 				arch := pkginfo.Arch
 
-				if err := BuildCmd(ctx,
-					[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
-					build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
-					build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
-					build.WithConfigFileRepositoryCommit(cfgpkg.Version),
-					build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
-					build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
-					build.WithRunner(r),
-					build.WithOutDir(outDir),
-					build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
-					return fmt.Errorf("failed to rebuild %q: %v", a, err)
+				if pkginfo.Origin != pkginfo.Name && origins[pkginfo.Origin] {
+					clog.Warnf("skipping %q because it is a subpackage of package %q which was already rebuilt", a, pkginfo.Origin)
+				} else {
+					clog.Infof("rebuilding %q", a)
+					if err := BuildCmd(ctx,
+						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
+						build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
+						build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
+						build.WithConfigFileRepositoryCommit(cfgpkg.Version),
+						build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
+						build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
+						build.WithRunner(r),
+						build.WithOutDir(outDir),
+						build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
+						return fmt.Errorf("failed to rebuild %q: %v", a, err)
+					}
+
+					origins[pkginfo.Origin] = true
 				}
 
 				if diff {
 					old := a
 					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s-r%d.apk", cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch))
+					clog.Infof("diffing %s and %s", old, new)
 					if err := diffAPKs(old, new); err != nil {
 						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)
 					}

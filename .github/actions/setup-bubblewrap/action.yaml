@@ -17,13 +17,13 @@ runs:
     - name: Disable apparmor userns restrictions
       shell: bash
       run: |
-        sudo mkdir -p /etc/sysctl.d
-        sudo cat kernel.apparmor_restrict_unprivileged_userns = 0 >> /etc/sysctl.d/60-apparmor-namespace.conf
+        sudo bash -c "mkdir -p /etc/sysctl.d
+        cat kernel.apparmor_restrict_unprivileged_userns = 0 >> /etc/sysctl.d/60-apparmor-namespace.conf"
 
     - name: Allow bubblewrap to use unprivileged user namespaces independent of who calls it
       shell: bash
       run: |
-        sudo cat < EOF > /etc/apparmor.d/local-bwrap
+        sudo bash -c "cat < EOF > /etc/apparmor.d/local-bwrap
           abi <abi/4.0>,
           include <tunables/global>
 
@@ -35,12 +35,12 @@ runs:
           }
         EOF
 
-        sudo systemctl reload apparmor
+        systemctl reload apparmor"
 
     - name: Allow melange to use unprivileged user namespaces
       shell: bash
       run: |
-        sudo cat < EOF > /etc/apparmor.d/local-melange
+        sudo bash -c "cat < EOF > /etc/apparmor.d/local-melange
           abi <abi/4.0>,
           include <tunables/global>
 
@@ -52,4 +52,4 @@ runs:
           }
         EOF
 
-        sudo systemctl reload apparmor
+        systemctl reload apparmor"

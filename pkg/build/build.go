@@ -240,7 +240,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
 		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
 	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
-		slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
+		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
 	}
 

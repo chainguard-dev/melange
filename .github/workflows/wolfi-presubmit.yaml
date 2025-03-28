@@ -40,8 +40,7 @@ jobs:
     name: Build packages
     needs:
       - build-melange
-    # TODO: Set up a larger runner for this.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-core
 
     permissions:
       contents: read
@@ -81,10 +80,6 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          path: melange
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
           repository: wolfi-dev/os
 
       - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
@@ -102,7 +97,11 @@ jobs:
         run: |
           sudo apt-get -y install bubblewrap
       - if: matrix.runner == 'bubblewrap'
-        uses: ./melange/.github/actions/setup-bubblewrap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: melange-src
+      - if: matrix.runner == 'bubblewrap'
+        uses: ./melange-src/.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}

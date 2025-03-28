@@ -23,7 +23,7 @@ runs:
     - name: Allow bubblewrap to use unprivileged user namespaces independent of who calls it
       shell: bash
       run: |
-        sudo bash -c "cat < EOF > /etc/apparmor.d/local-bwrap
+        sudo bash -c "cat << EOF > /etc/apparmor.d/local-bwrap
           abi <abi/4.0>,
           include <tunables/global>
 
@@ -40,7 +40,7 @@ runs:
     - name: Allow melange to use unprivileged user namespaces
       shell: bash
       run: |
-        sudo bash -c "cat < EOF > /etc/apparmor.d/local-melange
+        sudo bash -c "cat << EOF > /etc/apparmor.d/local-melange
           abi <abi/4.0>,
           include <tunables/global>
 

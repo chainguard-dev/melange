@@ -42,8 +42,8 @@ jobs:
 
       - name: Fetch dependencies
         run: |
-          apk upgrade -Ua
-          apk add go build-base git bubblewrap jq
+          sudo apt-get update -y
+          sudo apt-get install -y bubblewrap go jq
       - uses: ./.github/actions/setup-bubblewrap
         with:
           path: ${PWD}/melange

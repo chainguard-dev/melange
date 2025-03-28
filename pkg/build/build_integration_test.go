@@ -22,18 +22,23 @@ import (
 )
 
 func TestBuild_BuildPackage(t *testing.T) {
-	const arch = "x86_64"
-
-	for _, tt := range []struct {
+	tests := []struct {
 		name            string
 		expectedVersion string
-	}{{
-		name:            "crane",
-		expectedVersion: "0.20.2-r1",
-	}, {
-		name:            "7zip-two-fetches",
-		expectedVersion: "2301-r3",
-	}} {
+	}{
+		{
+			name:            "crane",
+			expectedVersion: "0.20.2-r1",
+		},
+		{
+			name:            "7zip-two-fetches",
+			expectedVersion: "2301-r3",
+		},
+	}
+
+	const arch = "x86_64"
+
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := t.TempDir()
 			p := filepath.Join("testdata", "build_configs", tt.name) + ".yaml"
@@ -142,6 +147,10 @@ func TestBuild_BuildPackage(t *testing.T) {
 func getRunner(ctx context.Context, t *testing.T) container.Runner {
 	t.Helper()
 
+	if r := container.BubblewrapRunner(true); r.TestUsability(ctx) {
+		return r
+	}
+
 	r, err := docker.NewRunner(ctx)
 	if err != nil {
 		t.Fatalf("creating docker runner: %v", err)
@@ -150,6 +159,6 @@ func getRunner(ctx context.Context, t *testing.T) container.Runner {
 		return r
 	}
 
-	t.Fatal("docker runner not usable")
+	t.Fatal("no usable runner found")
 	return nil
 }

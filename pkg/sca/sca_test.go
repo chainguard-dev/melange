@@ -83,6 +83,14 @@ func (th *testHandle) BaseDependencies() config.Dependencies {
 	return th.cfg.Package.Dependencies
 }
 
+func (th *testHandle) InstalledPackages() map[string]string {
+	return map[string]string{}
+}
+
+func (th *testHandle) PkgResolver() *apk.PkgResolver {
+	return nil
+}
+
 // TODO: Loose coupling.
 func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile string) *testHandle {
 	t.Helper()

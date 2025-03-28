@@ -9,6 +9,8 @@ package:
         2006, 2007, 2008, 2010, 2011, 2013, 2014, 2022 Free Software Foundation,
         Inc.
       license: GPL-3.0-or-later
+  dependencies:
+    runtime:
 
 environment:
   contents:
@@ -19,7 +21,6 @@ environment:
     packages:
       - build-base
       - busybox
-      - help2man
 
 pipeline:
   - uses: fetch

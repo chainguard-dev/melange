@@ -83,7 +83,7 @@ func rebuild() *cobra.Command {
 
 				if diff {
 					old := a
-					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s-r%d.apk", pkginfo.Name, pkginfo.Version, cfg.Package.Epoch))
+					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s.apk", pkginfo.Name, pkginfo.Version))
 					clog.Infof("diffing %s and %s", old, new)
 					if err := diffAPKs(old, new); err != nil {
 						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)

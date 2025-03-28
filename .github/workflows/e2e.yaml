@@ -30,6 +30,11 @@ jobs:
 
           - melange.yaml # special; builds melange itself
 
+    container:
+      image: alpine:latest
+      options: |
+        --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
+
     steps:
       - uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
@@ -42,11 +47,8 @@ jobs:
 
       - name: Fetch dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y bubblewrap jq
-      - uses: ./.github/actions/setup-bubblewrap
-        with:
-          path: ${PWD}/melange
+          apk upgrade -Ua
+          apk add go build-base git bubblewrap jq
 
       - name: Build melange
         run: |

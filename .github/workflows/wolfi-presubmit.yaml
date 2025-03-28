@@ -97,7 +97,8 @@ jobs:
       - if: matrix.runner == 'bubblewrap'
         run: |
           sudo apt-get -y install bubblewrap
-
+      - if: matrix.runner == 'bubblewrap'
+        uses: ./.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}

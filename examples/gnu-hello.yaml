@@ -19,6 +19,7 @@ environment:
     packages:
       - build-base
       - busybox
+      - help2man
 
 pipeline:
   - uses: fetch

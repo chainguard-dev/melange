@@ -18,7 +18,7 @@ runs:
       shell: bash
       run: |
         sudo bash -c "mkdir -p /etc/sysctl.d
-        cat kernel.apparmor_restrict_unprivileged_userns = 0 >> /etc/sysctl.d/60-apparmor-namespace.conf"
+        cat 'kernel.apparmor_restrict_unprivileged_userns = 0' >> /etc/sysctl.d/60-apparmor-namespace.conf"
 
     - name: Allow bubblewrap to use unprivileged user namespaces independent of who calls it
       shell: bash

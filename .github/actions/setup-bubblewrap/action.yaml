@@ -17,7 +17,7 @@ runs:
     - name: Disable apparmor userns restrictions
       shell: bash
       run: |
-        mkdir -p /etc/sysctl.d
+        sudo mkdir -p /etc/sysctl.d
         sudo cat kernel.apparmor_restrict_unprivileged_userns = 0 >> /etc/sysctl.d/60-apparmor-namespace.conf
 
     - name: Allow bubblewrap to use unprivileged user namespaces independent of who calls it

@@ -61,8 +61,8 @@ func rebuild() *cobra.Command {
 
 				arch := pkginfo.Arch
 
-				if pkginfo.Origin != pkginfo.Name && origins[pkginfo.Origin] {
-					clog.Warnf("not rebuilding %q because it is a subpackage of package %q which was already rebuilt", a, pkginfo.Origin)
+				if origins[pkginfo.Origin] {
+					clog.Warnf("not rebuilding %q because was already rebuilt", a)
 				} else {
 					clog.Infof("rebuilding %q", a)
 					if err := BuildCmd(ctx,

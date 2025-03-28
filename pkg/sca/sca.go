@@ -27,8 +27,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"unicode"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/go-pkgconfig"
@@ -72,6 +72,14 @@ type SCAHandle interface {
 	// BaseDependencies returns the underlying set of declared dependencies before
 	// the SCA engine runs.
 	BaseDependencies() config.Dependencies
+
+	// InstalledPackages returns a map [package name] => [package
+	// version] for all build dependencies installed during build.
+	InstalledPackages() map[string]string
+
+	// PkgResolver returns the package resolver associated with
+	// the current package/build being analyzed.
+	PkgResolver() *apk.PkgResolver
 }
 
 // DependencyGenerator takes an SCAHandle, config.Dependencies pointer
@@ -263,6 +271,66 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 	return "", "", nil
 }
 
+// determineShlibVersion tries to determine the exact version of the
+// package that provides the shared library shlib.  It does that by:
+//
+// - Asking PkgResolver to calculate the list of packages that provide "so:shlib".
+//
+// - Verifying if any package in that list matches exactly what is
+//   currently installed in the build environment.
+//
+// - Verifying if the matched package has a versioned shared library
+//   "provides:".
+//
+// If all steps succeed, the package version is returned.
+//
+// If there is a match but the package doesn't currently offer a
+// versioned shared library "provides:", then an empty version is
+// returned.  We can't do versioned "depends:" unless there is a
+// matching "provides:".
+//
+// If no match is found, that's an error.
+func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
+	log := clog.FromContext(ctx)
+	pkgResolver := hdl.PkgResolver()
+
+	if pkgResolver == nil {
+		// When we're invoked from "melange scan", there's no
+		// package resolver available.  Just return an empty
+		// version.
+		log.Debugf("Package resolver is nil; returning an empty shlib version")
+		return "", nil
+	}
+
+	candidates, err := pkgResolver.ResolvePackage("so:" + shlib, map[*apk.RepositoryPackage]string{})
+	if err != nil {
+		return "", err
+	}
+
+	pkgVersionMap := hdl.InstalledPackages()
+
+	for _, pkg := range candidates {
+		log.Debugf("Verifying if package %s-%s (which provides shlib %s) is the one used to build the package", pkg.PackageName(), pkg.Version, shlib)
+		version, ok := pkgVersionMap[pkg.PackageName()]
+		if ok && version == pkg.Version {
+			// Check if the package actually provides a
+			// versioned shlib, otherwise we can't depend on it.
+			shlibProvidesWithVersion := "so:" + shlib + "=" + version
+			for _, provide := range pkg.Provides {
+				if provide == shlibProvidesWithVersion {
+					return version, nil
+				}
+			}
+			// The package (still) doesn't provide a
+			// versioned shlib.  That's ok; just return an
+			// empty version for now.
+			return "", nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find suitable package providing library so:%s", shlib)
+}
+
 func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	if !strings.Contains(path, ".so") {
@@ -307,7 +375,14 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 		for _, soname := range sonames {
 			log.Infof("  found soname %s for %s", soname, path)
 
-			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
+			shlibVer, err := determineShlibVersion(ctx, hdl, soname)
+			if err != nil {
+				return err
+			}
+			if shlibVer != "" {
+				shlibVer = "="+shlibVer
+			}
+			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s%s", soname, shlibVer))
 		}
 	}
 
@@ -403,7 +478,16 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 			if strings.Contains(lib, ".so.") {
 				log.Infof("  found lib %s for %s", lib, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+
+				shlibVer, err := determineShlibVersion(ctx, hdl, lib)
+				if err != nil {
+					return err
+				}
+				if shlibVer != "" {
+					shlibVer = "="+shlibVer
+				}
+
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s%s", lib, shlibVer))
 			}
 		}
 
@@ -430,12 +514,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 
 			for _, soname := range sonames {
-				libver := sonameLibver(soname)
-
 				if isInDir(path, expandedLibDirs) {
-					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Provides = append(generated.Provides, fmt.Sprintf("so:%s=%s", soname, hdl.Version()))
 				} else {
-					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, libver))
+					generated.Vendored = append(generated.Vendored, fmt.Sprintf("so:%s=%s", soname, hdl.Version()))
 				}
 			}
 		}
@@ -728,24 +810,6 @@ func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Depen
 	}
 
 	return nil
-}
-
-func sonameLibver(soname string) string {
-	parts := strings.Split(soname, ".so.")
-	if len(parts) < 2 {
-		return "0"
-	}
-
-	libver := parts[1]
-	for _, r := range libver {
-		if r != '.' && !unicode.IsDigit(r) {
-			// Not a number, 0 should be fine?
-			// TODO: Consider looking at filename?
-			return "0"
-		}
-	}
-
-	return libver
 }
 
 func getShbang(fp io.Reader) (string, error) {

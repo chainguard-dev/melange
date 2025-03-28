@@ -62,7 +62,7 @@ func rebuild() *cobra.Command {
 				arch := pkginfo.Arch
 
 				if pkginfo.Origin != pkginfo.Name && origins[pkginfo.Origin] {
-					clog.Warnf("skipping %q because it is a subpackage of package %q which was already rebuilt", a, pkginfo.Origin)
+					clog.Warnf("not rebuilding %q because it is a subpackage of package %q which was already rebuilt", a, pkginfo.Origin)
 				} else {
 					clog.Infof("rebuilding %q", a)
 					if err := BuildCmd(ctx,
@@ -83,7 +83,7 @@ func rebuild() *cobra.Command {
 
 				if diff {
 					old := a
-					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s-r%d.apk", cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch))
+					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s-r%d.apk", pkginfo.Name, pkginfo.Version, cfg.Package.Epoch))
 					clog.Infof("diffing %s and %s", old, new)
 					if err := diffAPKs(old, new); err != nil {
 						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)

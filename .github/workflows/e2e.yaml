@@ -43,7 +43,7 @@ jobs:
       - name: Fetch dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y bubblewrap go jq
+          sudo apt-get install -y bubblewrap golang-go jq
       - uses: ./.github/actions/setup-bubblewrap
         with:
           path: ${PWD}/melange

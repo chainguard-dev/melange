@@ -80,6 +80,8 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: melange
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -100,7 +102,7 @@ jobs:
         run: |
           sudo apt-get -y install bubblewrap
       - if: matrix.runner == 'bubblewrap'
-        uses: ./.github/actions/setup-bubblewrap
+        uses: ./melange/.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}

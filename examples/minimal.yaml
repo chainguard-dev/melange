@@ -17,3 +17,18 @@ pipeline:
   - runs: |
       mkdir -p "${{targets.destdir}}"
       echo "hello" > "${{targets.destdir}}/hello"
+
+data:
+  - name: lagomorphs
+    items:
+      hare: 'lepus saxatilis'
+      rabbit: 'sylvìlagus floridanus'
+      pika: 'ochotona princeps'
+
+subpackages:
+  - range: lagomorphs
+    name: "lagomorph-${{range.key}}"
+    description: "data about the lagomorph ${{range.value}}"
+    pipeline:
+      - runs: |
+          echo "${{range.value}}" > ${{targets.contextdir}}/${{range.key}}

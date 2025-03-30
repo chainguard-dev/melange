@@ -28,7 +28,7 @@ import (
 )
 
 func rebuild() *cobra.Command {
-	var runner, outDir, pipelineDir, envFile, varsFile string
+	var runner, outDir string
 	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
@@ -74,12 +74,6 @@ func rebuild() *cobra.Command {
 						build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 						build.WithRunner(r),
 						build.WithOutDir(outDir),
-						// Order matters, so add any specified pipelineDir before
-						// builtin pipelines.
-						build.WithPipelineDir(pipelineDir),
-						build.WithPipelineDir(BuiltinPipelineDir),
-						build.WithEnvFile(envFile),
-						build.WithVarsFile(varsFile),
 						build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
 						return fmt.Errorf("failed to rebuild %q: %v", a, err)
 					}
@@ -103,9 +97,6 @@ func rebuild() *cobra.Command {
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
-	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
-	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
-	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	return cmd
 }
 

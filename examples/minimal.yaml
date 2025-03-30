@@ -17,7 +17,6 @@ pipeline:
   - runs: |
       mkdir -p "${{targets.destdir}}"
       echo "hello" > "${{targets.destdir}}/hello"
-  - uses: fake-pipeline
 
 data:
   - name: lagomorphs

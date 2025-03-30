@@ -221,6 +221,8 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	log := clog.FromContext(ctx)
 	name, uses, with := pipeline.Name, pipeline.Uses, maps.Clone(pipeline.With)
 
+	// When compiling an already-compiled config, `uses` will be redundant and FYI only,
+	// so ignore it if there is also a `pipelines` spelled out.
 	if uses != "" && len(pipeline.Pipeline) == 0 {
 		var data []byte
 		// Set this to fail up front in case there are no pipeline dirs specified

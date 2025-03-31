@@ -166,8 +166,8 @@ func TestExecableSharedObjects(t *testing.T) {
 			"so:libpsx.so.2",
 		},
 		Provides: []string{
-			"so:libcap.so.2=2",
-			"so:libpsx.so.2=2",
+			"so:libcap.so.2=2.69-r0",
+			"so:libpsx.so.2=2.69-r0",
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -203,7 +203,7 @@ func TestVendoredPkgConfig(t *testing.T) {
 			"pc:libecpg_compat=4604-r0",
 			"pc:libpgtypes=4604-r0",
 			"pc:libpq=4604-r0",
-			"so:libecpg_compat.so.3=3",
+			"so:libecpg_compat.so.3=4604-r0",
 		},
 	}
 
@@ -275,7 +275,7 @@ func TestUnstableSonames(t *testing.T) {
 			"so:libaws-checksums.so.1.0.0",
 			"so:libc.so.6",
 		},
-		Provides: []string{"so:libaws-c-s3.so.0unstable=0"},
+		Provides: []string{"so:libaws-c-s3.so.0unstable=0.4.9-r0"},
 	}
 
 	if diff := cmp.Diff(want, got); diff != "" {

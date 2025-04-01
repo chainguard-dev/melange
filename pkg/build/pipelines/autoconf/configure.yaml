@@ -39,6 +39,7 @@ pipeline:
         --host=${{inputs.host}} \
         --build=${{inputs.build}} \
         --prefix=/usr \
+        --sbindir=/usr/bin \
         --sysconfdir=/etc \
         --libdir=/usr/lib \
         --mandir=/usr/share/man \

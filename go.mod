@@ -2,16 +2,18 @@ module chainguard.dev/melange
 
 go 1.23.4
 
+toolchain go1.24.1
+
 require (
-	chainguard.dev/apko v0.25.4
+	chainguard.dev/apko v0.25.6
 	cloud.google.com/go/storage v1.51.0
 	dagger.io/dagger v0.16.3
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.10
+	github.com/chainguard-dev/yam v0.2.12
 	github.com/charmbracelet/log v0.4.1
-	github.com/docker/cli v28.0.1+incompatible
-	github.com/docker/docker v28.0.1+incompatible
+	github.com/docker/cli v28.0.4+incompatible
+	github.com/docker/docker v28.0.4+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.2
 	github.com/go-git/go-git/v5 v5.14.0
@@ -25,7 +27,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30
-	github.com/moby/moby v28.0.1+incompatible
+	github.com/moby/moby v28.0.4+incompatible
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1
@@ -50,7 +52,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.11.0
-	sigs.k8s.io/release-utils v0.11.0
+	sigs.k8s.io/release-utils v0.11.1
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -222,5 +224,5 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/apimachinery v0.32.3 // indirect
-	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
+	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 )

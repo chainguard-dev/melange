@@ -28,7 +28,7 @@ import (
 )
 
 func rebuild() *cobra.Command {
-	var runner, outDir string
+	var runner, outDir, sourceDir string
 	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
@@ -65,8 +65,7 @@ func rebuild() *cobra.Command {
 					clog.Warnf("not rebuilding %q because was already rebuilt", a)
 				} else {
 					clog.Infof("rebuilding %q", a)
-					if err := BuildCmd(ctx,
-						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
+					opts := []build.Option{
 						build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
 						build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
 						build.WithConfigFileRepositoryCommit(cfgpkg.Version),
@@ -74,7 +73,15 @@ func rebuild() *cobra.Command {
 						build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 						build.WithRunner(r),
 						build.WithOutDir(outDir),
-						build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
+						build.WithConfiguration(cfg, cfgpurl.Subpath),
+					}
+					if sourceDir != "" {
+						opts = append(opts, build.WithSourceDir(sourceDir))
+					}
+
+					if err := BuildCmd(ctx,
+						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
+						opts...); err != nil {
 						return fmt.Errorf("failed to rebuild %q: %v", a, err)
 					}
 
@@ -97,6 +104,8 @@ func rebuild() *cobra.Command {
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
+	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory where source code is located")
+
 	return cmd
 }
 

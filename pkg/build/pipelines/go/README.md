@@ -27,7 +27,7 @@ Run a build using the go compiler
 | ldflags | false | List of [pattern=]arg to append to the go compiler with -ldflags |  |
 | modroot | false | Top directory of the go module, this is where go.mod lives. Before buiding the go pipeline wil cd into this directory.  | . |
 | output | true | Filename to use when writing the binary. The final install location inside the apk will be in prefix / install-dir / output  |  |
-| packages | true | List of space-separated packages to compile. Files con also be specified. This value is passed as an argument to go build. All paths are relative to inputs.modroot.  |  |
+| packages | true | List of space-separated packages to compile. Files can also be specified. This value is passed as an argument to go build. All paths are relative to inputs.modroot.  |  |
 | prefix | false | Prefix to relocate binaries  | usr |
 | strip | false | Set of strip ldflags passed to the go compiler | -w |
 | tags | false | A comma-separated list of build tags to append to the go compiler  |  |

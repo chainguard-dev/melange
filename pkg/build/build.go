@@ -837,17 +837,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	if b.EmptyWorkspace {
 		log.Debugf("empty workspace requested")
-	} else if b.SourceDir == "" {
-		log.Debugf("no source dir provided")
 	} else {
 		// Prepare workspace directory
 		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.populateWorkspace(ctx, apkofs.DirFS(b.SourceDir)); err != nil {
-			return fmt.Errorf("unable to populate workspace: %w", err)
+		fs := apkofs.DirFS(b.SourceDir)
+		if fs != nil {
+			log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
+			if err := b.populateWorkspace(ctx, fs); err != nil {
+				return fmt.Errorf("unable to populate workspace: %w", err)
+			}
 		}
 	}
 

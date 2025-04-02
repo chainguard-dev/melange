@@ -28,7 +28,7 @@ import (
 )
 
 func rebuild() *cobra.Command {
-	var runner, outDir string
+	var runner, outDir, sourceDir string
 	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
@@ -65,8 +65,7 @@ func rebuild() *cobra.Command {
 					clog.Warnf("not rebuilding %q because was already rebuilt", a)
 				} else {
 					clog.Infof("rebuilding %q", a)
-					if err := BuildCmd(ctx,
-						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
+					opts := []build.Option{
 						build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
 						build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
 						build.WithConfigFileRepositoryCommit(cfgpkg.Version),
@@ -74,7 +73,15 @@ func rebuild() *cobra.Command {
 						build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
 						build.WithRunner(r),
 						build.WithOutDir(outDir),
-						build.WithConfiguration(cfg, cfgpurl.Subpath)); err != nil {
+						build.WithConfiguration(cfg, cfgpurl.Subpath),
+					}
+					if sourceDir != "" {
+						opts = append(opts, build.WithSourceDir(sourceDir))
+					}
+
+					if err := BuildCmd(ctx,
+						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
+						opts...); err != nil {
 						return fmt.Errorf("failed to rebuild %q: %v", a, err)
 					}
 
@@ -97,6 +104,8 @@ func rebuild() *cobra.Command {
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
+	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory where source code is located")
+
 	return cmd
 }
 
@@ -107,9 +116,9 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 	}
 	defer f.Close()
 
-	var cfg *config.Configuration
-	var pkginfo *goapk.PackageInfo
-	var cfgpkg *spdx.Package
+	cfg := &config.Configuration{}
+	pkginfo := &goapk.PackageInfo{}
+	cfgpkg := &spdx.Package{}
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
@@ -120,13 +129,13 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			if cfg == nil {
+			if cfg.Package.Name == "" {
 				return nil, nil, nil, fmt.Errorf("failed to find .melange.yaml in %s", fn)
 			}
-			if pkginfo == nil {
+			if pkginfo.Name == "" {
 				return nil, nil, nil, fmt.Errorf("failed to find .PKGINFO in %s", fn)
 			}
-			if cfgpkg == nil {
+			if len(cfgpkg.ExternalRefs) == 0 {
 				return nil, nil, nil, fmt.Errorf("failed to find SBOM in %s", fn)
 			}
 			return nil, nil, nil, fmt.Errorf("failed to find necessary rebuild information in %s", fn)
@@ -163,15 +172,12 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 					cfgpkg = &p
 				}
 			}
-			if cfgpkg == nil {
-				return nil, nil, nil, errors.New("failed to find config package info in SBOM")
-			}
 
 		default:
 			continue
 		}
 
-		if cfg != nil && pkginfo != nil && cfgpkg != nil {
+		if cfg.Package.Name != "" && pkginfo.Name != "" && len(cfgpkg.ExternalRefs) > 0 {
 			return cfg, pkginfo, cfgpkg, nil
 		}
 	}

@@ -609,7 +609,7 @@ func (b *Build) populateCache(ctx context.Context) error {
 		return nil
 	}
 
-	cmm, err := cacheItemsForBuild(b.ConfigFile)
+	cmm, err := cacheItemsForBuild(b.Configuration)
 	if err != nil {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
@@ -843,9 +843,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.populateWorkspace(ctx, apkofs.DirFS(b.SourceDir)); err != nil {
-			return fmt.Errorf("unable to populate workspace: %w", err)
+		fs := apkofs.DirFS(b.SourceDir)
+		if fs != nil {
+			log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
+			if err := b.populateWorkspace(ctx, fs); err != nil {
+				return fmt.Errorf("unable to populate workspace: %w", err)
+			}
 		}
 	}
 

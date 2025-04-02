@@ -21,6 +21,7 @@ melange
 melange.rsa
 melange.rsa.pub
 packages/
+rebuilt-packages/
 .idea/
 bin/
 generated/

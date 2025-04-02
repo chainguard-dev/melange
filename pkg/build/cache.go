@@ -21,6 +21,7 @@ import (
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/renovate"
 )
 
@@ -62,12 +63,16 @@ func visitFetch(fetchNode *yaml.Node, cmm *CacheMembershipMap) error {
 
 // cacheItemsForBuild returns the relevant hashes to check against
 // a source cache for a given build as a CacheMembershipMap.
-func cacheItemsForBuild(configFile string) (CacheMembershipMap, error) {
+func cacheItemsForBuild(config *config.Configuration) (CacheMembershipMap, error) {
 	cmm := CacheMembershipMap{}
 
 	var rootNode yaml.Node
-	if err := loadConfig(configFile, &rootNode); err != nil {
-		return cmm, err
+	b, err := yaml.Marshal(config)
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(b, &rootNode); err != nil {
+		return nil, err
 	}
 
 	// Find our main pipeline YAML node.

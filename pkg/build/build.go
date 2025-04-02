@@ -609,7 +609,7 @@ func (b *Build) populateCache(ctx context.Context) error {
 		return nil
 	}
 
-	cmm, err := cacheItemsForBuild(b.ConfigFile)
+	cmm, err := cacheItemsForBuild(b.Configuration)
 	if err != nil {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}

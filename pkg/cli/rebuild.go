@@ -107,9 +107,9 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 	}
 	defer f.Close()
 
-	var cfg *config.Configuration
-	var pkginfo *goapk.PackageInfo
-	var cfgpkg *spdx.Package
+	cfg := &config.Configuration{}
+	pkginfo := &goapk.PackageInfo{}
+	cfgpkg := &spdx.Package{}
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
@@ -120,13 +120,13 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			if cfg == nil {
+			if cfg.Package.Name == "" {
 				return nil, nil, nil, fmt.Errorf("failed to find .melange.yaml in %s", fn)
 			}
-			if pkginfo == nil {
+			if pkginfo.Name == "" {
 				return nil, nil, nil, fmt.Errorf("failed to find .PKGINFO in %s", fn)
 			}
-			if cfgpkg == nil {
+			if len(cfgpkg.ExternalRefs) == 0 {
 				return nil, nil, nil, fmt.Errorf("failed to find SBOM in %s", fn)
 			}
 			return nil, nil, nil, fmt.Errorf("failed to find necessary rebuild information in %s", fn)
@@ -163,15 +163,12 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 					cfgpkg = &p
 				}
 			}
-			if cfgpkg == nil {
-				return nil, nil, nil, errors.New("failed to find config package info in SBOM")
-			}
 
 		default:
 			continue
 		}
 
-		if cfg != nil && pkginfo != nil && cfgpkg != nil {
+		if cfg.Package.Name != "" && pkginfo.Name != "" && len(cfgpkg.ExternalRefs) > 0 {
 			return cfg, pkginfo, cfgpkg, nil
 		}
 	}

@@ -237,7 +237,7 @@ func (t *Test) PopulateCache(ctx context.Context) error {
 		return nil
 	}
 
-	cmm, err := cacheItemsForBuild(t.ConfigFile)
+	cmm, err := cacheItemsForBuild(&t.Configuration)
 	if err != nil {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}

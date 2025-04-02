@@ -16,7 +16,6 @@ package build
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
@@ -28,16 +27,6 @@ import (
 // CacheMembershipMap describes a mapping where keys map to 'true'
 // if present.
 type CacheMembershipMap map[string]bool
-
-// loadConfig loads a configuration into a rootNode.
-func loadConfig(configFile string, rootNode *yaml.Node) error {
-	configData, err := os.ReadFile(configFile)
-	if err != nil {
-		return err
-	}
-
-	return yaml.Unmarshal(configData, rootNode)
-}
 
 // visitFetch processes a fetch node, updating the cache membership map.
 func visitFetch(fetchNode *yaml.Node, cmm *CacheMembershipMap) error {

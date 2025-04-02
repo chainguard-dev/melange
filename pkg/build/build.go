@@ -837,6 +837,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	if b.EmptyWorkspace {
 		log.Debugf("empty workspace requested")
+	} else if b.SourceDir == "" {
+		log.Debugf("no source dir provided")
 	} else {
 		// Prepare workspace directory
 		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {

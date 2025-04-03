@@ -23,8 +23,9 @@ environment:
       - https://packages.wolfi.dev/os
 
 pipeline:
-  - uses: go/install
+  - uses: go/build
     with:
-      package: .
+      packages: .
+      output: go-fips-bin
       # This is an approximation to the real go-fips toolchain
       experiments: boringcrypto

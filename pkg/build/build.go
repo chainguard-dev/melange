@@ -141,6 +141,7 @@ type Build struct {
 	DefaultTimeout        time.Duration
 	Auth                  map[string]options.Auth
 	IgnoreSignatures      bool
+	Secrets               []string
 
 	EnabledBuildOptions []string
 
@@ -1225,6 +1226,20 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 
 	for k, v := range b.Configuration.Environment.Environment {
 		cfg.Environment[k] = v
+	}
+
+	for _, secret := range b.Secrets {
+		// Split secret into key value pair
+		parsedSecret := strings.Split(secret, "=")
+
+		// Append to environment if successfully split
+		if len(parsedSecret) == 2 {
+			k := parsedSecret[0]
+			v := parsedSecret[1]
+			cfg.Environment[k] = v
+		} else {
+			log.Errorf("could not parse secret: %s", parsedSecret)
+		}
 	}
 
 	return &cfg

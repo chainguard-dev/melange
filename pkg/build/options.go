@@ -422,3 +422,11 @@ func WithIgnoreSignatures(ignore bool) Option {
 		return nil
 	}
 }
+
+// WithSecrets specifies secrets that are appended to the build environment.
+func WithSecrets(secrets []string) Option {
+	return func(b *Build) error {
+		b.Secrets = secrets
+		return nil
+	}
+}

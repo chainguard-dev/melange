@@ -28,7 +28,7 @@ import (
 )
 
 func rebuild() *cobra.Command {
-	var runner, outDir, sourceDir string
+	var runner, outDir, sourceDir, signingKey string
 	var diff bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
@@ -74,6 +74,7 @@ func rebuild() *cobra.Command {
 						build.WithRunner(r),
 						build.WithOutDir(outDir),
 						build.WithConfiguration(cfg, cfgpurl.Subpath),
+						build.WithSigningKey(signingKey),
 					}
 					if sourceDir != "" {
 						opts = append(opts, build.WithSourceDir(sourceDir))
@@ -105,7 +106,7 @@ func rebuild() *cobra.Command {
 	cmd.Flags().BoolVar(&diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory where source code is located")
-
+	cmd.Flags().StringVar(&signingKey, "signing-key", "", "path to the signing key to use for signing the rebuilt packages")
 	return cmd
 }
 

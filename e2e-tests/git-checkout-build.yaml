@@ -262,7 +262,7 @@ pipeline:
       if [[ $runner_user == $melange_user ]]; then
         # Ownership of existing files match the ownership of files created within the runner
         # (i.e. by the git-checkout pipeline tar --extract command).
-        expected=48
+        expected=49
       else
         # Ownership of existing files is not changed.
         expected=43

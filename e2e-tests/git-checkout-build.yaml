@@ -206,3 +206,68 @@ pipeline:
       [ "$hash" != "$expected_hash" ]
       cd ..
       rm -R cherry-pick-test
+
+  # When ownership of files created inside and outside of the runner container do not
+  # match, if mode is restrictive on files like 0700 on the Melange workspace, if the git-checkout
+  # pipeline changes ownership on them, being that it runs inside the runner container, subsequent
+  # filesystem operations run outside of the runner fail because of missing permissions.
+  # This happens specifically with tar --extract without preserving ownership of existing files,
+  # like '.', which in case of the default input and standard usage of the pipeline, is the
+  # workspace directory.
+  # This results in subsequent operations like xattrs restore to fail as they are run outside of
+  # the runner container.
+  #
+  # Bubblewrap runner:
+  #   Since the user namespace is unshared and that the runner uid is mapped to the
+  #   uid of the user who runs Melange, ownership always match.
+  #   - Melange run by root -> runner user: root.
+  #     Owner of files created outside of the runner:
+  #       - host: root
+  #       - runner: root
+  #     Owner of files creted inside the runner:
+  #       - host: root
+  #       - runner: root
+  #   - Melange run by non-root -> runner user: build (1000 mapped to non-root).
+  #     Owner of files created outside of the runner:
+  #       - host: non-root
+  #       - runner: build (1000 -> host's non-root)
+  #     Owner of files creted inside the runner:
+  #       - host: non-root
+  #       - runner: build (1000 -> host's non-root)
+  #
+  # Docker runner:
+  #   Since the user namespace is shared, ownership between files created inside and
+  #   outside the runner, match only when the user who runs Melange is root.
+  #   - Melange run by root -> runner user: root.
+  #     Owner of files created outside of the runner:
+  #       - host: root
+  #       - runner: root
+  #     Owner of files creted inside the runner:
+  #       - host: root
+  #       - runner: root
+  #   - Melange run by non-root -> runner user: root.
+  #     Owner of files created outside of the runner:
+  #       - host: non-root
+  #       - runner: non-root
+  #     Owner of files creted inside the runner:
+  #       - host: root
+  #       - runner: root
+  #
+  - name: "check ownership of existing files"
+    runs: |
+      set -u
+      runner_user=$(id -u)
+      melange_user=$(stat -c "%u" .)
+      expected=""
+      if [[ $runner_user == $melange_user ]]; then
+        # Ownership of existing files match the ownership of files created within the runner
+        # (i.e. by the git-checkout pipeline tar --extract command).
+        expected=48
+      else
+        # Ownership of existing files is not changed.
+        expected=43
+      fi
+      found=$(find . -user $runner_user | wc -l)
+      [[ $found == $expected ]] || \
+        { echo "Expected $expected files owned by $runner_user, found $found"; exit 1; }
+

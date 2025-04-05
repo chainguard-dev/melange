@@ -253,21 +253,41 @@ pipeline:
   #       - host: root
   #       - runner: root
   #
+  # QEMU runner:
+  #   File ownership inside and outside of the runner VM always match.
+  #
   - name: "check ownership of existing files"
     runs: |
-      set -u
+      set -eu
       runner_user=$(id -u)
       melange_user=$(stat -c "%u" .)
-      expected=""
+      expected_runner=""
+      expected_melange=""
       if [[ $runner_user == $melange_user ]]; then
         # Ownership of existing files match the ownership of files created within the runner
         # (i.e. by the git-checkout pipeline tar --extract command).
-        expected=49
+        expected_runner=48
+        expected_melange=2
       else
         # Ownership of existing files is not changed.
-        expected=43
+        expected_runner=42
+        expected_melange=6
       fi
-      found=$(find . -user $runner_user | wc -l)
-      [[ $found == $expected ]] || \
-        { echo "Expected $expected files owned by $runner_user, found $found"; exit 1; }
+      exclude_args="! -regex ^\.\/\.ssh.*$ ! -regex ^./.gitconfig$"
+      found_runner=$(find . -user $runner_user $exclude_args | wc -l)
+      mismatch=""
+      if [[ $found_runner != $expected_runner ]]; then
+        echo "Expected $expected_runner files owned by $runner_user, found $found_runner"
+        find . -user $runner_user $exclude_args
+        mismatch=true
+      fi
+      if [[ $melange_user != $runner_user ]]; then
+        found_melange=$(find . -user $melange_user $exclude_args | wc -l)
+        if [[ $found_runner != $expected_runner || $found_melange != $expected_melange ]]; then
+          echo "Expected $expected_melange files owned by $melange_user, found $found_melange"
+          find . -user $melange_user $exclude_args
+          mismatch=true
+        fi
+      fi
+      [[ $mismatch != "" ]] && exit 1
 

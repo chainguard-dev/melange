@@ -1200,7 +1200,8 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		Mounts:       mounts,
 		Capabilities: caps,
 		Environment: map[string]string{
-			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
+			"SOURCE_DATE_EPOCH":          fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
+			"CHAINGUARD_LIBRARIES_TOKEN": os.Getenv("CHAINGUARD_LIBRARIES_TOKEN"),
 		},
 		WorkspaceDir: b.WorkspaceDir,
 		Timeout:      b.Configuration.Package.Timeout,

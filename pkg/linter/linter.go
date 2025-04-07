@@ -794,7 +794,7 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 		// without special casing it with the package name.
 		if path == "sbin" || path == "bin" || path == "usr/sbin" {
 			if d.IsDir() || d.Type().IsRegular() {
-				return fmt.Errorf("package contains non-symlink file at /sbin or /bin in violation of usrmerge")
+				return fmt.Errorf("package contains non-symlink file at /sbin, /bin or /usr/sbin in violation of usrmerge")
 			} else {
 				return nil
 			}

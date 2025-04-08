@@ -971,6 +971,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
+	for _, c := range b.Configuration.Package.Capabilities {
+		for _, a := range c.Add {
+			_ = a
+			//if err := b.WorkspaceDirFS.SetXattr(c.Path attr, data); err != nil {
+			//	log.Warnf("failed to set capability %q on %s: %v\n", cc, path, err)
+			//}
+		}
+	}
+
 	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}

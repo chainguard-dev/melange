@@ -971,12 +971,17 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	for _, c := range b.Configuration.Package.Capabilities {
-		for _, a := range c.Add {
-			_ = a
-			//if err := b.WorkspaceDirFS.SetXattr(c.Path attr, data); err != nil {
-			//	log.Warnf("failed to set capability %q on %s: %v\n", cc, path, err)
-			//}
+	// For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
+	// For example:
+	// setcap:
+	//   - path: /usr/bin/scary
+	//     add:
+	//       cap_sys_admin: "+ep"
+	for _, c := range b.Configuration.Package.SetCap {
+		for attr, data := range c.Add {
+			if err := b.WorkspaceDirFS.SetXattr(c.Path, attr, []byte(data)); err != nil {
+				log.Warnf("failed to set capability %q on %s: %v\n", attr, c.Path, err)
+			}
 		}
 	}
 

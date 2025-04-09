@@ -127,7 +127,7 @@ type Package struct {
 	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
 
 	// Capabilities to set after the pipeline completes.
-	Capabilities []Capability `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -698,12 +698,12 @@ type Subpackage struct {
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 	// Capabilities to set after the pipeline completes.
-	Capabilities []Capability `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 }
 
 type Capability struct {
-	Path string   `json:"path,omitempty" yaml:"path,omitempty"`
-	Add  []string `json:"add,omitempty" yaml:"add,omitempty"`
+	Path string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Add  map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
 }
 
 type Input struct {
@@ -1638,7 +1638,7 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
-	if err := validateCapabilities(cfg.Package.Capabilities); err != nil {
+	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 
@@ -1667,7 +1667,7 @@ func (cfg Configuration) validate(ctx context.Context) error {
 		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
-		if err := validateCapabilities(sp.Capabilities); err != nil {
+		if err := validateCapabilities(sp.SetCap); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1818,14 +1818,20 @@ var validCapabilities = map[string]struct{}{
 	"cap_net_admin":        {},
 }
 
-func validateCapabilities(caps []Capability) error {
+func validateCapabilities(setcap []Capability) error {
 	var errs []error
-	for _, c := range caps {
-		for _, a := range c.Add {
-			if _, ok := validCapabilities[a]; !ok {
-				errs = append(errs, fmt.Errorf("invalid capability %q for path %q", a, c.Path))
+
+	for _, cap := range setcap {
+		for add := range cap.Add {
+			if _, ok := validCapabilities[add]; !ok {
+				errs = append(errs, fmt.Errorf("invalid capability %q for path %q", add, cap.Path))
 			}
 		}
 	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
 	return errors.Join(errs...)
 }

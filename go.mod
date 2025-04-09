@@ -18,6 +18,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.4-0.20250225234217-098045d5e61f
 	github.com/google/go-github/v54 v54.0.0
+	github.com/google/licenseclassifier/v2 v2.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/invopop/jsonschema v0.13.0
 	github.com/joho/godotenv v1.5.1
@@ -55,7 +56,6 @@ require (
 )
 
 require (
-	github.com/google/licenseclassifier/v2 v2.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect

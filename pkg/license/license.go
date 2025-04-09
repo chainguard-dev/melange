@@ -145,7 +145,6 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 
 	var licenseFiles []LicenseFile
 	var ignore bool
-
 	err := fs.WalkDir(fsys, ".", func(filePath string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -246,7 +245,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 			if l.Confidence < 0.9 {
 				s = " ignored"
 			}
-			log.Infof("  %s: %s (%f%s)", l.Source, l.Name, l.Confidence, s)
+			log.Infof("  %s: %s (%f%s) (%s)", l.Source, l.Name, l.Confidence, s, l.Type)
 
 			if s == "" {
 				detectedLicenses = append(detectedLicenses, l)

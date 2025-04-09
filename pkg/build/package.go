@@ -38,8 +38,8 @@ import (
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
+	"chainguard.dev/melange/pkg/tarball"
 
-	"chainguard.dev/apko/pkg/apk/tarball"
 	"github.com/chainguard-dev/clog"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"

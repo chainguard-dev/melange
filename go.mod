@@ -55,6 +55,13 @@ require (
 )
 
 require (
+	github.com/google/licenseclassifier/v2 v2.0.0 // indirect
+	go.opencensus.io v0.24.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
+	k8s.io/klog/v2 v2.130.1 // indirect
+)
+
+require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.1
 )
@@ -129,6 +136,7 @@ require (
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	github.com/google/go-licenses/v2 v2.0.0-alpha.1
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect

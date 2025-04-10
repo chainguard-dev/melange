@@ -822,7 +822,10 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 			return nil
 		}
 
-		if !strings.HasPrefix(path, "usr/bin/") && !strings.HasPrefix(path, "bin/") {
+		if !strings.HasPrefix(path, "usr/bin/") &&
+			!strings.HasPrefix(path, "usr/local/bin/") &&
+			!strings.HasPrefix(path, "usr/local/sbin/") &&
+			!strings.HasPrefix(path, "usr/sbin/") {
 			return nil
 		}
 

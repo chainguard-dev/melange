@@ -70,6 +70,7 @@ jobs:
           - perl-yaml-syck
           - ncurses
           - fping
+          - subversion
           # TODO: https://github.com/wolfi-dev/os/issues/26442
           #- xmlto
 

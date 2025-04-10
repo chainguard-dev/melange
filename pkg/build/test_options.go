@@ -134,15 +134,6 @@ func WithTestExtraRepos(extraRepos []string) TestOption {
 	}
 }
 
-// WithTestBinShOverlay sets a filename to copy from when installing /bin/sh
-// into a test environment.
-func WithTestBinShOverlay(binShOverlay string) TestOption {
-	return func(t *Test) error {
-		t.BinShOverlay = binShOverlay
-		return nil
-	}
-}
-
 // WithTestRunner specifies what runner to use to wrap
 // the test environment.
 func WithTestRunner(runner container.Runner) TestOption {

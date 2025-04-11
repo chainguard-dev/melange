@@ -126,6 +126,9 @@ type Package struct {
 	// records, if known.
 	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
 
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
+
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	// Optional: Resources to allocate to the build.
@@ -694,6 +697,13 @@ type Subpackage struct {
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
+}
+
+type Capability struct {
+	Path string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Add  map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
 }
 
 type Input struct {
@@ -1628,6 +1638,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
+	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
 
 	saw := map[string]int{cfg.Package.Name: -1}
 	for i, sp := range cfg.Subpackages {
@@ -1652,6 +1665,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
 		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
+			return ErrInvalidConfiguration{Problem: err}
+		}
+		if err := validateCapabilities(sp.SetCap); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1792,4 +1808,30 @@ func (dep *Dependencies) Summarize(ctx context.Context) {
 			log.Info("    " + dep)
 		}
 	}
+}
+
+var validCapabilities = map[string]struct{}{
+	"cap_net_bind_service": {},
+	"cap_sys_admin":        {},
+	"cap_ipc_lock":         {},
+	"cap_net_raw":          {},
+	"cap_net_admin":        {},
+}
+
+func validateCapabilities(setcap []Capability) error {
+	var errs []error
+
+	for _, cap := range setcap {
+		for add := range cap.Add {
+			if _, ok := validCapabilities[add]; !ok {
+				errs = append(errs, fmt.Errorf("invalid capability %q for path %q", add, cap.Path))
+			}
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errors.Join(errs...)
 }

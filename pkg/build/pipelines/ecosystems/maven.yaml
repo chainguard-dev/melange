@@ -1,0 +1,69 @@
+name: Configure maven to fetch Chainguard Libraries dependencies.
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  repository:
+    description: Maven repository to use
+    default: "https://libraries.cgr.dev/java-all/"
+
+pipeline:
+  - name: Setup Maven credentials
+    runs: |
+      set -euo pipefail
+
+      # If libraries token exists in melange's cache, use that.
+      # Fetch the token with: make lib-token
+      if [ ! -f /var/cache/melange/.libraries_token.txt ]; then
+        echo "Failed to find libraries token. Please generate with: make lib-token"
+        exit 1
+      fi
+
+      echo "Removing local maven repository, if exists..."
+      rm -rf /root/.m2 && mkdir -p /root/.m2
+
+      echo "Creating maven settings manifest..."
+      cat > /root/.m2/settings.xml <<EOF
+      <settings>
+        <mirrors>
+          <mirror>
+            <id>ecosystems</id>
+            <mirrorOf>*</mirrorOf>
+            <url>${{inputs.repository}}</url>
+          </mirror>
+        </mirrors>
+        <activeProfiles>
+          <activeProfile>ecosystems</activeProfile>
+        </activeProfiles>
+        <profiles>
+          <profile>
+            <id>ecosystems</id>
+            <repositories>
+              <repository>
+                <id>central</id>
+                <url>http://central</url>
+                <releases><enabled>true</enabled></releases>
+                <snapshots><enabled>true</enabled></snapshots>
+              </repository>
+            </repositories>
+            <pluginRepositories>
+              <pluginRepository>
+                <id>central</id>
+                <url>http://central</url>
+                <releases><enabled>true</enabled></releases>
+                <snapshots><enabled>true</enabled></snapshots>
+              </pluginRepository>
+            </pluginRepositories>
+          </profile>
+        </profiles>
+        <servers>
+          <server>
+            <id>ecosystems</id>
+            <username></username>
+            <password>$(cat /var/cache/melange/.libraries_token.txt)</password>
+          </server>
+        </servers>
+      </settings>
+      EOF

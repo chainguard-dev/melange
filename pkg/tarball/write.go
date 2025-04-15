@@ -30,7 +30,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	apkfs "chainguard.dev/apko/pkg/apk/fs"
-	"chainguard.dev/apko/pkg/apk/passwd"
+	"chainguard.dev/apko/pkg/passwd"
 )
 
 const xattrTarPAXRecordsPrefix = "SCHILY.xattr."

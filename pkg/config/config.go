@@ -87,6 +87,8 @@ type PackageOption struct {
 	NoDepends bool `json:"no-depends" yaml:"no-depends"`
 	// Optional: Mark this package as not providing any executables
 	NoCommands bool `json:"no-commands" yaml:"no-commands"`
+	// Optional: Don't generate versioned depends for shared libraries
+	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps" yaml:"no-versioned-shlib-deps"`
 }
 
 type Checks struct {

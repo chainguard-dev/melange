@@ -22,8 +22,7 @@ import (
 	"io"
 	"os"
 
-	sign "chainguard.dev/apko/pkg/apk/signature"
-	pkgsign "chainguard.dev/melange/pkg/sign"
+	"chainguard.dev/melange/pkg/sign"
 	"github.com/chainguard-dev/clog"
 	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
@@ -190,5 +189,5 @@ func (o signOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 
 func (o signOpts) run(ctx context.Context, pkg string) error {
 	clog.FromContext(ctx).Infof("Processing apk %s", pkg)
-	return pkgsign.APK(ctx, pkg, o.Key)
+	return sign.APK(ctx, pkg, o.Key)
 }

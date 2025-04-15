@@ -296,6 +296,12 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
 	log := clog.FromContext(ctx)
 
+	if hdl.Options().NoVersionedShlibDeps {
+		// This package does not care about versioned shlib
+		// depends.
+		return "", nil
+	}
+
 	// We don't version-depend or provide ld-linux-*.so, otherwise
 	// we'd be required to rebuild all packages that link against
 	// glibc whenever the latter is updated.

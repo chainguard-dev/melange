@@ -1385,9 +1385,8 @@ func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMo
 			return err
 		}
 
-		// If the file is within the melange-out directory and has [any] modified bits, store the relative path and mode bits
-		if strings.Contains(path, melangeOutputDirName) &&
-			(mode&fs.ModeSetuid != 0 || mode&fs.ModeSetgid != 0 || mode&fs.ModeSticky != 0) {
+		// If the path is within the melange-out directory, store the relative path and mode bits
+		if strings.Contains(path, melangeOutputDirName) {
 			modes[relPath] = mode
 		}
 

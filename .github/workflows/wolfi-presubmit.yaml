@@ -151,14 +151,6 @@ jobs:
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
 
-      - name: Run tests to verify mode bits with bubblewrap runner
-        if: matrix.runner == 'bubblewrap' && matrix.package == 'sudo'
-        run: |
-          for pkg in packages/x86_64/*.apk; do
-            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/
-          done
-          ls -hal packages/x86_64/usr/bin/sudo
-
       - name: Check package ${{ matrix.package }} xattrs for QEMU-built package
         if: matrix.runner == 'qemu' && matrix.package == 'fping'
         run: |
@@ -167,8 +159,8 @@ jobs:
           done
           getcap packages/x86_64/usr/sbin/fping
 
-      - name: Check package ${{ matrix.package }} mode bits for QEMU-built package
-        if: matrix.runner == 'qemu' && matrix.package == 'sudo'
+      - name: Check package ${{ matrix.package }} for mode bits
+        if: matrix.package == 'sudo'
         run: |
           for pkg in packages/x86_64/*.apk; do
             sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/

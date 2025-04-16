@@ -952,6 +952,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
+	// Run finalize pipelines
+	if !b.isBuildLess() && len(b.Configuration.Finalize) > 0 {
+		log.Infof("running pipelines for %s", pkg.Name)
+		if err := pr.runPipelines(ctx, b.Configuration.Finalize); err != nil {
+			return fmt.Errorf("unable to run finalize pipelines for %s: %v", pkg.Name, err)
+		}
+	}
+
 	// Store xattrs for use after the workspace is loaded into memory
 	xattrs, err := storeXattrs(b.WorkspaceDir)
 	if err != nil {

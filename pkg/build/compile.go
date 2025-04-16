@@ -336,7 +336,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 				return fmt.Errorf("mutating needs: %w", err)
 			}
 		}
-		for k, _ := range pipeline.Needs.Environment {
+		for k := range pipeline.Needs.Environment {
 			pipeline.Needs.Environment[k], err = util.MutateStringFromMap(mutated, pipeline.Needs.Environment[k])
 			if err != nil {
 				return fmt.Errorf("mutating needs: %w", err)

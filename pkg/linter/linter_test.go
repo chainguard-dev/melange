@@ -212,6 +212,14 @@ func TestLinters(t *testing.T) {
 		linter:  "usrmerge",
 		pass:    false,
 	}, {
+		dirFunc: mkfile(t, "lib64/ld-linux.so"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib64/ld.so"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/sbin")), 0700))

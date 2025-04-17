@@ -330,75 +330,87 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
 	defer span.End()
 
-	extractDir, err := os.MkdirTemp("", "melange-extract-*")
+	guestDir, err := os.MkdirTemp("", "melange-guest-*")
 	if err != nil {
-		return "", fmt.Errorf("failed to create extract dir: %w", err)
+		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
-	b.guestDir = extractDir
+	b.guestDir = guestDir
 
 	rc, err := layer.Uncompressed()
 	if err != nil {
-		return "", fmt.Errorf("failed to read layer: %w", err)
+		os.RemoveAll(guestDir)
+		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
 	}
 	defer rc.Close()
 
 	tr := tar.NewReader(rc)
 	for {
-		header, err := tr.Next()
+		hdr, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return "", fmt.Errorf("tar read error: %w", err)
+			os.RemoveAll(guestDir)
+			return ref, fmt.Errorf("tar read error: %w", err)
 		}
 
-		target := filepath.Join(extractDir, header.Name)
+		fullname := filepath.Join(guestDir, hdr.Name)
 
-		switch header.Typeflag {
+		if err := os.MkdirAll(filepath.Dir(fullname), 0755); err != nil {
+			os.RemoveAll(guestDir)
+			return ref, fmt.Errorf("failed to create directory %s: %w", filepath.Dir(fullname), err)
+		}
+
+		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0755); err != nil {
-				return "", fmt.Errorf("failed to create directory: %w", err)
+			if err := os.MkdirAll(fullname, hdr.FileInfo().Mode().Perm()); err != nil {
+				os.RemoveAll(guestDir)
+				return ref, fmt.Errorf("failed to create directory %s: %w", fullname, err)
 			}
+
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return "", fmt.Errorf("failed to create directory: %w", err)
-			}
-
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
+			f, err := os.OpenFile(fullname, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode().Perm())
 			if err != nil {
-				return "", fmt.Errorf("failed to create file: %w", err)
+				os.RemoveAll(guestDir)
+				return ref, fmt.Errorf("failed to create file %s: %w", fullname, err)
 			}
-
 			if _, err := io.Copy(f, tr); err != nil {
 				f.Close()
-				return "", fmt.Errorf("failed to write file: %w", err)
+				os.RemoveAll(guestDir)
+				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
 			}
 			f.Close()
 
-			for k, v := range header.PAXRecords {
+			for k, v := range hdr.PAXRecords {
 				if !strings.HasPrefix(k, "SCHILY.xattr.") {
 					continue
 				}
 				attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
-				if err := unix.Setxattr(target, attrName, []byte(v), 0); err != nil {
-					return "", fmt.Errorf("unable to set xattr %s on %s: %w", attrName, header.Name, err)
+				if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
+					os.RemoveAll(guestDir)
+					return ref, fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
 				}
 			}
+
 		case tar.TypeSymlink:
-			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return "", fmt.Errorf("failed to create directory: %w", err)
+			if err := os.Symlink(hdr.Linkname, fullname); err != nil {
+				os.RemoveAll(guestDir)
+				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)
 			}
-			if err := os.Symlink(header.Linkname, target); err != nil {
-				return "", fmt.Errorf("failed to create symlink: %w", err)
-			}
+
 		case tar.TypeLink:
-			if err := os.Link(filepath.Join(extractDir, header.Linkname), target); err != nil {
-				return "", fmt.Errorf("failed to create hard link: %w", err)
+			linkTarget := filepath.Join(guestDir, hdr.Linkname)
+			if err := os.Link(linkTarget, fullname); err != nil {
+				os.RemoveAll(guestDir)
+				return ref, fmt.Errorf("failed to create hardlink %s -> %s: %w", fullname, linkTarget, err)
 			}
+
+		default:
+			continue
 		}
 	}
 
-	return extractDir, nil
+	return guestDir, nil
 }
 func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	clog.FromContext(ctx).Debugf("removing image path %s", ref)

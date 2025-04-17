@@ -63,6 +63,10 @@ func (bw *bubblewrap) Name() string {
 
 // Run runs a Bubblewrap task given a Config and command string.
 func (bw *bubblewrap) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
+	if err := bw.setupEnvironment(ctx, cfg); err != nil {
+		return fmt.Errorf("failed to set up container environment: %w", err)
+	}
+
 	execCmd := bw.cmd(ctx, cfg, false, envOverride, args...)
 
 	log := clog.FromContext(ctx)
@@ -100,20 +104,17 @@ func (bw *bubblewrap) testUnshareUser(ctx context.Context) error {
 func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverride map[string]string, args ...string) *exec.Cmd {
 	baseargs := []string{}
 
-	// always be sure to mount the / first!
-	baseargs = append(baseargs, "--bind", cfg.ImgRef, "/")
+	baseargs = append(baseargs, "--unshare-pid", "--die-with-parent")
 
-	for _, bind := range cfg.Mounts {
-		baseargs = append(baseargs, "--bind", bind.Source, bind.Destination)
-	}
-	// add the ref of the directory
+	baseargs = append(baseargs, "--tmpfs", "/")
 
-	baseargs = append(baseargs, "--unshare-pid", "--die-with-parent",
-		"--dev", "/dev",
-		"--proc", "/proc",
-		"--ro-bind", "/sys", "/sys",
-		"--chdir", runnerWorkdir,
-		"--clearenv")
+	baseargs = append(baseargs, "--dev", "/dev")
+	baseargs = append(baseargs, "--proc", "/proc")
+	baseargs = append(baseargs, "--ro-bind", "/sys", "/sys")
+
+	baseargs = append(baseargs, "--dir", runnerWorkdir)
+	baseargs = append(baseargs, "--chdir", runnerWorkdir)
+	baseargs = append(baseargs, "--clearenv")
 
 	// If we need to run as an user, we run as that user.
 	if cfg.RunAs != "" {
@@ -224,10 +225,100 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
+func (bw *bubblewrap) setupEnvironment(ctx context.Context, cfg *Config) error {
+	tempDir, err := os.MkdirTemp("", "bubblewrap-extract-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	if bw.remove {
+		defer os.RemoveAll(tempDir)
+	}
+
+	if err := extractImage(ctx, cfg.ImgRef, tempDir); err != nil {
+		return fmt.Errorf("failed to extract image: %w", err)
+	}
+
+	return nil
+}
+
 // WorkspaceTar implements Runner
-// This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
 func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	return nil, nil
+	ctx, span := otel.Tracer("melange").Start(ctx, "bubblewrap.WorkspaceTar")
+	defer span.End()
+
+	log := clog.FromContext(ctx)
+
+	outFile, err := os.CreateTemp(cfg.WorkspaceDir, "melange-out.tar.gz")
+	if err != nil {
+		return nil, err
+	}
+	defer outFile.Close()
+
+	log.Infof("creating workspace tarball")
+
+	execCmd := exec.CommandContext(ctx, "tar", "cvpzf", outFile.Name(),
+		"--xattrs", "--acls", "-C", runnerWorkdir, "melange-out")
+
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
+	defer stdout.Close()
+	defer stderr.Close()
+
+	execCmd.Stdout = stdout
+	execCmd.Stderr = stderr
+
+	if err := execCmd.Run(); err != nil {
+		os.Remove(outFile.Name())
+		return nil, fmt.Errorf("failed to create tarball: %w", err)
+	}
+
+	return os.Open(outFile.Name())
+}
+
+func extractImage(ctx context.Context, imagePath, destDir string) error {
+	log := clog.FromContext(ctx)
+	log.Debugf("Extracting image %s to %s", imagePath, destDir)
+
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return fmt.Errorf("failed to open image: %w", err)
+	}
+	defer f.Close()
+
+	tr := tar.NewReader(f)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("tar read error: %w", err)
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		destPath := filepath.Join(destDir, header.Name)
+
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+
+		outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+
+		if _, err := io.Copy(outFile, tr); err != nil {
+			outFile.Close()
+			return fmt.Errorf("failed to write file: %w", err)
+		}
+		outFile.Close()
+	}
+
+	return nil
 }
 
 type bubblewrapOCILoader struct {
@@ -239,67 +330,76 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
 	defer span.End()
 
-	// bubblewrap does not have the idea of container images or layers or such, just
-	// straight out chroot, so we create the guest dir
-	guestDir, err := os.MkdirTemp("", "melange-guest-*")
+	extractDir, err := os.MkdirTemp("", "melange-extract-*")
 	if err != nil {
-		return ref, fmt.Errorf("failed to create guest dir: %w", err)
+		return "", fmt.Errorf("failed to create extract dir: %w", err)
 	}
-	b.guestDir = guestDir
+	b.guestDir = extractDir
+
 	rc, err := layer.Uncompressed()
 	if err != nil {
-		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
+		return "", fmt.Errorf("failed to read layer: %w", err)
 	}
 	defer rc.Close()
+
 	tr := tar.NewReader(rc)
 	for {
-		hdr, err := tr.Next()
-		if err != nil {
+		header, err := tr.Next()
+		if err == io.EOF {
 			break
 		}
-		fullname := filepath.Join(guestDir, hdr.Name)
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(fullname, hdr.FileInfo().Mode().Perm()); err != nil {
-				return ref, fmt.Errorf("failed to create directory %s: %w", fullname, err)
-			}
-			continue
-		case tar.TypeReg:
-			f, err := os.OpenFile(fullname, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode().Perm())
-			if err != nil {
-				return ref, fmt.Errorf("failed to create file %s: %w", fullname, err)
-			}
-			if _, err := io.Copy(f, tr); err != nil {
-				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
-			}
-			f.Close()
-		case tar.TypeSymlink:
-			if err := os.Symlink(hdr.Linkname, filepath.Join(guestDir, hdr.Name)); err != nil {
-				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)
-			}
-		case tar.TypeLink:
-			if err := os.Link(filepath.Join(guestDir, hdr.Linkname), filepath.Join(guestDir, hdr.Name)); err != nil {
-				return ref, fmt.Errorf("failed to create hardlink %s: %w", fullname, err)
-			}
-		default:
-			// TODO: Is this correct? We are loading these into the directory, so character devices and such
-			// do not really matter to us, but maybe they should?
-			continue
+		if err != nil {
+			return "", fmt.Errorf("tar read error: %w", err)
 		}
 
-		for k, v := range hdr.PAXRecords {
-			if !strings.HasPrefix(k, "SCHILY.xattr.") {
-				continue
+		target := filepath.Join(extractDir, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return "", fmt.Errorf("failed to create directory: %w", err)
 			}
-			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
-			if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
-				return ref, fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return "", fmt.Errorf("failed to create directory: %w", err)
+			}
+
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
+			if err != nil {
+				return "", fmt.Errorf("failed to create file: %w", err)
+			}
+
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
+				return "", fmt.Errorf("failed to write file: %w", err)
+			}
+			f.Close()
+
+			for k, v := range header.PAXRecords {
+				if !strings.HasPrefix(k, "SCHILY.xattr.") {
+					continue
+				}
+				attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+				if err := unix.Setxattr(target, attrName, []byte(v), 0); err != nil {
+					return "", fmt.Errorf("unable to set xattr %s on %s: %w", attrName, header.Name, err)
+				}
+			}
+		case tar.TypeSymlink:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return "", fmt.Errorf("failed to create directory: %w", err)
+			}
+			if err := os.Symlink(header.Linkname, target); err != nil {
+				return "", fmt.Errorf("failed to create symlink: %w", err)
+			}
+		case tar.TypeLink:
+			if err := os.Link(filepath.Join(extractDir, header.Linkname), target); err != nil {
+				return "", fmt.Errorf("failed to create hard link: %w", err)
 			}
 		}
 	}
-	return guestDir, nil
-}
 
+	return extractDir, nil
+}
 func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	clog.FromContext(ctx).Debugf("removing image path %s", ref)
 	if b.remove {

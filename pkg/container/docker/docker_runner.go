@@ -15,10 +15,13 @@
 package docker
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -33,7 +36,6 @@ import (
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -82,22 +84,14 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.StartPod")
 	defer span.End()
 
-	mounts := []mount.Mount{}
-	for _, bind := range cfg.Mounts {
-		// We skip mounting in some files that we don't need in this mode
-		if bind.Source == mcontainer.DefaultResolvConfPath {
-			continue
-		}
-
-		mounts = append(mounts, mount.Mount{
-			Type:   mount.TypeBind,
-			Source: bind.Source,
-			Target: bind.Destination,
-		})
-	}
-
 	hostConfig := &container.HostConfig{
-		Mounts: mounts,
+		Tmpfs: map[string]string{
+			"/tmp":        "exec,mode=1777",
+			"/var/tmp":    "exec,mode=1777",
+			runnerWorkdir: "exec,mode=0755",
+			"/var/run":    "exec,mode=0755",
+			"/run":        "exec,mode=0755",
+		},
 	}
 	// Add process kernel capabilities to the container if configured.
 	if len(cfg.Capabilities.Add) > 0 {
@@ -134,7 +128,85 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	cfg.PodID = resp.ID
 	log.Debugf("pod %s started", cfg.PodID)
 
+	if cfg.WorkspaceDir != "" {
+		log.Infof("copying workspace to container")
+
+		tar, err := tarWorkspaceDir(cfg.WorkspaceDir)
+		if err != nil {
+			return fmt.Errorf("failed to create workspace tar: %w", err)
+		}
+		defer tar.Close()
+
+		if err := dk.cli.CopyToContainer(ctx, cfg.PodID, runnerWorkdir, tar, container.CopyToContainerOptions{
+			AllowOverwriteDirWithFile: true,
+		}); err != nil {
+			return fmt.Errorf("failed to copy workspace to container: %w", err)
+		}
+	}
+
 	return nil
+}
+
+func tarWorkspaceDir(dir string) (io.ReadCloser, error) {
+	r, w := io.Pipe()
+
+	go func() {
+		defer w.Close()
+
+		tw := tar.NewWriter(w)
+		defer tw.Close()
+
+		err := filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if path == dir {
+				return nil
+			}
+
+			fi, err := info.Info()
+			if err != nil {
+				return err
+			}
+			mode := fi.Mode()
+
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+
+			header, err := tar.FileInfoHeader(fi, "")
+			if err != nil {
+				return err
+			}
+			header.Name = relPath
+
+			if err := tw.WriteHeader(header); err != nil {
+				return err
+			}
+
+			if mode.IsRegular() {
+				file, err := os.Open(path)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+
+				if _, err := io.Copy(tw, file); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			w.CloseWithError(fmt.Errorf("tar creation error: %w", err))
+		}
+	}()
+
+	return r, nil
 }
 
 // TerminatePod terminates a pod for supporting a Docker task,
@@ -359,7 +431,65 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 // WorkspaceTar implements Runner
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
 func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config) (io.ReadCloser, error) {
-	return nil, nil
+	ctx, span := otel.Tracer("melange").Start(ctx, "docker.WorkspaceTar")
+	defer span.End()
+
+	log := clog.FromContext(ctx)
+
+	if cfg.PodID == "" {
+		return nil, fmt.Errorf("pod not running")
+	}
+
+	outFile, err := os.CreateTemp(cfg.WorkspaceDir, "melange-out.tar.gz")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary tarball file: %w", err)
+	}
+	defer outFile.Close()
+
+	log.Infof("fetching remote workspace")
+
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+		User:         cfg.RunAs,
+		Cmd:          []string{"sh", "-c", "cd /home/build && tar cvpzf - --xattrs --acls melange-out"},
+		WorkingDir:   runnerWorkdir,
+		Tty:          false,
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+	if err != nil {
+		os.Remove(outFile.Name())
+		return nil, fmt.Errorf("failed to create exec task to tar workspace: %w", err)
+	}
+
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
+		Tty: false,
+	})
+	if err != nil {
+		os.Remove(outFile.Name())
+		return nil, fmt.Errorf("failed to attach to exec task: %w", err)
+	}
+	defer attachResp.Close()
+
+	stderrBuf := new(bytes.Buffer)
+	_, err = stdcopy.StdCopy(outFile, stderrBuf, attachResp.Reader)
+	if err != nil {
+		os.Remove(outFile.Name())
+		return nil, fmt.Errorf("failed to copy tarball data: %w", err)
+	}
+
+	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	if err != nil {
+		os.Remove(outFile.Name())
+		return nil, fmt.Errorf("failed to get exit code from task: %w", err)
+	}
+
+	if inspectResp.ExitCode != 0 {
+		os.Remove(outFile.Name())
+		return nil, fmt.Errorf("tar task exited with code %d: %s",
+			inspectResp.ExitCode, stderrBuf.String())
+	}
+
+	return os.Open(outFile.Name())
 }
 
 type dockerLoader struct {

@@ -82,10 +82,14 @@ func TestCompileTest(t *testing.T) {
 					Contents: apko_types.ImageContents{
 						Packages: []string{"main-base"},
 					},
+					Environment: map[string]string{
+						"BAZ": "qux",
+					},
 				},
 				Pipeline: []config.Pipeline{{
 					Needs: &config.Needs{
-						Packages: []string{"main-need"},
+						Packages:    []string{"main-need"},
+						Environment: map[string]string{"FOO": "bar"},
 					},
 				}},
 			},
@@ -96,10 +100,14 @@ func TestCompileTest(t *testing.T) {
 						Contents: apko_types.ImageContents{
 							Packages: []string{"subpackage-base"},
 						},
+						Environment: map[string]string{
+							"BAZ": "qux",
+						},
 					},
 					Pipeline: []config.Pipeline{{
 						Needs: &config.Needs{
-							Packages: []string{"subpackage-need"},
+							Packages:    []string{"subpackage-need"},
+							Environment: map[string]string{"FOO": "bar"},
 						},
 					}},
 				},
@@ -114,10 +122,60 @@ func TestCompileTest(t *testing.T) {
 	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main", "main-base", "main-need"}; !slices.Equal(got, want) {
 		t.Errorf("main test packages: want %v, got %v", want, got)
 	}
+	if got, want := test.Configuration.Test.Environment.Environment, map[string]string{"FOO": "bar", "BAZ": "qux"}; !mapsEqual(got, want) {
+		t.Errorf("main test packages: want %v, got %v", want, got)
+	}
 
 	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage", "subpackage-base", "subpackage-need"}; !slices.Equal(got, want) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
 	}
+	if got, want := test.Configuration.Subpackages[0].Test.Environment.Environment, map[string]string{"FOO": "bar", "BAZ": "qux"}; !mapsEqual(got, want) {
+		t.Errorf("subpackage environment: want %v, got %v", want, got)
+	}
+}
+
+func TestCompileBuild(t *testing.T) {
+	build := &Build{
+		Configuration: &config.Configuration{
+			Environment: apko_types.ImageConfiguration{
+				Contents: apko_types.ImageContents{
+					Packages: []string{"main-base"},
+				},
+				Environment: map[string]string{
+					"BAZ": "qux",
+				},
+			},
+			Pipeline: []config.Pipeline{{
+				Needs: &config.Needs{
+					Packages:    []string{"main-need"},
+					Environment: map[string]string{"FOO": "bar"},
+				},
+			}},
+		},
+	}
+
+	if err := build.Compile(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got, want := build.Configuration.Environment.Contents.Packages, []string{"main-base", "main-need"}; !slices.Equal(got, want) {
+		t.Errorf("main build packages: want %v, got %v", want, got)
+	}
+	if got, want := build.Configuration.Environment.Environment, map[string]string{"FOO": "bar", "BAZ": "qux"}; !mapsEqual(got, want) {
+		t.Errorf("main build packages: want %v, got %v", want, got)
+	}
+}
+
+func mapsEqual[K comparable, V comparable](m1, m2 map[K]V) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+	for k, v := range m1 {
+		if v2, ok := m2[k]; !ok || v != v2 {
+			return false
+		}
+	}
+	return true
 }
 
 func Test_stripComments(t *testing.T) {

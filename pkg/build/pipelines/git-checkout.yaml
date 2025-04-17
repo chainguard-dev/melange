@@ -187,7 +187,7 @@ pipeline:
 
           vr cd "$workdir"
           msg "tar -c . | tar -C \"$dest_fullpath\" -x"
-          ( tar -c . ; echo $? > "$rcfile") | tar -C "$dest_fullpath" -x
+          ( tar -c . ; echo $? > "$rcfile") | tar -C "$dest_fullpath" -x --no-same-owner
           read rc < "$rcfile" || fail "failed to read rc file"
           [ $rc -eq 0 ] || fail "tar creation in $workdir failed"
 

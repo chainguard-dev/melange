@@ -163,10 +163,6 @@
           "type": "object",
           "description": "Optional: Deviations to the build"
         },
-        "enable-prerelease-tags": {
-          "type": "boolean",
-          "description": "Optional: Disables filtering of common pre-release tags"
-        },
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the main package."
@@ -1020,6 +1016,10 @@
         "schedule": {
           "$ref": "#/$defs/Schedule",
           "description": "Schedule defines the schedule for the update check to run"
+        },
+        "enable-prerelease-tags": {
+          "type": "boolean",
+          "description": "Optional: Disables filtering of common pre-release tags"
         }
       },
       "additionalProperties": false,

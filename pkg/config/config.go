@@ -749,8 +749,6 @@ type Configuration struct {
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
-	// Optional: Disables filtering of common pre-release tags
-	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
@@ -836,6 +834,8 @@ type Update struct {
 	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
 	// Schedule defines the schedule for the update check to run
 	Schedule *Schedule `json:"schedule,omitempty" yaml:"schedule,omitempty"`
+	// Optional: Disables filtering of common pre-release tags
+	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/

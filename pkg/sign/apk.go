@@ -18,17 +18,20 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"time"
 
 	"chainguard.dev/apko/pkg/apk/expandapk"
-	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/apko/pkg/apk/signature"
 )
 
 // APK() signs an APK file with the provided key. The existing APK file is
 // replaced with the signed APK file.
-func APK(ctx context.Context, apkPath string, keyPath string) error {
+func APK(_ context.Context, apkPath string, keyPath string) error {
 	f, err := os.Open(apkPath)
 	if err != nil {
 		return err
@@ -46,11 +49,9 @@ func APK(ctx context.Context, apkPath string, keyPath string) error {
 		cf, df = split[1], split[2]
 	}
 
-	pc := &build.PackageBuild{
-		Build: &build.Build{
-			SigningKey:        keyPath,
-			SigningPassphrase: "",
-		},
+	signer := KeyApkSigner{
+		KeyFile:       keyPath,
+		KeyPassphrase: "",
 	}
 
 	cdata, err := io.ReadAll(cf)
@@ -87,7 +88,7 @@ func APK(ctx context.Context, apkPath string, keyPath string) error {
 		return fmt.Errorf("unexpected file in control section: %s", hdr.Name)
 	}
 
-	sigData, err := build.EmitSignature(ctx, pc.Signer(), cdata, hdr.ModTime)
+	sigData, err := EmitSignature(signer, cdata, hdr.ModTime)
 	if err != nil {
 		return err
 	}
@@ -105,4 +106,69 @@ func APK(ctx context.Context, apkPath string, keyPath string) error {
 	}
 
 	return w.Close()
+}
+
+type ApkSigner interface {
+	Sign(controlData []byte) ([]byte, error)
+	SignatureName() string
+}
+
+func EmitSignature(signer ApkSigner, controlData []byte, sde time.Time) ([]byte, error) {
+	sig, err := signer.Sign(controlData)
+	if err != nil {
+		return nil, err
+	}
+
+	var sigbuf bytes.Buffer
+
+	zw := gzip.NewWriter(&sigbuf)
+	tw := tar.NewWriter(zw)
+
+	// The signature tarball only contains a single file
+	if err := tw.WriteHeader(&tar.Header{
+		Name:     signer.SignatureName(),
+		Typeflag: tar.TypeReg,
+		Size:     int64(len(sig)),
+		Mode:     int64(os.ModePerm),
+		Uid:      0,
+		Gid:      0,
+		Uname:    "root",
+		Gname:    "root",
+		ModTime:  sde,
+	}); err != nil {
+		return nil, err
+	}
+
+	if _, err := tw.Write(sig); err != nil {
+		return nil, err
+	}
+
+	// Don't Close(), we don't want to include the end-of-archive markers since this signature gets prepended to other tarballs
+	if err := tw.Flush(); err != nil {
+		return nil, err
+	}
+
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+
+	return sigbuf.Bytes(), nil
+}
+
+// Key base signature (normal) uses a SHA-1 hash on the control digest.
+type KeyApkSigner struct {
+	KeyFile       string
+	KeyPassphrase string
+}
+
+func (s KeyApkSigner) Sign(control []byte) ([]byte, error) {
+	controlDigest, err := HashData(control, crypto.SHA256)
+	if err != nil {
+		return nil, err
+	}
+	return signature.RSASignDigest(controlDigest, crypto.SHA256, s.KeyFile, s.KeyPassphrase)
+}
+
+func (s KeyApkSigner) SignatureName() string {
+	return fmt.Sprintf(".SIGN.RSA256.%s.pub", filepath.Base(s.KeyFile))
 }

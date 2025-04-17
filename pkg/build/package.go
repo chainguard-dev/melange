@@ -38,8 +38,9 @@ import (
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
+	"chainguard.dev/melange/pkg/sign"
+	"chainguard.dev/melange/pkg/tarball"
 
-	"chainguard.dev/apko/pkg/apk/tarball"
 	"github.com/chainguard-dev/clog"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
@@ -522,7 +523,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	combinedParts := []io.Reader{bytes.NewReader(controlSectionData), dataTarGz}
 
 	if pc.wantSignature() {
-		signatureData, err := EmitSignature(ctx, pc.Signer(), controlSectionData, pc.Build.SourceDateEpoch)
+		signatureData, err := sign.EmitSignature(pc.Signer(), controlSectionData, pc.Build.SourceDateEpoch)
 		if err != nil {
 			return fmt.Errorf("emitting signature: %w", err)
 		}
@@ -555,8 +556,8 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	return nil
 }
 
-func (pc *PackageBuild) Signer() ApkSigner {
-	return &KeyApkSigner{
+func (pc *PackageBuild) Signer() sign.ApkSigner {
+	return &sign.KeyApkSigner{
 		KeyFile:       pc.Build.SigningKey,
 		KeyPassphrase: pc.Build.SigningPassphrase,
 	}

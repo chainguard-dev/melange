@@ -952,8 +952,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	// Store xattrs for use after the workspace is loaded into memory
-	xattrs, err := storeXattrs(b.WorkspaceDir)
+	// Store xattrs and modes for use after the workspace is loaded into memory
+	xattrs, modes, err := storeXattrs(b.WorkspaceDir)
 	if err != nil {
 		return fmt.Errorf("failed to store workspace xattrs: %w", err)
 	}
@@ -970,8 +970,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 		}
 	}
-
-	// For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
+  
+  for path, mode := range modes {
+		if err := b.WorkspaceDirFS.Chmod(path, mode); err != nil {
+			log.Warnf("failed to apply mode %04o (%s) to %s: %v", mode, mode, path, err)
+		}
+	}
+  
+  // For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
 	// For example:
 	// setcap:
 	//   - path: /usr/bin/scary
@@ -982,9 +988,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := b.WorkspaceDirFS.SetXattr(c.Path, attr, []byte(data)); err != nil {
 				log.Warnf("failed to set capability %q on %s: %v\n", attr, c.Path, err)
 			}
-		}
-	}
-
+    }
+  }
+	
 	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
@@ -1368,18 +1374,34 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 	return time.Unix(sec, 0).UTC(), nil
 }
 
-// Record on-disk xattrs set during package builds in order to apply them in the new in-memory filesystem
+// Record on-disk xattrs and mode bits set during package builds in order to apply them in the new in-memory filesystem
 // This will allow in-memory and bind mount runners to persist xattrs correctly
-func storeXattrs(dir string) (map[string]map[string][]byte, error) {
+func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, error) {
 	xattrs := make(map[string]map[string][]byte)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	modes := make(map[string]fs.FileMode)
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
+		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+		mode := fi.Mode()
+
 		relPath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
+		}
+
+		// If the path is within the melange-out directory, store the relative path and mode bits
+		if strings.Contains(path, melangeOutputDirName) {
+			modes[relPath] = mode
 		}
 
 		size, err := unix.Listxattr(path, nil)
@@ -1413,7 +1435,7 @@ func storeXattrs(dir string) (map[string]map[string][]byte, error) {
 		return nil
 	})
 
-	return xattrs, err
+	return xattrs, modes, err
 }
 
 // stringsFromByteSlice converts a sequence of attributes to a []string.

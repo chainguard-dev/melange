@@ -347,6 +347,7 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 	_, span := otel.Tracer("melange").Start(ctx, "bubblewrap.LoadImage")
 	defer span.End()
 
+	log := clog.FromContext(ctx)
 	guestDir, err := os.MkdirTemp("", "melange-guest-*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
@@ -371,7 +372,12 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			return ref, fmt.Errorf("tar read error: %w", err)
 		}
 
+		if hdr.Name == "" {
+			continue
+		}
+
 		fullname := filepath.Join(guestDir, hdr.Name)
+		log.Debugf("Extracting: %s (type: %d)", hdr.Name, hdr.Typeflag)
 
 		if err := os.MkdirAll(filepath.Dir(fullname), 0755); err != nil {
 			os.RemoveAll(guestDir)
@@ -398,21 +404,10 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			}
 			f.Close()
 
-			for k, v := range hdr.PAXRecords {
-				if !strings.HasPrefix(k, "SCHILY.xattr.") {
-					continue
-				}
-				attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
-				if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
-					os.RemoveAll(guestDir)
-					return ref, fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
-				}
-			}
-
 		case tar.TypeSymlink:
 			if err := os.Symlink(hdr.Linkname, fullname); err != nil {
 				os.RemoveAll(guestDir)
-				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)
+				return ref, fmt.Errorf("failed to create symlink %s -> %s: %w", fullname, hdr.Linkname, err)
 			}
 
 		case tar.TypeLink:
@@ -423,7 +418,18 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			}
 
 		default:
+			log.Debugf("Skipping unsupported file type: %s (%d)", hdr.Name, hdr.Typeflag)
 			continue
+		}
+
+		for k, v := range hdr.PAXRecords {
+			if !strings.HasPrefix(k, "SCHILY.xattr.") {
+				continue
+			}
+			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+			if err := unix.Setxattr(fullname, attrName, []byte(v), 0); err != nil {
+				log.Warnf("Unable to set xattr %s on %s: %v", attrName, hdr.Name, err)
+			}
 		}
 	}
 

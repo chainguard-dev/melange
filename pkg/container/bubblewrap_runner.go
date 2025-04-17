@@ -296,26 +296,43 @@ func extractImage(ctx context.Context, imagePath, destDir string) error {
 			return fmt.Errorf("tar read error: %w", err)
 		}
 
-		if header.Typeflag != tar.TypeReg {
-			continue
-		}
-
 		destPath := filepath.Join(destDir, header.Name)
 
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 			return fmt.Errorf("failed to create directory: %w", err)
 		}
 
-		outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
-		if err != nil {
-			return fmt.Errorf("failed to create file: %w", err)
-		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(destPath, os.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", destPath, err)
+			}
 
-		if _, err := io.Copy(outFile, tr); err != nil {
+		case tar.TypeReg:
+			outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
+			if err != nil {
+				return fmt.Errorf("failed to create file %s: %w", destPath, err)
+			}
+
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return fmt.Errorf("failed to write file %s: %w", destPath, err)
+			}
 			outFile.Close()
-			return fmt.Errorf("failed to write file: %w", err)
+
+		case tar.TypeSymlink:
+			if err := os.Symlink(header.Linkname, destPath); err != nil {
+				return fmt.Errorf("failed to create symlink %s: %w", destPath, err)
+			}
+
+		case tar.TypeLink:
+			if err := os.Link(filepath.Join(destDir, header.Linkname), destPath); err != nil {
+				return fmt.Errorf("failed to create hard link %s: %w", destPath, err)
+			}
+
+		default:
+			log.Debugf("Skipping unsupported file type: %s (%d)", header.Name, header.Typeflag)
 		}
-		outFile.Close()
 	}
 
 	return nil

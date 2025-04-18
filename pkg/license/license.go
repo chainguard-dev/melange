@@ -54,6 +54,7 @@ type License struct {
 	Type       golicenses.Type
 	Confidence float64
 	Source     string
+	Overrides  string
 }
 
 // LicenseFile represents a license file, with its name, path, and relevance score.
@@ -65,9 +66,10 @@ type LicenseFile struct {
 
 // LicenseDiff represents a difference between the detected license and the expected license.
 type LicenseDiff struct {
-	Path   string
-	Is     string
-	Should string
+	Path     string
+	Is       string
+	Should   string
+	Override string
 }
 
 // Identify identifies the license of a file on a filesystem using the licenseclassifier.
@@ -106,6 +108,7 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 			Type:       golicenses.LicenseType(match.Name),
 			Confidence: match.Confidence,
 			Source:     licensePath,
+			Overrides:  "",
 		})
 	}
 
@@ -199,12 +202,13 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 }
 
 // melangeLicenseToLicense is a helper that converts a melange license info to a License struct.
-func melangeLicenseToLicense(license string, licensePath string) License {
+func melangeLicenseToLicense(license string, licensePath string, override string) License {
 	return License{
 		Name:       license,
 		Type:       "",
 		Confidence: 0.0,
 		Source:     licensePath,
+		Overrides:  override,
 	}
 }
 
@@ -264,10 +268,10 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 			// Split the license into separate entries using regexp
 			splitLicenses := regexp.MustCompile(`\s+( AND | OR )\s+`).Split(ml.License, -1)
 			for _, sl := range splitLicenses {
-				melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(sl, ml.LicensePath))
+				melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(sl, ml.LicensePath, ml.DetectionOverride))
 			}
 		} else {
-			melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(ml.License, ml.LicensePath))
+			melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(ml.License, ml.LicensePath, ml.DetectionOverride))
 		}
 	}
 
@@ -281,12 +285,16 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 				if dl.Name == ml.Name {
 					found = true
 				} else {
-					// A mismatch, add it to license differences
-					diffs = append(diffs, LicenseDiff{
-						dl.Source,
-						ml.Name,
-						dl.Name,
-					})
+					// Check if we consciously know about the difference and just override it
+					if ml.Overrides == "" || ml.Overrides != dl.Name {
+						// If not, then it is a mismatch: add it to license differences
+						diffs = append(diffs, LicenseDiff{
+							dl.Source,
+							ml.Name,
+							dl.Name,
+							ml.Overrides,
+						})
+					}
 					// We already added the diff, so we can break out of the loop
 					found = true
 					break
@@ -305,6 +313,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 				dl.Source,
 				"",
 				dl.Name,
+				"",
 			})
 		}
 	}
@@ -315,13 +324,15 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		for _, diff := range diffs {
 			if diff.Is == "" {
 				log.Warnf("  %s: %s not found", diff.Path, diff.Should)
+			} else if diff.Override != "" {
+				log.Warnf("  %s: requested override from %s to %s, but now detecting as %s", diff.Path, diff.Override, diff.Is, diff.Should)
 			} else {
 				log.Warnf("  %s: %s != %s", diff.Path, diff.Should, diff.Is)
 			}
 		}
 		log.Warnf("detected license differences, please check the configuration")
 	} else {
-		log.Infof("no license differences detected")
+		log.Warnf("no license differences detected")
 	}
 
 	return diffs, nil

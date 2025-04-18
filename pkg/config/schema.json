@@ -213,6 +213,10 @@
         "license-path": {
           "type": "string",
           "description": "Optional: Path to text of the custom License Ref"
+        },
+        "detection-override": {
+          "type": "string",
+          "description": "Optional: The detected license that should be overriden, used in cases where the automation is wrong."
         }
       },
       "additionalProperties": false,

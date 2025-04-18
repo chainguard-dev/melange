@@ -403,6 +403,8 @@ type Copyright struct {
 	License string `json:"license" yaml:"license"`
 	// Optional: Path to text of the custom License Ref
 	LicensePath string `json:"license-path,omitempty" yaml:"license-path,omitempty"`
+	// Optional: License override
+	DetectionOverride string `json:"detection-override,omitempty" yaml:"detection-override,omitempty"`
 }
 
 // LicenseExpression returns an SPDX license expression formed from the data in

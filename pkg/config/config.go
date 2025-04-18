@@ -81,12 +81,12 @@ type Scriptlets struct {
 type PackageOption struct {
 	// Optional: Signify this package as a virtual package which does not provide
 	// any files, executables, libraries, etc... and is otherwise empty
-	NoProvides bool `json:"no-provides" yaml:"no-provides"`
+	NoProvides bool `json:"no-provides,omitempty" yaml:"no-provides,omitempty"`
 	// Optional: Mark this package as a self contained package that does not
 	// depend on any other package
-	NoDepends bool `json:"no-depends" yaml:"no-depends"`
+	NoDepends bool `json:"no-depends,omitempty" yaml:"no-depends,omitempty"`
 	// Optional: Mark this package as not providing any executables
-	NoCommands bool `json:"no-commands" yaml:"no-commands"`
+	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
 }
 
 type Checks struct {
@@ -505,7 +505,7 @@ type Pipeline struct {
 	//
 	// This defaults to the guests' build workspace (/home/build)
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
-	// Optional: environment variables to override the apko environment
+	// Optional: environment variables to override apko
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
@@ -718,7 +718,8 @@ type Configuration struct {
 	// Package metadata
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: environment variables to override apko
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 	// Optional: Linux capabilities configuration to apply to the melange runner.
 	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 
@@ -768,7 +769,8 @@ type Test struct {
 	// Environment.Contents.Packages automatically get
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: Additional Environment the test needs to run
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`

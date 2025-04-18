@@ -6,8 +6,6 @@ package:
   copyright:
     - license: MIT
 
-environment: {}
-
 pipeline:
   - uses: autoconf/configure
 
@@ -23,7 +21,6 @@ subpackages:
       - runs: FIXME
 
 test:
-  environment: {}
   pipeline:
     - name: Verify test-pkg installation, please improve the test as needed
       runs: test-pkg --version || exit 1

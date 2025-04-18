@@ -207,3 +207,54 @@ func TestLicenseCheck(t *testing.T) {
 		}
 	}
 }
+func TestLicenseCheckWithOverrides(t *testing.T) {
+	// Create a mock configuration with detection overrides
+	// There is one correct override (BSD -> MIT) and one incorrect, where we say we expected MIT and overriding it to GPL-3.0
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Copyright: []config.Copyright{
+				{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
+				{License: "MIT", LicensePath: "LICENSE-BSD", DetectionOverride: "BSD-3-Clause"},
+				{License: "GPL-3.0", LicensePath: "LICENSE-GPLv2", DetectionOverride: "MIT"},
+				{License: "GPL-3.0", LicensePath: "LICENSE-GPLv3"},
+			},
+		},
+	}
+
+	testDataDir := "testdata"
+	dataFS := apkofs.DirFS(testDataDir)
+
+	// Call function under test
+	diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
+	if err != nil {
+		t.Fatalf("LicenseCheck returned an error: %v", err)
+	}
+
+	// Expected differences
+	expectedDiffs := []LicenseDiff{
+		{
+			Path:     "LICENSE-GPLv2",
+			Is:       "GPL-3.0",
+			Should:   "GPL-2.0",
+			Override: "MIT",
+		},
+	}
+
+	// Verify the results
+	if len(diffs) != len(expectedDiffs) {
+		t.Errorf("Expected %d license differences, got %d", len(expectedDiffs), len(diffs))
+	}
+
+	for _, expected := range expectedDiffs {
+		found := false
+		for _, diff := range diffs {
+			if diff.Path == expected.Path && diff.Is == expected.Is && diff.Should == expected.Should && diff.Override == expected.Override {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected license difference %+v not found", expected)
+		}
+	}
+}

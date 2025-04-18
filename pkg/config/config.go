@@ -1829,7 +1829,7 @@ func validateCapabilities(setcap []Capability) error {
 			}
 		}
 		if cap.Reason == "" {
-			errs = append(errs, fmt.Errorf("unjustified reason %q for capability %q", cap.Reason, cap.Add))
+			errs = append(errs, fmt.Errorf("unjustified reason for capability %q", cap.Add))
 		}
 	}
 

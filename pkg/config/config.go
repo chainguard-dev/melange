@@ -702,8 +702,9 @@ type Subpackage struct {
 }
 
 type Capability struct {
-	Path string            `json:"path,omitempty" yaml:"path,omitempty"`
-	Add  map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
+	Path   string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Add    map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
+	Reason string            `json:"reason,omitempty" yaml:"reason,omitempty"`
 }
 
 type Input struct {
@@ -1826,6 +1827,9 @@ func validateCapabilities(setcap []Capability) error {
 			if _, ok := validCapabilities[add]; !ok {
 				errs = append(errs, fmt.Errorf("invalid capability %q for path %q", add, cap.Path))
 			}
+		}
+		if cap.Reason == "" {
+			errs = append(errs, fmt.Errorf("unjustified reason %q for capability %q", cap.Reason, cap.Add))
 		}
 	}
 

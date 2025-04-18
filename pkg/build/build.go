@@ -970,14 +970,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 		}
 	}
-  
-  for path, mode := range modes {
+
+	for path, mode := range modes {
 		if err := b.WorkspaceDirFS.Chmod(path, mode); err != nil {
 			log.Warnf("failed to apply mode %04o (%s) to %s: %v", mode, mode, path, err)
 		}
 	}
-  
-  // For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
+
+	// For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
 	// For example:
 	// setcap:
 	//   - path: /usr/bin/scary
@@ -988,9 +988,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := b.WorkspaceDirFS.SetXattr(c.Path, attr, []byte(data)); err != nil {
 				log.Warnf("failed to set capability %q on %s: %v\n", attr, c.Path, err)
 			}
-    }
-  }
-	
+		}
+	}
+
 	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}

@@ -16,7 +16,7 @@ package cli
 
 import (
 	"os"
-
+	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -58,27 +58,35 @@ $ melange completion fish > ~/.config/fish/completions/melange.fish
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 0 {
+				// Print an error message and exit if no argument is provided
+				fmt.Fprintln(os.Stderr, "Error: A shell type (bash, zsh, fish, powershell) is required.")
+				return
+			}
+		
 			switch args[0] {
 			case "bash":
 				err := cmd.Root().GenBashCompletion(os.Stdout)
 				if err != nil {
-					return
+					fmt.Fprintln(os.Stderr, "Error generating Bash completion script:", err)
 				}
 			case "zsh":
 				err := cmd.Root().GenZshCompletion(os.Stdout)
 				if err != nil {
-					return
+					fmt.Fprintln(os.Stderr, "Error generating Zsh completion script:", err)
 				}
 			case "fish":
 				err := cmd.Root().GenFishCompletion(os.Stdout, true)
 				if err != nil {
-					return
+					fmt.Fprintln(os.Stderr, "Error generating Fish completion script:", err)
 				}
 			case "powershell":
 				err := cmd.Root().GenPowerShellCompletion(os.Stdout)
 				if err != nil {
-					return
+					fmt.Fprintln(os.Stderr, "Error generating PowerShell completion script:", err)
 				}
+			default:
+				fmt.Fprintln(os.Stderr, "Error: Invalid shell type. Use one of: bash, zsh, fish, powershell.")
 			}
 		},
 	}

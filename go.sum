@@ -1,7 +1,7 @@
 cel.dev/expr v0.19.2 h1:V354PbqIXr9IQdwy4SYA4xa0HXaWq1BUPAGzugBY5V4=
 cel.dev/expr v0.19.2/go.mod h1:MrpN08Q+lEBs+bGYdLxxHkZoUSsCp0nSKTs0nTymJgw=
-chainguard.dev/apko v0.26.0 h1:vbN9nHwIJnZCiflFYCcHbQIu2SYxaJyosBFt+sVr+xE=
-chainguard.dev/apko v0.26.0/go.mod h1:MyEr+sYKtDaTuk0oGSFYL/WFe61iC4vOLnEy2pw8efw=
+chainguard.dev/apko v0.26.1 h1:W+I/yU+WSn44IP7yH0emCYZT35KVcrE2oVq2JmCznyM=
+chainguard.dev/apko v0.26.1/go.mod h1:MyEr+sYKtDaTuk0oGSFYL/WFe61iC4vOLnEy2pw8efw=
 chainguard.dev/go-grpc-kit v0.17.10 h1:uymMNUIBgbypeIurW25XaXvx3kbS0JpfKsJEMrS0abY=
 chainguard.dev/go-grpc-kit v0.17.10/go.mod h1:RPyCEjTxWAxrODH5V4vJOLy/gHRjEjVF9dzWN+LmIvo=
 chainguard.dev/sdk v0.1.32 h1:pZWN2irtvKMaAkgOpM3LRhuOrlpR3UGhg4F9LVWSyA8=
@@ -138,8 +138,8 @@ github.com/chainguard-dev/git-urls v1.0.2 h1:pSpT7ifrpc5X55n4aTTm7FFUE+ZQHKiqpiw
 github.com/chainguard-dev/git-urls v1.0.2/go.mod h1:rbGgj10OS7UgZlbzdUQIQpT0k/D4+An04HJY7Ol+Y/o=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2vgQC024I9/boh9r1ihVv8Z14+pbvWqXeYMCnZJpc=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10/go.mod h1:1p6+MesLcjKeON5BRWa7I87mvAY0QmKjgginIM3w6BI=
-github.com/chainguard-dev/yam v0.2.12 h1:8d7a7Ri5EJjEnleEo0vSN0rlw1FYa0aWAabsvjSiRN0=
-github.com/chainguard-dev/yam v0.2.12/go.mod h1:Dqfj6H4GyIBTyBRQi5S+cji6wH4UlZDaN/sFirjOjjA=
+github.com/chainguard-dev/yam v0.2.13 h1:TNXxKUvfFd9M2sLHUZE/0J8CwbW0N9+YCckRgTSESJs=
+github.com/chainguard-dev/yam v0.2.13/go.mod h1:Dqfj6H4GyIBTyBRQi5S+cji6wH4UlZDaN/sFirjOjjA=
 github.com/charmbracelet/colorprofile v0.3.0 h1:KtLh9uuu1RCt+Hml4s6Hz+kB1PfV3wi++1h5ia65yKQ=
 github.com/charmbracelet/colorprofile v0.3.0/go.mod h1:oHJ340RS2nmG1zRGPmhJKJ/jf4FPNNk0P39/wBPA1G0=
 github.com/charmbracelet/lipgloss v1.1.0 h1:vYXsiLHVkK7fp74RkV7b2kq9+zDLoEU4MZoFqR/noCY=

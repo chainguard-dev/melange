@@ -178,8 +178,7 @@ func TestConfigurationLoad(t *testing.T) {
 					},
 				},
 				Subpackages: []config.Subpackage{{
-					Name:  "cats",
-					Range: "animals",
+					Name: "cats",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{{
@@ -187,8 +186,7 @@ func TestConfigurationLoad(t *testing.T) {
 						}},
 					},
 				}, {
-					Name:  "dogs",
-					Range: "animals",
+					Name: "dogs",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{{
@@ -196,8 +194,7 @@ func TestConfigurationLoad(t *testing.T) {
 						}},
 					},
 				}, {
-					Name:  "turtles",
-					Range: "animals",
+					Name: "turtles",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{{
@@ -205,8 +202,7 @@ func TestConfigurationLoad(t *testing.T) {
 						}},
 					},
 				}, {
-					Name:  "donatello",
-					Range: "ninja-turtles",
+					Name: "donatello",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{
@@ -220,8 +216,7 @@ func TestConfigurationLoad(t *testing.T) {
 						},
 					},
 				}, {
-					Name:  "leonardo",
-					Range: "ninja-turtles",
+					Name: "leonardo",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{
@@ -234,8 +229,7 @@ func TestConfigurationLoad(t *testing.T) {
 							},
 						}},
 				}, {
-					Name:  "michelangelo",
-					Range: "ninja-turtles",
+					Name: "michelangelo",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{
@@ -248,8 +242,7 @@ func TestConfigurationLoad(t *testing.T) {
 							},
 						}},
 				}, {
-					Name:  "raphael",
-					Range: "ninja-turtles",
+					Name: "raphael",
 					Test: &config.Test{
 						Environment: defaultEnv(),
 						Pipeline: []config.Pipeline{

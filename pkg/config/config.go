@@ -1293,6 +1293,7 @@ func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage
 		Commit:       replaceCommit(detectedCommit, in.Commit),
 		Checks:       in.Checks,
 		Test:         replaceTest(r, in.Test),
+		Range:        in.Range,
 	}
 }
 

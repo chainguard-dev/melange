@@ -221,6 +221,7 @@ subpackages:
 	require.Equal(t, cfg.Subpackages[0].Dependencies.Runtime[0], "wow-some-kinda-dynamically-linked-library-i-guess=1.0")
 	require.True(t, cfg.Subpackages[0].Options.NoProvides)
 	require.Equal(t, cfg.Subpackages[0].Test.Environment.Contents.Packages[1], "A-default-jvm")
+	require.Equal(t, cfg.Subpackages[0].Range, "I-am-a-range")
 }
 
 func Test_rangeSubstitutionsPriorities(t *testing.T) {
@@ -276,6 +277,8 @@ subpackages:
 	require.Equal(t, cfg.Subpackages[1].Pipeline[0].Needs.Packages[0], "b")
 	require.Equal(t, cfg.Subpackages[0].Pipeline[0].Pipeline[0].Runs, "exit 1")
 	require.Equal(t, cfg.Subpackages[1].Pipeline[0].Pipeline[0].Runs, "exit 1")
+	require.Equal(t, cfg.Subpackages[0].Range, "I-am-a-range")
+	require.Equal(t, cfg.Subpackages[1].Range, "I-am-a-range")
 }
 
 func Test_propagatePipelines(t *testing.T) {

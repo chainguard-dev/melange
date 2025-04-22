@@ -59,22 +59,26 @@ func TestConfiguration_Load(t *testing.T) {
 					},
 				},
 				Subpackages: []config.Subpackage{{
-					Name: "cats",
+					Name:  "cats",
+					Range: "animals",
 					Pipeline: []config.Pipeline{{
 						Runs: "cats are angry",
 					}},
 				}, {
-					Name: "dogs",
+					Name:  "dogs",
+					Range: "animals",
 					Pipeline: []config.Pipeline{{
 						Runs: "dogs are loyal",
 					}},
 				}, {
-					Name: "turtles",
+					Name:  "turtles",
+					Range: "animals",
 					Pipeline: []config.Pipeline{{
 						Runs: "turtles are slow",
 					}},
 				}, {
-					Name: "donatello",
+					Name:  "donatello",
+					Range: "ninja-turtles",
 					Pipeline: []config.Pipeline{
 						{
 							Runs: "donatello's color is purple",
@@ -85,7 +89,8 @@ func TestConfiguration_Load(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "leonardo",
+					Name:  "leonardo",
+					Range: "ninja-turtles",
 					Pipeline: []config.Pipeline{
 						{
 							Runs: "leonardo's color is blue",
@@ -96,7 +101,8 @@ func TestConfiguration_Load(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "michelangelo",
+					Name:  "michelangelo",
+					Range: "ninja-turtles",
 					Pipeline: []config.Pipeline{
 						{
 							Runs: "michelangelo's color is orange",
@@ -107,7 +113,8 @@ func TestConfiguration_Load(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "raphael",
+					Name:  "raphael",
+					Range: "ninja-turtles",
 					Pipeline: []config.Pipeline{
 						{
 							Runs: "raphael's color is red",

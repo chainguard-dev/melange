@@ -539,7 +539,7 @@ func TestSetCap(t *testing.T) {
 	}{
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_net_bind_service": "+eip"},
 					Reason: "Needed for package foo because xyz",
@@ -549,7 +549,7 @@ func TestSetCap(t *testing.T) {
 		},
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_net_raw": "+eip"},
 					Reason: "Needed for package baz because xyz",
@@ -559,17 +559,85 @@ func TestSetCap(t *testing.T) {
 		},
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_net_raw,cap_net_admin,cap_net_bind_service": "+ep"},
-					Reason: "Valid combination of three capabilities",
+					Reason: "Valid combination of three capabilities on a single line",
 				},
 			},
 			false,
 		},
 		{
 			[]Capability{
-				Capability{
+				{
+					Path: "/bar",
+					Add: map[string]string{
+						"cap_net_raw":          "+ep",
+						"cap_net_admin":        "+ep",
+						"cap_net_bind_service": "+ep",
+					},
+					Reason: "Valid combination of three capabilities on separate lines",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path: "/foo",
+					Add: map[string]string{
+						"cap_net_raw": "+ep",
+					},
+					Reason: "First package in a multi-package, multi-capability capability addition.",
+				},
+				{
+					Path: "/bar",
+					Add: map[string]string{
+						"cap_net_admin":        "+ep",
+						"cap_net_bind_service": "+ep",
+					},
+					Reason: "Second package in a multi-package, multi-capability capability addition.",
+				},
+				{
+					Path: "/baz",
+					Add: map[string]string{
+						"cap_net_raw,cap_net_admin,cap_net_bind_service": "+eip",
+					},
+					Reason: "Third package in a multi-package, multi-capability capability addition.",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path: "/foo",
+					Add: map[string]string{
+						"cap_net_raw": "+ep",
+					},
+					Reason: "First package in a multi-package, multi-capability capability addition.",
+				},
+				{
+					Path: "/bar",
+					Add: map[string]string{
+						"cap_setfcap":          "+ep",
+						"cap_net_bind_service": "+ep",
+					},
+					Reason: "Tying to sneak an invalid capability into multiple paths.",
+				},
+				{
+					Path: "/baz",
+					Add: map[string]string{
+						"cap_net_raw,cap_net_admin,cap_net_bind_service": "+eip",
+					},
+					Reason: "Third package in a multi-package, multi-capability capability addition.",
+				},
+			},
+			true,
+		},
+		{
+			[]Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_sys_admin": "+ep"},
 					Reason: "Needed for package baz",
@@ -579,7 +647,7 @@ func TestSetCap(t *testing.T) {
 		},
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_ipc_lock": "+ep"},
 					Reason: "Needed for package baz",
@@ -589,17 +657,17 @@ func TestSetCap(t *testing.T) {
 		},
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_net_admin": "+ep"},
 					Reason: "Needed for package baz",
 				},
 			},
-			true,
+			false,
 		},
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_net_admin": "+ep"},
 					Reason: "",
@@ -609,7 +677,7 @@ func TestSetCap(t *testing.T) {
 		},
 		{
 			[]Capability{
-				Capability{
+				{
 					Path:   "/bar",
 					Add:    map[string]string{"cap_setfcap": "+ep"},
 					Reason: "I want to arbitrarily set capabilities",

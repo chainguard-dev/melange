@@ -17,6 +17,7 @@ package config
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -1815,13 +1816,21 @@ func (dep *Dependencies) Summarize(ctx context.Context) {
 	}
 }
 
-// validCapabilities contains a complete list of capabilities from existing package specs.
-var validCapabilities = map[string]struct{}{
-	"cap_ipc_lock":         {},
-	"cap_net_admin":        {},
-	"cap_net_bind_service": {},
-	"cap_net_raw":          {},
-	"cap_sys_admin":        {},
+// validCapabilities contains a list of _in-use_ capabilities and their respective bits from existing package specs.
+// https://github.com/torvalds/linux/blob/master/include/uapi/linux/capability.h#L106-L422
+var validCapabilities = map[string]uint32{
+	"cap_ipc_lock":         14,
+	"cap_net_admin":        12,
+	"cap_net_bind_service": 10,
+	"cap_net_raw":          13,
+	"cap_sys_admin":        21,
+}
+
+func getCapabilityValue(attr string) uint32 {
+	if value, ok := validCapabilities[attr]; ok {
+		return 1 << value
+	}
+	return 0
 }
 
 func validateCapabilities(setcap []Capability) error {
@@ -1847,4 +1856,82 @@ func validateCapabilities(setcap []Capability) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+type capabilityData struct {
+	Effective   uint32
+	Permitted   uint32
+	Inheritable uint32
+}
+
+// ParseCapabilities processes all capabilities for a given path.
+func ParseCapabilities(caps []Capability) (map[string]capabilityData, error) {
+	pathCapabilities := map[string]capabilityData{}
+
+	for _, c := range caps {
+		for attr, data := range c.Add {
+			capValues := getCapabilityValue(attr)
+			effective, permitted, inheritable := parseCapability(data)
+
+			caps, ok := pathCapabilities[c.Path]
+			if !ok {
+				caps = struct {
+					Effective   uint32
+					Permitted   uint32
+					Inheritable uint32
+				}{}
+			}
+
+			if effective {
+				caps.Effective |= capValues
+			}
+			if permitted {
+				caps.Permitted |= capValues
+			}
+			if inheritable {
+				caps.Inheritable |= capValues
+			}
+
+			pathCapabilities[c.Path] = caps
+		}
+	}
+
+	return pathCapabilities, nil
+}
+
+// parseCapability determines which bits are set for a given capability.
+func parseCapability(capFlag string) (effective, permitted, inheritable bool) {
+	for _, c := range capFlag {
+		switch c {
+		case 'e':
+			effective = true
+		case 'p':
+			permitted = true
+		case 'i':
+			inheritable = true
+		}
+	}
+	return
+}
+
+// EncodeCapability returns the byte slice necessary to set the final capability xattr.
+func EncodeCapability(effectiveBits, permittedBits, inheritableBits uint32) []byte {
+	// https://github.com/torvalds/linux/blob/a33b5a08cbbdd7aadff95f40cbb45ab86841679e/include/uapi/linux/capability.h#L36
+	magic := uint32(0x20080522)
+	// Version 3; Version 2 is deprecated
+	version := uint32(0x3)
+
+	data := make([]byte, 20)
+	binary.LittleEndian.PutUint32(data[0:], magic)
+	binary.LittleEndian.PutUint32(data[4:], version)
+	binary.LittleEndian.PutUint32(data[8:], effectiveBits)
+	binary.LittleEndian.PutUint32(data[12:], permittedBits)
+	binary.LittleEndian.PutUint32(data[16:], inheritableBits)
+
+	rootid := uint32(0)
+	rootidBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(rootidBytes, rootid)
+	data = append(data, rootidBytes...)
+
+	return data
 }

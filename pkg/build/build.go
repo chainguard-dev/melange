@@ -983,11 +983,15 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	//   - path: /usr/bin/scary
 	//     add:
 	//       cap_sys_admin: "+ep"
-	for _, c := range b.Configuration.Package.SetCap {
-		for attr, data := range c.Add {
-			if err := b.WorkspaceDirFS.SetXattr(c.Path, attr, []byte(data)); err != nil {
-				log.Warnf("failed to set capability %q on %s: %v\n", attr, c.Path, err)
-			}
+	caps, err := config.ParseCapabilities(b.Configuration.Package.SetCap)
+	if err != nil {
+		log.Warnf("failed to collect encoded capabilities for %v: %v", b.Configuration.Package.SetCap, err)
+	}
+
+	for path, cap := range caps {
+		enc := config.EncodeCapability(cap.Effective, cap.Permitted, cap.Inheritable)
+		if err := b.WorkspaceDirFS.SetXattr(path, "security.capability", enc); err != nil {
+			log.Warnf("failed to set capabilities on %s: %v\n", path, err)
 		}
 	}
 

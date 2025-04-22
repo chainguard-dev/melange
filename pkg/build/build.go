@@ -1378,6 +1378,17 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 	return time.Unix(sec, 0).UTC(), nil
 }
 
+// xattrIgnoreList contains a mapping of xattr names used by various
+// security features which leak their state into packages.  We need to
+// ignore these xattrs because they require special permissions to be
+// set when the underlying security features are in use.
+var xattrIgnoreList = map[string]bool{
+	"com.apple.provenance":          true,
+	"security.csm":                  true,
+	"security.selinux":              true,
+	"com.docker.grpcfuse.ownership": true,
+}
+
 // Record on-disk xattrs and mode bits set during package builds in order to apply them in the new in-memory filesystem
 // This will allow in-memory and bind mount runners to persist xattrs correctly
 func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, error) {
@@ -1422,6 +1433,10 @@ func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMo
 		attrs := stringsFromByteSlice(buf[:read])
 		result := make(map[string][]byte)
 		for _, attr := range attrs {
+			if _, ok := xattrIgnoreList[attr]; ok {
+				continue
+			}
+
 			s, err := unix.Getxattr(path, attr, nil)
 			if err != nil {
 				continue

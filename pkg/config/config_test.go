@@ -531,3 +531,98 @@ func TestGetScheduleMessage(t *testing.T) {
 		}
 	}
 }
+
+func TestSetCap(t *testing.T) {
+	tests := []struct {
+		setcap []Capability
+		err    bool
+	}{
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_bind_service": "+eip"},
+					Reason: "Needed for package foo because xyz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_raw": "+eip"},
+					Reason: "Needed for package baz because xyz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_raw,cap_net_admin,cap_net_bind_service": "+ep"},
+					Reason: "Valid combination of three capabilities",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_sys_admin": "+ep"},
+					Reason: "Needed for package baz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_ipc_lock": "+ep"},
+					Reason: "Needed for package baz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_admin": "+ep"},
+					Reason: "Needed for package baz",
+				},
+			},
+			true,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_admin": "+ep"},
+					Reason: "",
+				},
+			},
+			true,
+		},
+		{
+			[]Capability{
+				Capability{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_setfcap": "+ep"},
+					Reason: "I want to arbitrarily set capabilities",
+				},
+			},
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		err := validateCapabilities(test.setcap)
+		if (err != nil) != test.err {
+			t.Errorf("validateCapabilities(%v) returned error %v, expected error: %v", test.setcap, err, test.err)
+		}
+	}
+}

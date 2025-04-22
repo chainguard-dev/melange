@@ -125,6 +125,8 @@ type Package struct {
 	// The CPE field values to be used for matching against NVD vulnerability
 	// records, if known.
 	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -153,6 +155,15 @@ type CPE struct {
 	TargetSW  string `json:"target_sw,omitempty" yaml:"target_sw,omitempty"`
 	TargetHW  string `json:"target_hw,omitempty" yaml:"target_hw,omitempty"`
 	Other     string `json:"other,omitempty" yaml:"other,omitempty"`
+}
+
+// Capability stores paths and an associated map of capabilities and justification to include in a package.
+// These capabilities will be set after pipelines run to avoid permissions issues with `setcap`.
+// Empty justifications will result in an error.
+type Capability struct {
+	Path   string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Add    map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
+	Reason string            `json:"reason,omitempty" yaml:"reason,omitempty"`
 }
 
 func (cpe CPE) IsZero() bool {
@@ -694,6 +705,8 @@ type Subpackage struct {
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 }
 
 type Input struct {
@@ -1630,6 +1643,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
+	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
 
 	saw := map[string]int{cfg.Package.Name: -1}
 	for i, sp := range cfg.Subpackages {
@@ -1654,6 +1670,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
 		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
+			return ErrInvalidConfiguration{Problem: err}
+		}
+		if err := validateCapabilities(sp.SetCap); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1794,4 +1813,38 @@ func (dep *Dependencies) Summarize(ctx context.Context) {
 			log.Info("    " + dep)
 		}
 	}
+}
+
+// validCapabilities contains a complete list of capabilities from existing package specs.
+var validCapabilities = map[string]struct{}{
+	"cap_ipc_lock":         {},
+	"cap_net_admin":        {},
+	"cap_net_bind_service": {},
+	"cap_net_raw":          {},
+	"cap_sys_admin":        {},
+}
+
+func validateCapabilities(setcap []Capability) error {
+	var errs []error
+
+	for _, cap := range setcap {
+		for add := range cap.Add {
+			// Allow for multiple capabilities per addition
+			// e.g., cap_net_raw,cap_net_admin,cap_net_bind_service+eip
+			for p := range strings.SplitSeq(add, ",") {
+				if _, ok := validCapabilities[p]; !ok {
+					errs = append(errs, fmt.Errorf("invalid capability %q for path %q", p, cap.Path))
+				}
+			}
+		}
+		if cap.Reason == "" {
+			errs = append(errs, fmt.Errorf("unjustified reason for capability %q", cap.Add))
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errors.Join(errs...)
 }

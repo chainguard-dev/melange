@@ -1819,10 +1819,10 @@ func (dep *Dependencies) Summarize(ctx context.Context) {
 // validCapabilities contains a list of _in-use_ capabilities and their respective bits from existing package specs.
 // https://github.com/torvalds/linux/blob/master/include/uapi/linux/capability.h#L106-L422
 var validCapabilities = map[string]uint32{
-	"cap_ipc_lock":         14,
-	"cap_net_admin":        12,
 	"cap_net_bind_service": 10,
+	"cap_net_admin":        12,
 	"cap_net_raw":          13,
+	"cap_ipc_lock":         14,
 	"cap_sys_admin":        21,
 }
 

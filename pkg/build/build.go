@@ -977,6 +977,24 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
+	// For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
+	// For example:
+	// setcap:
+	//   - path: /usr/bin/scary
+	//     add:
+	//       cap_sys_admin: "+ep"
+	caps, err := config.ParseCapabilities(b.Configuration.Package.SetCap)
+	if err != nil {
+		log.Warnf("failed to collect encoded capabilities for %v: %v", b.Configuration.Package.SetCap, err)
+	}
+
+	for path, cap := range caps {
+		enc := config.EncodeCapability(cap.Effective, cap.Permitted, cap.Inheritable)
+		if err := b.WorkspaceDirFS.SetXattr(path, "security.capability", enc); err != nil {
+			log.Warnf("failed to set capabilities on %s: %v\n", path, err)
+		}
+	}
+
 	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}

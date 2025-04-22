@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
@@ -532,5 +533,383 @@ func TestGetScheduleMessage(t *testing.T) {
 		if result != test.expected {
 			t.Errorf("GetScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
 		}
+	}
+}
+
+func TestSetCap(t *testing.T) {
+	tests := []struct {
+		setcap []Capability
+		err    bool
+	}{
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_bind_service": "+eip"},
+					Reason: "Needed for package foo because xyz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_raw": "+eip"},
+					Reason: "Needed for package baz because xyz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_raw,cap_net_admin,cap_net_bind_service": "+ep"},
+					Reason: "Valid combination of three capabilities on a single line",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path: "/bar",
+					Add: map[string]string{
+						"cap_net_raw":          "+ep",
+						"cap_net_admin":        "+ep",
+						"cap_net_bind_service": "+ep",
+					},
+					Reason: "Valid combination of three capabilities on separate lines",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path: "/foo",
+					Add: map[string]string{
+						"cap_net_raw": "+ep",
+					},
+					Reason: "First package in a multi-package, multi-capability capability addition.",
+				},
+				{
+					Path: "/bar",
+					Add: map[string]string{
+						"cap_net_admin":        "+ep",
+						"cap_net_bind_service": "+ep",
+					},
+					Reason: "Second package in a multi-package, multi-capability capability addition.",
+				},
+				{
+					Path: "/baz",
+					Add: map[string]string{
+						"cap_net_raw,cap_net_admin,cap_net_bind_service": "+eip",
+					},
+					Reason: "Third package in a multi-package, multi-capability capability addition.",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path: "/foo",
+					Add: map[string]string{
+						"cap_net_raw": "+ep",
+					},
+					Reason: "First package in a multi-package, multi-capability capability addition.",
+				},
+				{
+					Path: "/bar",
+					Add: map[string]string{
+						"cap_setfcap":          "+ep",
+						"cap_net_bind_service": "+ep",
+					},
+					Reason: "Tying to sneak an invalid capability into multiple paths.",
+				},
+				{
+					Path: "/baz",
+					Add: map[string]string{
+						"cap_net_raw,cap_net_admin,cap_net_bind_service": "+eip",
+					},
+					Reason: "Third package in a multi-package, multi-capability capability addition.",
+				},
+			},
+			true,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_sys_admin": "+ep"},
+					Reason: "Needed for package baz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_ipc_lock": "+ep"},
+					Reason: "Needed for package baz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_admin": "+ep"},
+					Reason: "Needed for package baz",
+				},
+			},
+			false,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_net_admin": "+ep"},
+					Reason: "",
+				},
+			},
+			true,
+		},
+		{
+			[]Capability{
+				{
+					Path:   "/bar",
+					Add:    map[string]string{"cap_setfcap": "+ep"},
+					Reason: "I want to arbitrarily set capabilities",
+				},
+			},
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		err := validateCapabilities(test.setcap)
+		if (err != nil) != test.err {
+			t.Errorf("validateCapabilities(%v) returned error %v, expected error: %v", test.setcap, err, test.err)
+		}
+	}
+}
+
+// Mock resources to test setcap capabilities
+type mockFS struct {
+	xattrs map[string]map[string][]byte
+}
+
+func newMockFS() *mockFS {
+	return &mockFS{
+		xattrs: make(map[string]map[string][]byte),
+	}
+}
+
+func (fs *mockFS) SetXattr(path, attr string, value []byte) error {
+	if _, ok := fs.xattrs[path]; !ok {
+		fs.xattrs[path] = make(map[string][]byte)
+	}
+	fs.xattrs[path][attr] = value
+	return nil
+}
+
+func (fs *mockFS) GetXattr(path, attr string) ([]byte, error) {
+	if attrs, ok := fs.xattrs[path]; ok {
+		if value, ok := attrs[attr]; ok {
+			return value, nil
+		}
+	}
+	return nil, os.ErrNotExist
+}
+
+func TestSetCapability(t *testing.T) {
+	type Config struct {
+		Package struct {
+			SetCap []Capability
+		}
+	}
+
+	type Builder struct {
+		Configuration  Config
+		WorkspaceDirFS *mockFS
+	}
+
+	testCases := []struct {
+		name          string
+		caps          []Capability
+		expectedAttrs map[string]map[string][]byte
+	}{
+		{
+			name: "Basic capability +ep",
+			caps: []Capability{
+				{
+					Path: "/usr/bin/fping",
+					Add: map[string]string{
+						"cap_net_raw": "+ep",
+					},
+					Reason: "foo",
+				},
+			},
+			expectedAttrs: map[string]map[string][]byte{
+				"/usr/bin/fping": {
+					"security.capability": nil,
+				},
+			},
+		},
+		{
+			name: "Multiple capabilities",
+			caps: []Capability{
+				{
+					Path: "/usr/bin/traceroute",
+					Add: map[string]string{
+						"cap_net_raw":   "+ep",
+						"cap_net_admin": "+eip",
+					},
+					Reason: "foo",
+				},
+			},
+			expectedAttrs: map[string]map[string][]byte{
+				"/usr/bin/traceroute": {
+					"security.capability": nil,
+				},
+			},
+		},
+		{
+			name: "Multiple paths",
+			caps: []Capability{
+				{
+					Path: "/bin/ping",
+					Add: map[string]string{
+						"cap_net_raw": "+ep",
+					},
+					Reason: "foo",
+				},
+				{
+					Path: "/usr/bin/traceroute",
+					Add: map[string]string{
+						"cap_net_admin": "+eip",
+					},
+					Reason: "foo",
+				},
+			},
+			expectedAttrs: map[string]map[string][]byte{
+				"/bin/ping": {
+					"security.capability": nil,
+				},
+				"/usr/bin/traceroute": {
+					"security.capability": nil,
+				},
+			},
+		},
+		{
+			name: "Single-line capabilities with same flags",
+			caps: []Capability{
+				{
+					Path: "/bin/custom-tool",
+					Add: map[string]string{
+						"cap_net_raw,cap_net_admin": "+ep",
+					},
+					Reason: "foo",
+				},
+			},
+			expectedAttrs: map[string]map[string][]byte{
+				"/bin/custom-tool": {
+					"security.capability": nil,
+				},
+			},
+		},
+		{
+			name: "Multiple comma-separated capabilities with different flags",
+			caps: []Capability{
+				{
+					Path: "/usr/bin/privileged-tool",
+					Add: map[string]string{
+						"cap_net_raw,cap_net_admin,cap_net_bind_service": "+eip",
+						"cap_sys_admin": "+p",
+					},
+					Reason: "foo",
+				},
+			},
+			expectedAttrs: map[string]map[string][]byte{
+				"/usr/bin/privileged-tool": {
+					"security.capability": nil,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := &Builder{
+				WorkspaceDirFS: newMockFS(),
+			}
+			b.Configuration.Package.SetCap = tc.caps
+
+			caps, err := ParseCapabilities(b.Configuration.Package.SetCap)
+			if err != nil {
+				t.Fatalf("Failed to collect capabilities: %v", err)
+			}
+
+			for path, caps := range caps {
+				enc := EncodeCapability(caps.Effective, caps.Permitted, caps.Inheritable)
+				if err := b.WorkspaceDirFS.SetXattr(path, "security.capability", enc); err != nil {
+					t.Fatalf("Failed to set capability: %v", err)
+				}
+			}
+
+			for path, attrs := range tc.expectedAttrs {
+				for attr := range attrs {
+					data, err := b.WorkspaceDirFS.GetXattr(path, attr)
+					if err != nil {
+						t.Errorf("Failed to get xattr %s for path %s: %v", attr, path, err)
+						continue
+					}
+
+					if len(data) < 24 {
+						t.Errorf("Capability data for %s is too short: %d bytes", path, len(data))
+						continue
+					}
+
+					magic := binary.LittleEndian.Uint32(data[0:4])
+					if magic != 0x20080522 {
+						t.Errorf("Invalid magic number: %x", magic)
+					}
+
+					version := binary.LittleEndian.Uint32(data[4:8])
+					if version != 0x3 {
+						t.Errorf("Invalid version: %d, expected 3", version)
+					}
+
+					effective := binary.LittleEndian.Uint32(data[8:12])
+					permitted := binary.LittleEndian.Uint32(data[12:16])
+					inheritable := binary.LittleEndian.Uint32(data[16:20])
+
+					caps := b.Configuration.Package.SetCap
+					for _, c := range caps {
+						if c.Path == path {
+							for attr, flag := range c.Add {
+								capValues := getCapabilityValue(attr)
+								e, p, i := parseCapability(flag)
+
+								if e && (effective&capValues != capValues) {
+									t.Errorf("Expected capabilities %s to be in effective set for %s", attr, path)
+								}
+								if p && (permitted&capValues != capValues) {
+									t.Errorf("Expected capabilities %s to be in permitted set for %s", attr, path)
+								}
+								if i && (inheritable&capValues != capValues) {
+									t.Errorf("Expected capabilities %s to be in inheritable set for %s", attr, path)
+								}
+							}
+						}
+					}
+				}
+			}
+		})
 	}
 }

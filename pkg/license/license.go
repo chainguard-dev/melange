@@ -257,82 +257,86 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		}
 	}
 
-	log.Infof("checking gathered license information against the configuration")
-
-	// Let's first turn the melange licensing information into a coherent licensing list, similar to what Identify returns
-	// We first start off by splitting license information that has OR and AND into separate license entries
-	// Every entry can have multiple AND or ORs
-	melangeLicenses := []License{}
-	for _, ml := range cfg.Package.Copyright {
-		if strings.Contains(ml.License, " OR ") || strings.Contains(ml.License, " AND ") {
-			// Split the license into separate entries using regexp
-			splitLicenses := regexp.MustCompile(`\s+( AND | OR )\s+`).Split(ml.License, -1)
-			for _, sl := range splitLicenses {
-				melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(sl, ml.LicensePath, ml.DetectionOverride))
-			}
-		} else {
-			melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(ml.License, ml.LicensePath, ml.DetectionOverride))
-		}
-	}
-
-	// Now let's check if the detected licenses are in the configuration
 	diffs := []LicenseDiff{}
-	for _, dl := range detectedLicenses {
-		found := false
-		for _, ml := range melangeLicenses {
-			if dl.Source == ml.Source {
-				// Check if the license matches the license path
-				if dl.Name == ml.Name {
-					found = true
-				} else {
-					// Check if we consciously know about the difference and just override it
-					if ml.Overrides == "" || ml.Overrides != dl.Name {
-						// If not, then it is a mismatch: add it to license differences
-						diffs = append(diffs, LicenseDiff{
-							dl.Source,
-							ml.Name,
-							dl.Name,
-							ml.Overrides,
-						})
-					}
-					// We already added the diff, so we can break out of the loop
-					found = true
-					break
-				}
-			} else if ml.Source == "" {
-				// Check if the license matches the license path
-				if dl.Name == ml.Name {
-					found = true
-				}
-			}
-		}
+	if cfg != nil {
+		log.Infof("checking gathered license information against the configuration")
 
-		if !found {
-			// We didn't find a match, add it to license differences
-			diffs = append(diffs, LicenseDiff{
-				dl.Source,
-				"",
-				dl.Name,
-				"",
-			})
-		}
-	}
-
-	// Print out the license differences
-	if len(diffs) > 0 {
-		log.Warnf("detected license differences:")
-		for _, diff := range diffs {
-			if diff.Is == "" {
-				log.Warnf("  %s: %s not found", diff.Path, diff.Should)
-			} else if diff.Override != "" {
-				log.Warnf("  %s: requested override from %s to %s, but now detecting as %s", diff.Path, diff.Override, diff.Is, diff.Should)
+		// Let's first turn the melange licensing information into a coherent licensing list, similar to what Identify returns
+		// We first start off by splitting license information that has OR and AND into separate license entries
+		// Every entry can have multiple AND or ORs
+		melangeLicenses := []License{}
+		for _, ml := range cfg.Package.Copyright {
+			if strings.Contains(ml.License, " OR ") || strings.Contains(ml.License, " AND ") {
+				// Split the license into separate entries using regexp
+				splitLicenses := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(ml.License, -1)
+				for _, sl := range splitLicenses {
+					melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(sl, ml.LicensePath, ml.DetectionOverride))
+				}
 			} else {
-				log.Warnf("  %s: %s != %s", diff.Path, diff.Should, diff.Is)
+				melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(ml.License, ml.LicensePath, ml.DetectionOverride))
 			}
 		}
-		log.Warnf("detected license differences, please check the configuration")
+
+		// Now let's check if the detected licenses are in the configuration
+		for _, dl := range detectedLicenses {
+			found := false
+			for _, ml := range melangeLicenses {
+				if dl.Source == ml.Source {
+					// Check if the license matches the license path
+					if dl.Name == ml.Name {
+						found = true
+					} else {
+						// Check if we consciously know about the difference and just override it
+						if ml.Overrides == "" || ml.Overrides != dl.Name {
+							// If not, then it is a mismatch: add it to license differences
+							diffs = append(diffs, LicenseDiff{
+								dl.Source,
+								ml.Name,
+								dl.Name,
+								ml.Overrides,
+							})
+						}
+						// We already added the diff, so we can break out of the loop
+						found = true
+						break
+					}
+				} else if ml.Source == "" {
+					// Check if the license matches the license path
+					if dl.Name == ml.Name {
+						found = true
+					}
+				}
+			}
+
+			if !found {
+				// We didn't find a match, add it to license differences
+				diffs = append(diffs, LicenseDiff{
+					dl.Source,
+					"",
+					dl.Name,
+					"",
+				})
+			}
+		}
+
+		// Print out the license differences
+		if len(diffs) > 0 {
+			log.Warnf("detected license differences:")
+			for _, diff := range diffs {
+				if diff.Is == "" {
+					log.Warnf("  %s: %s not found", diff.Path, diff.Should)
+				} else if diff.Override != "" {
+					log.Warnf("  %s: requested override from %s to %s, but now detecting as %s", diff.Path, diff.Override, diff.Is, diff.Should)
+				} else {
+					log.Warnf("  %s: %s != %s", diff.Path, diff.Should, diff.Is)
+				}
+			}
+			log.Warnf("detected license differences, please check the configuration")
+		} else {
+			log.Warnf("no license differences detected")
+		}
 	} else {
-		log.Warnf("no license differences detected")
+		diffs = nil
 	}
 
 	return diffs, nil

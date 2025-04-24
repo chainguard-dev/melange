@@ -1291,6 +1291,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
+		SetCap:             in.SetCap,
 	}
 }
 
@@ -1869,30 +1870,32 @@ func ParseCapabilities(caps []Capability) (map[string]capabilityData, error) {
 	pathCapabilities := map[string]capabilityData{}
 
 	for _, c := range caps {
-		for attr, data := range c.Add {
-			capValues := getCapabilityValue(attr)
-			effective, permitted, inheritable := parseCapability(data)
+		for attrs, data := range c.Add {
+			for attr := range strings.SplitSeq(attrs, ",") {
+				capValues := getCapabilityValue(attr)
+				effective, permitted, inheritable := parseCapability(data)
 
-			caps, ok := pathCapabilities[c.Path]
-			if !ok {
-				caps = struct {
-					Effective   uint32
-					Permitted   uint32
-					Inheritable uint32
-				}{}
-			}
+				caps, ok := pathCapabilities[c.Path]
+				if !ok {
+					caps = struct {
+						Effective   uint32
+						Permitted   uint32
+						Inheritable uint32
+					}{}
+				}
 
-			if effective {
-				caps.Effective |= capValues
-			}
-			if permitted {
-				caps.Permitted |= capValues
-			}
-			if inheritable {
-				caps.Inheritable |= capValues
-			}
+				if effective {
+					caps.Effective |= capValues
+				}
+				if permitted {
+					caps.Permitted |= capValues
+				}
+				if inheritable {
+					caps.Inheritable |= capValues
+				}
 
-			pathCapabilities[c.Path] = caps
+				pathCapabilities[c.Path] = caps
+			}
 		}
 	}
 
@@ -1916,22 +1919,23 @@ func parseCapability(capFlag string) (effective, permitted, inheritable bool) {
 
 // EncodeCapability returns the byte slice necessary to set the final capability xattr.
 func EncodeCapability(effectiveBits, permittedBits, inheritableBits uint32) []byte {
-	// https://github.com/torvalds/linux/blob/a33b5a08cbbdd7aadff95f40cbb45ab86841679e/include/uapi/linux/capability.h#L36
-	magic := uint32(0x20080522)
-	// Version 3; Version 2 is deprecated
-	version := uint32(0x3)
+	revision := uint32(0x03000000)
 
-	data := make([]byte, 20)
-	binary.LittleEndian.PutUint32(data[0:], magic)
-	binary.LittleEndian.PutUint32(data[4:], version)
-	binary.LittleEndian.PutUint32(data[8:], effectiveBits)
-	binary.LittleEndian.PutUint32(data[12:], permittedBits)
-	binary.LittleEndian.PutUint32(data[16:], inheritableBits)
+	var flags uint32 = 0
+	if effectiveBits != 0 {
+		flags = 0x01
+	}
+	magic := revision | flags
 
-	rootid := uint32(0)
-	rootidBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(rootidBytes, rootid)
-	data = append(data, rootidBytes...)
+	data := make([]byte, 24)
+
+	binary.LittleEndian.PutUint32(data[0:4], magic)
+	binary.LittleEndian.PutUint32(data[4:8], permittedBits)
+	binary.LittleEndian.PutUint32(data[8:12], inheritableBits)
+
+	binary.LittleEndian.PutUint32(data[12:16], 0)
+	binary.LittleEndian.PutUint32(data[16:20], 0)
+	binary.LittleEndian.PutUint32(data[20:24], 0)
 
 	return data
 }

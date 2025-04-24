@@ -1,9 +1,11 @@
 package config
 
 import (
+	"bytes"
 	"encoding/binary"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/chainguard-dev/clog/slogtest"
@@ -852,56 +854,67 @@ func TestSetCapability(t *testing.T) {
 				t.Fatalf("Failed to collect capabilities: %v", err)
 			}
 
-			for path, caps := range caps {
-				enc := EncodeCapability(caps.Effective, caps.Permitted, caps.Inheritable)
-				if err := b.WorkspaceDirFS.SetXattr(path, "security.capability", enc); err != nil {
-					t.Fatalf("Failed to set capability: %v", err)
+			expectedAttrs := make(map[string][]byte)
+			for path, c := range caps {
+				encoded := EncodeCapability(c.Effective, c.Permitted, c.Inheritable)
+				expectedAttrs[path] = encoded
+
+				if err := b.WorkspaceDirFS.SetXattr(path, "security.capability", encoded); err != nil {
+					t.Fatalf("failed to set xattr for %s: %v", path, err)
 				}
 			}
 
-			for path, attrs := range tc.expectedAttrs {
-				for attr := range attrs {
-					data, err := b.WorkspaceDirFS.GetXattr(path, attr)
-					if err != nil {
-						t.Errorf("Failed to get xattr %s for path %s: %v", attr, path, err)
+			for path, expected := range expectedAttrs {
+				data, err := b.WorkspaceDirFS.GetXattr(path, "security.capability")
+				if err != nil {
+					t.Errorf("Failed to get xattr %s: %v", path, err)
+					continue
+				}
+
+				if !bytes.Equal(data, expected) {
+					t.Errorf("Mismatched xattr for %s:\ngot:  %x\nwant: %x", path, data, expected)
+				}
+
+				if len(data) < 24 {
+					t.Errorf("Capability data too short for %s: got %d bytes", path, len(data))
+					continue
+				}
+
+				magic := binary.LittleEndian.Uint32(data[0:4])
+				revision := magic & 0xFF000000
+				flags := magic & 0x000000FF
+
+				if revision != 0x03000000 {
+					t.Errorf("Invalid revision: %x", revision)
+				}
+
+				permitted := binary.LittleEndian.Uint32(data[4:8])
+				inheritable := binary.LittleEndian.Uint32(data[8:12])
+				rootid := binary.LittleEndian.Uint32(data[20:24])
+
+				if rootid != 0 {
+					t.Errorf("Unexpected rootid: %d", rootid)
+				}
+
+				effective := flags & 0x01
+
+				for _, capEntry := range tc.caps {
+					if capEntry.Path != path {
 						continue
 					}
+					for attr, flag := range capEntry.Add {
+						for _, a := range strings.Split(attr, ",") {
+							val := getCapabilityValue(a)
+							e, p, i := parseCapability(flag)
 
-					if len(data) < 24 {
-						t.Errorf("Capability data for %s is too short: %d bytes", path, len(data))
-						continue
-					}
-
-					magic := binary.LittleEndian.Uint32(data[0:4])
-					if magic != 0x20080522 {
-						t.Errorf("Invalid magic number: %x", magic)
-					}
-
-					version := binary.LittleEndian.Uint32(data[4:8])
-					if version != 0x3 {
-						t.Errorf("Invalid version: %d, expected 3", version)
-					}
-
-					effective := binary.LittleEndian.Uint32(data[8:12])
-					permitted := binary.LittleEndian.Uint32(data[12:16])
-					inheritable := binary.LittleEndian.Uint32(data[16:20])
-
-					caps := b.Configuration.Package.SetCap
-					for _, c := range caps {
-						if c.Path == path {
-							for attr, flag := range c.Add {
-								capValues := getCapabilityValue(attr)
-								e, p, i := parseCapability(flag)
-
-								if e && (effective&capValues != capValues) {
-									t.Errorf("Expected capabilities %s to be in effective set for %s", attr, path)
-								}
-								if p && (permitted&capValues != capValues) {
-									t.Errorf("Expected capabilities %s to be in permitted set for %s", attr, path)
-								}
-								if i && (inheritable&capValues != capValues) {
-									t.Errorf("Expected capabilities %s to be in inheritable set for %s", attr, path)
-								}
+							if e && effective != 1 {
+								t.Errorf("Expected effective bit set for %s", path)
+							}
+							if p && (permitted&val != val) {
+								t.Errorf("Expected permitted cap %s in %s", a, path)
+							}
+							if i && (inheritable&val != val) {
+								t.Errorf("Expected inheritable cap %s in %s", a, path)
 							}
 						}
 					}

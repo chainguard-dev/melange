@@ -485,6 +485,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			cfg.MicroVM = val
 		}
 	}
+
+	kernelConsole := "console=hvc0"
+	serialArgs := []string{
+		"-device", "virtio-serial-pci,id=virtio-serial0",
+		"-chardev", "stdio,id=charconsole0",
+		"-device", "virtconsole,chardev=charconsole0,id=console0",
+	}
 	if cfg.MicroVM {
 		// load microvm profile and bios, shave some milliseconds from boot
 		// using this will make a complete boot->initrd (with working network) In ~700ms
@@ -495,8 +502,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} {
 			if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
 				// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
+				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=on")
 				baseargs = append(baseargs, "-bios", p)
+				// microvm in qemu any version tested will not send hvc0/virtconsole to stdout
+				kernelConsole = "console=ttyS0"
+				serialArgs = []string{"-serial", "stdio"}
 				microvm = true
 				break
 			}
@@ -579,7 +589,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-nographic")
 	baseargs = append(baseargs, "-nodefaults")
 	baseargs = append(baseargs, "-parallel", "none")
-	baseargs = append(baseargs, "-serial", "stdio")
+	baseargs = append(baseargs, serialArgs...)
 	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22")
@@ -589,7 +599,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", "debug loglevel=7 console=ttyAMA0 console=ttyS0 nomodeset panic=-1 sshkey="+sshkey)
+	baseargs = append(baseargs, "-append", kernelConsole+" debug loglevel=7 nomodeset panic=-1 sshkey="+sshkey)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.

@@ -997,7 +997,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			fullPath := filepath.Join(WorkDir, melangeOutputDirName, pkg.Name, path)
 			hex := fmt.Sprintf("0x%s", hex.EncodeToString(enc))
 			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, fullPath)}
-			b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...)
+			if err := b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...); err != nil {
+				return fmt.Errorf("failed to set capabilities within VM on %s: %v\n", path, err)
+			}
 		} else {
 			if err := b.WorkspaceDirFS.SetXattr(fullPath, "security.capability", enc); err != nil {
 				log.Warnf("failed to set capabilities on %s: %v\n", path, err)

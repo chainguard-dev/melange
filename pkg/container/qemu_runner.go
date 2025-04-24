@@ -477,19 +477,29 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	baseargs := []string{}
 	microvm := false
-	// load microvm profile and bios, shave some milliseconds from boot
-	// using this will make a complete boot->initrd (with working network) In ~700ms
-	// instead of ~900ms.
-	for _, p := range []string{
-		"/usr/share/qemu/bios-microvm.bin",
-		"/usr/share/seabios/bios-microvm.bin",
-	} {
-		if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
-			// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-			baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
-			baseargs = append(baseargs, "-bios", p)
-			microvm = true
-			break
+	// by default, cfg.MicroVM will be false
+	// override the MicroVM config value with the environment variable if present
+	// and said variable is parseable as a bool
+	if env, ok := os.LookupEnv("QEMU_USE_MICROVM"); ok {
+		if val, err := strconv.ParseBool(env); err == nil {
+			cfg.MicroVM = val
+		}
+	}
+	if cfg.MicroVM {
+		// load microvm profile and bios, shave some milliseconds from boot
+		// using this will make a complete boot->initrd (with working network) In ~700ms
+		// instead of ~900ms.
+		for _, p := range []string{
+			"/usr/share/qemu/bios-microvm.bin",
+			"/usr/share/seabios/bios-microvm.bin",
+		} {
+			if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
+				// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
+				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
+				baseargs = append(baseargs, "-bios", p)
+				microvm = true
+				break
+			}
 		}
 	}
 

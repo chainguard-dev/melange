@@ -176,6 +176,7 @@ type Resources struct {
 	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
 	Memory   string `json:"memory,omitempty" yaml:"memory,omitempty"`
 	Disk     string `json:"disk,omitempty" yaml:"disk,omitempty"`
+	MicroVM  bool   `json:"microvm,omitempty" yaml:"microvm,omitempty"`
 }
 
 // CPEString returns the CPE string for the package, suitable for matching

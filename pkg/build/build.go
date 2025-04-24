@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -313,6 +314,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		b.ExtraPackages = append(b.ExtraPackages, []string{
 			"melange-microvm-init",
 			"gnutar",
+			"attr",
 		}...)
 	}
 
@@ -990,8 +992,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	for path, cap := range caps {
 		enc := config.EncodeCapability(cap.Effective, cap.Permitted, cap.Inheritable)
-		if err := b.WorkspaceDirFS.SetXattr(path, "security.capability", enc); err != nil {
-			log.Warnf("failed to set capabilities on %s: %v\n", path, err)
+		fullPath := filepath.Join(melangeOutputDirName, pkg.Name, path)
+		if b.Runner.Name() == container.QemuName {
+			fullPath := filepath.Join(WorkDir, melangeOutputDirName, pkg.Name, path)
+			hex := fmt.Sprintf("0x%s", hex.EncodeToString(enc))
+			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, fullPath)}
+			if err := b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...); err != nil {
+				return fmt.Errorf("failed to set capabilities within VM on %s: %v\n", path, err)
+			}
+		} else {
+			if err := b.WorkspaceDirFS.SetXattr(fullPath, "security.capability", enc); err != nil {
+				log.Warnf("failed to set capabilities on %s: %v\n", path, err)
+			}
 		}
 	}
 

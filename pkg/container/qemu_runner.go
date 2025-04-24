@@ -571,15 +571,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
-	baseargs = append(baseargs, "-daemonize")
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise
 	baseargs = append(baseargs, "-display", "none")
 	baseargs = append(baseargs, "-no-reboot")
 	baseargs = append(baseargs, "-no-user-config")
+	baseargs = append(baseargs, "-nographic")
 	baseargs = append(baseargs, "-nodefaults")
 	baseargs = append(baseargs, "-parallel", "none")
-	baseargs = append(baseargs, "-serial", "none")
+	baseargs = append(baseargs, "-serial", "stdio")
 	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22")
@@ -589,7 +589,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", "quiet nomodeset panic=-1 sshkey="+sshkey)
+	baseargs = append(baseargs, "-append", "debug loglevel=7 console=ttyAMA0 console=ttyS0 nomodeset panic=-1 sshkey="+sshkey)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
@@ -621,41 +621,89 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
-	output, err := qemuCmd.CombinedOutput()
-	if err != nil {
-		// ensure cleanup of resources
+	outRead, outWrite := io.Pipe()
+	errRead, errWrite := io.Pipe()
+
+	qemuCmd.Stdout = outWrite
+	qemuCmd.Stderr = errWrite
+
+	if err := qemuCmd.Start(); err != nil {
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
-
-		clog.FromContext(ctx).Errorf("qemu: failed to run qemu command: %v - %s", err, string(output))
-		return err
+		return fmt.Errorf("qemu: failed to start qemu command: %w", err)
 	}
 
-	// 5 minutes timeout
-	retries := 6000
-	try := 0
-	for try <= retries {
-		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("checking SSH server: %w", err)
-		}
+	logCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		try++
-		time.Sleep(time.Millisecond * 500)
-
-		clog.FromContext(ctx).Debugf("qemu: waiting for ssh to come up, try %d of %d", try, retries)
-		// Attempt to connect to the address
-		err = checkSSHServer(cfg.SSHAddress)
-		if err == nil {
-			break
-		} else {
-			clog.FromContext(ctx).Debug(err.Error())
+	go func() {
+		defer outRead.Close()
+		scanner := bufio.NewScanner(outRead)
+		for scanner.Scan() && logCtx.Err() == nil {
+			line := scanner.Text()
+			log.Debugf("qemu: %s", line)
 		}
-	}
-	if try >= retries {
-		// ensure cleanup of resources
+		if err := scanner.Err(); err != nil {
+			log.Warnf("qemu stdout scanner error: %v", err)
+		}
+	}()
+
+	go func() {
+		defer errRead.Close()
+		scanner := bufio.NewScanner(errRead)
+		for scanner.Scan() && logCtx.Err() == nil {
+			line := scanner.Text()
+			log.Warnf("qemu: %s", line)
+		}
+		if err := scanner.Err(); err != nil {
+			log.Warnf("qemu stderr scanner error: %v", err)
+		}
+	}()
+
+	qemuExit := make(chan error, 1)
+	go func() {
+		err := qemuCmd.Wait()
+		outWrite.Close()
+		errWrite.Close()
+		qemuExit <- err
+	}()
+
+	started := make(chan struct{})
+
+	go func() {
+		// one-hour timeout with a 500ms sleep
+		retries := 7200
+		try := 0
+		for try < retries {
+			if logCtx.Err() != nil {
+				return
+			}
+
+			try++
+			time.Sleep(time.Millisecond * 500)
+
+			log.Debugf("qemu: waiting for ssh to come up, try %d of %d", try, retries)
+			err = checkSSHServer(cfg.SSHAddress)
+			if err == nil {
+				close(started)
+				return
+			} else {
+				log.Debug(err.Error())
+			}
+		}
+	}()
+
+	select {
+	case <-started:
+		log.Info("qemu: VM started successfully, SSH server is up")
+	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
-		return fmt.Errorf("qemu: could not start VM, timeout reached")
+		return fmt.Errorf("qemu: VM exited unexpectedly: %v", err)
+	case <-ctx.Done():
+		defer os.Remove(cfg.ImgRef)
+		defer os.Remove(cfg.Disk)
+		return fmt.Errorf("qemu: context canceled while waiting for VM to start")
 	}
 
 	err = getHostKey(ctx, cfg)

@@ -1251,7 +1251,6 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.CPUModel = b.Configuration.Package.Resources.CPUModel
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
-		cfg.MicroVM = b.Configuration.Package.Resources.MicroVM
 	}
 	if b.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = b.Configuration.Capabilities.Add

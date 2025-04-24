@@ -476,16 +476,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	baseargs := []string{}
-	microvm := false
-	// by default, cfg.MicroVM will be false
-	// override the MicroVM config value with the environment variable if present
-	// and said variable is parseable as a bool
-	if env, ok := os.LookupEnv("QEMU_USE_MICROVM"); ok {
-		if val, err := strconv.ParseBool(env); err == nil {
-			cfg.MicroVM = val
+	// attempt to use a microVM by default
+	attemptVM := true
+	useVM := false
+	// if valid, override the microVM config value with the environment variable
+	if envVM, ok := os.LookupEnv("QEMU_USE_MICROVM"); ok {
+		if val, err := strconv.ParseBool(envVM); err == nil {
+			attemptVM = val
 		}
 	}
-	if cfg.MicroVM {
+
+	if attemptVM {
+		log.Infof("qemu: attempting to use a microVM")
 		// load microvm profile and bios, shave some milliseconds from boot
 		// using this will make a complete boot->initrd (with working network) In ~700ms
 		// instead of ~900ms.
@@ -495,18 +497,17 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} {
 			if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
 				// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off")
+				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=off,acpi=off")
 				baseargs = append(baseargs, "-bios", p)
-				microvm = true
+				useVM = true
 				break
 			}
 		}
 	}
 
 	// we need to fallback to -machine virt, if not machine has been specified
-	if !microvm {
-		// aarch64 supports virt machine type, let's use that if we're on it, else
-		// if we're on x86 arch, but without microvm machine type, let's go to q35
+	if !useVM {
+		log.Infof("qemu: not attempting to use a microVM")
 		if cfg.Arch.ToAPK() == "aarch64" {
 			baseargs = append(baseargs, "-machine", "virt")
 		} else if cfg.Arch.ToAPK() == "x86_64" {

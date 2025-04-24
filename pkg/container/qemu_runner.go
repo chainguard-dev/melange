@@ -507,6 +507,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// we need to fallback to -machine virt, if not machine has been specified
 	if !useVM {
+		// aarch64 supports virt machine type, let's use that if we're on it, else
+		// if we're on x86 arch, but without microvm machine type, let's go to q35
 		log.Infof("qemu: not attempting to use a microVM")
 		if cfg.Arch.ToAPK() == "aarch64" {
 			baseargs = append(baseargs, "-machine", "virt")

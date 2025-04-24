@@ -993,7 +993,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// Perform all license related linting and analysis
-	if _, err := license.LicenseCheck(ctx, b.Configuration, apkofs.DirFS(b.WorkspaceDir)); err != nil {
+	if _, _, err := license.LicenseCheck(ctx, b.Configuration, apkofs.DirFS(b.WorkspaceDir)); err != nil {
 		return fmt.Errorf("license check: %w", err)
 	}
 

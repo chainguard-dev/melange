@@ -237,7 +237,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		}
 		if err != nil {
 			log.Debugf("trying to load pipeline %q from embedded fs pipelines/%q.yaml", uses, uses)
-			data, err = f.ReadFile("pipelines/" + uses + ".yaml")
+			data, err = PipelinesFS.ReadFile("pipelines/" + uses + ".yaml")
 			if err != nil {
 				return fmt.Errorf("unable to load pipeline: %w", err)
 			}

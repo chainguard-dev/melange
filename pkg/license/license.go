@@ -212,8 +212,8 @@ func melangeLicenseToLicense(license string, licensePath string, override string
 	}
 }
 
-// LicenseCheck checks the licenses of the files in the given filesystem against the melange configuration.
-func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([]LicenseDiff, error) {
+// CollectLicenseInfo collects license information from the given filesystem.
+func CollectLicenseInfo(ctx context.Context, fsys fs.FS) ([]License, error) {
 	log := clog.FromContext(ctx)
 
 	// Find all license-text files
@@ -233,8 +233,6 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 	}
 
 	melangeClassifier := classifier.(*melangeClassifier)
-
-	log.Infof("detected the following licenses in the source code:")
 	detectedLicenses := []License{}
 	for _, lf := range licenseFiles {
 		dl, err := melangeClassifier.Identify(fsys, lf.Path)
@@ -242,20 +240,38 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 			return nil, fmt.Errorf("identifying license: %w", err)
 		}
 
-		// Print out the licensing information
-		for _, l := range dl {
-			s := ""
-			// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-			if l.Confidence < 0.9 {
-				s = " ignored"
-			}
-			log.Infof("  %s: %s (%f%s) (%s)", l.Source, l.Name, l.Confidence, s, l.Type)
-
-			if s == "" {
-				detectedLicenses = append(detectedLicenses, l)
-			}
-		}
+		log.Debugf("detected licenses %v in %s", dl, lf.Path)
+		detectedLicenses = append(detectedLicenses, dl...)
 	}
+
+	return detectedLicenses, nil
+}
+
+// LicenseCheck checks the licenses of the files in the given filesystem against the melange configuration.
+func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([]License, []LicenseDiff, error) {
+	log := clog.FromContext(ctx)
+
+	detectedLicenses, err := CollectLicenseInfo(ctx, fsys)
+	if err != nil {
+		return nil, nil, fmt.Errorf("collecting license info: %w", err)
+	}
+
+	if detectedLicenses == nil {
+		log.Infof("no license files detected")
+		return nil, nil, nil
+	}
+
+	// Print out all the gathered licenses
+	for _, dl := range detectedLicenses {
+		s := ""
+		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
+		if dl.Confidence < 0.9 {
+			s = " ignored"
+		}
+		log.Infof("  %s: %s (%f%s) (%s)", dl.Source, dl.Name, dl.Confidence, s, dl.Type)
+	}
+
+	// TODO: Handle low-confidence licenses, possibly by printing out info about those separately!
 
 	diffs := []LicenseDiff{}
 	if cfg != nil {
@@ -339,5 +355,5 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		diffs = nil
 	}
 
-	return diffs, nil
+	return detectedLicenses, diffs, nil
 }

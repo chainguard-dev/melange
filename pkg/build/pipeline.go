@@ -342,4 +342,4 @@ func expectedShaLength(shaType string) int {
 }
 
 //go:embed pipelines/*
-var f embed.FS
+var PipelinesFS embed.FS

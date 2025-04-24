@@ -174,7 +174,7 @@ func TestLicenseCheck(t *testing.T) {
 	dataFS := apkofs.DirFS(testDataDir)
 
 	// Call function under test
-	diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
+	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
 	if err != nil {
 		t.Fatalf("LicenseCheck returned an error: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestLicenseCheckWithOverrides(t *testing.T) {
 	dataFS := apkofs.DirFS(testDataDir)
 
 	// Call function under test
-	diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
+	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
 	if err != nil {
 		t.Fatalf("LicenseCheck returned an error: %v", err)
 	}

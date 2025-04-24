@@ -102,11 +102,13 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 	defer os.RemoveAll(pDir)
 
 	// Check if the file is an apk package
+	isApk := false
 	if filepath.Ext(filePath) == ".apk" {
 		if err := extractMelangeYamlFromTarball(filePath, pDir); err != nil {
 			log.Fatalf("Failed to extract melange yaml from apk package: %v", err)
 		}
 		filePath = filepath.Join(pDir, ".melange.yaml")
+		isApk = true
 	}
 
 	// Parsing the configuration file. It's still not ready for 'consumption'
@@ -153,9 +155,22 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 		return nil, fmt.Errorf("failed to compile pipelines: %v", err)
 	}
 
+	// During command execution we can change the working directory. We need to
+	// make sure we change it back to the original working directory afterwards.
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer os.Chdir(wd)
+
 	// Iterate over the pipeline steps and look for any source fetching steps.
 	for _, step := range cfg.Pipeline {
-		if step.Uses != "git-checkout" && step.Uses != "fetch" && step.Uses != "patch" {
+		if step.Uses == "patch" && isApk {
+			log.Warnf("Skipping patch step as we do not have patches available inside apk metadata yet.")
+			continue
+		}
+
+		if step.Uses != "git-checkout" && step.Uses != "fetch" {
 			continue
 		}
 
@@ -167,10 +182,4 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 	}
 
 	return cfg, nil
-}
-
-// FetchSourceFromCfg tries its best to fetch the source from a melange Configuration.
-func FetchSourceFromCfg(ctx context.Context, cfg config.Configuration, destDir string) (*config.Configuration, error) {
-	// TODO
-	return nil, nil
 }

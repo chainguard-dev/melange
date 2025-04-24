@@ -24,11 +24,14 @@ import (
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/license"
+	"chainguard.dev/melange/pkg/renovate"
+	"chainguard.dev/melange/pkg/renovate/copyright"
 	"chainguard.dev/melange/pkg/source"
 )
 
 func licenseCheck() *cobra.Command {
 	var workDir string
+	var fix bool
 	cmd := &cobra.Command{
 		Use:     "license-check",
 		Short:   "Gather and check licensing data",
@@ -61,13 +64,28 @@ func licenseCheck() *cobra.Command {
 			}
 
 			sourceFS := apkofs.DirFS(sourceDir)
-			_, err = license.LicenseCheck(ctx, cfg, sourceFS)
+			detectedLicenses, _, err := license.LicenseCheck(ctx, cfg, sourceFS)
+			if err != nil {
+				return err
+			}
+
+			if fix {
+				// Attempt to fix the license issues in the melange yaml file
+				rc, err := renovate.New(renovate.WithConfig(args[0]))
+				if err != nil {
+					return err
+				}
+
+				copyrightRenovator := copyright.New(ctx, copyright.WithLicenses(detectedLicenses))
+				rc.Renovate(cmd.Context(), copyrightRenovator)
+			}
 
 			return err
 		},
 	}
 
 	cmd.Flags().StringVar(&workDir, "work-directory", "", "path to the working directory")
+	cmd.Flags().BoolVar(&fix, "attempt-fixing", false, "fix license issues in the melange yaml file")
 
 	return cmd
 }

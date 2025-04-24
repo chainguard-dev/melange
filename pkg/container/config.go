@@ -60,4 +60,5 @@ type Config struct {
 	SSHHostKey            string
 	Disk                  string
 	Timeout               time.Duration
+	MicroVM               bool
 }

@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	chainguard.dev/apko v0.27.0
 	cloud.google.com/go/storage v1.51.0
-	dagger.io/dagger v0.16.3
+	dagger.io/dagger v0.18.4
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.12
@@ -70,7 +70,7 @@ require (
 	cloud.google.com/go/iam v1.4.1 // indirect
 	cloud.google.com/go/monitoring v1.24.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/99designs/gqlgen v0.17.66 // indirect
+	github.com/99designs/gqlgen v0.17.70 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.25.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.51.0 // indirect

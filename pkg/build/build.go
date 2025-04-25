@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -241,7 +242,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
 		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
 	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
-		slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
+		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
 	}
 
@@ -314,6 +315,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		b.ExtraPackages = append(b.ExtraPackages, []string{
 			"melange-microvm-init",
 			"gnutar",
+			"attr",
 		}...)
 	}
 
@@ -610,7 +612,7 @@ func (b *Build) populateCache(ctx context.Context) error {
 		return nil
 	}
 
-	cmm, err := cacheItemsForBuild(b.ConfigFile)
+	cmm, err := cacheItemsForBuild(b.Configuration)
 	if err != nil {
 		return fmt.Errorf("while determining which objects to fetch: %w", err)
 	}
@@ -844,9 +846,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.populateWorkspace(ctx, apkofs.DirFS(b.SourceDir)); err != nil {
-			return fmt.Errorf("unable to populate workspace: %w", err)
+		fs := apkofs.DirFS(b.SourceDir)
+		if fs != nil {
+			log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
+			if err := b.populateWorkspace(ctx, fs); err != nil {
+				return fmt.Errorf("unable to populate workspace: %w", err)
+			}
 		}
 	}
 
@@ -950,8 +955,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	// Store xattrs for use after the workspace is loaded into memory
-	xattrs, err := storeXattrs(b.WorkspaceDir)
+	// Store xattrs and modes for use after the workspace is loaded into memory
+	xattrs, modes, err := storeXattrs(b.WorkspaceDir)
 	if err != nil {
 		return fmt.Errorf("failed to store workspace xattrs: %w", err)
 	}
@@ -965,6 +970,40 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		for attr, data := range attrs {
 			if err := b.WorkspaceDirFS.SetXattr(path, attr, data); err != nil {
 				log.Warnf("failed to restore xattr %s on %s: %v\n", attr, path, err)
+			}
+		}
+	}
+
+	for path, mode := range modes {
+		if err := b.WorkspaceDirFS.Chmod(path, mode); err != nil {
+			log.Warnf("failed to apply mode %04o (%s) to %s: %v", mode, mode, path, err)
+		}
+	}
+
+	// For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
+	// For example:
+	// setcap:
+	//   - path: /usr/bin/scary
+	//     add:
+	//       cap_sys_admin: "+ep"
+	caps, err := config.ParseCapabilities(b.Configuration.Package.SetCap)
+	if err != nil {
+		log.Warnf("failed to collect encoded capabilities for %v: %v", b.Configuration.Package.SetCap, err)
+	}
+
+	for path, cap := range caps {
+		enc := config.EncodeCapability(cap.Effective, cap.Permitted, cap.Inheritable)
+		fullPath := filepath.Join(melangeOutputDirName, pkg.Name, path)
+		if b.Runner.Name() == container.QemuName {
+			fullPath := filepath.Join(WorkDir, melangeOutputDirName, pkg.Name, path)
+			hex := fmt.Sprintf("0x%s", hex.EncodeToString(enc))
+			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, fullPath)}
+			if err := b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...); err != nil {
+				return fmt.Errorf("failed to set capabilities within VM on %s: %v\n", path, err)
+			}
+		} else {
+			if err := b.WorkspaceDirFS.SetXattr(fullPath, "security.capability", enc); err != nil {
+				log.Warnf("failed to set capabilities on %s: %v\n", path, err)
 			}
 		}
 	}
@@ -1218,6 +1257,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.CPUModel = b.Configuration.Package.Resources.CPUModel
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
+		cfg.MicroVM = b.Configuration.Package.Resources.MicroVM
 	}
 	if b.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = b.Configuration.Capabilities.Add
@@ -1357,18 +1397,45 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 	return time.Unix(sec, 0).UTC(), nil
 }
 
-// Record on-disk xattrs set during package builds in order to apply them in the new in-memory filesystem
+// xattrIgnoreList contains a mapping of xattr names used by various
+// security features which leak their state into packages.  We need to
+// ignore these xattrs because they require special permissions to be
+// set when the underlying security features are in use.
+var xattrIgnoreList = map[string]bool{
+	"com.apple.provenance":          true,
+	"security.csm":                  true,
+	"security.selinux":              true,
+	"com.docker.grpcfuse.ownership": true,
+}
+
+// Record on-disk xattrs and mode bits set during package builds in order to apply them in the new in-memory filesystem
 // This will allow in-memory and bind mount runners to persist xattrs correctly
-func storeXattrs(dir string) (map[string]map[string][]byte, error) {
+func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, error) {
 	xattrs := make(map[string]map[string][]byte)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	modes := make(map[string]fs.FileMode)
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
+		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+		mode := fi.Mode()
+
 		relPath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
+		}
+
+		// If the path is within the melange-out directory, store the relative path and mode bits
+		if strings.Contains(path, melangeOutputDirName) {
+			modes[relPath] = mode
 		}
 
 		size, err := unix.Listxattr(path, nil)
@@ -1385,6 +1452,10 @@ func storeXattrs(dir string) (map[string]map[string][]byte, error) {
 		attrs := stringsFromByteSlice(buf[:read])
 		result := make(map[string][]byte)
 		for _, attr := range attrs {
+			if _, ok := xattrIgnoreList[attr]; ok {
+				continue
+			}
+
 			s, err := unix.Getxattr(path, attr, nil)
 			if err != nil {
 				continue
@@ -1402,7 +1473,7 @@ func storeXattrs(dir string) (map[string]map[string][]byte, error) {
 		return nil
 	})
 
-	return xattrs, err
+	return xattrs, modes, err
 }
 
 // stringsFromByteSlice converts a sequence of attributes to a []string.

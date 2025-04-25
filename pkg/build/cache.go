@@ -16,27 +16,17 @@ package build
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/renovate"
 )
 
 // CacheMembershipMap describes a mapping where keys map to 'true'
 // if present.
 type CacheMembershipMap map[string]bool
-
-// loadConfig loads a configuration into a rootNode.
-func loadConfig(configFile string, rootNode *yaml.Node) error {
-	configData, err := os.ReadFile(configFile)
-	if err != nil {
-		return err
-	}
-
-	return yaml.Unmarshal(configData, rootNode)
-}
 
 // visitFetch processes a fetch node, updating the cache membership map.
 func visitFetch(fetchNode *yaml.Node, cmm *CacheMembershipMap) error {
@@ -62,12 +52,16 @@ func visitFetch(fetchNode *yaml.Node, cmm *CacheMembershipMap) error {
 
 // cacheItemsForBuild returns the relevant hashes to check against
 // a source cache for a given build as a CacheMembershipMap.
-func cacheItemsForBuild(configFile string) (CacheMembershipMap, error) {
+func cacheItemsForBuild(config *config.Configuration) (CacheMembershipMap, error) {
 	cmm := CacheMembershipMap{}
 
 	var rootNode yaml.Node
-	if err := loadConfig(configFile, &rootNode); err != nil {
-		return cmm, err
+	b, err := yaml.Marshal(config)
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(b, &rootNode); err != nil {
+		return nil, err
 	}
 
 	// Find our main pipeline YAML node.

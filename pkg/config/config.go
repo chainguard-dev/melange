@@ -17,6 +17,7 @@ package config
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -81,12 +82,12 @@ type Scriptlets struct {
 type PackageOption struct {
 	// Optional: Signify this package as a virtual package which does not provide
 	// any files, executables, libraries, etc... and is otherwise empty
-	NoProvides bool `json:"no-provides" yaml:"no-provides"`
+	NoProvides bool `json:"no-provides,omitempty" yaml:"no-provides,omitempty"`
 	// Optional: Mark this package as a self contained package that does not
 	// depend on any other package
-	NoDepends bool `json:"no-depends" yaml:"no-depends"`
+	NoDepends bool `json:"no-depends,omitempty" yaml:"no-depends,omitempty"`
 	// Optional: Mark this package as not providing any executables
-	NoCommands bool `json:"no-commands" yaml:"no-commands"`
+	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
 }
 
 type Checks struct {
@@ -125,6 +126,8 @@ type Package struct {
 	// The CPE field values to be used for matching against NVD vulnerability
 	// records, if known.
 	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -155,6 +158,15 @@ type CPE struct {
 	Other     string `json:"other,omitempty" yaml:"other,omitempty"`
 }
 
+// Capability stores paths and an associated map of capabilities and justification to include in a package.
+// These capabilities will be set after pipelines run to avoid permissions issues with `setcap`.
+// Empty justifications will result in an error.
+type Capability struct {
+	Path   string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Add    map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
+	Reason string            `json:"reason,omitempty" yaml:"reason,omitempty"`
+}
+
 func (cpe CPE) IsZero() bool {
 	return cpe == CPE{}
 }
@@ -164,6 +176,7 @@ type Resources struct {
 	CPUModel string `json:"cpumodel,omitempty" yaml:"cpumodel,omitempty"`
 	Memory   string `json:"memory,omitempty" yaml:"memory,omitempty"`
 	Disk     string `json:"disk,omitempty" yaml:"disk,omitempty"`
+	MicroVM  bool   `json:"microvm,omitempty" yaml:"microvm,omitempty"`
 }
 
 // CPEString returns the CPE string for the package, suitable for matching
@@ -507,7 +520,7 @@ type Pipeline struct {
 	//
 	// This defaults to the guests' build workspace (/home/build)
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
-	// Optional: environment variables to override the apko environment
+	// Optional: environment variables to override apko
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
@@ -696,6 +709,8 @@ type Subpackage struct {
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 }
 
 type Input struct {
@@ -720,7 +735,8 @@ type Configuration struct {
 	// Package metadata
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: environment variables to override apko
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 	// Optional: Linux capabilities configuration to apply to the melange runner.
 	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 
@@ -741,8 +757,6 @@ type Configuration struct {
 	VarTransforms []VarTransforms `json:"var-transforms,omitempty" yaml:"var-transforms,omitempty"`
 	// Optional: Deviations to the build
 	Options map[string]BuildOption `json:"options,omitempty" yaml:"options,omitempty"`
-	// Optional: Disables filtering of common pre-release tags
-	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
@@ -772,7 +786,8 @@ type Test struct {
 	// Environment.Contents.Packages automatically get
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: Additional Environment the test needs to run
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
@@ -828,6 +843,8 @@ type Update struct {
 	ExcludeReason string `json:"exclude-reason,omitempty" yaml:"exclude-reason,omitempty"`
 	// Schedule defines the schedule for the update check to run
 	Schedule *Schedule `json:"schedule,omitempty" yaml:"schedule,omitempty"`
+	// Optional: Disables filtering of common pre-release tags
+	EnablePreReleaseTags bool `json:"enable-prerelease-tags,omitempty" yaml:"enable-prerelease-tags,omitempty"`
 }
 
 // ReleaseMonitor indicates using the API for https://release-monitoring.org/
@@ -1277,6 +1294,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
+		SetCap:             in.SetCap,
 	}
 }
 
@@ -1630,6 +1648,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
+	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
 
 	saw := map[string]int{cfg.Package.Name: -1}
 	for i, sp := range cfg.Subpackages {
@@ -1654,6 +1675,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
 		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
+			return ErrInvalidConfiguration{Problem: err}
+		}
+		if err := validateCapabilities(sp.SetCap); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1794,4 +1818,127 @@ func (dep *Dependencies) Summarize(ctx context.Context) {
 			log.Info("    " + dep)
 		}
 	}
+}
+
+// validCapabilities contains a list of _in-use_ capabilities and their respective bits from existing package specs.
+// https://github.com/torvalds/linux/blob/master/include/uapi/linux/capability.h#L106-L422
+var validCapabilities = map[string]uint32{
+	"cap_net_bind_service": 10,
+	"cap_net_admin":        12,
+	"cap_net_raw":          13,
+	"cap_ipc_lock":         14,
+	"cap_sys_admin":        21,
+}
+
+func getCapabilityValue(attr string) uint32 {
+	if value, ok := validCapabilities[attr]; ok {
+		return 1 << value
+	}
+	return 0
+}
+
+func validateCapabilities(setcap []Capability) error {
+	var errs []error
+
+	for _, cap := range setcap {
+		for add := range cap.Add {
+			// Allow for multiple capabilities per addition
+			// e.g., cap_net_raw,cap_net_admin,cap_net_bind_service+eip
+			for p := range strings.SplitSeq(add, ",") {
+				if _, ok := validCapabilities[p]; !ok {
+					errs = append(errs, fmt.Errorf("invalid capability %q for path %q", p, cap.Path))
+				}
+			}
+		}
+		if cap.Reason == "" {
+			errs = append(errs, fmt.Errorf("unjustified reason for capability %q", cap.Add))
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errors.Join(errs...)
+}
+
+type capabilityData struct {
+	Effective   uint32
+	Permitted   uint32
+	Inheritable uint32
+}
+
+// ParseCapabilities processes all capabilities for a given path.
+func ParseCapabilities(caps []Capability) (map[string]capabilityData, error) {
+	pathCapabilities := map[string]capabilityData{}
+
+	for _, c := range caps {
+		for attrs, data := range c.Add {
+			for attr := range strings.SplitSeq(attrs, ",") {
+				capValues := getCapabilityValue(attr)
+				effective, permitted, inheritable := parseCapability(data)
+
+				caps, ok := pathCapabilities[c.Path]
+				if !ok {
+					caps = struct {
+						Effective   uint32
+						Permitted   uint32
+						Inheritable uint32
+					}{}
+				}
+
+				if effective {
+					caps.Effective |= capValues
+				}
+				if permitted {
+					caps.Permitted |= capValues
+				}
+				if inheritable {
+					caps.Inheritable |= capValues
+				}
+
+				pathCapabilities[c.Path] = caps
+			}
+		}
+	}
+
+	return pathCapabilities, nil
+}
+
+// parseCapability determines which bits are set for a given capability.
+func parseCapability(capFlag string) (effective, permitted, inheritable bool) {
+	for _, c := range capFlag {
+		switch c {
+		case 'e':
+			effective = true
+		case 'p':
+			permitted = true
+		case 'i':
+			inheritable = true
+		}
+	}
+	return
+}
+
+// EncodeCapability returns the byte slice necessary to set the final capability xattr.
+func EncodeCapability(effectiveBits, permittedBits, inheritableBits uint32) []byte {
+	revision := uint32(0x03000000)
+
+	var flags uint32 = 0
+	if effectiveBits != 0 {
+		flags = 0x01
+	}
+	magic := revision | flags
+
+	data := make([]byte, 24)
+
+	binary.LittleEndian.PutUint32(data[0:4], magic)
+	binary.LittleEndian.PutUint32(data[4:8], permittedBits)
+	binary.LittleEndian.PutUint32(data[8:12], inheritableBits)
+
+	binary.LittleEndian.PutUint32(data[12:16], 0)
+	binary.LittleEndian.PutUint32(data[16:20], 0)
+	binary.LittleEndian.PutUint32(data[20:24], 0)
+
+	return data
 }

@@ -13,4 +13,4 @@ inputs:
 
 pipeline:
   - runs: |
-      cmake --build ${{inputs.output-dir}}
+      VERBOSE=1 cmake --build ${{inputs.output-dir}}

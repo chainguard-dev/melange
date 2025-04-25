@@ -82,7 +82,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, 
 		config.SubstitutionPackageName:        pkg.Name,
 		config.SubstitutionPackageVersion:     pkg.Version,
 		config.SubstitutionPackageEpoch:       strconv.FormatUint(pkg.Epoch, 10),
-		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
+		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%d", pkg.Version, pkg.Epoch),
 		config.SubstitutionPackageSrcdir:      "/home/build",
 		config.SubstitutionTargetsOutdir:      "/home/build/melange-out",
 		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
@@ -207,7 +207,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	// Pipelines can have their own environment variables, which override the global ones.
 	envOverride := map[string]string{
-		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
 	}
 
 	for k, v := range pipeline.Environment {

@@ -111,7 +111,7 @@
         },
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
-          "description": "The specification for the packages build environment"
+          "description": "The specification for the packages build environment\nOptional: environment variables to override apko"
         },
         "capabilities": {
           "$ref": "#/$defs/Capabilities",
@@ -163,10 +163,6 @@
           "type": "object",
           "description": "Optional: Deviations to the build"
         },
-        "enable-prerelease-tags": {
-          "type": "boolean",
-          "description": "Optional: Disables filtering of common pre-release tags"
-        },
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the main package."
@@ -175,8 +171,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "package",
-        "environment"
+        "package"
       ],
       "description": "Configuration is the root melange configuration."
     },
@@ -434,6 +429,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "layering": {
+          "$ref": "#/$defs/Layering"
         }
       },
       "additionalProperties": false,
@@ -506,6 +504,18 @@
         "required": {
           "type": "boolean",
           "description": "Optional: A toggle denoting whether the input is required or not"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Layering": {
+      "properties": {
+        "strategy": {
+          "type": "string"
+        },
+        "budget": {
+          "type": "integer"
         }
       },
       "additionalProperties": false,
@@ -650,12 +660,7 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "no-provides",
-        "no-depends",
-        "no-commands"
-      ]
+      "type": "object"
     },
     "PathMutation": {
       "properties": {
@@ -744,7 +749,7 @@
             "type": "string"
           },
           "type": "object",
-          "description": "Optional: environment variables to override the apko environment"
+          "description": "Optional: environment variables to override apko"
         }
       },
       "additionalProperties": false,
@@ -935,7 +940,7 @@
       "properties": {
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
-          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank."
+          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank.\nOptional: Additional Environment the test needs to run"
         },
         "pipeline": {
           "items": {
@@ -948,7 +953,6 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "environment",
         "pipeline"
       ]
     },
@@ -1024,6 +1028,10 @@
         "schedule": {
           "$ref": "#/$defs/Schedule",
           "description": "Schedule defines the schedule for the update check to run"
+        },
+        "enable-prerelease-tags": {
+          "type": "boolean",
+          "description": "Optional: Disables filtering of common pre-release tags"
         }
       },
       "additionalProperties": false,

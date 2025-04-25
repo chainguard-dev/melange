@@ -191,7 +191,7 @@ var linterMap = map[string]linter{
 	},
 	"usrmerge": {
 		LinterFunc:      usrmergeLinter,
-		Explain:         "Move binary to /usr/{bin,sbin}",
+		Explain:         "Move binary to /usr/bin",
 		defaultBehavior: Require,
 	},
 }
@@ -792,9 +792,9 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 
 		// We don't really care if a package is re-adding a symlink and this catches wolfi-baselayout
 		// without special casing it with the package name.
-		if path == "sbin" || path == "bin" {
+		if path == "sbin" || path == "bin" || path == "usr/sbin" {
 			if d.IsDir() || d.Type().IsRegular() {
-				return fmt.Errorf("package contains non-symlink file at /sbin or /bin in violation of usrmerge")
+				return fmt.Errorf("package contains non-symlink file at /sbin, /bin or /usr/sbin in violation of usrmerge")
 			} else {
 				return nil
 			}
@@ -806,6 +806,10 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 
 		if strings.HasPrefix(path, "bin") {
 			return fmt.Errorf("package writes to /bin in violation of usrmerge: %s", path)
+		}
+
+		if strings.HasPrefix(path, "usr/sbin") {
+			return fmt.Errorf("package writes to /usr/sbin in violation of usrmerge: %s", path)
 		}
 
 		return nil

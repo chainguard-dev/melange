@@ -14,6 +14,7 @@ MELANGE=${MELANGE:-melange}
 if [ "$MELANGE" = "melange" ]; then
     MELANGE=$(which melange)
 fi
+ARGS=${ARGS:-""}
 
 echo "Testing with melange from $MELANGE"
 $MELANGE version --json
@@ -32,7 +33,7 @@ fi
 
 fails=""
 for yaml in "$@"; do
-  args=""
+  args="${ARGS}"
   ops=""
   base=${yaml%.yaml}
   case "$base" in

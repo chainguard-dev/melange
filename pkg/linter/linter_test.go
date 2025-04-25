@@ -192,6 +192,10 @@ func TestLinters(t *testing.T) {
 		cfg:     subpkgtlddcheckCfg,
 		pass:    true,
 	}, {
+		dirFunc: mkfile(t, "usr/sbin/test.sh"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
 		dirFunc: mkfile(t, "sbin/test.sh"),
 		linter:  "usrmerge",
 		pass:    false,
@@ -204,10 +208,23 @@ func TestLinters(t *testing.T) {
 		linter:  "usrmerge",
 		pass:    false,
 	}, {
+		dirFunc: mkfile(t, "usr/sbin"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/sbin")), 0700))
 			_ = os.Symlink("/sbin", "/dev/null")
+			return d
+		},
+		linter: "usrmerge",
+		pass:   true,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/usr/sbin")), 0700))
+			_ = os.Symlink("/usr/sbin", "/dev/null")
 			return d
 		},
 		linter: "usrmerge",

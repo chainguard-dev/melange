@@ -16,11 +16,11 @@ package source
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,19 +30,29 @@ import (
 	"github.com/chainguard-dev/clog"
 )
 
-// Simple wrapper for executing shell commands.
-func runCommand(cmd []string) {
+// Variable to allow mocking the runCommand function in tests.
+var sourceRunPipelineStep = runPipelineStep
+
+// Simple wrapper for executing pipeline steps.
+func runPipelineStep(ctx context.Context, step config.Pipeline) error {
+	var stdout, stderr io.Writer
+	outputBuf := &bytes.Buffer{}
+	log := clog.FromContext(ctx)
+	stdout = outputBuf
+	stderr = outputBuf
+
+	cmd := []string{"/bin/sh", "-c", step.Pipeline[0].Runs}
 	proc := exec.Command(cmd[0], cmd[1:]...)
-	proc.Stdout = os.Stdout
-	proc.Stderr = os.Stderr
-	if err := proc.Run(); err != nil {
-		log.Fatalf("Failed to run command: %v", err)
-	}
+	proc.Stdout = stdout
+	proc.Stderr = stderr
+	log.Debugf("Command output:\n%s", outputBuf.String())
+
+	return proc.Run()
 }
 
-// Function to extract the melange yaml from an apk package.
+// Function to extract the .melange.yaml from an apk package.
 func extractMelangeYamlFromTarball(apkPath, destDir string) error {
-	// Open the tarball file
+	// Open the tarball file, since that's what an apk package is.
 	file, err := os.Open(apkPath)
 	if err != nil {
 		return fmt.Errorf("failed to open apk package: %w", err)
@@ -88,26 +98,26 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 	return fmt.Errorf("target package does not contain melange metadata")
 }
 
-// FetchSourceFromFile tries its best to fetch the source from a melange yaml or an apk package.
-func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config.Configuration, error) {
+// FetchSourceFromMelange tries its best to fetch the source from a melange yaml or an apk package.
+func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*config.Configuration, error) {
 	log := clog.FromContext(ctx)
 
-	// Temporarily copy out the embedded files and directories from f into a
-	// temporary directory. We want to pass it later on to the pipeline
-	// compilation.
-	pDir, err := os.MkdirTemp("", "melange-")
+	// Temporary directory for all ephemeral stuff. Best to keep this separate
+	// as we'll be extracting our pipelines code there, and we wouldn't want
+	// anyone to cause harm by overwriting the pipelines code.
+	tmpDir, err := os.MkdirTemp("", "melange-")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temporary directory: %v", err)
 	}
-	defer os.RemoveAll(pDir)
+	defer os.RemoveAll(tmpDir)
 
 	// Check if the file is an apk package
 	isApk := false
 	if filepath.Ext(filePath) == ".apk" {
-		if err := extractMelangeYamlFromTarball(filePath, pDir); err != nil {
+		if err := extractMelangeYamlFromTarball(filePath, tmpDir); err != nil {
 			log.Fatalf("Failed to extract melange yaml from apk package: %v", err)
 		}
-		filePath = filepath.Join(pDir, ".melange.yaml")
+		filePath = filepath.Join(tmpDir, ".melange.yaml")
 		isApk = true
 	}
 
@@ -118,7 +128,10 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 		return nil, fmt.Errorf("failed to parse melange config: %v", err)
 	}
 
-	err = os.CopyFS(pDir, build.PipelinesFS)
+	// Temporarily copy out the embedded files and directories from f into a
+	// temporary directory. We want to pass it later on to the pipeline
+	// compilation.
+	err = os.CopyFS(tmpDir, build.PipelinesFS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to copy embedded pilelines: %v", err)
 	}
@@ -127,7 +140,7 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 	// the resulting pipeline run statements are all substituted with the
 	// correct values and ready for execution.
 	c := &build.Compiled{
-		PipelineDirs: []string{pDir},
+		PipelineDirs: []string{tmpDir},
 	}
 
 	// Now also try looking if the base directory of filePath has a pipelines
@@ -155,7 +168,7 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 		return nil, fmt.Errorf("failed to compile pipelines: %v", err)
 	}
 
-	// During command execution we can change the working directory. We need to
+	// During command execution we change the working directory. We need to
 	// make sure we change it back to the original working directory afterwards.
 	wd, err := os.Getwd()
 	if err != nil {
@@ -170,15 +183,18 @@ func FetchSourceFromFile(ctx context.Context, filePath, destDir string) (*config
 			continue
 		}
 
-		if step.Uses != "git-checkout" && step.Uses != "fetch" {
+		if step.Uses != "git-checkout" && step.Uses != "fetch" && step.Uses != "patch" {
 			continue
 		}
 
 		log.Infof("Found source fetching step: %s.\nFetching source to %s\n", step.Uses, destDir)
+		// Always make sure we're operating in the destDir directory.
 		os.MkdirAll(destDir, 0755)
 		os.Chdir(destDir)
-		cmd := []string{"/bin/sh", "-c", step.Pipeline[0].Runs}
-		runCommand(cmd)
+		err = sourceRunPipelineStep(ctx, step)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run step: %v", err)
+		}
 	}
 
 	return cfg, nil

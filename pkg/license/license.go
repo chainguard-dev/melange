@@ -30,6 +30,9 @@ import (
 	"github.com/google/licenseclassifier/v2/assets"
 )
 
+// NOTE: the detection logic is done via a Classifier type as this is how it was
+// implemented, for instace, in the go-licenses project (also using licenseclassifier).
+
 // Classifier can detect the type of a software license.
 type Classifier interface {
 	Identify(fsys fs.FS, licensePath string) ([]License, error)
@@ -70,6 +73,7 @@ type LicenseDiff struct {
 	Is       string
 	Should   string
 	Override string
+	NewType  golicenses.Type
 }
 
 // Identify identifies the license of a file on a filesystem using the licenseclassifier.
@@ -247,6 +251,12 @@ func CollectLicenseInfo(ctx context.Context, fsys fs.FS) ([]License, error) {
 	return detectedLicenses, nil
 }
 
+func isLicenseMatchConfident(dl License) bool {
+	// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
+	// We'll make this configurable in the future
+	return dl.Confidence >= 0.9
+}
+
 // LicenseCheck checks the licenses of the files in the given filesystem against the melange configuration.
 func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([]License, []LicenseDiff, error) {
 	log := clog.FromContext(ctx)
@@ -265,7 +275,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 	for _, dl := range detectedLicenses {
 		s := ""
 		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-		if dl.Confidence < 0.9 {
+		if isLicenseMatchConfident(dl) {
 			s = " ignored"
 		}
 		log.Infof("  %s: %s (%f%s) (%s)", dl.Source, dl.Name, dl.Confidence, s, dl.Type)
@@ -295,6 +305,11 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 
 		// Now let's check if the detected licenses are in the configuration
 		for _, dl := range detectedLicenses {
+			// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
+			if !isLicenseMatchConfident(dl) {
+				continue
+			}
+
 			found := false
 			for _, ml := range melangeLicenses {
 				if dl.Source == ml.Source {
@@ -310,6 +325,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 								ml.Name,
 								dl.Name,
 								ml.Overrides,
+								dl.Type,
 							})
 						}
 						// We already added the diff, so we can break out of the loop
@@ -331,6 +347,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 					"",
 					dl.Name,
 					"",
+					dl.Type,
 				})
 			}
 		}
@@ -345,6 +362,10 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 					log.Warnf("  %s: requested override from %s to %s, but now detecting as %s", diff.Path, diff.Override, diff.Is, diff.Should)
 				} else {
 					log.Warnf("  %s: %s != %s", diff.Path, diff.Should, diff.Is)
+				}
+
+				if diff.NewType != "unencumbered" && diff.NewType == "notice" {
+					log.Warnf("  NOTE! %s: %s might be a restrictive license, please proceed with caution", diff.Path, diff.Should)
 				}
 			}
 			log.Warnf("detected license differences, please check the configuration")

@@ -56,7 +56,7 @@ func licenseCheck() *cobra.Command {
 			var err error
 			e := filepath.Ext(args[0])
 			if e == ".apk" || e == ".yaml" {
-				cfg, err = source.FetchSourceFromFile(ctx, args[0], workDir)
+				cfg, err = source.FetchSourceFromMelange(ctx, args[0], workDir)
 				if err != nil {
 					return err
 				}
@@ -85,7 +85,7 @@ func licenseCheck() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&workDir, "work-directory", "", "path to the working directory")
-	cmd.Flags().BoolVar(&fix, "attempt-fixing", false, "fix license issues in the melange yaml file")
+	cmd.Flags().BoolVar(&fix, "fix", false, "fix license issues in the melange yaml file")
 
 	return cmd
 }

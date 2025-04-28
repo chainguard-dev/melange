@@ -62,15 +62,11 @@ func createMockApk(apkFilePath string, addMelange bool) error {
 // TestExtractMelangeYamlFromTarball checks the extraction of .melange.yaml from a .apk file
 func TestExtractMelangeYamlFromTarball(t *testing.T) {
 	// Create a temporary directory for the test
-	tmpDir, err := os.MkdirTemp("", "test-extract-melange-")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Create a mock .apk file with a .melange.yaml file inside
 	apkFilePath := filepath.Join(tmpDir, "test.apk")
-	err = createMockApk(apkFilePath, true)
+	err := createMockApk(apkFilePath, true)
 	if err != nil {
 		t.Fatalf("Failed to create mock apk file: %v", err)
 	}
@@ -90,17 +86,13 @@ func TestExtractMelangeYamlFromTarball(t *testing.T) {
 }
 
 // TestExtractMelangeYamlFromTarballNoMelange checks the behavior when the .apk file does not contain a .melange.yaml file
-func TestExtractMelangeYamlFromTarballNoMelange(t *testing.T) {
+func TestExtractMelangeYamlFromTarball_noMelange(t *testing.T) {
 	// Create a temporary directory for the test
-	tmpDir, err := os.MkdirTemp("", "test-extract-melange-")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Create a mock .apk file without a .melange.yaml file inside
 	apkFilePath := filepath.Join(tmpDir, "test.apk")
-	err = createMockApk(apkFilePath, false)
+	err := createMockApk(apkFilePath, false)
 	if err != nil {
 		t.Fatalf("Failed to create mock apk file: %v", err)
 	}
@@ -126,11 +118,7 @@ func TestFetchSourceFromMelange(t *testing.T) {
 	}
 
 	// Create a temporary directory for the test
-	tmpDir, err := os.MkdirTemp("", "test-fetch-source-")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	testCases := []struct {
 		fileName      string

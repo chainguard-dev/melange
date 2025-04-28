@@ -103,6 +103,7 @@ func TestFindLicenseFiles(t *testing.T) {
 		}
 	}
 }
+
 func TestIdentify(t *testing.T) {
 	classifier, err := NewClassifier()
 	if err != nil {
@@ -158,6 +159,7 @@ func TestIdentify(t *testing.T) {
 		t.Fatalf("Failed to walk through testdata directory: %v", err)
 	}
 }
+
 func TestLicenseCheck(t *testing.T) {
 	// Create a mock configuration
 	cfg := &config.Configuration{
@@ -206,7 +208,7 @@ func TestLicenseCheck(t *testing.T) {
 		}
 	}
 }
-func TestLicenseCheckWithOverrides(t *testing.T) {
+func TestLicenseCheck_withOverrides(t *testing.T) {
 	// Create a mock configuration with detection overrides
 	// There is one correct override (BSD -> MIT) and one incorrect, where we say we expected MIT and overriding it to GPL-3.0
 	cfg := &config.Configuration{

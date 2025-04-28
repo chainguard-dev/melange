@@ -71,7 +71,8 @@ func licenseCheck() *cobra.Command {
 
 			if fix {
 				// Attempt to fix the license issues in the melange yaml file
-				rc, err := renovate.New(renovate.WithConfig(args[0]))
+				var rc *renovate.Context
+				rc, err = renovate.New(renovate.WithConfig(args[0]))
 				if err != nil {
 					return err
 				}

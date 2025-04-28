@@ -260,6 +260,7 @@ func isLicenseMatchConfident(dl License) bool {
 // LicenseCheck checks the licenses of the files in the given filesystem against the melange configuration.
 func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([]License, []LicenseDiff, error) {
 	log := clog.FromContext(ctx)
+	log.Infof("checking license information")
 
 	detectedLicenses, err := CollectLicenseInfo(ctx, fsys)
 	if err != nil {
@@ -364,7 +365,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 					log.Warnf("  %s: %s != %s", diff.Path, diff.Should, diff.Is)
 				}
 
-				if diff.NewType != "unencumbered" && diff.NewType == "notice" {
+				if diff.NewType != "unencumbered" && diff.NewType != "notice" {
 					log.Warnf("  NOTE! %s: %s might be a restrictive license, please proceed with caution", diff.Path, diff.Should)
 				}
 			}

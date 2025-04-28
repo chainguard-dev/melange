@@ -28,7 +28,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/container/dagger"
 	"chainguard.dev/melange/pkg/container/docker"
 	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
@@ -297,8 +296,6 @@ func getRunner(ctx context.Context, runner string, remove bool) (container.Runne
 			return container.QemuRunner(), nil
 		case "docker":
 			return docker.NewRunner(ctx)
-		case "experimentaldagger":
-			return dagger.NewRunner(ctx)
 		default:
 			return nil, fmt.Errorf("unknown runner: %s", runner)
 		}

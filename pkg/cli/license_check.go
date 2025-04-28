@@ -77,7 +77,7 @@ func licenseCheck() *cobra.Command {
 				}
 
 				copyrightRenovator := copyright.New(ctx, copyright.WithLicenses(detectedLicenses))
-				rc.Renovate(cmd.Context(), copyrightRenovator)
+				err = rc.Renovate(cmd.Context(), copyrightRenovator)
 			}
 
 			return err

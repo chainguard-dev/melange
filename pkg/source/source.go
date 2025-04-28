@@ -174,7 +174,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer os.Chdir(wd)
+	defer os.Chdir(wd) //nolint:errcheck
 
 	// Iterate over the pipeline steps and look for any source fetching steps.
 	for _, step := range cfg.Pipeline {
@@ -189,8 +189,14 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 
 		log.Infof("Found source fetching step: %s.\nFetching source to %s\n", step.Uses, destDir)
 		// Always make sure we're operating in the destDir directory.
-		os.MkdirAll(destDir, 0755)
-		os.Chdir(destDir)
+		err = os.MkdirAll(destDir, 0755)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create destination directory: %v", err)
+		}
+		err = os.Chdir(destDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to change directory: %v", err)
+		}
 		err = sourceRunPipelineStep(ctx, step)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run step: %v", err)

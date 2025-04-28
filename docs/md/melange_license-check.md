@@ -1,0 +1,45 @@
+---
+title: "melange license-check"
+slug: melange_license-check
+url: /docs/md/melange_license-check.md
+draft: false
+images: []
+type: "article"
+toc: true
+---
+## melange keygen
+
+Check a melange source, source tree or APK for license data correctness
+
+### Synopsis
+
+Check a melange source, source tree or APK for license data correctness.
+
+```
+melange license-check [flags]
+```
+
+### Examples
+
+```
+  melange license-check vim.yaml
+```
+
+### Options
+
+```
+  -h, --help            help for license-check
+      --work-directory  path to the working directory
+      --fix             fix license issues in the melange yaml file
+```
+
+### Options inherited from parent commands
+
+```
+      --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
+```
+
+### SEE ALSO
+
+* [melange](/docs/md/melange.md)	 - 
+

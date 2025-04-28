@@ -376,6 +376,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 	} else {
 		diffs = nil
 	}
+	log.Infof("license information check complete")
 
 	return detectedLicenses, diffs, nil
 }

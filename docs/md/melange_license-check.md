@@ -7,9 +7,9 @@ images: []
 type: "article"
 toc: true
 ---
-## melange keygen
+## melange license-check
 
-Check a melange source, source tree or APK for license data correctness
+Gather and check licensing data
 
 ### Synopsis
 
@@ -28,9 +28,9 @@ melange license-check [flags]
 ### Options
 
 ```
-  -h, --help            help for license-check
-      --work-directory  path to the working directory
-      --fix             fix license issues in the melange yaml file
+      --fix                     fix license issues in the melange yaml file
+  -h, --help                    help for license-check
+      --work-directory string   path to the working directory
 ```
 
 ### Options inherited from parent commands

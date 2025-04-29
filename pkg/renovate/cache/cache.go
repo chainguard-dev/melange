@@ -188,6 +188,7 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 	// TODO: Remove this when callers stop passing --cache-dir=gs://...
 	if strings.HasPrefix(cfg.CacheDir, "gs://") {
 		log.Warnf("cache directory is a GCS bucket, not copying file: %s", cfg.CacheDir)
+		return nil
 	}
 	destinationFile, err := os.Create(destinationPath)
 	if err != nil {

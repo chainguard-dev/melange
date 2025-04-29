@@ -27,7 +27,6 @@ import (
 	"path"
 	"strings"
 
-	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
@@ -186,20 +185,13 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 	filename := fmt.Sprintf("%s:%s", hashFamily, cfgHash)
 	destinationPath := path.Join(cfg.CacheDir, filename)
 
-	var destinationFile io.WriteCloser
+	// TODO: Remove this when callers stop passing --cache-dir=gs://...
 	if strings.HasPrefix(cfg.CacheDir, "gs://") {
-		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cfg.CacheDir, "gs://"), "/")
-		client, err := storage.NewClient(ctx)
-		if err != nil {
-			return err
-		}
-		destinationFile = client.Bucket(bucket).Object(path.Join(prefix, filename)).NewWriter(ctx)
-	} else {
-		var err error
-		destinationFile, err = os.Create(destinationPath)
-		if err != nil {
-			return err
-		}
+		log.Warnf("cache directory is a GCS bucket, not copying file: %s", cfg.CacheDir)
+	}
+	destinationFile, err := os.Create(destinationPath)
+	if err != nil {
+		return err
 	}
 	defer destinationFile.Close()
 

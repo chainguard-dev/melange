@@ -16,7 +16,6 @@ package build
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -25,7 +24,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -228,77 +226,6 @@ func (t *Test) IsTestless() bool {
 	return t.Configuration.Test == nil || len(t.Configuration.Test.Pipeline) == 0
 }
 
-func (t *Test) PopulateCache(ctx context.Context) error {
-	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "populateCache")
-	defer span.End()
-
-	if t.CacheDir == "" {
-		return nil
-	}
-
-	cmm, err := cacheItemsForBuild(&t.Configuration)
-	if err != nil {
-		return fmt.Errorf("while determining which objects to fetch: %w", err)
-	}
-
-	if t.CacheSource != "" {
-		log.Debugf("populating cache from %s", t.CacheSource)
-	}
-	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
-	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(t.CacheSource, "gs://") {
-		tmp, err := fetchBucket(ctx, t.CacheSource, cmm)
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmp)
-		log.Infof("cache bucket copied to %s", tmp)
-
-		fsys := os.DirFS(tmp)
-
-		// mkdir /var/cache/melange
-		if err := os.MkdirAll(t.CacheDir, 0o755); err != nil {
-			return err
-		}
-
-		// --cache-dir doesn't exist, nothing to do.
-		if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			fi, err := d.Info()
-			if err != nil {
-				return err
-			}
-
-			mode := fi.Mode()
-			if !mode.IsRegular() {
-				return nil
-			}
-
-			// Skip files in the cache that aren't named like sha256:... or sha512:...
-			// This is likely a bug, and won't be matched by any fetch.
-			base := filepath.Base(fi.Name())
-			if !strings.HasPrefix(base, "sha256:") &&
-				!strings.HasPrefix(base, "sha512:") {
-				return nil
-			}
-
-			log.Debugf("  -> %s", path)
-
-			return copyFile(tmp, path, t.CacheDir, mode.Perm())
-		})
-	}
-
-	return nil
-}
-
 func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
 	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
@@ -415,10 +342,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		// Probably needs help from apko.
 		if err := t.OverlayBinSh(""); err != nil {
 			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-
-		if err := t.PopulateCache(ctx); err != nil {
-			return fmt.Errorf("unable to populate cache: %w", err)
 		}
 	}
 

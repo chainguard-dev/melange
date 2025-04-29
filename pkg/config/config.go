@@ -522,17 +522,64 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
+// Attribution creates attibutionText of AttributionPaths from a
+// Workspace directory. It also looks for all files with filename
+// prefix NOTICE as required by the popular Apache-2.0 license, and
+// hence a defacto standard.
+func Attribution(WorkDir string, AttributionPaths []string) (string, error) {
+	var paths []string
+	var attributions []string
+
+	// Start with absolute NOTICE file paths
+	err := filepath.Walk(WorkDir, func(path string, f os.FileInfo, err error) error {
+		if strings.HasPrefix(filepath.Base(path), "NOTICE") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to walk %q: %w", WorkDir, err)
+	}
+
+	// Then append any other declared relative AttributionPaths
+	for _, path := range AttributionPaths {
+		if path != "" {
+			paths = append(paths, filepath.Join(WorkDir, path))
+		}
+	}
+
+	// Read them all
+	for _, path := range paths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("failed to read attribution path %q: %w", path, err)
+		}
+		attributions = append(attributions, string(content))
+	}
+
+	return strings.Join(attributions, "\n"), nil
+}
+
 // SBOMPackageForUpstreamSource returns an SBOM package for the upstream source
 // of the package, if this Pipeline step was used to bring source code from an
 // upstream project into the build. This function helps with generating SBOMs
 // for the package being built. If the pipeline step is not a fetch or
 // git-checkout step, this function returns nil and no error.
-func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string, uniqueID string) (*sbom.Package, error) {
+func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier, uniqueID, WorkspaceDir string) (*sbom.Package, error) {
 	// TODO: It'd be great to detect the license from the source code itself. Such a
 	//  feature could even eliminate the need for the package's license field in the
-	//  build configuration.
+	//  build configuration. This should be closer to be possible now that the
+	//  extracted workspacedir is available for inspection.
 
 	uses, with := p.Uses, p.With
+
+	// Workspace was extracted
+	workdir, err := filepath.Rel("/home/build", p.WorkDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find relative %q: %w", WorkspaceDir, err)
+	}
+	workdir = filepath.Join(WorkspaceDir, workdir)
 
 	switch uses {
 	case "fetch":
@@ -552,6 +599,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		// (YAML) itself.
 		pkgName := with["purl-name"]
 		pkgVersion := with["purl-version"]
+		attributionpaths := with["attribution-paths"]
 
 		pu := &purl.PackageURL{
 			Type:       "generic",
@@ -568,12 +616,18 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
+		attributionText, err := Attribution(workdir, strings.Split(attributionpaths, " "))
+		if err != nil {
+			return nil, err
+		}
+
 		return &sbom.Package{
-			IDComponents: idComponents,
-			Name:         pkgName,
-			Version:      pkgVersion,
-			Namespace:    supplier,
-			PURL:         pu,
+			IDComponents:    idComponents,
+			Name:            pkgName,
+			Version:         pkgVersion,
+			AttributionText: attributionText,
+			Namespace:       supplier,
+			PURL:            pu,
 		}, nil
 
 	case "git-checkout":
@@ -581,6 +635,8 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
+		destination := with["destination"]
+		attributionpaths := with["attribution-paths"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -623,12 +679,17 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 				if err := pu.Normalize(); err != nil {
 					return nil, err
 				}
+				attributionText, err := Attribution(filepath.Join(workdir, destination), strings.Split(attributionpaths, " "))
+				if err != nil {
+					return nil, err
+				}
 
 				return &sbom.Package{
 					IDComponents:    idComponents,
 					Name:            name,
 					Version:         v,
 					LicenseDeclared: licenseDeclared,
+					AttributionText: attributionText,
 					Namespace:       namespace,
 					PURL:            pu,
 				}, nil
@@ -668,11 +729,17 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			return nil, err
 		}
 
+		attributionText, err := Attribution(filepath.Join(workdir, destination), strings.Split(attributionpaths, " "))
+		if err != nil {
+			return nil, err
+		}
+
 		return &sbom.Package{
 			IDComponents:    idComponents,
 			Name:            name,
 			Version:         version,
 			LicenseDeclared: licenseDeclared,
+			AttributionText: attributionText,
 			Namespace:       supplier,
 			PURL:            &pu,
 		}, nil

@@ -60,6 +60,9 @@ type Package struct {
 	// used as its value.
 	LicenseDeclared string
 
+	// This is the attributionText in the SPDX package. Often blank.
+	AttributionText string
+
 	// Name of the distro/organization that produced the package. E.g. "wolfi".
 	//
 	// TODO: consider renaming this to avoid confusion from our other uses of
@@ -105,6 +108,7 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 		FilesAnalyzed:    false,
 		LicenseConcluded: spdx.NOASSERTION,
 		LicenseDeclared:  p.LicenseDeclared,
+		AttributionText:  p.AttributionText,
 		DownloadLocation: spdx.NOASSERTION,
 		CopyrightText:    p.Copyright,
 		Checksums:        p.getChecksums(),

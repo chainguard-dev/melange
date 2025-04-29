@@ -5,10 +5,7 @@
 # project using melange's built-in go/install pipeline.
 #
 # For more information about melange's built-in golang support check out:
-#
-#
-# For an equivalent pipeline that uses go/install to build the same project
-# please see go-install.yaml in this directory.
+# https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-GO.md
 package:
   name: hello
   version: v0.0.1

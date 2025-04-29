@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022 Chainguard, Inc
 # SPDX-License-Identifier: Apache-2.0
 #
-# This is a sample configuration file to demonstrate how to build a software
+# This is a sample configuration file to demonstrate how to install a software
 # project using melange's built-in go/install pipeline.
 #
 # For more information about melange's built-in golang support check out:

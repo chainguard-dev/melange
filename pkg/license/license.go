@@ -93,15 +93,16 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 		return nil, err
 	}
 
+	// Go through all the matches and filter out the ones that are not licenses
+	// and also filter out duplicates
 	foundLicenseNames := map[string]struct{}{}
-
 	licenses := []License{}
 	for _, match := range matches.Matches {
 		if match.MatchType != "License" {
 			continue
 		}
 
-		// Skip duplicate licenses.
+		// Skip duplicate licenses
 		if _, ok := foundLicenseNames[match.Name]; ok {
 			continue
 		}
@@ -159,7 +160,6 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 		if info.IsDir() {
 			return nil
 		}
-
 		// Let's ignore all files in the melange-out/ directory, as it's not part of the source
 		if strings.Contains(filePath, "melange-out") {
 			return nil
@@ -168,6 +168,8 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 		// Check if the file matches any of the license-related regex patterns
 		for regex, weight := range filenameRegexes {
 			if regex.MatchString(info.Name()) {
+				// licensee does this check as part of the regex, but in go we don't have
+				// the same regex capabilities
 				for _, ext := range ignoredExt {
 					if ignore = strings.HasSuffix(info.Name(), ext); ignore {
 						break
@@ -177,11 +179,11 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 					continue
 				}
 
-				// Licenses in the top level directory have a higher weight
+				// Licenses in the top level directory have a higher weight so that they
+				// always appear first
 				if filepath.Dir(filePath) == "." {
 					weight += 0.5
 				}
-
 				licenseFiles = append(licenseFiles, LicenseFile{
 					Name:   info.Name(),
 					Path:   filePath,
@@ -297,10 +299,12 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 				// Split the license into separate entries using regexp
 				splitLicenses := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(ml.License, -1)
 				for _, sl := range splitLicenses {
-					melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(sl, ml.LicensePath, ml.DetectionOverride))
+					melangeLicenses = append(melangeLicenses,
+						melangeLicenseToLicense(sl, ml.LicensePath, ml.DetectionOverride))
 				}
 			} else {
-				melangeLicenses = append(melangeLicenses, melangeLicenseToLicense(ml.License, ml.LicensePath, ml.DetectionOverride))
+				melangeLicenses = append(melangeLicenses,
+					melangeLicenseToLicense(ml.License, ml.LicensePath, ml.DetectionOverride))
 			}
 		}
 

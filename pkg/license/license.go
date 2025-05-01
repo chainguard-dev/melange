@@ -248,7 +248,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 
 	// TODO: Handle low-confidence licenses, possibly by printing out info about those separately!
 
-	diffs := []LicenseDiff{}
+	var diffs []LicenseDiff
 	if cfg != nil {
 		log.Infof("checking gathered license information against the configuration")
 
@@ -280,8 +280,6 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		} else {
 			log.Warnf("no license differences detected")
 		}
-	} else {
-		diffs = nil
 	}
 	log.Infof("license information check complete")
 

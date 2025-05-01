@@ -16,7 +16,7 @@ Gather and check licensing data
 Check a melange source, source tree or APK for license data correctness.
 
 ```
-melange license-check [flags]
+melange license-check file [flags]
 ```
 
 ### Examples
@@ -28,9 +28,9 @@ melange license-check [flags]
 ### Options
 
 ```
-      --fix                     fix license issues in the melange yaml file
-  -h, --help                    help for license-check
-      --work-directory string   path to the working directory
+      --fix              fix license issues in the melange yaml file
+  -h, --help             help for license-check
+      --workdir string   path to the working directory, e.g. where the source will be extracted to
 ```
 
 ### Options inherited from parent commands

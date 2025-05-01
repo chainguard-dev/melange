@@ -27,11 +27,7 @@ import (
 
 func TestFindLicenseFiles(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "license_test")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tmpDir := t.TempDir()
 
 	// Create test files
 	testFiles := []string{
@@ -52,7 +48,7 @@ func TestFindLicenseFiles(t *testing.T) {
 	}
 
 	for _, name := range testFiles {
-		filePath := filepath.Join(tempDir, name)
+		filePath := filepath.Join(tmpDir, name)
 		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", name, err)
@@ -60,7 +56,7 @@ func TestFindLicenseFiles(t *testing.T) {
 		fp.Close()
 	}
 
-	tmpFS := apkofs.DirFS(tempDir)
+	tmpFS := apkofs.DirFS(tmpDir)
 
 	// Call function under test
 	licenseFiles, err := FindLicenseFiles(tmpFS)

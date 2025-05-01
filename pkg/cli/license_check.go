@@ -33,7 +33,7 @@ func licenseCheck() *cobra.Command {
 	var workDir string
 	var fix bool
 	cmd := &cobra.Command{
-		Use:     "license-check",
+		Use:     "license-check file",
 		Short:   "Gather and check licensing data",
 		Long:    `Check a melange source, source tree or APK for license data correctness.`,
 		Example: `  melange license-check vim.yaml`,
@@ -85,7 +85,7 @@ func licenseCheck() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&workDir, "work-directory", "", "path to the working directory")
+	cmd.Flags().StringVar(&workDir, "workdir", "", "path to the working directory, e.g. where the source will be extracted to")
 	cmd.Flags().BoolVar(&fix, "fix", false, "fix license issues in the melange yaml file")
 
 	return cmd

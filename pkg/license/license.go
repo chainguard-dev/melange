@@ -31,7 +31,7 @@ import (
 )
 
 // NOTE: the detection logic is done via a Classifier type as this is how it was
-// implemented, for instace, in the go-licenses project (also using licenseclassifier).
+// implemented, for instance, in the go-licenses project (also using licenseclassifier).
 
 // Classifier can detect the type of a software license.
 type Classifier interface {
@@ -78,10 +78,6 @@ type LicenseDiff struct {
 
 // Identify identifies the license of a file on a filesystem using the licenseclassifier.
 func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License, error) {
-	if licensePath == "" {
-		return nil, nil
-	}
-
 	file, err := fsys.Open(licensePath)
 	if err != nil {
 		return nil, err
@@ -122,42 +118,15 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 
 // FindLicenseFiles returns a list of license files in a directory, sorted by their relevance score.
 func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
-	// Copied and adjusted from Ruby to Go from the "licensee" project
-	var (
-		preferredExt      = []string{"md", "markdown", "txt", "html"}
-		ignoredExt        = []string{"xml", "go", "gemspec", "spdx", "header"}
-		preferredExtRegex = regexp.MustCompile(`\.(?:` + regexp.QuoteMeta(preferredExt[0]) + `|` + regexp.QuoteMeta(preferredExt[1]) + `|` + regexp.QuoteMeta(preferredExt[2]) + `|` + regexp.QuoteMeta(preferredExt[3]) + `)$`)
-		anyExtRegex       = regexp.MustCompile(`(\.[^./]+$)`)
-		licenseRegex      = regexp.MustCompile(`(?i)(un)?licen[sc]e`)
-		copyingRegex      = regexp.MustCompile(`(?i)copy(ing|right)`)
-		oflRegex          = regexp.MustCompile(`(?i)ofl`)
-		patentsRegex      = regexp.MustCompile(`(?i)patents`)
-		filenameRegexes   = map[*regexp.Regexp]float64{
-			regexp.MustCompile(`(?i)^` + licenseRegex.String() + `$`):                                          1.00, // LICENSE
-			regexp.MustCompile(`(?i)^` + licenseRegex.String() + preferredExtRegex.String() + `$`):             0.95, // LICENSE.md
-			regexp.MustCompile(`(?i)^` + copyingRegex.String() + `$`):                                          0.90, // COPYING
-			regexp.MustCompile(`(?i)^` + copyingRegex.String() + preferredExtRegex.String() + `$`):             0.85, // COPYING.md
-			regexp.MustCompile(`(?i)^` + licenseRegex.String() + anyExtRegex.String() + `$`):                   0.80, // LICENSE.textile
-			regexp.MustCompile(`(?i)^` + copyingRegex.String() + anyExtRegex.String() + `$`):                   0.75, // COPYING.textile
-			regexp.MustCompile(`(?i)^` + licenseRegex.String() + `[-_][^.]*` + anyExtRegex.String() + `?$`):    0.70, // LICENSE-MIT
-			regexp.MustCompile(`(?i)^` + copyingRegex.String() + `[-_][^.]*` + anyExtRegex.String() + `?$`):    0.65, // COPYING-MIT
-			regexp.MustCompile(`(?i)^\w+[-_]` + licenseRegex.String() + `[^.]*` + anyExtRegex.String() + `?$`): 0.60, // MIT-LICENSE-MIT
-			regexp.MustCompile(`(?i)^\w+[-_]` + copyingRegex.String() + `[^.]*` + anyExtRegex.String() + `?$`): 0.55, // MIT-COPYING
-			regexp.MustCompile(`(?i)^` + oflRegex.String() + preferredExtRegex.String()):                       0.50, // OFL.md
-			regexp.MustCompile(`(?i)^` + oflRegex.String() + anyExtRegex.String()):                             0.45, // OFL.textile
-			regexp.MustCompile(`(?i)^` + oflRegex.String() + `$`):                                              0.40, // OFL
-			regexp.MustCompile(`(?i)^` + patentsRegex.String() + `$`):                                          0.35, // PATENTS
-			regexp.MustCompile(`(?i)^` + patentsRegex.String() + anyExtRegex.String() + `$`):                   0.30, // PATENTS.txt
-		}
-	)
-
+	// This file is using regular expressions defined in the regexp.go file
 	var licenseFiles []LicenseFile
 	var ignore bool
 	err := fs.WalkDir(fsys, ".", func(filePath string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
+		// Skip directories and non-regular files, like symlinks
+		if !info.Type().IsRegular() {
 			return nil
 		}
 		// Let's ignore all files in the melange-out/ directory, as it's not part of the source
@@ -167,30 +136,31 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 
 		// Check if the file matches any of the license-related regex patterns
 		for regex, weight := range filenameRegexes {
-			if regex.MatchString(info.Name()) {
-				// licensee does this check as part of the regex, but in go we don't have
-				// the same regex capabilities
-				for _, ext := range ignoredExt {
-					if ignore = strings.HasSuffix(info.Name(), ext); ignore {
-						break
-					}
-				}
-				if ignore {
-					continue
-				}
-
-				// Licenses in the top level directory have a higher weight so that they
-				// always appear first
-				if filepath.Dir(filePath) == "." {
-					weight += 0.5
-				}
-				licenseFiles = append(licenseFiles, LicenseFile{
-					Name:   info.Name(),
-					Path:   filePath,
-					Weight: weight,
-				})
-				break
+			if !regex.MatchString(info.Name()) {
+				continue
 			}
+			// licensee does this check as part of the regex, but in go we don't have
+			// the same regex capabilities
+			for _, ext := range ignoredExt {
+				if ignore = filepath.Ext(info.Name()) == ext; ignore {
+					break
+				}
+			}
+			if ignore {
+				continue
+			}
+
+			// Licenses in the top level directory have a higher weight so that they
+			// always appear first
+			if filepath.Dir(filePath) == "." {
+				weight += 0.5
+			}
+			licenseFiles = append(licenseFiles, LicenseFile{
+				Name:   info.Name(),
+				Path:   filePath,
+				Weight: weight,
+			})
+			break
 		}
 
 		return nil
@@ -200,22 +170,12 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 	}
 
 	// Sort the license files by their 'score' (weight)
-	sort.Slice(licenseFiles, func(i, j int) bool {
+	// The order isn't necesasrily important, but we want to have the most relevant files first
+	sort.SliceStable(licenseFiles, func(i, j int) bool {
 		return licenseFiles[i].Weight > licenseFiles[j].Weight
 	})
 
 	return licenseFiles, nil
-}
-
-// melangeLicenseToLicense is a helper that converts a melange license info to a License struct.
-func melangeLicenseToLicense(license string, licensePath string, override string) License {
-	return License{
-		Name:       license,
-		Type:       "",
-		Confidence: 0.0,
-		Source:     licensePath,
-		Overrides:  override,
-	}
 }
 
 // CollectLicenseInfo collects license information from the given filesystem.
@@ -230,6 +190,7 @@ func CollectLicenseInfo(ctx context.Context, fsys fs.FS) ([]License, error) {
 
 	if len(licenseFiles) == 0 {
 		// No license files detected, no linting performed.
+		log.Debugf("no license files detected")
 		return nil, nil
 	}
 
@@ -253,6 +214,7 @@ func CollectLicenseInfo(ctx context.Context, fsys fs.FS) ([]License, error) {
 	return detectedLicenses, nil
 }
 
+// isLicenseMatchConfident checks if the license match is confident enough to be considered valid.
 func isLicenseMatchConfident(dl License) bool {
 	// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
 	// We'll make this configurable in the future
@@ -293,69 +255,10 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		// Let's first turn the melange licensing information into a coherent licensing list, similar to what Identify returns
 		// We first start off by splitting license information that has OR and AND into separate license entries
 		// Every entry can have multiple AND or ORs
-		melangeLicenses := []License{}
-		for _, ml := range cfg.Package.Copyright {
-			if strings.Contains(ml.License, " OR ") || strings.Contains(ml.License, " AND ") {
-				// Split the license into separate entries using regexp
-				splitLicenses := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(ml.License, -1)
-				for _, sl := range splitLicenses {
-					melangeLicenses = append(melangeLicenses,
-						melangeLicenseToLicense(sl, ml.LicensePath, ml.DetectionOverride))
-				}
-			} else {
-				melangeLicenses = append(melangeLicenses,
-					melangeLicenseToLicense(ml.License, ml.LicensePath, ml.DetectionOverride))
-			}
-		}
+		melangeLicenses := gatherMelangeLicenses(cfg)
 
 		// Now let's check if the detected licenses are in the configuration
-		for _, dl := range detectedLicenses {
-			// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-			if !isLicenseMatchConfident(dl) {
-				continue
-			}
-
-			found := false
-			for _, ml := range melangeLicenses {
-				if dl.Source == ml.Source {
-					// Check if the license matches the license path
-					if dl.Name == ml.Name {
-						found = true
-					} else {
-						// Check if we consciously know about the difference and just override it
-						if ml.Overrides == "" || ml.Overrides != dl.Name {
-							// If not, then it is a mismatch: add it to license differences
-							diffs = append(diffs, LicenseDiff{
-								dl.Source,
-								ml.Name,
-								dl.Name,
-								ml.Overrides,
-								dl.Type,
-							})
-						}
-						// We already added the diff, so we can break out of the loop
-						found = true
-						break
-					}
-				} else if ml.Source == "" {
-					// Check if the license matches the license path
-					if dl.Name == ml.Name {
-						found = true
-					}
-				}
-			}
-
-			if !found {
-				// We didn't find a match, add it to license differences
-				diffs = append(diffs, LicenseDiff{
-					dl.Source,
-					"",
-					dl.Name,
-					"",
-					dl.Type,
-				})
-			}
-		}
+		diffs = getLicenseDifferences(detectedLicenses, melangeLicenses)
 
 		// Print out the license differences
 		if len(diffs) > 0 {
@@ -383,4 +286,84 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 	log.Infof("license information check complete")
 
 	return detectedLicenses, diffs, nil
+}
+
+// gatherMelangeLicenses gathers the licenses from the melange configuration and splits them into separate entries.
+func gatherMelangeLicenses(cfg *config.Configuration) []License {
+	mls := []License{}
+	for _, ml := range cfg.Package.Copyright {
+		if strings.Contains(ml.License, " OR ") || strings.Contains(ml.License, " AND ") {
+			// Split the license into separate entries using regexp
+			sls := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(ml.License, -1)
+			for _, sl := range sls {
+				mls = append(mls,
+					License{
+						Name:      sl,
+						Source:    ml.LicensePath,
+						Overrides: ml.DetectionOverride,
+					})
+			}
+		} else {
+			mls = append(mls,
+				License{
+					Name:      ml.License,
+					Source:    ml.LicensePath,
+					Overrides: ml.DetectionOverride,
+				})
+		}
+	}
+	return mls
+}
+
+// getLicenseDifferences compares the detected licenses with the melange licenses and returns the differences.
+func getLicenseDifferences(detectedLicenses []License, melangeLicenses []License) []LicenseDiff {
+	diffs := []LicenseDiff{}
+	for _, dl := range detectedLicenses {
+		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
+		if !isLicenseMatchConfident(dl) {
+			continue
+		}
+
+		found := false
+		for _, ml := range melangeLicenses {
+			if dl.Source == ml.Source {
+				// Check if the license matches the license path
+				if dl.Name == ml.Name {
+					found = true
+				} else {
+					// Check if we consciously know about the difference and just override it
+					if ml.Overrides == "" || ml.Overrides != dl.Name {
+						// If not, then it is a mismatch: add it to license differences
+						diffs = append(diffs, LicenseDiff{
+							dl.Source,
+							ml.Name,
+							dl.Name,
+							ml.Overrides,
+							dl.Type,
+						})
+					}
+					// We already added the diff, so we can break out of the loop
+					found = true
+					break
+				}
+			} else if ml.Source == "" {
+				// Check if the license matches the license path
+				if dl.Name == ml.Name {
+					found = true
+				}
+			}
+		}
+
+		if !found {
+			// We didn't find a match, add it to license differences
+			diffs = append(diffs, LicenseDiff{
+				dl.Source,
+				"",
+				dl.Name,
+				"",
+				dl.Type,
+			})
+		}
+	}
+	return diffs
 }

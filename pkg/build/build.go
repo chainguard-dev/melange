@@ -40,7 +40,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
-	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -48,8 +47,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
 	"golang.org/x/sys/unix"
-	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
@@ -524,57 +521,6 @@ func (b *Build) overlayBinSh() error {
 	return nil
 }
 
-func fetchBucket(ctx context.Context, cacheSource string, cmm CacheMembershipMap) (string, error) {
-	log := clog.FromContext(ctx)
-	tmp, err := os.MkdirTemp("", "melange-cache")
-	if err != nil {
-		return "", err
-	}
-	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cacheSource, "gs://"), "/")
-
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		log.Infof("downgrading to anonymous mode: %s", err)
-
-		client, err = storage.NewClient(ctx, option.WithoutAuthentication())
-		if err != nil {
-			return "", fmt.Errorf("failed to get storage client: %w", err)
-		}
-	}
-
-	bh := client.Bucket(bucket)
-	it := bh.Objects(ctx, &storage.Query{Prefix: prefix})
-	for {
-		attrs, err := it.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			return tmp, fmt.Errorf("failed to get next remote cache object: %w", err)
-		}
-		on := attrs.Name
-		if !cmm[on] {
-			continue
-		}
-		rc, err := bh.Object(on).NewReader(ctx)
-		if err != nil {
-			return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
-		}
-		w, err := os.Create(filepath.Join(tmp, on))
-		if err != nil {
-			return tmp, err
-		}
-		if _, err := io.Copy(w, rc); err != nil {
-			return tmp, fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
-		}
-		if err := rc.Close(); err != nil {
-			return tmp, fmt.Errorf("failed to close remote cache object %s: %w", on, err)
-		}
-		log.Infof("cached gs://%s/%s -> %s", bucket, on, w.Name())
-	}
-
-	return tmp, nil
-}
-
 // isBuildLess returns true if the build context does not actually do any building.
 // TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
 // in the pipeline.
@@ -601,82 +547,6 @@ func (b Build) getBuildConfigPURL() (*purl.PackageURL, error) {
 		return nil, fmt.Errorf("normalizing PURL: %w", err)
 	}
 	return u, nil
-}
-
-func (b *Build) populateCache(ctx context.Context) error {
-	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "populateCache")
-	defer span.End()
-
-	if b.CacheDir == "" {
-		return nil
-	}
-
-	cmm, err := cacheItemsForBuild(b.Configuration)
-	if err != nil {
-		return fmt.Errorf("while determining which objects to fetch: %w", err)
-	}
-
-	if b.CacheSource != "" {
-		log.Debugf("populating cache from %s", b.CacheSource)
-	}
-
-	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
-	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(b.CacheSource, "gs://") {
-		tmp, err := fetchBucket(ctx, b.CacheSource, cmm)
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmp)
-		log.Infof("cache bucket copied to %s", tmp)
-
-		fsys := apkofs.DirFS(tmp)
-
-		// mkdir /var/cache/melange
-		if err := os.MkdirAll(b.CacheDir, 0o755); err != nil {
-			return err
-		}
-
-		// --cache-dir doesn't exist, nothing to do.
-		if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			fi, err := d.Info()
-			if err != nil {
-				return err
-			}
-
-			mode := fi.Mode()
-			if !mode.IsRegular() {
-				return nil
-			}
-
-			// Skip files in the cache that aren't named like sha256:... or sha512:...
-			// This is likely a bug, and won't be matched by any fetch.
-			base := filepath.Base(fi.Name())
-			if !strings.HasPrefix(base, "sha256:") &&
-				!strings.HasPrefix(base, "sha512:") {
-				return nil
-			}
-
-			log.Debugf("  -> %s", path)
-
-			if err := copyFile(tmp, path, b.CacheDir, mode.Perm()); err != nil {
-				return err
-			}
-
-			return nil
-		})
-	}
-
-	return nil
 }
 
 func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
@@ -883,10 +753,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		// Probably needs help from apko.
 		if err := b.overlayBinSh(); err != nil {
 			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-
-		if err := b.populateCache(ctx); err != nil {
-			return fmt.Errorf("unable to populate cache: %w", err)
 		}
 
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {

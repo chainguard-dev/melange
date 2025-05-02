@@ -1115,7 +1115,11 @@ func convertHumanToKB(memory string) (int64, error) {
 	}
 
 	// Return the value in kilobytes
-	return num * multiplier / 1024, nil
+	div := int64(1000)
+	if strings.Contains(unit, "i") {
+		div = int64(1024)
+	}
+	return num * multiplier / div, nil
 }
 
 func getAvailableMemoryKB() int {

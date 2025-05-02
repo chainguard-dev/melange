@@ -1070,38 +1070,31 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
 
+// Use binary values for all units
 const (
-	_   = iota
-	KiB = 1 << (10 * iota)
-	MiB
-	GiB
-	TiB
-)
-
-const (
-	B  int64 = 1
-	KB int64 = B * 1000
-	MB int64 = KB * 1000
-	GB int64 = MB * 1000
-	TB int64 = GB * 1000
+	_  = iota
+	KB = 1 << (10 * iota)
+	MB
+	GB
+	TB
 )
 
 func convertHumanToKB(memory string) (int64, error) {
 	// Map of unit multipliers
 	unitMultipliers := map[string]int64{
-		"Ki": KiB, // Kibibytes
-		"Mi": MiB, // Mebibytes
-		"Gi": GiB, // Gibibytes
-		"Ti": TiB, // Tebibytes
-		"K":  KB,  // Kilobytes
-		"M":  MB,  // Megabytes
-		"G":  GB,  // Gigabytes
-		"T":  TB,  // Terabytes
-		"k":  KB,  // Kilobytes
-		"m":  MB,  // Megabytes
-		"g":  GB,  // Gigabytes
-		"t":  TB,  // Terabytes
-		"B":  B,   // Bytes
+		"Ki": KB, // Kibibytes
+		"Mi": MB, // Mebibytes
+		"Gi": GB, // Gibibytes
+		"Ti": TB, // Tebibytes
+		"K":  KB, // Kilobytes
+		"M":  MB, // Megabytes
+		"G":  GB, // Gigabytes
+		"T":  TB, // Terabytes
+		"k":  KB, // Kilobytes
+		"m":  MB, // Megabytes
+		"g":  GB, // Gigabytes
+		"t":  TB, // Terabytes
+		"B":  1,  // Bytes
 	}
 
 	// Separate the numerical part from the unit part
@@ -1131,11 +1124,7 @@ func convertHumanToKB(memory string) (int64, error) {
 	}
 
 	// Return the value in kilobytes
-	div := KB
-	if strings.Contains(unit, "i") {
-		div = KiB
-	}
-	return num * multiplier / div, nil
+	return num * multiplier / 1024, nil
 }
 
 func getAvailableMemoryKB() int {

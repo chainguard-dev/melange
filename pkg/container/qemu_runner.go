@@ -1093,15 +1093,15 @@ func convertHumanToKB(memory string) (int64, error) {
 		"Mi": MiB, // Mebibytes
 		"Gi": GiB, // Gibibytes
 		"Ti": TiB, // Tebibytes
-		"K":  KB,  // Kilobytes (KB)
-		"M":  MB,  // Megabytes (MB)
-		"G":  GB,  // Gigabytes (GB)
-		"T":  TB,  // Terabytes (TB)
-		"k":  KB,  // Kilobytes (KB)
-		"m":  MB,  // Megabytes (MB)
-		"g":  GB,  // Gigabytes (GB)
-		"t":  TB,  // Terabytes (TB)
-		"B":  B,   // Bytes (B)
+		"K":  KB,  // Kilobytes
+		"M":  MB,  // Megabytes
+		"G":  GB,  // Gigabytes
+		"T":  TB,  // Terabytes
+		"k":  KB,  // Kilobytes
+		"m":  MB,  // Megabytes
+		"g":  GB,  // Gigabytes
+		"t":  TB,  // Terabytes
+		"B":  B,   // Bytes
 	}
 
 	// Separate the numerical part from the unit part

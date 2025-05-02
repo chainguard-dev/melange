@@ -52,6 +52,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
+	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/linter"
 	"chainguard.dev/melange/pkg/sbom"
 )
@@ -894,6 +895,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, path, require, warn); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
+	}
+
+	// Perform all license related linting and analysis
+	if _, _, err := license.LicenseCheck(ctx, b.Configuration, apkofs.DirFS(b.WorkspaceDir)); err != nil {
+		return fmt.Errorf("license check: %w", err)
 	}
 
 	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)

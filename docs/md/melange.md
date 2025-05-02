@@ -27,6 +27,7 @@ toc: true
 * [melange convert](/docs/md/melange_convert.md)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 * [melange index](/docs/md/melange_index.md)	 - Creates a repository index from a list of package files
 * [melange keygen](/docs/md/melange_keygen.md)	 - Generate a key for package signing
+* [melange license-check](/docs/md/melange_license-check.md)	 - Gather and check licensing data
 * [melange lint](/docs/md/melange_lint.md)	 - EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors
 * [melange package-version](/docs/md/melange_package-version.md)	 - Report the target package for a YAML configuration file
 * [melange query](/docs/md/melange_query.md)	 - Query a Melange YAML file for information

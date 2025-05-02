@@ -176,6 +176,7 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, rs.Pipeline[0].With["expected-commit"], "1234abcd")
 	assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")
+	assert.Equal(t, rs.Pipeline[2].With["expected-commit"], "water")
 }
 
 func setupTestServer(t *testing.T) (error, *httptest.Server) {

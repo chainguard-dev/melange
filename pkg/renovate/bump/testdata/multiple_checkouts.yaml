@@ -4,6 +4,9 @@ package:
   epoch: 2
   description: "a cheesy library"
 
+vars:
+  pasts: "7.1"
+
 pipeline:
   - uses: git-checkout
     with:
@@ -15,3 +18,8 @@ pipeline:
       repository: cheese/cheese
       expected-commit: bar
       tag: crackers
+  - uses: git-checkout
+    with:
+      repository: cheese/pasta
+      expected-commit: water
+      tag: ${{vars.pasts}}

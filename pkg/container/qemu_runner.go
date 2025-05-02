@@ -1121,19 +1121,40 @@ func convertHumanToKB(memory string) (int64, error) {
 func getAvailableMemoryKB() int {
 	mem := 16000000
 
-	f, e := os.Open("/proc/meminfo")
-	if e != nil {
-		return mem
-	}
-	defer f.Close()
-
-	s := bufio.NewScanner(f)
-
-	for s.Scan() {
-		var n int
-		if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
-			return n
+	switch runtime.GOOS {
+	case "linux":
+		f, e := os.Open("/proc/meminfo")
+		if e != nil {
+			return mem
 		}
+		defer f.Close()
+
+		s := bufio.NewScanner(f)
+
+		for s.Scan() {
+			var n int
+			if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
+				return n
+			}
+		}
+	case "darwin":
+		cmd := exec.Command("sysctl", "hw.memsize")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return mem
+		}
+		outputStr := strings.TrimSpace(string(output))
+		parts := strings.Split(outputStr, ": ")
+		if len(parts) != 2 {
+			return mem
+		}
+
+		memsize, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return mem
+		}
+		// hw.memsize returns the memory size in bytes
+		return int(memsize / 1024)
 	}
 
 	return mem

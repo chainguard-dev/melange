@@ -1070,22 +1070,38 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
 
+const (
+	_   = iota
+	KiB = 1 << (10 * iota)
+	MiB
+	GiB
+	TiB
+)
+
+const (
+	B  int64 = 1
+	KB int64 = B * 1000
+	MB int64 = KB * 1000
+	GB int64 = MB * 1000
+	TB int64 = GB * 1000
+)
+
 func convertHumanToKB(memory string) (int64, error) {
 	// Map of unit multipliers
 	unitMultipliers := map[string]int64{
-		"Ki": 1024,                      // Kibibytes
-		"Mi": 1024 * 1024,               // Mebibytes
-		"Gi": 1024 * 1024 * 1024,        // Gibibytes
-		"Ti": 1024 * 1024 * 1024 * 1024, // Tebibytes
-		"K":  1000,                      // Kilobytes (KB)
-		"M":  1000 * 1000,               // Megabytes (MB)
-		"G":  1000 * 1000 * 1000,        // Gigabytes (GB)
-		"T":  1000 * 1000 * 1000 * 1000, // Terabytes (TB)
-		"k":  1000,                      // Kilobytes (KB)
-		"m":  1000 * 1000,               // Megabytes (MB)
-		"g":  1000 * 1000 * 1000,        // Gigabytes (GB)
-		"t":  1000 * 1000 * 1000 * 1000, // Terabytes (TB)
-		"B":  1,
+		"Ki": KiB, // Kibibytes
+		"Mi": MiB, // Mebibytes
+		"Gi": GiB, // Gibibytes
+		"Ti": TiB, // Tebibytes
+		"K":  KB,  // Kilobytes (KB)
+		"M":  MB,  // Megabytes (MB)
+		"G":  GB,  // Gigabytes (GB)
+		"T":  TB,  // Terabytes (TB)
+		"k":  KB,  // Kilobytes (KB)
+		"m":  MB,  // Megabytes (MB)
+		"g":  GB,  // Gigabytes (GB)
+		"t":  TB,  // Terabytes (TB)
+		"B":  B,   // Bytes (B)
 	}
 
 	// Separate the numerical part from the unit part
@@ -1115,9 +1131,9 @@ func convertHumanToKB(memory string) (int64, error) {
 	}
 
 	// Return the value in kilobytes
-	div := int64(1000)
+	div := KB
 	if strings.Contains(unit, "i") {
-		div = int64(1024)
+		div = KiB
 	}
 	return num * multiplier / div, nil
 }

@@ -1193,7 +1193,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 		case tar.TypeReg:
-			f, err := fs.OpenFile(hdr.Name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, hdr.FileInfo().Mode())
+			f, err := fs.OpenFile(hdr.Name, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode())
 			if err != nil {
 				return fmt.Errorf("unable to open file %s: %w", hdr.Name, err)
 			}

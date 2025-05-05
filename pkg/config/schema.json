@@ -90,6 +90,25 @@
       "type": "object",
       "description": "Capabilities is the configuration for Linux capabilities for the runner."
     },
+    "Capability": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "add": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capability stores paths and an associated map of capabilities and justification to include in a package."
+    },
     "Checks": {
       "properties": {
         "disabled": {
@@ -166,6 +185,10 @@
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the main package."
+        },
+        "securityContext": {
+          "$ref": "#/$defs/SecurityContext",
+          "description": "Optional: The security context to use when running this build as a Pod in a Kubernetes cluster."
         }
       },
       "additionalProperties": false,
@@ -211,7 +234,7 @@
         },
         "detection-override": {
           "type": "string",
-          "description": "Optional: The detected license that should be overriden, used in cases where the automation is wrong."
+          "description": "Optional: License override"
         }
       },
       "additionalProperties": false,
@@ -627,6 +650,13 @@
           "$ref": "#/$defs/CPE",
           "description": "The CPE field values to be used for matching against NVD vulnerability\nrecords, if known."
         },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
+        },
         "timeout": {
           "type": "integer",
           "description": "Optional: The amount of time to allow this build to take before timing out."
@@ -824,6 +854,9 @@
         },
         "disk": {
           "type": "string"
+        },
+        "microvm": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -877,6 +910,41 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "SecurityContext": {
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Human-readable description of why this package build needs a non-default security context."
+        },
+        "Runner": {
+          "type": "string",
+          "description": "Unset means use the default runner."
+        },
+        "TestRunner": {
+          "type": "string",
+          "description": "If unset, use the same as Runner; if both unset, use the default runner."
+        },
+        "Privileged": {
+          "type": "boolean",
+          "description": "Whether to run the build and test pipelines in a privileged container."
+        },
+        "addCaps": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to add to the the Pod."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Runner",
+        "TestRunner",
+        "Privileged"
+      ],
+      "description": "This holds information about the security constraints when building the package."
+    },
     "Subpackage": {
       "properties": {
         "if": {
@@ -928,6 +996,13 @@
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the subpackage."
+        },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
         }
       },
       "additionalProperties": false,

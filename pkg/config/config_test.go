@@ -923,3 +923,35 @@ func TestSetCapability(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSecurityContext(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		sc      *SecurityContext
+		wantErr bool
+	}{{
+		name: "valid security context",
+		sc: &SecurityContext{
+			Privileged: true,
+			Reason:     "Valid reason",
+		},
+		wantErr: false,
+	}, {
+		name: "invalid security context with empty reason",
+		sc: &SecurityContext{
+			Privileged: true,
+			Reason:     "",
+		},
+		wantErr: true,
+	}, {
+		name:    "nil security context",
+		sc:      nil,
+		wantErr: false, // nil is valid
+	}} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := validateSecurityContext(test.sc); (err != nil) != test.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, test.wantErr)
+			}
+		})
+	}
+}

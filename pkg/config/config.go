@@ -761,6 +761,9 @@ type Configuration struct {
 	// Test section for the main package.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 
+	// Optional: The security context to use when running this build as a Pod in a Kubernetes cluster.
+	SecurityContext *SecurityContext `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
+
 	// Parsed AST for this configuration
 	root *yaml.Node
 }
@@ -791,6 +794,22 @@ type Test struct {
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
+}
+
+// This holds information about the security constraints when building the package.
+type SecurityContext struct {
+	// Human-readable description of why this package build needs a non-default security context.
+	Reason string `json:"reason,omitempty" yaml:"reason,omitempty"`
+
+	// Unset means use the default runner.
+	Runner     string
+	TestRunner string // If unset, use the same as Runner; if both unset, use the default runner.
+
+	// Whether to run the build and test pipelines in a privileged container.
+	Privileged bool
+
+	// Linux process capabilities to add to the the Pod.
+	AddCaps []string `json:"addCaps,omitempty" yaml:"addCaps,omitempty"`
 }
 
 // Name returns a name for the configuration, using the package name. This
@@ -1651,6 +1670,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
+	if err := validateSecurityContext(cfg.SecurityContext); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
 
 	saw := map[string]int{cfg.Package.Name: -1}
 	for i, sp := range cfg.Subpackages {
@@ -1941,4 +1963,14 @@ func EncodeCapability(effectiveBits, permittedBits, inheritableBits uint32) []by
 	binary.LittleEndian.PutUint32(data[20:24], 0)
 
 	return data
+}
+
+func validateSecurityContext(sc *SecurityContext) error {
+	if sc == nil {
+		return nil
+	}
+	if sc.Reason == "" {
+		return fmt.Errorf("unjustified reason for custom security context")
+	}
+	return nil
 }

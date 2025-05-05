@@ -204,3 +204,12 @@ func WithTestRemove(c bool) TestOption {
 		return nil
 	}
 }
+
+// WithIgnoreSignatures indicates whether to ignore signatures when
+// installing packages.
+func WithTestIgnoreSignatures(ignore bool) TestOption {
+	return func(t *Test) error {
+		t.IgnoreSignatures = ignore
+		return nil
+	}
+}

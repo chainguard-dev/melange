@@ -49,6 +49,7 @@ func test() *cobra.Command {
 	var runner string
 	var extraTestPackages []string
 	var remove bool
+	var ignoreSignatures bool
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -80,6 +81,7 @@ func test() *cobra.Command {
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
 				build.WithTestRemove(remove),
+				build.WithTestIgnoreSignatures(ignoreSignatures),
 			}
 
 			if len(args) > 0 {
@@ -132,6 +134,7 @@ func test() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
+	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
 
 	return cmd
 }

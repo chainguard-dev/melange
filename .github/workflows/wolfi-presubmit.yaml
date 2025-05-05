@@ -67,6 +67,7 @@ jobs:
           - guac
           - mdbook
           - s3cmd
+          - db # Uses license-path
           - perl-yaml-syck
           - ncurses
           - fping

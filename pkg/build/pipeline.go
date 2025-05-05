@@ -216,7 +216,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	workdir := WorkDir
 	if pipeline.WorkDir != "" {
-		workdir = pipeline.WorkDir
+		workdir = filepath.Join(WorkDir, pipeline.WorkDir)
 	}
 
 	// We might have called signal.Ignore(os.Interrupt) as part of a previous debug step,

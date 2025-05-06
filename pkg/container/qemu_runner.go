@@ -476,13 +476,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	baseargs := []string{}
-	microvm := false
-	// by default, cfg.MicroVM will be false
-	// override the MicroVM config value with the environment variable if present
-	// and said variable is parseable as a bool
-	if env, ok := os.LookupEnv("QEMU_USE_MICROVM"); ok {
-		if val, err := strconv.ParseBool(env); err == nil {
-			cfg.MicroVM = val
+	bios := false
+	useVM := false
+	if qemuVM, ok := os.LookupEnv("QEMU_USE_MICROVM"); ok {
+		if val, err := strconv.ParseBool(qemuVM); err == nil {
+			useVM = val
 		}
 	}
 
@@ -492,7 +490,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		"-chardev", "stdio,id=charconsole0",
 		"-device", "virtconsole,chardev=charconsole0,id=console0",
 	}
-	if cfg.MicroVM {
+	if useVM {
 		// load microvm profile and bios, shave some milliseconds from boot
 		// using this will make a complete boot->initrd (with working network) In ~700ms
 		// instead of ~900ms.
@@ -507,21 +505,22 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				// microvm in qemu any version tested will not send hvc0/virtconsole to stdout
 				kernelConsole = "console=ttyS0"
 				serialArgs = []string{"-serial", "stdio"}
-				microvm = true
+				bios = true
 				break
 			}
 		}
 	}
 
-	// we need to fallback to -machine virt, if not machine has been specified
-	if !microvm {
+	// we need to fall back to -machine virt if no microVM BIOS was found (or QEMU_USE_MICROVM is false)
+	if !bios {
 		// aarch64 supports virt machine type, let's use that if we're on it, else
 		// if we're on x86 arch, but without microvm machine type, let's go to q35
-		if cfg.Arch.ToAPK() == "aarch64" {
+		switch cfg.Arch.ToAPK() {
+		case "aarch64":
 			baseargs = append(baseargs, "-machine", "virt")
-		} else if cfg.Arch.ToAPK() == "x86_64" {
+		case "x86_64":
 			baseargs = append(baseargs, "-machine", "q35")
-		} else {
+		default:
 			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
 	}
@@ -542,7 +541,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 		cfg.Memory = fmt.Sprintf("%dk", memKb)
 	} else {
-		cfg.Memory = fmt.Sprintf("%dk", getAvailableMemoryKB()/4)
+		// Use at most ~85% of the available host memory
+		cfg.Memory = fmt.Sprintf("%dk", int(float64(getAvailableMemoryKB())*0.85))
 	}
 	baseargs = append(baseargs, "-m", cfg.Memory)
 
@@ -552,33 +552,31 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
 	}
 
-	// use kvm on linux, and Hypervisor.framework on macOS
-	if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
+	// use kvm on linux, Hypervisor.framework on macOS, and software for cross-arch
+	switch {
+	case cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK():
 		baseargs = append(baseargs, "-accel", "tcg,thread=multi")
-	} else {
-		if runtime.GOOS == "linux" {
-			baseargs = append(baseargs, "-accel", "kvm")
-		} else if runtime.GOOS == "darwin" {
-			baseargs = append(baseargs, "-accel", "hvf")
-		}
+	case runtime.GOOS == "linux":
+		baseargs = append(baseargs, "-accel", "kvm")
+	case runtime.GOOS == "darwin":
+		baseargs = append(baseargs, "-accel", "hvf")
+	default:
+		baseargs = append(baseargs, "-accel", "tcg,thread=multi")
 	}
 
-	if cfg.CPUModel != "" {
+	switch {
+	case cfg.CPUModel != "":
 		baseargs = append(baseargs, "-cpu", cfg.CPUModel)
-	} else {
-		baseargs = append(baseargs, "-cpu", "host")
-		// we cant use `-cpu host` when architecture does not match between host
-		// and guest
-		if cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK() {
-			// let's use a recent default for those
-			if cfg.Arch.ToAPK() == "aarch64" {
-				baseargs = append(baseargs, "-cpu", "cortex-a76")
-			} else if cfg.Arch.ToAPK() == "x86_64" {
-				baseargs = append(baseargs, "-cpu", "Haswell-v4")
-			} else {
-				return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
-			}
+	case cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK():
+		if cfg.Arch.ToAPK() == "aarch64" {
+			baseargs = append(baseargs, "-cpu", "cortex-a76")
+		} else if cfg.Arch.ToAPK() == "x86_64" {
+			baseargs = append(baseargs, "-cpu", "Haswell-v4")
+		} else {
+			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
+	default:
+		baseargs = append(baseargs, "-cpu", "host")
 	}
 
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
@@ -1072,22 +1070,31 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
 
+// Use binary values for all units
+const (
+	_  = iota
+	KB = 1 << (10 * iota)
+	MB
+	GB
+	TB
+)
+
 func convertHumanToKB(memory string) (int64, error) {
 	// Map of unit multipliers
 	unitMultipliers := map[string]int64{
-		"Ki": 1024,                      // Kibibytes
-		"Mi": 1024 * 1024,               // Mebibytes
-		"Gi": 1024 * 1024 * 1024,        // Gibibytes
-		"Ti": 1024 * 1024 * 1024 * 1024, // Tebibytes
-		"K":  1024,                      // Kilobytes (KB)
-		"M":  1024 * 1024,               // Megabytes (MB)
-		"G":  1024 * 1024 * 1024,        // Gigabytes (GB)
-		"T":  1024 * 1024 * 1024 * 1024, // Terabytes (TB)
-		"k":  1024,                      // Kilobytes (KB)
-		"m":  1024 * 1024,               // Megabytes (MB)
-		"g":  1024 * 1024 * 1024,        // Gigabytes (GB)
-		"t":  1024 * 1024 * 1024 * 1024, // Terabytes (TB)
-		"B":  1,
+		"Ki": KB, // Kibibytes
+		"Mi": MB, // Mebibytes
+		"Gi": GB, // Gibibytes
+		"Ti": TB, // Tebibytes
+		"K":  KB, // Kilobytes
+		"M":  MB, // Megabytes
+		"G":  GB, // Gigabytes
+		"T":  TB, // Terabytes
+		"k":  KB, // Kilobytes
+		"m":  MB, // Megabytes
+		"g":  GB, // Gigabytes
+		"t":  TB, // Terabytes
+		"B":  1,  // Bytes
 	}
 
 	// Separate the numerical part from the unit part
@@ -1123,19 +1130,40 @@ func convertHumanToKB(memory string) (int64, error) {
 func getAvailableMemoryKB() int {
 	mem := 16000000
 
-	f, e := os.Open("/proc/meminfo")
-	if e != nil {
-		return mem
-	}
-	defer f.Close()
-
-	s := bufio.NewScanner(f)
-
-	for s.Scan() {
-		var n int
-		if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
-			return n
+	switch runtime.GOOS {
+	case "linux":
+		f, e := os.Open("/proc/meminfo")
+		if e != nil {
+			return mem
 		}
+		defer f.Close()
+
+		s := bufio.NewScanner(f)
+
+		for s.Scan() {
+			var n int
+			if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
+				return n
+			}
+		}
+	case "darwin":
+		cmd := exec.Command("sysctl", "hw.memsize")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return mem
+		}
+		outputStr := strings.TrimSpace(string(output))
+		parts := strings.Split(outputStr, ": ")
+		if len(parts) != 2 {
+			return mem
+		}
+
+		memsize, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return mem
+		}
+		// hw.memsize returns the memory size in bytes
+		return int(memsize / 1024)
 	}
 
 	return mem

@@ -29,6 +29,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -485,6 +486,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	kernelConsole := "console=hvc0"
+
+	// If the log level is debug, then crank up the logging.
+	// Otherwise, use quiet mode.
+	if log.Enabled(ctx, slog.LevelDebug) {
+		kernelConsole += " debug loglevel=7"
+	} else {
+		kernelConsole += " quiet"
+	}
+
 	serialArgs := []string{
 		"-device", "virtio-serial-pci,id=virtio-serial0",
 		"-chardev", "stdio,id=charconsole0",
@@ -597,7 +607,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", kernelConsole+" debug loglevel=7 nomodeset panic=-1 sshkey="+sshkey)
+	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset panic=-1 sshkey="+sshkey)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
@@ -649,7 +659,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		scanner := bufio.NewScanner(outRead)
 		for scanner.Scan() && logCtx.Err() == nil {
 			line := scanner.Text()
-			log.Debugf("qemu: %s", line)
+			log.Infof("qemu: %s", line)
 		}
 		if err := scanner.Err(); err != nil {
 			log.Warnf("qemu stdout scanner error: %v", err)

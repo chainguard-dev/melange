@@ -6,7 +6,7 @@ require (
 	chainguard.dev/apko v0.27.2
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.12
+	github.com/chainguard-dev/yam v0.2.14
 	github.com/charmbracelet/log v0.4.1
 	github.com/docker/cli v28.0.4+incompatible
 	github.com/docker/docker v28.0.4+incompatible

@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"io"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/container/docker"
@@ -147,7 +149,8 @@ func TestBuild_BuildPackage(t *testing.T) {
 func getRunner(ctx context.Context, t *testing.T) container.Runner {
 	t.Helper()
 
-	if r := container.BubblewrapRunner(true); r.TestUsability(ctx) {
+	cfg := Configuration{Architecture: apko_types.ParseArchitecture(runtime.GOARCH)}
+	if r := container.BubblewrapRunner(true); r.TestUsability(ctx, &cfg) {
 		return r
 	}
 

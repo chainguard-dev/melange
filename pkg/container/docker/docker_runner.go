@@ -161,7 +161,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *mcontainer.Config) erro
 
 // TestUsability determines if the Docker runner can be used
 // as a container runner.
-func (dk *docker) TestUsability(ctx context.Context) bool {
+func (dk *docker) TestUsability(ctx context.Context, cfg *mcontainer.Config) bool {
 	log := clog.FromContext(ctx)
 	if _, err := dk.cli.Ping(ctx); err != nil {
 		log.Errorf("cannot use docker for containers: %v", err)

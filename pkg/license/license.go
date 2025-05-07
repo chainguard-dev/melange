@@ -240,7 +240,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 	for _, dl := range detectedLicenses {
 		s := ""
 		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-		if isLicenseMatchConfident(dl) {
+		if !isLicenseMatchConfident(dl) {
 			s = " ignored"
 		}
 		log.Infof("  %s: %s (%f%s) (%s)", dl.Source, dl.Name, dl.Confidence, s, dl.Type)

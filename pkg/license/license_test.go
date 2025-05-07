@@ -17,12 +17,15 @@ package license
 import (
 	"context"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/clog"
 )
 
 func TestFindLicenseFiles(t *testing.T) {
@@ -171,8 +174,16 @@ func TestLicenseCheck(t *testing.T) {
 	testDataDir := "testdata"
 	dataFS := apkofs.DirFS(testDataDir)
 
+	// Create a buffer to capture log output
+	var logBuf strings.Builder
+	handler := slog.NewTextHandler(&logBuf, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	logger := clog.New(handler)
+	ctx := clog.WithLogger(context.Background(), logger)
+
 	// Call function under test
-	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
+	_, diffs, err := LicenseCheck(ctx, cfg, dataFS)
 	if err != nil {
 		t.Fatalf("LicenseCheck returned an error: %v", err)
 	}
@@ -203,7 +214,25 @@ func TestLicenseCheck(t *testing.T) {
 			t.Errorf("Expected license difference %+v not found", expected)
 		}
 	}
+
+	// Now also check the log output and make sure that "ignored" is present only for the low-confidence license,
+	// LICENSE-BSD-modified.
+	found := false
+	lines := strings.Split(logBuf.String(), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "ignored") {
+			// Check if the line contains the expected license
+			if !strings.Contains(line, "LICENSE-BSD-modified") {
+				t.Errorf("Unexpected log line with 'ignored': %s", line)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Error("Expected log line with 'ignored' not found")
+	}
 }
+
 func TestLicenseCheck_withOverrides(t *testing.T) {
 	// Create a mock configuration with detection overrides
 	// There is one correct override (BSD -> MIT) and one incorrect, where we say we expected MIT and overriding it to GPL-3.0

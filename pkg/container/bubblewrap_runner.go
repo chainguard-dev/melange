@@ -183,7 +183,7 @@ func (bw *bubblewrap) Debug(ctx context.Context, cfg *Config, envOverride map[st
 
 // TestUsability determines if the Bubblewrap runner can be used
 // as a container runner.
-func (bw *bubblewrap) TestUsability(ctx context.Context) bool {
+func (bw *bubblewrap) TestUsability(ctx context.Context, cfg *Config) bool {
 	log := clog.FromContext(ctx)
 	if _, err := exec.LookPath("bwrap"); err != nil {
 		log.Warnf("cannot use bubblewrap for containers: bwrap not found on $PATH")

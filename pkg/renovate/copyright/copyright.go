@@ -59,11 +59,19 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 	return func(ctx context.Context, rc *renovate.RenovationContext) error {
 		log.Infof("attempting to update copyright")
 
-		// Funny thing: we first have to parse the configuration afresh for license linting.
-		// The reason is that for determining the license information, we need to fetch the
-		// source code of the package. And to get that, we need the config tree to be already
-		// substituted, with all the variables resolved. We can't use rc.Configuration for that
-		// as it would mean the renovated config would already contain the substitutions.
+		// Check if there's any licenses that were properly detected.
+		// If not, we probably shouldn't do anything.
+		canFix := false
+		for _, l := range ccfg.Licenses {
+			if !license.IsLicenseMatchConfident(l) {
+				canFix = true
+				break
+			}
+		}
+		if !canFix {
+			log.Infof("no confident licenses found to update")
+			return nil
+		}
 
 		packageNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "package")
 		if err != nil {
@@ -80,7 +88,13 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 		copyrightNode.Content = nil
 
 		// Repopulate the copyrightNode with detected licenses
-		for _, license := range ccfg.Licenses {
+		for _, l := range ccfg.Licenses {
+			// Skip licenses we
+			if !license.IsLicenseMatchConfident(l) {
+				log.Infof("skipping unconfident license %s", l.Source)
+				continue
+			}
+
 			licenseNode := &yaml.Node{
 				Kind:    yaml.MappingNode,
 				Style:   yaml.FlowStyle,
@@ -94,7 +108,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 				Style: yaml.FlowStyle,
 			}, &yaml.Node{
 				Kind:  yaml.ScalarNode,
-				Value: license.Name,
+				Value: l.Name,
 				Tag:   "!!str",
 				Style: yaml.FlowStyle,
 			})
@@ -106,7 +120,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 				Style: yaml.FlowStyle,
 			}, &yaml.Node{
 				Kind:  yaml.ScalarNode,
-				Value: license.Source,
+				Value: l.Source,
 				Tag:   "!!str",
 				Style: yaml.FlowStyle,
 			})

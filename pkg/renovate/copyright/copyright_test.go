@@ -41,6 +41,16 @@ func TestCopyright_update(t *testing.T) {
 			Source:     "internal/COPYING",
 			Confidence: 1.0,
 		},
+		{
+			Name:       "GPL-3.0",
+			Source:     "internal/LICENSE",
+			Confidence: 0.2,
+		},
+		{
+			Name:       "NOASSERTION",
+			Source:     "docs/COPYING",
+			Confidence: 0.0,
+		},
 	}
 
 	// Copy the test data file to the temp directory
@@ -65,4 +75,6 @@ func TestCopyright_update(t *testing.T) {
 	assert.Contains(t, string(resultData), "license: Apache-2.0")
 	assert.Contains(t, string(resultData), "license: MIT")
 	assert.NotContains(t, string(resultData), "license: Not-Applicable")
+	assert.NotContains(t, string(resultData), "license: GPL-3.0")
+	assert.NotContains(t, string(resultData), "license: NOASSERTION")
 }

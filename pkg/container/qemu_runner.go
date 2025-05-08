@@ -402,7 +402,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		outFile,
 		false,
-		[]string{"sh", "-c", "cd /home/build && tar cvpzf - --xattrs --acls *"},
+		[]string{"sh", "-c", "cd /home/build && tar cvpzf - --xattrs --acls --exclude='*fifo*' *"},
 	)
 	if err != nil {
 		return nil, err

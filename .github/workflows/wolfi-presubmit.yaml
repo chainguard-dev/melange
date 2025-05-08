@@ -74,6 +74,7 @@ jobs:
           - fping
           - subversion
           - sudo
+          - py3-supported-python
           # TODO: https://github.com/wolfi-dev/os/issues/26442
           #- xmlto
 

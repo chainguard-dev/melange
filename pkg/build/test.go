@@ -148,6 +148,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraBuildRepos(t.ExtraRepos),
 		apko_build.WithExtraPackages(t.ExtraTestPackages),
+		apko_build.WithIgnoreSignatures(t.IgnoreSignatures),
 		apko_build.WithCache(t.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp))
 	if err != nil {

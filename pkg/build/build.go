@@ -16,7 +16,6 @@ package build
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -1136,7 +1135,14 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "retrieveWorkspace")
 	defer span.End()
 
-	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
+	extraFiles := []string{}
+	for _, v := range b.Configuration.Package.Copyright {
+		if v.LicensePath != "" {
+			extraFiles = append(extraFiles, v.LicensePath)
+		}
+	}
+
+	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig, extraFiles)
 	if err != nil {
 		return err
 	} else if r == nil {
@@ -1144,12 +1150,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	}
 	defer r.Close()
 
-	gr, err := gzip.NewReader(r)
-	if err != nil {
-		return err
-	}
-	defer gr.Close()
-	tr := tar.NewReader(gr)
+	tr := tar.NewReader(r)
 
 	for {
 		hdr, err := tr.Next()

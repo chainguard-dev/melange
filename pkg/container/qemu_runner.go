@@ -370,7 +370,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 }
 
 // WorkspaceTar implements Runner
-func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
 	// default to root user but if a different user is specified
 	// we will use the embedded build:1000:1000 user
 	user := "root"
@@ -392,6 +392,12 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
+	retrieveCommand := "cd /home/build && tar cvpf - --xattrs --acls --exclude='*fifo*' melange-out"
+	// we append also all the necessary files that we might need, for example Licenses
+	// for license checks
+	for _, v := range extraFiles {
+		retrieveCommand = retrieveCommand + " " + v
+	}
 	err = sendSSHCommand(ctx,
 		user,
 		cfg.SSHAddress,
@@ -401,7 +407,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 		nil,
 		outFile,
 		false,
-		[]string{"sh", "-c", "cd /home/build && tar cvpzf - --xattrs --acls --exclude='*fifo*' *"},
+		[]string{"sh", "-c", retrieveCommand},
 	)
 	if err != nil {
 		return nil, err

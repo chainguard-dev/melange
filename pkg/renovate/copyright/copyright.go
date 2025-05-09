@@ -29,16 +29,26 @@ import (
 // renovator.
 type CopyrightConfig struct {
 	Licenses []license.License
+	Diffs    []license.LicenseDiff
 }
 
 // Option sets a config option on a CopyrightConfig.
 type Option func(cfg *CopyrightConfig) error
 
-// WithTargetVersion sets the desired target version for the
-// bump renovator.
+// WithTargetVersion sets the licenses to be used for the
+// renovator.
 func WithLicenses(licenses []license.License) Option {
 	return func(cfg *CopyrightConfig) error {
 		cfg.Licenses = licenses
+		return nil
+	}
+}
+
+// WithLicenses sets the differences to consider for the
+// renovator.
+func WithDiffs(diffs []license.LicenseDiff) Option {
+	return func(cfg *CopyrightConfig) error {
+		cfg.Diffs = diffs
 		return nil
 	}
 }
@@ -70,6 +80,12 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 		}
 		if !canFix {
 			log.Infof("no confident licenses found to update")
+			return nil
+		}
+
+		// Also, don't renovate if there is no differences detected.
+		if len(ccfg.Diffs) == 0 {
+			log.Infof("no actionable license differences detected")
 			return nil
 		}
 

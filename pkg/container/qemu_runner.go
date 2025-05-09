@@ -15,7 +15,9 @@
 package container
 
 import (
+	"archive/tar"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
@@ -47,6 +49,7 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/kballard/go-shellquote"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
@@ -1188,6 +1191,20 @@ func generateCpio(ctx context.Context) (string, error) {
 
 	log.Debugf("using %s for image layer", layerTarGZ)
 
+	// in case of some kernel images, we also need the /lib/modules directory to load
+	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
+	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
+		clog.FromContext(ctx).Debugf("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
+		if _, err := os.Stat(qemuModule); err == nil {
+			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
+			layer, err = injectKernelModules(ctx, layer, qemuModule)
+			if err != nil {
+				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
+				return "", err
+			}
+		}
+	}
+
 	guestInitramfs, err := os.Create(initramfs)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
@@ -1205,4 +1222,80 @@ func generateCpio(ctx context.Context) (string, error) {
 	}
 
 	return guestInitramfs.Name(), nil
+}
+
+// in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
+// we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
+func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
+	clog.FromContext(ctx).Info("qemu: appending modules to initramfs")
+
+	// get tar layer, we will need to inject new files into it
+	uncompressed, err := rootfs.Uncompressed()
+	if err != nil {
+		return nil, err
+	}
+	defer uncompressed.Close()
+
+	// copy old tar layer into new tar
+	buf := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buf)
+	tartReader := tar.NewReader(uncompressed)
+
+	for {
+		header, err := tartReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tarWriter, tartReader); err != nil {
+			return nil, err
+		}
+	}
+
+	// Walk through the input directory and add files to the tar archive
+	err = filepath.Walk(modulesPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		header, err := tar.FileInfoHeader(info, path)
+		if err != nil {
+			return fmt.Errorf("failed to create tar header for %s: %w", path, err)
+		}
+
+		header.Name = "/lib/modules/" + filepath.ToSlash(path[len(modulesPath):])
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return fmt.Errorf("failed to write tar header for %s: %w", path, err)
+		}
+
+		if _, err := tarWriter.Write(data); err != nil {
+			return fmt.Errorf("failed to write file %s to tar: %w", path, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	opener := func() (io.ReadCloser, error) {
+		// Return a ReadCloser from the buffer
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	}
+
+	// Create a layer from the Opener
+	return tarball.LayerFromOpener(opener)
 }

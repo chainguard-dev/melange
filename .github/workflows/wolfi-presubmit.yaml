@@ -157,6 +157,17 @@ jobs:
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
 
+      - name: Run tests to verify xattrs with QEMU runner
+        if: matrix.runner == 'qemu' && matrix.package == 'fping'
+        run: |
+          make \
+            SHELL="/bin/bash" \
+            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
+            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
+            MELANGE="/usr/bin/melange" \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            test/${{ matrix.package }}
+
       - name: Check package ${{ matrix.package }} xattrs for QEMU-built package
         if: matrix.runner == 'qemu' && matrix.package == 'fping'
         run: |

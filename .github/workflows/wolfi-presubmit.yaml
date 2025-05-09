@@ -74,7 +74,6 @@ jobs:
           - fping  # uses get/setcaps
           - perl-yaml-syck
           - ncurses
-          - fping
           - subversion
           - sudo
           - py3-supported-python

@@ -64,7 +64,7 @@ func licenseCheck() *cobra.Command {
 			}
 
 			sourceFS := apkofs.DirFS(sourceDir)
-			detectedLicenses, _, err := license.LicenseCheck(ctx, cfg, sourceFS)
+			detectedLicenses, diffs, err := license.LicenseCheck(ctx, cfg, sourceFS)
 			if err != nil {
 				return err
 			}
@@ -77,7 +77,11 @@ func licenseCheck() *cobra.Command {
 					return err
 				}
 
-				copyrightRenovator := copyright.New(ctx, copyright.WithLicenses(detectedLicenses))
+				copyrightRenovator := copyright.New(
+					ctx,
+					copyright.WithLicenses(detectedLicenses),
+					copyright.WithDiffs(diffs),
+				)
 				err = rc.Renovate(cmd.Context(), copyrightRenovator)
 			}
 

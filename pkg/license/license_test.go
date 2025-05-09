@@ -215,21 +215,21 @@ func TestLicenseCheck(t *testing.T) {
 		}
 	}
 
-	// Now also check the log output and make sure that "ignored" is present only for the low-confidence license,
-	// LICENSE-BSD-modified.
+	// Now also check the log output and make sure that "low-confidence" is present only for the low-confidence
+	// licenses: LICENSE-BSD-modified and COPYRIGHT (the latter is not a valid license)
 	found := false
 	lines := strings.Split(logBuf.String(), "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "ignored") {
-			// Check if the line contains the expected license
-			if !strings.Contains(line, "LICENSE-BSD-modified") {
-				t.Errorf("Unexpected log line with 'ignored': %s", line)
+		if strings.Contains(line, "low-confidence") {
+			// Check if the line contains one of the expected licenses
+			if !strings.Contains(line, "LICENSE-BSD-modified") && !strings.Contains(line, "COPYRIGHT") {
+				t.Errorf("Unexpected log line with 'low-confidence': %s", line)
 			}
 			found = true
 		}
 	}
 	if !found {
-		t.Error("Expected log line with 'ignored' not found")
+		t.Error("Expected log line with 'low-confidence' not found")
 	}
 }
 

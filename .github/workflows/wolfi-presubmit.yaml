@@ -68,7 +68,10 @@ jobs:
           - guac
           - mdbook
           - s3cmd
-          - db # Uses license-path
+          - db  # Uses license-path
+          - cadvisor  # uses cgroups
+          - dotnet-9  # huge workspace size 3+gb
+          - fping  # uses get/setcaps
           - perl-yaml-syck
           - ncurses
           - fping

@@ -358,7 +358,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 
 // WorkspaceTar implements Runner
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
-func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config) (io.ReadCloser, error) {
+func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
 }
 

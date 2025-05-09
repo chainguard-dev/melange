@@ -226,7 +226,7 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 
 // WorkspaceTar implements Runner
 // This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
-func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
 }
 

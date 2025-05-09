@@ -278,13 +278,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("compiling %s tests: %w", t.ConfigFile, err)
 	}
 
-	if t.Runner.Name() == container.QemuName {
-		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
-			"melange-microvm-init",
-			"gnutar",
-		}...)
-	}
-
 	// Filter out any subpackages with false If conditions.
 	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
 		result, err := shouldRun(sp.If)

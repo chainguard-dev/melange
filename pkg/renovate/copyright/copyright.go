@@ -63,7 +63,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 		// If not, we probably shouldn't do anything.
 		canFix := false
 		for _, l := range ccfg.Licenses {
-			if !license.IsLicenseMatchConfident(l) {
+			if license.IsLicenseMatchConfident(l) {
 				canFix = true
 				break
 			}

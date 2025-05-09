@@ -158,7 +158,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			ssh.PublicKeys(signer),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
+			Ciphers: []string{"aes128-gcm@openssh.com"},
 		},
 		HostKeyCallback: hostKeyCallback,
 	}
@@ -845,7 +845,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 			ssh.PublicKeys(signer),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
+			Ciphers: []string{"aes128-gcm@openssh.com"},
 		},
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			hostKey = key
@@ -906,7 +906,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 			ssh.PublicKeys(signer),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
+			Ciphers: []string{"aes128-gcm@openssh.com"},
 		},
 		HostKeyCallback: hostKeyCallback,
 	}

@@ -1127,6 +1127,15 @@ func generateCpio(ctx context.Context) (string, error) {
 	}
 
 	clog.FromContext(ctx).Info("qemu: generating initramfs")
+
+	err := os.MkdirAll(filepath.Join(
+		"kernel",
+		apko_types.Architecture(runtime.GOARCH).ToAPK()),
+		os.ModePerm)
+	if err != nil {
+		return "", fmt.Errorf("unable to dest directory: %w", err)
+	}
+
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
 			RuntimeRepositories: []string{

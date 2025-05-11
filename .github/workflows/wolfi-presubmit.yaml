@@ -70,7 +70,6 @@ jobs:
           - s3cmd
           - db  # Uses license-path
           - cadvisor  # uses cgroups
-          - dotnet-9  # huge workspace size 3+gb
           - fping  # uses get/setcaps
           - perl-yaml-syck
           - ncurses
@@ -156,8 +155,8 @@ jobs:
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
 
-      - name: Run tests to verify xattrs with QEMU runner
-        if: matrix.runner == 'qemu' && matrix.package == 'fping'
+      - name: Run tests with QEMU runner
+        if: matrix.runner == 'qemu'
         run: |
           make \
             SHELL="/bin/bash" \

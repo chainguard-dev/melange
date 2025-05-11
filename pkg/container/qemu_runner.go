@@ -1141,11 +1141,8 @@ func generateCpio(ctx context.Context) (string, error) {
 
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
-			RuntimeRepositories: []string{
-				"https://packages.wolfi.dev/os",
-			},
-			Keyring: []string{
-				"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub",
+			BuildRepositories: []string{
+				"https://apk.cgr.dev/chainguard",
 			},
 			Packages: []string{
 				"microvm-init",

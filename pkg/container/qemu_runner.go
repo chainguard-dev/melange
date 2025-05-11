@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -381,7 +380,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		user = "build"
 	}
 
-	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"))
+	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +426,7 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 
 	// qemu does not have the idea of container images or layers or such, just
 	// create a rootfs from the layer
-	guestRootfs, err := os.CreateTemp("", "melange-guest-*.tar.gz")
+	guestRootfs, err := os.CreateTemp("", "melange-guest-*.tar")
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create guest dir: %v", err)
 		return ref, err
@@ -600,7 +599,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		cfg.Disk = defaultDiskSize
 	}
 
-	// always be sure to create the VM rootfs first!
 	kernelPath, err := getKernelPath(ctx, cfg)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
@@ -1119,7 +1117,7 @@ func randomPortN() (int, error) {
 func generateCpio(ctx context.Context) (string, error) {
 	/*
 	 * we only build once, useful for local development, we
-	 * cahce it into kernel/ARCH/melange-guest.initramfs.cpio
+	 * cache it into kernel/ARCH/melange-guest.initramfs.cpio
 	 * if present, we nop and return, else we build it.
 	 */
 	initramfs := filepath.Join(
@@ -1208,13 +1206,8 @@ func generateCpio(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	gzw := gzip.NewWriter(guestInitramfs)
-	if err := apko_cpio.FromLayer(layer, gzw); err != nil {
+	if err := apko_cpio.FromLayer(layer, guestInitramfs); err != nil {
 		clog.FromContext(ctx).Errorf("failed to convert cpio initramfs: %v", err)
-		return "", err
-	}
-	if err := gzw.Close(); err != nil {
-		clog.FromContext(ctx).Errorf("failed to close gzip writer: %v", err)
 		return "", err
 	}
 

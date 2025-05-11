@@ -68,7 +68,7 @@ jobs:
           - guac
           - mdbook
           - s3cmd
-          - db  # Uses license-path
+          - py3-pyelftools  # Uses license-path
           - cadvisor  # uses cgroups
           - fping  # uses get/setcaps
           - perl-yaml-syck

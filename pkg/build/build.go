@@ -1062,6 +1062,47 @@ func (b *Build) buildFlavor() string {
 	return b.Libc
 }
 
+func runAsUID(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "0"
+	default:
+	}
+	// If accts.RunAs is numeric, then return it.
+	if _, err := strconv.Atoi(accts.RunAs); err == nil {
+		return accts.RunAs
+	}
+	for _, u := range accts.Users {
+		if accts.RunAs == u.UserName {
+			return fmt.Sprint(u.UID)
+		}
+	}
+	panic(fmt.Sprintf("unable to find user with username %s", accts.RunAs))
+}
+
+func runAs(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "root"
+	default:
+	}
+	// If accts.RunAs is numeric, then look up the username.
+	uid, err := strconv.Atoi(accts.RunAs)
+	if err != nil {
+		return accts.RunAs
+	}
+	for _, u := range accts.Users {
+		if u.UID == uint32(uid) {
+			return u.UserName
+		}
+	}
+	panic(fmt.Sprintf("unable to find user with UID %d", uid))
+}
+
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
 
@@ -1101,7 +1142,8 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		},
 		WorkspaceDir: b.WorkspaceDir,
 		Timeout:      b.Configuration.Package.Timeout,
-		RunAs:        b.Configuration.Environment.Accounts.RunAs,
+		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
+		RunAs:        runAs(b.Configuration.Environment.Accounts),
 	}
 
 	if b.Configuration.Package.Resources != nil {

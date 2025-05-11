@@ -116,10 +116,10 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		"--clearenv")
 
 	// If we need to run as an user, we run as that user.
-	if cfg.RunAs != "" {
+	if cfg.RunAsUID != "" {
 		baseargs = append(baseargs, "--unshare-user")
-		baseargs = append(baseargs, "--uid", cfg.RunAs)
-		baseargs = append(baseargs, "--gid", cfg.RunAs)
+		baseargs = append(baseargs, "--uid", cfg.RunAsUID)
+		baseargs = append(baseargs, "--gid", cfg.RunAsUID)
 		// Else if we're not using melange as root, we force the use of the
 		// Apko build user. This avoids problems on machines where default
 		// regular user is NOT 1000.

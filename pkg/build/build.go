@@ -16,7 +16,6 @@ package build
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -309,8 +308,11 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	defer os.RemoveAll(tmp)
 
 	if b.Runner.Name() == container.QemuName {
+		/*
+		 * here we need to inject gnutar+attr in order to syphon back
+		 * the workspace from the VM preserving extended attributes.
+		 */
 		b.ExtraPackages = append(b.ExtraPackages, []string{
-			"melange-microvm-init",
 			"gnutar",
 			"attr",
 		}...)
@@ -1060,6 +1062,47 @@ func (b *Build) buildFlavor() string {
 	return b.Libc
 }
 
+func runAsUID(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "0"
+	default:
+	}
+	// If accts.RunAs is numeric, then return it.
+	if _, err := strconv.Atoi(accts.RunAs); err == nil {
+		return accts.RunAs
+	}
+	for _, u := range accts.Users {
+		if accts.RunAs == u.UserName {
+			return fmt.Sprint(u.UID)
+		}
+	}
+	panic(fmt.Sprintf("unable to find user with username %s", accts.RunAs))
+}
+
+func runAs(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "root"
+	default:
+	}
+	// If accts.RunAs is numeric, then look up the username.
+	uid, err := strconv.Atoi(accts.RunAs)
+	if err != nil {
+		return accts.RunAs
+	}
+	for _, u := range accts.Users {
+		if u.UID == uint32(uid) {
+			return u.UserName
+		}
+	}
+	panic(fmt.Sprintf("unable to find user with UID %d", uid))
+}
+
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
 
@@ -1099,7 +1142,8 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		},
 		WorkspaceDir: b.WorkspaceDir,
 		Timeout:      b.Configuration.Package.Timeout,
-		RunAs:        b.Configuration.Environment.Accounts.RunAs,
+		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
+		RunAs:        runAs(b.Configuration.Environment.Accounts),
 	}
 
 	if b.Configuration.Package.Resources != nil {
@@ -1137,7 +1181,14 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "retrieveWorkspace")
 	defer span.End()
 
-	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
+	extraFiles := []string{}
+	for _, v := range b.Configuration.Package.Copyright {
+		if v.LicensePath != "" {
+			extraFiles = append(extraFiles, v.LicensePath)
+		}
+	}
+
+	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig, extraFiles)
 	if err != nil {
 		return err
 	} else if r == nil {
@@ -1145,12 +1196,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	}
 	defer r.Close()
 
-	gr, err := gzip.NewReader(r)
-	if err != nil {
-		return err
-	}
-	defer gr.Close()
-	tr := tar.NewReader(gr)
+	tr := tar.NewReader(r)
 
 	for {
 		hdr, err := tr.Next()

@@ -68,10 +68,12 @@ jobs:
           - guac
           - mdbook
           - s3cmd
-          - db # Uses license-path
+          - py3-pyelftools  # Uses license-path
+          - cadvisor  # uses cgroups
+          - fping  # uses get/setcaps
+          - memcached  # uses a diff test user
           - perl-yaml-syck
           - ncurses
-          - fping
           - subversion
           - sudo
           - py3-supported-python
@@ -153,6 +155,17 @@ jobs:
         if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
+
+      - name: Run tests with QEMU runner
+        if: matrix.runner == 'qemu'
+        run: |
+          make \
+            SHELL="/bin/bash" \
+            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
+            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
+            MELANGE="/usr/bin/melange" \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            test/${{ matrix.package }}
 
       - name: Check package ${{ matrix.package }} xattrs for QEMU-built package
         if: matrix.runner == 'qemu' && matrix.package == 'fping'

@@ -278,13 +278,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("compiling %s tests: %w", t.ConfigFile, err)
 	}
 
-	if t.Runner.Name() == container.QemuName {
-		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
-			"melange-microvm-init",
-			"gnutar",
-		}...)
-	}
-
 	// Filter out any subpackages with false If conditions.
 	t.Configuration.Subpackages = slices.DeleteFunc(t.Configuration.Subpackages, func(sp config.Subpackage) bool {
 		result, err := shouldRun(sp.If)
@@ -501,7 +494,8 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Capabilities: caps,
 		WorkspaceDir: t.WorkspaceDir,
 		Environment:  map[string]string{},
-		RunAs:        imgcfg.Accounts.RunAs,
+		RunAsUID:     runAsUID(imgcfg.Accounts),
+		RunAs:        runAs(imgcfg.Accounts),
 	}
 	if t.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = t.Configuration.Capabilities.Add

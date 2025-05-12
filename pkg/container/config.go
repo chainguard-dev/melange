@@ -52,6 +52,7 @@ type Config struct {
 	ImgRef                string
 	PodID                 string
 	Arch                  apko_types.Architecture
+	RunAsUID              string
 	RunAs                 string
 	WorkspaceDir          string
 	CPU, CPUModel, Memory string

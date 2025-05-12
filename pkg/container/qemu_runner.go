@@ -338,6 +338,13 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 
 	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(port)
 
+	port, err = randomPortN()
+	if err != nil {
+		return err
+	}
+
+	cfg.SSHWorkspaceAddress = "127.0.0.1:" + strconv.Itoa(port)
+
 	return createMicroVM(ctx, cfg)
 }
 
@@ -400,7 +407,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 
 	err = sendSSHCommand(ctx,
 		user,
-		cfg.SSHAddress,
+		cfg.SSHWorkspaceAddress,
 		cfg,
 		nil,
 		nil,
@@ -576,7 +583,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, serialArgs...)
 	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22")
+	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHWorkspaceAddress+"-:2223")
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
@@ -863,7 +870,10 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 	defer client.Close()
 
 	// Write the host key to the known_hosts file
-	hostKeyLine := fmt.Sprintf("%s %s %s\n", cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()))
+	hostKeyLine := fmt.Sprintf("%s %s %s\n%s %s %s\n",
+		cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
+		cfg.SSHWorkspaceAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
+	)
 	clog.FromContext(ctx).Debugf("host-key: %s", hostKeyLine)
 
 	knownHost, err := os.CreateTemp("", "known_hosts_*")
@@ -1150,6 +1160,10 @@ func generateCpio(ctx context.Context) (string, error) {
 		Contents: apko_types.ImageContents{
 			BuildRepositories: []string{
 				"https://apk.cgr.dev/chainguard",
+				"/home/luca-linux/Projects/chainguard/wolfi-os/packages/",
+			},
+			Keyring: []string{
+				"/home/luca-linux/Projects/chainguard/wolfi-os/local-melange.rsa.pub",
 			},
 			Packages: []string{
 				"microvm-init",

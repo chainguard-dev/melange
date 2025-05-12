@@ -105,7 +105,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 
 		// Repopulate the copyrightNode with detected licenses
 		for _, l := range ccfg.Licenses {
-			// Skip licenses we
+			// Skip licenses we don't have full confidence in.
 			if !license.IsLicenseMatchConfident(l) {
 				log.Infof("skipping unconfident license %s", l.Source)
 				continue

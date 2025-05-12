@@ -494,7 +494,8 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Capabilities: caps,
 		WorkspaceDir: t.WorkspaceDir,
 		Environment:  map[string]string{},
-		RunAs:        imgcfg.Accounts.RunAs,
+		RunAsUID:     runAsUID(imgcfg.Accounts),
+		RunAs:        runAs(imgcfg.Accounts),
 	}
 	if t.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = t.Configuration.Capabilities.Add

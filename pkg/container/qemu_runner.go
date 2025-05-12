@@ -87,11 +87,10 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stdout.Close()
 	defer stderr.Close()
 
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
+	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
-		user = "build"
+		user = cfg.RunAs
 	}
 
 	err := sendSSHCommand(ctx,
@@ -114,13 +113,6 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
 	clog.InfoContextf(ctx, "debugging command %s", strings.Join(args, " "))
-
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
-	user := "root"
-	if cfg.RunAs != "" {
-		user = "build"
-	}
 
 	// handle terminal size, resizing and sigwinch to keep
 	// it updated
@@ -151,6 +143,12 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
 		return err
+	}
+
+	// default to root user, unless a different user is specified
+	user := "root"
+	if cfg.RunAs != "" {
+		user = cfg.RunAs
 	}
 
 	// Create SSH client configuration
@@ -373,13 +371,6 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 // WorkspaceTar implements Runner
 func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
-	user := "root"
-	if cfg.RunAs != "" {
-		user = "build"
-	}
-
 	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
 		return nil, err
@@ -400,6 +391,13 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	for _, v := range extraFiles {
 		retrieveCommand = retrieveCommand + " " + v
 	}
+
+	// default to root user, unless a different user is specified
+	user := "root"
+	if cfg.RunAs != "" {
+		user = cfg.RunAs
+	}
+
 	err = sendSSHCommand(ctx,
 		user,
 		cfg.SSHAddress,
@@ -726,12 +724,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("qemu: could not get VM host key")
 	}
 
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
+	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
-		user = "build"
+		user = cfg.RunAs
 	}
+
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	return sendSSHCommand(ctx,
 		user,
@@ -760,10 +758,6 @@ func getKernelPath(ctx context.Context, cfg *Config) (string, error) {
 	}
 
 	return kernel, nil
-}
-
-func intToGID(gid uint32) apko_types.GID {
-	return &gid
 }
 
 func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
@@ -839,9 +833,15 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// default to root user, unless a different user is specified
+	user := "root"
+	if cfg.RunAs != "" {
+		user = cfg.RunAs
+	}
+
 	// Create SSH client configuration
 	config := &ssh.ClientConfig{
-		User: "build",
+		User: user,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
@@ -965,7 +965,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command: %v", err)
+		clog.FromContext(ctx).Errorf("Failed to run command %q as %q: %v", cmd, user, err)
 		return err
 	}
 
@@ -1123,8 +1123,8 @@ func generateCpio(ctx context.Context) (string, error) {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		cacheDir = filepath.Join(
-		"kernel",
-		apko_types.Architecture(runtime.GOARCH).ToAPK())
+			"kernel",
+			apko_types.Architecture(runtime.GOARCH).ToAPK())
 
 	}
 	cacheDir = filepath.Join(cacheDir, "melange-cpio")
@@ -1154,18 +1154,6 @@ func generateCpio(ctx context.Context) (string, error) {
 			Packages: []string{
 				"microvm-init",
 			},
-		},
-		Accounts: apko_types.ImageAccounts{
-			Groups: []apko_types.Group{{
-				GID:       1000,
-				GroupName: "build",
-			}},
-			Users: []apko_types.User{{
-				GID:      intToGID(1000),
-				HomeDir:  "/home/build",
-				UID:      1000,
-				UserName: "build",
-			}},
 		},
 	}
 	opts := []apko_build.Option{apko_build.WithImageConfiguration(spec),

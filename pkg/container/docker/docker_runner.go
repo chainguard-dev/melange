@@ -220,7 +220,7 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 	}
 
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
-		User:         cfg.RunAs,
+		User:         cfg.RunAsUID,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,

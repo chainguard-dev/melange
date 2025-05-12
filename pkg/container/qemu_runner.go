@@ -1117,22 +1117,31 @@ func randomPortN() (int, error) {
 func generateCpio(ctx context.Context) (string, error) {
 	/*
 	 * we only build once, useful for local development, we
-	 * cache it into kernel/ARCH/melange-guest.initramfs.cpio
+	 * cache it.
 	 * if present, we nop and return, else we build it.
 	 */
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheDir = filepath.Join(
+		"kernel",
+		apko_types.Architecture(runtime.GOARCH).ToAPK())
+
+	}
+	cacheDir = filepath.Join(cacheDir, "melange-cpio")
+
 	initramfs := filepath.Join(
-		"kernel", apko_types.Architecture(runtime.GOARCH).ToAPK(),
+		cacheDir,
 		"melange-guest.initramfs.cpio")
-	if _, err := os.Stat(initramfs); err == nil {
+	initramfsInfo, err := os.Stat(initramfs)
+
+	// if file is presend and less than 24h old, then we just reuse it
+	if err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour {
 		return initramfs, nil
 	}
 
 	clog.FromContext(ctx).Info("qemu: generating initramfs")
 
-	err := os.MkdirAll(filepath.Join(
-		"kernel",
-		apko_types.Architecture(runtime.GOARCH).ToAPK()),
-		os.ModePerm)
+	err = os.MkdirAll(cacheDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("unable to dest directory: %w", err)
 	}

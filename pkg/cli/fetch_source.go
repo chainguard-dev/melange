@@ -26,7 +26,7 @@ import (
 
 func fetchSource() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "fetch-source file",
+		Use:     "fetch-source file target-directory",
 		Short:   "Download package source code",
 		Long:    `Download the selected package's source code via the melange metadata.`,
 		Example: `  melange fetch-source vim.apk sources/`,

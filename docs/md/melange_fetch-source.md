@@ -16,7 +16,7 @@ Download package source code
 Download the selected package's source code via the melange metadata.
 
 ```
-melange fetch-source file target-directory/
+melange fetch-source file target-directory
 ```
 
 ### Examples
@@ -28,7 +28,7 @@ melange fetch-source file target-directory/
 ### Options
 
 ```
-  -h, --help             help for fetch-source
+  -h, --help   help for fetch-source
 ```
 
 ### Options inherited from parent commands

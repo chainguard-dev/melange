@@ -25,6 +25,7 @@ toc: true
 * [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
 * [melange completion](/docs/md/melange_completion.md)	 - Generate completion script
 * [melange convert](/docs/md/melange_convert.md)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
+* [melange fetch-source](/docs/md/melange_fetch-source.md)	 - Download package source code
 * [melange index](/docs/md/melange_index.md)	 - Creates a repository index from a list of package files
 * [melange keygen](/docs/md/melange_keygen.md)	 - Generate a key for package signing
 * [melange license-check](/docs/md/melange_license-check.md)	 - Gather and check licensing data

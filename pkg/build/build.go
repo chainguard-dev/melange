@@ -307,17 +307,6 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.RemoveAll(tmp)
 
-	if b.Runner.Name() == container.QemuName {
-		/*
-		 * here we need to inject gnutar+attr in order to syphon back
-		 * the workspace from the VM preserving extended attributes.
-		 */
-		b.ExtraPackages = append(b.ExtraPackages, []string{
-			"gnutar",
-			"attr",
-		}...)
-	}
-
 	// Work around LockImageConfiguration assuming multi-arch.
 	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 

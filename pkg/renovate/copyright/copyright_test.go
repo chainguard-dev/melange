@@ -41,6 +41,24 @@ func TestCopyright_update(t *testing.T) {
 			Source:     "internal/COPYING",
 			Confidence: 1.0,
 		},
+		{
+			Name:       "GPL-3.0",
+			Source:     "internal/LICENSE",
+			Confidence: 0.2,
+		},
+		{
+			Name:       "NOASSERTION",
+			Source:     "docs/COPYING",
+			Confidence: 0.0,
+		},
+	}
+
+	diffs := []license.LicenseDiff{
+		{
+			Path:   "LICENSE",
+			Is:     "GPL-2.0",
+			Should: "Apache-2.0",
+		},
 	}
 
 	// Copy the test data file to the temp directory
@@ -55,7 +73,7 @@ func TestCopyright_update(t *testing.T) {
 	rctx, err := renovate.New(renovate.WithConfig(testFile))
 	assert.NoError(t, err)
 
-	copyrightRenovator := New(ctx, WithLicenses(detectedLicenses))
+	copyrightRenovator := New(ctx, WithLicenses(detectedLicenses), WithDiffs(diffs))
 
 	err = rctx.Renovate(slogtest.Context(t), copyrightRenovator)
 	assert.NoError(t, err)
@@ -65,4 +83,46 @@ func TestCopyright_update(t *testing.T) {
 	assert.Contains(t, string(resultData), "license: Apache-2.0")
 	assert.Contains(t, string(resultData), "license: MIT")
 	assert.NotContains(t, string(resultData), "license: Not-Applicable")
+	assert.NotContains(t, string(resultData), "license: GPL-3.0")
+	assert.NotContains(t, string(resultData), "license: NOASSERTION")
+}
+
+func TestCopyright_noDiffs(t *testing.T) {
+	dir := t.TempDir()
+	ctx := slogtest.Context(t)
+
+	detectedLicenses := []license.License{
+		{
+			Name:       "Invalid",
+			Source:     "LICENSE",
+			Confidence: 1.0,
+		},
+	}
+
+	diffs := []license.LicenseDiff{}
+
+	// Copy the test data file to the temp directory
+	src := filepath.Join("testdata", "nolicense.yaml")
+	testFile := filepath.Join(dir, "nolicense.yaml")
+	input, err := os.ReadFile(src)
+	assert.NoError(t, err)
+
+	err = os.WriteFile(testFile, input, 0644)
+	assert.NoError(t, err)
+
+	rctx, err := renovate.New(renovate.WithConfig(testFile))
+	assert.NoError(t, err)
+
+	copyrightRenovator := New(ctx, WithLicenses(detectedLicenses), WithDiffs(diffs))
+
+	err = rctx.Renovate(slogtest.Context(t), copyrightRenovator)
+	assert.NoError(t, err)
+
+	resultData, err := os.ReadFile(testFile)
+	assert.NoError(t, err)
+
+	// The diffs is empty, so the renovator should not modify the file
+	// Let's make sure that's the case by checking that the file still contains the original license
+	assert.Contains(t, string(resultData), "license: Not-Applicable")
+	assert.NotContains(t, string(resultData), "license: Invalid")
 }

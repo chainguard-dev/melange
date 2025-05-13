@@ -113,6 +113,15 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 		})
 	}
 
+	// No license found, append a no-assertion entry
+	if len(licenses) == 0 {
+		licenses = append(licenses, License{
+			Name:       "NOASSERTION",
+			Confidence: 0.0,
+			Source:     licensePath,
+		})
+	}
+
 	return licenses, nil
 }
 
@@ -214,8 +223,8 @@ func CollectLicenseInfo(ctx context.Context, fsys fs.FS) ([]License, error) {
 	return detectedLicenses, nil
 }
 
-// isLicenseMatchConfident checks if the license match is confident enough to be considered valid.
-func isLicenseMatchConfident(dl License) bool {
+// IsLicenseMatchConfident checks if the license match is confident enough to be considered valid.
+func IsLicenseMatchConfident(dl License) bool {
 	// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
 	// We'll make this configurable in the future
 	return dl.Confidence >= 0.9
@@ -236,12 +245,14 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		return nil, nil, nil
 	}
 
-	// Print out all the gathered licenses
+	// Print out all the gathered licenses and record low-confidence ones
+	lowConfidence := []License{}
 	for _, dl := range detectedLicenses {
 		s := ""
 		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-		if !isLicenseMatchConfident(dl) {
-			s = " ignored"
+		if !IsLicenseMatchConfident(dl) {
+			s = " low-confidence"
+			lowConfidence = append(lowConfidence, dl)
 		}
 		log.Infof("  %s: %s (%f%s) (%s)", dl.Source, dl.Name, dl.Confidence, s, dl.Type)
 	}
@@ -281,6 +292,15 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 			log.Warnf("no license differences detected")
 		}
 	}
+
+	if len(lowConfidence) > 0 {
+		log.Warnf("following license files could not be confidently assessed:")
+		for _, dl := range lowConfidence {
+			log.Warnf("  %s: %s (%f) (%s)", dl.Source, dl.Name, dl.Confidence, dl.Type)
+		}
+		log.Warnf("could not identify some licenses, please check the configuration")
+	}
+
 	log.Infof("license information check complete")
 
 	return detectedLicenses, diffs, nil
@@ -318,7 +338,7 @@ func getLicenseDifferences(detectedLicenses []License, melangeLicenses []License
 	diffs := []LicenseDiff{}
 	for _, dl := range detectedLicenses {
 		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-		if !isLicenseMatchConfident(dl) {
+		if !IsLicenseMatchConfident(dl) {
 			continue
 		}
 

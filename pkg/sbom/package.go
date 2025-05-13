@@ -74,14 +74,18 @@ type Package struct {
 
 	// Checksums of the package. The keys are the checksum algorithms (e.g. "SHA-256"),
 	// and the values are the checksums.
-	//
-	// TODO: We're not currently using this field, consider removing it.
 	Checksums map[string]string
 
 	// The Package URL for this package, if any. If set, it will be added as the
 	// only ExternalRef of type "purl" to the SPDX package. (A package
 	// should have only one PURL external ref.)
 	PURL *purl.PackageURL
+
+	// The Download Location for this package, if any; It set this is generated
+	// alongside the PackageURL from fetch/git-checkout pipelines for upstream
+	// source locations; Leaving this empty will result in NOASSERTION being
+	// used as its value.
+	DownloadLocation string
 }
 
 // ToSPDX returns the Package converted to its SPDX representation.
@@ -98,6 +102,10 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 		}
 	}
 
+	if p.DownloadLocation == "" {
+		p.DownloadLocation = spdx.NOASSERTION
+	}
+
 	sp := spdx.Package{
 		ID:               p.ID(),
 		Name:             p.Name,
@@ -105,7 +113,7 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 		FilesAnalyzed:    false,
 		LicenseConcluded: spdx.NOASSERTION,
 		LicenseDeclared:  p.LicenseDeclared,
-		DownloadLocation: spdx.NOASSERTION,
+		DownloadLocation: p.DownloadLocation,
 		CopyrightText:    p.Copyright,
 		Checksums:        p.getChecksums(),
 		ExternalRefs:     p.getExternalRefs(),

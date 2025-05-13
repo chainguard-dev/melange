@@ -60,9 +60,15 @@
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "NOASSERTION",
+      "downloadLocation": "git+https://github.com/google/go-containerregistry@v0.20.2",
       "originator": "Organization: Google",
       "supplier": "Organization: Google",
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c195f151efe3369874c72662cd69ad43ee485128"
+        }
+      ],
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",

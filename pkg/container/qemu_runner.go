@@ -1160,10 +1160,6 @@ func generateCpio(ctx context.Context) (string, error) {
 		Contents: apko_types.ImageContents{
 			BuildRepositories: []string{
 				"https://apk.cgr.dev/chainguard",
-				"/home/luca-linux/Projects/chainguard/wolfi-os/packages/",
-			},
-			Keyring: []string{
-				"/home/luca-linux/Projects/chainguard/wolfi-os/local-melange.rsa.pub",
 			},
 			Packages: []string{
 				"microvm-init",

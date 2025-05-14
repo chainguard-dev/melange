@@ -1211,6 +1211,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 		case tar.TypeReg:
+			parentDir := filepath.Dir(hdr.Name)
+			if err := fs.MkdirAll(parentDir, 0o755); err != nil {
+				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
+			}
 			f, err := fs.OpenFile(hdr.Name, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode())
 			if err != nil {
 				return fmt.Errorf("unable to open file %s: %w", hdr.Name, err)

@@ -405,18 +405,24 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		user = cfg.RunAs
 	}
 
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
 		user,
 		cfg.SSHWorkspaceAddress,
 		cfg,
 		nil,
 		nil,
-		nil,
+		stderr,
 		outFile,
 		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
+
 	if err != nil {
+		var buf bytes.Buffer
+		io.Copy(&buf, outFile)
+		clog.FromContext(ctx).Errorf("failed to tar workspace: %v", buf.String())
 		return nil, err
 	}
 

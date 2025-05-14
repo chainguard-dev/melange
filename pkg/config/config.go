@@ -539,14 +539,17 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 	case "fetch":
 		args := make(map[string]string)
 		args["download_url"] = with["uri"]
+		checksums := make(map[string]string)
 
 		expectedSHA256 := with["expected-sha256"]
 		if len(expectedSHA256) > 0 {
 			args["checksum"] = "sha256:" + expectedSHA256
+			checksums["SHA256"] = expectedSHA256
 		}
 		expectedSHA512 := with["expected-sha512"]
 		if len(expectedSHA512) > 0 {
 			args["checksum"] = "sha512:" + expectedSHA512
+			checksums["SHA512"] = expectedSHA256
 		}
 
 		// These get defaulted correctly from within the fetch pipeline definition
@@ -570,11 +573,13 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		}
 
 		return &sbom.Package{
-			IDComponents: idComponents,
-			Name:         pkgName,
-			Version:      pkgVersion,
-			Namespace:    supplier,
-			PURL:         pu,
+			IDComponents:     idComponents,
+			Name:             pkgName,
+			Version:          pkgVersion,
+			Namespace:        supplier,
+			Checksums:        checksums,
+			PURL:             pu,
+			DownloadLocation: args["download_url"],
 		}, nil
 
 	case "git-checkout":
@@ -582,6 +587,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
+		downloadLocation := "git+" + repo
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -615,6 +621,10 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 					continue
 				}
 
+				// URI format supports use of commit or tag as suffix
+				// the commit is also passed in the checksums list.
+				downloadLocation += "@" + v
+
 				pu := &purl.PackageURL{
 					Type:      purl.TypeGithub,
 					Namespace: namespace,
@@ -626,12 +636,13 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 				}
 
 				return &sbom.Package{
-					IDComponents:    idComponents,
-					Name:            name,
-					Version:         v,
-					LicenseDeclared: licenseDeclared,
-					Namespace:       namespace,
-					PURL:            pu,
+					IDComponents:     idComponents,
+					Name:             name,
+					Version:          v,
+					LicenseDeclared:  licenseDeclared,
+					Namespace:        namespace,
+					PURL:             pu,
+					DownloadLocation: downloadLocation,
 				}, nil
 			}
 
@@ -648,6 +659,12 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 
 		// Encode vcs_url with git+ prefix and @commit suffix
 		vcsUrl := "git+" + repo
+
+		if len(tag) > 0 {
+			downloadLocation += "@" + tag
+		} else if len(expectedCommit) > 0 {
+			downloadLocation += "@" + expectedCommit
+		}
 
 		if len(expectedCommit) > 0 {
 			vcsUrl += "@" + expectedCommit
@@ -670,12 +687,13 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		}
 
 		return &sbom.Package{
-			IDComponents:    idComponents,
-			Name:            name,
-			Version:         version,
-			LicenseDeclared: licenseDeclared,
-			Namespace:       supplier,
-			PURL:            &pu,
+			IDComponents:     idComponents,
+			Name:             name,
+			Version:          version,
+			LicenseDeclared:  licenseDeclared,
+			Namespace:        supplier,
+			PURL:             &pu,
+			DownloadLocation: downloadLocation,
 		}, nil
 	}
 

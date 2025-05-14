@@ -421,7 +421,11 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 
 	if err != nil {
 		var buf bytes.Buffer
-		io.Copy(&buf, outFile)
+		_, cerr := io.Copy(&buf, outFile)
+		if cerr != nil {
+			clog.FromContext(ctx).Errorf("failed to tar workspace: %v", cerr)
+			return nil, cerr
+		}
 		clog.FromContext(ctx).Errorf("failed to tar workspace: %v", buf.String())
 		return nil, err
 	}

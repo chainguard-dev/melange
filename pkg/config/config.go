@@ -662,10 +662,8 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 
 		if len(tag) > 0 {
 			downloadLocation += "@" + tag
-		} else {
-			if len(expectedCommit) > 0 {
-				downloadLocation += "@" + expectedCommit
-			}
+		} else if len(expectedCommit) > 0 {
+			downloadLocation += "@" + expectedCommit
 		}
 
 		if len(expectedCommit) > 0 {

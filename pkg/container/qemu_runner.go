@@ -737,6 +737,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		user = cfg.RunAs
 	}
 
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
+	defer stdout.Close()
+	defer stderr.Close()
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	return sendSSHCommand(ctx,
 		user,
@@ -744,10 +747,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		cfg,
 		nil,
 		nil,
-		nil,
-		nil,
+		stderr,
+		stdout,
 		false,
-		[]string{"sh", "-c", "cp -a /mnt/. /home/build"},
+		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
 }
 

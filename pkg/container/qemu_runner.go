@@ -652,7 +652,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// append raw disk, init will take care of formatting it if present.
 	baseargs = append(baseargs, "-object", "iothread,id=io1")
 	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1")
-	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=none,format=raw,aio=threads,werror=report,rerror=report,file="+diskFile)
+	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,werror=report,rerror=report,file="+diskFile)
 	// append the rootfs tar.gz, init will take care of populating the disk with it
 	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,serial=input-tar,discard=true")
 	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)

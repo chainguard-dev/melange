@@ -588,8 +588,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
 		downloadLocation := "git+" + repo
-		checksums := make(map[string]string)
-		checksums["SHA1"] = expectedCommit
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -643,7 +641,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 					Version:          v,
 					LicenseDeclared:  licenseDeclared,
 					Namespace:        namespace,
-					Checksums:        checksums,
 					PURL:             pu,
 					DownloadLocation: downloadLocation,
 				}, nil
@@ -697,7 +694,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			Version:          version,
 			LicenseDeclared:  licenseDeclared,
 			Namespace:        supplier,
-			Checksums:        checksums,
 			PURL:             &pu,
 			DownloadLocation: downloadLocation,
 		}, nil

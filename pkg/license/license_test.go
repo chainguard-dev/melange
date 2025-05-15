@@ -117,6 +117,7 @@ func TestIdentify(t *testing.T) {
 		"LICENSE-BSD-modified": "BSD-3-Clause",
 		"LICENSE-GPLv2":        "GPL-2.0",
 		"LICENSE-GPLv3":        "GPL-3.0",
+		"COPYRIGHT":            "NOASSERTION",
 	}
 
 	testDataDir := "testdata"

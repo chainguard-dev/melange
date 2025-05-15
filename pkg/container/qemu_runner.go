@@ -337,19 +337,27 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.StartPod")
 	defer span.End()
 
-	port, err := randomPortN()
+	sshPort, err := randomPortN()
 	if err != nil {
 		return err
 	}
 
-	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(port)
+	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(sshPort)
 
-	port, err = randomPortN()
-	if err != nil {
-		return err
+	// ensure sshWorkspacePort is random but not same as port1
+	var sshWorkspacePort int
+	for {
+		sshWorkspacePort, err = randomPortN()
+		if err != nil {
+			return err
+		}
+
+		if sshWorkspacePort != sshPort {
+			break
+		}
 	}
 
-	cfg.SSHWorkspaceAddress = "127.0.0.1:" + strconv.Itoa(port)
+	cfg.SSHWorkspaceAddress = "127.0.0.1:" + strconv.Itoa(sshWorkspacePort)
 
 	return createMicroVM(ctx, cfg)
 }

@@ -22,6 +22,7 @@ toc: true
 
 * [melange build](/docs/md/melange_build.md)	 - Build a package from a YAML configuration file
 * [melange bump](/docs/md/melange_bump.md)	 - Update a Melange YAML file to reflect a new package version
+* [melange compare-versions](/docs/md/melange_compare-versions.md)	 - Compare two package versions
 * [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
 * [melange completion](/docs/md/melange_completion.md)	 - Generate completion script
 * [melange convert](/docs/md/melange_convert.md)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files

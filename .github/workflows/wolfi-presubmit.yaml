@@ -71,7 +71,7 @@ jobs:
           - py3-pyelftools  # Uses license-path
           - cadvisor  # uses cgroups
           - fping  # uses get/setcaps
-          - memcached  # uses a diff test user
+          - sonarqube-10  # uses a diff test user
           - perl-yaml-syck
           - ncurses
           - subversion

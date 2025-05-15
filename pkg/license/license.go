@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -172,8 +173,10 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 }
 
 // IsLicenseFile checks if a file is a license file based on its name.
+// Returns true/fals if the file is a license file, and the weight value
+// associated with the match, as some matches are potentially more relevant.
 func IsLicenseFile(filename string) (bool, float64) {
-	var ignore bool
+	filenameExt := filepath.Ext(filename)
 	// Check if the file matches any of the license-related regex patterns
 	for regex, weight := range filenameRegexes {
 		if !regex.MatchString(filename) {
@@ -181,12 +184,7 @@ func IsLicenseFile(filename string) (bool, float64) {
 		}
 		// licensee does this check as part of the regex, but in go we don't have
 		// the same regex capabilities
-		for _, ext := range ignoredExt {
-			if ignore = filepath.Ext(filename) == ext; ignore {
-				break
-			}
-		}
-		if ignore {
+		if slices.Contains(ignoredExt, filenameExt) {
 			continue
 		}
 		return true, weight

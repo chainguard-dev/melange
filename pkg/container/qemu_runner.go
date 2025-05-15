@@ -550,29 +550,29 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
+	// default to use 85% of available memory, if a mem limit is set, respect it.
+	mem := int64(float64(getAvailableMemoryKB())*0.85)
 	if cfg.Memory != "" {
 		memKb, err := convertHumanToKB(cfg.Memory)
 		if err != nil {
 			return err
 		}
 
-		if memKb > int64(getAvailableMemoryKB()) {
-			log.Warnf("qemu: requested too much memory, requested: %d, have: %d", memKb, getAvailableMemoryKB())
-			memKb = int64(getAvailableMemoryKB())
+		if mem > memKb {
+			mem = memKb
 		}
-
-		cfg.Memory = fmt.Sprintf("%dk", memKb)
-	} else {
-		// Use at most ~85% of the available host memory
-		cfg.Memory = fmt.Sprintf("%dk", int(float64(getAvailableMemoryKB())*0.85))
 	}
-	baseargs = append(baseargs, "-m", cfg.Memory)
+	baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
 
+	// default to use all CPUs, if a cpu limit is set, respect it.
+	nproc := runtime.NumCPU()
 	if cfg.CPU != "" {
-		baseargs = append(baseargs, "-smp", cfg.CPU)
-	} else {
-		baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
+		cpu, err := strconv.Atoi(cfg.CPU)
+		if err == nil && nproc > cpu {
+			nproc = cpu
+		}
 	}
+	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", nproc))
 
 	// use kvm on linux, Hypervisor.framework on macOS, and software for cross-arch
 	switch {

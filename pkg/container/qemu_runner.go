@@ -298,7 +298,8 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 
 	clog.FromContext(ctx).Debugf("running debug command: %v", args)
 
-	err = session.Shell()
+	cmd := shellquote.Join(args...)
+	err = session.Run(cmd)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to start shell: %v", err)
 		return err

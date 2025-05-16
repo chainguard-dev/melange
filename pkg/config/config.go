@@ -523,6 +523,77 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
+// getHostedGitPackage creates an SBOM package for GitHub or GitLab repositories.
+// Returns nil package and nil error if the repository is not from a supported platform or
+// if neither a tag of expectedCommit is not provided
+func getHostedGitPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared string) (*sbom.Package, error) {
+	var repoType, namespace, name, ref string
+	var downloadLocation string
+
+	if expectedCommit != "" {
+		ref = expectedCommit
+	} else if tag != "" {
+		ref = tag
+	} else {
+		// No commit or tag provided - we're done
+		return nil, nil
+	}
+
+	switch {
+	case strings.HasPrefix(repo, "https://github.com/"):
+		repoType = purl.TypeGithub
+		namespace, name, _ = strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
+		name = strings.TrimSuffix(name, ".git")
+		downloadLocation = fmt.Sprintf("https://github.com/%s/%s/archive/%s.tar.gz", namespace, name, ref)
+
+	case strings.HasPrefix(repo, "https://gitlab.com/"):
+		repoType = purl.TypeGitlab
+		namespace, name, _ = strings.Cut(strings.TrimPrefix(repo, "https://gitlab.com/"), "/")
+		name = strings.TrimSuffix(name, ".git")
+		downloadLocation = fmt.Sprintf("https://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", namespace, name, ref, ref)
+
+	default:
+		// Not a supported repository type
+		return nil, nil
+	}
+
+	// Prefer tag to commit, but use only ONE of these.
+	versions := []string{
+		tag,
+		expectedCommit,
+	}
+
+	for _, v := range versions {
+		if v == "" {
+			continue
+		}
+
+		pu := &purl.PackageURL{
+			Type:      repoType,
+			Namespace: namespace,
+			Name:      name,
+			Version:   v,
+		}
+		if err := pu.Normalize(); err != nil {
+			return nil, err
+		}
+
+		return &sbom.Package{
+			IDComponents:     idComponents,
+			Name:             name,
+			Version:          v,
+			LicenseDeclared:  licenseDeclared,
+			Namespace:        namespace,
+			PURL:             pu,
+			DownloadLocation: downloadLocation,
+		}, nil
+	}
+
+	// If we get here, we have a repo but no tag or commit. Without version
+	// information, we can't create a sensible SBOM package.
+	return nil, nil
+}
+
 // SBOMPackageForUpstreamSource returns an SBOM package for the upstream source
 // of the package, if this Pipeline step was used to bring source code from an
 // upstream project into the build. This function helps with generating SBOMs
@@ -587,7 +658,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
-		downloadLocation := "git+" + repo
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -606,106 +676,22 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		if strings.HasPrefix(repo, "https://github.com/") {
-			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
-			name = strings.TrimSuffix(name, ".git")
-
-			// Always use the expected commit for the downloadLocation as this is immume to
-			// projects mutating a tag.
-			downloadLocation = fmt.Sprintf("https://github.com/%s/%s/archive/%s.tar.gz", namespace, name, expectedCommit)
-
-			// Prefer tag to commit, but use only ONE of these.
-
-			versions := []string{
-				tag,
-				expectedCommit,
-			}
-
-			for _, v := range versions {
-				if v == "" {
-					continue
-				}
-
-				pu := &purl.PackageURL{
-					Type:      purl.TypeGithub,
-					Namespace: namespace,
-					Name:      name,
-					Version:   v,
-				}
-				if err := pu.Normalize(); err != nil {
-					return nil, err
-				}
-
-				return &sbom.Package{
-					IDComponents:     idComponents,
-					Name:             name,
-					Version:          v,
-					LicenseDeclared:  licenseDeclared,
-					Namespace:        namespace,
-					PURL:             pu,
-					DownloadLocation: downloadLocation,
-				}, nil
-			}
-
-			// If we get here, we have a GitHub repo but no tag or commit. Without version
-			// information, we can't create a sensible SBOM package.
-			//
-			// TODO: Decide if this should be an error condition.
-
-			return nil, nil
-		} else if strings.HasPrefix(repo, "https://gitlab.com/") {
-			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://gitlab.com/"), "/")
-			name = strings.TrimSuffix(name, ".git")
-
-			// Always use the expected commit for the downloadLocation as this is immume to projects mutating a tag.
-			downloadLocation = fmt.Sprintf("https://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", namespace, name, expectedCommit, expectedCommit)
-
-			// Prefer tag to commit, but use only ONE of these.
-
-			versions := []string{
-				tag,
-				expectedCommit,
-			}
-
-			for _, v := range versions {
-				if v == "" {
-					continue
-				}
-
-				pu := &purl.PackageURL{
-					Type:      purl.TypeGitlab,
-					Namespace: namespace,
-					Name:      name,
-					Version:   v,
-				}
-				if err := pu.Normalize(); err != nil {
-					return nil, err
-				}
-
-				return &sbom.Package{
-					IDComponents:     idComponents,
-					Name:             name,
-					Version:          v,
-					LicenseDeclared:  licenseDeclared,
-					Namespace:        namespace,
-					PURL:             pu,
-					DownloadLocation: downloadLocation,
-				}, nil
-			}
-
-			// If we get here, we have a GitHub repo but no tag or commit. Without version
-			// information, we can't create a sensible SBOM package.
-			//
-			// TODO: Decide if this should be an error condition.
-
-			return nil, nil
+		// Attempt to process as a Hosted Git repository
+		gitPackage, err := getHostedGitPackage(repo, tag, expectedCommit, idComponents, licenseDeclared)
+		if err != nil {
+			return nil, err
+		} else if gitPackage != nil {
+			return gitPackage, nil
 		}
+
+		// Not hosted Github of Gitlab; fallback to generic git handling.
 
 		// Create nice looking package name, last component of uri, without .git
 		name := strings.TrimSuffix(path.Base(repo), ".git")
 
 		// Encode vcs_url with git+ prefix and @commit suffix
 		vcsUrl := "git+" + repo
+		downloadLocation := vcsUrl
 
 		if len(tag) > 0 {
 			downloadLocation += "@" + tag

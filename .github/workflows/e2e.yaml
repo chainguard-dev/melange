@@ -9,6 +9,9 @@ on:
 env:
   SOURCE_DATE_EPOCH: 1669683910
 
+permissions:
+  contents: read
+
 jobs:
   rebuild:
     name: rebuild

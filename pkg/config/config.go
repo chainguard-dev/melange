@@ -653,6 +653,52 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			// TODO: Decide if this should be an error condition.
 
 			return nil, nil
+		} else if strings.HasPrefix(repo, "https://gitlab.com/") {
+			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://gitlab.com/"), "/")
+			name = strings.TrimSuffix(name, ".git")
+
+			// Always use the expected commit for the downloadLocation as this is immume to projects mutating a tag.
+			downloadLocation = fmt.Sprintf("https://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", namespace, name, expectedCommit, expectedCommit)
+
+			// Prefer tag to commit, but use only ONE of these.
+
+			versions := []string{
+				tag,
+				expectedCommit,
+			}
+
+			for _, v := range versions {
+				if v == "" {
+					continue
+				}
+
+				pu := &purl.PackageURL{
+					Type:      purl.TypeGitlab,
+					Namespace: namespace,
+					Name:      name,
+					Version:   v,
+				}
+				if err := pu.Normalize(); err != nil {
+					return nil, err
+				}
+
+				return &sbom.Package{
+					IDComponents:     idComponents,
+					Name:             name,
+					Version:          v,
+					LicenseDeclared:  licenseDeclared,
+					Namespace:        namespace,
+					PURL:             pu,
+					DownloadLocation: downloadLocation,
+				}, nil
+			}
+
+			// If we get here, we have a GitHub repo but no tag or commit. Without version
+			// information, we can't create a sensible SBOM package.
+			//
+			// TODO: Decide if this should be an error condition.
+
+			return nil, nil
 		}
 
 		// Create nice looking package name, last component of uri, without .git

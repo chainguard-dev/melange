@@ -1,0 +1,87 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-lvm2-2.03.32-r0",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "0001-01-01T00:00:00Z",
+    "creators": [
+      "Tool: melange (v0.24.1-0.20250516093517-671214659bdb+dirty)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/0befd297a8ca9e8dc451850818e5effb",
+  "documentDescribes": [
+    "SPDXRef-Package-lvm2-2.03.32-r0"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-lvm2-2.03.32-r0",
+      "name": "lvm2",
+      "versionInfo": "2.03.32-r0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-2.0-only AND LGPL-2.1-only",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/wolfi/lvm2@2.03.32-r0?arch=x86_64",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-lvm2.yaml-22f158e96fb0ce5a0ecbf903db622f977f92df33",
+      "name": "lvm2.yaml",
+      "versionInfo": "22f158e96fb0ce5a0ecbf903db622f977f92df33",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/wolfi-dev/os@22f158e96fb0ce5a0ecbf903db622f977f92df33#lvm2.yaml",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gitlab.com-lvmteam-lvm2.git-v2C9503C9532-8817523c5682a7fd83770d3f58a99c436f7e73f7-0",
+      "name": "lvm2",
+      "versionInfo": "v2_03_32",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-2.0-only AND LGPL-2.1-only",
+      "downloadLocation": "https://gitlab.com/lvmteam/lvm2/-/archive/8817523c5682a7fd83770d3f58a99c436f7e73f7/8817523c5682a7fd83770d3f58a99c436f7e73f7.tar.gz",
+      "originator": "Organization: Lvmteam",
+      "supplier": "Organization: Lvmteam",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gitlab/lvmteam/lvm2@v2_03_32",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-lvm2-2.03.32-r0",
+      "relationshipType": "DESCRIBED_BY",
+      "relatedSpdxElement": "SPDXRef-Package-lvm2.yaml-22f158e96fb0ce5a0ecbf903db622f977f92df33"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-lvm2-2.03.32-r0",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-Package-gitlab.com-lvmteam-lvm2.git-v2C9503C9532-8817523c5682a7fd83770d3f58a99c436f7e73f7-0"
+    }
+  ]
+}

@@ -549,7 +549,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		expectedSHA512 := with["expected-sha512"]
 		if len(expectedSHA512) > 0 {
 			args["checksum"] = "sha512:" + expectedSHA512
-			checksums["SHA512"] = expectedSHA256
+			checksums["SHA512"] = expectedSHA512
 		}
 
 		// These get defaulted correctly from within the fetch pipeline definition

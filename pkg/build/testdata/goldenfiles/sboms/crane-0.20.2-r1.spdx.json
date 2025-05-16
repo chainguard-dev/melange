@@ -60,7 +60,7 @@
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "git+https://github.com/google/go-containerregistry@v0.20.2",
+      "downloadLocation": "https://github.com/google/go-containerregistry/archive/c195f151efe3369874c72662cd69ad43ee485128.tar.gz",
       "originator": "Organization: Google",
       "supplier": "Organization: Google",
       "externalRefs": [

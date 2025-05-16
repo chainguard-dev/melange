@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -129,7 +130,6 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 	// This file is using regular expressions defined in the regexp.go file
 	var licenseFiles []LicenseFile
-	var ignore bool
 	err := fs.WalkDir(fsys, ".", func(filePath string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -143,22 +143,8 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 			return nil
 		}
 
-		// Check if the file matches any of the license-related regex patterns
-		for regex, weight := range filenameRegexes {
-			if !regex.MatchString(info.Name()) {
-				continue
-			}
-			// licensee does this check as part of the regex, but in go we don't have
-			// the same regex capabilities
-			for _, ext := range ignoredExt {
-				if ignore = filepath.Ext(info.Name()) == ext; ignore {
-					break
-				}
-			}
-			if ignore {
-				continue
-			}
-
+		is, weight := IsLicenseFile(info.Name())
+		if is {
 			// Licenses in the top level directory have a higher weight so that they
 			// always appear first
 			if filepath.Dir(filePath) == "." {
@@ -169,7 +155,6 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 				Path:   filePath,
 				Weight: weight,
 			})
-			break
 		}
 
 		return nil
@@ -185,6 +170,26 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 	})
 
 	return licenseFiles, nil
+}
+
+// IsLicenseFile checks if a file is a license file based on its name.
+// Returns true/fals if the file is a license file, and the weight value
+// associated with the match, as some matches are potentially more relevant.
+func IsLicenseFile(filename string) (bool, float64) {
+	filenameExt := filepath.Ext(filename)
+	// Check if the file matches any of the license-related regex patterns
+	for regex, weight := range filenameRegexes {
+		if !regex.MatchString(filename) {
+			continue
+		}
+		// licensee does this check as part of the regex, but in go we don't have
+		// the same regex capabilities
+		if slices.Contains(ignoredExt, filenameExt) {
+			continue
+		}
+		return true, weight
+	}
+	return false, 0.0
 }
 
 // CollectLicenseInfo collects license information from the given filesystem.

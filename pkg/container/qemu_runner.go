@@ -45,6 +45,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/license"
 	"github.com/chainguard-dev/clog"
 	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -396,6 +397,18 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	if cfg.SSHKey == nil {
 		return nil, nil
 	}
+
+	// For qemu, we also want to get all the detected license files for the
+	// license checking that will be done later.
+	// First, get the list of all files from the remote workspace.
+	licenseFiles, err := getWorkspaceLicenseFiles(ctx, cfg, extraFiles)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to extract list of files for licensing: %v", err)
+		return nil, err
+	}
+	// Now, append those files to the extraFiles list (there should be no
+	// duplicates)
+	extraFiles = append(extraFiles, licenseFiles...)
 
 	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
@@ -781,6 +794,62 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
+}
+
+// getWorkspaceLicenseFiles returns a list of possible license files from the
+// workspace
+func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []string) ([]string, error) {
+	// default to root user, unless a different user is specified
+	user := "root"
+	if cfg.RunAs != "" {
+		user = cfg.RunAs
+	}
+
+	// let's create a string writer so that the SSH command can write
+	// the list of files to it
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err := sendSSHCommand(ctx,
+		user,
+		cfg.SSHWorkspaceAddress,
+		cfg,
+		nil,
+		nil,
+		nil,
+		bufWriter,
+		false,
+		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -print"},
+	)
+
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to extract list of files for licensing: %v", buf.String())
+		return nil, err
+	}
+
+	// Turn extraFiles into a map for faster lookup
+	extraFilesMap := make(map[string]struct{})
+	for _, file := range extraFiles {
+		extraFilesMap[filepath.Clean(file)] = struct{}{}
+	}
+
+	// Now, we can read the list of files from the string writer and add those
+	// license files that are not in the extraFiles list
+	licenseFiles := []string{}
+	foundFiles := strings.SplitSeq(buf.String(), "\n")
+	for f := range foundFiles {
+		if _, ok := extraFilesMap[filepath.Clean(f)]; ok {
+			continue
+		}
+		if strings.Contains(f, "melange-out") {
+			continue
+		}
+		if is, _ := license.IsLicenseFile(filepath.Base(f)); is {
+			licenseFiles = append(licenseFiles, f)
+		}
+	}
+
+	return licenseFiles, nil
 }
 
 func getKernelPath(ctx context.Context, cfg *Config) (string, error) {

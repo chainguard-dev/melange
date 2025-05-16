@@ -392,12 +392,13 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// For qemu, we also want to get all the detected license files for the
 	// license checking that will be done later.
 	// First, get the list of all files from the remote workspace.
-	licenseFiles, err := getWorkspaceLicenseFiles(ctx, cfg)
+	licenseFiles, err := getWorkspaceLicenseFiles(ctx, cfg, extraFiles)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to extract list of files for licensing: %v", err)
 		return nil, err
 	}
-	// Now, append those files to the extraFiles list.
+	// Now, append those files to the extraFiles list (there should be no
+	// duplicates)
 	extraFiles = append(extraFiles, licenseFiles...)
 
 	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
@@ -788,7 +789,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 // getWorkspaceLicenseFiles returns a list of possible license files from the
 // workspace
-func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config) ([]string, error) {
+func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []string) ([]string, error) {
 	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
@@ -817,10 +818,20 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config) ([]string, error
 		return nil, err
 	}
 
-	// Now, we can read the list of files from the string writer.
+	// Turn extraFiles into a map for faster lookup
+	extraFilesMap := make(map[string]struct{})
+	for _, file := range extraFiles {
+		extraFilesMap[filepath.Clean(file)] = struct{}{}
+	}
+
+	// Now, we can read the list of files from the string writer and add those
+	// license files that are not in the extraFiles list
 	licenseFiles := []string{}
 	foundFiles := strings.SplitSeq(buf.String(), "\n")
 	for f := range foundFiles {
+		if _, ok := extraFilesMap[filepath.Clean(f)]; ok {
+			continue
+		}
 		if strings.Contains(f, "melange-out") {
 			continue
 		}

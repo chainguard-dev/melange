@@ -608,6 +608,11 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 
 		if strings.HasPrefix(repo, "https://github.com/") {
 			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
+			name = strings.TrimSuffix(name, ".git")
+
+			// Always use the expected commit for the downloadLocation as this is immume to
+			// projects mutating a tag.
+			downloadLocation = fmt.Sprintf("https://github.com/%s/%s/archive/%s.tar.gz", namespace, name, expectedCommit)
 
 			// Prefer tag to commit, but use only ONE of these.
 
@@ -620,10 +625,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 				if v == "" {
 					continue
 				}
-
-				// URI format supports use of commit or tag as suffix
-				// the commit is also passed in the checksums list.
-				downloadLocation += "@" + v
 
 				pu := &purl.PackageURL{
 					Type:      purl.TypeGithub,

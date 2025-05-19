@@ -22,10 +22,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
 	_ "embed"
 	"encoding/base64"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
@@ -53,6 +51,7 @@ import (
 	"github.com/kballard/go-shellquote"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/term"
 )
@@ -118,7 +117,9 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 }
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
-	clog.InfoContextf(ctx, "debugging command %s", strings.Join(args, " "))
+	clog.FromContext(ctx).Debugf("running debug command: %v", args)
+	clog.InfoContextf(ctx, "To enter this environment: ssh root@localhost -p %s",
+		strings.Split(cfg.SSHAddress, ":")[1])
 
 	// handle terminal size, resizing and sigwinch to keep
 	// it updated
@@ -139,12 +140,6 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	signal.Notify(winch, syscall.SIGWINCH)
 	defer signal.Stop(winch)
 
-	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
-		return err
-	}
-
 	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
@@ -161,7 +156,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.PublicKeys(cfg.SSHKey),
 		},
 		Config: ssh.Config{
 			Ciphers: []string{"aes128-gcm@openssh.com"},
@@ -294,17 +289,16 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		}
 	}()
 
-	// Trigger an initial resize to make sure sizes match
-	winch <- syscall.SIGWINCH
-
-	clog.FromContext(ctx).Debugf("running debug command: %v", args)
-
 	cmd := shellquote.Join(args...)
 	err = session.Run(cmd)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to start shell: %v", err)
 		return err
 	}
+
+	// Trigger an initial resize to make sure sizes match
+	winch <- syscall.SIGWINCH
+
 	// Wait for the session to end
 	return session.Wait()
 }
@@ -498,10 +492,14 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
 	log := clog.FromContext(ctx)
-	log.Debug("qemu: ssh - create ssh key pair")
-	pubKey, err := generateSSHKeys(ctx, cfg)
-	if err != nil {
-		return err
+	log.Debug("qemu: ssh - get user ssh key pair")
+	pubKey, err := getUserSSHKey(cfg)
+	if err != nil || pubKey == nil {
+		log.Debug("qemu: ssh - create ssh key pair")
+		pubKey, err = generateSSHKeys(ctx, cfg)
+		if err != nil {
+			return err
+		}
 	}
 
 	baseargs := []string{}
@@ -564,7 +562,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	// default to use 85% of available memory, if a mem limit is set, respect it.
-	mem := int64(float64(getAvailableMemoryKB())*0.85)
+	mem := int64(float64(getAvailableMemoryKB()) * 0.85)
 	if cfg.Memory != "" {
 		memKb, err := convertHumanToKB(cfg.Memory)
 		if err != nil {
@@ -935,12 +933,6 @@ func checkSSHServer(address string) error {
 func getHostKey(ctx context.Context, cfg *Config) error {
 	var hostKey ssh.PublicKey
 
-	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
-		return err
-	}
-
 	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
@@ -951,7 +943,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.PublicKeys(cfg.SSHKey),
 		},
 		Config: ssh.Config{
 			Ciphers: []string{"aes128-gcm@openssh.com"},
@@ -999,12 +991,6 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	stdin io.Reader, stderr, stdout io.Writer,
 	tty bool, command []string,
 ) error {
-	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
-		return err
-	}
-
 	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
@@ -1015,7 +1001,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.PublicKeys(cfg.SSHKey),
 		},
 		Config: ssh.Config{
 			Ciphers: []string{"aes128-gcm@openssh.com"},
@@ -1083,6 +1069,31 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	return nil
 }
 
+func getUserSSHKey(cfg *Config) ([]byte, error) {
+	socket := os.Getenv("SSH_AUTH_SOCK")
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		log.Fatalf("Failed to open SSH_AUTH_SOCK: %v", err)
+	}
+
+	agentClient := agent.NewClient(conn)
+
+	signer, err := agentClient.Signers()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range signer {
+		res := v.PublicKey()
+		if res != nil {
+			cfg.SSHKey = v
+			return ssh.MarshalAuthorizedKey(res), nil
+		}
+	}
+
+	return nil, nil
+}
+
 func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	clog.FromContext(ctx).Info("qemu: generating ssh key pairs for ephemeral VM")
 	// Private Key generation
@@ -1091,21 +1102,12 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 		return nil, err
 	}
 
-	// Get ASN.1 DER format
-	privDER, err := x509.MarshalECPrivateKey(privateKey)
+	// Private key in PEM format
+	signer, err := ssh.NewSignerFromKey(privateKey)
 	if err != nil {
 		return nil, err
 	}
-
-	// pem.Block
-	privBlock := pem.Block{
-		Type:    "EC PRIVATE KEY",
-		Headers: nil,
-		Bytes:   privDER,
-	}
-
-	// Private key in PEM format
-	cfg.SSHKey = pem.EncodeToMemory(&privBlock)
+	cfg.SSHKey = signer
 
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {

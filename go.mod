@@ -3,15 +3,15 @@ module chainguard.dev/melange
 go 1.24.0
 
 require (
-	chainguard.dev/apko v0.27.2
+	chainguard.dev/apko v0.27.6
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.12
-	github.com/charmbracelet/log v0.4.1
+	github.com/chainguard-dev/yam v0.2.16
+	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v28.0.4+incompatible
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
-	github.com/github/go-spdx/v2 v2.3.2
+	github.com/github/go-spdx/v2 v2.3.3
 	github.com/go-git/go-git/v5 v5.16.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.4-0.20250225234217-098045d5e61f
@@ -40,8 +40,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0
 	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
-	golang.org/x/sync v0.13.0
-	golang.org/x/sys v0.32.0
+	golang.org/x/sync v0.14.0
+	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.31.0
 	golang.org/x/text v0.24.0
 	golang.org/x/time v0.11.0
@@ -67,7 +67,7 @@ require (
 require (
 	chainguard.dev/go-grpc-kit v0.17.10 // indirect
 	chainguard.dev/sdk v0.1.32 // indirect
-	cloud.google.com/go/auth v0.16.0 // indirect
+	cloud.google.com/go/auth v0.16.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -166,11 +166,11 @@ require (
 	go.step.sm/crypto v0.61.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/oauth2 v0.29.0 // indirect
-	google.golang.org/api v0.229.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
+	google.golang.org/api v0.231.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250414145226-207652e42e2e // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250414145226-207652e42e2e // indirect
-	google.golang.org/grpc v1.71.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250425173222-7b384671a197 // indirect
+	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/apimachinery v0.32.3 // indirect

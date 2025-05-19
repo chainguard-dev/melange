@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -1085,7 +1086,28 @@ func getUserSSHKey() ([]byte, error) {
 	socket := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", socket)
 	if err != nil {
-		log.Fatalf("Failed to open SSH_AUTH_SOCK: %v", err)
+		log.Warnf("Failed to open SSH_AUTH_SOCK: %v, falling back to key search", err)
+		currentUser, err := user.Current()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get current user: %w", err)
+		}
+		sshDir := filepath.Join(currentUser.HomeDir, ".ssh")
+		knownPublicKeyFiles := []string{
+			"id_rsa.pub",
+			"id_dsa.pub",
+			"id_ecdsa.pub",
+			"id_ed25519.pub",
+		}
+
+		for _, keyFile := range knownPublicKeyFiles {
+			path := filepath.Join(sshDir, keyFile)
+			content, err := os.ReadFile(path)
+			if err == nil {
+				return content, nil
+			}
+		}
+
+		return nil, nil
 	}
 
 	agentClient := agent.NewClient(conn)

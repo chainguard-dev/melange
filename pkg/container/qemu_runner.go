@@ -118,8 +118,37 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
 	clog.FromContext(ctx).Debugf("running debug command: %v", args)
-	clog.InfoContextf(ctx, "To enter this environment: ssh root@localhost -p %s",
-		strings.Split(cfg.SSHAddress, ":")[1])
+
+	// default to root user, unless a different user is specified
+	user := "root"
+	if cfg.RunAs != "" {
+		user = cfg.RunAs
+	}
+
+	log.Debug("qemu: ssh - get user ssh key pair")
+	pubKey, err := getUserSSHKey()
+	if err != nil {
+		log.Warn("qemu: could not get user ssh key pair, using ephemeral ones")
+	}
+	if pubKey != nil {
+		command := fmt.Sprintf("echo '%s' | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
+		err := sendSSHCommand(ctx,
+			"root",
+			cfg.SSHWorkspaceAddress,
+			cfg,
+			nil,
+			nil,
+			nil,
+			nil,
+			false,
+			[]string{"sh", "-c", command},
+		)
+		if err == nil {
+			clog.InfoContextf(ctx, "To enter this environment: ssh %s@localhost -p %s",
+				user,
+				strings.Split(cfg.SSHAddress, ":")[1])
+		}
+	}
 
 	// handle terminal size, resizing and sigwinch to keep
 	// it updated
@@ -144,12 +173,6 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
 		return err
-	}
-
-	// default to root user, unless a different user is specified
-	user := "root"
-	if cfg.RunAs != "" {
-		user = cfg.RunAs
 	}
 
 	// Create SSH client configuration
@@ -492,14 +515,10 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
 	log := clog.FromContext(ctx)
-	log.Debug("qemu: ssh - get user ssh key pair")
-	pubKey, err := getUserSSHKey(cfg)
-	if err != nil || pubKey == nil {
-		log.Debug("qemu: ssh - create ssh key pair")
-		pubKey, err = generateSSHKeys(ctx, cfg)
-		if err != nil {
-			return err
-		}
+	log.Debug("qemu: ssh - create ssh key pair")
+	pubKey, err := generateSSHKeys(ctx, cfg)
+	if err != nil {
+		return err
 	}
 
 	baseargs := []string{}
@@ -1069,7 +1088,7 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	return nil
 }
 
-func getUserSSHKey(cfg *Config) ([]byte, error) {
+func getUserSSHKey() ([]byte, error) {
 	socket := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", socket)
 	if err != nil {
@@ -1086,7 +1105,6 @@ func getUserSSHKey(cfg *Config) ([]byte, error) {
 	for _, v := range signer {
 		res := v.PublicKey()
 		if res != nil {
-			cfg.SSHKey = v
 			return ssh.MarshalAuthorizedKey(res), nil
 		}
 	}

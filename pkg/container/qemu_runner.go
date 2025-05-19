@@ -312,18 +312,11 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		}
 	}()
 
-	cmd := shellquote.Join(args...)
-	err = session.Run(cmd)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to start shell: %v", err)
-		return err
-	}
-
 	// Trigger an initial resize to make sure sizes match
 	winch <- syscall.SIGWINCH
 
-	// Wait for the session to end
-	return session.Wait()
+	cmd := shellquote.Join(args...)
+	return session.Run(cmd)
 }
 
 // TestUsability determines if the Qemu runner can be used

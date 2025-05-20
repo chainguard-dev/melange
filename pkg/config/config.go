@@ -523,6 +523,21 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
+// isUndiscoverableGitlab detects git repository sources which are actually gitlab
+// returns true if host is a know gitlab otherwise false.
+func isUndiscoverableGitlab(host string) bool {
+	undiscoverableGitlabs := []string{
+		"code.videolan.org",
+		"git.openldap.org",
+	}
+	for _, location := range undiscoverableGitlabs {
+		if host == location {
+			return true
+		}
+	}
+	return true
+}
+
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
@@ -557,7 +572,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGitlab
 		downloadLocation = fmt.Sprintf("%s://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, namespace, name, ref, ref)
 
-	case strings.HasPrefix(repoURL.Host, "gitlab"):
+	case strings.HasPrefix(repoURL.Host, "gitlab") || isUndiscoverableGitlab(repoURL.Host):
 		repoType = purl.TypeGeneric
 		downloadLocation = fmt.Sprintf("%s://%s/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, repoURL.Host, namespace, name, ref, ref)
 

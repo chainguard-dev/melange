@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
@@ -545,6 +546,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 		expectedCommit  string
 		idComponents    []string
 		licenseDeclared string
+		typeHint        string
 		expected        *sbom.Package
 		expectError     bool
 	}{
@@ -555,6 +557,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "Apache-2.0",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "melange",
@@ -573,6 +576,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "b5d6dcba7c835d8520b06c7f35e747d896c50b61",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "Apache-2.0",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "melange",
@@ -601,6 +605,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 				DownloadLocation: "https://github.com/chainguard-dev/melange/archive/b5d6dcba7c835d8520b06c7f35e747d896c50b61.tar.gz",
 			},
 			expectError: false,
+			typeHint:    "",
 		},
 		{
 			name:            "gitlab.com repo with tag",
@@ -609,6 +614,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "MIT",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "gitlab",
@@ -627,6 +633,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "MIT",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "gitlab",
@@ -645,6 +652,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "MIT",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "gitlab",
@@ -663,6 +671,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "some-project",
@@ -686,6 +695,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "some-project",
@@ -709,6 +719,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "some-project",
@@ -726,12 +737,37 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:            "undentifiable gitlab instance with both tag and commit",
+			repo:            "https://code.videolan.org/videolan/dav1d",
+			tag:             "1.5.1",
+			expectedCommit:  "42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "gitlab",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "dav1d",
+				Version:         "1.5.1",
+				LicenseDeclared: "BSD-3-Clause",
+				Namespace:       "videolan",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "dav1d",
+					Version:    "1.5.1",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://code.videolan.org/videolan/dav1d@42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa"}),
+				},
+				DownloadLocation: "https://code.videolan.org/videolan/dav1d/-/archive/42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa/42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa.tar.gz",
+			},
+			expectError: false,
+		},
+		{
 			name:            "generic git repo with tag",
 			repo:            "https://git.example.com/custom-org/custom-project",
 			tag:             "v3.2.1",
 			expectedCommit:  "",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-org/custom-project",
@@ -743,7 +779,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project"}),
 				},
-				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@v3.2.1",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},
@@ -754,6 +790,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-org/custom-project",
@@ -765,7 +802,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "abcdef0123456789abcdef0123456789abcdef01",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},
@@ -776,6 +813,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-org/custom-project",
@@ -787,7 +825,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},
@@ -798,6 +836,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-project",
@@ -809,7 +848,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},
@@ -817,7 +856,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, tc.idComponents, tc.licenseDeclared)
+			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, tc.idComponents, tc.licenseDeclared, tc.typeHint)
 			if tc.expectError {
 				require.Error(t, err)
 				return

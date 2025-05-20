@@ -34,6 +34,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	purl "github.com/package-url/packageurl-go"
 
@@ -523,25 +524,10 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
-// isUndiscoverableGitlab detects git repository sources which are actually gitlab
-// returns true if host is a know gitlab otherwise false.
-func isUndiscoverableGitlab(host string) bool {
-	undiscoverableGitlabs := []string{
-		"code.videolan.org",
-		"git.openldap.org",
-	}
-	for _, location := range undiscoverableGitlabs {
-		if host == location {
-			return true
-		}
-	}
-	return true
-}
-
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
-func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared string) (*sbom.Package, error) {
+func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared string, hint string) (*sbom.Package, error) {
 	var repoType, namespace, name, ref string
 	var downloadLocation string
 
@@ -572,7 +558,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGitlab
 		downloadLocation = fmt.Sprintf("%s://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, namespace, name, ref, ref)
 
-	case strings.HasPrefix(repoURL.Host, "gitlab") || isUndiscoverableGitlab(repoURL.Host):
+	case strings.HasPrefix(repoURL.Host, "gitlab") || hint == "gitlab":
 		repoType = purl.TypeGeneric
 		downloadLocation = fmt.Sprintf("%s://%s/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, repoURL.Host, namespace, name, ref, ref)
 
@@ -580,10 +566,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGeneric
 		namespace = ""
 		name = strings.TrimSuffix(trimmedPath, ".git")
-		if repoURL.Scheme != "git" {
-			repoURL.Scheme = "git+" + repoURL.Scheme
-		}
-		downloadLocation = fmt.Sprintf("%s://%s/%s@%s", repoURL.Scheme, repoURL.Host, name, ref)
+		downloadLocation = spdx.NOASSERTION
 	}
 
 	// Prefer tag to commit, but use only ONE of these.
@@ -712,6 +695,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
+		hint := with["type-hint"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -730,7 +714,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared)
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint)
 		if err != nil {
 			return nil, err
 		} else if gitPackage != nil {

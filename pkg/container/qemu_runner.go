@@ -1093,8 +1093,6 @@ func getUserSSHKey() ([]byte, error) {
 		}
 		sshDir := filepath.Join(currentUser.HomeDir, ".ssh")
 		knownPublicKeyFiles := []string{
-			"id_rsa.pub",
-			"id_dsa.pub",
 			"id_ecdsa.pub",
 			"id_ed25519.pub",
 		}

@@ -154,7 +154,7 @@ jobs:
       - name: Run tests to verify xattrs with bubblewrap runner
         if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
+          make MELANGE_RUNNER="bubblewrap" SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
 
       - name: Run tests with QEMU runner
         if: matrix.runner == 'qemu'

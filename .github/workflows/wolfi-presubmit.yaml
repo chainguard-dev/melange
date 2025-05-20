@@ -117,7 +117,7 @@ jobs:
         uses: ./melange-src/.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" package/${{ matrix.package }}
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
@@ -154,7 +154,7 @@ jobs:
       - name: Run tests to verify xattrs with bubblewrap runner
         if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" test/${{ matrix.package }}
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" test/${{ matrix.package }}
 
       - name: Run tests with QEMU runner
         if: matrix.runner == 'qemu'

@@ -663,7 +663,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	initramFile, err := generateCpio(ctx)
+	initramFile, err := generateCpio(ctx, cfg)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: could not generate initramfs: %v", err)
 		return err
@@ -1258,19 +1258,16 @@ func randomPortN() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func generateCpio(ctx context.Context) (string, error) {
+func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 	/*
 	 * we only build once, useful for local development, we
 	 * cache it.
 	 * if present, we nop and return, else we build it.
 	 */
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		cacheDir = filepath.Join(
-			"kernel",
-			apko_types.Architecture(runtime.GOARCH).ToAPK())
+	cacheDir := filepath.Join(
+		"kernel",
+		cfg.Arch.ToAPK())
 
-	}
 	cacheDir = filepath.Join(cacheDir, "melange-cpio")
 
 	initramfs := filepath.Join(
@@ -1301,7 +1298,7 @@ func generateCpio(ctx context.Context) (string, error) {
 		},
 	}
 	opts := []apko_build.Option{apko_build.WithImageConfiguration(spec),
-		apko_build.WithArch(apko_types.Architecture(runtime.GOARCH)),
+		apko_build.WithArch(cfg.Arch),
 	}
 
 	tmpDir, err := os.MkdirTemp("", "melange-guest-*.initramfs")

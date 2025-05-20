@@ -132,7 +132,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		log.Warn("qemu: could not get user ssh key pair, using ephemeral ones")
 	}
 	if pubKey != nil {
-		command := fmt.Sprintf("echo '%s' | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
+		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
 		err := sendSSHCommand(ctx,
 			"root",
 			cfg.SSHWorkspaceAddress,

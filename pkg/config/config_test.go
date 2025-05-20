@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
+	purl "github.com/package-url/packageurl-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -532,6 +535,351 @@ func TestGetScheduleMessage(t *testing.T) {
 		if result != test.expected {
 			t.Errorf("GetScheduleMessage(%v) = %v, expected %v", test.schedule, result, test.expected)
 		}
+	}
+}
+
+func TestGetGitSBOMPackage(t *testing.T) {
+	testCases := []struct {
+		name            string
+		repo            string
+		tag             string
+		expectedCommit  string
+		idComponents    []string
+		licenseDeclared string
+		typeHint        string
+		expected        *sbom.Package
+		expectError     bool
+	}{
+		{
+			name:            "github repo with tag",
+			repo:            "https://github.com/chainguard-dev/melange",
+			tag:             "v1.0.0",
+			expectedCommit:  "",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "Apache-2.0",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:     []string{"test-id"},
+				Name:             "melange",
+				Version:          "v1.0.0",
+				LicenseDeclared:  "Apache-2.0",
+				Namespace:        "chainguard-dev",
+				PURL:             &purl.PackageURL{Type: "github", Namespace: "chainguard-dev", Name: "melange", Version: "v1.0.0"},
+				DownloadLocation: "https://github.com/chainguard-dev/melange/archive/v1.0.0.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "github repo with commit",
+			repo:            "https://github.com/chainguard-dev/melange",
+			tag:             "",
+			expectedCommit:  "b5d6dcba7c835d8520b06c7f35e747d896c50b61",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "Apache-2.0",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:     []string{"test-id"},
+				Name:             "melange",
+				Version:          "b5d6dcba7c835d8520b06c7f35e747d896c50b61",
+				LicenseDeclared:  "Apache-2.0",
+				Namespace:        "chainguard-dev",
+				PURL:             &purl.PackageURL{Type: "github", Namespace: "chainguard-dev", Name: "melange", Version: "b5d6dcba7c835d8520b06c7f35e747d896c50b61"},
+				DownloadLocation: "https://github.com/chainguard-dev/melange/archive/b5d6dcba7c835d8520b06c7f35e747d896c50b61.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "github repo with both tag and commit",
+			repo:            "https://github.com/chainguard-dev/melange",
+			tag:             "v1.0.0",
+			expectedCommit:  "b5d6dcba7c835d8520b06c7f35e747d896c50b61",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "Apache-2.0",
+			expected: &sbom.Package{
+				IDComponents:     []string{"test-id"},
+				Name:             "melange",
+				Version:          "v1.0.0",
+				LicenseDeclared:  "Apache-2.0",
+				Namespace:        "chainguard-dev",
+				PURL:             &purl.PackageURL{Type: "github", Namespace: "chainguard-dev", Name: "melange", Version: "v1.0.0"},
+				DownloadLocation: "https://github.com/chainguard-dev/melange/archive/b5d6dcba7c835d8520b06c7f35e747d896c50b61.tar.gz",
+			},
+			expectError: false,
+			typeHint:    "",
+		},
+		{
+			name:            "gitlab.com repo with tag",
+			repo:            "https://gitlab.com/gitlab-org/gitlab",
+			tag:             "v15.11.0",
+			expectedCommit:  "",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "MIT",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:     []string{"test-id"},
+				Name:             "gitlab",
+				Version:          "v15.11.0",
+				LicenseDeclared:  "MIT",
+				Namespace:        "gitlab-org",
+				PURL:             &purl.PackageURL{Type: "gitlab", Namespace: "gitlab-org", Name: "gitlab", Version: "v15.11.0"},
+				DownloadLocation: "https://gitlab.com/gitlab-org/gitlab/-/archive/v15.11.0/v15.11.0.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "gitlab.com repo with commit",
+			repo:            "https://gitlab.com/gitlab-org/gitlab",
+			tag:             "",
+			expectedCommit:  "dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "MIT",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:     []string{"test-id"},
+				Name:             "gitlab",
+				Version:          "dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a",
+				LicenseDeclared:  "MIT",
+				Namespace:        "gitlab-org",
+				PURL:             &purl.PackageURL{Type: "gitlab", Namespace: "gitlab-org", Name: "gitlab", Version: "dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a"},
+				DownloadLocation: "https://gitlab.com/gitlab-org/gitlab/-/archive/dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a/dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "gitlab.com repo with both tag and commit",
+			repo:            "https://gitlab.com/gitlab-org/gitlab",
+			tag:             "v15.11.0",
+			expectedCommit:  "dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "MIT",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:     []string{"test-id"},
+				Name:             "gitlab",
+				Version:          "v15.11.0",
+				LicenseDeclared:  "MIT",
+				Namespace:        "gitlab-org",
+				PURL:             &purl.PackageURL{Type: "gitlab", Namespace: "gitlab-org", Name: "gitlab", Version: "v15.11.0"},
+				DownloadLocation: "https://gitlab.com/gitlab-org/gitlab/-/archive/dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a/dd88f2ad62eeb81cf3562eb8284e3c97d3e94a8a.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "custom gitlab instance with tag",
+			repo:            "https://gitlab.foo.bar/some-org/some-project",
+			tag:             "v2.3.4",
+			expectedCommit:  "",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "some-project",
+				Version:         "v2.3.4",
+				LicenseDeclared: "BSD-3-Clause",
+				Namespace:       "some-org",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "some-project",
+					Version:    "v2.3.4",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://gitlab.foo.bar/some-org/some-project"}),
+				},
+				DownloadLocation: "https://gitlab.foo.bar/some-org/some-project/-/archive/v2.3.4/v2.3.4.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "custom gitlab instance with commit",
+			repo:            "https://gitlab.foo.bar/some-org/some-project",
+			tag:             "",
+			expectedCommit:  "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "some-project",
+				Version:         "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+				LicenseDeclared: "BSD-3-Clause",
+				Namespace:       "some-org",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "some-project",
+					Version:    "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://gitlab.foo.bar/some-org/some-project@1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"}),
+				},
+				DownloadLocation: "https://gitlab.foo.bar/some-org/some-project/-/archive/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "custom gitlab instance with both tag and commit",
+			repo:            "https://gitlab.foo.bar/some-org/some-project",
+			tag:             "v2.3.4",
+			expectedCommit:  "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "some-project",
+				Version:         "v2.3.4",
+				LicenseDeclared: "BSD-3-Clause",
+				Namespace:       "some-org",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "some-project",
+					Version:    "v2.3.4",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://gitlab.foo.bar/some-org/some-project@1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"}),
+				},
+				DownloadLocation: "https://gitlab.foo.bar/some-org/some-project/-/archive/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "undentifiable gitlab instance with both tag and commit",
+			repo:            "https://code.videolan.org/videolan/dav1d",
+			tag:             "1.5.1",
+			expectedCommit:  "42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "BSD-3-Clause",
+			typeHint:        "gitlab",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "dav1d",
+				Version:         "1.5.1",
+				LicenseDeclared: "BSD-3-Clause",
+				Namespace:       "videolan",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "dav1d",
+					Version:    "1.5.1",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://code.videolan.org/videolan/dav1d@42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa"}),
+				},
+				DownloadLocation: "https://code.videolan.org/videolan/dav1d/-/archive/42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa/42b2b24fb8819f1ed3643aa9cf2a62f03868e3aa.tar.gz",
+			},
+			expectError: false,
+		},
+		{
+			name:            "generic git repo with tag",
+			repo:            "https://git.example.com/custom-org/custom-project",
+			tag:             "v3.2.1",
+			expectedCommit:  "",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "custom-org/custom-project",
+				Version:         "v3.2.1",
+				LicenseDeclared: "LGPL-2.1",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "custom-org/custom-project",
+					Version:    "v3.2.1",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project"}),
+				},
+				DownloadLocation: spdx.NOASSERTION,
+			},
+			expectError: false,
+		},
+		{
+			name:            "generic git repo with commit",
+			repo:            "https://git.example.com/custom-org/custom-project",
+			tag:             "",
+			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "custom-org/custom-project",
+				Version:         "abcdef0123456789abcdef0123456789abcdef01",
+				LicenseDeclared: "LGPL-2.1",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "custom-org/custom-project",
+					Version:    "abcdef0123456789abcdef0123456789abcdef01",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
+				},
+				DownloadLocation: spdx.NOASSERTION,
+			},
+			expectError: false,
+		},
+		{
+			name:            "generic git repo with both tag and commit",
+			repo:            "https://git.example.com/custom-org/custom-project",
+			tag:             "v3.2.1",
+			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "custom-org/custom-project",
+				Version:         "v3.2.1",
+				LicenseDeclared: "LGPL-2.1",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "custom-org/custom-project",
+					Version:    "v3.2.1",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
+				},
+				DownloadLocation: spdx.NOASSERTION,
+			},
+			expectError: false,
+		},
+		{
+			name:            "generic git repo with git scheme with both tag and commit",
+			repo:            "git://git.example.com/custom-project",
+			tag:             "v3.2.1",
+			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "LGPL-2.1",
+			typeHint:        "",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
+				Name:            "custom-project",
+				Version:         "v3.2.1",
+				LicenseDeclared: "LGPL-2.1",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "custom-project",
+					Version:    "v3.2.1",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
+				},
+				DownloadLocation: spdx.NOASSERTION,
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, tc.idComponents, tc.licenseDeclared, tc.typeHint)
+			if tc.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, pkg)
+
+			// Using require.Equal for PURL separately because its fields may need special comparison
+			require.Equal(t, tc.expected.PURL.Type, pkg.PURL.Type)
+			require.Equal(t, tc.expected.PURL.Namespace, pkg.PURL.Namespace)
+			require.Equal(t, tc.expected.PURL.Name, pkg.PURL.Name)
+			require.Equal(t, tc.expected.PURL.Version, pkg.PURL.Version)
+			if tc.expected.PURL.Qualifiers != nil {
+				require.Equal(t, tc.expected.PURL.Qualifiers, pkg.PURL.Qualifiers)
+			}
+
+			// Compare other fields
+			require.Equal(t, tc.expected.Name, pkg.Name)
+			require.Equal(t, tc.expected.Version, pkg.Version)
+			require.Equal(t, tc.expected.LicenseDeclared, pkg.LicenseDeclared)
+			require.Equal(t, tc.expected.Namespace, pkg.Namespace)
+			require.Equal(t, tc.expected.DownloadLocation, pkg.DownloadLocation)
+		})
 	}
 }
 

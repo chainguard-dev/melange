@@ -18,6 +18,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -56,7 +57,7 @@ type Config struct {
 	RunAs                 string
 	WorkspaceDir          string
 	CPU, CPUModel, Memory string
-	SSHKey                []byte
+	SSHKey                ssh.Signer
 	SSHAddress            string
 	SSHWorkspaceAddress   string
 	SSHHostKey            string

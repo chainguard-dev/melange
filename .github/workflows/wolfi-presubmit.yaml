@@ -117,7 +117,7 @@ jobs:
         uses: ./melange-src/.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER=bubblewrap package/${{ matrix.package }}
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'

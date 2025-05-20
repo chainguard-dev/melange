@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
@@ -744,7 +743,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@v3.2.1",
 			},
 			expectError: false,
 		},
@@ -766,7 +765,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "abcdef0123456789abcdef0123456789abcdef01",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01",
 			},
 			expectError: false,
 		},
@@ -788,7 +787,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01",
 			},
 			expectError: false,
 		},
@@ -810,7 +809,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01",
 			},
 			expectError: false,
 		},

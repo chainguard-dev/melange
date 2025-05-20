@@ -34,7 +34,6 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	purl "github.com/package-url/packageurl-go"
 
@@ -569,7 +568,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		if repoURL.Scheme != "git" {
 			repoURL.Scheme = "git+" + repoURL.Scheme
 		}
-		downloadLocation = spdx.NOASSERTION
+		downloadLocation = fmt.Sprintf("%s://%s/%s@%s", repoURL.Scheme, repoURL.Host, name, ref)
 	}
 
 	// Prefer tag to commit, but use only ONE of these.

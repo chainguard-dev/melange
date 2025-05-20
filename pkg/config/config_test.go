@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
@@ -734,17 +735,16 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			licenseDeclared: "LGPL-2.1",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
-				Name:            "custom-project",
+				Name:            "custom-org/custom-project",
 				Version:         "v3.2.1",
 				LicenseDeclared: "LGPL-2.1",
-				Namespace:       "custom-org",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
-					Name:       "custom-project",
+					Name:       "custom-org/custom-project",
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project"}),
 				},
-				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@v3.2.1",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},
@@ -757,17 +757,16 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			licenseDeclared: "LGPL-2.1",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
-				Name:            "custom-project",
+				Name:            "custom-org/custom-project",
 				Version:         "abcdef0123456789abcdef0123456789abcdef01",
 				LicenseDeclared: "LGPL-2.1",
-				Namespace:       "custom-org",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
-					Name:       "custom-project",
+					Name:       "custom-org/custom-project",
 					Version:    "abcdef0123456789abcdef0123456789abcdef01",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},
@@ -780,17 +779,38 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			licenseDeclared: "LGPL-2.1",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
+				Name:            "custom-org/custom-project",
+				Version:         "v3.2.1",
+				LicenseDeclared: "LGPL-2.1",
+				PURL: &purl.PackageURL{
+					Type:       "generic",
+					Name:       "custom-org/custom-project",
+					Version:    "v3.2.1",
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
+				},
+				DownloadLocation: spdx.NOASSERTION,
+			},
+			expectError: false,
+		},
+		{
+			name:            "generic git repo with git scheme with both tag and commit",
+			repo:            "git://git.example.com/custom-project",
+			tag:             "v3.2.1",
+			expectedCommit:  "abcdef0123456789abcdef0123456789abcdef01",
+			idComponents:    []string{"test-id"},
+			licenseDeclared: "LGPL-2.1",
+			expected: &sbom.Package{
+				IDComponents:    []string{"test-id"},
 				Name:            "custom-project",
 				Version:         "v3.2.1",
 				LicenseDeclared: "LGPL-2.1",
-				Namespace:       "custom-org",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
 					Name:       "custom-project",
 					Version:    "v3.2.1",
-					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
+					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01",
+				DownloadLocation: spdx.NOASSERTION,
 			},
 			expectError: false,
 		},

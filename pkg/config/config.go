@@ -34,6 +34,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	purl "github.com/package-url/packageurl-go"
 
@@ -544,7 +545,8 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		return nil, nil
 	}
 
-	namespace, name, _ = strings.Cut(strings.TrimPrefix(repoURL.Path, "/"), "/")
+	trimmedPath := strings.TrimPrefix(repoURL.Path, "/")
+	namespace, name, _ = strings.Cut(trimmedPath, "/")
 	name = strings.TrimSuffix(name, ".git")
 
 	switch {
@@ -562,7 +564,12 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 
 	default:
 		repoType = purl.TypeGeneric
-		downloadLocation = fmt.Sprintf("git+%s://%s/%s/%s@%s", repoURL.Scheme, repoURL.Host, namespace, name, ref)
+		namespace = ""
+		name = strings.TrimSuffix(trimmedPath, ".git")
+		if repoURL.Scheme != "git" {
+			repoURL.Scheme = "git+" + repoURL.Scheme
+		}
+		downloadLocation = spdx.NOASSERTION
 	}
 
 	// Prefer tag to commit, but use only ONE of these.
@@ -572,7 +579,13 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 	}
 
 	// Encode vcs_url with git+ prefix and @commit suffix
-	vcsUrl := "git+" + repo
+	var vcsUrl string
+	if !strings.HasPrefix(repo, "git") {
+		vcsUrl = "git+" + repo
+	} else {
+		vcsUrl = repo
+	}
+
 	if expectedCommit != "" {
 		vcsUrl += "@" + expectedCommit
 	}

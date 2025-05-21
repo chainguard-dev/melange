@@ -184,7 +184,7 @@ func IsLicenseFile(filename string) (bool, float64) {
 		"venv",
 	}
 	for _, i := range ignoredPaths {
-		if strings.Contains(filepath.Dir(filename), i) {
+		if slices.Contains(strings.Split(filename, string(filepath.Separator)), i) {
 			return false, 0.0
 		}
 	}

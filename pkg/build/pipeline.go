@@ -311,7 +311,13 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 }
 
 func (r *pipelineRunner) runPipelines(ctx context.Context, pipelines []config.Pipeline) error {
-	for _, p := range pipelines {
+	for i, p := range pipelines {
+		// Certain script commands may hang indefinitely in QEMU (e.g., foo &),
+		// so ensure that they are terminated cleanly
+		// Only do this for the last pipeline to avoid terminating supporting test processes early
+		if i == len(pipelines)-1 && r.runner.Name() == container.QemuRunner().Name() {
+			p.Runs = `trap 'kill $(jobs -p) 2>/dev/null || true' exit; ` + p.Runs
+		}
 		if _, err := r.runPipeline(ctx, &p); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
 		}

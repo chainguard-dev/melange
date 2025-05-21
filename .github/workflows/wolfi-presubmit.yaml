@@ -68,10 +68,10 @@ jobs:
           - guac
           - mdbook
           - s3cmd
-          - py3-pyelftools  # Uses license-path
-          - cadvisor  # uses cgroups
-          - fping  # uses get/setcaps
-          - sonarqube-10  # uses a diff test user
+          - py3-pyelftools # Uses license-path
+          - cadvisor # uses cgroups
+          - fping # uses get/setcaps
+          - sonarqube-10 # uses a diff test user
           - perl-yaml-syck
           - ncurses
           - subversion
@@ -79,6 +79,7 @@ jobs:
           - py3-supported-python
           # TODO: https://github.com/wolfi-dev/os/issues/26442
           #- xmlto
+          - vcluster # runs processes in the background during tests which may run indefinitely on QEMU
 
     steps:
       - uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1

@@ -122,7 +122,10 @@ func TestFindLicenseFiles(t *testing.T) {
 	tmpDir = t.TempDir()
 	for _, name := range testInoreFiles {
 		filePath := filepath.Join(tmpDir, name)
-		os.MkdirAll(filepath.Join(tmpDir, filepath.Dir(name)), os.ModePerm)
+		err := os.MkdirAll(filepath.Join(tmpDir, filepath.Dir(name)), os.ModePerm)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", name, err)
+		}
 		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", name, err)
@@ -136,6 +139,9 @@ func TestFindLicenseFiles(t *testing.T) {
 	licenseFiles, err = FindLicenseFiles(tmpFS)
 	if len(licenseFiles) > 0 {
 		t.Fatalf("Failed to test ignored files")
+	}
+	if err != nil {
+		t.Fatalf("FindLicenseFiles returned an error: %v", err)
 	}
 
 }

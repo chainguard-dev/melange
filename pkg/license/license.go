@@ -143,7 +143,7 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 			return nil
 		}
 
-		is, weight := IsLicenseFile(info.Name())
+		is, weight := IsLicenseFile(filePath)
 		if is {
 			// Licenses in the top level directory have a higher weight so that they
 			// always appear first
@@ -176,6 +176,22 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 // Returns true/fals if the file is a license file, and the weight value
 // associated with the match, as some matches are potentially more relevant.
 func IsLicenseFile(filename string) (bool, float64) {
+	// Ignore files in these paths
+	ignoredPaths := []string{
+		".virtualenv",
+		"env",
+		"node_modules",
+		"venv",
+	}
+	for _, i := range ignoredPaths {
+		if slices.Contains(strings.Split(filename, string(filepath.Separator)), i) {
+			return false, 0.0
+		}
+	}
+
+	// normalize to file name only
+	filename = filepath.Base(filename)
+
 	filenameExt := filepath.Ext(filename)
 	// Check if the file matches any of the license-related regex patterns
 	for regex, weight := range filenameRegexes {

@@ -439,7 +439,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
 	for _, v := range extraFiles {
-		retrieveCommand = retrieveCommand + " " + v
+		retrieveCommand = fmt.Sprintf("%s %q", retrieveCommand, v)
 	}
 
 	// default to root user, unless a different user is specified
@@ -855,7 +855,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		if strings.Contains(f, "melange-out") {
 			continue
 		}
-		if is, _ := license.IsLicenseFile(filepath.Base(f)); is {
+		if is, _ := license.IsLicenseFile(f); is {
 			licenseFiles = append(licenseFiles, f)
 		}
 	}

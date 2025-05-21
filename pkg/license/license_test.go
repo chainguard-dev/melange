@@ -101,6 +101,49 @@ func TestFindLicenseFiles(t *testing.T) {
 			t.Errorf("Expected license file %s not found", expected)
 		}
 	}
+
+	testInoreFiles := []string{
+		"node_modules/LICENSE",
+		"node_modules/LICENSE.md",
+		"venv/COPYING",
+		"venv/COPYING.txt",
+		"venv/random.txt",
+		"env/LICENSE-MIT.md",
+		"env/README.md",
+		"env/LICENSE-APACHE",
+		".virtualenv/LICENSE.gemspec",
+		".virtualenv/COPYRIGHT",
+		".virtualenv/MIT-COPYING",
+		"node_modules/copyme",
+		"node_modules/COPY",
+		"node_modules/LICENSE.txt",
+	}
+
+	tmpDir = t.TempDir()
+	for _, name := range testInoreFiles {
+		filePath := filepath.Join(tmpDir, name)
+		err := os.MkdirAll(filepath.Join(tmpDir, filepath.Dir(name)), os.ModePerm)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", name, err)
+		}
+		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", name, err)
+		}
+		fp.Close()
+	}
+
+	tmpFS = apkofs.DirFS(tmpDir)
+
+	// Call function under test
+	licenseFiles, err = FindLicenseFiles(tmpFS)
+	if len(licenseFiles) > 0 {
+		t.Fatalf("Failed to test ignored files")
+	}
+	if err != nil {
+		t.Fatalf("FindLicenseFiles returned an error: %v", err)
+	}
+
 }
 
 func TestIdentify(t *testing.T) {

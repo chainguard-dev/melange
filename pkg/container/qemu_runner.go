@@ -1225,28 +1225,90 @@ func getAvailableMemoryKB() int {
 
 		for s.Scan() {
 			var n int
-			if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
+			// Try to get MemAvailable first (available on newer kernels)
+			if nItems, _ := fmt.Sscanf(s.Text(), "MemAvailable: %d kB", &n); nItems == 1 {
 				return n
 			}
 		}
+
+		// If MemAvailable is not found, fall back to MemFree + Buffers + Cached
+		// Reset the file position
+		if _, err := f.Seek(0, 0); err != nil {
+			return 0
+		}
+		s = bufio.NewScanner(f)
+		
+		var memFree, buffers, cached int
+		for s.Scan() {
+			if nItems, _ := fmt.Sscanf(s.Text(), "MemFree: %d kB", &memFree); nItems == 1 {
+				continue
+			}
+			if nItems, _ := fmt.Sscanf(s.Text(), "Buffers: %d kB", &buffers); nItems == 1 {
+				continue
+			}
+			if nItems, _ := fmt.Sscanf(s.Text(), "Cached: %d kB", &cached); nItems == 1 {
+				continue
+			}
+		}
+		
+		if memFree > 0 {
+			return memFree + buffers + cached
+		}
 	case "darwin":
-		cmd := exec.Command("sysctl", "hw.memsize")
+		// Use vm_stat to get available memory on macOS
+		cmd := exec.Command("vm_stat")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return mem
 		}
-		outputStr := strings.TrimSpace(string(output))
-		parts := strings.Split(outputStr, ": ")
-		if len(parts) != 2 {
-			return mem
-		}
 
-		memsize, err := strconv.ParseInt(parts[1], 10, 64)
-		if err != nil {
-			return mem
+		// Parse vm_stat output
+		scanner := bufio.NewScanner(bytes.NewReader(output))
+		
+		var pageSize int64
+		var pagesFree, pagesInactive int64
+		
+		for scanner.Scan() {
+			line := scanner.Text()
+			
+			// Parse page size from header
+			if strings.Contains(line, "page size of") {
+				if _, err := fmt.Sscanf(line, "Mach Virtual Memory Statistics: (page size of %d bytes)", &pageSize); err != nil {
+					return 0
+				}
+			}
+			
+			// Parse memory values using a more flexible approach
+			fields := strings.Fields(line)
+			if len(fields) >= 3 && strings.HasSuffix(fields[1], ":") {
+				// Remove trailing colon and period from the value
+				valueStr := strings.TrimSuffix(fields[2], ".")
+				value, err := strconv.ParseInt(valueStr, 10, 64)
+				if err != nil {
+					continue
+				}
+				
+				switch fields[0] + " " + strings.TrimSuffix(fields[1], ":") {
+				case "Pages free":
+					pagesFree = value
+				case "Pages inactive":
+					pagesInactive = value
+				}
+			}
 		}
-		// hw.memsize returns the memory size in bytes
-		return int(memsize / 1024)
+		
+		if pageSize > 0 && (pagesFree > 0 || pagesInactive > 0) {
+			// Calculate available memory in KB
+			// Available = (free + inactive) * pageSize / 1024
+			// Note: speculative pages are excluded as they are not guaranteed to be available
+			availableBytes := (pagesFree + pagesInactive) * pageSize
+			availableKB := availableBytes / 1024
+			
+			// Ensure we return a reasonable value
+			if availableKB > 0 {
+				return int(availableKB)
+			}
+		}
 	}
 
 	return mem

@@ -27,7 +27,7 @@ key="local-melange.rsa"
 if [ -f "$key" -a -f "$key.pub" ]; then
     echo "using existing $key"
 else
-    melange keygen "$key" ||
+    $MELANGE keygen "$key" ||
         { echo "failed to create local-melange signing key"; exit 1; }
 fi
 

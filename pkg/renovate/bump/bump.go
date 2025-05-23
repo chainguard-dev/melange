@@ -140,7 +140,8 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 			RecurseNodes().
 			Filter(yit.WithMapValue("git-checkout"))
 
-		for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
+		// Only run updateGitCheckout once for the first git-checkout node
+		if gitCheckoutNode, ok := it(); ok {
 			if err := updateGitCheckout(ctx, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
 				return err
 			}

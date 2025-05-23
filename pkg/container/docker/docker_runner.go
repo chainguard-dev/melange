@@ -15,10 +15,14 @@
 package docker
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
+	"runtime"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -38,6 +42,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -366,9 +371,97 @@ type dockerLoader struct {
 	cli *client.Client
 }
 
+// filterXattrsForMacOS creates a wrapped layer that filters known problematic xattrs
+func filterXattrsForMacOS(ctx context.Context, originalLayer v1.Layer) (v1.Layer, error) {
+	log := clog.FromContext(ctx)
+	log.Debugf("Filtering problematic xattrs for MacOS compatibility")
+	
+	rc, err := originalLayer.Uncompressed()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	
+	// Create a buffer for the new layer content
+	var buf bytes.Buffer
+	
+	// Process the tar file, filtering xattrs
+	tr := tar.NewReader(rc)
+	tw := tar.NewWriter(&buf)
+	
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		
+		// Filter out problematic xattrs
+		if hdr.PAXRecords != nil {
+			filteredPAXRecords := make(map[string]string)
+			for k, v := range hdr.PAXRecords {
+				// Filter known problematic xattrs
+				if strings.HasPrefix(k, "SCHILY.xattr.com.apple.") || 
+				   strings.HasPrefix(k, "SCHILY.xattr.com.docker.") {
+					log.Debugf("Filtering xattr %s for file %s", k, hdr.Name)
+					continue
+				}
+				filteredPAXRecords[k] = v
+			}
+			hdr.PAXRecords = filteredPAXRecords
+		}
+		
+		if err := tw.WriteHeader(hdr); err != nil {
+			return nil, err
+		}
+		
+		if hdr.Typeflag == tar.TypeReg {
+			if _, err := io.Copy(tw, tr); err != nil {
+				return nil, err
+			}
+		}
+	}
+	
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	
+	// Create a new layer from the filtered content
+	layerReader := func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	}
+	
+	// Create a new layer from the opener function
+	layer, err := tarball.LayerFromOpener(layerReader)
+	if err != nil {
+		return nil, err
+	}
+	
+	return layer, nil
+}
+
 func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (string, error) {
 	ctx, span := otel.Tracer("melange").Start(ctx, "docker.LoadImage")
 	defer span.End()
+	
+	log := clog.FromContext(ctx)
+	
+	// Detect MacOS platform
+	isMacOS := runtime.GOOS == "darwin"
+	if isMacOS {
+		log.Debug("Detected MacOS platform, using modified image loading approach")
+		
+		// Filter known problematic xattrs on MacOS
+		filteredLayer, err := filterXattrsForMacOS(ctx, layer)
+		if err != nil {
+			log.Warnf("Failed to filter xattrs for MacOS compatibility: %v", err)
+			log.Warn("Continuing with original layer, but this may cause errors")
+		} else {
+			layer = filteredLayer
+		}
+	}
 
 	creationTime, err := bc.GetBuildDateEpoch()
 	if err != nil {
@@ -380,10 +473,23 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
+	// Try to load the image
 	ref, err := apko_oci.LoadImage(ctx, img, []string{"melange:latest"})
-	if err != nil {
+	if err != nil && isMacOS {
+		// On MacOS, if loading fails, we might still have xattr errors
+		log.Warnf("Initial image load failed on MacOS: %v", err)
+		
+		// If we're on MacOS and still got an error, provide a helpful error message
+		if strings.Contains(err.Error(), "xattr") {
+			return "", fmt.Errorf("unable to handle MacOS xattr issues: %w\n"+
+				"Consider using the QEMU runner instead with MELANGE_EXTRA_OPTS=\"--runner=qemu\"", err)
+		} else {
+			return "", err
+		}
+	} else if err != nil {
 		return "", err
 	}
+	
 	return ref.String(), nil
 }
 

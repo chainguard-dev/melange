@@ -94,7 +94,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stderr.Close()
 
 	err := sendSSHCommand(ctx,
-		cfg.sshClient,
+		cfg.SSHClient,
 		cfg,
 		envOverride,
 		stderr,
@@ -126,7 +126,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if pubKey != nil {
 		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
 		err := sendSSHCommand(ctx,
-			cfg.workspaceClient,
+			cfg.WorkspaceClient,
 			cfg,
 			nil,
 			nil,
@@ -375,7 +375,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
-		cfg.sshClient,
+		cfg.SSHClient,
 		cfg,
 		nil,
 		nil,
@@ -384,9 +384,9 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
-		clog.FromContext(ctx).Warnf("failed to gracefully shutdown vm, kill -9 %d: %v", cfg.qemuPID, err)
+		clog.FromContext(ctx).Warnf("failed to gracefully shutdown vm, kill -9 %d: %v", cfg.QemuPID, err)
 		// in case of graceful shutdown failure, axe it with pkill
-		return syscall.Kill(cfg.qemuPID, syscall.SIGKILL)
+		return syscall.Kill(cfg.QemuPID, syscall.SIGKILL)
 	}
 
 	return nil
@@ -435,7 +435,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	log := clog.FromContext(ctx)
 	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
-		cfg.workspaceClient,
+		cfg.WorkspaceClient,
 		cfg,
 		nil,
 		stderr,
@@ -780,7 +780,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	defer stderr.Close()
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	err = sendSSHCommand(ctx,
-		cfg.sshClient,
+		cfg.SSHClient,
 		cfg,
 		nil,
 		stderr,
@@ -795,7 +795,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			return err
 		}
 	}
-	cfg.qemuPID = qemuCmd.Process.Pid
+	cfg.QemuPID = qemuCmd.Process.Pid
 	return nil
 }
 
@@ -825,14 +825,14 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 	}
 
 	// Connect to the SSH server
-	cfg.sshClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
+	cfg.SSHClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server
-	cfg.workspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
+	cfg.WorkspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
@@ -850,7 +850,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	bufWriter := bufio.NewWriter(&buf)
 	defer bufWriter.Flush()
 	err := sendSSHCommand(ctx,
-		cfg.workspaceClient,
+		cfg.WorkspaceClient,
 		cfg,
 		nil,
 		nil,

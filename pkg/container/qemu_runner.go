@@ -65,7 +65,7 @@ const (
 	defaultDiskSize = "50Gi"
 )
 
-type qemu struct{}
+type qemu struct {}
 
 // QemuRunner returns a Qemu Runner implementation.
 func QemuRunner() Runner {
@@ -93,18 +93,10 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stdout.Close()
 	defer stderr.Close()
 
-	// default to root user, unless a different user is specified
-	user := "root"
-	if cfg.RunAs != "" {
-		user = cfg.RunAs
-	}
-
 	err := sendSSHCommand(ctx,
-		user,
-		cfg.SSHAddress,
+		cfg.sshClient,
 		cfg,
 		envOverride,
-		nil,
 		stderr,
 		stdout,
 		false,
@@ -134,10 +126,8 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if pubKey != nil {
 		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
 		err := sendSSHCommand(ctx,
-			"root",
-			cfg.SSHWorkspaceAddress,
+			cfg.workspaceClient,
 			cfg,
-			nil,
 			nil,
 			nil,
 			nil,
@@ -385,10 +375,8 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
-		"root",
-		cfg.SSHAddress,
+		cfg.sshClient,
 		cfg,
-		nil,
 		nil,
 		nil,
 		nil,
@@ -396,7 +384,9 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
-		return err
+		clog.FromContext(ctx).Warnf("failed to gracefully shutdown vm, kill -9 %d: %v", cfg.qemuPID, err)
+		// in case of graceful shutdown failure, axe it with pkill
+		return syscall.Kill(cfg.qemuPID, syscall.SIGKILL)
 	}
 
 	return nil
@@ -442,19 +432,11 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		retrieveCommand = fmt.Sprintf("%s %q", retrieveCommand, v)
 	}
 
-	// default to root user, unless a different user is specified
-	user := "root"
-	if cfg.RunAs != "" {
-		user = cfg.RunAs
-	}
-
 	log := clog.FromContext(ctx)
 	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
-		user,
-		cfg.SSHWorkspaceAddress,
+		cfg.workspaceClient,
 		cfg,
-		nil,
 		nil,
 		stderr,
 		outFile,
@@ -586,6 +568,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			mem = memKb
 		}
 	}
+	// ensure we have at least some 4gb so we can boot
+	if mem < 4194304 {
+		mem = 4194304
+	}
 	baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
 
 	// default to use all CPUs, if a cpu limit is set, respect it.
@@ -657,7 +643,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		cfg.Disk = defaultDiskSize
 	}
 
-	kernelPath, err := getKernelPath(ctx, cfg)
+	kernelPath, err := getKernelPath(ctx)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
 		return err
@@ -784,48 +770,88 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("qemu: could not get VM host key")
 	}
 
-	// default to root user, unless a different user is specified
-	user := "root"
-	if cfg.RunAs != "" {
-		user = cfg.RunAs
+	err = setupSSHClients(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("qemu: could not setup SSH client")
 	}
 
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
-	return sendSSHCommand(ctx,
-		user,
-		cfg.SSHAddress,
+	err = sendSSHCommand(ctx,
+		cfg.sshClient,
 		cfg,
-		nil,
 		nil,
 		stderr,
 		stdout,
 		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
+
+	if err != nil {
+		err = qemuCmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+	}
+	cfg.qemuPID = qemuCmd.Process.Pid
+	return nil
 }
 
-// getWorkspaceLicenseFiles returns a list of possible license files from the
-// workspace
-func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []string) ([]string, error) {
+func setupSSHClients(ctx context.Context, cfg *Config) error {
+	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
+		return err
+	}
+
 	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
 		user = cfg.RunAs
 	}
 
+	// Create SSH client configuration
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(cfg.SSHKey),
+		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-gcm@openssh.com"},
+		},
+		HostKeyCallback: hostKeyCallback,
+	}
+
+	// Connect to the SSH server
+	cfg.sshClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+
+	// Connect to the SSH server
+	cfg.workspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+// getWorkspaceLicenseFiles returns a list of possible license files from the
+// workspace
+func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []string) ([]string, error) {
 	// let's create a string writer so that the SSH command can write
 	// the list of files to it
 	var buf bytes.Buffer
 	bufWriter := bufio.NewWriter(&buf)
 	defer bufWriter.Flush()
 	err := sendSSHCommand(ctx,
-		user,
-		cfg.SSHWorkspaceAddress,
+		cfg.workspaceClient,
 		cfg,
-		nil,
 		nil,
 		nil,
 		bufWriter,
@@ -863,7 +889,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	return licenseFiles, nil
 }
 
-func getKernelPath(ctx context.Context, cfg *Config) (string, error) {
+func getKernelPath(ctx context.Context) (string, error) {
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
 	kernel := "/boot/vmlinuz"
 	if kernelVar, ok := os.LookupEnv("QEMU_KERNEL_IMAGE"); ok {
@@ -999,37 +1025,11 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
-func sendSSHCommand(ctx context.Context, user, address string,
+func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	cfg *Config, extraVars map[string]string,
-	stdin io.Reader, stderr, stdout io.Writer,
+	stderr, stdout io.Writer,
 	tty bool, command []string,
 ) error {
-	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
-		return err
-	}
-
-	// Create SSH client configuration
-	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(cfg.SSHKey),
-		},
-		Config: ssh.Config{
-			Ciphers: []string{"aes128-gcm@openssh.com"},
-		},
-		HostKeyCallback: hostKeyCallback,
-	}
-
-	// Connect to the SSH server
-	client, err := ssh.Dial("tcp", address, config)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
-		return err
-	}
-	defer client.Close()
-
 	// Create a session
 	session, err := client.NewSession()
 	if err != nil {
@@ -1052,7 +1052,6 @@ func sendSSHCommand(ctx context.Context, user, address string,
 		}
 	}
 
-	session.Stdin = stdin
 	session.Stderr = stderr
 	session.Stdout = stdout
 
@@ -1072,14 +1071,17 @@ func sendSSHCommand(ctx context.Context, user, address string,
 
 	cmd := shellquote.Join(command...)
 
+	session.Stdin = strings.NewReader(cmd)
+
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
-	err = session.Run(cmd)
+	err = session.Shell()
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command %q as %q: %v", cmd, user, err)
+		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
 		return err
 	}
 
-	return nil
+	// Wait for the session to finish
+	return session.Wait()
 }
 
 func getUserSSHKey() ([]byte, error) {

@@ -374,17 +374,21 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		if err := t.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
 		}
-		if !t.DebugRunner {
-			defer func() {
-				if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
-					log.Warnf("unable to terminate pod: %s", err)
-				}
-			}()
-		}
 
 		log.Infof("running the main test pipeline")
 		if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
+			if !t.DebugRunner {
+				if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
+					log.Warnf("unable to terminate pod: %s", err)
+				}
+			}
 			return fmt.Errorf("unable to run pipeline: %w", err)
+		}
+
+		if !t.DebugRunner {
+			if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
+				log.Warnf("unable to terminate pod: %s", err)
+			}
 		}
 	}
 
@@ -427,16 +431,20 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		if err := t.Runner.StartPod(ctx, subCfg); err != nil {
 			return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
 		}
-		if !t.DebugRunner {
-			defer func() {
+
+		if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
+			if !t.DebugRunner {
 				if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
 					log.Warnf("unable to terminate subpackage test pod: %s", err)
 				}
-			}()
+			}
+			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 
-		if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
+		if !t.DebugRunner {
+			if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
+				log.Warnf("unable to terminate subpackage test pod: %s", err)
+			}
 		}
 	}
 

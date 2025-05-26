@@ -478,6 +478,8 @@ func (p Package) FullCopyright() string {
 type Needs struct {
 	// A list of packages needed by this pipeline
 	Packages []string
+	// A list of environment variables to inject to the build or test config.
+	Environment map[string]string
 }
 
 type PipelineAssertions struct {
@@ -1189,7 +1191,8 @@ func replaceNeeds(r *strings.Replacer, in *Needs) *Needs {
 		return nil
 	}
 	return &Needs{
-		Packages: replaceAll(r, in.Packages),
+		Packages:    replaceAll(r, in.Packages),
+		Environment: in.Environment,
 	}
 }
 

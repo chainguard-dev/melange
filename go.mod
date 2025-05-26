@@ -9,7 +9,7 @@ require (
 	github.com/chainguard-dev/yam v0.2.12
 	github.com/charmbracelet/log v0.4.1
 	github.com/docker/cli v28.0.4+incompatible
-	github.com/docker/docker v28.0.4+incompatible
+	github.com/docker/docker v28.1.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 	github.com/github/go-spdx/v2 v2.3.2
 	github.com/go-git/go-git/v5 v5.16.0
@@ -53,6 +53,7 @@ require (
 )
 
 require (
+	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect

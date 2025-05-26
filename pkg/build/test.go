@@ -115,8 +115,11 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 
 	t.Configuration = *parsedCfg
 
+	cfg := container.Config{
+		Arch: apko_types.ParseArchitecture(runtime.GOARCH),
+	}
 	// Check that we actually can run things in containers.
-	if !t.Runner.TestUsability(ctx) {
+	if !t.Runner.TestUsability(ctx, &cfg) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", t.Runner.Name(), GetAllRunners())
 	}
 

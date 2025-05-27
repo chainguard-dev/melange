@@ -236,7 +236,7 @@ func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha stri
 	if expectedGitSha != "" {
 		// Update expected hash nodes.
 		nodeCommit, err := renovate.NodeFromMapping(withNode, "expected-commit")
-		if err == nil {
+		if err == nil && !strings.Contains(nodeCommit.Value, "${{") {
 			nodeCommit.Value = expectedGitSha
 			log.Infof("  expected-commit: %s", expectedGitSha)
 		}

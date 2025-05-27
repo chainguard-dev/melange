@@ -225,8 +225,7 @@ func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha stri
 	if err != nil {
 		log.Infof("git-checkout node does not contain a tag, assume we need to update the expected-commit sha")
 	} else {
-		versionPattern := regexp.MustCompile(`\${{vars\..+}}`)
-		if !strings.Contains(tag.Value, "${{package.version}}") && !versionPattern.MatchString(tag.Value) {
+		if !strings.Contains(tag.Value, "${{package.version}}") && !strings.Contains(tag.Value, "${{vars.mangled-package-version}}") {
 			log.Infof("Skipping git-checkout node as it does not contain a version substitution so assuming it is not the main checkout")
 			return nil
 		}

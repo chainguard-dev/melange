@@ -369,22 +369,31 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	}
 
 	if !t.IsTestless() {
-		cfg.Arch = t.Arch
+		// use anonymous function so that deferring will actually run
+		// on this function's end
+		err = func() error {
+			cfg.Arch = t.Arch
 
-		if err := t.Runner.StartPod(ctx, cfg); err != nil {
-			return fmt.Errorf("unable to start pod: %w", err)
-		}
-		if !t.DebugRunner {
-			defer func() {
-				if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
-					log.Warnf("unable to terminate pod: %s", err)
-				}
-			}()
-		}
+			if err := t.Runner.StartPod(ctx, cfg); err != nil {
+				return fmt.Errorf("unable to start pod: %w", err)
+			}
+			if !t.DebugRunner {
+				defer func() {
+					if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
+						log.Warnf("unable to terminate pod: %s", err)
+					}
+				}()
+			}
 
-		log.Infof("running the main test pipeline")
-		if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
+			log.Infof("running the main test pipeline")
+			if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
+			return nil
+		}()
+
+		if err != nil {
+			return err
 		}
 	}
 
@@ -393,50 +402,60 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	// that we don't keep adding packages to tests and hence mask any missing
 	// dependencies.
 	for i := range t.Configuration.Subpackages {
-		sp := &t.Configuration.Subpackages[i]
-		if sp.Test == nil || len(sp.Test.Pipeline) == 0 {
-			continue
-		}
-		log.Infof("running test pipeline for subpackage %s", sp.Name)
+		// use anonymous function so that deferring will actually run
+		// on this function's end
+		err = func() error {
+			sp := &t.Configuration.Subpackages[i]
+			if sp.Test == nil || len(sp.Test.Pipeline) == 0 {
+				return nil
+			}
+			log.Infof("running test pipeline for subpackage %s", sp.Name)
 
-		guestFS, err := t.guestFS(ctx, sp.Name)
+			guestFS, err := t.guestFS(ctx, sp.Name)
+			if err != nil {
+				return err
+			}
+
+			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
+			if err != nil {
+				return fmt.Errorf("unable to build guest: %w", err)
+			}
+			if err := t.OverlayBinSh(sp.Name); err != nil {
+				return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
+			}
+			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
+			if err != nil {
+				return fmt.Errorf("unable to build workspace config: %w", err)
+			}
+			subCfg.Arch = t.Arch
+
+			pr := &pipelineRunner{
+				interactive: t.Interactive,
+				debug:       t.Debug,
+				config:      subCfg,
+				runner:      t.Runner,
+			}
+
+			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
+				return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
+			}
+			if !t.DebugRunner {
+				defer func() {
+					if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
+						log.Warnf("unable to terminate subpackage test pod: %s", err)
+					}
+				}()
+			}
+
+			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
+
+			return nil
+		}()
+
 		if err != nil {
 			return err
-		}
-
-		spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
-		if err != nil {
-			return fmt.Errorf("unable to build guest: %w", err)
-		}
-		if err := t.OverlayBinSh(sp.Name); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-		subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
-		if err != nil {
-			return fmt.Errorf("unable to build workspace config: %w", err)
-		}
-		subCfg.Arch = t.Arch
-
-		pr := &pipelineRunner{
-			interactive: t.Interactive,
-			debug:       t.Debug,
-			config:      subCfg,
-			runner:      t.Runner,
-		}
-
-		if err := t.Runner.StartPod(ctx, subCfg); err != nil {
-			return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
-		}
-		if !t.DebugRunner {
-			defer func() {
-				if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
-					log.Warnf("unable to terminate subpackage test pod: %s", err)
-				}
-			}()
-		}
-
-		if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 

@@ -63,4 +63,7 @@ type Config struct {
 	SSHHostKey            string
 	Disk                  string
 	Timeout               time.Duration
+	SSHClient             *ssh.Client
+	WorkspaceClient       *ssh.Client
+	QemuPID               int
 }

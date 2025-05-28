@@ -490,6 +490,8 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
+	setupAdditionalMounts := false
+
 	log := clog.FromContext(ctx)
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
@@ -632,6 +634,17 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
+
+	for k, v := range cfg.Mounts {
+		if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
+			continue
+		}
+		setupAdditionalMounts = true
+		fsdev := fmt.Sprintf("%d", 200+k)
+		fsid := fmt.Sprintf("%d", 200+k)
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev"+fsdev+",path="+v.Source)
+		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs"+fsid+",fsdev=fsdev"+fsdev+",mount_tag="+v.Destination)
+	}
 
 	// if no size is specified, let's go for a default
 	if cfg.Disk == "" {
@@ -786,11 +799,32 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
-
 	if err != nil {
 		err = qemuCmd.Process.Kill()
 		if err != nil {
 			return err
+		}
+	}
+
+	if setupAdditionalMounts {
+		clog.FromContext(ctx).Info("qemu: setting up additional mountpoints")
+		err = sendSSHCommand(ctx,
+			cfg.WorkspaceClient,
+			cfg,
+			nil,
+			stderr,
+			stdout,
+			false,
+			[]string{"sh", "-c", "grep -riv defaultshare /sys/bus/virtio/drivers/9pnet_virtio/virtio*/mount_tag" +
+				" | cut -d':' -f2-" +
+				" | xargs -I{} sh -c " +
+				"'mkdir -p /mount/{} && mount -t 9p -o trans=virtio -o version=9p2000.L -o security_model=mapped-xattr -o posixacl=on -o msize=104857600 {} /mount/{}'"},
+		)
+		if err != nil {
+			err = qemuCmd.Process.Kill()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	cfg.QemuPID = qemuCmd.Process.Pid

@@ -65,10 +65,6 @@ const (
 	defaultDiskSize = "50Gi"
 )
 
-var sshClient *ssh.Client
-var workspaceClient *ssh.Client
-var qemuPID int
-
 type qemu struct{}
 
 // QemuRunner returns a Qemu Runner implementation.
@@ -98,7 +94,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stderr.Close()
 
 	err := sendSSHCommand(ctx,
-		sshClient,
+		cfg.SSHClient,
 		cfg,
 		envOverride,
 		stderr,
@@ -130,7 +126,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if pubKey != nil {
 		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
 		err := sendSSHCommand(ctx,
-			workspaceClient,
+			cfg.WorkspaceClient,
 			cfg,
 			nil,
 			nil,
@@ -365,8 +361,7 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 
 	cfg.SSHWorkspaceAddress = "127.0.0.1:" + strconv.Itoa(sshWorkspacePort)
 
-	qemuPID, err = createMicroVM(ctx, cfg)
-	return err
+	return createMicroVM(ctx, cfg)
 }
 
 // TerminatePod terminates a pod if necessary.  Not implemented
@@ -380,7 +375,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
-		sshClient,
+		cfg.SSHClient,
 		cfg,
 		nil,
 		nil,
@@ -389,8 +384,9 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
+		clog.FromContext(ctx).Warnf("failed to gracefully shutdown vm, killing it: %v", err)
 		// in case of graceful shutdown failure, axe it with pkill
-		return syscall.Kill(-qemuPID, syscall.SIGKILL)
+		return syscall.Kill(cfg.QemuPID, syscall.SIGKILL)
 	}
 
 	return nil
@@ -439,7 +435,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	log := clog.FromContext(ctx)
 	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
-		workspaceClient,
+		cfg.WorkspaceClient,
 		cfg,
 		nil,
 		stderr,
@@ -493,12 +489,12 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	return os.RemoveAll(ref)
 }
 
-func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
+func createMicroVM(ctx context.Context, cfg *Config) error {
 	log := clog.FromContext(ctx)
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	baseargs := []string{}
@@ -556,7 +552,7 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 		case "x86_64":
 			baseargs = append(baseargs, "-machine", "q35")
 		default:
-			return 0, fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
+			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
 	}
 
@@ -565,7 +561,7 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	if cfg.Memory != "" {
 		memKb, err := convertHumanToKB(cfg.Memory)
 		if err != nil {
-			return 0, err
+			return err
 		}
 
 		if mem > memKb {
@@ -605,7 +601,7 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 		} else if cfg.Arch.ToAPK() == "x86_64" {
 			baseargs = append(baseargs, "-cpu", "Haswell-v4")
 		} else {
-			return 0, fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
+			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
 	default:
 		baseargs = append(baseargs, "-cpu", "host")
@@ -646,13 +642,13 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	kernelPath, err := getKernelPath(ctx)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
-		return 0, err
+		return err
 	}
 
 	initramFile, err := generateCpio(ctx, cfg)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: could not generate initramfs: %v", err)
-		return 0, err
+		return err
 	}
 
 	baseargs = append(baseargs, "-kernel", kernelPath)
@@ -662,7 +658,7 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	diskFile, err := generateDiskFile(ctx, cfg.Disk)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("qemu: could not generate additional disks: %v", err)
-		return 0, err
+		return err
 	}
 
 	// save the disk name, we will wipe it off when done
@@ -689,7 +685,7 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	if err := qemuCmd.Start(); err != nil {
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
-		return 0, fmt.Errorf("qemu: failed to start qemu command: %w", err)
+		return fmt.Errorf("qemu: failed to start qemu command: %w", err)
 	}
 
 	logCtx, cancel := context.WithCancel(ctx)
@@ -758,21 +754,21 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
-		return 0, fmt.Errorf("qemu: VM exited unexpectedly: %v", err)
+		return fmt.Errorf("qemu: VM exited unexpectedly: %v", err)
 	case <-ctx.Done():
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
-		return 0, fmt.Errorf("qemu: context canceled while waiting for VM to start")
+		return fmt.Errorf("qemu: context canceled while waiting for VM to start")
 	}
 
 	err = getHostKey(ctx, cfg)
 	if err != nil {
-		return 0, fmt.Errorf("qemu: could not get VM host key")
+		return fmt.Errorf("qemu: could not get VM host key")
 	}
 
 	err = setupSSHClients(ctx, cfg)
 	if err != nil {
-		return 0, fmt.Errorf("qemu: could not setup SSH client")
+		return fmt.Errorf("qemu: could not setup SSH client")
 	}
 
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
@@ -780,7 +776,7 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	defer stderr.Close()
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	err = sendSSHCommand(ctx,
-		sshClient,
+		cfg.SSHClient,
 		cfg,
 		nil,
 		stderr,
@@ -792,11 +788,11 @@ func createMicroVM(ctx context.Context, cfg *Config) (int, error) {
 	if err != nil {
 		err = qemuCmd.Process.Kill()
 		if err != nil {
-			return 0, err
+			return err
 		}
 	}
-
-	return qemuCmd.Process.Pid, nil
+	cfg.QemuPID = qemuCmd.Process.Pid
+	return nil
 }
 
 func setupSSHClients(ctx context.Context, cfg *Config) error {
@@ -825,14 +821,14 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 	}
 
 	// Connect to the SSH server
-	sshClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
+	cfg.SSHClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server
-	workspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
+	cfg.WorkspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
@@ -850,7 +846,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	bufWriter := bufio.NewWriter(&buf)
 	defer bufWriter.Flush()
 	err := sendSSHCommand(ctx,
-		workspaceClient,
+		cfg.WorkspaceClient,
 		cfg,
 		nil,
 		nil,

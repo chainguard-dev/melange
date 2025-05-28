@@ -636,6 +636,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
 	for k, v := range cfg.Mounts {
+		// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
+		// single files.
 		if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
 			continue
 		}
@@ -807,23 +809,38 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	if setupAdditionalMounts {
+		// we have additional 9p mounts other than our workspace so we will
+		// setup the mount commands for them
+		//     mkdir /mount/dest & mount [...] dest /mount/dest
 		clog.FromContext(ctx).Info("qemu: setting up additional mountpoints")
-		err = sendSSHCommand(ctx,
-			cfg.WorkspaceClient,
-			cfg,
-			nil,
-			stderr,
-			stdout,
-			false,
-			[]string{"sh", "-c", "grep -riv defaultshare /sys/bus/virtio/drivers/9pnet_virtio/virtio*/mount_tag" +
-				" | cut -d':' -f2-" +
-				" | xargs -I{} sh -c " +
-				"'mkdir -p /mount/{} && mount -t 9p -o trans=virtio -o version=9p2000.L -o security_model=mapped-xattr -o posixacl=on -o msize=104857600 {} /mount/{}'"},
-		)
-		if err != nil {
-			err = qemuCmd.Process.Kill()
+		setupMountCommand := ": "
+		for _, v := range cfg.Mounts {
+			// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
+			// single files.
+			if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
+				continue
+			}
+
+			clog.FromContext(ctx).Debugf("qemu: additional mountpoint %s into /mount/%s", v.Destination, v.Destination)
+			setupMountCommand = setupMountCommand + "&& mkdir -p /mount/" + v.Destination +
+				" && mount -t 9p " + v.Destination + " /mount/" + v.Destination
+
+		}
+		if setupMountCommand != ": " {
+			err = sendSSHCommand(ctx,
+				cfg.WorkspaceClient,
+				cfg,
+				nil,
+				stderr,
+				stdout,
+				false,
+				[]string{"sh", "-c", setupMountCommand},
+			)
 			if err != nil {
-				return err
+				err = qemuCmd.Process.Kill()
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

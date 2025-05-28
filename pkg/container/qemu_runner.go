@@ -1237,7 +1237,7 @@ func getAvailableMemoryKB() int {
 			return 0
 		}
 		s = bufio.NewScanner(f)
-		
+
 		var memFree, buffers, cached int
 		for s.Scan() {
 			if nItems, _ := fmt.Sscanf(s.Text(), "MemFree: %d kB", &memFree); nItems == 1 {
@@ -1250,65 +1250,27 @@ func getAvailableMemoryKB() int {
 				continue
 			}
 		}
-		
+
 		if memFree > 0 {
 			return memFree + buffers + cached
 		}
 	case "darwin":
-		// Use vm_stat to get available memory on macOS
-		cmd := exec.Command("vm_stat")
-		output, err := cmd.CombinedOutput()
+		var memSize int64
+
+		cmd := exec.Command("sysctl", "-n", "hw.memsize_available")
+		sysctlOut, err := cmd.Output()
 		if err != nil {
 			return mem
 		}
 
-		// Parse vm_stat output
-		scanner := bufio.NewScanner(bytes.NewReader(output))
-		
-		var pageSize int64
-		var pagesFree, pagesInactive int64
-		
-		for scanner.Scan() {
-			line := scanner.Text()
-			
-			// Parse page size from header
-			if strings.Contains(line, "page size of") {
-				if _, err := fmt.Sscanf(line, "Mach Virtual Memory Statistics: (page size of %d bytes)", &pageSize); err != nil {
-					return 0
-				}
-			}
-			
-			// Parse memory values using a more flexible approach
-			fields := strings.Fields(line)
-			if len(fields) >= 3 && strings.HasSuffix(fields[1], ":") {
-				// Remove trailing colon and period from the value
-				valueStr := strings.TrimSuffix(fields[2], ".")
-				value, err := strconv.ParseInt(valueStr, 10, 64)
-				if err != nil {
-					continue
-				}
-				
-				switch fields[0] + " " + strings.TrimSuffix(fields[1], ":") {
-				case "Pages free":
-					pagesFree = value
-				case "Pages inactive":
-					pagesInactive = value
-				}
-			}
+		sysctlOutStr := strings.TrimSpace(string(sysctlOut))
+		memSize, err = strconv.ParseInt(sysctlOutStr, 10, 64)
+		if err != nil {
+			return mem
 		}
-		
-		if pageSize > 0 && (pagesFree > 0 || pagesInactive > 0) {
-			// Calculate available memory in KB
-			// Available = (free + inactive) * pageSize / 1024
-			// Note: speculative pages are excluded as they are not guaranteed to be available
-			availableBytes := (pagesFree + pagesInactive) * pageSize
-			availableKB := availableBytes / 1024
-			
-			// Ensure we return a reasonable value
-			if availableKB > 0 {
-				return int(availableKB)
-			}
-		}
+
+		// use at most 50% of total ram, in kb
+		return int(memSize) / 2 / 1024
 	}
 
 	return mem

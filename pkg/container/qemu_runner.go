@@ -490,6 +490,8 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
+	setupAdditionalMounts := false
+
 	log := clog.FromContext(ctx)
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
@@ -632,6 +634,19 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
+
+	for k, v := range cfg.Mounts {
+		// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
+		// single files.
+		if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
+			continue
+		}
+		setupAdditionalMounts = true
+		fsdev := fmt.Sprintf("%d", 200+k)
+		fsid := fmt.Sprintf("%d", 200+k)
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev"+fsdev+",path="+v.Source)
+		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs"+fsid+",fsdev=fsdev"+fsdev+",mount_tag="+v.Destination)
+	}
 
 	// if no size is specified, let's go for a default
 	if cfg.Disk == "" {
@@ -786,11 +801,47 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
-
 	if err != nil {
 		err = qemuCmd.Process.Kill()
 		if err != nil {
 			return err
+		}
+	}
+
+	if setupAdditionalMounts {
+		// we have additional 9p mounts other than our workspace so we will
+		// setup the mount commands for them
+		//     mkdir /mount/dest & mount [...] dest /mount/dest
+		clog.FromContext(ctx).Info("qemu: setting up additional mountpoints")
+		setupMountCommand := ": "
+		for _, v := range cfg.Mounts {
+			// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
+			// single files.
+			if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
+				continue
+			}
+
+			clog.FromContext(ctx).Debugf("qemu: additional mountpoint %s into /mount/%s", v.Destination, v.Destination)
+			setupMountCommand = setupMountCommand + "&& mkdir -p /mount/" + v.Destination +
+				" && mount -t 9p " + v.Destination + " /mount/" + v.Destination
+
+		}
+		if setupMountCommand != ": " {
+			err = sendSSHCommand(ctx,
+				cfg.WorkspaceClient,
+				cfg,
+				nil,
+				stderr,
+				stdout,
+				false,
+				[]string{"sh", "-c", setupMountCommand},
+			)
+			if err != nil {
+				err = qemuCmd.Process.Kill()
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 	cfg.QemuPID = qemuCmd.Process.Pid
@@ -1081,6 +1132,7 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	// Wait for the session to finish
 	if err := session.Wait(); err != nil {
 		clog.FromContext(ctx).Errorf("Failed wait for session running: %q: %v", cmd, err)
+		return err
 	}
 
 	return nil

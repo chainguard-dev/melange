@@ -674,6 +674,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
+	clog.FromContext(ctx).Info("qemu: starting VM")
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
 	outRead, outWrite := io.Pipe()
@@ -725,6 +726,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	started := make(chan struct{})
 
+	clog.FromContext(ctx).Info("qemu: waiting for SSH")
 	go func() {
 		// one-hour timeout with a 500ms sleep
 		retries := 7200

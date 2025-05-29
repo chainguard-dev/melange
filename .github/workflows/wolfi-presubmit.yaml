@@ -68,10 +68,10 @@ jobs:
           - guac
           - mdbook
           - s3cmd
-          - py3-pyelftools  # Uses license-path
-          - cadvisor  # uses cgroups
-          - fping  # uses get/setcaps
-          - logstash-8  # uses a diff test user
+          - py3-pyelftools # Uses license-path
+          - cadvisor # uses cgroups
+          - fping # uses get/setcaps
+          - logstash-8 # uses a diff test user
           - perl-yaml-syck
           - ncurses
           - subversion
@@ -206,3 +206,155 @@ jobs:
           --require-zero \
           packages/x86_64/${{ matrix.package }}-*.apk \
           2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.
+  build-melange-macos:
+    name: Build melange and add to artifact cache
+    runs-on: macos-latest-xlarge
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: "./go.mod"
+          check-latest: true
+
+      - name: build
+        run: |
+          make melange
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: melange-darwin-${{ github.run_id }}
+          path: ${{ github.workspace }}/melange
+          retention-days: 1
+
+  build-packages-macos:
+    name: Build packages (macOS)
+    needs:
+      - build-melange-macos
+    runs-on: macos-latest-xlarge
+
+    permissions:
+      contents: read
+
+    # This is a list of packages which covers basic and exotic uses of
+    # the built-in pipelines.  Goal is to balance efficiency while also
+    # exercising Melange with real-world package builds.
+    # Feel free to add additional packages to this matrix which exercise
+    # Melange in new ways (e.g. new pipelines, etc.)
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - qemu
+        package:
+          - hello-wolfi
+          - glibc
+          - tini
+          - lzo
+          - bubblewrap
+          - dpkg
+          #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
+          - gitsign
+          - guac
+          - mdbook
+          - s3cmd
+          - py3-pyelftools # Uses license-path
+          - cadvisor # uses cgroups
+          - fping # uses get/setcaps
+          - logstash-8 # uses a diff test user
+          - perl-yaml-syck
+          - ncurses
+          - subversion
+          - sudo
+          - py3-supported-python
+          # TODO: https://github.com/wolfi-dev/os/issues/26442
+          #- xmlto
+
+    steps:
+      - uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: wolfi-dev/os
+
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: melange-darwin-${{ github.run_id }}
+          path: ${{ github.workspace }}/.melange-dir
+          run-id: ${{ github.run_id }}
+
+      - name: Install QEMU
+        if: matrix.runner == 'qemu'
+        run: |
+          brew install colima docker gnu-tar qemu
+
+      - name: Start Colima
+        if: matrix.runner == 'qemu'
+        run: |
+          colima start --cpu 4 --memory 8 --vm-type qemu
+
+      - run: |
+          sudo chmod a+x ${{ github.workspace }}/.melange-dir/melange
+          ${{ github.workspace }}/.melange-dir/melange version
+
+      # this need to point to main to always get the latest action
+      - uses: wolfi-dev/actions/install-wolfictl@main # main
+
+      - run: |
+          wolfictl bump ${{ matrix.package }}
+
+      - name: Download kernel for VMs
+        if: matrix.runner == 'qemu'
+        run: |
+          KERNEL_PKG="$(curl -sL https://dl-cdn.alpinelinux.org/alpine/edge/main/aarch64/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$1 == "P" {printf "%s-", $2} $1 == "V" {printf "%s.apk\n", $2}' | grep "linux-virt" | grep -v dev)"
+          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/aarch64/$KERNEL_PKG"
+          mkdir -p /tmp/kernel
+          tar -xf ./linux-virt.apk -C /tmp/kernel/
+
+      - name: (${{runner.os}}) Make package ${{matrix.package}} with QEMU Runner
+        if: matrix.runner == 'qemu'
+        run: |
+          make \
+            SHELL="/bin/bash" \
+            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
+            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
+            MELANGE="${{ github.workspace }}/.melange-dir/melange" \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            package/${{ matrix.package }}
+
+      - name: (${{runner.os}}) Run tests with QEMU runner
+        if: matrix.runner == 'qemu'
+        run: |
+          make \
+            SHELL="/bin/bash" \
+            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
+            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
+            MELANGE="${{ github.workspace }}/.melange-dir/melange" \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            test/${{ matrix.package }}
+
+      - name: (${{runner.os}}) Check package ${{ matrix.package }} xattrs for QEMU-built package
+        if: matrix.runner == 'qemu' && matrix.package == 'fping'
+        run: |
+          for pkg in packages/aarch64/*.apk; do
+            sudo gtar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/aarch64/
+          done
+          getcap packages/aarch64/usr/sbin/fping
+
+      - name: (${{runner.os}}) Check package ${{ matrix.package }} for mode bits
+        if: matrix.package == 'sudo'
+        run: |
+          for pkg in packages/aarch64/*.apk; do
+            sudo gtar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/aarch64/
+          done
+          ls -hal packages/aarch64/usr/bin/sudo

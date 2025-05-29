@@ -50,6 +50,7 @@ jobs:
         if: steps.check.outputs.need_release == 'yes' && steps.check.outputs.existing_tag == ''
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: "v0.26.4"
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         if: steps.check.outputs.need_release == 'yes'

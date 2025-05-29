@@ -807,7 +807,7 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 			}
 		}
 
-		if strings.HasPrefix(path, "sbin/") || strings.HasPrefix(path, "bin/") || strings.HasPrefix(path, "usr/sbin") {
+		if strings.HasPrefix(path, "sbin/") || strings.HasPrefix(path, "bin/") || strings.HasPrefix(path, "usr/sbin/") {
 			paths = append(paths, path)
 		}
 

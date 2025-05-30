@@ -490,8 +490,6 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
-	setupAdditionalMounts := false
-
 	log := clog.FromContext(ctx)
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
@@ -635,17 +633,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
-	for k, v := range cfg.Mounts {
-		// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
-		// single files.
-		if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
-			continue
-		}
-		setupAdditionalMounts = true
-		fsdev := fmt.Sprintf("%d", 200+k)
-		fsid := fmt.Sprintf("%d", 200+k)
-		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev"+fsdev+",path="+v.Source)
-		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs"+fsid+",fsdev=fsdev"+fsdev+",mount_tag="+v.Destination)
+	if cfg.CacheDir != "" {
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
+		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag="+cfg.CacheDir)
 	}
 
 	// if no size is specified, let's go for a default
@@ -681,8 +671,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append raw disk, init will take care of formatting it if present.
 	baseargs = append(baseargs, "-object", "iothread,id=io1")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues=" + fmt.Sprintf("%d", nproc/2))
-	if runtime.GOOS == "linux"{
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	if runtime.GOOS == "linux" {
 		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,cache.direct=on,format=raw,aio=native,file="+diskFile)
 	}
 	if runtime.GOOS == "darwin" {
@@ -691,7 +681,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append the rootfs tar.gz, init will take care of populating the disk with it
 	baseargs = append(baseargs, "-object", "iothread,id=io2")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues=" + fmt.Sprintf("%d", nproc/2))
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
 	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
@@ -798,41 +788,19 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
-	clog.FromContext(ctx).Info("qemu: setting up local workspace")
-	err = sendSSHCommand(ctx,
-		cfg.SSHClient,
-		cfg,
-		nil,
-		stderr,
-		stdout,
-		false,
-		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
-	)
-	if err != nil {
-		err = qemuCmd.Process.Kill()
-		if err != nil {
-			return err
-		}
-	}
 
-	if setupAdditionalMounts {
-		// we have additional 9p mounts other than our workspace so we will
-		// setup the mount commands for them
-		//     mkdir /mount/dest & mount [...] dest /mount/dest
-		clog.FromContext(ctx).Info("qemu: setting up additional mountpoints")
-		setupMountCommand := ": "
-		for _, v := range cfg.Mounts {
-			// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
-			// single files.
-			if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
-				continue
-			}
-
-			clog.FromContext(ctx).Debugf("qemu: additional mountpoint %s into /mount/%s", v.Destination, v.Destination)
-			setupMountCommand = setupMountCommand + "&& mkdir -p /mount/" + v.Destination +
-				" && mount -t 9p " + v.Destination + " /mount/" + v.Destination
-
-		}
+	if cfg.CacheDir != "" {
+		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
+		setupMountCommand := fmt.Sprintf(
+			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p %s %s && "+
+				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
+			cfg.CacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+			cfg.CacheDir,
+			cfg.CacheDir,
+			cfg.CacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+		)
 		if setupMountCommand != ": " {
 			err = sendSSHCommand(ctx,
 				cfg.WorkspaceClient,
@@ -851,6 +819,24 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			}
 		}
 	}
+
+	clog.FromContext(ctx).Info("qemu: setting up local workspace")
+	err = sendSSHCommand(ctx,
+		cfg.SSHClient,
+		cfg,
+		nil,
+		stderr,
+		stdout,
+		false,
+		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
+	)
+	if err != nil {
+		err = qemuCmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+	}
+
 	cfg.QemuPID = qemuCmd.Process.Pid
 	return nil
 }

@@ -1146,6 +1146,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
 		},
 		WorkspaceDir: b.WorkspaceDir,
+		CacheDir:     b.CacheDir,
 		Timeout:      b.Configuration.Package.Timeout,
 		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
 		RunAs:        runAs(b.Configuration.Environment.Accounts),

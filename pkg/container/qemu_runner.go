@@ -425,7 +425,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
-	retrieveCommand := "cd /mount/home/build && tar cvpf - --xattrs --acls --exclude='*fifo*' melange-out"
+	retrieveCommand := "cd /mount/home/build && tar cvpf - --xattrs --acls --exclude='*fifo*' --exclude='.melange-cache' melange-out"
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
 	for _, v := range extraFiles {
@@ -681,8 +681,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append raw disk, init will take care of formatting it if present.
 	baseargs = append(baseargs, "-object", "iothread,id=io1")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues=" + fmt.Sprintf("%d", nproc/2))
-	if runtime.GOOS == "linux"{
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	if runtime.GOOS == "linux" {
 		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,cache.direct=on,format=raw,aio=native,file="+diskFile)
 	}
 	if runtime.GOOS == "darwin" {
@@ -691,7 +691,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append the rootfs tar.gz, init will take care of populating the disk with it
 	baseargs = append(baseargs, "-object", "iothread,id=io2")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues=" + fmt.Sprintf("%d", nproc/2))
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
 	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
@@ -830,7 +830,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 			clog.FromContext(ctx).Debugf("qemu: additional mountpoint %s into /mount/%s", v.Destination, v.Destination)
 			setupMountCommand = setupMountCommand + "&& mkdir -p /mount/" + v.Destination +
-				" && mount -t 9p " + v.Destination + " /mount/" + v.Destination
+				" && mount -t 9p " + v.Destination + " /mount/" + strings.TrimPrefix(v.Destination, "/")
 
 		}
 		if setupMountCommand != ": " {

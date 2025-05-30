@@ -1113,10 +1113,14 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 			WorkspaceDir: b.WorkspaceDir,
 		}
 	}
-
 	mounts := []container.BindMount{
 		{Source: b.WorkspaceDir, Destination: container.DefaultWorkspaceDir},
 		{Source: "/etc/resolv.conf", Destination: container.DefaultResolvConfPath},
+	}
+
+	// Mounting /var/cache/melange via 9p is orders of magnitude slower
+	if b.Runner.Name() == container.QemuName {
+		b.CacheDir = "/home/build/.melange-cache"
 	}
 
 	if b.CacheDir != "" {

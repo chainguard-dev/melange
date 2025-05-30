@@ -632,8 +632,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
-	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
-	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag="+cfg.CacheDir)
+
+	if cfg.CacheDir != "" {
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
+		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag="+cfg.CacheDir)
+	}
 
 	// if no size is specified, let's go for a default
 	if cfg.Disk == "" {
@@ -786,31 +789,33 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	defer stdout.Close()
 	defer stderr.Close()
 
-	clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
-	setupMountCommand := fmt.Sprintf(
-		"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p %s %s && "  +
-			"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
-		cfg.CacheDir,
-		filepath.Join("/mount", DefaultCacheDir),
-		cfg.CacheDir,
-		cfg.CacheDir,
-		cfg.CacheDir,
-		filepath.Join("/mount", DefaultCacheDir),
-	)
-	if setupMountCommand != ": " {
-		err = sendSSHCommand(ctx,
-			cfg.WorkspaceClient,
-			cfg,
-			nil,
-			stderr,
-			stdout,
-			false,
-			[]string{"sh", "-c", setupMountCommand},
+	if cfg.CacheDir != "" {
+		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
+		setupMountCommand := fmt.Sprintf(
+			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p %s %s && "+
+				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
+			cfg.CacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+			cfg.CacheDir,
+			cfg.CacheDir,
+			cfg.CacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
 		)
-		if err != nil {
-			err = qemuCmd.Process.Kill()
+		if setupMountCommand != ": " {
+			err = sendSSHCommand(ctx,
+				cfg.WorkspaceClient,
+				cfg,
+				nil,
+				stderr,
+				stdout,
+				false,
+				[]string{"sh", "-c", setupMountCommand},
+			)
 			if err != nil {
-				return err
+				err = qemuCmd.Process.Kill()
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

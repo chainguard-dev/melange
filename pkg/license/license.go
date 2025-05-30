@@ -177,10 +177,18 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 // associated with the match, as some matches are potentially more relevant.
 func IsLicenseFile(filename string) (bool, float64) {
 	// Ignore files in these paths
+
+	// Packages like Rust embed the semver in certain paths, so replace the segment with `-`
+	// rust-1.86.0-src -> rust-src
+	re := regexp.MustCompile(`\-\d+\.\d+\.\d+\-`)
+	filename = re.ReplaceAllString(filename, "-")
+
 	ignoredPaths := []string{
 		".virtualenv",
 		"env",
 		"node_modules",
+		"rust-src",
+		"rustc-src",
 		"venv",
 	}
 	for _, i := range ignoredPaths {

@@ -68,15 +68,16 @@ jobs:
           - guac
           - mdbook
           - s3cmd
-          - py3-pyelftools  # Uses license-path
-          - cadvisor  # uses cgroups
-          - fping  # uses get/setcaps
-          - logstash-8  # uses a diff test user
+          - py3-pyelftools # Uses license-path
+          - cadvisor # uses cgroups
+          - fping # uses get/setcaps
+          - logstash-8 # uses a diff test user
           - perl-yaml-syck
           - ncurses
           - subversion
           - sudo
           - py3-supported-python
+          - rust-1.86
           # TODO: https://github.com/wolfi-dev/os/issues/26442
           #- xmlto
 

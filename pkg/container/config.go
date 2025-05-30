@@ -56,6 +56,7 @@ type Config struct {
 	RunAsUID              string
 	RunAs                 string
 	WorkspaceDir          string
+	CacheDir              string
 	CPU, CPUModel, Memory string
 	SSHKey                ssh.Signer
 	SSHAddress            string

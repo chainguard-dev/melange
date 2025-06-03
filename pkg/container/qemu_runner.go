@@ -794,10 +794,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		setupMountCommand := fmt.Sprintf(
 			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p melange_cache %s && "+
 				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
-			cfg.CacheDir,
+			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),
-			cfg.CacheDir,
-			cfg.CacheDir,
+			DefaultCacheDir,
+			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),
 		)
 		if setupMountCommand != ": " {

@@ -636,6 +636,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	if cfg.CacheDir != "" {
 		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
 		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
+
 	}
 
 	// if no size is specified, let's go for a default
@@ -794,10 +795,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		setupMountCommand := fmt.Sprintf(
 			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p melange_cache %s && "+
 				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
-			cfg.CacheDir,
+			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),
-			cfg.CacheDir,
-			cfg.CacheDir,
+			DefaultCacheDir,
+			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),
 		)
 		if setupMountCommand != ": " {

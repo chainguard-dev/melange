@@ -265,6 +265,15 @@ func WithEnvFile(envFile string) Option {
 	}
 }
 
+// WithEnvVars specifies individual environment variables to be set during the build.
+// Supports both KEY=VALUE format and KEY format (passes through from host environment).
+func WithEnvVars(envVars []string) Option {
+	return func(b *Build) error {
+		b.EnvVars = envVars
+		return nil
+	}
+}
+
 // WithVarsFile specifies a variables file to use to populate the build
 // configuration variables block.
 func WithVarsFile(varsFile string) Option {

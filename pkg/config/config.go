@@ -1072,6 +1072,7 @@ type ConfigurationParsingOption func(*configOptions)
 type configOptions struct {
 	filesystem                  fs.FS
 	envFilePath                 string
+	envVars                     []string
 	cpu, cpumodel, memory, disk string
 	timeout                     time.Duration
 	commit                      string
@@ -1136,6 +1137,13 @@ func WithCommit(hash string) ConfigurationParsingOption {
 func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.envFilePath = path
+	}
+}
+
+// WithEnvVarsForParsing sets individual environment variables for the build.
+func WithEnvVarsForParsing(envVars []string) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.envVars = envVars
 	}
 }
 
@@ -1585,6 +1593,28 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		// Overlay the environment in the YAML on top as override.
 		for k, v := range curEnv {
 			cfg.Environment.Environment[k] = v
+		}
+	}
+
+	// Process individual environment variables from -e flags.
+	if len(options.envVars) > 0 {
+		if cfg.Environment.Environment == nil {
+			cfg.Environment.Environment = make(map[string]string)
+		}
+
+		for _, envVar := range options.envVars {
+			if strings.Contains(envVar, "=") {
+				// KEY=VALUE format
+				parts := strings.SplitN(envVar, "=", 2)
+				if len(parts) == 2 {
+					cfg.Environment.Environment[parts[0]] = parts[1]
+				}
+			} else {
+				// KEY format - pass through from host environment
+				if value, exists := os.LookupEnv(envVar); exists {
+					cfg.Environment.Environment[envVar] = value
+				}
+			}
 		}
 	}
 

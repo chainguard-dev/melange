@@ -61,6 +61,7 @@ func buildCmd() *cobra.Command {
 	var dependencyLog string
 	var overlayBinSh string
 	var envFile string
+	var envVars []string
 	var varsFile string
 	var purlNamespace string
 	var buildOption []string
@@ -169,6 +170,7 @@ func buildCmd() *cobra.Command {
 				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
+				build.WithEnvVars(envVars),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
 				build.WithEnabledBuildOptions(buildOption),
@@ -229,6 +231,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
+	cmd.Flags().StringSliceVarP(&envVars, "env", "e", []string{}, "set environment variables (format: KEY=VALUE or KEY)")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")

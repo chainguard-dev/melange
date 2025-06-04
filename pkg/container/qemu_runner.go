@@ -637,6 +637,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
 		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
 
+		// ensure the cachedir exists
+		if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
+			return fmt.Errorf("failed to create shared cachedir: %w", err)
+		}
+
 	}
 
 	// if no size is specified, let's go for a default

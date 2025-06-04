@@ -43,6 +43,7 @@ melange build [flags]
       --dependency-log string                                   log dependencies to a specified file
       --disk string                                             disk size to use for builds
       --empty-workspace                                         whether the build workspace should be empty
+  -e, --env strings                                             set environment variables (format: KEY=VALUE or KEY)
       --env-file string                                         file to use for preloaded environment variables
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
       --git-commit string                                       commit hash of the git repository containing the build config file (defaults to detecting HEAD)

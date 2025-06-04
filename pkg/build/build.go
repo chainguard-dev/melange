@@ -124,6 +124,7 @@ type Build struct {
 	CacheSource           string
 	StripOriginName       bool
 	EnvFile               string
+	EnvVars               []string
 	VarsFile              string
 	Runner                container.Runner
 	containerConfig       *container.Config
@@ -216,6 +217,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		parsedCfg, err := config.ParseConfiguration(ctx,
 			b.ConfigFile,
 			config.WithEnvFileForParsing(b.EnvFile),
+			config.WithEnvVarsForParsing(b.EnvVars),
 			config.WithVarsFileForParsing(b.VarsFile),
 			config.WithDefaultCPU(b.DefaultCPU),
 			config.WithDefaultCPUModel(b.DefaultCPUModel),

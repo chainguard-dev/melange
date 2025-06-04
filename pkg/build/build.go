@@ -822,6 +822,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	b.WorkspaceDirFS = apkofs.DirFS(b.WorkspaceDir)
 
+	// Retreive the os-release information from the runner
+	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve release data: %w", err)
+	}
+
 	// Apply xattrs to files in the new in-memory filesystem
 	for path, attrs := range xattrs {
 		for attr, data := range attrs {
@@ -905,14 +911,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	for _, sp := range b.Configuration.Subpackages {
 		spSBOM := b.SBOMGroup.Document(sp.Name)
-		spdxDoc := spSBOM.ToSPDX(ctx)
+		spdxDoc := spSBOM.ToSPDX(ctx, releaseData)
 		log.Infof("writing SBOM for subpackage %s", sp.Name)
 		if err := b.writeSBOM(sp.Name, &spdxDoc); err != nil {
 			return fmt.Errorf("writing SBOM for %s: %w", sp.Name, err)
 		}
 	}
 
-	spdxDoc := pSBOM.ToSPDX(ctx)
+	spdxDoc := pSBOM.ToSPDX(ctx, releaseData)
 	log.Infof("writing SBOM for %s", pkg.Name)
 	if err := b.writeSBOM(pkg.Name, &spdxDoc); err != nil {
 		return fmt.Errorf("writing SBOM for %s: %w", pkg.Name, err)

@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"strings"
 
 	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/config"
 	"golang.org/x/sys/unix"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -228,6 +230,25 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 // This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
 func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Bubblewrap runner.
+func (bw *bubblewrap) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error) {
+	// Read the os-release through a bubblewrap command
+	execCmd := bw.cmd(ctx, cfg, false, nil, "cat", "/etc/os-release")
+
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Warn)
+	defer stderr.Close()
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+
+	execCmd.Stdout = bufWriter
+	execCmd.Stderr = stderr
+	execCmd.Run()
+
+	return config.ParseReleaseData(&buf)
 }
 
 type bubblewrapOCILoader struct {

@@ -44,6 +44,8 @@ type Runner interface {
 	// The io.ReadCloser itself is a tar stream, which can be written to an io.Writer as is,
 	// or passed to an fs.FS processor
 	WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error)
+	// GetReleaseData returns the release data for the container's OS (os-release)
+	GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error)
 }
 
 type Loader interface {

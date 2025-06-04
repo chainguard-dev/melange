@@ -7,7 +7,9 @@ import (
 	"hash/fnv"
 	"time"
 
+	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"github.com/chainguard-dev/clog"
 	"sigs.k8s.io/release-utils/version"
 )
 
@@ -38,8 +40,17 @@ func NewDocument() *Document {
 }
 
 // ToSPDX returns the Document converted to its SPDX representation.
-func (d Document) ToSPDX(ctx context.Context) spdx.Document {
+func (d Document) ToSPDX(ctx context.Context, releaseData *apko_build.ReleaseData) spdx.Document {
 	spdxPkgs := make([]spdx.Package, 0, len(d.Packages))
+
+	// Start off by adding the OperatingSystem package to the list of packages.
+	if releaseData != nil {
+		spdxPkgs = append(spdxPkgs, d.createOperatingSystemPackage(releaseData))
+	} else {
+		log := clog.FromContext(ctx)
+		log.Warn("No release data provided, not adding OperatingSystem package to SPDX document")
+	}
+
 	for _, p := range d.Packages {
 		spdxPkgs = append(spdxPkgs, p.ToSPDX(ctx))
 	}
@@ -90,6 +101,20 @@ func (d Document) getSPDXNamespace() string {
 	hexHash := hex.EncodeToString(h.Sum(nil))
 
 	return "https://spdx.org/spdxdocs/chainguard/melange/" + hexHash
+}
+
+func (d Document) createOperatingSystemPackage(os *apko_build.ReleaseData) spdx.Package {
+	return spdx.Package{
+		ID:               "SPDXRef-OperatingSystem",
+		Name:             os.ID,
+		Version:          os.VersionID,
+		FilesAnalyzed:    false,
+		Description:      "Operating System",
+		LicenseConcluded: spdx.NOASSERTION,
+		LicenseDeclared:  spdx.NOASSERTION,
+		DownloadLocation: spdx.NOASSERTION,
+		PrimaryPurpose:   "OPERATING-SYSTEM",
+	}
 }
 
 // AddPackageAndSetDescribed adds a package to the document and sets it as the

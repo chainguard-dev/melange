@@ -44,6 +44,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/license"
 	"github.com/chainguard-dev/clog"
 	"github.com/charmbracelet/log"
@@ -456,6 +457,35 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	}
 
 	return os.Open(outFile.Name())
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Qemu runner.
+func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error) {
+	// in case of buildless pipelines we just nop
+	if cfg.SSHKey == nil {
+		return nil, nil
+	}
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err := sendSSHCommand(ctx,
+		cfg.WorkspaceClient,
+		cfg,
+		nil,
+		nil,
+		bufWriter,
+		false,
+		[]string{"sh", "-c", "cat /etc/os-release"},
+	)
+
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to get os-release: %v", err)
+		return nil, err
+	}
+
+	// Parse the os-release contents
+	return config.ParseReleaseData(&buf)
 }
 
 type qemuOCILoader struct{}

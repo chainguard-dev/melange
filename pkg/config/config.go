@@ -17,7 +17,9 @@ package config
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -34,7 +36,6 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	purl "github.com/package-url/packageurl-go"
 
@@ -524,6 +525,14 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
+// SHA1 generates a digest based on the text provided
+// Returns a hex encoded string
+func SHA1(text string) string {
+	algorithm := sha1.New()
+	algorithm.Write([]byte(text))
+	return hex.EncodeToString(algorithm.Sum(nil))
+}
+
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
@@ -566,7 +575,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGeneric
 		namespace = ""
 		name = strings.TrimSuffix(trimmedPath, ".git")
-		downloadLocation = spdx.NOASSERTION
+		downloadLocation = fmt.Sprintf("https://tarballs.chainguard.dev/%s-%s.tar.gz", SHA1(name), ref)
 	}
 
 	// Prefer tag to commit, but use only ONE of these.

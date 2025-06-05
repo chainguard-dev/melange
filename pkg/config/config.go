@@ -575,7 +575,8 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGeneric
 		namespace = ""
 		name = strings.TrimSuffix(trimmedPath, ".git")
-		downloadLocation = fmt.Sprintf("https://tarballs.chainguard.dev/%s-%s.tar.gz", SHA256(name), ref)
+		// Use first letter of name as a directory to avoid a single huge bucket of tarballs
+		downloadLocation = fmt.Sprintf("https://tarballs.cgr.dev/%s/%s-%s.tar.gz", name[:1], SHA256(name), ref)
 	}
 
 	// Prefer tag to commit, but use only ONE of these.

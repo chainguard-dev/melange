@@ -17,7 +17,7 @@ package config
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -525,10 +525,10 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
-// SHA1 generates a digest based on the text provided
+// SHA256 generates a digest based on the text provided
 // Returns a hex encoded string
-func SHA1(text string) string {
-	algorithm := sha1.New()
+func SHA256(text string) string {
+	algorithm := sha256.New()
 	algorithm.Write([]byte(text))
 	return hex.EncodeToString(algorithm.Sum(nil))
 }
@@ -575,7 +575,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGeneric
 		namespace = ""
 		name = strings.TrimSuffix(trimmedPath, ".git")
-		downloadLocation = fmt.Sprintf("https://tarballs.chainguard.dev/%s-%s.tar.gz", SHA1(name), ref)
+		downloadLocation = fmt.Sprintf("https://tarballs.chainguard.dev/%s-%s.tar.gz", SHA256(name), ref)
 	}
 
 	// Prefer tag to commit, but use only ONE of these.

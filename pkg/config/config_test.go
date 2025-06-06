@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
@@ -779,7 +778,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "https://tarballs.cgr.dev/c/96d75acab51420a1b54afcc15734f3c5e67aee89a2e73f226000bc308ff09789-v3.2.1.tar.gz",
 			},
 			expectError: false,
 		},
@@ -802,7 +801,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "abcdef0123456789abcdef0123456789abcdef01",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "https://tarballs.cgr.dev/c/96d75acab51420a1b54afcc15734f3c5e67aee89a2e73f226000bc308ff09789-abcdef0123456789abcdef0123456789abcdef01.tar.gz",
 			},
 			expectError: false,
 		},
@@ -825,7 +824,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git+https://git.example.com/custom-org/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "https://tarballs.cgr.dev/c/96d75acab51420a1b54afcc15734f3c5e67aee89a2e73f226000bc308ff09789-abcdef0123456789abcdef0123456789abcdef01.tar.gz",
 			},
 			expectError: false,
 		},
@@ -848,7 +847,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 					Version:    "v3.2.1",
 					Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": "git://git.example.com/custom-project@abcdef0123456789abcdef0123456789abcdef01"}),
 				},
-				DownloadLocation: spdx.NOASSERTION,
+				DownloadLocation: "https://tarballs.cgr.dev/c/a37e698130227f6921f1963616a45dc5337f7249cc00c53e6b80f5a44bf01fd7-abcdef0123456789abcdef0123456789abcdef01.tar.gz",
 			},
 			expectError: false,
 		},

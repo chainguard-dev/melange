@@ -83,6 +83,14 @@ func (th *testHandle) BaseDependencies() config.Dependencies {
 	return th.cfg.Package.Dependencies
 }
 
+func (th *testHandle) InstalledPackages() map[string]string {
+	return map[string]string{}
+}
+
+func (th *testHandle) PkgResolver() *apk.PkgResolver {
+	return nil
+}
+
 // TODO: Loose coupling.
 func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile string) *testHandle {
 	t.Helper()
@@ -158,6 +166,8 @@ func TestExecableSharedObjects(t *testing.T) {
 			"so:libpsx.so.2",
 		},
 		Provides: []string{
+			"so-ver:libcap.so.2=2.69-r0",
+			"so-ver:libpsx.so.2=2.69-r0",
 			"so:libcap.so.2=2",
 			"so:libpsx.so.2=2",
 		},
@@ -195,6 +205,7 @@ func TestVendoredPkgConfig(t *testing.T) {
 			"pc:libecpg_compat=4604-r0",
 			"pc:libpgtypes=4604-r0",
 			"pc:libpq=4604-r0",
+			"so-ver:libecpg_compat.so.3=4604-r0",
 			"so:libecpg_compat.so.3=3",
 		},
 	}
@@ -267,7 +278,10 @@ func TestUnstableSonames(t *testing.T) {
 			"so:libaws-checksums.so.1.0.0",
 			"so:libc.so.6",
 		},
-		Provides: []string{"so:libaws-c-s3.so.0unstable=0"},
+		Provides: []string{
+			"so-ver:libaws-c-s3.so.0unstable=0.4.9-r0",
+			"so:libaws-c-s3.so.0unstable=0",
+		},
 	}
 
 	if diff := cmp.Diff(want, got); diff != "" {

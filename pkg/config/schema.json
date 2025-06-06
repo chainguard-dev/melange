@@ -657,6 +657,10 @@
         "no-commands": {
           "type": "boolean",
           "description": "Optional: Mark this package as not providing any executables"
+        },
+        "no-versioned-shlib-deps": {
+          "type": "boolean",
+          "description": "Optional: Don't generate versioned depends for shared libraries"
         }
       },
       "additionalProperties": false,

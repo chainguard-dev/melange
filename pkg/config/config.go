@@ -90,6 +90,8 @@ type PackageOption struct {
 	NoDepends bool `json:"no-depends,omitempty" yaml:"no-depends,omitempty"`
 	// Optional: Mark this package as not providing any executables
 	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
+	// Optional: Don't generate versioned depends for shared libraries
+	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
 }
 
 type Checks struct {

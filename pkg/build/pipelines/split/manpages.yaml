@@ -1,15 +1,12 @@
 name: Split manpages
-
 needs:
   packages:
     - busybox
-
 inputs:
   package:
     description: |
       The package to split manpages from
     required: false
-
 pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"
@@ -24,4 +21,14 @@ pipeline:
       if [ -d "$PACKAGE_DIR/usr/share/man" ]; then
         mkdir -p "${{targets.contextdir}}/usr/share"
         mv "$PACKAGE_DIR/usr/share/man" "${{targets.contextdir}}/usr/share"
+      fi
+
+      if [ -d "$PACKAGE_DIR/usr/local/share/man" ]; then
+        mkdir -p "${{targets.contextdir}}/usr/share"
+        mv "$PACKAGE_DIR/usr/local/share/man" "${{targets.contextdir}}/usr/share"
+      fi
+
+      if [ -d "$PACKAGE_DIR/usr/man" ]; then
+        mkdir -p "${{targets.contextdir}}/usr/share"
+        mv "$PACKAGE_DIR/usr/man" "${{targets.contextdir}}/usr/share"
       fi

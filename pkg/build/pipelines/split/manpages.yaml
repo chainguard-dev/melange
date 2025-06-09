@@ -1,12 +1,15 @@
 name: Split manpages
+
 needs:
   packages:
     - busybox
+
 inputs:
   package:
     description: |
       The package to split manpages from
     required: false
+
 pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"

@@ -24,7 +24,7 @@ pipeline:
         srcdir="${{targets.destdir}}"
       fi
 
-      if [ "$srcdir" == "${{targets.contextdir}}" ]; then
+      if [ "$srcdir" = "${{targets.contextdir}}" ]; then
         echo "ERROR: Package can not split files from itself!"
         exit 1
       fi

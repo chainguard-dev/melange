@@ -67,6 +67,7 @@ jobs:
           - dpkg
           #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
           - gitsign
+          - grafana-image-renderer
           - guac
           - mdbook
           - s3cmd

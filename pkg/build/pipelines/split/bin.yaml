@@ -17,22 +17,22 @@ pipeline:
       pkgnobindir="${{targets.outdir}}/$pkgnobin"
 
       if [ -n "${{inputs.package}}" ]; then
-        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
+        srcdir="${{targets.outdir}}/${{inputs.package}}"
       elif [ "$pkgname" != "$pkgnobin" ] && [ -d "$pkgnobindir" ]; then
-        PACKAGE_DIR="$pkgnobindir"
+        srcdir="$pkgnobindir"
       else
-        PACKAGE_DIR="${{targets.destdir}}"
+        srcdir="${{targets.destdir}}"
       fi
 
-      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+      if [ "$srcdir" == "${{targets.contextdir}}" ]; then
         echo "ERROR: Package can not split files from itself!"
         exit 1
       fi
 
       dir=usr/bin
-      if [ -e "$PACKAGE_DIR/$dir" ] || [ -L "$PACKAGE_DIR/$dir" ]; then
-        d="${{targets.contextdir}}/${i%/*}" # dirname $dir
-        mkdir -p "$d"
-        mv "$PACKAGE_DIR/$dir" "$d"
-        rmdir "$PACKAGE_DIR/${i%/*}" 2>/dev/null || :
+      if [ -e "$srcdir/$dir" ] || [ -L "$srcdir/$dir" ]; then
+        destdir="${{targets.contextdir}}/${i%/*}" # dirname $dir
+        mkdir -p "$destdir"
+        mv "$srcdir/$dir" "$destdir"
+        rmdir "$srcdir/${i%/*}" 2>/dev/null || :
       fi

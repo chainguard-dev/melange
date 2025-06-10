@@ -194,6 +194,11 @@ var linterMap = map[string]linter{
 		Explain:         "Move binary to /usr/bin",
 		defaultBehavior: Require,
 	},
+	"cudaruntimelib": {
+		LinterFunc:      allPaths(cudaDriverLibLinter),
+		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. If this library is needed for build-time linking or ldd-check tests, please include a stub library during build or test instead.",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -829,4 +834,14 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 	}
 
 	return nil
+}
+
+var isCudaDriverLibRegex = regexp.MustCompile(`^usr/lib/lib(cuda|nvidia-ml)\.so(\.[0-9]+)*$`)
+
+func cudaDriverLibLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+	if !isCudaDriverLibRegex.MatchString(path) {
+		return nil
+	}
+
+	return fmt.Errorf("CUDA driver-specific library found: %s", path)
 }

@@ -264,6 +264,18 @@ func TestLinters(t *testing.T) {
 		},
 		linter: "usrmerge",
 		pass:   false,
+	}, {
+		dirFunc: mkfile(t, "usr/local/lib64/stubs/libcuda.so"),
+		linter:  "cudaruntimelib",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libnvidia-ml.so"),
+		linter:  "cudaruntimelib",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libcuda.so.560.35.05"),
+		linter:  "cudaruntimelib",
+		pass:    false,
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

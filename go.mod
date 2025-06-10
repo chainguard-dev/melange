@@ -6,13 +6,13 @@ require (
 	chainguard.dev/apko v0.27.9
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.17
+	github.com/chainguard-dev/yam v0.2.19
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v28.1.1+incompatible
 	github.com/docker/docker v28.1.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.3
-	github.com/go-git/go-git/v5 v5.16.0
+	github.com/go-git/go-git/v5 v5.16.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.5
 	github.com/google/go-github/v54 v54.0.0

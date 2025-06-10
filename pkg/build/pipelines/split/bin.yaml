@@ -30,6 +30,10 @@ pipeline:
       fi
 
       dir=usr/bin
+      if [ ! -d "$srcdir/$dir" ]; then
+        echo "$srcdir/$dir: not a directory"
+        exit 1
+      fi
       if [ -e "$srcdir/$dir" ] || [ -L "$srcdir/$dir" ]; then
         destdir="${{targets.contextdir}}/${i%/*}" # dirname $dir
         mkdir -p "$destdir"

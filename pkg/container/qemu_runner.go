@@ -425,7 +425,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
-	retrieveCommand := "cd /mount/home/build && tar cvpf - --xattrs --acls --exclude='*fifo*' melange-out"
+	retrieveCommand := "cd /mount/home/build && find melange-out -type p -delete 2>/dev/null || true && tar cvpf - --xattrs --acls melange-out"
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
 	for _, v := range extraFiles {

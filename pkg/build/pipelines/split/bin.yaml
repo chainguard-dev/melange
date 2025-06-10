@@ -38,3 +38,6 @@ pipeline:
       destdir="${{targets.contextdir}}/$dir"
       mkdir -p "$destdir"
       mv "$srcdir/$dir"/* "$destdir/"
+
+      # Remove now-empty directories from source
+      find "$srcdir/${dir%%/*}" -depth -type d -mindepth 1 -exec rmdir {} \;

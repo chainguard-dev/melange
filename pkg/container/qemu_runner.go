@@ -208,6 +208,9 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			return err
 		}
 	}
+	session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+
 	// Get terminal type from environment
 	termType := os.Getenv("TERM")
 	if termType == "" {
@@ -1098,6 +1101,8 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 			return err
 		}
 	}
+	session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
 
 	session.Stderr = stderr
 	session.Stdout = stdout

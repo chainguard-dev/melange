@@ -196,7 +196,7 @@ var linterMap = map[string]linter{
 	},
 	"cudaruntimelib": {
 		LinterFunc:      allPaths(cudaDriverLibLinter),
-		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. If this library is needed for build-time linking or ldd-check tests, please include a stub library during build or test instead.",
+		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. Installing them in an image could override the host libraries and break GPU support. If this library is needed for build-time linking or ldd-check tests, please use a package containing a stub library instead. For libcuda.so, use nvidia-cuda-cudart-$cuda_version. For libnvidia-ml.so, use nvidia-cuda-nvml-dev-$cuda_version.",
 		defaultBehavior: Warn,
 	},
 }

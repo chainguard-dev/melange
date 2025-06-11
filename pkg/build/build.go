@@ -1283,17 +1283,9 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 				return fmt.Errorf("unable to create symlink %s -> %s: %w", hdr.Name, hdr.Linkname, err)
 			}
 
-			if err := fs.Chown(hdr.Name, user, group); err != nil {
-				return fmt.Errorf("unable to chown symlink %s -> %s: %w", hdr.Name, hdr.Linkname, err)
-			}
-
 		case tar.TypeLink:
 			if err := fs.Link(hdr.Linkname, hdr.Name); err != nil {
 				return err
-			}
-
-			if err := fs.Chown(hdr.Name, user, group); err != nil {
-				return fmt.Errorf("unable to chown link %s -> %s: %w", hdr.Name, hdr.Linkname, err)
 			}
 
 		default:

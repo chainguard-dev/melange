@@ -1222,6 +1222,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			return err
 		}
 
+		if strings.HasPrefix(hdr.Name, "./") {
+			hdr.Name = strings.TrimPrefix(hdr.Name, "./")
+		}
+
 		var group, user int
 		fi := hdr.FileInfo()
 		stat, ok := fi.Sys().(*tar.Header)
@@ -1243,8 +1247,9 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			if err := fs.MkdirAll(hdr.Name, hdr.FileInfo().Mode().Perm()); err != nil {
 				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
 			}
+
 			if err := fs.Chown(hdr.Name, user, group); err != nil {
-				return err
+				return fmt.Errorf("unable to chown directory %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeReg:
@@ -1266,7 +1271,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 			if err := fs.Chown(hdr.Name, user, group); err != nil {
-				return err
+				return fmt.Errorf("unable to chown file %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeSymlink:
@@ -1279,7 +1284,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 			if err := fs.Chown(hdr.Name, user, group); err != nil {
-				return err
+				return fmt.Errorf("unable to chown symlink %s -> %s: %w", hdr.Name, hdr.Linkname, err)
 			}
 
 		case tar.TypeLink:
@@ -1288,7 +1293,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 			if err := fs.Chown(hdr.Name, user, group); err != nil {
-				return err
+				return fmt.Errorf("unable to chown link %s -> %s: %w", hdr.Name, hdr.Linkname, err)
 			}
 
 		default:

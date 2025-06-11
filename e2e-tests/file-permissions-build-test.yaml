@@ -1,0 +1,91 @@
+package:
+  name: test-permissions
+  version: "1.0.0"
+  epoch: 0
+  description: Test setting file and directory ownership inside of the package.
+  copyright:
+    - license: GPL-2.0-or-later
+  scriptlets:
+    pre-install: |
+      #!/bin/sh
+      ${{vars.addUserGroups}}
+
+      exit 0
+  dependencies:
+    runtime:
+      - busybox
+      - wolfi-baselayout
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - wolfi-base
+  accounts:
+    run-as: 0
+
+pipeline:
+  - runs: |
+      ${{vars.addUserGroups}}
+      d=${{targets.destdir}}
+
+      mkdir -p $d/var/spool/onedir $d/var/spool/twodir $d/usr/bin
+      chown tuser1:tgroup2 $d/var/spool/onedir
+
+      cd "$d/usr/bin" 
+      touch file1 file2 file3 file4
+      chown 0:tgroup1 file1
+      chown 0:tgroup2 file2
+      chown tuser1:0  file3
+      chown tuser2:0  file4
+
+
+vars:
+  addUserGroups: |
+      addgroup -S tgroup1
+      addgroup -S tgroup2
+      adduser -S -H -h /var/spool/onedir -G tgroup1 -g tgroup1 tuser1
+      addgroup tuser1 mail
+      adduser -S -H -h /var/mail/twodir -s /sbin/nologin -G tgroup2 -g tuser2 tuser2
+
+test:
+  environment:
+    accounts:
+      run-as: 0
+  pipeline:
+    - name: test-permissions
+      runs: |
+        declare -A EXPECT=(
+          ["/var/spool/onedir"]="tuser1:tgroup2"
+          ["/usr/bin/file1"]="root:tgroup1"
+          ["/usr/bin/file2"]="root:tgroup2"
+          ["/usr/bin/file3"]="tuser1:root"
+          ["/usr/bin/file4"]="tuser2:root"
+        )
+        fail=0
+        for path in "${!EXPECT[@]}"; do
+          if [ ! -e "$path" ]; then
+            echo "Missing: $path"
+            fail=1
+            continue
+          fi
+
+          expected=${EXPECT[$path]}
+          actual=$(stat -c '%U:%G' "$path")
+          if [ "$actual" != "$expected" ]; then
+            echo "Ownership mismatch on $path"
+            echo "  expected: $expected"
+            echo "  actual:   $actual"
+            fail=1
+          else
+            echo "$path - $actual"
+          fi
+        done
+
+        if [ $fail -ne 0 ]; then
+          echo "One or more ownership checks failed." >&2
+          exit 1
+        else
+          echo "All ownerships are correct."
+          exit 0
+        fi

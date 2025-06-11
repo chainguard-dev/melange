@@ -27,7 +27,8 @@ pipeline:
         "$PACKAGE_DIR/usr/man"; do
 
         if [ -d "$mandir" ]; then
-          mkdir -p "${{targets.contextdir}}/usr/share"
-          mv "$mandir" "${{targets.contextdir}}/usr/share/"
+          mkdir -p "${{targets.contextdir}}/usr/share/man"
+          mv "$mandir"/* "${{targets.contextdir}}/usr/share/man/"
+          rmdir --parents --ignore-fail-on-non-empty "$mandir"
         fi
       done

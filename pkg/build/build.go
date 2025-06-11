@@ -1222,9 +1222,8 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			return err
 		}
 
-		if strings.HasPrefix(hdr.Name, "./") {
-			hdr.Name = strings.TrimPrefix(hdr.Name, "./")
-		}
+		// Remove the leading "./" from LICENSE files in QEMU workspaces
+		hdr.Name = strings.TrimPrefix(hdr.Name, "./")
 
 		var group, user int
 		fi := hdr.FileInfo()

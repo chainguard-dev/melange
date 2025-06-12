@@ -1363,9 +1363,12 @@ func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.File
 		}
 		mode := fi.Mode()
 
-		owners[relPath] = map[string]int{}
-		stat, ok := fi.Sys().(*syscall.Stat_t)
-		if ok {
+		// Store ownership info, defaulting to root when unavailable
+		owners[relPath] = map[string]int{
+			"group": 0,
+			"user":  0,
+		}
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
 			owners[relPath]["group"] = int(stat.Gid)
 			owners[relPath]["user"] = int(stat.Uid)
 		}

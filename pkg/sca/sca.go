@@ -292,7 +292,9 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 // returned.  We can't do versioned "depends:" unless there is a
 // matching "provides:".
 //
-// If no match is found, that's an error.
+// If no match is found, then we assume that the shared library is
+// vendored by the package being built.  In this case, we return an
+// empty version string.
 func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
 	log := clog.FromContext(ctx)
 
@@ -339,6 +341,14 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 		// This is an unknown error, so we'd better return it.
 		return "", err
 	}
+
+	// ResolvePackage will return *all* packages that provide
+	// shlib, including those that have been obsoleted.  For that
+	// reason, we need sort the list of candidates by build time,
+	// making sure that we're always considering the newest ones.
+	slices.SortFunc(candidates, func(p1 *apk.RepositoryPackage, p2 *apk.RepositoryPackage) int {
+		return p2.BuildTime.Compare(p1.BuildTime)
+	})
 
 	// Obtain the list of packages currently installed in the
 	// build environment.
@@ -415,7 +425,21 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 		}
 	}
 
-	return "", fmt.Errorf("could not find suitable package providing library so:%s", shlib)
+	// If we're here, then one of the following scenarios happened:
+	//
+	// - The list of candidates is empty.  This happens when we're
+	//   dealing with a vendored shared library that isn't
+	//   provided by any of our packages.  Just return an empty
+	//   version string.
+	//
+	// - There is a list of candidates, but none of them provides
+	//   the version of shared library we're interested in.  This
+	//   has been seen to happen when the package being built uses
+	//   a vendored library that *is* provided by one of our
+	//   packages, but the vendored version is higher than the
+	//   non-vendored one.  This is also a case of vendorization,
+	//   so we return an empty version string.
+	return "", nil
 }
 
 func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, extraLibDirs []string) error {

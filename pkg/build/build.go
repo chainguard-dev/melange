@@ -30,6 +30,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -812,8 +813,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	// Store xattrs and modes for use after the workspace is loaded into memory
-	xattrs, modes, err := storeXattrs(b.WorkspaceDir)
+	// Store metadata for use after the workspace is loaded into memory
+	xattrs, modes, owners, err := storeMetadata(b.WorkspaceDir)
 	if err != nil {
 		return fmt.Errorf("failed to store workspace xattrs: %w", err)
 	}
@@ -834,6 +835,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	for path, mode := range modes {
 		if err := b.WorkspaceDirFS.Chmod(path, mode); err != nil {
 			log.Warnf("failed to apply mode %04o (%s) to %s: %v", mode, mode, path, err)
+		}
+	}
+
+	for path, owner := range owners {
+		group := owner["group"]
+		user := owner["user"]
+		if err := b.WorkspaceDirFS.Chown(path, user, group); err != nil {
+			log.Warnf("failed to change ownership of %s to %d:%d", path, user, group)
 		}
 	}
 
@@ -1213,6 +1222,16 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			return err
 		}
 
+		// Remove the leading "./" from LICENSE files in QEMU workspaces
+		hdr.Name = strings.TrimPrefix(hdr.Name, "./")
+
+		var group, user int
+		fi := hdr.FileInfo()
+		if stat, ok := fi.Sys().(*tar.Header); ok {
+			group = int(stat.Gid)
+			user = int(stat.Uid)
+		}
+
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if fi, err := fs.Stat(hdr.Name); err == nil && fi.Mode()&os.ModeSymlink != 0 {
@@ -1225,6 +1244,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 			if err := fs.MkdirAll(hdr.Name, hdr.FileInfo().Mode().Perm()); err != nil {
 				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
+			}
+
+			if err := fs.Chown(hdr.Name, user, group); err != nil {
+				return fmt.Errorf("unable to chown directory %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeReg:
@@ -1243,6 +1266,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 			if err := f.Close(); err != nil {
 				return fmt.Errorf("unable to close file %s: %w", hdr.Name, err)
+			}
+
+			if err := fs.Chown(hdr.Name, user, group); err != nil {
+				return fmt.Errorf("unable to chown file %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeSymlink:
@@ -1313,18 +1340,20 @@ var xattrIgnoreList = map[string]bool{
 	"com.docker.grpcfuse.ownership": true,
 }
 
-// Record on-disk xattrs and mode bits set during package builds in order to apply them in the new in-memory filesystem
-// This will allow in-memory and bind mount runners to persist xattrs correctly
-func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, error) {
+// Record on-disk metadata set during package builds in order to apply them in the new in-memory filesystem
+// This will allow in-memory and bind mount runners to persist mode bits, ownership, and xattrs correctly
+func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, map[string]map[string]int, error) {
 	xattrs := make(map[string]map[string][]byte)
 	modes := make(map[string]fs.FileMode)
+	owners := make(map[string]map[string]int)
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
-			return nil
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
 		}
 
 		fi, err := d.Info()
@@ -1333,9 +1362,18 @@ func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMo
 		}
 		mode := fi.Mode()
 
-		relPath, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
+		// Store ownership info, defaulting to root when unavailable
+		owners[relPath] = map[string]int{
+			"group": 0,
+			"user":  0,
+		}
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+			owners[relPath]["group"] = int(stat.Gid)
+			owners[relPath]["user"] = int(stat.Uid)
+		}
+
+		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
 		}
 
 		// If the path is within the melange-out directory, store the relative path and mode bits
@@ -1378,7 +1416,7 @@ func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMo
 		return nil
 	})
 
-	return xattrs, modes, err
+	return xattrs, modes, owners, err
 }
 
 // stringsFromByteSlice converts a sequence of attributes to a []string.

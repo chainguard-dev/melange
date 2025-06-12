@@ -839,10 +839,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	for path, owner := range owners {
-		group := owner["group"]
-		user := owner["user"]
-		if err := b.WorkspaceDirFS.Chown(path, user, group); err != nil {
-			log.Warnf("failed to change ownership of %s to %d:%d", path, user, group)
+		uid := owner["uid"]
+		gid := owner["gid"]
+		if err := b.WorkspaceDirFS.Chown(path, uid, gid); err != nil {
+			log.Warnf("failed to change ownership of %s to %d:%d", path, uid, gid)
 		}
 	}
 
@@ -1225,11 +1225,11 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 		// Remove the leading "./" from LICENSE files in QEMU workspaces
 		hdr.Name = strings.TrimPrefix(hdr.Name, "./")
 
-		var group, user int
+		var uid, gid int
 		fi := hdr.FileInfo()
 		if stat, ok := fi.Sys().(*tar.Header); ok {
-			group = int(stat.Gid)
-			user = int(stat.Uid)
+			uid = int(stat.Uid)
+			gid = int(stat.Gid)
 		}
 
 		switch hdr.Typeflag {
@@ -1246,7 +1246,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
 			}
 
-			if err := fs.Chown(hdr.Name, user, group); err != nil {
+			if err := fs.Chown(hdr.Name, uid, gid); err != nil {
 				return fmt.Errorf("unable to chown directory %s: %w", hdr.Name, err)
 			}
 
@@ -1268,7 +1268,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 				return fmt.Errorf("unable to close file %s: %w", hdr.Name, err)
 			}
 
-			if err := fs.Chown(hdr.Name, user, group); err != nil {
+			if err := fs.Chown(hdr.Name, uid, gid); err != nil {
 				return fmt.Errorf("unable to chown file %s: %w", hdr.Name, err)
 			}
 
@@ -1364,12 +1364,12 @@ func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.File
 
 		// Store ownership info, defaulting to root when unavailable
 		owners[relPath] = map[string]int{
-			"group": 0,
-			"user":  0,
+			"uid": 0,
+			"gid": 0,
 		}
 		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
-			owners[relPath]["group"] = int(stat.Gid)
-			owners[relPath]["user"] = int(stat.Uid)
+			owners[relPath]["uid"] = int(stat.Uid)
+			owners[relPath]["gid"] = int(stat.Gid)
 		}
 
 		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {

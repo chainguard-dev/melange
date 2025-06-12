@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/container"
@@ -338,7 +339,13 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		} else if err != nil {
 			return err
 		}
+
 		defer bc.Close(ctx)
+
+		ver := bc.Configuration.Package.Version
+		if _, err := apk.ParseVersion(ver); err != nil {
+			return fmt.Errorf("Unable to parse version '%s' for %s: %v", ver, bc.ConfigFile, err)
+		}
 
 		bcs = append(bcs, bc)
 	}

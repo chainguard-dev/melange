@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"io"
@@ -25,6 +26,7 @@ func TestBuild_BuildPackage(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedVersion string
+		buildErrMatch   *regexp.Regexp
 	}{
 		{
 			name:            "crane",
@@ -33,6 +35,11 @@ func TestBuild_BuildPackage(t *testing.T) {
 		{
 			name:            "7zip-two-fetches",
 			expectedVersion: "2301-r3",
+		},
+		{
+			name:            "bogus-version",
+			expectedVersion: "1.0.0_b6",
+			buildErrMatch:   regexp.MustCompile("parse version"),
 		},
 	}
 
@@ -68,6 +75,11 @@ func TestBuild_BuildPackage(t *testing.T) {
 				}
 
 				if err := b.BuildPackage(ctx); err != nil {
+					errStr := fmt.Sprintf("%s", err)
+					if tt.buildErrMatch != nil && tt.buildErrMatch.MatchString(errStr) {
+						t.Logf("%s build failed as expected", tt.name)
+						return
+					}
 					t.Fatalf("building package: %v", err)
 				}
 

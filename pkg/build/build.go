@@ -254,7 +254,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	b.SBOMGroup.SetCreatedTime(b.SourceDateEpoch)
 
 	// Check that we actually can run things in containers.
-	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
+	if b.Runner != nil && !b.Runner.TestUsability(ctx, b.containerConfig) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", b.Runner.Name(), GetAllRunners())
 	}
 

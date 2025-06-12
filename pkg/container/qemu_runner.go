@@ -323,10 +323,10 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 
 // TestUsability determines if the Qemu runner can be used
 // as a microvm runner.
-func (bw *qemu) TestUsability(ctx context.Context) bool {
+func (bw *qemu) TestUsability(ctx context.Context, cfg *Config) bool {
 	log := clog.FromContext(ctx)
 
-	arch := apko_types.Architecture(runtime.GOARCH)
+	arch := cfg.Arch
 	if _, err := exec.LookPath(fmt.Sprintf("qemu-system-%s", arch.ToAPK())); err != nil {
 		log.Warnf("cannot use qemu for microvms: qemu-system-%s not found on $PATH", arch.ToAPK())
 		return false

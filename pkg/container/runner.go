@@ -30,7 +30,7 @@ type Debugger interface {
 type Runner interface {
 	Close() error
 	Name() string
-	TestUsability(ctx context.Context) bool
+	TestUsability(ctx context.Context, cfg *Config) bool
 	// OCIImageLoader returns a Loader that will load an OCI image from a stream.
 	// It should return the Loader, which will be used to load the provided image
 	// as a tar stream into the Loader. That image will be used as the root when StartPod() the container.

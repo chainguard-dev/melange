@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -297,6 +298,11 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 // empty version string.
 func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
 	log := clog.FromContext(ctx)
+
+	// Feature flag to disable versioned shlib dependencies.
+	if os.Getenv("MELANGE_VERSIONED_SHLIB_DEPENDS") == "" {
+		return "", nil
+	}
 
 	if hdl.Options().NoVersionedShlibDeps {
 		// This package does not care about versioned shlib

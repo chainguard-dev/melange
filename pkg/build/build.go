@@ -1227,8 +1227,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 		var group, user int
 		fi := hdr.FileInfo()
-		stat, ok := fi.Sys().(*tar.Header)
-		if ok {
+		if stat, ok := fi.Sys().(*tar.Header); ok {
 			group = int(stat.Gid)
 			user = int(stat.Uid)
 		}

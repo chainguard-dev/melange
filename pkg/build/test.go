@@ -184,43 +184,6 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	return ref, nil
 }
 
-func (t *Test) OverlayBinSh(suffix string) error {
-	if t.BinShOverlay == "" {
-		return nil
-	}
-
-	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-
-	targetPath := filepath.Join(guestDir, "bin", "sh")
-
-	inF, err := os.Open(t.BinShOverlay)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer inF.Close()
-
-	// We unlink the target first because it might be a symlink.
-	if err := os.Remove(targetPath); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	outF, err := os.Create(targetPath)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(outF, inF); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	if err := os.Chmod(targetPath, 0o755); err != nil {
-		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
-	}
-
-	return nil
-}
-
 // IsTestless returns true if the test context does not actually do any
 // testing.
 func (t *Test) IsTestless() bool {
@@ -331,12 +294,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := t.OverlayBinSh(""); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
 	}
 
 	if t.SourceDir == "" {
@@ -419,9 +376,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
 			if err != nil {
 				return fmt.Errorf("unable to build guest: %w", err)
-			}
-			if err := t.OverlayBinSh(sp.Name); err != nil {
-				return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 			}
 			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
 			if err != nil {

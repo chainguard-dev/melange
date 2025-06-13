@@ -478,41 +478,6 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 	return ignorePatterns, nil
 }
 
-func (b *Build) overlayBinSh() error {
-	if b.BinShOverlay == "" {
-		return nil
-	}
-
-	targetPath := filepath.Join(b.GuestDir, "bin", "sh")
-
-	inF, err := os.Open(b.BinShOverlay)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer inF.Close()
-
-	// We unlink the target first because it might be a symlink.
-	if err := os.Remove(targetPath); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	outF, err := os.Create(targetPath)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(outF, inF); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	if err := os.Chmod(targetPath, 0o755); err != nil {
-		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
-	}
-
-	return nil
-}
-
 // isBuildLess returns true if the build context does not actually do any building.
 // TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
 // in the pipeline.
@@ -740,12 +705,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		cfg.ImgRef = imgRef
 		log.Debugf("ImgRef = %s", cfg.ImgRef)
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := b.overlayBinSh(); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
 
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)

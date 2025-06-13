@@ -60,7 +60,6 @@ func buildCmd() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var dependencyLog string
-	var overlayBinSh string
 	var envFile string
 	var varsFile string
 	var purlNamespace string
@@ -167,7 +166,6 @@ func buildCmd() *cobra.Command {
 				build.WithExtraRepos(extraRepos),
 				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
-				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
@@ -236,7 +234,6 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
-	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringVar(&libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")

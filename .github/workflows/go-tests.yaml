@@ -27,4 +27,4 @@ jobs:
           go-version-file: './go.mod'
 
       - name: Unit Tests
-        run: make unit
+        run: make integration

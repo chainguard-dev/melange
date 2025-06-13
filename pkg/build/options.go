@@ -111,14 +111,6 @@ func WithWorkspaceDir(workspaceDir string) Option {
 	}
 }
 
-// WithGuestDir sets the guest directory to use.
-func WithGuestDir(guestDir string) Option {
-	return func(b *Build) error {
-		b.GuestDir = guestDir
-		return nil
-	}
-}
-
 // WithWorkspaceIgnore sets the workspace ignore rules file to use.
 func WithWorkspaceIgnore(workspaceIgnore string) Option {
 	return func(b *Build) error {

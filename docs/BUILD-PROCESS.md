@@ -74,7 +74,6 @@ persist.
 
 The build process is as follows. The core routine is [`BuildPackage()`](../pkg/build/build.go#L716).
 
-1. Create the temporary working directory, known internally as the "guest directory" or `GuestDir`.
 1. Evaluate each step in the pipeline to see if it has a `needs` section. If so, then add its listed packages to the build time package requirements defined in `environment.contents`.
 1. Use [apko](https://github.com/chainguard-dev/apko) to create a tar stream of the packages listed in `environment.contents` and lay them out onto the workspace directory.
 1. Overlay `/bin/sh`. This is an optimization step, and is not discussed here. Read [Shell Overlay](./SHELL-OVERLAY.md) for more information.

@@ -35,7 +35,6 @@ func test() *cobra.Command {
 	var cacheDir string
 	var cacheSource string
 	var apkCacheDir string
-	var guestDir string
 	var archstrs []string
 	var pipelineDirs []string
 	var extraKeys []string
@@ -69,7 +68,6 @@ func test() *cobra.Command {
 				build.WithTestCacheDir(cacheDir),
 				build.WithTestCacheSource(cacheSource),
 				build.WithTestPackageCacheDir(apkCacheDir),
-				build.WithTestGuestDir(guestDir),
 				build.WithTestExtraKeys(extraKeys),
 				build.WithTestExtraRepos(extraRepos),
 				build.WithExtraTestPackages(extraTestPackages),
@@ -119,7 +117,6 @@ func test() *cobra.Command {
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&testOption, "test-option", []string{}, "build options to enable")
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))

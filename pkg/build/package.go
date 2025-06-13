@@ -453,7 +453,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	// provide the tar writer etc/passwd and etc/group of guest filesystem
-	userinfofs := apkofs.DirFS(pc.Build.GuestDir)
+	userinfofs := pc.Build.GuestFS
 
 	hdl := &SCABuildInterface{
 		PackageBuild: pc,

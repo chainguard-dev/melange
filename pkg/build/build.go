@@ -36,6 +36,7 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
+	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
@@ -101,10 +102,10 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
+	GuestFS apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
-	GuestDir              string
 	SigningKey            string
 	SigningPassphrase     string
 	Namespace             string
@@ -155,6 +156,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
+		GuestFS:         tarfs.New(),
 	}
 
 	for _, opt := range opts {
@@ -275,8 +277,6 @@ func (b *Build) Close(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	errs := []error{}
 	if b.Remove {
-		log.Debugf("deleting guest dir %s", b.GuestDir)
-		errs = append(errs, os.RemoveAll(b.GuestDir))
 		log.Debugf("deleting workspace dir %s", b.WorkspaceDir)
 		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
 		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
@@ -622,18 +622,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	pSBOM.AddPackageAndSetDescribed(apkPkg)
 
-	if b.GuestDir == "" {
-		guestDir, err := os.MkdirTemp(b.Runner.TempDir(), "melange-guest-*")
-		if err != nil {
-			return fmt.Errorf("unable to make guest directory: %w", err)
-		}
-		b.GuestDir = guestDir
-
-		if b.Remove {
-			defer os.RemoveAll(guestDir)
-		}
-	}
-
 	log.Debugf("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
@@ -689,15 +677,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	cfg := b.workspaceConfig(ctx)
 
 	if !b.isBuildLess() {
-		// Prepare guest directory
-		if err := os.MkdirAll(b.GuestDir, 0o755); err != nil {
-			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
-		}
-
-		log.Infof("building workspace in '%s' with apko", b.GuestDir)
-
-		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
-		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, guestFS)
+		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
@@ -902,13 +882,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
 
-	if !b.isBuildLess() {
-		// clean build guest container
-		if err := os.RemoveAll(b.GuestDir); err != nil {
-			log.Warnf("unable to clean guest container: %s", err)
-		}
-	}
-
 	// generate APKINDEX.tar.gz and sign it
 	if b.GenerateIndex {
 		packageDir := filepath.Join(b.OutDir, b.Arch.ToAPK())
@@ -1001,10 +974,6 @@ func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
 func (b *Build) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Debugf("  workspace dir: %s", b.WorkspaceDir)
-
-	if b.GuestDir != "" {
-		log.Debugf("  guest dir: %s", b.GuestDir)
-	}
 }
 
 func (b *Build) summarize(ctx context.Context) {

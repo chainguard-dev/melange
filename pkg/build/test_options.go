@@ -38,14 +38,6 @@ func WithTestWorkspaceDir(workspaceDir string) TestOption {
 	}
 }
 
-// WithGuestDir sets the guest directory to use.
-func WithTestGuestDir(guestDir string) TestOption {
-	return func(t *Test) error {
-		t.GuestDir = guestDir
-		return nil
-	}
-}
-
 // WithWorkspaceIgnore sets the workspace ignore rules file to use.
 func WithTestWorkspaceIgnore(workspaceIgnore string) TestOption {
 	return func(t *Test) error {

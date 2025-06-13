@@ -26,7 +26,7 @@ pipeline:
 
   - name: build a package
     runs: |
-      bd="${{target.destdir}}/usr/bin/"
+      bd="${{targets.destdir}}/usr/bin/"
       fpath="$bd/bogus-version"
       ver="${{package.version}}"
 

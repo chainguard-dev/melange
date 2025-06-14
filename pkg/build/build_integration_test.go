@@ -75,9 +75,8 @@ func TestBuild_BuildPackage(t *testing.T) {
 				}
 
 				if err := b.BuildPackage(ctx); err != nil {
-					errStr := fmt.Sprintf("%s", err)
-					if tt.buildErrMatch != nil && tt.buildErrMatch.MatchString(errStr) {
-						t.Logf("%s build failed as expected", tt.name)
+					if tt.buildErrMatch != nil && tt.buildErrMatch.MatchString(err.Error()) {
+						t.Logf("%s build correctly identified invalid version %s", tt.name, b.Configuration.Package.Version)
 						return
 					}
 					t.Fatalf("building package: %v", err)

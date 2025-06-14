@@ -577,6 +577,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	b.summarize(ctx)
 
+	ver := b.Configuration.Package.Version
+	if _, err := apk.ParseVersion(ver); err != nil {
+		return fmt.Errorf("Unable to parse version '%s' for %s: %v", ver, b.ConfigFile, err)
+	}
+
 	namespace := b.Namespace
 	if namespace == "" {
 		namespace = "unknown"

@@ -670,10 +670,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, b.Configuration.Package.Name), 0o755); err != nil {
-		return err
-	}
-
 	linterQueue := []linterTarget{}
 	cfg := b.workspaceConfig(ctx)
 
@@ -730,9 +726,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
 		sp := sp
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
-			return err
-		}
 
 		if !b.isBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)

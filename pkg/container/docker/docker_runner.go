@@ -362,6 +362,12 @@ func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config, extr
 	return nil, nil
 }
 
+// GetReleaseData returns the OS information (os-release contents) for the Bubblewrap runner.
+func (bw *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*apko_build.ReleaseData, error) {
+	// TODO: implement this
+	return nil, nil
+}
+
 type dockerLoader struct {
 	cli *client.Client
 }

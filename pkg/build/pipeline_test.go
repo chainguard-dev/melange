@@ -149,6 +149,7 @@ func Test_buildEvalRunCommand(t *testing.T) {
 [ -d '/bar' ] || mkdir -p '/bar'
 cd '/bar'
 baz
+[ -n "$(jobs -p)" ] && kill $(jobs -p)
 exit 0`}
 	require.Equal(t, command, expected)
 }

@@ -182,6 +182,7 @@ func buildEvalRunCommand(pipeline *config.Pipeline, debugOption rune, workdir st
 [ -d '%s' ] || mkdir -p '%s'
 cd '%s'
 %s
+[ -n "$(jobs -p)" ] && kill $(jobs -p)
 exit 0`, debugOption, workdir, workdir, workdir, fragment)
 	return []string{"/bin/sh", "-c", script}
 }

@@ -30,12 +30,14 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"text/template"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
+	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
@@ -101,10 +103,10 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
+	GuestFS apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
-	GuestDir              string
 	SigningKey            string
 	SigningPassphrase     string
 	Namespace             string
@@ -155,6 +157,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
+		GuestFS:         tarfs.New(),
 	}
 
 	for _, opt := range opts {
@@ -275,8 +278,6 @@ func (b *Build) Close(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	errs := []error{}
 	if b.Remove {
-		log.Debugf("deleting guest dir %s", b.GuestDir)
-		errs = append(errs, os.RemoveAll(b.GuestDir))
 		log.Debugf("deleting workspace dir %s", b.WorkspaceDir)
 		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
 		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
@@ -477,41 +478,6 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 	return ignorePatterns, nil
 }
 
-func (b *Build) overlayBinSh() error {
-	if b.BinShOverlay == "" {
-		return nil
-	}
-
-	targetPath := filepath.Join(b.GuestDir, "bin", "sh")
-
-	inF, err := os.Open(b.BinShOverlay)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer inF.Close()
-
-	// We unlink the target first because it might be a symlink.
-	if err := os.Remove(targetPath); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	outF, err := os.Create(targetPath)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(outF, inF); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	if err := os.Chmod(targetPath, 0o755); err != nil {
-		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
-	}
-
-	return nil
-}
-
 // isBuildLess returns true if the build context does not actually do any building.
 // TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
 // in the pipeline.
@@ -657,18 +623,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	pSBOM.AddPackageAndSetDescribed(apkPkg)
 
-	if b.GuestDir == "" {
-		guestDir, err := os.MkdirTemp(b.Runner.TempDir(), "melange-guest-*")
-		if err != nil {
-			return fmt.Errorf("unable to make guest directory: %w", err)
-		}
-		b.GuestDir = guestDir
-
-		if b.Remove {
-			defer os.RemoveAll(guestDir)
-		}
-	}
-
 	log.Debugf("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
 		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
@@ -724,27 +678,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	cfg := b.workspaceConfig(ctx)
 
 	if !b.isBuildLess() {
-		// Prepare guest directory
-		if err := os.MkdirAll(b.GuestDir, 0o755); err != nil {
-			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
-		}
-
-		log.Infof("building workspace in '%s' with apko", b.GuestDir)
-
-		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
-		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, guestFS)
+		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
 
 		cfg.ImgRef = imgRef
 		log.Debugf("ImgRef = %s", cfg.ImgRef)
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := b.overlayBinSh(); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
 
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
@@ -812,8 +752,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	// Store xattrs and modes for use after the workspace is loaded into memory
-	xattrs, modes, err := storeXattrs(b.WorkspaceDir)
+	// Store metadata for use after the workspace is loaded into memory
+	xattrs, modes, owners, err := storeMetadata(b.WorkspaceDir)
 	if err != nil {
 		return fmt.Errorf("failed to store workspace xattrs: %w", err)
 	}
@@ -834,6 +774,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	for path, mode := range modes {
 		if err := b.WorkspaceDirFS.Chmod(path, mode); err != nil {
 			log.Warnf("failed to apply mode %04o (%s) to %s: %v", mode, mode, path, err)
+		}
+	}
+
+	for path, owner := range owners {
+		uid := owner["uid"]
+		gid := owner["gid"]
+		if err := b.WorkspaceDirFS.Chown(path, uid, gid); err != nil {
+			log.Warnf("failed to change ownership of %s to %d:%d", path, uid, gid)
 		}
 	}
 
@@ -943,13 +891,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
 
-	if !b.isBuildLess() {
-		// clean build guest container
-		if err := os.RemoveAll(b.GuestDir); err != nil {
-			log.Warnf("unable to clean guest container: %s", err)
-		}
-	}
-
 	// generate APKINDEX.tar.gz and sign it
 	if b.GenerateIndex {
 		packageDir := filepath.Join(b.OutDir, b.Arch.ToAPK())
@@ -1042,10 +983,6 @@ func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
 func (b *Build) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Debugf("  workspace dir: %s", b.WorkspaceDir)
-
-	if b.GuestDir != "" {
-		log.Debugf("  guest dir: %s", b.GuestDir)
-	}
 }
 
 func (b *Build) summarize(ctx context.Context) {
@@ -1213,6 +1150,16 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			return err
 		}
 
+		// Remove the leading "./" from LICENSE files in QEMU workspaces
+		hdr.Name = strings.TrimPrefix(hdr.Name, "./")
+
+		var uid, gid int
+		fi := hdr.FileInfo()
+		if stat, ok := fi.Sys().(*tar.Header); ok {
+			uid = int(stat.Uid)
+			gid = int(stat.Gid)
+		}
+
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if fi, err := fs.Stat(hdr.Name); err == nil && fi.Mode()&os.ModeSymlink != 0 {
@@ -1225,6 +1172,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 			if err := fs.MkdirAll(hdr.Name, hdr.FileInfo().Mode().Perm()); err != nil {
 				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
+			}
+
+			if err := fs.Chown(hdr.Name, uid, gid); err != nil {
+				return fmt.Errorf("unable to chown directory %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeReg:
@@ -1243,6 +1194,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 			if err := f.Close(); err != nil {
 				return fmt.Errorf("unable to close file %s: %w", hdr.Name, err)
+			}
+
+			if err := fs.Chown(hdr.Name, uid, gid); err != nil {
+				return fmt.Errorf("unable to chown file %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeSymlink:
@@ -1313,18 +1268,20 @@ var xattrIgnoreList = map[string]bool{
 	"com.docker.grpcfuse.ownership": true,
 }
 
-// Record on-disk xattrs and mode bits set during package builds in order to apply them in the new in-memory filesystem
-// This will allow in-memory and bind mount runners to persist xattrs correctly
-func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, error) {
+// Record on-disk metadata set during package builds in order to apply them in the new in-memory filesystem
+// This will allow in-memory and bind mount runners to persist mode bits, ownership, and xattrs correctly
+func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, map[string]map[string]int, error) {
 	xattrs := make(map[string]map[string][]byte)
 	modes := make(map[string]fs.FileMode)
+	owners := make(map[string]map[string]int)
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
-			return nil
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
 		}
 
 		fi, err := d.Info()
@@ -1333,9 +1290,18 @@ func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMo
 		}
 		mode := fi.Mode()
 
-		relPath, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
+		// Store ownership info, defaulting to root when unavailable
+		owners[relPath] = map[string]int{
+			"uid": 0,
+			"gid": 0,
+		}
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+			owners[relPath]["uid"] = int(stat.Uid)
+			owners[relPath]["gid"] = int(stat.Gid)
+		}
+
+		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
 		}
 
 		// If the path is within the melange-out directory, store the relative path and mode bits
@@ -1378,7 +1344,7 @@ func storeXattrs(dir string) (map[string]map[string][]byte, map[string]fs.FileMo
 		return nil
 	})
 
-	return xattrs, modes, err
+	return xattrs, modes, owners, err
 }
 
 // stringsFromByteSlice converts a sequence of attributes to a []string.

@@ -208,6 +208,17 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			return err
 		}
 	}
+
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
+	}
+
 	// Get terminal type from environment
 	termType := os.Getenv("TERM")
 	if termType == "" {
@@ -410,6 +421,17 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// Now, append those files to the extraFiles list (there should be no
 	// duplicates)
 	extraFiles = append(extraFiles, licenseFiles...)
+	// We inject the list of extra files to a remote file in order to use it
+	// with `-T` option of tar. This avoids passing too many arguments to
+	// the command, that would lead to an "-ash: sh: Argument list too long"
+	// error otherwise.
+	if len(extraFiles) > 0 {
+		err = streamExtraFilesList(ctx, cfg, extraFiles)
+		if err != nil {
+			clog.FromContext(ctx).Errorf("failed to send list of extra files: %v", err)
+			return nil, err
+		}
+	}
 
 	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
@@ -425,11 +447,11 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
-	retrieveCommand := "cd /mount/home/build && find melange-out -type p -delete 2>/dev/null || true && tar cvpf - --xattrs --acls melange-out"
+	retrieveCommand := "cd /mount/home/build && find melange-out -type p -delete > /dev/null 2>&1 || true && tar cvpf - --xattrs --acls melange-out"
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
-	for _, v := range extraFiles {
-		retrieveCommand = fmt.Sprintf("%s %q", retrieveCommand, v)
+	if len(extraFiles) > 0 {
+		retrieveCommand = retrieveCommand + " -T extrafiles.txt"
 	}
 
 	log := clog.FromContext(ctx)
@@ -936,6 +958,70 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	return licenseFiles, nil
 }
 
+// send to the builder the list of extra files, to avoid sending a single long
+// command (avoiding "-ash: sh: Argument list too long") we will use stdin to
+// stream it. this also has the upside of not relying on a single-shot connection
+// to pass potentially lot of data.
+// split in chunks (100 stirngs at time) in order to avoid flackiness in the
+// connection.
+func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string) error {
+	writtenStrings := 0
+	chunkSize := 100
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Warn), logwriter.New(log.Error)
+	for {
+		session, err := cfg.SSHClient.NewSession()
+		if err != nil {
+			clog.FromContext(ctx).Errorf("Failed to create session: %s", err)
+			return err
+		}
+		defer session.Close()
+
+		session.Stderr = stderr
+		session.Stdout = stdout
+		stdin, err := session.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stdin pipe: %v", err)
+		}
+		cmd := "cat >> /home/build/extrafiles.txt"
+		if err := session.Start(cmd); err != nil {
+			return fmt.Errorf("failed to start command: %v", err)
+		}
+
+		// Write 100 strings there (or remainder)
+		endIndex := writtenStrings + chunkSize
+		endIndex = min(endIndex, len(extraFiles))
+		chunk := extraFiles[writtenStrings:endIndex]
+
+		clog.FromContext(ctx).Debugf("sent %d of %d",
+			writtenStrings, len(extraFiles))
+		if _, err := io.Copy(stdin, strings.NewReader(
+			strings.Join(chunk, "\n")+"\n"),
+		); err != nil {
+			return fmt.Errorf("failed to write content: %v", err)
+		}
+
+		if err := stdin.Close(); err != nil {
+			return fmt.Errorf("failed to close stdin: %v", err)
+		}
+
+		if err := session.Wait(); err != nil {
+			return fmt.Errorf("command failed: %v", err)
+		}
+
+		writtenStrings = endIndex
+
+		if writtenStrings >= len(extraFiles) {
+			break
+		}
+	}
+
+	clog.FromContext(ctx).Debugf("sent %d of %d",
+		writtenStrings, len(extraFiles))
+
+	return nil
+}
+
 func getKernelPath(ctx context.Context) (string, error) {
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
 	kernel := "/boot/vmlinuz"
@@ -1097,6 +1183,16 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 		if err != nil {
 			return err
 		}
+	}
+
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
 	}
 
 	session.Stderr = stderr

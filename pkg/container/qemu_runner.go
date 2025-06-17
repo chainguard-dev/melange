@@ -99,7 +99,6 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 		envOverride,
 		stderr,
 		stdout,
-		false,
 		args,
 	)
 	if err != nil {
@@ -131,7 +130,6 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			nil,
 			nil,
 			nil,
-			false,
 			[]string{"sh", "-c", command},
 		)
 		if err == nil {
@@ -391,7 +389,6 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		nil,
 		nil,
 		nil,
-		false,
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
@@ -462,7 +459,6 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		nil,
 		stderr,
 		outFile,
-		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
 
@@ -835,7 +831,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				nil,
 				stderr,
 				stdout,
-				false,
 				[]string{"sh", "-c", setupMountCommand},
 			)
 			if err != nil {
@@ -854,7 +849,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		stderr,
 		stdout,
-		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
 	if err != nil {
@@ -924,7 +918,6 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		nil,
 		nil,
 		bufWriter,
-		false,
 		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -print"},
 	)
 
@@ -1161,7 +1154,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	cfg *Config, extraVars map[string]string,
 	stderr, stdout io.Writer,
-	tty bool, command []string,
+	command []string,
 ) error {
 	// Create a session
 	session, err := client.NewSession()
@@ -1195,25 +1188,19 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 		return err
 	}
 
-	session.Stderr = stderr
-	session.Stdout = stdout
-
-	if tty {
-		clog.FromContext(ctx).Debug("requesting tty instance")
-		modes := ssh.TerminalModes{
-			ssh.ECHO:          0,     // disable echoing
-			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
-		}
-		// Request pseudo terminal
-		if err := session.RequestPty("xterm", 40, 80, modes); err != nil {
-			clog.FromContext(ctx).Errorf("request for pseudo terminal failed: %s", err)
-			return err
-		}
-	}
-
 	cmd := shellquote.Join(command...)
 
+	// ...
+	if cfg.TestRun{
+		cmd = shellquote.Join(append([]string{
+			"script", "-f", "-q",
+			"--log-in", "/dev/null",
+			"--log-out", "/dev/null",
+			"-e", "-c"}, cmd)...)
+	}
+
+	session.Stderr = stderr
+	session.Stdout = stdout
 	session.Stdin = strings.NewReader(cmd)
 
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)

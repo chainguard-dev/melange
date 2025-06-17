@@ -37,10 +37,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -103,7 +103,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -1087,6 +1087,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		Timeout:      b.Configuration.Package.Timeout,
 		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
 		RunAs:        runAs(b.Configuration.Environment.Accounts),
+		TestRun:      false,
 	}
 
 	if b.Configuration.Package.Resources != nil {

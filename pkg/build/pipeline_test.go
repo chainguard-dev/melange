@@ -146,31 +146,9 @@ func Test_buildEvalRunCommand(t *testing.T) {
 	fragment := "baz"
 	command := buildEvalRunCommand(p, debugOption, workdir, fragment)
 	expected := []string{"/bin/sh", "-c", `set -ex
-cleanup() {
-	set -e
-	jobs=$(jobs -p)
-	[ -x "$jobs" ] && return 0
-	for job in $jobs; do
-		# Ignore processes in background that redirect everything to
-		# /dev/null
-		if ls -l /proc/$job/fd/1 | grep '/dev/null' && ls -l /proc/$job/fd/2 | grep '/dev/null'; then
-			continue
-		fi
-		# Ignore processes in background that redirect everything to
-		# file
-		if [ -f /proc/$job/fd/1 ] && [ -f /proc/$job/fd/2 ]; then
-			continue
-		fi
-
-		echo "Cleaning up job: $job"
-		kill -9 $job
-	done
-}
-trap cleanup TERM INT HUP EXIT
 [ -d '/bar' ] || mkdir -p '/bar'
 cd '/bar'
 baz
-trap cleanup TERM INT HUP EXIT
 exit 0`}
 	require.Equal(t, command, expected)
 }

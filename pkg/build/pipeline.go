@@ -179,10 +179,19 @@ func matchValidShaChars(s string) bool {
 // Build a script to run as part of evalRun
 func buildEvalRunCommand(pipeline *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
 	script := fmt.Sprintf(`set -e%c
+cleanup() {
+	set -e
+	jobs=$(jobs -p)
+	if [ -n "$jobs" ]; then
+		echo "killing jobs $jobs"
+		kill -9 $jobs
+	fi
+}
+trap cleanup TERM INT HUP EXIT
 [ -d '%s' ] || mkdir -p '%s'
 cd '%s'
 %s
-[ -n "$(jobs -p)" ] && kill $(jobs -p)
+trap cleanup TERM INT HUP EXIT
 exit 0`, debugOption, workdir, workdir, workdir, fragment)
 	return []string{"/bin/sh", "-c", script}
 }

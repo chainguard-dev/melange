@@ -146,10 +146,19 @@ func Test_buildEvalRunCommand(t *testing.T) {
 	fragment := "baz"
 	command := buildEvalRunCommand(p, debugOption, workdir, fragment)
 	expected := []string{"/bin/sh", "-c", `set -ex
+cleanup() {
+	set -e
+	jobs=$(jobs -p)
+	if [ -n "$jobs" ]; then
+		echo "killing jobs $jobs"
+		kill -9 $jobs
+	fi
+}
+trap cleanup TERM INT HUP EXIT
 [ -d '/bar' ] || mkdir -p '/bar'
 cd '/bar'
 baz
-[ -n "$(jobs -p)" ] && kill $(jobs -p)
+trap cleanup TERM INT HUP EXIT
 exit 0`}
 	require.Equal(t, command, expected)
 }

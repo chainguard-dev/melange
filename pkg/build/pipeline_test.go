@@ -149,10 +149,22 @@ func Test_buildEvalRunCommand(t *testing.T) {
 cleanup() {
 	set -e
 	jobs=$(jobs -p)
-	if [ -n "$jobs" ]; then
-		echo "killing jobs $jobs"
-		kill -9 $jobs
-	fi
+	[ -x "$jobs" ] && return 0
+	for job in $jobs; do
+		# Ignore processes in background that redirect everything to
+		# /dev/null
+		if ls -l /proc/$job/fd/1 | grep '/dev/null' && ls -l /proc/$job/fd/2 | grep '/dev/null'; then
+			continue
+		fi
+		# Ignore processes in background that redirect everything to
+		# file
+		if [ -f /proc/$job/fd/1 ] && [ -f /proc/$job/fd/2 ]; then
+			continue
+		fi
+
+		echo "Cleaning up job: $job"
+		kill -9 $job
+	done
 }
 trap cleanup TERM INT HUP EXIT
 [ -d '/bar' ] || mkdir -p '/bar'

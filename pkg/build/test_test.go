@@ -78,6 +78,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 		PackageName:  testPkgName,
 		ImgRef:       testImgRef,
 		WorkspaceDir: "/workspace",
+		TestRun:      true,
 		Capabilities: container.Capabilities{Networking: true},
 		Mounts: []container.BindMount{
 			{Source: testWorkspaceDir, Destination: homeBuild},

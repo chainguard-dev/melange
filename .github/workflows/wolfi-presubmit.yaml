@@ -122,7 +122,7 @@ jobs:
         uses: ./melange-src/.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" package/${{ matrix.package }}
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/${{ matrix.package }}
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
@@ -153,8 +153,17 @@ jobs:
             QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
             QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
             MELANGE="/usr/bin/melange" \
-            MELANGE_EXTRA_OPTS="--runner qemu" \
+            MELANGE_EXTRA_OPTS="--runner qemu --generate-provenance" \
             package/${{ matrix.package }}
+
+      - name: Output SLSA provenance
+        run: |
+          for pkg in packages/x86_64/*.apk; do
+            dir="$(basename "${pkg}" .apk)"
+            sudo mkdir -p packages/x86_64/"${dir}"
+            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/"${dir}"
+            jq . packages/x86_64/"${dir}"/.PROVENANCE
+          done
 
       - name: Run tests to verify xattrs with bubblewrap runner
         if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'

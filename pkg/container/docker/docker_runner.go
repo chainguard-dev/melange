@@ -15,6 +15,8 @@
 package docker
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -28,6 +30,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/internal/contextreader"
 	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/config"
 	mcontainer "chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
@@ -362,10 +365,56 @@ func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config, extr
 	return nil, nil
 }
 
-// GetReleaseData returns the OS information (os-release contents) for the Bubblewrap runner.
-func (bw *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*apko_build.ReleaseData, error) {
-	// TODO: implement this
-	return nil, nil
+// GetReleaseData returns the OS information (os-release contents) for the Docker runner.
+func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*apko_build.ReleaseData, error) {
+	if cfg.PodID == "" {
+		return nil, fmt.Errorf("pod not running")
+	}
+
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+		User:         cfg.RunAsUID,
+		Cmd:          []string{"cat", "/etc/os-release"},
+		WorkingDir:   runnerWorkdir,
+		Tty:          false,
+		AttachStderr: true,
+		AttachStdout: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create exec task to read os-release: %w", err)
+	}
+
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
+		Tty: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to exec task: %w", err)
+	}
+	defer attachResp.Close()
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Warn)
+	defer stderr.Close()
+
+	_, err = stdcopy.StdCopy(bufWriter, stderr, attachResp.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read os-release output: %w", err)
+	}
+
+	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exit code from os-release task: %w", err)
+	}
+
+	if inspectResp.ExitCode != 0 {
+		return nil, fmt.Errorf("os-release task exited with code %d", inspectResp.ExitCode)
+	}
+
+	// Parse the os-release contents
+	return config.ParseReleaseData(&buf)
 }
 
 type dockerLoader struct {

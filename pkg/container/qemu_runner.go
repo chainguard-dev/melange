@@ -383,6 +383,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer os.Remove(cfg.SSHHostKey)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
+	cfg.TestRun = false
 	err := sendSSHCommand(ctx,
 		cfg.SSHClient,
 		cfg,

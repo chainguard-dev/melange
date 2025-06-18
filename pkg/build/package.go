@@ -81,8 +81,6 @@ type PackageBuild struct {
 	Description   string
 	URL           string
 	Commit        string
-	Start         time.Time
-	End           time.Time
 }
 
 func pkgFromSub(sub *config.Subpackage) *config.Package {
@@ -112,8 +110,6 @@ func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 		Description:  pkg.Description,
 		URL:          pkg.URL,
 		Commit:       pkg.Commit,
-		Start:        b.Start,
-		End:          b.End,
 	}
 
 	if !b.StripOriginName {
@@ -222,13 +218,15 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
-	slsaData, err := pc.generateSLSA()
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate SLSA provenance: %w", err)
-	}
+	if pc.Build.GenerateProvenance {
+		slsaData, err := pc.generateSLSA()
+		if err != nil {
+			return nil, fmt.Errorf("unable to generate SLSA provenance: %w", err)
+		}
 
-	if err := fsys.WriteFile(".PROVENANCE", slsaData, 0644); err != nil {
-		return nil, fmt.Errorf("failed to write SLSA provenance: %w", err)
+		if err := fsys.WriteFile(".PROVENANCE", slsaData, 0644); err != nil {
+			return nil, fmt.Errorf("failed to write SLSA provenance: %w", err)
+		}
 	}
 
 	var melangeBuf bytes.Buffer

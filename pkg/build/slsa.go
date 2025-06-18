@@ -61,8 +61,8 @@ func (pc *PackageBuild) generateSLSA() ([]byte, error) {
 		RunDetails: &provenancev1.RunDetails{
 			Builder: slsaBuilder,
 			Metadata: &provenancev1.BuildMetadata{
-				StartedOn:  timestamppb.New(pc.Start),
-				FinishedOn: timestamppb.New(pc.End),
+				StartedOn:  timestamppb.New(pc.Build.Start),
+				FinishedOn: timestamppb.New(pc.Build.End),
 			},
 		},
 	}

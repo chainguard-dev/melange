@@ -151,6 +151,9 @@ type Build struct {
 
 	Start time.Time
 	End   time.Time
+
+	// Opt-in SLSA provenance generation for initial rollout/testing
+	GenerateProvenance bool
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {

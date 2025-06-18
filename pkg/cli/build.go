@@ -79,6 +79,7 @@ func buildCmd() *cobra.Command {
 	var configFileGitCommit string
 	var configFileGitRepoURL string
 	var configFileLicense string
+	var generateProvenance bool
 
 	var traceFile string
 
@@ -187,6 +188,7 @@ func buildCmd() *cobra.Command {
 				build.WithConfigFileRepositoryCommit(configFileGitCommit),
 				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
 				build.WithConfigFileLicense(configFileLicense),
+				build.WithGenerateProvenance(generateProvenance),
 			}
 
 			if len(args) > 0 {
@@ -257,6 +259,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
 	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
 	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
+	cmd.Flags().BoolVar(&generateProvenance, "generate-provenance", false, "generate SLSA provenance for builds (included as a .PROVENANCE file in the final APK)")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")

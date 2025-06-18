@@ -65,6 +65,8 @@ func TestGenerateSLSA(t *testing.T) {
 							Epoch:   tt.epoch,
 						},
 					},
+					Start: startTime,
+					End:   endTime,
 				},
 				PackageName: tt.packageName,
 				Origin: &config.Package{
@@ -73,8 +75,6 @@ func TestGenerateSLSA(t *testing.T) {
 					Epoch:   tt.epoch,
 				},
 				DataHash: tt.dataHash,
-				Start:    startTime,
-				End:      endTime,
 			}
 
 			result, err := packageBuild.generateSLSA()
@@ -111,6 +111,8 @@ func TestGenerateSLSAValidJSON(t *testing.T) {
 					Epoch:   0,
 				},
 			},
+			Start: time.Now().Add(-time.Hour),
+			End:   time.Now(),
 		},
 		PackageName: "json-test",
 		Origin: &config.Package{
@@ -119,8 +121,6 @@ func TestGenerateSLSAValidJSON(t *testing.T) {
 			Epoch:   0,
 		},
 		DataHash: "sha256hash",
-		Start:    time.Now().Add(-time.Hour),
-		End:      time.Now(),
 	}
 
 	result, err := packageBuild.generateSLSA()

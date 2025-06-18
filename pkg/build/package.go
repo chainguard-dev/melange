@@ -526,8 +526,6 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	remapUIDs[int(buildUser.UID)] = 0
 	remapGIDs[int(buildGroup.GID)] = 0
 
-	log.Infof("  data.tar.gz digest: %s", pc.DataHash)
-
 	if err := pc.emitDataSection(ctx, fsys, userinfofs, remapUIDs, remapGIDs, dataTarGz); err != nil {
 		return err
 	}

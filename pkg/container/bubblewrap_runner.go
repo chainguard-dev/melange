@@ -246,7 +246,10 @@ func (bw *bubblewrap) GetReleaseData(ctx context.Context, cfg *Config) (*apko_bu
 
 	execCmd.Stdout = bufWriter
 	execCmd.Stderr = stderr
-	execCmd.Run()
+	err := execCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read os-release: %w", err)
+	}
 
 	return config.ParseReleaseData(&buf)
 }

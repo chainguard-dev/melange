@@ -336,30 +336,47 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 }
 
 // gatherMelangeLicenses gathers the licenses from the melange configuration and splits them into separate entries.
+// It now supports both simple license entries and hierarchical license groups with AND/OR operators.
 func gatherMelangeLicenses(cfg *config.Configuration) []License {
 	mls := []License{}
 	for _, ml := range cfg.Package.Copyright {
-		if strings.Contains(ml.License, " OR ") || strings.Contains(ml.License, " AND ") {
-			// Split the license into separate entries using regexp
-			sls := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(ml.License, -1)
-			for _, sl := range sls {
-				mls = append(mls,
-					License{
-						Name:      sl,
-						Source:    ml.LicensePath,
-						Overrides: ml.DetectionOverride,
-					})
-			}
-		} else {
-			mls = append(mls,
-				License{
-					Name:      ml.License,
-					Source:    ml.LicensePath,
-					Overrides: ml.DetectionOverride,
-				})
-		}
+		mls = append(mls, gatherLicensesFromCopyright(ml)...)
 	}
 	return mls
+}
+
+// gatherLicensesFromCopyright recursively extracts license information from a Copyright entry.
+// It handles both simple license entries and grouped license structures.
+func gatherLicensesFromCopyright(cp config.Copyright) []License {
+	var licenses []License
+
+	// Check if this is a grouping entry (has Operator and Licenses)
+	if cp.Operator != "" && len(cp.Licenses) > 0 {
+		for _, subCp := range cp.Licenses {
+			licenses = append(licenses, gatherLicensesFromCopyright(subCp)...)
+		}
+	} else if cp.License != "" {
+		// This is a simple license entry
+		if strings.Contains(cp.License, " OR ") || strings.Contains(cp.License, " AND ") {
+			// Split the license into separate entries using regexp for backward compatibility
+			sls := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(cp.License, -1)
+			for _, sl := range sls {
+				licenses = append(licenses, License{
+					Name:      sl,
+					Source:    cp.LicensePath,
+					Overrides: cp.DetectionOverride,
+				})
+			}
+		} else {
+			licenses = append(licenses, License{
+				Name:      cp.License,
+				Source:    cp.LicensePath,
+				Overrides: cp.DetectionOverride,
+			})
+		}
+	}
+
+	return licenses
 }
 
 // getLicenseDifferences compares the detected licenses with the melange licenses and returns the differences.

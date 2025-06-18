@@ -1190,7 +1190,9 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 
 	cmd := shellquote.Join(command...)
 
-	// ...
+	// Tests expect to be able to put processes in background between steps.
+	// using `script` will avoid ssh hangs for open fds, and will allow to
+	// leave background processes running for the whole duration of the test.
 	if cfg.TestRun{
 		cmd = shellquote.Join(append([]string{
 			"script", "-f", "-q",

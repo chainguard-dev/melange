@@ -263,6 +263,15 @@ func filemap(tr *tar.Reader) (map[string]entry, error) {
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to read tar header: %v", err)
 		}
+
+		// Skip .PROVENANCE files for now which contain start/end times that will always differ
+		if hdr.Name == ".PROVENANCE" {
+			if _, err := io.Copy(io.Discard, tr); err != nil {
+				return nil, fmt.Errorf("failed to skip .PROVENANCE file: %v", err)
+			}
+			continue
+		}
+
 		h := sha256.New()
 		var w io.Writer = h
 		var buf bytes.Buffer

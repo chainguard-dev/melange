@@ -37,10 +37,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -103,7 +103,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -148,6 +148,9 @@ type Build struct {
 	// visibility into our packages' (including subpackages') composition. This is
 	// how we get "build-time" SBOMs!
 	SBOMGroup *SBOMGroup
+
+	Start time.Time
+	End   time.Time
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -158,6 +161,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 		GuestFS:         tarfs.New(),
+		Start:           time.Now(),
 	}
 
 	for _, opt := range opts {

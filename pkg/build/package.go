@@ -29,10 +29,12 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+	"time"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 
+	"github.com/charmbracelet/log"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
@@ -80,6 +82,8 @@ type PackageBuild struct {
 	Description   string
 	URL           string
 	Commit        string
+	Start         time.Time
+	End           time.Time
 }
 
 func pkgFromSub(sub *config.Subpackage) *config.Package {
@@ -95,6 +99,7 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 }
 
 func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
+	b.End = time.Now()
 	pc := PackageBuild{
 		Build:        b,
 		Origin:       &b.Configuration.Package,
@@ -108,6 +113,8 @@ func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 		Description:  pkg.Description,
 		URL:          pkg.URL,
 		Commit:       pkg.Commit,
+		Start:        b.Start,
+		End:          b.End,
 	}
 
 	if !b.StripOriginName {
@@ -214,6 +221,15 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	fsys := memfs.New()
 	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
+	}
+
+	slsaData, err := pc.generateSLSA()
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate SLSA provenance: %s", err)
+	}
+
+	if err := fsys.WriteFile(".PROVENANCE", slsaData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write SLSA provenance: %w", err)
 	}
 
 	var melangeBuf bytes.Buffer
@@ -394,7 +410,6 @@ func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
 }
 
 func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS, userinfofs apkofs.FullFS, remapUIDs map[int]int, remapGIDs map[int]int, w io.WriteSeeker) error {
-	log := clog.FromContext(ctx)
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
 		tarball.WithRemapUIDs(remapUIDs),
@@ -510,6 +525,8 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	// for unspecified int fields and remapping 0 to 0 is okay
 	remapUIDs[int(buildUser.UID)] = 0
 	remapGIDs[int(buildGroup.GID)] = 0
+
+	log.Infof("  data.tar.gz digest: %s", pc.DataHash)
 
 	if err := pc.emitDataSection(ctx, fsys, userinfofs, remapUIDs, remapGIDs, dataTarGz); err != nil {
 		return err

@@ -34,7 +34,6 @@ import (
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 
-	"github.com/charmbracelet/log"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
@@ -410,6 +409,7 @@ func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
 }
 
 func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS, userinfofs apkofs.FullFS, remapUIDs map[int]int, remapGIDs map[int]int, w io.WriteSeeker) error {
+	log := clog.FromContext(ctx)
 	tarctx, err := tarball.NewContext(
 		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
 		tarball.WithRemapUIDs(remapUIDs),

@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -186,13 +187,12 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 }
 
 func diffAPKs(old, new string) error {
-	oldh, newh := sha256.New(), sha256.New()
 	oldf, err := os.Open(old)
 	if err != nil {
 		return fmt.Errorf("failed to open old APK %s: %v", old, err)
 	}
 	defer oldf.Close()
-	oldgr, err := gzip.NewReader(io.TeeReader(oldf, oldh))
+	oldgr, err := gzip.NewReader(oldf)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
 	}
@@ -207,11 +207,11 @@ func diffAPKs(old, new string) error {
 		return fmt.Errorf("failed to open new APK %s: %v", new, err)
 	}
 	defer newf.Close()
-	newgr, err := gzip.NewReader(io.TeeReader(newf, newh))
+	newgr, err := gzip.NewReader(newf)
 	if err != nil {
-		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+		return fmt.Errorf("failed to create gzip reader for new APK %s: %v", new, err)
 	}
-	defer oldgr.Close()
+	defer newgr.Close()
 	newm, err := filemap(tar.NewReader(newgr))
 	if err != nil {
 		return fmt.Errorf("failed to create file map for new APK %s: %v", new, err)
@@ -224,7 +224,7 @@ func diffAPKs(old, new string) error {
 		} else if o != n {
 			errs = append(errs, fmt.Errorf("changed: %s: digests %s -> %s", k, o.digest, n.digest))
 			if o.contents != n.contents {
-				errs = append(errs, fmt.Errorf("contents diff: %s (-old,new):\n%s", k, cmp.Diff(o.contents, n.contents)))
+				errs = append(errs, fmt.Errorf("contents diff: %s (-old,+new):\n%s", k, cmp.Diff(o.contents, n.contents)))
 			}
 		}
 	}
@@ -232,6 +232,26 @@ func diffAPKs(old, new string) error {
 		if _, ok := oldm[k]; !ok {
 			errs = append(errs, fmt.Errorf("added: %s", k))
 		}
+	}
+
+	oldh, newh := sha256.New(), sha256.New()
+
+	var keys []string
+	for k := range oldm {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(oldh, "%s:%s:", k, oldm[k].digest)
+	}
+
+	keys = keys[:0]
+	for k := range newm {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(newh, "%s:%s:", k, newm[k].digest)
 	}
 
 	oldd, newd := fmt.Sprintf("%x", oldh.Sum(nil)), fmt.Sprintf("%x", newh.Sum(nil))

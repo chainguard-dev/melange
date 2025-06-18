@@ -224,7 +224,7 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 
 	slsaData, err := pc.generateSLSA()
 	if err != nil {
-		return nil, fmt.Errorf("unable to generate SLSA provenance: %s", err)
+		return nil, fmt.Errorf("unable to generate SLSA provenance: %w", err)
 	}
 
 	if err := fsys.WriteFile(".PROVENANCE", slsaData, 0644); err != nil {

@@ -45,7 +45,7 @@ melange build [flags]
       --empty-workspace                                         whether the build workspace should be empty
       --env-file string                                         file to use for preloaded environment variables
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
-      --generate-provenance                                     generate SLSA provenance for builds (included as a .PROVENANCE file in the final APK)
+      --generate-provenance                                     generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)
       --git-commit string                                       commit hash of the git repository containing the build config file (defaults to detecting HEAD)
       --git-repo-url string                                     URL of the git repository containing the build config file (defaults to detecting from configured git remotes)
   -h, --help                                                    help for build

@@ -158,11 +158,11 @@ jobs:
 
       - name: Output SLSA provenance
         run: |
-          for pkg in packages/x86_64/*.apk; do
-            dir="$(basename "${pkg}" .apk)"
+          for pkg in packages/x86_64/*.attest.tar.gz; do
+            dir="$(basename "${pkg}" .attest.tar.gz)"
             sudo mkdir -p packages/x86_64/"${dir}"
             sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/"${dir}"
-            jq . packages/x86_64/"${dir}"/.PROVENANCE
+            jq . packages/x86_64/"${dir}"/"${dir}.attestation"
           done
 
       - name: Run tests to verify xattrs with bubblewrap runner

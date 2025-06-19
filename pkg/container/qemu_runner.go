@@ -925,7 +925,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		nil,
 		bufWriter,
 		false,
-		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -print"},
+		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -links 1 -print"},
 	)
 
 	if err != nil {

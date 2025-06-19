@@ -33,12 +33,13 @@ pipeline:
   - runs: |
 
       # Run profile in background.
-      xcover profile \
+      xcover run \
         --path ${{inputs.executable-path}} \
         --exclude ${{inputs.exclude-functions}} \
         --log-level=${{inputs.log-level}} \
         --verbose=${{inputs.verbose}} \
-        --status >xcover.log 2>&1 &
+        --status \
+        --detach
 
       # Run a sync barrier, that is:
       # the tracee that is going to be tested

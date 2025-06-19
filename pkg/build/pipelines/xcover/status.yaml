@@ -1,8 +1,9 @@
-name: Stop the xcover profiler tool 
+name: Check the status of xcover
 
 needs:
   packages:
     - busybox
+    - ${{inputs.package}}
 
 inputs:
   package:
@@ -12,5 +13,5 @@ inputs:
 
 pipeline:
   - runs: |
-      xcover stop
+      xcover status
 

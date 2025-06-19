@@ -4,6 +4,7 @@
 
 - [xcover/ensure](#xcoverensure)
 - [xcover/profile](#xcoverprofile)
+- [xcover/status](#xcoverstatus)
 - [xcover/stop](#xcoverstop)
 - [xcover/wait](#xcoverwait)
 
@@ -32,6 +33,16 @@ Start the coverage profile with the xcover tool
 | package | false | The xcover package | xcover |
 | verbose | false | Enable verbosity of the xcover profile command. It prints out all the functions being traced real-time. | false |
 | wait-timeout | false | The maximum amount of time to wait for the xcover profiler to be ready for profiling, in seconds. | 60 |
+
+## xcover/status
+
+Check the status of xcover
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| package | false | The xcover package | xcover |
 
 ## xcover/stop
 

@@ -29,6 +29,7 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+	"time"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -95,6 +96,7 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 }
 
 func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
+	b.End = time.Now()
 	pc := PackageBuild{
 		Build:        b,
 		Origin:       &b.Configuration.Package,
@@ -141,6 +143,10 @@ func (pc *PackageBuild) Identity() string {
 
 func (pc *PackageBuild) Filename() string {
 	return fmt.Sprintf("%s/%s.apk", pc.OutDir, pc.Identity())
+}
+
+func (pc *PackageBuild) ProvenanceFilename() string {
+	return fmt.Sprintf("%s/%s.attest.tar.gz", pc.OutDir, pc.Identity())
 }
 
 func (pc *PackageBuild) WorkspaceSubdir() string {
@@ -430,6 +436,43 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS,
 	return nil
 }
 
+func (pc *PackageBuild) generateProvenanceData(ctx context.Context) ([]byte, error) {
+	tarctx, err := tarball.NewContext(
+		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
+		tarball.WithOverrideUIDGID(0, 0),
+		tarball.WithOverrideUname("root"),
+		tarball.WithOverrideGname("root"),
+		tarball.WithSkipClose(true),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build tarball context: %w", err)
+	}
+
+	fsys := memfs.New()
+
+	slsaData, err := pc.generateSLSA()
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate SLSA provenance: %w", err)
+	}
+
+	// https://slsa.dev/spec/v1.1/distributing-provenance#relationship-between-releases-and-attestations
+	if err := fsys.WriteFile(fmt.Sprintf("%s.attestation", pc.Identity()), slsaData, 0644); err != nil {
+		return nil, fmt.Errorf("unable to build provenance FS: %w", err)
+	}
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+
+	if err := tarctx.WriteTar(ctx, zw, fsys, fsys); err != nil {
+		return nil, fmt.Errorf("unable to write provenance tarball: %w", err)
+	}
+	if err := zw.Close(); err != nil {
+		return nil, fmt.Errorf("flushing provenance gzip: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
 func (pc *PackageBuild) wantSignature() bool {
 	return pc.Build.SigningKey != ""
 }
@@ -547,6 +590,45 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	log.Infof("wrote %s", outFile.Name())
+
+	// Store signed provenance next to the emitted APK rather than inside of it
+	// This ensures that APKs themselves are reproducible
+	// SLSA's language also intimates at this approach (note the "alongside" language):
+	// https://slsa.dev/spec/v1.1/distributing-provenance#where-attestations-are-published
+	if pc.Build.GenerateProvenance {
+		slsaTarGz, err := os.CreateTemp("", "melange-provenance-*.tar.gz")
+		if err != nil {
+			return fmt.Errorf("unable to open temporary file for writing: %w", err)
+		}
+		defer slsaTarGz.Close()
+		defer os.Remove(slsaTarGz.Name())
+
+		provenanceData, err := pc.generateProvenanceData(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to generate provenance: %w", err)
+		}
+
+		provenanceFile, err := os.Create(pc.ProvenanceFilename())
+		if err != nil {
+			return fmt.Errorf("unable to create provenance file: %w", err)
+		}
+
+		combinedParts := []io.Reader{bytes.NewReader(provenanceData)}
+		if pc.wantSignature() {
+			signatureData, err := sign.EmitSignature(pc.Signer(), provenanceData, pc.Build.SourceDateEpoch)
+			if err != nil {
+				return fmt.Errorf("emitting signature: %w", err)
+			}
+
+			combinedParts = append([]io.Reader{bytes.NewReader(signatureData)}, combinedParts...)
+		}
+
+		if err := combine(provenanceFile, combinedParts...); err != nil {
+			return fmt.Errorf("failed to write provenance file: %w", err)
+		}
+
+		log.Infof("wrote %s", provenanceFile.Name())
+	}
 
 	// add the package to the build log if requested
 	if err := pc.AppendBuildLog(""); err != nil {

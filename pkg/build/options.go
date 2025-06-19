@@ -414,3 +414,11 @@ func WithIgnoreSignatures(ignore bool) Option {
 		return nil
 	}
 }
+
+// WithGenerateProvenance sets whether to generate SLSA provenance during the build.
+func WithGenerateProvenance(provenance bool) Option {
+	return func(b *Build) error {
+		b.GenerateProvenance = provenance
+		return nil
+	}
+}

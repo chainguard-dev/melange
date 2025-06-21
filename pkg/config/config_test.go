@@ -1270,3 +1270,860 @@ func TestSetCapability(t *testing.T) {
 		})
 	}
 }
+
+func TestLicenseExpression(t *testing.T) {
+	tests := []struct {
+		name      string
+		copyright []Copyright
+		expected  string
+	}{
+		{
+			name:      "nil copyright",
+			copyright: nil,
+			expected:  "",
+		},
+		{
+			name:      "empty copyright",
+			copyright: []Copyright{},
+			expected:  "",
+		},
+		{
+			name: "single simple license",
+			copyright: []Copyright{
+				{License: "MIT"},
+			},
+			expected: "MIT",
+		},
+		{
+			name: "multiple simple licenses (default AND)",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{License: "Apache-2.0"},
+			},
+			expected: "MIT AND Apache-2.0",
+		},
+		{
+			name: "OR group with two licenses",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "Apache-2.0"},
+					},
+				},
+			},
+			expected: "MIT OR Apache-2.0",
+		},
+		{
+			name: "AND group with two licenses",
+			copyright: []Copyright{
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "GPL-3.0-or-later"},
+					},
+				},
+			},
+			expected: "MIT AND GPL-3.0-or-later",
+		},
+		{
+			name: "mixed simple and grouped licenses",
+			copyright: []Copyright{
+				{License: "BSD-3-Clause"},
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "Apache-2.0"},
+					},
+				},
+			},
+			expected: "BSD-3-Clause AND (MIT OR Apache-2.0)",
+		},
+		{
+			name: "nested groups",
+			copyright: []Copyright{
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{
+							Operator: "OR",
+							Licenses: []Copyright{
+								{License: "MIT"},
+								{License: "BSD-3-Clause"},
+							},
+						},
+						{License: "LGPL-2.1-or-later"},
+					},
+				},
+			},
+			expected: "(MIT OR BSD-3-Clause) AND LGPL-2.1-or-later",
+		},
+		{
+			name: "complex nested structure",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "Apache-2.0"},
+						{License: "GPL-3.0-or-later"},
+					},
+				},
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{
+							Operator: "OR",
+							Licenses: []Copyright{
+								{License: "MIT"},
+								{License: "BSD-3-Clause"},
+							},
+						},
+						{License: "LGPL-2.1-or-later"},
+					},
+				},
+			},
+			expected: "MIT AND (Apache-2.0 OR GPL-3.0-or-later) AND ((MIT OR BSD-3-Clause) AND LGPL-2.1-or-later)",
+		},
+		{
+			name: "single license in group",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+					},
+				},
+			},
+			expected: "MIT",
+		},
+		{
+			name: "all entries with same operator",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "Apache-2.0"},
+					},
+				},
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "BSD-3-Clause"},
+						{License: "GPL-3.0-or-later"},
+					},
+				},
+			},
+			expected: "(MIT OR Apache-2.0) OR (BSD-3-Clause OR GPL-3.0-or-later)",
+		},
+		{
+			name: "duplicate licenses in group",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "Apache-2.0"},
+						{License: "MIT"}, // Duplicate
+					},
+				},
+			},
+			expected: "MIT OR Apache-2.0",
+		},
+		{
+			name: "duplicate licenses across groups",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"}, // Same as above
+						{License: "Apache-2.0"},
+					},
+				},
+			},
+			expected: "MIT AND (MIT OR Apache-2.0)", // Duplicates across different levels are preserved
+		},
+		{
+			name: "complex duplicates within nested structure",
+			copyright: []Copyright{
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{
+							Operator: "OR",
+							Licenses: []Copyright{
+								{License: "MIT"},
+								{License: "BSD-3-Clause"},
+								{License: "MIT"}, // Duplicate within OR group
+							},
+						},
+						{License: "LGPL-2.1-or-later"},
+						{License: "LGPL-2.1-or-later"}, // Duplicate within AND group
+					},
+				},
+			},
+			expected: "(MIT OR BSD-3-Clause) AND LGPL-2.1-or-later",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg := Package{Copyright: tt.copyright}
+			result := pkg.LicenseExpression()
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestValidateCopyright(t *testing.T) {
+	tests := []struct {
+		name      string
+		copyright []Copyright
+		wantErr   bool
+		errMsg    string
+	}{
+		{
+			name:      "nil copyright",
+			copyright: nil,
+			wantErr:   false,
+		},
+		{
+			name:      "empty copyright",
+			copyright: []Copyright{},
+			wantErr:   false,
+		},
+		{
+			name: "valid simple license",
+			copyright: []Copyright{
+				{License: "MIT"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid OR group",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "Apache-2.0"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid AND group",
+			copyright: []Copyright{
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "GPL-3.0-or-later"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid: both license and operator",
+			copyright: []Copyright{
+				{
+					License:  "MIT",
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "Apache-2.0"},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "cannot specify both 'license' field and grouping",
+		},
+		{
+			name: "invalid: neither license nor grouping",
+			copyright: []Copyright{
+				{},
+			},
+			wantErr: true,
+			errMsg:  "must specify either 'license' field or grouping",
+		},
+		{
+			name: "invalid operator",
+			copyright: []Copyright{
+				{
+					Operator: "XOR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "operator must be 'AND' or 'OR'",
+		},
+		{
+			name: "empty licenses in group",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{},
+				},
+			},
+			wantErr: true,
+			errMsg:  "grouping entry must have at least one license",
+		},
+		{
+			name: "nested invalid structure",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{}, // Invalid nested entry
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "must specify either 'license' field or grouping",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCopyright(tt.copyright)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					require.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCollectLicensingInfos(t *testing.T) {
+	// Create a temporary directory with test license files
+	tmpDir := t.TempDir()
+
+	// Create test license files
+	mitLicense := "MIT License\n\nCopyright (c) 2023 Test"
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE-MIT"), []byte(mitLicense), 0644))
+
+	apacheLicense := "Apache License 2.0\n\nCopyright 2023 Test"
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE-Apache"), []byte(apacheLicense), 0644))
+
+	tests := []struct {
+		name      string
+		copyright []Copyright
+		expected  map[string]string
+		wantErr   bool
+	}{
+		{
+			name: "simple license with path",
+			copyright: []Copyright{
+				{
+					License:     "MIT",
+					LicensePath: "LICENSE-MIT",
+				},
+			},
+			expected: map[string]string{
+				"MIT": mitLicense,
+			},
+			wantErr: false,
+		},
+		{
+			name: "grouped licenses with paths",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{
+							License:     "MIT",
+							LicensePath: "LICENSE-MIT",
+						},
+						{
+							License:     "Apache-2.0",
+							LicensePath: "LICENSE-Apache",
+						},
+					},
+				},
+			},
+			expected: map[string]string{
+				"MIT":        mitLicense,
+				"Apache-2.0": apacheLicense,
+			},
+			wantErr: false,
+		},
+		{
+			name: "mixed structure with paths",
+			copyright: []Copyright{
+				{
+					License:     "MIT",
+					LicensePath: "LICENSE-MIT",
+				},
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{License: "GPL-3.0-or-later"}, // No path
+						{
+							License:     "Apache-2.0",
+							LicensePath: "LICENSE-Apache",
+						},
+					},
+				},
+			},
+			expected: map[string]string{
+				"MIT":        mitLicense,
+				"Apache-2.0": apacheLicense,
+			},
+			wantErr: false,
+		},
+		{
+			name: "license without path",
+			copyright: []Copyright{
+				{License: "MIT"},
+			},
+			expected: map[string]string{},
+			wantErr:  false,
+		},
+		{
+			name: "nonexistent license file",
+			copyright: []Copyright{
+				{
+					License:     "MIT",
+					LicensePath: "nonexistent-file",
+				},
+			},
+			expected: nil,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg := Package{Copyright: tt.copyright}
+			result, err := pkg.LicensingInfos(tmpDir)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestBuildSingleLicenseExpression(t *testing.T) {
+	tests := []struct {
+		name      string
+		copyright Copyright
+		expected  string
+	}{
+		{
+			name:      "empty copyright",
+			copyright: Copyright{},
+			expected:  "",
+		},
+		{
+			name:      "simple license",
+			copyright: Copyright{License: "MIT"},
+			expected:  "MIT",
+		},
+		{
+			name: "OR group",
+			copyright: Copyright{
+				Operator: "OR",
+				Licenses: []Copyright{
+					{License: "MIT"},
+					{License: "Apache-2.0"},
+				},
+			},
+			expected: "(MIT OR Apache-2.0)",
+		},
+		{
+			name: "single license in group (no parentheses)",
+			copyright: Copyright{
+				Operator: "OR",
+				Licenses: []Copyright{
+					{License: "MIT"},
+				},
+			},
+			expected: "MIT",
+		},
+		{
+			name: "nested structure",
+			copyright: Copyright{
+				Operator: "AND",
+				Licenses: []Copyright{
+					{
+						Operator: "OR",
+						Licenses: []Copyright{
+							{License: "MIT"},
+							{License: "BSD-3-Clause"},
+						},
+					},
+					{License: "GPL-3.0-or-later"},
+				},
+			},
+			expected: "((MIT OR BSD-3-Clause) AND GPL-3.0-or-later)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildSingleLicenseExpression(tt.copyright, true) // Test with parentheses needed
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCombineExpressions(t *testing.T) {
+	tests := []struct {
+		name        string
+		expressions []string
+		operator    string
+		expected    string
+	}{
+		{
+			name:        "empty expressions",
+			expressions: []string{},
+			operator:    "AND",
+			expected:    "",
+		},
+		{
+			name:        "single expression",
+			expressions: []string{"MIT"},
+			operator:    "AND",
+			expected:    "MIT",
+		},
+		{
+			name:        "two expressions with AND",
+			expressions: []string{"MIT", "Apache-2.0"},
+			operator:    "AND",
+			expected:    "MIT AND Apache-2.0",
+		},
+		{
+			name:        "two expressions with OR",
+			expressions: []string{"MIT", "Apache-2.0"},
+			operator:    "OR",
+			expected:    "MIT OR Apache-2.0",
+		},
+		{
+			name:        "invalid operator defaults to AND",
+			expressions: []string{"MIT", "Apache-2.0"},
+			operator:    "XOR",
+			expected:    "MIT AND Apache-2.0",
+		},
+		{
+			name:        "three expressions",
+			expressions: []string{"MIT", "Apache-2.0", "GPL-3.0-or-later"},
+			operator:    "OR",
+			expected:    "MIT OR Apache-2.0 OR GPL-3.0-or-later",
+		},
+		{
+			name:        "expressions with duplicates",
+			expressions: []string{"MIT", "Apache-2.0", "MIT", "GPL-3.0-or-later"},
+			operator:    "OR",
+			expected:    "MIT OR Apache-2.0 OR GPL-3.0-or-later",
+		},
+		{
+			name:        "all duplicates",
+			expressions: []string{"MIT", "MIT", "MIT"},
+			operator:    "AND",
+			expected:    "MIT",
+		},
+		{
+			name:        "expressions with empty strings",
+			expressions: []string{"MIT", "", "Apache-2.0", ""},
+			operator:    "OR",
+			expected:    "MIT OR Apache-2.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := combineExpressions(tt.expressions, tt.operator)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestContainsOperator(t *testing.T) {
+	tests := []struct {
+		name     string
+		expr     string
+		expected bool
+	}{
+		{
+			name:     "simple license",
+			expr:     "MIT",
+			expected: false,
+		},
+		{
+			name:     "contains AND",
+			expr:     "MIT AND Apache-2.0",
+			expected: true,
+		},
+		{
+			name:     "contains OR",
+			expr:     "MIT OR Apache-2.0",
+			expected: true,
+		},
+		{
+			name:     "contains both",
+			expr:     "(MIT OR Apache-2.0) AND GPL-3.0-or-later",
+			expected: true,
+		},
+		{
+			name:     "false positive (partial match)",
+			expr:     "ANDROID-SDK", // Contains "AND" but not " AND "
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := containsOperator(tt.expr)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDeduplicateExpressions(t *testing.T) {
+	tests := []struct {
+		name        string
+		expressions []string
+		expected    []string
+	}{
+		{
+			name:        "no duplicates",
+			expressions: []string{"MIT", "Apache-2.0", "GPL-3.0-or-later"},
+			expected:    []string{"MIT", "Apache-2.0", "GPL-3.0-or-later"},
+		},
+		{
+			name:        "with duplicates",
+			expressions: []string{"MIT", "Apache-2.0", "MIT", "GPL-3.0-or-later"},
+			expected:    []string{"MIT", "Apache-2.0", "GPL-3.0-or-later"},
+		},
+		{
+			name:        "all duplicates",
+			expressions: []string{"MIT", "MIT", "MIT"},
+			expected:    []string{"MIT"},
+		},
+		{
+			name:        "empty expressions",
+			expressions: []string{},
+			expected:    []string{},
+		},
+		{
+			name:        "single expression",
+			expressions: []string{"MIT"},
+			expected:    []string{"MIT"},
+		},
+		{
+			name:        "with empty strings",
+			expressions: []string{"MIT", "", "Apache-2.0", "", "MIT"},
+			expected:    []string{"MIT", "Apache-2.0"},
+		},
+		{
+			name:        "preserves order",
+			expressions: []string{"GPL-3.0-or-later", "MIT", "Apache-2.0", "MIT"},
+			expected:    []string{"GPL-3.0-or-later", "MIT", "Apache-2.0"},
+		},
+		{
+			name:        "complex expressions with duplicates",
+			expressions: []string{"(MIT OR Apache-2.0)", "GPL-3.0-or-later", "(MIT OR Apache-2.0)"},
+			expected:    []string{"(MIT OR Apache-2.0)", "GPL-3.0-or-later"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deduplicateExpressions(tt.expressions)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFullCopyright(t *testing.T) {
+	tests := []struct {
+		name      string
+		copyright []Copyright
+		expected  string
+	}{
+		{
+			name:      "nil copyright",
+			copyright: nil,
+			expected:  "NOASSERTION",
+		},
+		{
+			name:      "empty copyright",
+			copyright: []Copyright{},
+			expected:  "NOASSERTION",
+		},
+		{
+			name: "single copyright with attestation",
+			copyright: []Copyright{
+				{Attestation: "Copyright 2023 Example Corp"},
+			},
+			expected: "Copyright 2023 Example Corp",
+		},
+		{
+			name: "multiple copyright attestations",
+			copyright: []Copyright{
+				{Attestation: "Copyright 2023 Example Corp"},
+				{Attestation: "Copyright 2024 Another Corp"},
+			},
+			expected: "Copyright 2023 Example Corp\nCopyright 2024 Another Corp",
+		},
+		{
+			name: "simple license without attestation",
+			copyright: []Copyright{
+				{License: "MIT"},
+			},
+			expected: "NOASSERTION",
+		},
+		{
+			name: "grouped copyrights with attestations",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{Attestation: "Copyright 2023 First Corp"},
+						{Attestation: "Copyright 2023 Second Corp"},
+					},
+				},
+			},
+			expected: "Copyright 2023 First Corp\nCopyright 2023 Second Corp",
+		},
+		{
+			name: "mixed simple and grouped copyrights",
+			copyright: []Copyright{
+				{Attestation: "Copyright 2023 Main Corp"},
+				{
+					Operator: "AND",
+					Licenses: []Copyright{
+						{Attestation: "Copyright 2023 Sub Corp A"},
+						{Attestation: "Copyright 2023 Sub Corp B"},
+					},
+				},
+			},
+			expected: "Copyright 2023 Main Corp\nCopyright 2023 Sub Corp A\nCopyright 2023 Sub Corp B",
+		},
+		{
+			name: "nested groups with attestations",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{
+							Operator: "AND",
+							Licenses: []Copyright{
+								{Attestation: "Copyright 2023 Nested Corp A"},
+								{Attestation: "Copyright 2023 Nested Corp B"},
+							},
+						},
+						{Attestation: "Copyright 2023 Alternative Corp"},
+					},
+				},
+			},
+			expected: "Copyright 2023 Nested Corp A\nCopyright 2023 Nested Corp B\nCopyright 2023 Alternative Corp",
+		},
+		{
+			name: "deeply nested groups",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{
+							Operator: "AND",
+							Licenses: []Copyright{
+								{
+									Operator: "OR",
+									Licenses: []Copyright{
+										{Attestation: "Copyright 2023 Deep Corp A"},
+										{Attestation: "Copyright 2023 Deep Corp B"},
+									},
+								},
+								{Attestation: "Copyright 2023 Mid Corp"},
+							},
+						},
+						{Attestation: "Copyright 2023 Top Corp"},
+					},
+				},
+			},
+			expected: "Copyright 2023 Deep Corp A\nCopyright 2023 Deep Corp B\nCopyright 2023 Mid Corp\nCopyright 2023 Top Corp",
+		},
+		{
+			name: "mixed licenses and attestations",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{Attestation: "Copyright 2023 Example Corp"},
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "Apache-2.0"},
+						{Attestation: "Copyright 2023 Alternative Corp"},
+					},
+				},
+			},
+			expected: "Copyright 2023 Example Corp\nCopyright 2023 Alternative Corp",
+		},
+		{
+			name: "groups with no attestations (only licenses)",
+			copyright: []Copyright{
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{License: "MIT"},
+						{License: "Apache-2.0"},
+					},
+				},
+			},
+			expected: "NOASSERTION",
+		},
+		{
+			name: "complex real-world scenario",
+			copyright: []Copyright{
+				{Attestation: "Copyright 2023 Main Project Contributors"},
+				{
+					Operator: "OR",
+					Licenses: []Copyright{
+						{
+							Operator: "AND",
+							Licenses: []Copyright{
+								{Attestation: "Copyright 2023 Vendor A"},
+								{License: "MIT"},
+							},
+						},
+						{
+							Operator: "AND",
+							Licenses: []Copyright{
+								{Attestation: "Copyright 2023 Vendor B"},
+								{License: "Apache-2.0"},
+							},
+						},
+					},
+				},
+				{Attestation: "Copyright 2023 Additional Contributors"},
+			},
+			expected: "Copyright 2023 Main Project Contributors\nCopyright 2023 Vendor A\nCopyright 2023 Vendor B\nCopyright 2023 Additional Contributors",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg := Package{Copyright: tt.copyright}
+			result := pkg.FullCopyright()
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

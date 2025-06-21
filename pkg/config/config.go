@@ -415,28 +415,153 @@ type Copyright struct {
 	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
 	// Optional: Attestations of the license
 	Attestation string `json:"attestation,omitempty" yaml:"attestation,omitempty"`
-	// Required: The license for this package
-	License string `json:"license" yaml:"license"`
+	// Optional: The license for this package (for simple license entries)
+	License string `json:"license,omitempty" yaml:"license,omitempty"`
 	// Optional: Path to text of the custom License Ref
 	LicensePath string `json:"license-path,omitempty" yaml:"license-path,omitempty"`
 	// Optional: License override
 	DetectionOverride string `json:"detection-override,omitempty" yaml:"detection-override,omitempty"`
+
+	// License grouping fields (for complex license structures)
+	// Optional: Operator to combine licenses in this group ("AND" or "OR")
+	// If specified, this becomes a grouping entry and "licenses" field should be used
+	Operator string `json:"operator,omitempty" yaml:"operator,omitempty"`
+	// Optional: List of sub-licenses/groups (only used when Operator is specified)
+	Licenses []Copyright `json:"licenses,omitempty" yaml:"licenses,omitempty"`
 }
 
 // LicenseExpression returns an SPDX license expression formed from the data in
-// the copyright structs found in the conf. It's a simple OR for now.
+// the copyright structs found in the conf. Supports hierarchical license grouping
+// with AND/OR operators for complex licensing scenarios.
 func (p Package) LicenseExpression() string {
-	licenseExpression := ""
 	if p.Copyright == nil {
-		return licenseExpression
+		return ""
 	}
-	for _, cp := range p.Copyright {
-		if licenseExpression != "" {
-			licenseExpression += " OR "
+	return buildLicenseExpression(p.Copyright)
+}
+
+// buildLicenseExpression recursively builds an SPDX license expression from copyright entries
+func buildLicenseExpression(copyrights []Copyright) string {
+	if len(copyrights) == 0 {
+		return ""
+	}
+	var expressions []string
+	for _, cp := range copyrights {
+		expr := buildSingleLicenseExpression(cp, len(copyrights) > 1)
+		if expr != "" {
+			expressions = append(expressions, expr)
 		}
-		licenseExpression += cp.License
 	}
-	return licenseExpression
+	if len(expressions) == 0 {
+		return ""
+	}
+	if len(expressions) == 1 {
+		return expressions[0]
+	}
+
+	// Determine the operator to use when combining multiple top-level entries
+	// Default to AND unless all copyright entries are grouping entries with the same operator
+	defaultOperator := "AND"
+	var commonOperator string
+	allGroupingsWithSameOperator := true
+	for _, cp := range copyrights {
+		// Check if this is a grouping entry
+		if cp.Operator != "" && len(cp.Licenses) > 0 {
+			if commonOperator == "" {
+				commonOperator = cp.Operator
+			} else if commonOperator != cp.Operator {
+				allGroupingsWithSameOperator = false
+				break
+			}
+		} else {
+			// Simple license entry - can't use grouping operator
+			allGroupingsWithSameOperator = false
+			break
+		}
+	}
+
+	// Only use the common operator if ALL entries are groupings with the same operator
+	if allGroupingsWithSameOperator && commonOperator != "" {
+		defaultOperator = commonOperator
+	}
+
+	return combineExpressions(expressions, defaultOperator)
+}
+
+// buildSingleLicenseExpression builds expression for a single copyright entry
+func buildSingleLicenseExpression(cp Copyright, needsParentheses bool) string {
+	// If this is a grouping entry (has Operator and Licenses)
+	if cp.Operator != "" && len(cp.Licenses) > 0 {
+		var subExpressions []string
+		for _, subCp := range cp.Licenses {
+			expr := buildSingleLicenseExpression(subCp, true) // Nested expressions always need parentheses when grouped
+			if expr != "" {
+				subExpressions = append(subExpressions, expr)
+			}
+		}
+
+		if len(subExpressions) == 0 {
+			return ""
+		}
+		if len(subExpressions) == 1 {
+			return subExpressions[0]
+		}
+
+		combined := combineExpressions(subExpressions, cp.Operator)
+		// Only wrap in parentheses if this is being used in a larger expression
+		if needsParentheses {
+			return "(" + combined + ")"
+		}
+		return combined
+	}
+
+	// Simple license entry
+	if cp.License != "" {
+		return cp.License
+	}
+
+	return ""
+}
+
+// combineExpressions combines license expressions with the specified operator
+// and removes duplicates to ensure clean license expressions
+func combineExpressions(expressions []string, operator string) string {
+	if len(expressions) == 0 {
+		return ""
+	}
+	// Remove duplicates while preserving order
+	deduped := deduplicateExpressions(expressions)
+	if len(deduped) == 1 {
+		return deduped[0]
+	}
+	// Default to AND if operator is not specified or invalid
+	if operator != "AND" && operator != "OR" {
+		operator = "AND"
+	}
+
+	return strings.Join(deduped, " "+operator+" ")
+}
+
+// deduplicateExpressions removes duplicate license expressions while preserving order
+func deduplicateExpressions(expressions []string) []string {
+	if len(expressions) <= 1 {
+		return expressions
+	}
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(expressions))
+	for _, expr := range expressions {
+		if expr != "" && !seen[expr] {
+			seen[expr] = true
+			result = append(result, expr)
+		}
+	}
+
+	return result
+}
+
+// containsOperator checks if a license expression contains AND/OR operators
+func containsOperator(expr string) bool {
+	return strings.Contains(expr, " AND ") || strings.Contains(expr, " OR ")
 }
 
 // LicensingInfos looks at the `Package.Copyright[].LicensePath` fields of the
@@ -444,38 +569,67 @@ func (p Package) LicenseExpression() string {
 // LicensingInfos opens the file at this path from the build's workspace
 // directory, and reads in the license content. LicensingInfos then returns a
 // map of the `Copyright.License` field to the string content of the file from
-// `.LicensePath`.
+// `.LicensePath`. This function supports both simple and grouped copyright structures.
 func (p Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
 	licenseInfos := make(map[string]string)
 	for _, cp := range p.Copyright {
-		if cp.LicensePath != "" {
-			content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
-			if err != nil {
-				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
-			}
-			licenseInfos[cp.License] = string(content)
+		if err := collectLicensingInfos(cp, WorkspaceDir, licenseInfos); err != nil {
+			return nil, err
 		}
 	}
 	return licenseInfos, nil
 }
 
+// collectLicensingInfos recursively collects license path information from copyright entries
+func collectLicensingInfos(cp Copyright, workspaceDir string, licenseInfos map[string]string) error {
+	// Handle simple license entry
+	if cp.License != "" && cp.LicensePath != "" {
+		content, err := os.ReadFile(filepath.Join(workspaceDir, cp.LicensePath))
+		if err != nil {
+			return fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
+		}
+		licenseInfos[cp.License] = string(content)
+	}
+
+	// Handle grouped license entries
+	for _, subCp := range cp.Licenses {
+		if err := collectLicensingInfos(subCp, workspaceDir, licenseInfos); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // FullCopyright returns the concatenated copyright expressions defined
 // in the configuration file.
 func (p Package) FullCopyright() string {
-	copyright := ""
-	for _, cp := range p.Copyright {
-		if cp.Attestation != "" {
-			copyright += cp.Attestation + "\n"
-		}
-	}
-	// No copyright found, instead of ommitting the field declare
+	copyrights := collectCopyright(p.Copyright)
+	// No copyrights found, instead of ommitting the field declare
 	// that no determination was attempted, which is better than a
 	// whitespace (which should also be interpreted as
 	// NOASSERTION)
-	if copyright == "" {
-		copyright = "NOASSERTION"
+	copyright := "NOASSERTION"
+	if len(copyrights) > 0 {
+		// Otherwise, join the copyrights with newlines
+		copyright = strings.Join(copyrights, "\n")
 	}
 	return copyright
+}
+
+// collectCopyright recursively collects copyright entries from copyright structs.
+func collectCopyright(cps []Copyright) []string {
+	copyrights := []string{}
+	for _, cp := range cps {
+		// Check if this is a grouping entry
+		if cp.Operator != "" && len(cp.Licenses) > 0 {
+			// This is a grouping entry, collect its sub-licenses
+			copyrights = append(copyrights, collectCopyright(cp.Licenses)...)
+		} else if cp.Attestation != "" {
+			copyrights = append(copyrights, cp.Attestation)
+		}
+	}
+	return copyrights
 }
 
 type Needs struct {
@@ -1705,6 +1859,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
+	if err := validateCopyright(cfg.Package.Copyright); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
 
 	saw := map[string]int{cfg.Package.Name: -1}
 	for i, sp := range cfg.Subpackages {
@@ -1906,6 +2063,64 @@ func validateCapabilities(setcap []Capability) error {
 		}
 		if cap.Reason == "" {
 			errs = append(errs, fmt.Errorf("unjustified reason for capability %q", cap.Add))
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errors.Join(errs...)
+}
+
+// validateCopyright validates the copyright structure including nested license groups
+func validateCopyright(copyrights []Copyright) error {
+	var errs []error
+
+	for i, cp := range copyrights {
+		if err := validateSingleCopyright(cp, fmt.Sprintf("copyright[%d]", i)); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errors.Join(errs...)
+}
+
+// validateSingleCopyright validates a single copyright entry (simple or grouped)
+func validateSingleCopyright(cp Copyright, path string) error {
+	var errs []error
+
+	// Check if this is a grouping entry
+	isGrouping := cp.Operator != "" || len(cp.Licenses) > 0
+	isSimple := cp.License != ""
+
+	if isGrouping && isSimple {
+		errs = append(errs, fmt.Errorf("%s: cannot specify both 'license' field and grouping ('operator'/'licenses') fields", path))
+	}
+
+	if !isGrouping && !isSimple {
+		errs = append(errs, fmt.Errorf("%s: must specify either 'license' field or grouping ('operator'/'licenses') fields", path))
+	}
+
+	if isGrouping {
+		// Validate grouping entry
+		if cp.Operator != "" && cp.Operator != "AND" && cp.Operator != "OR" {
+			errs = append(errs, fmt.Errorf("%s: operator must be 'AND' or 'OR', got %q", path, cp.Operator))
+		}
+
+		if len(cp.Licenses) == 0 {
+			errs = append(errs, fmt.Errorf("%s: grouping entry must have at least one license in 'licenses' field", path))
+		}
+
+		// Recursively validate sub-licenses
+		for i, subCp := range cp.Licenses {
+			if err := validateSingleCopyright(subCp, fmt.Sprintf("%s.licenses[%d]", path, i)); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 

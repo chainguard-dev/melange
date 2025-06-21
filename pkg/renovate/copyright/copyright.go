@@ -17,6 +17,7 @@ package copyright
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/chainguard-dev/clog"
 
@@ -28,8 +29,9 @@ import (
 // CopyrightConfig contains the configuration data for a copyright update
 // renovator.
 type CopyrightConfig struct {
-	Licenses []license.License
-	Diffs    []license.LicenseDiff
+	Licenses   []license.License
+	Diffs      []license.LicenseDiff
+	Structured bool // Enable structured license grouping by directory
 }
 
 // Option sets a config option on a CopyrightConfig.
@@ -49,6 +51,16 @@ func WithLicenses(licenses []license.License) Option {
 func WithDiffs(diffs []license.LicenseDiff) Option {
 	return func(cfg *CopyrightConfig) error {
 		cfg.Diffs = diffs
+		return nil
+	}
+}
+
+// WithStructured enables structured license grouping by directory.
+// When enabled, licenses are grouped by directory level with OR operators
+// within directories and AND operators between directories.
+func WithStructured(structured bool) Option {
+	return func(cfg *CopyrightConfig) error {
+		cfg.Structured = structured
 		return nil
 	}
 }
@@ -103,47 +115,174 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 		// detected licenses.
 		copyrightNode.Content = nil
 
-		// Repopulate the copyrightNode with detected licenses
-		for _, l := range ccfg.Licenses {
-			// Skip licenses we don't have full confidence in.
-			if !license.IsLicenseMatchConfident(l) {
-				log.Infof("skipping unconfident license %s", l.Source)
-				continue
+		if ccfg.Structured {
+			// Use structured grouping by directory
+			if err := populateStructuredCopyright(copyrightNode, ccfg.Licenses, log); err != nil {
+				return err
 			}
-
-			licenseNode := &yaml.Node{
-				Kind:    yaml.MappingNode,
-				Style:   yaml.FlowStyle,
-				Content: []*yaml.Node{},
+		} else {
+			// Use flat license listing (original behavior)
+			if err := populateFlatCopyright(copyrightNode, ccfg.Licenses, log); err != nil {
+				return err
 			}
-
-			licenseNode.Content = append(licenseNode.Content, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: "license",
-				Tag:   "!!str",
-				Style: yaml.FlowStyle,
-			}, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: l.Name,
-				Tag:   "!!str",
-				Style: yaml.FlowStyle,
-			})
-
-			licenseNode.Content = append(licenseNode.Content, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: "license-path",
-				Tag:   "!!str",
-				Style: yaml.FlowStyle,
-			}, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: l.Source,
-				Tag:   "!!str",
-				Style: yaml.FlowStyle,
-			})
-
-			copyrightNode.Content = append(copyrightNode.Content, licenseNode)
 		}
 
 		return nil
 	}
+}
+
+// populateFlatCopyright populates the copyright node with a flat list of licenses (original behavior).
+func populateFlatCopyright(copyrightNode *yaml.Node, licenses []license.License, log *clog.Logger) error {
+	for _, l := range licenses {
+		// Skip licenses we don't have full confidence in.
+		if !license.IsLicenseMatchConfident(l) {
+			log.Infof("skipping unconfident license %s", l.Source)
+			continue
+		}
+
+		licenseNode := createSimpleLicenseNode(l)
+		copyrightNode.Content = append(copyrightNode.Content, licenseNode)
+	}
+	return nil
+}
+
+// populateStructuredCopyright populates the copyright node with structured license grouping by directory.
+func populateStructuredCopyright(copyrightNode *yaml.Node, licenses []license.License, log *clog.Logger) error {
+	// Filter out unconfident licenses
+	confidentLicenses := make([]license.License, 0, len(licenses))
+	for _, l := range licenses {
+		if !license.IsLicenseMatchConfident(l) {
+			log.Infof("skipping unconfident license %s", l.Source)
+			continue
+		}
+		confidentLicenses = append(confidentLicenses, l)
+	}
+
+	if len(confidentLicenses) == 0 {
+		return nil
+	}
+
+	// Group licenses by directory
+	licenseGroups := groupLicensesByDirectory(confidentLicenses)
+
+	// If we only have one directory group, check if we need nested structure
+	if len(licenseGroups) == 1 {
+		// If there's only one directory with one license, use simple format
+		for _, licenses := range licenseGroups {
+			if len(licenses) == 1 {
+				licenseNode := createSimpleLicenseNode(licenses[0])
+				copyrightNode.Content = append(copyrightNode.Content, licenseNode)
+				return nil
+			}
+		}
+	}
+
+	// Create structured copyright entries
+	for _, dirLicenses := range licenseGroups {
+		if len(dirLicenses) == 1 {
+			// Single license in directory - use simple entry
+			licenseNode := createSimpleLicenseNode(dirLicenses[0])
+			copyrightNode.Content = append(copyrightNode.Content, licenseNode)
+		} else {
+			// Multiple licenses in same directory - group with OR
+			groupNode := createLicenseGroupNode("OR", dirLicenses)
+			copyrightNode.Content = append(copyrightNode.Content, groupNode)
+		}
+	}
+
+	// If we have multiple directory groups, we need to wrap everything in an AND group
+	if len(licenseGroups) > 1 {
+		// Move all current content to a new AND group
+		originalContent := copyrightNode.Content
+		copyrightNode.Content = nil
+
+		andGroupNode := &yaml.Node{
+			Kind:    yaml.MappingNode,
+			Content: []*yaml.Node{},
+		}
+
+		// Add operator field
+		andGroupNode.Content = append(andGroupNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "operator", Tag: "!!str"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "AND", Tag: "!!str"},
+		)
+
+		// Add licenses field
+		andGroupNode.Content = append(andGroupNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "licenses", Tag: "!!str"},
+			&yaml.Node{Kind: yaml.SequenceNode, Content: originalContent},
+		)
+
+		copyrightNode.Content = append(copyrightNode.Content, andGroupNode)
+	}
+
+	return nil
+}
+
+// groupLicensesByDirectory groups licenses by their directory path.
+func groupLicensesByDirectory(licenses []license.License) map[string][]license.License {
+	groups := make(map[string][]license.License)
+
+	for _, l := range licenses {
+		dir := filepath.Dir(l.Source)
+		if dir == "" || dir == "." {
+			dir = "." // Root directory
+		}
+		groups[dir] = append(groups[dir], l)
+	}
+
+	return groups
+}
+
+// createSimpleLicenseNode creates a simple license node with license and license-path fields.
+func createSimpleLicenseNode(l license.License) *yaml.Node {
+	licenseNode := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Content: []*yaml.Node{},
+	}
+
+	licenseNode.Content = append(licenseNode.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "license", Tag: "!!str"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: l.Name, Tag: "!!str"},
+	)
+
+	licenseNode.Content = append(licenseNode.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "license-path", Tag: "!!str"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: l.Source, Tag: "!!str"},
+	)
+
+	return licenseNode
+}
+
+// createLicenseGroupNode creates a license group node with an operator and list of licenses.
+func createLicenseGroupNode(operator string, licenses []license.License) *yaml.Node {
+	groupNode := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Content: []*yaml.Node{},
+	}
+
+	// Add operator field
+	groupNode.Content = append(groupNode.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "operator", Tag: "!!str"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: operator, Tag: "!!str"},
+	)
+
+	// Create licenses sequence
+	licensesSeq := &yaml.Node{
+		Kind:    yaml.SequenceNode,
+		Content: []*yaml.Node{},
+	}
+
+	for _, l := range licenses {
+		licenseNode := createSimpleLicenseNode(l)
+		licensesSeq.Content = append(licensesSeq.Content, licenseNode)
+	}
+
+	// Add licenses field
+	groupNode.Content = append(groupNode.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "licenses", Tag: "!!str"},
+		licensesSeq,
+	)
+
+	return groupNode
 }

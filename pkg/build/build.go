@@ -159,6 +159,8 @@ type Build struct {
 	//
 	// This is only applicable when there's a build context.  It
 	// is filled by buildGuest.
+
+	PkgResolver *apk.PkgResolver
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {

@@ -785,6 +785,16 @@ func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 
 func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	paths := []string{}
+	dirs := []string{"sbin", "bin", "usr/sbin", "lib", "lib64"}
+
+	pathInDir := func(path string, dirs ...string) bool {
+		for _, d := range dirs {
+			if path == d || strings.HasPrefix(path, d+"/") {
+				return true
+			}
+		}
+		return false
+	}
 
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
@@ -798,21 +808,19 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 			return filepath.SkipDir
 		}
 
-		// If it's not a directory of interest just skipp the whole tree
-		if path != "." && !strings.HasPrefix(path, "sbin") && !strings.HasPrefix(path, "bin") && !strings.HasPrefix(path, "usr/sbin") {
-			if d.IsDir() && path != "usr" {
-				return filepath.SkipDir
-			}
+		// If it's not a directory of interest just skip the whole tree
+		if !(path == "." || path == "usr" || pathInDir(path, dirs...)) {
+			return filepath.SkipDir
 		}
 
-		if path == "sbin" || path == "bin" || path == "usr/sbin" {
+		if slices.Contains(dirs, path) {
 			if d.IsDir() || d.Type().IsRegular() {
 				paths = append(paths, path)
 				return nil
 			}
 		}
 
-		if strings.HasPrefix(path, "sbin/") || strings.HasPrefix(path, "bin/") || strings.HasPrefix(path, "usr/sbin/") {
+		if pathInDir(path, dirs...) {
 			paths = append(paths, path)
 		}
 

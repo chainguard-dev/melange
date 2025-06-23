@@ -17,7 +17,6 @@ package build
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -30,6 +29,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/tarfs"
 	"chainguard.dev/apko/pkg/options"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
@@ -50,7 +50,6 @@ type Test struct {
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs      []string
 	SourceDir         string
-	GuestDir          string
 	Remove            bool
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
@@ -184,43 +183,6 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	return ref, nil
 }
 
-func (t *Test) OverlayBinSh(suffix string) error {
-	if t.BinShOverlay == "" {
-		return nil
-	}
-
-	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-
-	targetPath := filepath.Join(guestDir, "bin", "sh")
-
-	inF, err := os.Open(t.BinShOverlay)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer inF.Close()
-
-	// We unlink the target first because it might be a symlink.
-	if err := os.Remove(targetPath); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	outF, err := os.Create(targetPath)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(outF, inF); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	if err := os.Chmod(targetPath, 0o755); err != nil {
-		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
-	}
-
-	return nil
-}
-
 // IsTestless returns true if the test context does not actually do any
 // testing.
 func (t *Test) IsTestless() bool {
@@ -305,37 +267,16 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return nil
 	}
 
-	if t.GuestDir == "" {
-		guestDir, err := os.MkdirTemp(t.Runner.TempDir(), "melange-guest-*")
-		if err != nil {
-			return fmt.Errorf("unable to make guest directory: %w", err)
-		}
-		t.GuestDir = guestDir
-
-		if t.Remove {
-			defer os.RemoveAll(guestDir)
-		}
-	}
-
 	imgRef := ""
 	var err error
 
-	guestFS, err := t.guestFS(ctx, "main")
-	if err != nil {
-		return err
-	}
+	guestFS := t.guestFS(ctx)
 
 	// If there are no 'main' test pipelines, we can skip building the guest.
 	if !t.IsTestless() {
 		imgRef, err = t.BuildGuest(ctx, t.Configuration.Test.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
-		}
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := t.OverlayBinSh(""); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 		}
 	}
 
@@ -411,17 +352,11 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 			log.Infof("running test pipeline for subpackage %s", sp.Name)
 
-			guestFS, err := t.guestFS(ctx, sp.Name)
-			if err != nil {
-				return err
-			}
+			guestFS := t.guestFS(ctx)
 
 			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
 			if err != nil {
 				return fmt.Errorf("unable to build guest: %w", err)
-			}
-			if err := t.OverlayBinSh(sp.Name); err != nil {
-				return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
 			}
 			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
 			if err != nil {
@@ -469,10 +404,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 func (t *Test) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
 	log.Debugf("  workspace dir: %s", t.WorkspaceDir)
-
-	if t.GuestDir != "" {
-		log.Debugf("  guest dir: %s", t.GuestDir)
-	}
 }
 
 func (t *Test) Summarize(ctx context.Context) {
@@ -512,6 +443,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Mounts:       mounts,
 		Capabilities: caps,
 		WorkspaceDir: t.WorkspaceDir,
+		CacheDir:     t.CacheDir,
 		Environment:  map[string]string{},
 		RunAsUID:     runAsUID(imgcfg.Accounts),
 		RunAs:        runAs(imgcfg.Accounts),
@@ -537,17 +469,6 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 	return &cfg, nil
 }
 
-func (t *Test) guestFS(ctx context.Context, suffix string) (apkofs.FullFS, error) {
-	log := clog.FromContext(ctx)
-	// Prepare guest directory. Note that we customize this for each unique
-	// Test by having a suffix, so we get a clean guest directory for each of
-	// them.
-	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-	if err := os.MkdirAll(guestDir, 0o755); err != nil {
-		return nil, fmt.Errorf("mkdir -p %s: %w", guestDir, err)
-	}
-
-	log.Infof("building test workspace in: '%s' with apko", guestDir)
-
-	return apkofs.DirFS(guestDir, apkofs.WithCreateDir()), nil
+func (t *Test) guestFS(ctx context.Context) apkofs.FullFS {
+	return tarfs.New()
 }

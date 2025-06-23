@@ -125,7 +125,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		log.Warn("qemu: could not get user ssh key pair, using ephemeral ones")
 	}
 	if pubKey != nil {
-		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
+		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", strings.TrimSpace(string(pubKey)))
 		err := sendSSHCommand(ctx,
 			cfg.WorkspaceClient,
 			cfg,
@@ -209,6 +209,17 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			return err
 		}
 	}
+
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
+	}
+
 	// Get terminal type from environment
 	termType := os.Getenv("TERM")
 	if termType == "" {
@@ -411,6 +422,17 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// Now, append those files to the extraFiles list (there should be no
 	// duplicates)
 	extraFiles = append(extraFiles, licenseFiles...)
+	// We inject the list of extra files to a remote file in order to use it
+	// with `-T` option of tar. This avoids passing too many arguments to
+	// the command, that would lead to an "-ash: sh: Argument list too long"
+	// error otherwise.
+	if len(extraFiles) > 0 {
+		err = streamExtraFilesList(ctx, cfg, extraFiles)
+		if err != nil {
+			clog.FromContext(ctx).Errorf("failed to send list of extra files: %v", err)
+			return nil, err
+		}
+	}
 
 	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
@@ -426,11 +448,11 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
-	retrieveCommand := "cd /mount/home/build && tar cvpf - --xattrs --acls --exclude='*fifo*' melange-out"
+	retrieveCommand := "cd /mount/home/build && find melange-out -type p -delete > /dev/null 2>&1 || true && tar cvpf - --xattrs --acls melange-out"
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
-	for _, v := range extraFiles {
-		retrieveCommand = fmt.Sprintf("%s %q", retrieveCommand, v)
+	if len(extraFiles) > 0 {
+		retrieveCommand = retrieveCommand + " -T extrafiles.txt"
 	}
 
 	log := clog.FromContext(ctx)
@@ -520,8 +542,6 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 }
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
-	setupAdditionalMounts := false
-
 	log := clog.FromContext(ctx)
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
@@ -610,7 +630,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			nproc = cpu
 		}
 	}
-	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", nproc))
+	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d,dies=1,sockets=1,cores=%d,threads=1", nproc, nproc))
 
 	// use kvm on linux, Hypervisor.framework on macOS, and software for cross-arch
 	switch {
@@ -665,17 +685,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
-	for k, v := range cfg.Mounts {
-		// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
-		// single files.
-		if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
-			continue
+	if cfg.CacheDir != "" {
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
+		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
+
+		// ensure the cachedir exists
+		if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
+			return fmt.Errorf("failed to create shared cachedir: %w", err)
 		}
-		setupAdditionalMounts = true
-		fsdev := fmt.Sprintf("%d", 200+k)
-		fsid := fmt.Sprintf("%d", 200+k)
-		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev"+fsdev+",path="+v.Source)
-		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs"+fsid+",fsdev=fsdev"+fsdev+",mount_tag="+v.Destination)
+
 	}
 
 	// if no size is specified, let's go for a default
@@ -711,10 +729,17 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append raw disk, init will take care of formatting it if present.
 	baseargs = append(baseargs, "-object", "iothread,id=io1")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1")
-	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,werror=report,rerror=report,file="+diskFile)
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	if runtime.GOOS == "linux" {
+		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,cache.direct=on,format=raw,aio=native,file="+diskFile)
+	}
+	if runtime.GOOS == "darwin" {
+		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,file="+diskFile)
+	}
+
 	// append the rootfs tar.gz, init will take care of populating the disk with it
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,serial=input-tar,discard=true")
+	baseargs = append(baseargs, "-object", "iothread,id=io2")
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
 	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
@@ -821,41 +846,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
-	clog.FromContext(ctx).Info("qemu: setting up local workspace")
-	err = sendSSHCommand(ctx,
-		cfg.SSHClient,
-		cfg,
-		nil,
-		stderr,
-		stdout,
-		false,
-		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
-	)
-	if err != nil {
-		err = qemuCmd.Process.Kill()
-		if err != nil {
-			return err
-		}
-	}
 
-	if setupAdditionalMounts {
-		// we have additional 9p mounts other than our workspace so we will
-		// setup the mount commands for them
-		//     mkdir /mount/dest & mount [...] dest /mount/dest
-		clog.FromContext(ctx).Info("qemu: setting up additional mountpoints")
-		setupMountCommand := ": "
-		for _, v := range cfg.Mounts {
-			// we skip workspace as we mount it above, we also skip resolv.conf as we can't 9p mount
-			// single files.
-			if v.Source == cfg.WorkspaceDir || strings.Contains(v.Source, "resolv.conf") {
-				continue
-			}
-
-			clog.FromContext(ctx).Debugf("qemu: additional mountpoint %s into /mount/%s", v.Destination, v.Destination)
-			setupMountCommand = setupMountCommand + "&& mkdir -p /mount/" + v.Destination +
-				" && mount -t 9p " + v.Destination + " /mount/" + v.Destination
-
-		}
+	if cfg.CacheDir != "" {
+		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
+		setupMountCommand := fmt.Sprintf(
+			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p melange_cache %s && "+
+				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
+			DefaultCacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+			DefaultCacheDir,
+			DefaultCacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+		)
 		if setupMountCommand != ": " {
 			err = sendSSHCommand(ctx,
 				cfg.WorkspaceClient,
@@ -874,6 +876,24 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			}
 		}
 	}
+
+	clog.FromContext(ctx).Info("qemu: setting up local workspace")
+	err = sendSSHCommand(ctx,
+		cfg.SSHClient,
+		cfg,
+		nil,
+		stderr,
+		stdout,
+		false,
+		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
+	)
+	if err != nil {
+		err = qemuCmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+	}
+
 	cfg.QemuPID = qemuCmd.Process.Pid
 	return nil
 }
@@ -935,7 +955,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		nil,
 		bufWriter,
 		false,
-		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -print"},
+		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -links 1 -print"},
 	)
 
 	if err != nil {
@@ -966,6 +986,70 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	}
 
 	return licenseFiles, nil
+}
+
+// send to the builder the list of extra files, to avoid sending a single long
+// command (avoiding "-ash: sh: Argument list too long") we will use stdin to
+// stream it. this also has the upside of not relying on a single-shot connection
+// to pass potentially lot of data.
+// split in chunks (100 stirngs at time) in order to avoid flackiness in the
+// connection.
+func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string) error {
+	writtenStrings := 0
+	chunkSize := 100
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Warn), logwriter.New(log.Error)
+	for {
+		session, err := cfg.SSHClient.NewSession()
+		if err != nil {
+			clog.FromContext(ctx).Errorf("Failed to create session: %s", err)
+			return err
+		}
+		defer session.Close()
+
+		session.Stderr = stderr
+		session.Stdout = stdout
+		stdin, err := session.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stdin pipe: %v", err)
+		}
+		cmd := "cat >> /home/build/extrafiles.txt"
+		if err := session.Start(cmd); err != nil {
+			return fmt.Errorf("failed to start command: %v", err)
+		}
+
+		// Write 100 strings there (or remainder)
+		endIndex := writtenStrings + chunkSize
+		endIndex = min(endIndex, len(extraFiles))
+		chunk := extraFiles[writtenStrings:endIndex]
+
+		clog.FromContext(ctx).Debugf("sent %d of %d",
+			writtenStrings, len(extraFiles))
+		if _, err := io.Copy(stdin, strings.NewReader(
+			strings.Join(chunk, "\n")+"\n"),
+		); err != nil {
+			return fmt.Errorf("failed to write content: %v", err)
+		}
+
+		if err := stdin.Close(); err != nil {
+			return fmt.Errorf("failed to close stdin: %v", err)
+		}
+
+		if err := session.Wait(); err != nil {
+			return fmt.Errorf("command failed: %v", err)
+		}
+
+		writtenStrings = endIndex
+
+		if writtenStrings >= len(extraFiles) {
+			break
+		}
+	}
+
+	clog.FromContext(ctx).Debugf("sent %d of %d",
+		writtenStrings, len(extraFiles))
+
+	return nil
 }
 
 func getKernelPath(ctx context.Context) (string, error) {
@@ -1129,6 +1213,16 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 		if err != nil {
 			return err
 		}
+	}
+
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
 	}
 
 	session.Stderr = stderr

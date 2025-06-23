@@ -46,6 +46,21 @@ pipeline:
       uri: https://github.com/openjdk/jdk17u/archive/refs/tags/jdk-${{vars.mangled-package-version}}.tar.gz
 ```
 
+`mangled-package-version` can also be used with `git-checkout`:
+
+```yaml
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/openjdk/jdk12u
+      tag: ${{vars.mangled-package-version}}
+      expected-commit: 5018cdd1904357c04c9c41e0f8fe8994916cb638
+```
+
+
+Note: If `melange bump` is run, it will attempt to update the `expected-commit` value.
+
+
 Other example:
 
 In some case, you need to join two or more regex match subgroups with `_`. Here you must use `${1}` instead of `$1`. More information [here](https://github.com/golang/go/issues/32885#issuecomment-507477621)

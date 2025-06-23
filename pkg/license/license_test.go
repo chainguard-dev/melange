@@ -117,6 +117,8 @@ func TestFindLicenseFiles(t *testing.T) {
 		"node_modules/copyme",
 		"node_modules/COPY",
 		"node_modules/LICENSE.txt",
+		"rust-src-1.86.0/rust-src/foo/LICENSE-MIT",
+		"rustc-src-1.86.0/rust-src/foo/LICENSE-MIT",
 	}
 
 	tmpDir = t.TempDir()

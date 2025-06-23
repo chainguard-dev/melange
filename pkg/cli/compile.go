@@ -38,7 +38,6 @@ func compile() *cobra.Command {
 	var cacheDir string
 	var cacheSource string
 	var apkCacheDir string
-	var guestDir string
 	var signingKey string
 	var generateIndex bool
 	var emptyWorkspace bool
@@ -48,7 +47,6 @@ func compile() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var dependencyLog string
-	var overlayBinSh string
 	var envFile string
 	var varsFile string
 	var purlNamespace string
@@ -114,7 +112,6 @@ func compile() *cobra.Command {
 				build.WithCacheDir(cacheDir),
 				build.WithCacheSource(cacheSource),
 				build.WithPackageCacheDir(apkCacheDir),
-				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
 				build.WithEmptyWorkspace(emptyWorkspace),
@@ -123,7 +120,6 @@ func compile() *cobra.Command {
 				build.WithExtraRepos(extraRepos),
 				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
-				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
@@ -181,7 +177,6 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
@@ -190,7 +185,6 @@ func compile() *cobra.Command {
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
-	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")

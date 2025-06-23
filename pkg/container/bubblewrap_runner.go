@@ -265,7 +265,7 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
-	guestDir, err := os.MkdirTemp("", "melange-guest-*")
+	guestDir, err := os.MkdirTemp("", "bubblewrap-guest-*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}

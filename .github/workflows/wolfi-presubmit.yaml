@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions: {}
+
 jobs:
   build-melange:
     name: Build melange and add to artifact cache
@@ -15,13 +17,13 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      - uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
           egress-policy: audit
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "./go.mod"
           check-latest: true
@@ -65,23 +67,26 @@ jobs:
           - dpkg
           #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
           - gitsign
+          - grafana-image-renderer
           - guac
           - mdbook
           - s3cmd
-          - py3-pyelftools  # Uses license-path
-          - cadvisor  # uses cgroups
-          - fping  # uses get/setcaps
-          - logstash-8  # uses a diff test user
+          - py3-pyelftools # Uses license-path
+          - cadvisor # uses cgroups
+          - fping # uses get/setcaps
+          - logstash-8 # uses a diff test user
           - perl-yaml-syck
+          - postfix
           - ncurses
           - subversion
           - sudo
           - py3-supported-python
+          - rust-1.86
           # TODO: https://github.com/wolfi-dev/os/issues/26442
           #- xmlto
 
     steps:
-      - uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      - uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
           egress-policy: audit
 
@@ -89,7 +94,7 @@ jobs:
         with:
           repository: wolfi-dev/os
 
-      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/.melange-dir
@@ -195,6 +200,8 @@ jobs:
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; apk add libcap-utils; getcap /usr/sbin/fping"
           elif [[ "${{ matrix.package }}" == "sudo" ]]; then
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /usr/bin/sudo"
+          elif [[ "${{ matrix.package }}" == "postfix" ]]; then
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /var/spool/postfix; ls -hal /var/lib/postfix"
           else
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk"
           fi

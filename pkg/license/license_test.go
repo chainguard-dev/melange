@@ -52,7 +52,7 @@ func TestFindLicenseFiles(t *testing.T) {
 
 	for _, name := range testFiles {
 		filePath := filepath.Join(tmpDir, name)
-		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
+		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0o666)
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", name, err)
 		}
@@ -128,7 +128,7 @@ func TestFindLicenseFiles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", name, err)
 		}
-		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
+		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0o666)
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", name, err)
 		}
@@ -145,7 +145,6 @@ func TestFindLicenseFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindLicenseFiles returned an error: %v", err)
 	}
-
 }
 
 func TestIdentify(t *testing.T) {

@@ -29,8 +29,8 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/tarfs"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
@@ -332,7 +332,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 			return nil
 		}()
-
 		if err != nil {
 			return err
 		}
@@ -388,7 +387,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 			return nil
 		}()
-
 		if err != nil {
 			return err
 		}

@@ -126,7 +126,7 @@ func (pc *PackageBuild) AppendBuildLog(dir string) error {
 	}
 
 	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	}
 
 	fsys := memfs.New()
-	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
+	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0o644); err != nil {
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
@@ -229,56 +229,56 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	if err := enc.Encode(pc.Build.Configuration); err != nil {
 		return nil, fmt.Errorf("marshalling config: %w", err)
 	}
-	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0644); err != nil {
+	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0o644); err != nil {
 		return nil, fmt.Errorf("writing .melange.yaml: %w", err)
 	}
 
 	if scriptlets := pc.Scriptlets; scriptlets != nil {
 		if scriptlets.Trigger.Script != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".trigger", []byte(scriptlets.Trigger.Script), 0755); err != nil {
+			if err := fsys.WriteFile(".trigger", []byte(scriptlets.Trigger.Script), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PreInstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".pre-install", []byte(scriptlets.PreInstall), 0755); err != nil {
+			if err := fsys.WriteFile(".pre-install", []byte(scriptlets.PreInstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PostInstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".post-install", []byte(scriptlets.PostInstall), 0755); err != nil {
+			if err := fsys.WriteFile(".post-install", []byte(scriptlets.PostInstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PreDeinstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".pre-deinstall", []byte(scriptlets.PreDeinstall), 0755); err != nil {
+			if err := fsys.WriteFile(".pre-deinstall", []byte(scriptlets.PreDeinstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PostDeinstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".post-deinstall", []byte(scriptlets.PostDeinstall), 0755); err != nil {
+			if err := fsys.WriteFile(".post-deinstall", []byte(scriptlets.PostDeinstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PreUpgrade != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".pre-upgrade", []byte(scriptlets.PreUpgrade), 0755); err != nil {
+			if err := fsys.WriteFile(".pre-upgrade", []byte(scriptlets.PreUpgrade), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PostUpgrade != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".post-upgrade", []byte(scriptlets.PostUpgrade), 0755); err != nil {
+			if err := fsys.WriteFile(".post-upgrade", []byte(scriptlets.PostUpgrade), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
@@ -462,7 +462,7 @@ func (pc *PackageBuild) generateProvenanceData(ctx context.Context) ([]byte, err
 	}
 
 	// https://slsa.dev/spec/v1.1/distributing-provenance#relationship-between-releases-and-attestations
-	if err := fsys.WriteFile(fmt.Sprintf("%s.attestation", pc.Identity()), slsaData, 0644); err != nil {
+	if err := fsys.WriteFile(fmt.Sprintf("%s.attestation", pc.Identity()), slsaData, 0o644); err != nil {
 		return nil, fmt.Errorf("unable to build provenance FS: %w", err)
 	}
 
@@ -581,7 +581,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	// build the final tarball
-	if err := os.MkdirAll(pc.OutDir, 0755); err != nil {
+	if err := os.MkdirAll(pc.OutDir, 0o755); err != nil {
 		return fmt.Errorf("unable to create output directory: %w", err)
 	}
 

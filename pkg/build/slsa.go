@@ -48,7 +48,6 @@ func (pc *PackageBuild) generateSLSA() ([]byte, error) {
 	externalParameters, err := structpb.NewStruct(map[string]any{
 		"package-configuration": cfg,
 	})
-
 	if err != nil {
 		return nil, err
 	}

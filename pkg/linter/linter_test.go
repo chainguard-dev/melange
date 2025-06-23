@@ -30,7 +30,7 @@ func TestLinters(t *testing.T) {
 	mkfile := func(t *testing.T, path string) func() string {
 		return func() string {
 			d := t.TempDir()
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir(path)), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir(path)), 0o700))
 			f, err := os.Create(filepath.Join(d, path))
 			assert.NoError(t, err)
 			fmt.Fprintln(f, "blah")
@@ -214,7 +214,7 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/sbin")), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/sbin")), 0o700))
 			_ = os.Symlink("/sbin", "/dev/null")
 			return d
 		},
@@ -223,7 +223,7 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/usr/sbin")), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/usr/sbin")), 0o700))
 			_ = os.Symlink("/usr/sbin", "/dev/null")
 			return d
 		},
@@ -232,7 +232,7 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/bin")), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/bin")), 0o700))
 			_ = os.Symlink("/bin", "/dev/null")
 			return d
 		},
@@ -241,9 +241,9 @@ func TestLinters(t *testing.T) {
 	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, "bin"), 0700))
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, "sbin"), 0700))
-			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/sbin"), 0700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "bin"), 0o700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "sbin"), 0o700))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/sbin"), 0o700))
 			fmt.Printf("Creating dirs and such\n")
 			f, err := os.Create(filepath.Join(d, "bin/test"))
 			assert.NoError(t, err)
@@ -305,7 +305,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
-	assert.NoError(t, os.MkdirAll(packagedir, 0700))
+	assert.NoError(t, os.MkdirAll(packagedir, 0o700))
 
 	// One package should not trip it
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
@@ -331,13 +331,13 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// __pycache__ dirs should not count
-	err = os.MkdirAll(filepath.Join(pythonPathdir, "__pycache__"), 0700)
+	err = os.MkdirAll(filepath.Join(pythonPathdir, "__pycache__"), 0o700)
 	assert.NoError(t, err)
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// Make another "package" (at this point we should have 2)
 	packagedir = filepath.Join(pythonPathdir, "bar")
-	err = os.MkdirAll(packagedir, 0700)
+	err = os.MkdirAll(packagedir, 0o700)
 	assert.NoError(t, err)
 
 	// Two should trip it
@@ -356,14 +356,14 @@ func Test_pythonTestLinter(t *testing.T) {
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
-	assert.NoError(t, os.MkdirAll(packagedir, 0700))
+	assert.NoError(t, os.MkdirAll(packagedir, 0o700))
 
 	// One package should not trip it
 	assert.NoError(t, LintBuild(ctx, nil, "python-test", dir, linters, nil))
 
 	// Create docs
 	docsdir := filepath.Join(pythonPathdir, "test")
-	assert.NoError(t, os.MkdirAll(docsdir, 0700))
+	assert.NoError(t, os.MkdirAll(docsdir, 0o700))
 
 	// This should trip
 	assert.Error(t, LintBuild(ctx, nil, "python-test", dir, linters, nil))
@@ -378,7 +378,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	f, err := os.Create(filePath)
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
-	assert.NoError(t, os.Chmod(filePath, 0770|fs.ModeSetuid|fs.ModeSetgid))
+	assert.NoError(t, os.Chmod(filePath, 0o770|fs.ModeSetuid|fs.ModeSetgid))
 	assert.NoError(t, LintBuild(ctx, nil, "setuidgid", t.TempDir(), linters, nil))
 }
 
@@ -388,7 +388,7 @@ func Test_worldWriteLinter(t *testing.T) {
 	linters := []string{"worldwrite"}
 
 	dir := t.TempDir()
-	assert.NoError(t, os.MkdirAll(filepath.Join(dir, "usr", "lib"), 0777))
+	assert.NoError(t, os.MkdirAll(filepath.Join(dir, "usr", "lib"), 0o777))
 
 	// Ensure 777 dirs don't trigger it
 	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
@@ -399,21 +399,21 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Set writeable and executable bits for non-world
-	err = os.Chmod(filePath, 0770)
+	err = os.Chmod(filePath, 0o770)
 	assert.NoError(t, err)
 
 	// Linter should not trigger
 	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
 
 	// Set writeable bit (but not executable bit)
-	err = os.Chmod(filePath, 0776)
+	err = os.Chmod(filePath, 0o776)
 	assert.NoError(t, err)
 
 	// Linter should trigger
 	assert.Error(t, LintBuild(ctx, nil, "worldwrite", dir, linters, nil))
 
 	// Set writeable and executable bit
-	err = os.Chmod(filePath, 0777)
+	err = os.Chmod(filePath, 0o777)
 	assert.NoError(t, err)
 
 	// Linter should trigger

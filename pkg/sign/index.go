@@ -65,7 +65,7 @@ func SignIndex(ctx context.Context, signingKey string, indexFile string) error {
 
 	log.Infof("appending signature RSA256 to index %s", indexFile)
 
-	if err := sigFS.WriteFile(fmt.Sprintf(".SIGN.RSA256.%s.pub", filepath.Base(signingKey)), sigData, 0644); err != nil {
+	if err := sigFS.WriteFile(fmt.Sprintf(".SIGN.RSA256.%s.pub", filepath.Base(signingKey)), sigData, 0o644); err != nil {
 		return fmt.Errorf("unable to append signature: %w", err)
 	}
 

@@ -465,7 +465,6 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
-
 	if err != nil {
 		var buf bytes.Buffer
 		_, cerr := io.Copy(&buf, outFile)
@@ -660,7 +659,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
 
 		// ensure the cachedir exists
-		if err := os.MkdirAll(cfg.CacheDir, 0755); err != nil {
+		if err := os.MkdirAll(cfg.CacheDir, 0o755); err != nil {
 			return fmt.Errorf("failed to create shared cachedir: %w", err)
 		}
 
@@ -927,7 +926,6 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		false,
 		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -links 1 -print"},
 	)
-
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to extract list of files for licensing: %v", buf.String())
 		return nil, err
@@ -1471,7 +1469,8 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 			},
 		},
 	}
-	opts := []apko_build.Option{apko_build.WithImageConfiguration(spec),
+	opts := []apko_build.Option{
+		apko_build.WithImageConfiguration(spec),
 		apko_build.WithArch(cfg.Arch),
 	}
 

@@ -154,8 +154,8 @@ type Build struct {
 
 	// Opt-in SLSA provenance generation for initial rollout/testing
 	GenerateProvenance bool
-	
-  // The package resolver associated with this build.
+
+	// The package resolver associated with this build.
 	//
 	// This is only applicable when there's a build context.  It
 	// is filled by buildGuest.
@@ -323,7 +323,8 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	// Work around LockImageConfiguration assuming multi-arch.
 	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 
-	opts := []apko_build.Option{apko_build.WithImageConfiguration(imgConfig),
+	opts := []apko_build.Option{
+		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),

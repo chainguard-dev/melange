@@ -44,7 +44,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
-	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/license"
 	"github.com/chainguard-dev/clog"
 	"github.com/charmbracelet/log"
@@ -507,7 +506,7 @@ func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.Re
 	}
 
 	// Parse the os-release contents
-	return config.ParseReleaseData(&buf)
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type qemuOCILoader struct{}

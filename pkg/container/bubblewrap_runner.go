@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"chainguard.dev/melange/internal/logwriter"
-	"chainguard.dev/melange/pkg/config"
 	"golang.org/x/sys/unix"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -251,7 +250,7 @@ func (bw *bubblewrap) GetReleaseData(ctx context.Context, cfg *Config) (*apko_bu
 		return nil, fmt.Errorf("failed to read os-release: %w", err)
 	}
 
-	return config.ParseReleaseData(&buf)
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type bubblewrapOCILoader struct {

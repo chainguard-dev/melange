@@ -30,7 +30,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/internal/contextreader"
 	"chainguard.dev/melange/internal/logwriter"
-	"chainguard.dev/melange/pkg/config"
 	mcontainer "chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
@@ -414,7 +413,7 @@ func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*
 	}
 
 	// Parse the os-release contents
-	return config.ParseReleaseData(&buf)
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type dockerLoader struct {

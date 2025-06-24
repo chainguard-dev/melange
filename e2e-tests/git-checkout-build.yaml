@@ -271,14 +271,16 @@ pipeline:
       else
         # Ownership of existing files is not changed.
         expected_runner=42
-        expected_melange=6
+        expected_melange=1
       fi
       exclude_args="! -regex ^\.\/\.ssh.*$ ! -regex ^./.gitconfig$"
       found_runner=$(find . -user $runner_user $exclude_args | wc -l)
       mismatch=""
       if [[ $found_runner != $expected_runner ]]; then
-        echo "Expected $expected_runner files owned by $runner_user, found $found_runner"
+        echo "Expected $expected_runner files owned by the runner user $runner_user, found $found_runner"
         find . -user $runner_user $exclude_args
+        echo "files owned by Melange user $melange_user:"
+        find . -user $melange_user $exclude_args
         mismatch=true
       fi
       if [[ $melange_user != $runner_user ]]; then

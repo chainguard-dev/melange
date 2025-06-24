@@ -148,6 +148,12 @@ type Build struct {
 	// visibility into our packages' (including subpackages') composition. This is
 	// how we get "build-time" SBOMs!
 	SBOMGroup *SBOMGroup
+
+	// The package resolver associated with this build.
+	//
+	// This is only applicable when there's a build context.  It
+	// is filled by buildGuest.
+	PkgResolver           *apk.PkgResolver
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -344,6 +350,13 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
+
+	// Get the APK associated with our build, and then get a Resolver
+	namedIndexes, err := bc.APK().GetRepositoryIndexes(ctx, false)
+	if err != nil {
+		return "", fmt.Errorf("unable to obtain repository indexes: %w", err)
+	}
+	b.PkgResolver = apk.NewPkgResolver(ctx, namedIndexes)
 
 	bc.Summarize(ctx)
 	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to summarize
@@ -576,6 +589,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	b.summarize(ctx)
+
+	ver := b.Configuration.Package.Version
+	if _, err := apk.ParseVersion(ver); err != nil {
+		return fmt.Errorf("Unable to parse version '%s' for %s: %v", ver, b.ConfigFile, err)
+	}
 
 	namespace := b.Namespace
 	if namespace == "" {

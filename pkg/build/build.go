@@ -37,10 +37,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -103,7 +103,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -153,7 +153,7 @@ type Build struct {
 	//
 	// This is only applicable when there's a build context.  It
 	// is filled by buildGuest.
-	PkgResolver           *apk.PkgResolver
+	PkgResolver *apk.PkgResolver
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -783,7 +783,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// Retreive the os-release information from the runner
 	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("unable to retrieve release data: %w", err)
+		log.Warnf("failed to retrieve release data from runner, OS section will be unknown: %v", err)
+		// If we can't retrieve the release data, we will use a default 'unknown' one similar to apko.
+		releaseData = &apko_build.ReleaseData{
+			ID:        "unknown",
+			Name:      "melange-generated package",
+			VersionID: "unknown",
+		}
 	}
 
 	// Apply xattrs to files in the new in-memory filesystem

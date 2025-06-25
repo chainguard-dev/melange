@@ -1,0 +1,39 @@
+package:
+  name: crane
+  version: "0.20.3"
+  epoch: 3
+  description: This package mainly just tests xcover pipelines
+
+capabilities:
+  add:
+    - CAP_SYS_ADMIN
+    - CAP_SYS_RESOURCE
+
+test:
+  environment:
+    contents:
+      packages:
+        - jq
+        - crane
+  pipeline:
+    - uses: xcover/profile
+      with:
+        executable-path: /usr/bin/crane
+        exclude-functions: ^runtime\\.
+    - runs: |
+        crane version || exit 1
+        crane --help
+    - runs: |
+        crane manifest chainguard/static | jq '.schemaVersion' | grep '2' || exit 1
+    - runs: |
+        crane ls chainguard/static | grep -E 'latest|v[0-9]+.[0-9]+.[0-9]+' || exit 1
+    - runs: |
+        crane digest chainguard/static:latest && echo "Image exists" || exit 1
+    - runs: |
+        crane pull chainguard/static:latest static_latest.tar || exit 1
+        [ -f static_latest.tar ] || exit 1
+    - uses: xcover/stop
+    - uses: xcover/ensure
+      with:
+        min-coverage: 10
+

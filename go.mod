@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.24.0
 
 require (
-	chainguard.dev/apko v0.27.9
+	chainguard.dev/apko v0.27.10-0.20250623150342-bfcb016b5959
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.17

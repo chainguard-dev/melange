@@ -477,6 +477,35 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	return os.Open(outFile.Name())
 }
 
+// GetReleaseData returns the OS information (os-release contents) for the Qemu runner.
+func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error) {
+	// in case of buildless pipelines we just nop
+	if cfg.SSHKey == nil {
+		return nil, nil
+	}
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err := sendSSHCommand(ctx,
+		cfg.WorkspaceClient,
+		cfg,
+		nil,
+		nil,
+		bufWriter,
+		false,
+		[]string{"sh", "-c", "cat /etc/os-release"},
+	)
+
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to get os-release: %v", err)
+		return nil, err
+	}
+
+	// Parse the os-release contents
+	return apko_build.ParseReleaseData(&buf)
+}
+
 type qemuOCILoader struct{}
 
 func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {

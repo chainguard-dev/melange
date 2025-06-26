@@ -141,9 +141,10 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.RemoveAll(tmp)
 
+	// see qemu_runner.go: 1194
 	if t.Runner.Name() == container.QemuName {
 		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
-			"util-linux-misc",
+			"cmd:script",
 		}...)
 	}
 

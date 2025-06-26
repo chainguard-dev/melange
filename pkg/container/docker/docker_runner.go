@@ -403,6 +403,12 @@ func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*
 		return nil, fmt.Errorf("failed to read os-release output: %w", err)
 	}
 
+	// Flush the buffer to ensure all data is written
+	err = bufWriter.Flush()
+	if err != nil {
+		return nil, fmt.Errorf("failed to flush buffer: %w", err)
+	}
+
 	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exit code from os-release task: %w", err)

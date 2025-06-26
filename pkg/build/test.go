@@ -29,8 +29,8 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/tarfs"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
@@ -140,6 +140,13 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		return "", fmt.Errorf("creating apko tempdir: %w", err)
 	}
 	defer os.RemoveAll(tmp)
+
+	// see qemu_runner.go: 1194
+	if t.Runner.Name() == container.QemuName {
+		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
+			"cmd:script",
+		}...)
+	}
 
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
@@ -447,6 +454,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Environment:  map[string]string{},
 		RunAsUID:     runAsUID(imgcfg.Accounts),
 		RunAs:        runAs(imgcfg.Accounts),
+		TestRun:      true,
 	}
 	if t.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = t.Configuration.Capabilities.Add

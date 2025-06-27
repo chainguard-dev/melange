@@ -1,0 +1,43 @@
+package:
+  name: complex-licensing-example
+  version: 1.0.0
+  epoch: 0
+  description: "Example package demonstrating complex licensing scenarios"
+  copyright:
+    # Simple license case (backward compatible)
+    - license: MIT
+      license-path: LICENSE-MIT
+    
+    # Multi-licensed main code (user can choose either license)
+    - operator: OR
+      licenses:
+        - license: Apache-2.0
+          license-path: LICENSE-Apache
+        - license: GPL-3.0-or-later
+          license-path: LICENSE-GPL
+    
+    # Vendored code with additional requirements (must comply with all)
+    - operator: AND
+      licenses:
+        # Main project has multiple license options
+        - operator: OR
+          licenses:
+            - license: MIT
+            - license: BSD-3-Clause
+        # Plus vendored GPL code that must be included
+        - license: LGPL-2.1-or-later
+          paths: ["vendor/lgpl-lib/*"]
+          license-path: vendor/lgpl-lib/COPYING
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - build-base
+      - busybox
+
+pipeline:
+  - runs: echo "Complex licensing example"

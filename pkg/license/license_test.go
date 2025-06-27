@@ -329,3 +329,233 @@ func TestLicenseCheck_withOverrides(t *testing.T) {
 		}
 	}
 }
+
+func TestGatherMelangeLicenses_GroupedStructure(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      *config.Configuration
+		expected []License
+	}{
+		{
+			name: "simple license entries",
+			cfg: &config.Configuration{
+				Package: config.Package{
+					Copyright: []config.Copyright{
+						{License: "Apache-2.0", LicensePath: "LICENSE"},
+						{License: "MIT", LicensePath: "LICENSE-MIT"},
+					},
+				},
+			},
+			expected: []License{
+				{Name: "Apache-2.0", Source: "LICENSE"},
+				{Name: "MIT", Source: "LICENSE-MIT"},
+			},
+		},
+		{
+			name: "simple AND grouping",
+			cfg: &config.Configuration{
+				Package: config.Package{
+					Copyright: []config.Copyright{
+						{
+							Operator: "AND",
+							Licenses: []config.Copyright{
+								{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
+								{License: "MIT", LicensePath: "LICENSE-MIT"},
+							},
+						},
+					},
+				},
+			},
+			expected: []License{
+				{Name: "Apache-2.0", Source: "LICENSE-APACHE"},
+				{Name: "MIT", Source: "LICENSE-MIT"},
+			},
+		},
+		{
+			name: "simple OR grouping",
+			cfg: &config.Configuration{
+				Package: config.Package{
+					Copyright: []config.Copyright{
+						{
+							Operator: "OR",
+							Licenses: []config.Copyright{
+								{License: "GPL-2.0", LicensePath: "LICENSE-GPL2"},
+								{License: "GPL-3.0", LicensePath: "LICENSE-GPL3"},
+							},
+						},
+					},
+				},
+			},
+			expected: []License{
+				{Name: "GPL-2.0", Source: "LICENSE-GPL2"},
+				{Name: "GPL-3.0", Source: "LICENSE-GPL3"},
+			},
+		},
+		{
+			name: "nested grouping",
+			cfg: &config.Configuration{
+				Package: config.Package{
+					Copyright: []config.Copyright{
+						{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
+						{
+							Operator: "OR",
+							Licenses: []config.Copyright{
+								{
+									Operator: "AND",
+									Licenses: []config.Copyright{
+										{License: "GPL-2.0", LicensePath: "LICENSE-GPL2"},
+										{License: "LGPL-2.1", LicensePath: "LICENSE-LGPL"},
+									},
+								},
+								{License: "MIT", LicensePath: "LICENSE-MIT"},
+							},
+						},
+					},
+				},
+			},
+			expected: []License{
+				{Name: "Apache-2.0", Source: "LICENSE-APACHE"},
+				{Name: "GPL-2.0", Source: "LICENSE-GPL2"},
+				{Name: "LGPL-2.1", Source: "LICENSE-LGPL"},
+				{Name: "MIT", Source: "LICENSE-MIT"},
+			},
+		},
+		{
+			name: "mixed simple and grouped licenses",
+			cfg: &config.Configuration{
+				Package: config.Package{
+					Copyright: []config.Copyright{
+						{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
+						{License: "MIT OR BSD-3-Clause"},
+						{
+							Operator: "AND",
+							Licenses: []config.Copyright{
+								{License: "GPL-2.0", LicensePath: "LICENSE-GPL2"},
+								{License: "LGPL-2.1", LicensePath: "LICENSE-LGPL"},
+							},
+						},
+					},
+				},
+			},
+			expected: []License{
+				{Name: "Apache-2.0", Source: "LICENSE-APACHE"},
+				{Name: "MIT"},
+				{Name: "BSD-3-Clause"},
+				{Name: "GPL-2.0", Source: "LICENSE-GPL2"},
+				{Name: "LGPL-2.1", Source: "LICENSE-LGPL"},
+			},
+		},
+		{
+			name: "grouping with detection overrides",
+			cfg: &config.Configuration{
+				Package: config.Package{
+					Copyright: []config.Copyright{
+						{
+							Operator: "OR",
+							Licenses: []config.Copyright{
+								{License: "MIT", LicensePath: "LICENSE-MIT", DetectionOverride: "Expat"},
+								{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
+							},
+						},
+					},
+				},
+			},
+			expected: []License{
+				{Name: "MIT", Source: "LICENSE-MIT", Overrides: "Expat"},
+				{Name: "Apache-2.0", Source: "LICENSE-APACHE"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := gatherMelangeLicenses(tt.cfg)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("Expected %d licenses, got %d", len(tt.expected), len(result))
+				return
+			}
+
+			for i, expected := range tt.expected {
+				if i >= len(result) {
+					t.Errorf("Missing license at index %d: expected %+v", i, expected)
+					continue
+				}
+
+				actual := result[i]
+				if actual.Name != expected.Name {
+					t.Errorf("License %d: expected name %q, got %q", i, expected.Name, actual.Name)
+				}
+				if actual.Source != expected.Source {
+					t.Errorf("License %d: expected source %q, got %q", i, expected.Source, actual.Source)
+				}
+				if actual.Overrides != expected.Overrides {
+					t.Errorf("License %d: expected overrides %q, got %q", i, expected.Overrides, actual.Overrides)
+				}
+			}
+		})
+	}
+}
+
+func TestLicenseCheck_withGroupedLicenses(t *testing.T) {
+	// Create a mock configuration with grouped license structure
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Copyright: []config.Copyright{
+				{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
+				{
+					Operator: "OR",
+					Licenses: []config.Copyright{
+						{License: "GPL-2.0", LicensePath: "LICENSE-GPLv2"},
+						{License: "GPL-3.0", LicensePath: "LICENSE-GPLv3"},
+					},
+				},
+				{
+					Operator: "AND",
+					Licenses: []config.Copyright{
+						{License: "MIT", LicensePath: "LICENSE-BSD"}, // This should cause a difference since BSD-3-Clause is detected
+						{License: "ISC", LicensePath: "LICENSE-NONEXISTENT"}, // This should cause a difference since the file doesn't exist
+					},
+				},
+			},
+		},
+	}
+
+	testDataDir := "testdata"
+	dataFS := apkofs.DirFS(testDataDir)
+
+	// Call function under test
+	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
+	if err != nil {
+		t.Fatalf("LicenseCheck returned an error: %v", err)
+	}
+
+	// Expected differences:
+	// 1. LICENSE-BSD should have a difference (MIT expected vs BSD-3-Clause detected)
+	expectedDiffs := []LicenseDiff{
+		{
+			Path:   "LICENSE-BSD",
+			Is:     "MIT",
+			Should: "BSD-3-Clause",
+		},
+	}
+
+	// Verify we have the expected number of differences
+	if len(diffs) < len(expectedDiffs) {
+		t.Errorf("Expected at least %d license differences, got %d", len(expectedDiffs), len(diffs))
+	}
+
+	// Check for specific expected differences
+	for _, expected := range expectedDiffs {
+		found := false
+		for _, diff := range diffs {
+			if diff.Path == expected.Path && diff.Is == expected.Is && diff.Should == expected.Should {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected license difference %+v not found in %+v", expected, diffs)
+		}
+	}
+}

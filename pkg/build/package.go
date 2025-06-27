@@ -29,6 +29,7 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+	"time"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -95,6 +96,7 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 }
 
 func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
+	b.End = time.Now()
 	pc := PackageBuild{
 		Build:        b,
 		Origin:       &b.Configuration.Package,
@@ -124,7 +126,7 @@ func (pc *PackageBuild) AppendBuildLog(dir string) error {
 	}
 
 	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
@@ -141,6 +143,10 @@ func (pc *PackageBuild) Identity() string {
 
 func (pc *PackageBuild) Filename() string {
 	return fmt.Sprintf("%s/%s.apk", pc.OutDir, pc.Identity())
+}
+
+func (pc *PackageBuild) ProvenanceFilename() string {
+	return fmt.Sprintf("%s/%s.attest.tar.gz", pc.OutDir, pc.Identity())
 }
 
 func (pc *PackageBuild) WorkspaceSubdir() string {
@@ -212,7 +218,7 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	}
 
 	fsys := memfs.New()
-	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0644); err != nil {
+	if err := fsys.WriteFile(".PKGINFO", controlBuf.Bytes(), 0o644); err != nil {
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
@@ -223,56 +229,56 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	if err := enc.Encode(pc.Build.Configuration); err != nil {
 		return nil, fmt.Errorf("marshalling config: %w", err)
 	}
-	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0644); err != nil {
+	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0o644); err != nil {
 		return nil, fmt.Errorf("writing .melange.yaml: %w", err)
 	}
 
 	if scriptlets := pc.Scriptlets; scriptlets != nil {
 		if scriptlets.Trigger.Script != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".trigger", []byte(scriptlets.Trigger.Script), 0755); err != nil {
+			if err := fsys.WriteFile(".trigger", []byte(scriptlets.Trigger.Script), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PreInstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".pre-install", []byte(scriptlets.PreInstall), 0755); err != nil {
+			if err := fsys.WriteFile(".pre-install", []byte(scriptlets.PreInstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PostInstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".post-install", []byte(scriptlets.PostInstall), 0755); err != nil {
+			if err := fsys.WriteFile(".post-install", []byte(scriptlets.PostInstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PreDeinstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".pre-deinstall", []byte(scriptlets.PreDeinstall), 0755); err != nil {
+			if err := fsys.WriteFile(".pre-deinstall", []byte(scriptlets.PreDeinstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PostDeinstall != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".post-deinstall", []byte(scriptlets.PostDeinstall), 0755); err != nil {
+			if err := fsys.WriteFile(".post-deinstall", []byte(scriptlets.PostDeinstall), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PreUpgrade != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".pre-upgrade", []byte(scriptlets.PreUpgrade), 0755); err != nil {
+			if err := fsys.WriteFile(".pre-upgrade", []byte(scriptlets.PreUpgrade), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
 
 		if scriptlets.PostUpgrade != "" {
 			// #nosec G306 -- scriptlets must be executable
-			if err := fsys.WriteFile(".post-upgrade", []byte(scriptlets.PostUpgrade), 0755); err != nil {
+			if err := fsys.WriteFile(".post-upgrade", []byte(scriptlets.PostUpgrade), 0o755); err != nil {
 				return nil, fmt.Errorf("unable to build control FS: %w", err)
 			}
 		}
@@ -436,6 +442,43 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS,
 	return nil
 }
 
+func (pc *PackageBuild) generateProvenanceData(ctx context.Context) ([]byte, error) {
+	tarctx, err := tarball.NewContext(
+		tarball.WithSourceDateEpoch(pc.Build.SourceDateEpoch),
+		tarball.WithOverrideUIDGID(0, 0),
+		tarball.WithOverrideUname("root"),
+		tarball.WithOverrideGname("root"),
+		tarball.WithSkipClose(true),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build tarball context: %w", err)
+	}
+
+	fsys := memfs.New()
+
+	slsaData, err := pc.generateSLSA()
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate SLSA provenance: %w", err)
+	}
+
+	// https://slsa.dev/spec/v1.1/distributing-provenance#relationship-between-releases-and-attestations
+	if err := fsys.WriteFile(fmt.Sprintf("%s.attestation", pc.Identity()), slsaData, 0o644); err != nil {
+		return nil, fmt.Errorf("unable to build provenance FS: %w", err)
+	}
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+
+	if err := tarctx.WriteTar(ctx, zw, fsys, fsys); err != nil {
+		return nil, fmt.Errorf("unable to write provenance tarball: %w", err)
+	}
+	if err := zw.Close(); err != nil {
+		return nil, fmt.Errorf("flushing provenance gzip: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
 func (pc *PackageBuild) wantSignature() bool {
 	return pc.Build.SigningKey != ""
 }
@@ -538,7 +581,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	// build the final tarball
-	if err := os.MkdirAll(pc.OutDir, 0755); err != nil {
+	if err := os.MkdirAll(pc.OutDir, 0o755); err != nil {
 		return fmt.Errorf("unable to create output directory: %w", err)
 	}
 
@@ -553,6 +596,45 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	log.Infof("wrote %s", outFile.Name())
+
+	// Store signed provenance next to the emitted APK rather than inside of it
+	// This ensures that APKs themselves are reproducible
+	// SLSA's language also intimates at this approach (note the "alongside" language):
+	// https://slsa.dev/spec/v1.1/distributing-provenance#where-attestations-are-published
+	if pc.Build.GenerateProvenance {
+		slsaTarGz, err := os.CreateTemp("", "melange-provenance-*.tar.gz")
+		if err != nil {
+			return fmt.Errorf("unable to open temporary file for writing: %w", err)
+		}
+		defer slsaTarGz.Close()
+		defer os.Remove(slsaTarGz.Name())
+
+		provenanceData, err := pc.generateProvenanceData(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to generate provenance: %w", err)
+		}
+
+		provenanceFile, err := os.Create(pc.ProvenanceFilename())
+		if err != nil {
+			return fmt.Errorf("unable to create provenance file: %w", err)
+		}
+
+		combinedParts := []io.Reader{bytes.NewReader(provenanceData)}
+		if pc.wantSignature() {
+			signatureData, err := sign.EmitSignature(pc.Signer(), provenanceData, pc.Build.SourceDateEpoch)
+			if err != nil {
+				return fmt.Errorf("emitting signature: %w", err)
+			}
+
+			combinedParts = append([]io.Reader{bytes.NewReader(signatureData)}, combinedParts...)
+		}
+
+		if err := combine(provenanceFile, combinedParts...); err != nil {
+			return fmt.Errorf("failed to write provenance file: %w", err)
+		}
+
+		log.Infof("wrote %s", provenanceFile.Name())
+	}
 
 	// add the package to the build log if requested
 	if err := pc.AppendBuildLog(""); err != nil {

@@ -220,6 +220,7 @@ func optLinter(_ context.Context, _ *config.Configuration, _, path string) error
 
 	return nil
 }
+
 func objectLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if filepath.Ext(path) == ".o" {
 		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
@@ -329,8 +330,8 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		}
 
 		mode := info.Mode()
-		if mode&0002 != 0 {
-			if mode&0111 != 0 {
+		if mode&0o002 != 0 {
+			if mode&0o111 != 0 {
 				return fmt.Errorf("world-writeable executable file found in package (security risk): %s", path)
 			}
 			return fmt.Errorf("world-writeable file found in package: %s", path)
@@ -372,7 +373,7 @@ func strippedLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 
 		ext := filepath.Ext(path)
 		mode := info.Mode()
-		if mode&0111 == 0 && !isObjectFileRegex.MatchString(ext) {
+		if mode&0o111 == 0 && !isObjectFileRegex.MatchString(ext) {
 			// Not an executable or library
 			return nil
 		}

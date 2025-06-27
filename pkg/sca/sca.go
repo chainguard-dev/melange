@@ -199,7 +199,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 			return nil
 		}
 
-		if mode.Perm()&0555 == 0555 {
+		if mode.Perm()&0o555 == 0o555 {
 			if isInDir(path, []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
@@ -278,13 +278,13 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 //
 // - Asking PkgResolver to calculate the list of packages that provide "so:shlib".
 //
-// - Verifying if any package in that list matches what is currently
-//   installed in the build environment.  The package can offer a
-//   provided shared library whose version is equal or greater than
-//   the one the build requires.
+//   - Verifying if any package in that list matches what is currently
+//     installed in the build environment.  The package can offer a
+//     provided shared library whose version is equal or greater than
+//     the one the build requires.
 //
-// - Verifying if the matched package has a versioned shared library
-//   "provides:".
+//   - Verifying if the matched package has a versioned shared library
+//     "provides:".
 //
 // If all steps succeed, the package version is returned.
 //
@@ -330,7 +330,7 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 
 	// Obtain the list of packages that provide the shared
 	// library.
-	candidates, err := pkgResolver.ResolvePackage("so:" + shlib, map[*apk.RepositoryPackage]string{})
+	candidates, err := pkgResolver.ResolvePackage("so:"+shlib, map[*apk.RepositoryPackage]string{})
 	if err != nil {
 		if strings.Contains(err.Error(), "nothing provides") {
 			// We can reach here if one of the
@@ -412,7 +412,7 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 					return false
 				}
 
-				if providedArtifact != "so-ver:" + shlib {
+				if providedArtifact != "so-ver:"+shlib {
 					return false
 				}
 
@@ -544,7 +544,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			return nil
 		}
 
-		if mode.Perm()&0555 != 0555 {
+		if mode.Perm()&0o555 != 0o555 {
 			return nil
 		}
 
@@ -925,7 +925,6 @@ func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Depen
 			generated.Runtime = append(generated.Runtime, "texinfo")
 		}
 		return nil
-
 	}); err != nil {
 		return err
 	}

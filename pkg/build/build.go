@@ -149,6 +149,12 @@ type Build struct {
 	// how we get "build-time" SBOMs!
 	SBOMGroup *SBOMGroup
 
+	Start time.Time
+	End   time.Time
+
+	// Opt-in SLSA provenance generation for initial rollout/testing
+	GenerateProvenance bool
+
 	// The package resolver associated with this build.
 	//
 	// This is only applicable when there's a build context.  It
@@ -164,6 +170,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 		GuestFS:         tarfs.New(),
+		Start:           time.Now(),
 	}
 
 	for _, opt := range opts {
@@ -317,7 +324,8 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	// Work around LockImageConfiguration assuming multi-arch.
 	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 
-	opts := []apko_build.Option{apko_build.WithImageConfiguration(imgConfig),
+	opts := []apko_build.Option{
+		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),

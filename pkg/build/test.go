@@ -339,7 +339,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 			return nil
 		}()
-
 		if err != nil {
 			return err
 		}
@@ -395,7 +394,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 			return nil
 		}()
-
 		if err != nil {
 			return err
 		}

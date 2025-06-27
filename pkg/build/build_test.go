@@ -300,7 +300,7 @@ package:
 	}
 
 	f := filepath.Join(t.TempDir(), "config")
-	if err := os.WriteFile(f, []byte(contents), 0755); err != nil {
+	if err := os.WriteFile(f, []byte(contents), 0o755); err != nil {
 		t.Fatal(err)
 	}
 

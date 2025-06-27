@@ -74,7 +74,7 @@ jobs:
           - py3-pyelftools # Uses license-path
           - cadvisor # uses cgroups
           - fping # uses get/setcaps
-          - logstash-8 # uses a diff test user
+          - fixuid # uses a diff test user
           - fluent-operator # uses background& process
           - perl-yaml-syck
           - postfix

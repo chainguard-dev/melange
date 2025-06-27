@@ -212,6 +212,22 @@ func TestLinters(t *testing.T) {
 		linter:  "usrmerge",
 		pass:    false,
 	}, {
+		dirFunc: mkfile(t, "usr/sbin/wark"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "lib/libfoo.so.1"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "lib64/libfoo64.so.1"),
+		linter:  "usrmerge",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo64.so.1"),
+		linter:  "usrmerge",
+		pass:    true,
+	}, {
 		dirFunc: func() string {
 			d := t.TempDir()
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir("/sbin")), 0700))
@@ -264,6 +280,18 @@ func TestLinters(t *testing.T) {
 		},
 		linter: "usrmerge",
 		pass:   false,
+	}, {
+		dirFunc: mkfile(t, "usr/local/lib64/stubs/libcuda.so"),
+		linter:  "cudaruntimelib",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libnvidia-ml.so"),
+		linter:  "cudaruntimelib",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libcuda.so.560.35.05"),
+		linter:  "cudaruntimelib",
+		pass:    false,
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

@@ -99,7 +99,6 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 		envOverride,
 		stderr,
 		stdout,
-		false,
 		args,
 	)
 	if err != nil {
@@ -124,14 +123,13 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		log.Warn("qemu: could not get user ssh key pair, using ephemeral ones")
 	}
 	if pubKey != nil {
-		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", string(pubKey))
+		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", strings.TrimSpace(string(pubKey)))
 		err := sendSSHCommand(ctx,
 			cfg.WorkspaceClient,
 			cfg,
 			nil,
 			nil,
 			nil,
-			false,
 			[]string{"sh", "-c", command},
 		)
 		if err == nil {
@@ -208,6 +206,17 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			return err
 		}
 	}
+
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
+	}
+
 	// Get terminal type from environment
 	termType := os.Getenv("TERM")
 	if termType == "" {
@@ -374,13 +383,13 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer os.Remove(cfg.SSHHostKey)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
+	cfg.TestRun = false
 	err := sendSSHCommand(ctx,
 		cfg.SSHClient,
 		cfg,
 		nil,
 		nil,
 		nil,
-		false,
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
@@ -410,6 +419,17 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// Now, append those files to the extraFiles list (there should be no
 	// duplicates)
 	extraFiles = append(extraFiles, licenseFiles...)
+	// We inject the list of extra files to a remote file in order to use it
+	// with `-T` option of tar. This avoids passing too many arguments to
+	// the command, that would lead to an "-ash: sh: Argument list too long"
+	// error otherwise.
+	if len(extraFiles) > 0 {
+		err = streamExtraFilesList(ctx, cfg, extraFiles)
+		if err != nil {
+			clog.FromContext(ctx).Errorf("failed to send list of extra files: %v", err)
+			return nil, err
+		}
+	}
 
 	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
@@ -425,11 +445,11 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
-	retrieveCommand := "cd /mount/home/build && tar cvpf - --xattrs --acls --exclude='*fifo*' melange-out"
+	retrieveCommand := "cd /mount/home/build && find melange-out -type p -delete > /dev/null 2>&1 || true && tar cvpf - --xattrs --acls melange-out"
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
-	for _, v := range extraFiles {
-		retrieveCommand = fmt.Sprintf("%s %q", retrieveCommand, v)
+	if len(extraFiles) > 0 {
+		retrieveCommand = retrieveCommand + " -T extrafiles.txt"
 	}
 
 	log := clog.FromContext(ctx)
@@ -440,7 +460,6 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		nil,
 		stderr,
 		outFile,
-		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
 
@@ -456,6 +475,35 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	}
 
 	return os.Open(outFile.Name())
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Qemu runner.
+func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error) {
+	// in case of buildless pipelines we just nop
+	if cfg.SSHKey == nil {
+		return nil, nil
+	}
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err := sendSSHCommand(ctx,
+		cfg.WorkspaceClient,
+		cfg,
+		nil,
+		nil,
+		bufWriter,
+		false,
+		[]string{"sh", "-c", "cat /etc/os-release"},
+	)
+
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to get os-release: %v", err)
+		return nil, err
+	}
+
+	// Parse the os-release contents
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type qemuOCILoader struct{}
@@ -813,7 +861,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				nil,
 				stderr,
 				stdout,
-				false,
 				[]string{"sh", "-c", setupMountCommand},
 			)
 			if err != nil {
@@ -832,7 +879,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		stderr,
 		stdout,
-		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
 	if err != nil {
@@ -902,8 +948,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		nil,
 		nil,
 		bufWriter,
-		false,
-		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -print"},
+		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -links 1 -print"},
 	)
 
 	if err != nil {
@@ -934,6 +979,70 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	}
 
 	return licenseFiles, nil
+}
+
+// send to the builder the list of extra files, to avoid sending a single long
+// command (avoiding "-ash: sh: Argument list too long") we will use stdin to
+// stream it. this also has the upside of not relying on a single-shot connection
+// to pass potentially lot of data.
+// split in chunks (100 stirngs at time) in order to avoid flackiness in the
+// connection.
+func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string) error {
+	writtenStrings := 0
+	chunkSize := 100
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Warn), logwriter.New(log.Error)
+	for {
+		session, err := cfg.SSHClient.NewSession()
+		if err != nil {
+			clog.FromContext(ctx).Errorf("Failed to create session: %s", err)
+			return err
+		}
+		defer session.Close()
+
+		session.Stderr = stderr
+		session.Stdout = stdout
+		stdin, err := session.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stdin pipe: %v", err)
+		}
+		cmd := "cat >> /home/build/extrafiles.txt"
+		if err := session.Start(cmd); err != nil {
+			return fmt.Errorf("failed to start command: %v", err)
+		}
+
+		// Write 100 strings there (or remainder)
+		endIndex := writtenStrings + chunkSize
+		endIndex = min(endIndex, len(extraFiles))
+		chunk := extraFiles[writtenStrings:endIndex]
+
+		clog.FromContext(ctx).Debugf("sent %d of %d",
+			writtenStrings, len(extraFiles))
+		if _, err := io.Copy(stdin, strings.NewReader(
+			strings.Join(chunk, "\n")+"\n"),
+		); err != nil {
+			return fmt.Errorf("failed to write content: %v", err)
+		}
+
+		if err := stdin.Close(); err != nil {
+			return fmt.Errorf("failed to close stdin: %v", err)
+		}
+
+		if err := session.Wait(); err != nil {
+			return fmt.Errorf("command failed: %v", err)
+		}
+
+		writtenStrings = endIndex
+
+		if writtenStrings >= len(extraFiles) {
+			break
+		}
+	}
+
+	clog.FromContext(ctx).Debugf("sent %d of %d",
+		writtenStrings, len(extraFiles))
+
+	return nil
 }
 
 func getKernelPath(ctx context.Context) (string, error) {
@@ -1075,7 +1184,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	cfg *Config, extraVars map[string]string,
 	stderr, stdout io.Writer,
-	tty bool, command []string,
+	command []string,
 ) error {
 	// Create a session
 	session, err := client.NewSession()
@@ -1099,37 +1208,36 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 		}
 	}
 
-	session.Stderr = stderr
-	session.Stdout = stdout
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
 
-	if tty {
-		clog.FromContext(ctx).Debug("requesting tty instance")
-		modes := ssh.TerminalModes{
-			ssh.ECHO:          0,     // disable echoing
-			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
-		}
-		// Request pseudo terminal
-		if err := session.RequestPty("xterm", 40, 80, modes); err != nil {
-			clog.FromContext(ctx).Errorf("request for pseudo terminal failed: %s", err)
-			return err
-		}
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
 	}
 
 	cmd := shellquote.Join(command...)
 
-	session.Stdin = strings.NewReader(cmd)
-
-	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
-	err = session.Shell()
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
-		return err
+	// Tests expect to be able to put processes in background between steps.
+	// using `script` will avoid ssh hangs for open fds, and will allow to
+	// leave background processes running for the whole duration of the test.
+	if cfg.TestRun{
+		cmd = shellquote.Join(append([]string{
+			"script", "-f", "-q",
+			"--log-in", "/dev/null",
+			"--log-out", "/dev/null",
+			"-e", "-c"}, cmd)...)
 	}
 
-	// Wait for the session to finish
-	if err := session.Wait(); err != nil {
-		clog.FromContext(ctx).Errorf("Failed wait for session running: %q: %v", cmd, err)
+	session.Stderr = stderr
+	session.Stdout = stdout
+
+	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
+	err = session.Run(cmd)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
 		return err
 	}
 

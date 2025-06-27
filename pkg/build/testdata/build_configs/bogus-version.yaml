@@ -1,0 +1,54 @@
+# this package should be valid except it has an invalid version.
+package:
+  name: bogus-version
+  version: 1.0.0_b6
+  epoch: 0
+  description: A package with a invalid version.
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - busybox
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - apk-tools
+
+pipeline:
+  - name: Ask apk version what it thinks about package.version
+    runs: |
+      ver="${{package.version}}"
+      validity="valid"
+      apk version -c "$ver" >/dev/null || validity="invalid"
+      echo "'apk version -c $ver' says '$ver' is $validity"
+
+  - name: build a package
+    runs: |
+      bd="${{targets.destdir}}/usr/bin/"
+      fpath="$bd/bogus-version"
+      ver="${{package.version}}"
+
+      mkdir -p "$bd"
+      cat >"$fpath" <<EOF
+      #!/bin/sh
+      echo "Bogus! version is $ver.
+      EOF
+      chmod 755 "$fpath"
+
+update:
+  enabled: false
+
+test:
+  pipeline:
+    - name: run bogus-version
+      runs: |
+        fail() { echo "FAIL:" "$@"; exit 1; }
+        ver="${{package.version}}"
+        out=$(bogus-version) || fail "bogus-version exited $?"
+        echo "$out" | grep -i bogus ||
+          fail "bogus-version output did not have 'bogus'"
+        echo "$out" | grep -F "$ver" ||
+          fail "bogus-version output did not have '$ver'"
+        echo "PASS: tested bogus-version"

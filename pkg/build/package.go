@@ -306,6 +306,12 @@ func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 
 	newRuntimeDeps := []string{}
 	for _, dep := range runtimeDeps {
+		if strings.HasPrefix(dep, "so-ver:") {
+			// so-ver: dependencies will always have
+			// explicit versioning.  We need to strip it
+			// out.
+			dep, _, _ = strings.Cut(dep, ">=")
+		}
 		_, ok := providedDepsMap[dep]
 		if ok {
 			continue
@@ -453,7 +459,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	}
 
 	// provide the tar writer etc/passwd and etc/group of guest filesystem
-	userinfofs := apkofs.DirFS(pc.Build.GuestDir)
+	userinfofs := pc.Build.GuestFS
 
 	hdl := &SCABuildInterface{
 		PackageBuild: pc,

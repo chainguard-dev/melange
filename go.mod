@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.24.0
 
 require (
-	chainguard.dev/apko v0.27.9
+	chainguard.dev/apko v0.27.10-0.20250623150342-bfcb016b5959
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.17
@@ -86,7 +86,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
-	github.com/containerd/containerd/v2 v2.0.4 // indirect
+	github.com/containerd/containerd/v2 v2.1.1 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
@@ -99,7 +99,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect

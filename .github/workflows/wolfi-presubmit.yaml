@@ -67,6 +67,7 @@ jobs:
           - dpkg
           #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
           - gitsign
+          - grafana-image-renderer
           - guac
           - mdbook
           - s3cmd
@@ -74,7 +75,9 @@ jobs:
           - cadvisor # uses cgroups
           - fping # uses get/setcaps
           - logstash-9 # uses a diff test user
+          - fluent-operator # uses background& process
           - perl-yaml-syck
+          - postfix
           - ncurses
           - subversion
           - sudo
@@ -198,6 +201,8 @@ jobs:
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; apk add libcap-utils; getcap /usr/sbin/fping"
           elif [[ "${{ matrix.package }}" == "sudo" ]]; then
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /usr/bin/sudo"
+          elif [[ "${{ matrix.package }}" == "postfix" ]]; then
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /var/spool/postfix; ls -hal /var/lib/postfix"
           else
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk"
           fi

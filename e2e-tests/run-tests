@@ -67,6 +67,7 @@ for yaml in "$@"; do
     vrc "Testing $base from $yaml for $op" \
       ${MELANGE} "$op" \
         --arch=x86_64 --source-dir=./test-fixtures \
+        --runner=qemu \
         "$yaml" \
         ${args} $opargs \
         "--keyring-append=$PWD/$key.pub" \

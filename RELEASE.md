@@ -3,7 +3,7 @@
 To cut a release:
 
 1. Go to https://github.com/chainguard-dev/melange/actions/workflows/release.yaml.
-2. Click on the `Run workflow` button.
+2. Click on the `Run workflow ▼` button.
 3. In the dropdown, ensure that the `main` branch is selected.
 4. In the dropdown, click on the `Run workflow` button.
 5. Wait for the workflow to complete successfully.
@@ -19,4 +19,4 @@ The release workflow checks to see if there are any changes since the last relea
 
 #### Automatic triggering
 
-In addition to being triggerable manually (as described at the top of this document), the workflow also runs automatically every Monday at midnight UTC. Just like with manual triggering, if there are no new changes since the last release, the workflow will end early without creating a new release.
+In addition to being triggerable manually (as described at the top of this document), the workflow also runs automatically every Monday at 00:00:00 UTC. Just like with manual triggering, if there are no new changes since the last release, the workflow will end early without creating a new release.

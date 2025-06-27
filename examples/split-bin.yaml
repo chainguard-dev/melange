@@ -1,0 +1,51 @@
+# Generated from https://pypi.org/project/pbr/
+package:
+  name: split-bin
+  version: "1.0"
+  epoch: 0
+  description: Test split/bin pipeline
+  copyright:
+    - license: BSD-3-Clause
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      mkdir -p ${{targets.contextdir}}/usr/bin
+      cat > ${{targets.contextdir}}/usr/bin/split-me << EOF
+      #!/bin/sh
+      exit 0
+      EOF
+      chmod 755 ${{targets.contextdir}}/usr/bin/split-me
+
+subpackages:
+  - name: split-me
+    pipeline:
+      - uses: split/bin
+        with:
+          package: ${{package.name}}
+    test:
+      pipeline:
+        - runs: |
+            test -x /usr/bin/split-me
+
+  - name: split-sub
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.contextdir}}/usr/bin
+          cat > ${{targets.contextdir}}/usr/bin/split-sub << EOF
+          #!/bin/sh
+          exit 0
+          EOF
+          chmod 755 ${{targets.contextdir}}/usr/bin/split-sub
+
+  - name: split-sub-bin
+    pipeline:
+      - uses: split/bin
+    test:
+      pipeline:
+        - runs: |
+            test -x /usr/bin/split-sub

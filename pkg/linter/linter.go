@@ -194,6 +194,11 @@ var linterMap = map[string]linter{
 		Explain:         "Move binary to /usr/bin",
 		defaultBehavior: Require,
 	},
+	"cudaruntimelib": {
+		LinterFunc:      allPaths(cudaDriverLibLinter),
+		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. Installing them in an image could override the host libraries and break GPU support. If this library is needed for build-time linking or ldd-check tests, please use a package containing a stub library instead. For libcuda.so, use nvidia-cuda-cudart-$cuda_version. For libnvidia-ml.so, use nvidia-cuda-nvml-dev-$cuda_version.",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -780,6 +785,16 @@ func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 
 func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	paths := []string{}
+	dirs := []string{"sbin", "bin", "usr/sbin", "lib", "lib64"}
+
+	pathInDir := func(path string, dirs ...string) bool {
+		for _, d := range dirs {
+			if path == d || strings.HasPrefix(path, d+"/") {
+				return true
+			}
+		}
+		return false
+	}
 
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
@@ -793,21 +808,19 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 			return filepath.SkipDir
 		}
 
-		// If it's not a directory of interest just skipp the whole tree
-		if path != "." && !strings.HasPrefix(path, "sbin") && !strings.HasPrefix(path, "bin") && !strings.HasPrefix(path, "usr/sbin") {
-			if d.IsDir() && path != "usr" {
-				return filepath.SkipDir
-			}
+		// If it's not a directory of interest just skip the whole tree
+		if !(path == "." || path == "usr" || pathInDir(path, dirs...)) {
+			return filepath.SkipDir
 		}
 
-		if path == "sbin" || path == "bin" || path == "usr/sbin" {
+		if slices.Contains(dirs, path) {
 			if d.IsDir() || d.Type().IsRegular() {
 				paths = append(paths, path)
 				return nil
 			}
 		}
 
-		if strings.HasPrefix(path, "sbin/") || strings.HasPrefix(path, "bin/") || strings.HasPrefix(path, "usr/sbin/") {
+		if pathInDir(path, dirs...) {
 			paths = append(paths, path)
 		}
 
@@ -829,4 +842,14 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 	}
 
 	return nil
+}
+
+var isCudaDriverLibRegex = regexp.MustCompile(`^usr/lib/lib(cuda|nvidia-ml)\.so(\.[0-9]+)*$`)
+
+func cudaDriverLibLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+	if !isCudaDriverLibRegex.MatchString(path) {
+		return nil
+	}
+
+	return fmt.Errorf("CUDA driver-specific library found: %s", path)
 }

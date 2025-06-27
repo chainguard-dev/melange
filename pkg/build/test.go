@@ -141,6 +141,13 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.RemoveAll(tmp)
 
+	// see qemu_runner.go: 1194
+	if t.Runner.Name() == container.QemuName {
+		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
+			"cmd:script",
+		}...)
+	}
+
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(t.Arch),
@@ -445,6 +452,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Environment:  map[string]string{},
 		RunAsUID:     runAsUID(imgcfg.Accounts),
 		RunAs:        runAs(imgcfg.Accounts),
+		TestRun:      true,
 	}
 	if t.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = t.Configuration.Capabilities.Add

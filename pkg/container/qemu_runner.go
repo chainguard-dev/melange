@@ -440,7 +440,6 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		nil,
 		stderr,
 		outFile,
-		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
 

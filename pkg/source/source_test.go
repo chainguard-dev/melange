@@ -45,7 +45,7 @@ func createMockApk(apkFilePath string, addMelange bool) error {
 		melangeYamlContent := "name: test-package\nversion: 1.0.0"
 		header := &tar.Header{
 			Name: ".melange.yaml",
-			Mode: 0600,
+			Mode: 0o600,
 			Size: int64(len(melangeYamlContent)),
 		}
 		if err := tarWriter.WriteHeader(header); err != nil {

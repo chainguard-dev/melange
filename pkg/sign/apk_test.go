@@ -112,7 +112,7 @@ func CopyFile(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(dest, b, 0644); err != nil {
+	if err := os.WriteFile(dest, b, 0o644); err != nil {
 		return err
 	}
 	return nil

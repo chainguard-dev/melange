@@ -132,7 +132,7 @@ test:
       LD_LIBRARY_PATH: "/usr/local/${{vars.foo}}"
   pipeline:
     - runs: "echo context.name=${{context.name}}"
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -216,7 +216,7 @@ subpackages:
             - python3
             - ${{range.value}}-default-jvm
             - R
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -266,7 +266,7 @@ subpackages:
           echo "$PWD"
         pipeline:
           - runs: exit 1
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -313,7 +313,7 @@ subpackages:
       - environment:
           foo: BAR
           baz: BAZ
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -348,7 +348,7 @@ pipeline:
         pipeline:
           - runs: pwd
           - runs: pwd
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -389,7 +389,7 @@ pipeline:
             with:
               uri: https://example.com/foo-${{package.version}}.zip
               expected-sha256: 123456
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -418,7 +418,7 @@ package:
   annotations:
     cgr.dev/ecosystem: python
 
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := ParseConfiguration(ctx, fp)
@@ -451,7 +451,7 @@ subpackages:
     range: I-am-a-range
     pipeline:
       - runs: echo "I am a subpackage for ${{range.key}"
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ParseConfiguration(ctx, fp); err == nil {

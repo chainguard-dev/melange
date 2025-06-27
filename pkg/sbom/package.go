@@ -207,6 +207,7 @@ func stringToIdentifier(in string) string {
 	}
 	return sb.String()
 }
+
 func encodeInvalidRune(r rune) string {
 	return "C" + strconv.Itoa(int(r))
 }

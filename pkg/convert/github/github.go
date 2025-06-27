@@ -121,7 +121,8 @@ func (grc *GithubRepoClient) GetTags(ctx context.Context, tags []string) (map[st
 							Version:   tagSuffix,
 							Tag:       *tag.Name,
 							SHA:       *tag.Commit.SHA,
-							TagPrefix: strings.TrimSuffix(*tag.Name, tagSuffix)}
+							TagPrefix: strings.TrimSuffix(*tag.Name, tagSuffix),
+						}
 					}
 				}
 			}

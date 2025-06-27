@@ -1,16 +1,16 @@
 package bump
 
 import (
-	"chainguard.dev/melange/pkg/config"
-	"github.com/chainguard-dev/clog/slogtest"
-	"github.com/stretchr/testify/require"
-
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"chainguard.dev/melange/pkg/config"
+	"github.com/chainguard-dev/clog/slogtest"
+	"github.com/stretchr/testify/require"
 
 	"chainguard.dev/melange/pkg/renovate"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +41,7 @@ func TestBump_versions(t *testing.T) {
 			melangConfig := strings.Replace(string(data), "REPLACE_ME", server.URL, 1)
 
 			// write the modified melange config to our working temp folder
-			err = os.WriteFile(filepath.Join(dir, tt.name), []byte(melangConfig), 0755)
+			err = os.WriteFile(filepath.Join(dir, tt.name), []byte(melangConfig), 0o755)
 			assert.NoError(t, err)
 
 			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
@@ -84,7 +84,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 			assert.NoError(t, err)
 
 			// write the modified melange config to our working temp folder
-			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0o755)
 			assert.NoError(t, err)
 
 			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
@@ -125,7 +125,7 @@ func TestBump_withExpectedCommitAndMangledVarsGitTag(t *testing.T) {
 			assert.NoError(t, err)
 
 			// write the modified melange config to our working temp folder
-			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0o755)
 			assert.NoError(t, err)
 
 			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
@@ -156,7 +156,7 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// write the modified melange config to our working temp folder
-	err = os.WriteFile(filepath.Join(dir, filename), data, 0755)
+	err = os.WriteFile(filepath.Join(dir, filename), data, 0o755)
 	assert.NoError(t, err)
 
 	rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, filename)))

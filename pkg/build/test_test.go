@@ -78,6 +78,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 		PackageName:  testPkgName,
 		ImgRef:       testImgRef,
 		WorkspaceDir: "/workspace",
+		TestRun:      true,
 		Capabilities: container.Capabilities{Networking: true},
 		Mounts: []container.BindMount{
 			{Source: testWorkspaceDir, Destination: homeBuild},
@@ -229,7 +230,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "blue"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "michelangelo",
 					Test: &config.Test{
@@ -242,7 +244,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "orange"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "raphael",
 					Test: &config.Test{
@@ -255,7 +258,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "red"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "simple",
 					Test: &config.Test{
@@ -266,7 +270,8 @@ func TestConfigurationLoad(t *testing.T) {
 							}, {
 								Uses: "simple-uses",
 							},
-						}},
+						},
+					},
 				}},
 			},
 		}, {

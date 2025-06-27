@@ -37,10 +37,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -103,7 +103,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -149,11 +149,17 @@ type Build struct {
 	// how we get "build-time" SBOMs!
 	SBOMGroup *SBOMGroup
 
+	Start time.Time
+	End   time.Time
+
+	// Opt-in SLSA provenance generation for initial rollout/testing
+	GenerateProvenance bool
+
 	// The package resolver associated with this build.
 	//
 	// This is only applicable when there's a build context.  It
 	// is filled by buildGuest.
-	PkgResolver           *apk.PkgResolver
+	PkgResolver *apk.PkgResolver
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -164,6 +170,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 		GuestFS:         tarfs.New(),
+		Start:           time.Now(),
 	}
 
 	for _, opt := range opts {
@@ -317,7 +324,8 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	// Work around LockImageConfiguration assuming multi-arch.
 	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 
-	opts := []apko_build.Option{apko_build.WithImageConfiguration(imgConfig),
+	opts := []apko_build.Option{
+		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
@@ -780,6 +788,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	b.WorkspaceDirFS = apkofs.DirFS(b.WorkspaceDir)
 
+	// Retreive the os-release information from the runner
+	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
+	if err != nil {
+		log.Warnf("failed to retrieve release data from runner, OS section will be unknown: %v", err)
+		// If we can't retrieve the release data, we will use a default 'unknown' one similar to apko.
+		releaseData = &apko_build.ReleaseData{
+			ID:        "unknown",
+			Name:      "melange-generated package",
+			VersionID: "unknown",
+		}
+	}
+
 	// Apply xattrs to files in the new in-memory filesystem
 	for path, attrs := range xattrs {
 		for attr, data := range attrs {
@@ -871,14 +891,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	for _, sp := range b.Configuration.Subpackages {
 		spSBOM := b.SBOMGroup.Document(sp.Name)
-		spdxDoc := spSBOM.ToSPDX(ctx)
+		spdxDoc := spSBOM.ToSPDX(ctx, releaseData)
 		log.Infof("writing SBOM for subpackage %s", sp.Name)
 		if err := b.writeSBOM(sp.Name, &spdxDoc); err != nil {
 			return fmt.Errorf("writing SBOM for %s: %w", sp.Name, err)
 		}
 	}
 
-	spdxDoc := pSBOM.ToSPDX(ctx)
+	spdxDoc := pSBOM.ToSPDX(ctx, releaseData)
 	log.Infof("writing SBOM for %s", pkg.Name)
 	if err := b.writeSBOM(pkg.Name, &spdxDoc); err != nil {
 		return fmt.Errorf("writing SBOM for %s: %w", pkg.Name, err)
@@ -1105,6 +1125,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		Timeout:      b.Configuration.Package.Timeout,
 		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
 		RunAs:        runAs(b.Configuration.Environment.Accounts),
+		TestRun:      false,
 	}
 
 	if b.Configuration.Package.Resources != nil {

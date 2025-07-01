@@ -1,0 +1,282 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-syft-sbom-scan-test-1.0.0-r0",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "1969-12-31T19:00:00-05:00",
+    "creators": [
+      "Tool: melange (v0.28.1-0.20250701155547-6a4114688f2d+dirty)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/bb8fad8d08b5437d4e29562963c7d341",
+  "documentDescribes": [
+    "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "name": "syft-sbom-scan-test",
+      "versionInfo": "1.0.0-r0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Unknown",
+      "supplier": "Organization: Unknown",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/unknown/syft-sbom-scan-test@1.0.0-r0?arch=x86_64",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-syft-sbom-scan-build-test.yaml-6b331d8a03a7592d8780dafa31194ce06719acb1",
+      "name": "syft-sbom-scan-build-test.yaml",
+      "versionInfo": "6b331d8a03a7592d8780dafa31194ce06719acb1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Unknown",
+      "supplier": "Organization: Unknown",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/https%3A/%2Funknown%2Funknown%2Funknown@6b331d8a03a7592d8780dafa31194ce06719acb1#syft-sbom-scan-build-test.yaml",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-certifi-2023.11.17-syft-detected",
+      "name": "python:certifi",
+      "versionInfo": "2023.11.17",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/certifi@2023.11.17",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-command-line-arguments-C40develC41-syft-detected",
+      "name": "go-module:command-line-arguments",
+      "versionInfo": "(devel)",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/command-line-arguments@%28devel%29",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-sirupsen-logrus-v1.9.3-syft-detected",
+      "name": "go-module:github.com/sirupsen/logrus",
+      "versionInfo": "v1.9.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/sirupsen/logrus@v1.9.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-spf13-cobra-v1.8.0-syft-detected",
+      "name": "go-module:github.com/spf13/cobra",
+      "versionInfo": "v1.8.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/spf13/cobra@v1.8.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-spf13-pflag-v1.0.5-syft-detected",
+      "name": "go-module:github.com/spf13/pflag",
+      "versionInfo": "v1.0.5",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/spf13/pflag@v1.0.5",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-golang.org-x-sys-v0.0.0-20220715151400-c0bba94af5f8-syft-detected",
+      "name": "go-module:golang.org/x/sys",
+      "versionInfo": "v0.0.0-20220715151400-c0bba94af5f8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/golang.org/x/sys@v0.0.0-20220715151400-c0bba94af5f8",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-requests-2.31.0-syft-detected",
+      "name": "python:requests",
+      "versionInfo": "2.31.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/requests@2.31.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-stdlib-go1.24.4-syft-detected",
+      "name": "go-module:stdlib",
+      "versionInfo": "go1.24.4",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/stdlib@1.24.4",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-urllib3-2.0.7-syft-detected",
+      "name": "python:urllib3",
+      "versionInfo": "2.0.7",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/urllib3@2.0.7",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "DESCRIBED_BY",
+      "relatedSpdxElement": "SPDXRef-Package-syft-sbom-scan-build-test.yaml-6b331d8a03a7592d8780dafa31194ce06719acb1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-python-certifi-2023.11.17-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-command-line-arguments-C40develC41-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-sirupsen-logrus-v1.9.3-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-spf13-cobra-v1.8.0-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-spf13-pflag-v1.0.5-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-golang.org-x-sys-v0.0.0-20220715151400-c0bba94af5f8-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-python-requests-2.31.0-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-stdlib-go1.24.4-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-python-urllib3-2.0.7-syft-detected"
+    }
+  ]
+}

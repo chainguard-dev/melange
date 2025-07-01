@@ -1,7 +1,7 @@
 ---
 title: "melange sign-index"
 slug: melange_sign-index
-url: /docs/md/melange_sign-index.md
+url: /open-source/melange/reference/melange_sign-index/
 draft: false
 images: []
 type: "article"
@@ -47,5 +47,5 @@ melange sign-index [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

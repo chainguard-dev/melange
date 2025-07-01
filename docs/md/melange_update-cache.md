@@ -1,7 +1,7 @@
 ---
 title: "melange update-cache"
 slug: melange_update-cache
-url: /docs/md/melange_update-cache.md
+url: /open-source/melange/reference/melange_update-cache/
 draft: false
 images: []
 type: "article"
@@ -40,5 +40,5 @@ melange update-cache [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

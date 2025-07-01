@@ -1,7 +1,7 @@
 ---
 title: "melange test"
 slug: melange_test
-url: /docs/md/melange_test.md
+url: /open-source/melange/reference/melange_test/
 draft: false
 images: []
 type: "article"
@@ -57,5 +57,5 @@ melange test [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

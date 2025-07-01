@@ -1,7 +1,7 @@
 ---
 title: "melange lint"
 slug: melange_lint
-url: /docs/md/melange_lint.md
+url: /open-source/melange/reference/melange_lint/
 draft: false
 images: []
 type: "article"
@@ -41,5 +41,5 @@ melange lint [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

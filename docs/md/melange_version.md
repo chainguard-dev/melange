@@ -1,7 +1,7 @@
 ---
 title: "melange version"
 slug: melange_version
-url: /docs/md/melange_version.md
+url: /open-source/melange/reference/melange_version/
 draft: false
 images: []
 type: "article"
@@ -30,5 +30,5 @@ melange version [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

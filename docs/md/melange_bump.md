@@ -1,7 +1,7 @@
 ---
 title: "melange bump"
 slug: melange_bump
-url: /docs/md/melange_bump.md
+url: /open-source/melange/reference/melange_bump/
 draft: false
 images: []
 type: "article"
@@ -40,5 +40,5 @@ melange bump [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

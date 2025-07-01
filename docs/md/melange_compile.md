@@ -1,7 +1,7 @@
 ---
 title: "melange compile"
 slug: melange_compile
-url: /docs/md/melange_compile.md
+url: /open-source/melange/reference/melange_compile/
 draft: false
 images: []
 type: "article"
@@ -74,5 +74,5 @@ melange compile [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

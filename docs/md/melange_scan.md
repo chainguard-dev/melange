@@ -1,7 +1,7 @@
 ---
 title: "melange scan"
 slug: melange_scan
-url: /docs/md/melange_scan.md
+url: /open-source/melange/reference/melange_scan/
 draft: false
 images: []
 type: "article"
@@ -41,5 +41,5 @@ melange scan bash.yaml
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

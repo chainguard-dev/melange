@@ -1,7 +1,7 @@
 ---
 title: "melange build"
 slug: melange_build
-url: /docs/md/melange_build.md
+url: /open-source/melange/reference/melange_build/
 draft: false
 images: []
 type: "article"
@@ -64,6 +64,7 @@ melange build [flags]
   -r, --repository-append strings                               path to extra repositories to include in the build environment
       --rm                                                      clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
       --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
+      --scan-contents                                           scan package contents with Syft to enrich SBOM with detected components
       --signing-key string                                      key to use for signing
       --source-dir string                                       directory used for included sources
       --strip-origin-name                                       whether origin names should be stripped (for bootstrap)
@@ -81,5 +82,5 @@ melange build [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

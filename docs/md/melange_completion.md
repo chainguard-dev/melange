@@ -1,7 +1,7 @@
 ---
 title: "melange completion"
 slug: melange_completion
-url: /docs/md/melange_completion.md
+url: /open-source/melange/reference/melange_completion/
 draft: false
 images: []
 type: "article"
@@ -62,5 +62,5 @@ melange completion [bash|zsh|fish|powershell]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

@@ -1,7 +1,7 @@
 ---
 title: "melange convert"
 slug: melange_convert
-url: /docs/md/melange_convert.md
+url: /open-source/melange/reference/melange_convert/
 draft: false
 images: []
 type: "article"
@@ -38,6 +38,6 @@ Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild 
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
-* [melange convert apkbuild](/docs/md/melange_convert_apkbuild.md)	 - Converts an APKBUILD package into a melange.yaml
+* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange convert apkbuild](/open-source/melange/reference/melange_convert_apkbuild/)	 - Converts an APKBUILD package into a melange.yaml
 

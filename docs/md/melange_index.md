@@ -1,7 +1,7 @@
 ---
 title: "melange index"
 slug: melange_index
-url: /docs/md/melange_index.md
+url: /open-source/melange/reference/melange_index/
 draft: false
 images: []
 type: "article"
@@ -44,5 +44,5 @@ melange index [flags]
 
 ### SEE ALSO
 
-* [melange](/docs/md/melange.md)	 - 
+* [melange](/open-source/melange/reference/melange/)	 - 
 

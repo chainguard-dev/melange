@@ -186,10 +186,11 @@ test:
           
           # Create normalized versions for comparison, filtering out expected differences
           # The normalize script replaces:
-          # 1. creationInfo.creators[0] - melange version changes
-          # 2. versionInfo for syft-sbom-scan-build-test.yaml - git hash changes
-          # 3. SPDXID containing the git hash
-          # 4. referenceLocator containing the git hash
+          # 1. creationInfo.created - timestamp changes
+          # 2. creationInfo.creators[0] - melange version changes
+          # 3. versionInfo for syft-sbom-scan-build-test.yaml - git hash changes
+          # 4. SPDXID containing the git hash
+          # 5. referenceLocator containing the git hash
           
           # Check if normalize script is available (it should be in the package)
           if [ -f /usr/share/syft-test/normalize-sbom.sh ]; then

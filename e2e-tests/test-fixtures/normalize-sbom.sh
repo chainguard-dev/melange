@@ -16,4 +16,5 @@ fi | sed -E \
     -e 's/"Tool: melange \([^)]+\)"/"Tool: melange (VERSION)"/' \
     -e 's/"versionInfo": "[a-f0-9]{40}"/"versionInfo": "GITHASH"/' \
     -e 's/SPDXRef-Package-syft-sbom-scan-build-test\.yaml-[a-f0-9]{40}/SPDXRef-Package-syft-sbom-scan-build-test.yaml-GITHASH/g' \
-    -e 's/@[a-f0-9]{40}#/@GITHASH#/g'
+    -e 's/@[a-f0-9]{40}#/@GITHASH#/g' \
+    -e 's/"created": "[^"]+",/"created": "1970-01-01T00:00:00Z",/'

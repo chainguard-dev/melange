@@ -32,7 +32,7 @@ for script in *.sh; do
     
     if [ -x "$script" ]; then
         vrc "Running shell script test: $script" \
-            MELANGE="$MELANGE" "./$script" || fails="${fails} $script"
+            env MELANGE="$MELANGE" "./$script" || fails="${fails} $script"
     fi
 done
 

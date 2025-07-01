@@ -1,7 +1,7 @@
 ---
 title: "melange license-check"
 slug: melange_license-check
-url: /open-source/melange/reference/melange_license-check/
+url: /docs/md/melange_license-check.md
 draft: false
 images: []
 type: "article"
@@ -41,5 +41,5 @@ melange license-check file [flags]
 
 ### SEE ALSO
 
-* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

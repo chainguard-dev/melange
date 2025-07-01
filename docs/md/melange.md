@@ -1,7 +1,7 @@
 ---
 title: "melange"
 slug: melange
-url: /open-source/melange/reference/melange/
+url: /docs/md/melange.md
 draft: false
 images: []
 type: "article"
@@ -20,21 +20,21 @@ toc: true
 
 ### SEE ALSO
 
-* [melange build](/open-source/melange/reference/melange_build/)	 - Build a package from a YAML configuration file
-* [melange bump](/open-source/melange/reference/melange_bump/)	 - Update a Melange YAML file to reflect a new package version
-* [melange compile](/open-source/melange/reference/melange_compile/)	 - Compile a YAML configuration file
-* [melange completion](/open-source/melange/reference/melange_completion/)	 - Generate completion script
-* [melange convert](/open-source/melange/reference/melange_convert/)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
-* [melange index](/open-source/melange/reference/melange_index/)	 - Creates a repository index from a list of package files
-* [melange keygen](/open-source/melange/reference/melange_keygen/)	 - Generate a key for package signing
-* [melange license-check](/open-source/melange/reference/melange_license-check/)	 - Gather and check licensing data
-* [melange lint](/open-source/melange/reference/melange_lint/)	 - EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors
-* [melange package-version](/open-source/melange/reference/melange_package-version/)	 - Report the target package for a YAML configuration file
-* [melange query](/open-source/melange/reference/melange_query/)	 - Query a Melange YAML file for information
-* [melange scan](/open-source/melange/reference/melange_scan/)	 - Scan an existing APK to regenerate .PKGINFO
-* [melange sign](/open-source/melange/reference/melange_sign/)	 - Sign an APK package
-* [melange sign-index](/open-source/melange/reference/melange_sign-index/)	 - Sign an APK index
-* [melange test](/open-source/melange/reference/melange_test/)	 - Test a package with a YAML configuration file
-* [melange update-cache](/open-source/melange/reference/melange_update-cache/)	 - Update a source artifact cache
-* [melange version](/open-source/melange/reference/melange_version/)	 - Prints the version
+* [melange build](/docs/md/melange_build.md)	 - Build a package from a YAML configuration file
+* [melange bump](/docs/md/melange_bump.md)	 - Update a Melange YAML file to reflect a new package version
+* [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
+* [melange completion](/docs/md/melange_completion.md)	 - Generate completion script
+* [melange convert](/docs/md/melange_convert.md)	 - EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
+* [melange index](/docs/md/melange_index.md)	 - Creates a repository index from a list of package files
+* [melange keygen](/docs/md/melange_keygen.md)	 - Generate a key for package signing
+* [melange license-check](/docs/md/melange_license-check.md)	 - Gather and check licensing data
+* [melange lint](/docs/md/melange_lint.md)	 - EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors
+* [melange package-version](/docs/md/melange_package-version.md)	 - Report the target package for a YAML configuration file
+* [melange query](/docs/md/melange_query.md)	 - Query a Melange YAML file for information
+* [melange scan](/docs/md/melange_scan.md)	 - Scan an existing APK to regenerate .PKGINFO
+* [melange sign](/docs/md/melange_sign.md)	 - Sign an APK package
+* [melange sign-index](/docs/md/melange_sign-index.md)	 - Sign an APK index
+* [melange test](/docs/md/melange_test.md)	 - Test a package with a YAML configuration file
+* [melange update-cache](/docs/md/melange_update-cache.md)	 - Update a source artifact cache
+* [melange version](/docs/md/melange_version.md)	 - Prints the version
 

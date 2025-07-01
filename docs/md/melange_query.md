@@ -1,7 +1,7 @@
 ---
 title: "melange query"
 slug: melange_query
-url: /open-source/melange/reference/melange_query/
+url: /docs/md/melange_query.md
 draft: false
 images: []
 type: "article"
@@ -40,5 +40,5 @@ melange query [flags]
 
 ### SEE ALSO
 
-* [melange](/open-source/melange/reference/melange/)	 - 
+* [melange](/docs/md/melange.md)	 - 
 

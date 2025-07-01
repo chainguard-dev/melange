@@ -23,6 +23,19 @@ if [ $# -eq 0 ]; then
     set -- *.yaml
 fi
 
+# Run any shell script tests first
+for script in *.sh; do
+    # Skip run-tests itself
+    if [ "$script" = "run-tests" ] || [ ! -f "$script" ]; then
+        continue
+    fi
+    
+    if [ -x "$script" ]; then
+        vrc "Running shell script test: $script" \
+            MELANGE="$MELANGE" "./$script" || fails="${fails} $script"
+    fi
+done
+
 key="local-melange.rsa"
 if [ -f "$key" -a -f "$key.pub" ]; then
     echo "using existing $key"

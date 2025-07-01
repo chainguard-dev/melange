@@ -17,6 +17,7 @@ package syft
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/chainguard-dev/clog/slogtest"
@@ -48,13 +49,12 @@ func TestScan_WithGoModule(t *testing.T) {
 	// Create a temporary directory with a Go binary
 	tmpDir := t.TempDir()
 	
-	// TODO: Once we add Syft dependency, we can create a real Go binary
-	// For now, just test that scanning doesn't error
+	// With Syft integrated, scanning an empty directory should work
 	scanner := NewScanner(tmpDir)
 	packages, err := scanner.Scan(ctx)
 	
 	require.NoError(t, err)
-	require.Empty(t, packages) // Will be non-empty once Syft is integrated
+	require.Empty(t, packages) // Empty directory should have no packages
 }
 
 func TestScan_NonExistentPath(t *testing.T) {
@@ -63,9 +63,10 @@ func TestScan_NonExistentPath(t *testing.T) {
 	scanner := NewScanner("/non/existent/path")
 	packages, err := scanner.Scan(ctx)
 	
-	// For now, this should not error since we're returning empty slice
-	require.NoError(t, err)
-	require.Empty(t, packages)
+	// Syft should error on non-existent paths
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no such file or directory")
+	require.Nil(t, packages)
 }
 
 func TestScan_WithTestFiles(t *testing.T) {
@@ -112,6 +113,21 @@ requests==2.28.1
 	packages, err := scanner.Scan(ctx)
 	
 	require.NoError(t, err)
-	// Once Syft is integrated, we should find packages from these files
-	require.Empty(t, packages) // Will be non-empty once Syft is integrated
+	// Syft should find packages from these files
+	require.NotEmpty(t, packages)
+	
+	// Check that we found the expected package types
+	var foundGo, foundPython bool
+	for _, pkg := range packages {
+		if strings.Contains(pkg.Name, "go-module:") {
+			foundGo = true
+		}
+		if strings.Contains(pkg.Name, "python:") {
+			foundPython = true
+		}
+	}
+	
+	require.True(t, foundGo, "should find Go modules")
+	require.True(t, foundPython, "should find Python packages")
+	// Note: Syft may not detect NPM packages from just package.json without node_modules
 }

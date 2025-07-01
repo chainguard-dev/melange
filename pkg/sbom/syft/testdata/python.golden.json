@@ -1,0 +1,42 @@
+[
+  {
+    "name": "python:flask",
+    "version": "3.0.0",
+    "purl": "pkg:pypi/flask@3.0.0"
+  },
+  {
+    "name": "python:flask",
+    "version": "3.0.0",
+    "purl": "pkg:pypi/flask@3.0.0"
+  },
+  {
+    "name": "python:numpy",
+    "version": "1.26.0",
+    "purl": "pkg:pypi/numpy@1.26.0"
+  },
+  {
+    "name": "python:numpy",
+    "version": "1.26.0",
+    "purl": "pkg:pypi/numpy@1.26.0"
+  },
+  {
+    "name": "python:pandas",
+    "version": "2.1.1",
+    "purl": "pkg:pypi/pandas@2.1.1"
+  },
+  {
+    "name": "python:pandas",
+    "version": "2.1.1",
+    "purl": "pkg:pypi/pandas@2.1.1"
+  },
+  {
+    "name": "python:requests",
+    "version": "2.31.0",
+    "purl": "pkg:pypi/requests@2.31.0"
+  },
+  {
+    "name": "python:requests",
+    "version": "2.31.0",
+    "purl": "pkg:pypi/requests@2.31.0"
+  }
+]

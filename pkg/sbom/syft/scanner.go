@@ -18,9 +18,15 @@ package syft
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"chainguard.dev/melange/pkg/sbom"
+	"github.com/anchore/syft/syft"
+	"github.com/anchore/syft/syft/pkg"
+	"github.com/anchore/syft/syft/source/directorysource"
 	"github.com/chainguard-dev/clog"
+	purl "github.com/package-url/packageurl-go"
 )
 
 // Scanner wraps Syft functionality for scanning package contents
@@ -41,9 +47,129 @@ func (s *Scanner) Scan(ctx context.Context) ([]sbom.Package, error) {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning package contents with Syft: %s", s.path)
 
-	// TODO: Implement actual Syft scanning once we add the dependency
-	// For now, return an empty slice to allow the rest of the code to compile
-	log.Warnf("Syft scanning not yet implemented - returning empty package list")
+	// Create a Syft source from the directory
+	// In Melange, we're always scanning directories containing package contents
+	src, err := directorysource.NewFromPath(s.path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Syft source from path %s: %w", s.path, err)
+	}
+	defer src.Close()
+
+	// Configure Syft to scan for all package types with default settings
+	cfg := syft.DefaultCreateSBOMConfig().
+		WithParallelism(4)
+
+	// Create SBOM with Syft
+	syftSBOM, err := syft.CreateSBOM(ctx, src, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SBOM with Syft: %w", err)
+	}
+
+	// Convert Syft packages to Melange SBOM packages
+	melangePackages := make([]sbom.Package, 0, len(syftSBOM.Artifacts.Packages.Sorted()))
 	
-	return []sbom.Package{}, nil
+	for _, syftPkg := range syftSBOM.Artifacts.Packages.Sorted() {
+		melangePkg := convertSyftPackage(syftPkg)
+		melangePackages = append(melangePackages, melangePkg)
+	}
+
+	log.Infof("Syft scan found %d packages", len(melangePackages))
+	return melangePackages, nil
+}
+
+// convertSyftPackage converts a Syft package to a Melange SBOM package
+func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
+	// Build the package name with type prefix for clarity
+	name := syftPkg.Name
+	if syftPkg.Type != "" {
+		name = fmt.Sprintf("%s:%s", syftPkg.Type, syftPkg.Name)
+	}
+
+	// Convert Syft checksums to our format
+	checksums := make(map[string]string)
+	// Syft packages don't typically have checksums at this level
+	
+	// Build Package URL if available
+	var packageURL *purl.PackageURL
+	if syftPkg.PURL != "" {
+		parsedPURL, err := purl.FromString(syftPkg.PURL)
+		if err == nil {
+			packageURL = &parsedPURL
+		}
+	} else {
+		// Try to construct a PURL based on package type
+		packageURL = constructPURL(syftPkg)
+	}
+
+	// Extract license information
+	var licenseDeclared string
+	syftLicenses := syftPkg.Licenses.ToSlice()
+	if len(syftLicenses) > 0 {
+		licenses := make([]string, 0, len(syftLicenses))
+		for _, l := range syftLicenses {
+			if l.Value != "" {
+				licenses = append(licenses, l.Value)
+			}
+		}
+		if len(licenses) > 0 {
+			licenseDeclared = strings.Join(licenses, " AND ")
+		}
+	}
+
+	return sbom.Package{
+		Name:            name,
+		Version:         syftPkg.Version,
+		LicenseDeclared: licenseDeclared,
+		Checksums:       checksums,
+		PURL:            packageURL,
+		// Add type info as a component to ensure uniqueness
+		IDComponents: []string{string(syftPkg.Type), syftPkg.Name, syftPkg.Version},
+	}
+}
+
+// constructPURL attempts to construct a Package URL for packages that don't have one
+func constructPURL(p pkg.Package) *purl.PackageURL {
+	var purlType string
+	var namespace string
+	
+	switch p.Type {
+	case pkg.GoModulePkg:
+		purlType = purl.TypeGolang
+		// For Go modules, the name is usually the full import path
+		if strings.Contains(p.Name, "/") {
+			parts := strings.SplitN(p.Name, "/", 2)
+			if len(parts) == 2 {
+				namespace = parts[0]
+				name := parts[1]
+				return &purl.PackageURL{
+					Type:      purlType,
+					Namespace: namespace,
+					Name:      name,
+					Version:   p.Version,
+				}
+			}
+		}
+	case pkg.PythonPkg:
+		purlType = purl.TypePyPi
+	case pkg.NpmPkg:
+		purlType = purl.TypeNPM
+	case pkg.GemPkg:
+		purlType = purl.TypeGem
+	case pkg.JavaPkg:
+		purlType = purl.TypeMaven
+	default:
+		// For unknown types, return nil
+		return nil
+	}
+
+	if purlType != "" {
+		return &purl.PackageURL{
+			Type:      purlType,
+			Namespace: namespace,
+			Name:      p.Name,
+			Version:   p.Version,
+		}
+	}
+	
+	return nil
 }

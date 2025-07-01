@@ -3,7 +3,8 @@
 # This test verifies that the --scan-contents flag properly enriches SBOMs
 # with language-specific dependencies detected by Syft.
 #
-# The test performs a byte-by-byte comparison against a golden SBOM file.
+# The test performs a comparison against a golden SBOM file, intelligently
+# ignoring expected differences like melange version and git commit hashes.
 # To regenerate the golden file when Syft behavior changes:
 #
 #   1. Build the package with --scan-contents:
@@ -20,8 +21,13 @@
 #
 #   3. Rebuild to include the updated golden file in the package
 #
-# Alternatively, set UPDATE_GOLDEN=true when running the test:
-#   UPDATE_GOLDEN=true ./run-tests syft-sbom-scan-build-test.yaml
+# Alternatively, use the helper script which automatically normalizes:
+#   ./update-syft-golden.sh
+#
+# The golden file is stored in a normalized format where:
+# - Melange version is replaced with "VERSION"
+# - Git commit hashes are replaced with "GITHASH"
+# This ensures the golden file remains stable across different builds.
 
 package:
   name: syft-sbom-scan-test
@@ -104,7 +110,7 @@ pipeline:
       }
       EOF
       
-  # Copy the golden SBOM file into the package for testing
+  # Copy the golden SBOM file and normalize script into the package for testing
   - runs: |
       # The source directory is mounted at /home/build when using --source-dir
       if [ -f "syft-sbom-scan-test-with-scan.golden.json" ]; then
@@ -118,6 +124,15 @@ pipeline:
         echo "Current directory: $(pwd)"
         echo "Directory contents:"
         ls -la
+      fi
+      
+      # Also copy the normalize script
+      if [ -f "normalize-sbom.sh" ]; then
+        cp "normalize-sbom.sh" "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+        chmod +x "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+      elif [ -f "/home/build/normalize-sbom.sh" ]; then
+        cp "/home/build/normalize-sbom.sh" "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+        chmod +x "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
       fi
 
 test:
@@ -168,11 +183,38 @@ test:
           fi
           
           echo "Comparing SBOM with golden file..."
-          if diff -u "$GOLDEN_FILE" /tmp/actual-sbom.json; then
-            echo "✓ SBOM matches golden file exactly!"
+          
+          # Create normalized versions for comparison, filtering out expected differences
+          # The normalize script replaces:
+          # 1. creationInfo.creators[0] - melange version changes
+          # 2. versionInfo for syft-sbom-scan-build-test.yaml - git hash changes
+          # 3. SPDXID containing the git hash
+          # 4. referenceLocator containing the git hash
+          
+          # Check if normalize script is available (it should be in the package)
+          if [ -f /usr/share/syft-test/normalize-sbom.sh ]; then
+            NORMALIZE="/usr/share/syft-test/normalize-sbom.sh"
+          elif [ -f /home/build/normalize-sbom.sh ]; then
+            NORMALIZE="/home/build/normalize-sbom.sh"
+          else
+            echo "ERROR: normalize-sbom.sh not found"
+            exit 1
+          fi
+          
+          # Normalize both files for comparison
+          "$NORMALIZE" "$GOLDEN_FILE" > /tmp/golden-normalized.json
+          "$NORMALIZE" /tmp/actual-sbom.json > /tmp/actual-normalized.json
+          
+          if diff -u /tmp/golden-normalized.json /tmp/actual-normalized.json; then
+            echo "✓ SBOM matches golden file (ignoring expected differences)"
           else
             echo "ERROR: SBOM does not match golden file"
-            echo "Differences shown above. To update the golden file, run:"
+            echo "Unexpected differences shown above."
+            echo ""
+            echo "To see the full diff including expected changes:"
+            echo "  diff -u $GOLDEN_FILE /tmp/actual-sbom.json"
+            echo ""
+            echo "To update the golden file, run:"
             echo "  ./e2e-tests/update-syft-golden.sh"
             exit 1
           fi

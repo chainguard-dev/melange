@@ -5,7 +5,7 @@
   "creationInfo": {
     "created": "1969-12-31T19:00:00-05:00",
     "creators": [
-      "Tool: melange (v0.28.1-0.20250701155547-6a4114688f2d+dirty)",
+      "Tool: melange (VERSION)",
       "Organization: Chainguard, Inc"
     ],
     "licenseListVersion": "3.22"
@@ -47,9 +47,9 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-syft-sbom-scan-build-test.yaml-6b331d8a03a7592d8780dafa31194ce06719acb1",
+      "SPDXID": "SPDXRef-Package-syft-sbom-scan-build-test.yaml-GITHASH",
       "name": "syft-sbom-scan-build-test.yaml",
-      "versionInfo": "6b331d8a03a7592d8780dafa31194ce06719acb1",
+      "versionInfo": "GITHASH",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
@@ -59,7 +59,7 @@
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/https%3A/%2Funknown%2Funknown%2Funknown@6b331d8a03a7592d8780dafa31194ce06719acb1#syft-sbom-scan-build-test.yaml",
+          "referenceLocator": "pkg:github/https%3A/%2Funknown%2Funknown%2Funknown@GITHASH#syft-sbom-scan-build-test.yaml",
           "referenceType": "purl"
         }
       ]
@@ -231,7 +231,7 @@
     {
       "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
       "relationshipType": "DESCRIBED_BY",
-      "relatedSpdxElement": "SPDXRef-Package-syft-sbom-scan-build-test.yaml-6b331d8a03a7592d8780dafa31194ce06719acb1"
+      "relatedSpdxElement": "SPDXRef-Package-syft-sbom-scan-build-test.yaml-GITHASH"
     },
     {
       "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",

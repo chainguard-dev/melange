@@ -6,21 +6,19 @@ set -e
 cd "$(dirname "$0")"
 
 echo "Building package with --scan-contents to generate new SBOM..."
-../melange build --arch=x86_64 --source-dir=./test-fixtures --runner=docker \
+go run ../ build --arch=x86_64 --source-dir=./test-fixtures --runner=docker \
   syft-sbom-scan-build-test.yaml --signing-key=local-melange.rsa --scan-contents \
   --keyring-append=local-melange.rsa.pub --repository-append=packages \
   --repository-append=https://packages.wolfi.dev/os \
   --keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
 
-echo "Extracting SBOM from built package..."
+echo "Extracting and normalizing SBOM from built package..."
 tar -xOf packages/x86_64/syft-sbom-scan-test-1.0.0-r0.apk \
-  var/lib/db/sbom/syft-sbom-scan-test-1.0.0-r0.spdx.json \
-  > test-fixtures/syft-sbom-scan-test-with-scan.golden.json
+  var/lib/db/sbom/syft-sbom-scan-test-1.0.0-r0.spdx.json | \
+  ./test-fixtures/normalize-sbom.sh \
+  >test-fixtures/syft-sbom-scan-test-with-scan.golden.json
 
-echo "✓ Golden file updated: test-fixtures/syft-sbom-scan-test-with-scan.golden.json"
+echo "✓ Golden file updated (normalized): test-fixtures/syft-sbom-scan-test-with-scan.golden.json"
 echo ""
-echo "Now rebuild the package to include the updated golden file:"
-echo "  ./update-syft-golden.sh"
-echo ""
-echo "Or run the test to verify:"
+echo "Run the test to verify:"
 echo "  ./run-tests syft-sbom-scan-build-test.yaml"

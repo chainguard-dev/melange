@@ -26,139 +26,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// goldenTestCase represents a test case for golden testing
-type goldenTestCase struct {
-	name       string
-	scanPath   string
-	goldenFile string
-	// Minimum expected packages - we check at least these are found
-	// This allows for some flexibility as Syft improves
-	minExpectedPackages []expectedPackage
-}
-
-type expectedPackage struct {
-	name    string
-	version string
-	purl    string
-}
-
 func TestGoldenScans(t *testing.T) {
-	testCases := []goldenTestCase{
-		{
-			name:       "Go Module",
-			scanPath:   "testdata/go-module",
-			goldenFile: "testdata/go-module.golden.json",
-			minExpectedPackages: []expectedPackage{
-				{
-					name:    "go-module:github.com/spf13/cobra",
-					version: "v1.8.0",
-					purl:    "pkg:golang/github.com/spf13/cobra@v1.8.0",
-				},
-				{
-					name:    "go-module:github.com/sirupsen/logrus",
-					version: "v1.9.3",
-					purl:    "pkg:golang/github.com/sirupsen/logrus@v1.9.3",
-				},
-			},
-		},
-		{
-			name:       "Python",
-			scanPath:   "testdata/python",
-			goldenFile: "testdata/python.golden.json",
-			minExpectedPackages: []expectedPackage{
-				{
-					name:    "python:requests",
-					version: "2.31.0",
-					purl:    "pkg:pypi/requests@2.31.0",
-				},
-				{
-					name:    "python:flask",
-					version: "3.0.0",
-					purl:    "pkg:pypi/flask@3.0.0",
-				},
-				{
-					name:    "python:numpy",
-					version: "1.26.0",
-					purl:    "pkg:pypi/numpy@1.26.0",
-				},
-				{
-					name:    "python:pandas",
-					version: "2.1.1",
-					purl:    "pkg:pypi/pandas@2.1.1",
-				},
-			},
-		},
-		// Ruby and Node.js tests are commented out for now because Syft requires
-		// Gemfile.lock and package-lock.json respectively to detect packages
-		// {
-		// 	name:       "Ruby",
-		// 	scanPath:   "testdata/ruby",
-		// 	goldenFile: "testdata/ruby.golden.json",
-		// 	minExpectedPackages: []expectedPackage{
-		// 		{
-		// 			name:    "gem:sinatra",
-		// 			version: "3.1.0",
-		// 			purl:    "pkg:gem/sinatra@3.1.0",
-		// 		},
-		// 		{
-		// 			name:    "gem:rails",
-		// 			version: "7.1.0",
-		// 			purl:    "pkg:gem/rails@7.1.0",
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:       "Node.js",
-		// 	scanPath:   "testdata/node",
-		// 	goldenFile: "testdata/node.golden.json",
-		// 	minExpectedPackages: []expectedPackage{
-		// 		{
-		// 			name:    "npm:express",
-		// 			version: "4.18.2",
-		// 			purl:    "pkg:npm/express@4.18.2",
-		// 		},
-		// 		{
-		// 			name:    "npm:lodash",
-		// 			version: "4.17.21",
-		// 			purl:    "pkg:npm/lodash@4.17.21",
-		// 		},
-		// 	},
-		// },
+	// Test directories - each should have a corresponding .golden.json file
+	// To add a new test:
+	// 1. Create a new directory under testdata/ with test files
+	// 2. Add the directory name to this list
+	// 3. Run with UPDATE_GOLDEN=true to generate the golden file
+	testDirs := []string{
+		"go-module",
+		"python", 
+		"ruby",
+		"node",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, dir := range testDirs {
+		t.Run(dir, func(t *testing.T) {
 			ctx := slogtest.Context(t)
-			
-			scanner := NewScanner(tc.scanPath)
+
+			scanPath := filepath.Join("testdata", dir)
+			goldenFile := filepath.Join("testdata", dir+".golden.json")
+
+			scanner := NewScanner(scanPath)
 			packages, err := scanner.Scan(ctx)
 			require.NoError(t, err)
-			
-			// Verify minimum expected packages
-			for _, expected := range tc.minExpectedPackages {
-				found := false
-				for _, pkg := range packages {
-					if pkg.Name == expected.name && pkg.Version == expected.version {
-						found = true
-						// Check PURL if expected
-						if expected.purl != "" && pkg.PURL != nil {
-							require.Equal(t, expected.purl, pkg.PURL.String())
-						}
-						break
-					}
-				}
-				require.True(t, found, "Expected package not found: %s@%s", expected.name, expected.version)
-			}
-			
-			// Generate golden file if it doesn't exist (with UPDATE_GOLDEN=true)
+
+			// Generate golden file if it needs update
 			if os.Getenv("UPDATE_GOLDEN") == "true" {
-				generateGoldenFile(t, tc.goldenFile, packages)
+				generateGoldenFile(t, goldenFile, packages)
 			}
-			
-			// Compare with golden file if it exists
-			if _, err := os.Stat(tc.goldenFile); err == nil {
-				compareWithGolden(t, tc.goldenFile, packages)
-			}
+
+			// Compare with golden file
+			compareWithGolden(t, goldenFile, packages)
 		})
 	}
 }
@@ -172,7 +70,7 @@ func generateGoldenFile(t *testing.T, filename string, packages []sbom.Package) 
 		}
 		return packages[i].Name < packages[j].Name
 	})
-	
+
 	// Convert to a simplified format for golden files
 	type goldenPackage struct {
 		Name     string `json:"name"`
@@ -180,7 +78,7 @@ func generateGoldenFile(t *testing.T, filename string, packages []sbom.Package) 
 		PURL     string `json:"purl,omitempty"`
 		Licenses string `json:"licenses,omitempty"`
 	}
-	
+
 	goldenPackages := make([]goldenPackage, 0, len(packages))
 	for _, pkg := range packages {
 		gp := goldenPackage{
@@ -193,16 +91,16 @@ func generateGoldenFile(t *testing.T, filename string, packages []sbom.Package) 
 		}
 		goldenPackages = append(goldenPackages, gp)
 	}
-	
+
 	data, err := json.MarshalIndent(goldenPackages, "", "  ")
 	require.NoError(t, err)
-	
+
 	err = os.MkdirAll(filepath.Dir(filename), 0755)
 	require.NoError(t, err)
-	
+
 	err = os.WriteFile(filename, data, 0644)
 	require.NoError(t, err)
-	
+
 	t.Logf("Generated golden file: %s", filename)
 }
 
@@ -211,7 +109,7 @@ func compareWithGolden(t *testing.T, filename string, packages []sbom.Package) {
 	// Read golden file
 	goldenData, err := os.ReadFile(filename)
 	require.NoError(t, err)
-	
+
 	// Sort packages for consistent comparison
 	sort.Slice(packages, func(i, j int) bool {
 		if packages[i].Name == packages[j].Name {
@@ -219,7 +117,7 @@ func compareWithGolden(t *testing.T, filename string, packages []sbom.Package) {
 		}
 		return packages[i].Name < packages[j].Name
 	})
-	
+
 	// Convert to JSON for comparison
 	type goldenPackage struct {
 		Name     string `json:"name"`
@@ -227,7 +125,7 @@ func compareWithGolden(t *testing.T, filename string, packages []sbom.Package) {
 		PURL     string `json:"purl,omitempty"`
 		Licenses string `json:"licenses,omitempty"`
 	}
-	
+
 	actualPackages := make([]goldenPackage, 0, len(packages))
 	for _, pkg := range packages {
 		gp := goldenPackage{
@@ -240,10 +138,10 @@ func compareWithGolden(t *testing.T, filename string, packages []sbom.Package) {
 		}
 		actualPackages = append(actualPackages, gp)
 	}
-	
+
 	actualData, err := json.MarshalIndent(actualPackages, "", "  ")
 	require.NoError(t, err)
-	
-	require.JSONEq(t, string(goldenData), string(actualData), 
+
+	require.JSONEq(t, string(goldenData), string(actualData),
 		"SBOM output differs from golden file. Run with UPDATE_GOLDEN=true to update.")
 }

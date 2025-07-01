@@ -26,7 +26,7 @@ echo "=== Test 1: Build WITHOUT --scan-contents (baseline) ==="
 $MELANGE build \
     --arch=x86_64 \
     --source-dir=./test-fixtures \
-    --runner=qemu \
+    --runner=docker \
     --signing-key="$PWD/$key" \
     --keyring-append="$PWD/$key.pub" \
     --repository-append="$PWD/packages" \
@@ -55,7 +55,7 @@ echo -e "\n=== Test 2: Build WITH --scan-contents ==="
 $MELANGE build \
     --arch=x86_64 \
     --source-dir=./test-fixtures \
-    --runner=qemu \
+    --runner=docker \
     --signing-key="$PWD/$key" \
     --keyring-append="$PWD/$key.pub" \
     --repository-append="$PWD/packages" \

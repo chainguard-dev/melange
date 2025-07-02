@@ -328,7 +328,7 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 	}
 
 	if sawDiff {
-		os.Exit(1)
+		return fmt.Errorf("saw diff for %s", file)
 	}
 
 	return nil

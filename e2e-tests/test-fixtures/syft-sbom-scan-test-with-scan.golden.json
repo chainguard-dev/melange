@@ -173,6 +173,78 @@
       ]
     },
     {
+      "SPDXID": "SPDXRef-Package-gem-json-2.6.3-syft-detected",
+      "name": "gem:json",
+      "versionInfo": "2.6.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/json@2.6.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gem-mustermann-3.0.3-syft-detected",
+      "name": "gem:mustermann",
+      "versionInfo": "3.0.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/mustermann@3.0.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gem-rack-2.2.17-syft-detected",
+      "name": "gem:rack",
+      "versionInfo": "2.2.17",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/rack@2.2.17",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gem-rack-protection-3.1.0-syft-detected",
+      "name": "gem:rack-protection",
+      "versionInfo": "3.1.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/rack-protection@3.1.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
       "SPDXID": "SPDXRef-Package-python-requests-2.31.0-syft-detected",
       "name": "python:requests",
       "versionInfo": "2.31.0",
@@ -191,6 +263,42 @@
       ]
     },
     {
+      "SPDXID": "SPDXRef-Package-gem-ruby2C95keywords-0.0.5-syft-detected",
+      "name": "gem:ruby2_keywords",
+      "versionInfo": "0.0.5",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/ruby2_keywords@0.0.5",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gem-sinatra-3.1.0-syft-detected",
+      "name": "gem:sinatra",
+      "versionInfo": "3.1.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/sinatra@3.1.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
       "SPDXID": "SPDXRef-Package-go-module-stdlib-go1.24.4-syft-detected",
       "name": "go-module:stdlib",
       "versionInfo": "go1.24.4",
@@ -204,6 +312,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/stdlib@1.24.4",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gem-tilt-2.3.0-syft-detected",
+      "name": "gem:tilt",
+      "versionInfo": "2.3.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:gem/tilt@2.3.0",
           "referenceType": "purl"
         }
       ]
@@ -266,12 +392,47 @@
     {
       "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
       "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-json-2.6.3-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-mustermann-3.0.3-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-rack-2.2.17-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-rack-protection-3.1.0-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-python-requests-2.31.0-syft-detected"
     },
     {
       "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
       "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-ruby2C95keywords-0.0.5-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-sinatra-3.1.0-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-stdlib-go1.24.4-syft-detected"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-gem-tilt-2.3.0-syft-detected"
     },
     {
       "spdxElementId": "SPDXRef-Package-syft-sbom-scan-test-1.0.0-r0",

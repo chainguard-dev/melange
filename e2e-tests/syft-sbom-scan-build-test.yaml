@@ -109,6 +109,48 @@ pipeline:
         }
       }
       EOF
+
+  # Include Ruby gems for detection
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ruby/gems"
+      cat > "${{targets.destdir}}/usr/lib/ruby/gems/Gemfile" << 'EOF'
+      source 'https://rubygems.org'
+      
+      gem 'sinatra', '~> 3.1.0'
+      gem 'json', '~> 2.6.3'
+      gem 'rack', '~> 2.2.17'
+      EOF
+      
+      # Also create a Gemfile.lock for better detection
+      cat > "${{targets.destdir}}/usr/lib/ruby/gems/Gemfile.lock" << 'EOF'
+      GEM
+        remote: https://rubygems.org/
+        specs:
+          json (2.6.3)
+          mustermann (3.0.3)
+            ruby2_keywords (~> 0.0.1)
+          rack (2.2.17)
+          rack-protection (3.1.0)
+            rack (~> 2.2, >= 2.2.4)
+          ruby2_keywords (0.0.5)
+          sinatra (3.1.0)
+            mustermann (~> 3.0)
+            rack (~> 2.2, >= 2.2.4)
+            rack-protection (= 3.1.0)
+            tilt (~> 2.0)
+          tilt (2.3.0)
+      
+      PLATFORMS
+        ruby
+      
+      DEPENDENCIES
+        json (~> 2.6.3)
+        rack (~> 2.2.17)
+        sinatra (~> 3.1.0)
+      
+      BUNDLED WITH
+         2.4.13
+      EOF
       
   # Copy the golden SBOM file and normalize script into the package for testing
   - runs: |

@@ -23,6 +23,8 @@ import (
 
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/anchore/syft/syft"
+	"github.com/anchore/syft/syft/cataloging/filecataloging"
+	"github.com/anchore/syft/syft/cataloging/pkgcataloging"
 	"github.com/anchore/syft/syft/license"
 	"github.com/anchore/syft/syft/pkg"
 	"github.com/anchore/syft/syft/source/directorysource"
@@ -61,11 +63,15 @@ func (s *Scanner) Scan(ctx context.Context) ([]sbom.Package, error) {
 	}()
 
 	// Configure Syft to scan for all package types
-	// The default configuration should include catalogers for installed software
-	// when scanning directories. Syft automatically selects appropriate catalogers
-	// based on the source type (directory vs. image).
-	cfg := syft.DefaultCreateSBOMConfig().
-		WithParallelism(4)
+	// For directory sources, we want to use directory-specific catalogers
+	// that can find language-specific package manifests and installed software
+	cfg := syft.DefaultCreateSBOMConfig().WithCatalogerSelection(
+		pkgcataloging.NewSelectionRequest().WithDefaults(
+			pkgcataloging.ImageTag,
+			filecataloging.FileTag,
+		).WithRemovals(
+			"elf-package", // Don't consider ELF notes, which may report as being "apks"
+		)).WithParallelism(4)
 
 	// Create SBOM with Syft
 	syftSBOM, err := syft.CreateSBOM(ctx, src, cfg)
@@ -76,7 +82,7 @@ func (s *Scanner) Scan(ctx context.Context) ([]sbom.Package, error) {
 	// Convert Syft packages to Melange SBOM packages
 	packageCount := syftSBOM.Artifacts.Packages.PackageCount()
 	melangePackages := make([]sbom.Package, 0, packageCount)
-	
+
 	for _, syftPkg := range syftSBOM.Artifacts.Packages.Sorted() {
 		// Skip APK packages to avoid duplication - the APK package itself
 		// is already represented in the SBOM by Melange
@@ -84,7 +90,7 @@ func (s *Scanner) Scan(ctx context.Context) ([]sbom.Package, error) {
 			log.Debugf("Skipping APK package %s to avoid duplication", syftPkg.Name)
 			continue
 		}
-		
+
 		melangePkg := convertSyftPackage(syftPkg)
 		melangePackages = append(melangePackages, melangePkg)
 	}
@@ -104,7 +110,7 @@ func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
 	// Convert Syft checksums to our format
 	checksums := make(map[string]string)
 	// Syft packages don't typically have checksums at this level
-	
+
 	// Build Package URL if available
 	var packageURL *purl.PackageURL
 	if syftPkg.PURL != "" {
@@ -123,7 +129,7 @@ func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
 	if len(syftLicenses) > 0 {
 		declaredLicenses := make([]string, 0)
 		concludedLicenses := make([]string, 0)
-		
+
 		for _, l := range syftLicenses {
 			if l.Value != "" {
 				switch l.Type {
@@ -137,7 +143,7 @@ func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
 				}
 			}
 		}
-		
+
 		if len(declaredLicenses) > 0 {
 			licenseDeclared = strings.Join(declaredLicenses, " AND ")
 		}
@@ -162,7 +168,7 @@ func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
 func constructPURL(p pkg.Package) *purl.PackageURL {
 	var purlType string
 	var namespace string
-	
+
 	switch p.Type {
 	case pkg.GoModulePkg:
 		purlType = purl.TypeGolang
@@ -201,6 +207,6 @@ func constructPURL(p pkg.Package) *purl.PackageURL {
 			Version:   p.Version,
 		}
 	}
-	
+
 	return nil
 }

@@ -1,18 +1,8 @@
 [
   {
     "name": "go-module:command-line-arguments",
-    "version": "(devel)",
-    "purl": "pkg:golang/command-line-arguments@%28devel%29"
-  },
-  {
-    "name": "go-module:github.com/inconshreveable/mousetrap",
-    "version": "v1.1.0",
-    "purl": "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0"
-  },
-  {
-    "name": "go-module:github.com/sirupsen/logrus",
-    "version": "v1.9.3",
-    "purl": "pkg:golang/github.com/sirupsen/logrus@v1.9.3"
+    "version": "UNKNOWN",
+    "purl": "pkg:golang/command-line-arguments"
   },
   {
     "name": "go-module:github.com/sirupsen/logrus",
@@ -25,24 +15,9 @@
     "purl": "pkg:golang/github.com/spf13/cobra@v1.8.0"
   },
   {
-    "name": "go-module:github.com/spf13/cobra",
-    "version": "v1.8.0",
-    "purl": "pkg:golang/github.com/spf13/cobra@v1.8.0"
-  },
-  {
     "name": "go-module:github.com/spf13/pflag",
     "version": "v1.0.5",
     "purl": "pkg:golang/github.com/spf13/pflag@v1.0.5"
-  },
-  {
-    "name": "go-module:github.com/spf13/pflag",
-    "version": "v1.0.5",
-    "purl": "pkg:golang/github.com/spf13/pflag@v1.0.5"
-  },
-  {
-    "name": "go-module:golang.org/x/sys",
-    "version": "v0.18.0",
-    "purl": "pkg:golang/golang.org/x/sys@v0.18.0"
   },
   {
     "name": "go-module:golang.org/x/sys",

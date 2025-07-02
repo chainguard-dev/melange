@@ -29,6 +29,7 @@ melange scan bash.yaml
       --diff                       show diff output
   -h, --help                       help for scan
   -k, --keyring-append string      path to key to include in the build environment keyring (default "local-melange.rsa.pub")
+      --namespace string           namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
   -p, --package string             which package's .PKGINFO to print (if there are subpackages)
   -r, --repository-append string   path to repository to include in the build environment (default "./packages")
 ```

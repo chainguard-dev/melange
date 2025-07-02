@@ -45,6 +45,8 @@ type scanConfig struct {
 	archs    []string
 	diff     bool
 	comments bool
+
+	purlNamespace string
 }
 
 func scan() *cobra.Command {
@@ -68,6 +70,8 @@ func scan() *cobra.Command {
 	cmd.Flags().StringSliceVar(&sc.archs, "arch", []string{}, "architectures to scan (default is x86_64)")
 	cmd.Flags().BoolVar(&sc.diff, "diff", false, "show diff output")
 	cmd.Flags().BoolVar(&sc.comments, "comments", false, "include comments in .PKGINFO diff")
+
+	cmd.Flags().StringVar(&sc.purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 
 	return cmd
 }
@@ -151,6 +155,7 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 			WorkspaceDir:    dir,
 			SourceDateEpoch: time.Unix(0, 0),
 			Configuration:   cfg,
+			Namespace:       sc.purlNamespace,
 		}
 
 		pb := build.PackageBuild{

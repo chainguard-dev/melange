@@ -46,15 +46,22 @@ func TestScan_EmptyDirectory(t *testing.T) {
 func TestScan_WithGoModule(t *testing.T) {
 	ctx := slogtest.Context(t)
 	
-	// Create a temporary directory with a Go binary
+	// Create a temporary directory
 	tmpDir := t.TempDir()
 	
-	// With Syft integrated, scanning an empty directory should work
+	// Create a go.mod file in the temporary directory
+	goModContent := "module example.com/test\n"
+	err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0644)
+	require.NoError(t, err)
+	
+	// Scan the directory
 	scanner := NewScanner(tmpDir)
 	packages, err := scanner.Scan(ctx)
 	
+	// Verify that the scanner detects the Go module
 	require.NoError(t, err)
-	require.Empty(t, packages) // Empty directory should have no packages
+	require.NotEmpty(t, packages)
+	require.Contains(t, packages[0].Name, "example.com/test")
 }
 
 func TestScan_NonExistentPath(t *testing.T) {

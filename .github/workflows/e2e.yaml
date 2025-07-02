@@ -63,11 +63,11 @@ jobs:
           if [ "${{matrix.cfg}}" == "melange.yaml" ]; then
             path="melange.yaml"
           fi
-          ./melange build $path --arch=x86_64 --namespace=wolfi
+          ./melange build $path --arch=x86_64 --namespace=wolfi --scan-contents
 
       - name: Rebuild package
         run: |
-          ./melange rebuild ./packages/x86_64/*.apk
+          ./melange rebuild --scan-contents ./packages/x86_64/*.apk
 
       - name: Upload APKs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

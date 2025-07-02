@@ -29,7 +29,7 @@ import (
 
 func rebuild() *cobra.Command {
 	var runner, outDir, sourceDir, signingKey string
-	var diff bool
+	var diff, scanContents bool
 	cmd := &cobra.Command{
 		Use:               "rebuild",
 		DisableAutoGenTag: true,
@@ -75,6 +75,7 @@ func rebuild() *cobra.Command {
 						build.WithOutDir(outDir),
 						build.WithConfiguration(cfg, cfgpurl.Subpath),
 						build.WithSigningKey(signingKey),
+						build.WithScanContents(scanContents),
 					}
 					if sourceDir != "" {
 						opts = append(opts, build.WithSourceDir(sourceDir))
@@ -107,6 +108,7 @@ func rebuild() *cobra.Command {
 	cmd.Flags().StringVar(&outDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory where source code is located")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "path to the signing key to use for signing the rebuilt packages")
+	cmd.Flags().BoolVar(&scanContents, "scan-contents", false, "scan package contents with Syft to enrich SBOM with detected components")
 	return cmd
 }
 

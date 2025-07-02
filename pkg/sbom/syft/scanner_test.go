@@ -50,18 +50,72 @@ func TestScan_WithGoModule(t *testing.T) {
 	tmpDir := t.TempDir()
 	
 	// Create a go.mod file in the temporary directory
-	goModContent := "module example.com/test\n"
+	goModContent := `module example.com/test
+
+go 1.21
+
+require github.com/sirupsen/logrus v1.9.3
+
+require golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+`
 	err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0644)
+	require.NoError(t, err)
+	
+	// Create a go.sum file for better detection
+	goSumContent := `github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
+github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
+github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 h1:0A+M6Uqn+Eje4kHMK80dtF3JCXC4ykBgQG4Fe06QRhQ=
+golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "go.sum"), []byte(goSumContent), 0644)
+	require.NoError(t, err)
+	
+	// Create a simple Go source file to ensure detection
+	goSourceContent := `package main
+
+import "github.com/sirupsen/logrus"
+
+func main() {
+	logrus.Info("Hello, World!")
+}
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte(goSourceContent), 0644)
 	require.NoError(t, err)
 	
 	// Scan the directory
 	scanner := NewScanner(tmpDir)
 	packages, err := scanner.Scan(ctx)
 	
-	// Verify that the scanner detects the Go module
+	// Verify that the scanner detects Go packages
 	require.NoError(t, err)
 	require.NotEmpty(t, packages)
-	require.Contains(t, packages[0].Name, "example.com/test")
+	
+	// Check for expected packages
+	packageNames := make([]string, len(packages))
+	for i, pkg := range packages {
+		packageNames[i] = pkg.Name
+	}
+	
+	// Should find at least the logrus dependency
+	found := false
+	for _, name := range packageNames {
+		if strings.Contains(name, "logrus") {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "Expected to find logrus package, but got: %v", packageNames)
 }
 
 func TestScan_NonExistentPath(t *testing.T) {

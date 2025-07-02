@@ -892,8 +892,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// If --scan-contents is enabled, scan package contents with Syft
 	if b.ScanContents {
 		if err := b.scanAndEnrichSBOMs(ctx); err != nil {
-			log.Warnf("failed to scan package contents with Syft: %v", err)
-			// Continue even if scanning fails - this is an optional enrichment
+			return fmt.Errorf("failed to scan package contents with Syft: %w", err)
 		}
 	}
 
@@ -1443,15 +1442,14 @@ func (b *Build) scanAndEnrichSBOMs(ctx context.Context) error {
 		scanner := syft.NewScanner(subPkgDir)
 		syftPackages, err := scanner.Scan(ctx)
 		if err != nil {
-			log.Warnf("failed to scan subpackage %s: %v", sp.Name, err)
-			continue
+			return fmt.Errorf("failed to scan subpackage %s: %w", sp.Name, err)
 		}
 		
 		// Enrich subpackage SBOM
 		if len(syftPackages) > 0 {
 			subDoc := b.SBOMGroup.Document(sp.Name)
 			if err := syft.MergeIntoDocument(ctx, subDoc, syftPackages, sp.Name); err != nil {
-				log.Warnf("failed to merge Syft packages into subpackage %s SBOM: %v", sp.Name, err)
+				return fmt.Errorf("failed to merge Syft packages into subpackage %s SBOM: %w", sp.Name, err)
 			}
 		}
 	}

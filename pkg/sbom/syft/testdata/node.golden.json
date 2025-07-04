@@ -1,0 +1,8 @@
+[
+  {
+    "name": "npm:test-node-package",
+    "version": "1.0.0",
+    "purl": "pkg:npm/test-node-package@1.0.0",
+    "licenses": "MIT"
+  }
+]

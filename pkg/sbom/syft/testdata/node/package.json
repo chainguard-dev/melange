@@ -1,0 +1,18 @@
+{
+  "name": "test-node-package",
+  "version": "1.0.0",
+  "description": "Test Node.js package for SBOM scanning",
+  "main": "index.js",
+  "dependencies": {
+    "express": "4.18.2",
+    "lodash": "4.17.21",
+    "react": "18.2.0",
+    "axios": "1.5.1"
+  },
+  "devDependencies": {
+    "jest": "29.7.0",
+    "typescript": "5.2.2"
+  },
+  "author": "Test Author",
+  "license": "MIT"
+}

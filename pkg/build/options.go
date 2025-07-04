@@ -422,3 +422,11 @@ func WithGenerateProvenance(provenance bool) Option {
 		return nil
 	}
 }
+
+// WithScanContents sets whether to scan package contents with Syft to enrich SBOM.
+func WithScanContents(scan bool) Option {
+	return func(b *Build) error {
+		b.ScanContents = scan
+		return nil
+	}
+}

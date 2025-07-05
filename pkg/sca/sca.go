@@ -622,7 +622,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		//
 		// As a rough heuristic, we assume that if the filename contains ".so.",
 		// it is meant to be used as a shared object.
-		if interp == "" || strings.Contains(basename, ".so.") {
+		if interp == "" || strings.Contains(basename, ".so.") || strings.HasSuffix(basename, ".so") {
 			sonames, err := ef.DynString(elf.DT_SONAME)
 			// most likely SONAME is not set on this object
 			if err != nil {

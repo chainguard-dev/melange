@@ -32,7 +32,7 @@ import (
 func licenseCheck() *cobra.Command {
 	var workDir string
 	var fix bool
-	var simple bool
+	var format string
 	cmd := &cobra.Command{
 		Use:     "license-check file",
 		Short:   "Gather and check licensing data",
@@ -82,7 +82,7 @@ func licenseCheck() *cobra.Command {
 					ctx,
 					copyright.WithLicenses(detectedLicenses),
 					copyright.WithDiffs(diffs),
-					copyright.WithSimple(simple),
+					copyright.WithFormat(format),
 				)
 				err = rc.Renovate(cmd.Context(), copyrightRenovator)
 			}
@@ -93,7 +93,7 @@ func licenseCheck() *cobra.Command {
 
 	cmd.Flags().StringVar(&workDir, "workdir", "", "path to the working directory, e.g. where the source will be extracted to")
 	cmd.Flags().BoolVar(&fix, "fix", false, "fix license issues in the melange yaml file")
-	cmd.Flags().BoolVar(&simple, "simple", false, "use a simple copyright format with all detected licenses joined together")
+	cmd.Flags().StringVar(&format, "format", "flat", "output format: 'simple' or 'flat'")
 
 	return cmd
 }

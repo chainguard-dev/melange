@@ -33,7 +33,7 @@ import (
 type CopyrightConfig struct {
 	Licenses []license.License
 	Diffs    []license.LicenseDiff
-	Simple   bool
+	Format   string // "simple" or "flat"
 }
 
 // Option sets a config option on a CopyrightConfig.
@@ -57,12 +57,12 @@ func WithDiffs(diffs []license.LicenseDiff) Option {
 	}
 }
 
-// WithSimple sets whether the copyright should be populated with a single
-// node containing all detected licenses joined together, or with multiple
-// nodes, one per license.
-func WithSimple(simple bool) Option {
+// WithFormat sets whether the copyright should be populated with a single
+// node containing all detected licenses joined together (simple), or with
+// multiple nodes, one per license (flat).
+func WithFormat(format string) Option {
 	return func(cfg *CopyrightConfig) error {
-		cfg.Simple = simple
+		cfg.Format = format
 		return nil
 	}
 }
@@ -118,14 +118,14 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 		copyrightNode.Content = nil
 
 		// Repopulate the copyrightNode with detected licenses
-		if ccfg.Simple {
+		if ccfg.Format == "simple" {
 			// Make the copyright field a single node with all licenses joined together
 			if err = populateSimpleCopyright(ctx, copyrightNode, ccfg.Licenses); err != nil {
 				return err
 			}
 		} else {
 			// Use flat license listing (original behavior)
-			if err = populateCopyright(ctx, copyrightNode, ccfg.Licenses); err != nil {
+			if err = populateFlatCopyright(ctx, copyrightNode, ccfg.Licenses); err != nil {
 				return err
 			}
 		}
@@ -134,9 +134,9 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 	}
 }
 
-// populateCopyright populates the copyright node with the detected licenses,
+// populateFlatCopyright populates the copyright node with the detected licenses,
 // one entry per license.
-func populateCopyright(ctx context.Context, copyrightNode *yaml.Node, licenses []license.License) error {
+func populateFlatCopyright(ctx context.Context, copyrightNode *yaml.Node, licenses []license.License) error {
 	log := clog.FromContext(ctx)
 
 	for _, l := range licenses {

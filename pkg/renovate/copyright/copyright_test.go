@@ -174,7 +174,7 @@ func TestCopyright_updateSimple(t *testing.T) {
 	rctx, err := renovate.New(renovate.WithConfig(testFile))
 	assert.NoError(t, err)
 
-	copyrightRenovator := New(ctx, WithLicenses(detectedLicenses), WithDiffs(diffs), WithSimple(true))
+	copyrightRenovator := New(ctx, WithLicenses(detectedLicenses), WithDiffs(diffs), WithFormat("simple"))
 
 	err = rctx.Renovate(slogtest.Context(t), copyrightRenovator)
 	assert.NoError(t, err)

@@ -29,8 +29,8 @@ melange license-check file [flags]
 
 ```
       --fix              fix license issues in the melange yaml file
+      --format string    license fix strategy format: 'simple' or 'flat'
   -h, --help             help for license-check
-      --simple           use a simple copyright format with all detected licenses joined together
       --workdir string   path to the working directory, e.g. where the source will be extracted to
 ```
 

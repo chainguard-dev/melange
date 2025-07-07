@@ -432,7 +432,7 @@ func (p Package) LicenseExpression() string {
 	}
 	for _, cp := range p.Copyright {
 		if licenseExpression != "" {
-			licenseExpression += " OR "
+			licenseExpression += " AND "
 		}
 		licenseExpression += cp.License
 	}

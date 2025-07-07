@@ -93,7 +93,7 @@ func licenseCheck() *cobra.Command {
 
 	cmd.Flags().StringVar(&workDir, "workdir", "", "path to the working directory, e.g. where the source will be extracted to")
 	cmd.Flags().BoolVar(&fix, "fix", false, "fix license issues in the melange yaml file")
-	cmd.Flags().StringVar(&format, "format", "flat", "output format: 'simple' or 'flat'")
+	cmd.Flags().StringVar(&format, "format", "flat", "license fix strategy format: 'simple' or 'flat'")
 
 	return cmd
 }

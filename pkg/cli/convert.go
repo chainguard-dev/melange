@@ -38,7 +38,7 @@ func convert() *cobra.Command {
 		Use:               "convert",
 		DisableAutoGenTag: true,
 		SilenceUsage:      true,
-		//TraverseChildren:  true,
+		// TraverseChildren:  true,
 		Short: "EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files",
 		Long: `Convert is an EXPERIMENTAL COMMAND - Attempts to convert packages/gems/apkbuild files into melange configuration files
 								Check that the build executes and builds the apk as expected, using the wolfi-dev/sdk to test the install of built apk

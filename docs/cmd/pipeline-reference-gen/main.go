@@ -110,9 +110,7 @@ func parseFile(path string) (*config.Pipeline, error) {
 	return out, nil
 }
 
-var (
-	regex = regexp.MustCompile(`(?s)<!-- start:pipeline-reference-gen -->\n(.*?)<!-- end:pipeline-reference-gen -->`)
-)
+var regex = regexp.MustCompile(`(?s)<!-- start:pipeline-reference-gen -->\n(.*?)<!-- end:pipeline-reference-gen -->`)
 
 func writeFile(path string, doc []*PipelineDoc) error {
 	out := new(bytes.Buffer)

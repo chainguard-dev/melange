@@ -17,6 +17,17 @@
   ],
   "packages": [
     {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
       "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-r3",
       "name": "7zip-two-fetches",
       "versionInfo": "2301-r3",

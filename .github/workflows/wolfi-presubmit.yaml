@@ -74,7 +74,8 @@ jobs:
           - py3-pyelftools # Uses license-path
           - cadvisor # uses cgroups
           - fping # uses get/setcaps
-          - logstash-8 # uses a diff test user
+          - fixuid # uses a diff test user
+          - fluent-operator # uses background& process
           - perl-yaml-syck
           - postfix
           - ncurses
@@ -122,7 +123,7 @@ jobs:
         uses: ./melange-src/.github/actions/setup-bubblewrap
       - if: matrix.runner == 'bubblewrap'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" package/${{ matrix.package }}
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/${{ matrix.package }}
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
@@ -153,8 +154,17 @@ jobs:
             QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
             QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
             MELANGE="/usr/bin/melange" \
-            MELANGE_EXTRA_OPTS="--runner qemu" \
+            MELANGE_EXTRA_OPTS="--runner qemu --generate-provenance" \
             package/${{ matrix.package }}
+
+      - name: Output SLSA provenance
+        run: |
+          for pkg in packages/x86_64/*.attest.tar.gz; do
+            dir="$(basename "${pkg}" .attest.tar.gz)"
+            sudo mkdir -p packages/x86_64/"${dir}"
+            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/"${dir}"
+            jq . packages/x86_64/"${dir}"/"${dir}.attestation"
+          done
 
       - name: Run tests to verify xattrs with bubblewrap runner
         if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'

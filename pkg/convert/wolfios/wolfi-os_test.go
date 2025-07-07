@@ -3,13 +3,12 @@ package wolfios
 import (
 	"net/http"
 	"net/http/httptest"
-
-	"github.com/chainguard-dev/clog/slogtest"
-	"github.com/stretchr/testify/assert"
-
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/chainguard-dev/clog/slogtest"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_getWolfiPackages(t *testing.T) {

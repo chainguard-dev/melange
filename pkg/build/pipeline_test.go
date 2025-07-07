@@ -78,9 +78,10 @@ func Test_MutateWith(t *testing.T) {
 		version string
 		epoch   uint64
 		want    string
-	}{{version: "1.2.3",
-		epoch: 0,
-		want:  "1.2.3-r0",
+	}{{
+		version: "1.2.3",
+		epoch:   0,
+		want:    "1.2.3-r0",
 	}, {
 		version: "1.2.3",
 		epoch:   3,

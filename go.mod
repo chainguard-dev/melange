@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.24.0
 
 require (
-	chainguard.dev/apko v0.27.9
+	chainguard.dev/apko v0.27.10-0.20250623150342-bfcb016b5959
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.17
@@ -18,6 +18,7 @@ require (
 	github.com/google/go-github/v54 v54.0.0
 	github.com/google/licenseclassifier/v2 v2.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
+	github.com/in-toto/attestation v1.1.2
 	github.com/invopop/jsonschema v0.13.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
@@ -44,7 +45,7 @@ require (
 	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.32.0
 	golang.org/x/text v0.25.0
-	golang.org/x/time v0.11.0
+	golang.org/x/time v0.12.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.11.0
@@ -53,6 +54,8 @@ require (
 )
 
 require (
+	github.com/fatih/color v1.18.0 // indirect
+	github.com/google/martian/v3 v3.3.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
@@ -167,8 +170,8 @@ require (
 	google.golang.org/api v0.231.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250414145226-207652e42e2e // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250425173222-7b384671a197 // indirect
-	google.golang.org/grpc v1.72.0 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/grpc v1.72.1 // indirect
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/apimachinery v0.32.3 // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect

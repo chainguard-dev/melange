@@ -563,25 +563,7 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 
 		mode := fi.Mode()
 		if !mode.IsRegular() {
-			// If this file is a symlink to a regular file, include it.
-			// It would be easier to include all symlinks but that breaks
-			// when the top-level workspace directory is a symlink.
-			if mode&fs.ModeSymlink != 0 {
-				targetPath, err := filepath.EvalSymlinks(filepath.Join(b.SourceDir, path))
-				if err != nil {
-					log.Debugf("path %s eval gives err %v", path, err)
-					return err
-				}
-				target, err := os.Stat(targetPath)
-				if err != nil {
-					return err
-				}
-				if !target.Mode().IsRegular() {
-					return nil
-				}
-			} else {
-				return nil
-			}
+			return nil
 		}
 
 		for _, pat := range ignorePatterns {

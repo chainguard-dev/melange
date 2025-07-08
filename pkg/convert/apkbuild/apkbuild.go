@@ -348,7 +348,7 @@ func (c *Context) buildFetchStep(ctx context.Context, converter ApkConvertor) er
 
 			// Create a basic git-checkout pipeline
 			pipeline := config.Pipeline{
-				Uses: "melange/git-checkout",
+				Uses: "git-checkout",
 				With: map[string]string{
 					"repository":      apkBuild.Url,
 					"tag":             "${{package.version}}", // The version as the tag or branch reference

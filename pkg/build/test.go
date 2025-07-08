@@ -334,6 +334,8 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 
 			log.Infof("running the main test pipeline")
+
+			pr.config.TestRun = true
 			if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
@@ -388,6 +390,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 				}()
 			}
 
+			pr.config.TestRun = true
 			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
@@ -452,7 +455,6 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		Environment:  map[string]string{},
 		RunAsUID:     runAsUID(imgcfg.Accounts),
 		RunAs:        runAs(imgcfg.Accounts),
-		TestRun:      true,
 	}
 	if t.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = t.Configuration.Capabilities.Add

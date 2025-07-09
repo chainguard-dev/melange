@@ -631,6 +631,12 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 
 			for _, soname := range sonames {
+				// Packages should not provide libcuda.so.1 because they will
+				// conflict with the driver injected by the host.
+				if soname == "libcuda.so.1" {
+					continue
+				}
+
 				libver := sonameLibver(soname)
 
 				if isInDir(path, expandedLibDirs) {

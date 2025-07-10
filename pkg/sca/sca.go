@@ -99,6 +99,24 @@ func isInDir(path string, dirs []string) bool {
 	return false
 }
 
+// isHostProvidedLibrary returns true if the library is provided by the host
+// system and should not be included in dependency or provides generation.
+// These are typically NVIDIA libraries that are installed by the host driver.
+func isHostProvidedLibrary(lib string) bool {
+	hostLibs := []string{
+		"libcuda.so.1",
+		"libnvcuvid.so.1",
+		"libnvidia-encode.so.1",
+	}
+	
+	for _, hostLib := range hostLibs {
+		if lib == hostLib {
+			return true
+		}
+	}
+	return false
+}
+
 // getLdSoConfDLibPaths will iterate over the files being installed by
 // the package and all its subpackages, and for each configuration
 // file found under /etc/ld.so.conf.d/ it will parse the file and add
@@ -590,8 +608,8 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 
 		for _, lib := range libs {
-			// Cuda is a dangling library, which must come from the host
-			if lib == "libcuda.so.1" {
+			// These are dangling libraries, which must come from the host
+			if isHostProvidedLibrary(lib) {
 				continue
 			}
 			if strings.Contains(lib, ".so.") {
@@ -631,9 +649,9 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 
 			for _, soname := range sonames {
-				// Packages should not provide libcuda.so.1 because they will
-				// conflict with the driver injected by the host.
-				if soname == "libcuda.so.1" {
+				// Packages should not provide these shared objects because they
+				// will conflict with the driver injected by the host.
+				if isHostProvidedLibrary(soname) {
 					continue
 				}
 

@@ -207,9 +207,26 @@ func populateSimpleCopyright(ctx context.Context, copyrightNode *yaml.Node, lice
 	slices.Sort(ls)
 	combined := strings.Join(ls, " AND ")
 
-	copyrightNode.Kind = yaml.ScalarNode
-	copyrightNode.Value = combined
-	copyrightNode.Tag = "!!str"
+	// Create a single license entry with the combined license string
+	licenseNode := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Style:   yaml.FlowStyle,
+		Content: []*yaml.Node{},
+	}
+
+	licenseNode.Content = append(licenseNode.Content, &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "license",
+		Tag:   "!!str",
+		Style: yaml.FlowStyle,
+	}, &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: combined,
+		Tag:   "!!str",
+		Style: yaml.FlowStyle,
+	})
+
+	copyrightNode.Content = append(copyrightNode.Content, licenseNode)
 
 	return nil
 }

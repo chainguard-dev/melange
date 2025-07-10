@@ -182,10 +182,9 @@ func TestCopyright_updateSimple(t *testing.T) {
 	resultData, err := os.ReadFile(testFile)
 	assert.NoError(t, err)
 
-	// The copyright field should be a single string with both licenses joined by " AND "
+	// The copyright field should contain a single license entry with both licenses joined by " AND "
 	result := string(resultData)
-	assert.Contains(t, result, "Apache-2.0 AND MIT")
+	assert.Contains(t, result, "license: Apache-2.0 AND MIT")
 	assert.NotContains(t, result, "GPL-3.0")
 	assert.NotContains(t, result, "NOASSERTION")
-	assert.NotContains(t, result, "license:")
 }

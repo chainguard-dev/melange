@@ -464,6 +464,8 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 		return nil
 	}
 
+	expandedLibDirs := append(libDirs, extraLibDirs...)
+
 	if realPath != "" {
 		rawFile, err := targetFS.Open(realPath)
 		if err != nil {
@@ -490,6 +492,11 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 		}
 
 		for _, soname := range sonames {
+			if !isInDir(path, expandedLibDirs) {
+				log.Debugf("   found soname %s for %s, but ignored because it's not in expandedLibDirs", soname, path)
+				continue
+			}
+
 			log.Infof("  found soname %s for %s", soname, path)
 
 			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))
@@ -594,7 +601,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if lib == "libcuda.so.1" {
 				continue
 			}
-			if strings.Contains(lib, ".so.") {
+			if strings.Contains(lib, ".so.") || strings.HasSuffix(lib, ".so") {
 				log.Infof("  found lib %s for %s", lib, path)
 				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
 

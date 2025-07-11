@@ -1,0 +1,6 @@
+source 'https://rubygems.org'
+
+gem 'sinatra', '~> 3.1.0'
+gem 'rack', '~> 2.2.8'
+gem 'tilt', '~> 2.3.0'
+gem 'json', '~> 2.6.3'

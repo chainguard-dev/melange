@@ -1,0 +1,267 @@
+# Test package for Syft SBOM scanning functionality
+#
+# This test verifies that the --scan-contents flag properly enriches SBOMs
+# with language-specific dependencies detected by Syft.
+#
+# The test performs a comparison against a golden SBOM file, intelligently
+# ignoring expected differences like melange version and git commit hashes.
+# To regenerate the golden file when Syft behavior changes:
+#
+#   1. Build the package with --scan-contents:
+#      ../melange build --arch=x86_64 --source-dir=./test-fixtures --runner=docker \
+#        syft-sbom-scan-build-test.yaml --signing-key=local-melange.rsa --scan-contents \
+#        --keyring-append=local-melange.rsa.pub --repository-append=packages \
+#        --repository-append=https://packages.wolfi.dev/os \
+#        --keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+#
+#   2. Extract and save the new golden file:
+#      tar -xOf packages/x86_64/syft-sbom-scan-test-1.0.0-r0.apk \
+#        var/lib/db/sbom/syft-sbom-scan-test-1.0.0-r0.spdx.json \
+#        > test-fixtures/syft-sbom-scan-test-with-scan.golden.json
+#
+#   3. Rebuild to include the updated golden file in the package
+#
+# Alternatively, use the helper script which automatically normalizes:
+#   ./update-syft-golden.sh
+#
+# The golden file is stored in a normalized format where:
+# - Melange version is replaced with "VERSION"
+# - Git commit hashes are replaced with "GITHASH"
+# This ensures the golden file remains stable across different builds.
+
+package:
+  name: syft-sbom-scan-test
+  version: 1.0.0
+  epoch: 0
+  description: Test package for Syft SBOM scanning
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - go
+
+pipeline:
+  # Create a simple Go program that imports some packages
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/bin"
+      cat > main.go << 'EOF'
+      package main
+      
+      import (
+          "fmt"
+          "os"
+          
+          "github.com/spf13/cobra"
+          "github.com/sirupsen/logrus"
+      )
+      
+      func main() {
+          fmt.Println("Hello from syft-sbom-scan-test")
+          logrus.Info("This is a test program")
+          
+          cmd := &cobra.Command{
+              Use:   "test",
+              Short: "A test command",
+              Run: func(cmd *cobra.Command, args []string) {
+                  fmt.Println("Test command executed")
+              },
+          }
+          
+          if err := cmd.Execute(); err != nil {
+              fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+              os.Exit(1)
+          }
+      }
+      EOF
+      
+      # Initialize Go module
+      go mod init syft-sbom-scan-test
+      go get github.com/spf13/cobra@v1.8.0
+      go get github.com/sirupsen/logrus@v1.9.3
+      
+      # Build the binary
+      go build -o "${{targets.destdir}}/usr/bin/syft-sbom-scan-test" main.go
+
+  # Also include some Python files for Syft to detect
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/python3.12/site-packages"
+      cat > "${{targets.destdir}}/usr/lib/python3.12/site-packages/requirements.txt" << 'EOF'
+      requests==2.31.0
+      urllib3==2.0.7
+      certifi==2023.11.17
+      EOF
+
+  # Include a package.json for Node.js detection
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/share/syft-test"
+      cat > "${{targets.destdir}}/usr/share/syft-test/package.json" << 'EOF'
+      {
+        "name": "syft-test-app",
+        "version": "1.0.0",
+        "dependencies": {
+          "express": "4.18.2",
+          "lodash": "4.17.21"
+        }
+      }
+      EOF
+
+  # Include Ruby gems for detection
+  - runs: |
+      mkdir -p "${{targets.destdir}}/usr/lib/ruby/gems"
+      cat > "${{targets.destdir}}/usr/lib/ruby/gems/Gemfile" << 'EOF'
+      source 'https://rubygems.org'
+      
+      gem 'sinatra', '~> 3.1.0'
+      gem 'json', '~> 2.6.3'
+      gem 'rack', '~> 2.2.17'
+      EOF
+      
+      # Also create a Gemfile.lock for better detection
+      cat > "${{targets.destdir}}/usr/lib/ruby/gems/Gemfile.lock" << 'EOF'
+      GEM
+        remote: https://rubygems.org/
+        specs:
+          json (2.6.3)
+          mustermann (3.0.3)
+            ruby2_keywords (~> 0.0.1)
+          rack (2.2.17)
+          rack-protection (3.1.0)
+            rack (~> 2.2, >= 2.2.4)
+          ruby2_keywords (0.0.5)
+          sinatra (3.1.0)
+            mustermann (~> 3.0)
+            rack (~> 2.2, >= 2.2.4)
+            rack-protection (= 3.1.0)
+            tilt (~> 2.0)
+          tilt (2.3.0)
+      
+      PLATFORMS
+        ruby
+      
+      DEPENDENCIES
+        json (~> 2.6.3)
+        rack (~> 2.2.17)
+        sinatra (~> 3.1.0)
+      
+      BUNDLED WITH
+         2.4.13
+      EOF
+      
+  # Copy the golden SBOM file and normalize script into the package for testing
+  - runs: |
+      # The source directory is mounted at /home/build when using --source-dir
+      if [ -f "syft-sbom-scan-test-with-scan.golden.json" ]; then
+        cp "syft-sbom-scan-test-with-scan.golden.json" \
+           "${{targets.destdir}}/usr/share/syft-test/golden-sbom.json"
+      elif [ -f "/home/build/syft-sbom-scan-test-with-scan.golden.json" ]; then
+        cp "/home/build/syft-sbom-scan-test-with-scan.golden.json" \
+           "${{targets.destdir}}/usr/share/syft-test/golden-sbom.json"
+      else
+        echo "Warning: Golden SBOM file not found"
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+      fi
+      
+      # Also copy the normalize script
+      if [ -f "normalize-sbom.sh" ]; then
+        cp "normalize-sbom.sh" "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+        chmod +x "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+      elif [ -f "/home/build/normalize-sbom.sh" ]; then
+        cp "/home/build/normalize-sbom.sh" "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+        chmod +x "${{targets.destdir}}/usr/share/syft-test/normalize-sbom.sh"
+      fi
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - diffutils
+  pipeline:
+    - runs: |
+        # Test that the binary was created
+        test -f /usr/bin/syft-sbom-scan-test
+        
+        # Test that it runs
+        /usr/bin/syft-sbom-scan-test --help
+        
+        # Test that Python requirements file exists
+        test -f /usr/lib/python3.12/site-packages/requirements.txt
+        
+        # Test that package.json exists
+        test -f /usr/share/syft-test/package.json
+        
+        # Extract and verify the SBOM matches our golden file exactly
+        # Since --scan-contents is now always enabled, we expect the SBOM to match the golden file
+        if [ -f /var/lib/db/sbom/syft-sbom-scan-test-*.spdx.json ]; then
+          echo "Found SBOM file"
+          
+          # Copy the actual SBOM to a temporary location
+          cp /var/lib/db/sbom/syft-sbom-scan-test-*.spdx.json /tmp/actual-sbom.json
+          
+          # Check if we're in golden file update mode
+          if [ "${UPDATE_GOLDEN}" = "true" ]; then
+            echo "UPDATE_GOLDEN=true: Saving new golden file"
+            cp /tmp/actual-sbom.json /tmp/new-golden-sbom.json
+            echo "✓ New golden SBOM saved to container's /tmp/new-golden-sbom.json"
+            echo "To extract it, the test environment has been preserved."
+            echo "You can copy it out and update test-fixtures/syft-sbom-scan-test-with-scan.golden.json"
+            exit 0
+          fi
+          
+          # The golden file should be installed with the package
+          GOLDEN_FILE="/usr/share/syft-test/golden-sbom.json"
+          
+          if [ ! -f "$GOLDEN_FILE" ]; then
+            echo "ERROR: Golden file not found at $GOLDEN_FILE"
+            echo "This test requires the package to be built with --scan-contents flag"
+            exit 1
+          fi
+          
+          echo "Comparing SBOM with golden file..."
+          
+          # Create normalized versions for comparison, filtering out expected differences
+          # The normalize script replaces:
+          # 1. creationInfo.created - timestamp changes
+          # 2. creationInfo.creators[0] - melange version changes
+          # 3. versionInfo for syft-sbom-scan-build-test.yaml - git hash changes
+          # 4. SPDXID containing the git hash
+          # 5. referenceLocator containing the git hash
+          
+          # Check if normalize script is available (it should be in the package)
+          if [ -f /usr/share/syft-test/normalize-sbom.sh ]; then
+            NORMALIZE="/usr/share/syft-test/normalize-sbom.sh"
+          elif [ -f /home/build/normalize-sbom.sh ]; then
+            NORMALIZE="/home/build/normalize-sbom.sh"
+          else
+            echo "ERROR: normalize-sbom.sh not found"
+            exit 1
+          fi
+          
+          # Normalize both files for comparison
+          "$NORMALIZE" "$GOLDEN_FILE" > /tmp/golden-normalized.json
+          "$NORMALIZE" /tmp/actual-sbom.json > /tmp/actual-normalized.json
+          
+          if diff -u /tmp/golden-normalized.json /tmp/actual-normalized.json; then
+            echo "✓ SBOM matches golden file (ignoring expected differences)"
+          else
+            echo "ERROR: SBOM does not match golden file"
+            echo "Unexpected differences shown above."
+            echo ""
+            echo "To see the full diff including expected changes:"
+            echo "  diff -u $GOLDEN_FILE /tmp/actual-sbom.json"
+            echo ""
+            echo "To update the golden file, run:"
+            echo "  ./e2e-tests/update-syft-golden.sh"
+            exit 1
+          fi
+        else
+          echo "ERROR: No SBOM file found"
+          exit 1
+        fi

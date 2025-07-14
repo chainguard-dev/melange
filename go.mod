@@ -6,15 +6,15 @@ require (
 	chainguard.dev/apko v0.27.10-0.20250623150342-bfcb016b5959
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.17
+	github.com/chainguard-dev/yam v0.2.24
 	github.com/charmbracelet/log v0.4.2
-	github.com/docker/cli v28.1.1+incompatible
-	github.com/docker/docker v28.1.1+incompatible
+	github.com/docker/cli v28.2.2+incompatible
+	github.com/docker/docker v28.2.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.3
-	github.com/go-git/go-git/v5 v5.16.0
+	github.com/go-git/go-git/v5 v5.16.2
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.20.5
+	github.com/google/go-containerregistry v0.20.6
 	github.com/google/go-github/v54 v54.0.0
 	github.com/google/licenseclassifier/v2 v2.0.0
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
@@ -39,12 +39,12 @@ require (
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.36.0
 	go.opentelemetry.io/otel/sdk v1.36.0
-	golang.org/x/crypto v0.38.0
+	golang.org/x/crypto v0.39.0
 	golang.org/x/exp v0.0.0-20250530174510-65e920069ea6
-	golang.org/x/sync v0.14.0
+	golang.org/x/sync v0.15.0
 	golang.org/x/sys v0.33.0
 	golang.org/x/term v0.32.0
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.26.0
 	golang.org/x/time v0.12.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -54,10 +54,12 @@ require (
 )
 
 require (
+	github.com/containerd/errdefs v1.0.0 // indirect
+	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
+	golang.org/x/tools v0.34.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )
 
@@ -71,7 +73,7 @@ require (
 	chainguard.dev/sdk v0.1.32 // indirect
 	cloud.google.com/go/auth v0.16.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
-	cloud.google.com/go/compute/metadata v0.6.0 // indirect
+	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -106,7 +108,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
@@ -160,12 +162,12 @@ require (
 	go.lsp.dev/uri v0.3.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	go.step.sm/crypto v0.61.0 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/mod v0.25.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	google.golang.org/api v0.231.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250414145226-207652e42e2e // indirect

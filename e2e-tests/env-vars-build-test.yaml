@@ -10,22 +10,22 @@ environment:
       - busybox
   environment:
     FOO: bar
-    TEST_FILE: /var/test
+    TEST_DIR: /var/test
 
 pipeline:
   - runs: |
-      mkdir -p "${{targets.contextdir}}${TEST_FILE}"
-      touch "${{targets.contextdir}}${TEST_FILE}/foo.txt"
-      echo $FOO > "${{targets.contextdir}}${TEST_FILE}/foo.txt"
+      mkdir -p "${{targets.contextdir}}${TEST_DIR}"
+      touch "${{targets.contextdir}}${TEST_DIR}/foo.txt"
+      echo $FOO > "${{targets.contextdir}}${TEST_DIR}/foo.txt"
 
 subpackages:
   - name: env-vars-subpkg-test
     description: Test that top-level environment variables are accessible for sub-package tests
     pipeline:
       - runs: |
-          mkdir -p "${{targets.contextdir}}${TEST_FILE}"
-          touch "${{targets.contextdir}}${TEST_FILE}/foo.txt"
-          echo $FOO > "${{targets.contextdir}}${TEST_FILE}/foo.txt"
+          mkdir -p "${{targets.contextdir}}${TEST_DIR}"
+          touch "${{targets.contextdir}}${TEST_DIR}/foo.txt"
+          echo $FOO > "${{targets.contextdir}}${TEST_DIR}/foo.txt"
     test:
       environment:
         contents:
@@ -34,7 +34,7 @@ subpackages:
       pipeline:
         - runs: |
             set -e
-            testdata=$(cat "${TEST_FILE}/foo.txt")
+            testdata=$(cat "${TEST_DIR}/foo.txt")
             [ "$FOO" == "$testdata" ]
 
 test:
@@ -45,5 +45,5 @@ test:
   pipeline:
     - runs: |
         set -e
-        testdata=$(cat "${TEST_FILE}/foo.txt")
+        testdata=$(cat "${TEST_DIR}/foo.txt")
         [ "$FOO" == "$testdata" ]

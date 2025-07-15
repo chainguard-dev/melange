@@ -211,16 +211,13 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	fi, err := os.Stat(t.SourceDir)
 	switch {
 	case err != nil && !os.IsNotExist(err):
-		log.Warn("error checking dir", "error", err)
-		return nil
+		return fmt.Errorf("stating dir %s: %w", t.SourceDir, err)
 	case err != nil && os.IsNotExist(err):
 		if err := os.MkdirAll(t.SourceDir, 0o700); err != nil {
-			log.Warn("error creating dir", "dir", t.SourceDir, "error", err)
-			return nil
+			return fmt.Errorf("creating dir %s: %w", t.SourceDir, err)
 		}
 	case !fi.IsDir():
-		log.Warn("not a directory", "dir", t.SourceDir)
-		return nil
+		return fmt.Errorf("not a directory: %s", t.SourceDir)
 	}
 
 	fsys := os.DirFS(t.SourceDir)

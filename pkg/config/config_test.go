@@ -546,6 +546,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 		idComponents    []string
 		licenseDeclared string
 		typeHint        string
+		supplier        string
 		expected        *sbom.Package
 		expectError     bool
 	}{
@@ -557,6 +558,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "Apache-2.0",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "melange",
@@ -576,6 +578,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "Apache-2.0",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "melange",
@@ -594,6 +597,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			expectedCommit:  "b5d6dcba7c835d8520b06c7f35e747d896c50b61",
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "Apache-2.0",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "melange",
@@ -614,6 +618,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "MIT",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "gitlab",
@@ -633,6 +638,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "MIT",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "gitlab",
@@ -652,6 +658,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "MIT",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:     []string{"test-id"},
 				Name:             "gitlab",
@@ -671,6 +678,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "some-project",
@@ -695,6 +703,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "some-project",
@@ -719,6 +728,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "some-project",
@@ -743,6 +753,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "BSD-3-Clause",
 			typeHint:        "gitlab",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "dav1d",
@@ -767,11 +778,13 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-org/custom-project",
 				Version:         "v3.2.1",
 				LicenseDeclared: "LGPL-2.1",
+				Namespace:       "wolfi",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
 					Name:       "custom-org/custom-project",
@@ -790,11 +803,13 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-org/custom-project",
 				Version:         "abcdef0123456789abcdef0123456789abcdef01",
 				LicenseDeclared: "LGPL-2.1",
+				Namespace:       "wolfi",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
 					Name:       "custom-org/custom-project",
@@ -813,11 +828,13 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-org/custom-project",
 				Version:         "v3.2.1",
 				LicenseDeclared: "LGPL-2.1",
+				Namespace:       "wolfi",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
 					Name:       "custom-org/custom-project",
@@ -836,11 +853,13 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			idComponents:    []string{"test-id"},
 			licenseDeclared: "LGPL-2.1",
 			typeHint:        "",
+			supplier:        "wolfi",
 			expected: &sbom.Package{
 				IDComponents:    []string{"test-id"},
 				Name:            "custom-project",
 				Version:         "v3.2.1",
 				LicenseDeclared: "LGPL-2.1",
+				Namespace:       "wolfi",
 				PURL: &purl.PackageURL{
 					Type:       "generic",
 					Name:       "custom-project",
@@ -855,7 +874,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, tc.idComponents, tc.licenseDeclared, tc.typeHint)
+			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, tc.idComponents, tc.licenseDeclared, tc.typeHint, tc.supplier)
 			if tc.expectError {
 				require.Error(t, err)
 				return

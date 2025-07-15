@@ -1,0 +1,49 @@
+package:
+  name: env-vars-test
+  description: Test that top-level environment variables are accessible for tests
+  version: 0.1.0
+  epoch: 0
+
+environment:
+  contents:
+    packages:
+      - busybox
+  environment:
+    FOO: bar
+    TEST_FILE: /var/test
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.contextdir}}${TEST_FILE}"
+      touch "${{targets.contextdir}}${TEST_FILE}/foo.txt"
+      echo $FOO > "${{targets.contextdir}}${TEST_FILE}/foo.txt"
+
+subpackages:
+  - name: env-vars-subpkg-test
+    description: Test that top-level environment variables are accessible for sub-package tests
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}${TEST_FILE}"
+          touch "${{targets.contextdir}}${TEST_FILE}/foo.txt"
+          echo $FOO > "${{targets.contextdir}}${TEST_FILE}/foo.txt"
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            set -e
+            testdata=$(cat "${TEST_FILE}/foo.txt")
+            [ "$FOO" == "$testdata" ]
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        set -e
+        testdata=$(cat "${TEST_FILE}/foo.txt")
+        [ "$FOO" == "$testdata" ]

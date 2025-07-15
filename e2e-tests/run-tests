@@ -39,15 +39,18 @@ for yaml in "$@"; do
   case "$base" in
     *-build-test)
       ops="build test"
+      args="$args --debug"
       ;;
     *-nopkg-test)
       ops="test"
       args="$args --test-package-append busybox"
       args="$args --test-package-append=python-3"
+      args="$args --debug"
       ;;
     *-test)
       ops="test"
       args="${base%-test}"
+      args="$args --debug"
       ;;
     *-build)
       ops="build"

@@ -538,7 +538,7 @@ func SHA256(text string) string {
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
-func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared string, hint string) (*sbom.Package, error) {
+func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
 	var repoType, namespace, name, ref string
 	var downloadLocation string
 
@@ -575,7 +575,8 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 
 	default:
 		repoType = purl.TypeGeneric
-		namespace = ""
+		// We can't determine the namespace so use the supplier passed instead.
+		namespace = supplier
 		name = strings.TrimSuffix(trimmedPath, ".git")
 		// Use first letter of name as a directory to avoid a single huge bucket of tarballs
 		downloadLocation = fmt.Sprintf("https://tarballs.cgr.dev/%s/%s-%s.tar.gz", name[:1], SHA256(name), ref)
@@ -726,7 +727,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint)
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint, supplier)
 		if err != nil {
 			return nil, err
 		} else if gitPackage != nil {

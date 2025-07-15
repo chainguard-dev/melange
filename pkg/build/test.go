@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -463,9 +464,8 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		cfg.Capabilities.Drop = t.Configuration.Capabilities.Drop
 	}
 
-	for k, v := range imgcfg.Environment {
-		cfg.Environment[k] = v
-	}
+	maps.Copy(cfg.Environment, t.Configuration.Environment.Environment)
+	maps.Copy(cfg.Environment, imgcfg.Environment)
 
 	if _, ok := cfg.Environment["HOME"]; !ok {
 		cfg.Environment["HOME"] = "/root"

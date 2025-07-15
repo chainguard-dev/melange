@@ -1141,9 +1141,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		cfg.Capabilities.Drop = b.Configuration.Capabilities.Drop
 	}
 
-	for k, v := range b.Configuration.Environment.Environment {
-		cfg.Environment[k] = v
-	}
+	maps.Copy(cfg.Environment, b.Configuration.Environment.Environment)
 
 	return &cfg
 }

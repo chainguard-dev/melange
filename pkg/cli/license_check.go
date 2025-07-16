@@ -69,7 +69,7 @@ func licenseCheck() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to get absolute path for source directory: %w", err)
 			}
-			sourceFS := apkofs.DirFS(sourceDir)
+			sourceFS := apkofs.DirFS(ctx, sourceDir)
 			detectedLicenses, diffs, err := license.LicenseCheck(ctx, cfg, sourceFS)
 			if err != nil {
 				return err

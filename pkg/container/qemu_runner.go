@@ -1491,7 +1491,7 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	bc, err := apko_build.New(ctx, apkofs.DirFS(tmpDir, apkofs.WithCreateDir()), opts...)
+	bc, err := apko_build.New(ctx, apkofs.DirFS(ctx, tmpDir, apkofs.WithCreateDir()), opts...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}

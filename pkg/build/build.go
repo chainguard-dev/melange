@@ -687,7 +687,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		fs := apkofs.DirFS(b.SourceDir)
+		fs := apkofs.DirFS(ctx, b.SourceDir)
 		if fs != nil {
 			log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
 			if err := b.populateWorkspace(ctx, fs); err != nil {
@@ -786,7 +786,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
-	b.WorkspaceDirFS = apkofs.DirFS(b.WorkspaceDir)
+	b.WorkspaceDirFS = apkofs.DirFS(ctx, b.WorkspaceDir)
 
 	// Retreive the os-release information from the runner
 	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
@@ -875,7 +875,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// Perform all license related linting and analysis
-	if _, _, err := license.LicenseCheck(ctx, b.Configuration, apkofs.DirFS(b.WorkspaceDir)); err != nil {
+	if _, _, err := license.LicenseCheck(ctx, b.Configuration, apkofs.DirFS(ctx, b.WorkspaceDir)); err != nil {
 		return fmt.Errorf("license check: %w", err)
 	}
 

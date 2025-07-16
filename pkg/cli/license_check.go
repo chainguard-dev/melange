@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/renovate"
@@ -68,7 +69,7 @@ func licenseCheck() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to get absolute path for source directory: %w", err)
 			}
-			sourceFS := os.DirFS(sourceDir)
+			sourceFS := apkofs.DirFS(sourceDir)
 			detectedLicenses, diffs, err := license.LicenseCheck(ctx, cfg, sourceFS)
 			if err != nil {
 				return err

@@ -11,7 +11,7 @@
 # please see go-install.yaml in this directory.
 package:
   name: hello
-  version: v0.0.1
+  version: 0.0.1
   epoch: 0
   description: "A project that will greet the world infinitely"
 
@@ -26,4 +26,4 @@ pipeline:
   - uses: go/install
     with:
       package: github.com/puerco/hello
-      version: ${{package.version}}
+      version: v${{package.version}}

@@ -37,6 +37,7 @@ pipeline:
   - uses: cargo/build
     with:
       output: ${{package.name}}
+      jobs: 2
 
   - uses: strip
 

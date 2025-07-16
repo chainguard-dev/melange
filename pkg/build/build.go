@@ -977,7 +977,7 @@ func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
 
 	pkgVersion := b.Configuration.Package.FullVersion()
 	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
-	f, err := b.WorkspaceDirFS.Create(sbomPath)
+	f, err := b.WorkspaceDirFS.OpenFile(sbomPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("opening SBOM file for writing: %w", err)
 	}

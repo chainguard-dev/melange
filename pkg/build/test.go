@@ -209,19 +209,11 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 
 	log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 
-	fi, err := os.Stat(t.SourceDir)
-	switch {
-	case err != nil && !os.IsNotExist(err):
-		return fmt.Errorf("stating dir %s: %w", t.SourceDir, err)
-	case err != nil && os.IsNotExist(err):
-		if err := os.MkdirAll(t.SourceDir, 0o700); err != nil {
-			return fmt.Errorf("creating dir %s: %w", t.SourceDir, err)
-		}
-	case !fi.IsDir():
-		return fmt.Errorf("not a directory: %s", t.SourceDir)
-	}
+	fsys := apkofs.DirFS(t.SourceDir, apkofs.WithCreateDir())
 
-	fsys := os.DirFS(t.SourceDir)
+	if fsys == nil {
+		return fmt.Errorf("unable to create/use directory %s", t.SourceDir)
+	}
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -304,7 +296,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
+		if err := t.PopulateWorkspace(ctx, apkofs.DirFS(t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}

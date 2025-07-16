@@ -687,7 +687,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		fs := os.DirFS(b.SourceDir)
+		fs := apkofs.DirFS(b.SourceDir)
 		if fs != nil {
 			log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
 			if err := b.populateWorkspace(ctx, fs); err != nil {

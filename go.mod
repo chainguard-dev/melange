@@ -9,7 +9,7 @@ require (
 	github.com/chainguard-dev/yam v0.2.24
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v28.3.2+incompatible
-	github.com/docker/docker v28.2.2+incompatible
+	github.com/docker/docker v28.3.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.3
 	github.com/go-git/go-git/v5 v5.16.2

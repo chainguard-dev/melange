@@ -50,7 +50,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.11.0
 	sigs.k8s.io/release-utils v0.11.1
-	sigs.k8s.io/yaml v1.4.0
+	sigs.k8s.io/yaml v1.5.0
 )
 
 require (
@@ -59,6 +59,7 @@ require (
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/tools v0.34.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )

@@ -75,7 +75,6 @@ jobs:
           - cadvisor # uses cgroups
           - fping # uses get/setcaps
           - fixuid # uses a diff test user
-          - fluent-operator # uses background& process
           - perl-yaml-syck
           - postfix
           - ncurses

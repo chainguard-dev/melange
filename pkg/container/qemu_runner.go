@@ -99,6 +99,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 		envOverride,
 		stderr,
 		stdout,
+		false,
 		args,
 	)
 	if err != nil {
@@ -130,6 +131,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			nil,
 			nil,
 			nil,
+			false,
 			[]string{"sh", "-c", command},
 		)
 		if err == nil {
@@ -383,13 +385,13 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer os.Remove(cfg.SSHHostKey)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
-	cfg.TestRun = false
 	err := sendSSHCommand(ctx,
 		cfg.SSHClient,
 		cfg,
 		nil,
 		nil,
 		nil,
+		false,
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
@@ -460,6 +462,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		nil,
 		stderr,
 		outFile,
+		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
 	if err != nil {
@@ -492,6 +495,7 @@ func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.Re
 		nil,
 		nil,
 		bufWriter,
+		false,
 		[]string{"sh", "-c", "cat /etc/os-release"},
 	)
 
@@ -859,6 +863,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				nil,
 				stderr,
 				stdout,
+				false,
 				[]string{"sh", "-c", setupMountCommand},
 			)
 			if err != nil {
@@ -877,6 +882,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		nil,
 		stderr,
 		stdout,
+		false,
 		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
 	)
 	if err != nil {
@@ -946,6 +952,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		nil,
 		nil,
 		bufWriter,
+		false,
 		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -links 1 -print"},
 	)
 	if err != nil {
@@ -1181,7 +1188,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	cfg *Config, extraVars map[string]string,
 	stderr, stdout io.Writer,
-	command []string,
+	tty bool, command []string,
 ) error {
 	// Create a session
 	session, err := client.NewSession()
@@ -1215,26 +1222,37 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 		return err
 	}
 
-	cmd := shellquote.Join(command...)
-
-	// Tests expect to be able to put processes in background between steps.
-	// using `script` will avoid ssh hangs for open fds, and will allow to
-	// leave background processes running for the whole duration of the test.
-	if cfg.TestRun {
-		cmd = shellquote.Join(append([]string{
-			"script", "-f", "-q",
-			"--log-in", "/dev/null",
-			"--log-out", "/dev/null",
-			"-e", "-c"}, cmd)...)
-	}
-
 	session.Stderr = stderr
 	session.Stdout = stdout
 
+	if tty {
+		clog.FromContext(ctx).Debug("requesting tty instance")
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          0,     // disable echoing
+			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		}
+		// Request pseudo terminal
+		if err := session.RequestPty("xterm", 40, 80, modes); err != nil {
+			clog.FromContext(ctx).Errorf("request for pseudo terminal failed: %s", err)
+			return err
+		}
+	}
+
+	cmd := shellquote.Join(command...)
+
+	session.Stdin = strings.NewReader(cmd)
+
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
-	err = session.Run(cmd)
+	err = session.Shell()
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
+		return err
+	}
+
+	// Wait for the session to finish
+	if err := session.Wait(); err != nil {
+		clog.FromContext(ctx).Errorf("Failed wait for session running: %q: %v", cmd, err)
 		return err
 	}
 

@@ -30,8 +30,8 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/tarfs"
+	"chainguard.dev/apko/pkg/options"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
@@ -141,13 +141,6 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		return "", fmt.Errorf("creating apko tempdir: %w", err)
 	}
 	defer os.RemoveAll(tmp)
-
-	// see qemu_runner.go: 1194
-	if t.Runner.Name() == container.QemuName {
-		t.ExtraTestPackages = append(t.ExtraTestPackages, []string{
-			"cmd:script",
-		}...)
-	}
 
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
@@ -335,8 +328,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 
 			log.Infof("running the main test pipeline")
-
-			pr.config.TestRun = true
 			if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
@@ -391,7 +382,6 @@ func (t *Test) TestPackage(ctx context.Context) error {
 				}()
 			}
 
-			pr.config.TestRun = true
 			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}

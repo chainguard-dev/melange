@@ -49,7 +49,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.12.0
-	sigs.k8s.io/release-utils v0.11.1
+	sigs.k8s.io/release-utils v0.12.0
 	sigs.k8s.io/yaml v1.5.0
 )
 
@@ -60,7 +60,7 @@ require (
 	github.com/google/martian/v3 v3.3.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/tools v0.34.0 // indirect
+	golang.org/x/tools v0.35.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )
 
@@ -167,7 +167,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.step.sm/crypto v0.67.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
+	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	google.golang.org/api v0.242.0 // indirect

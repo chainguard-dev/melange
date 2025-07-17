@@ -684,7 +684,7 @@ func LintBuild(ctx context.Context, cfg *config.Configuration, packageName strin
 	}
 
 	log := clog.FromContext(ctx)
-	fsys := apkofs.DirFS(path)
+	fsys := apkofs.DirFS(ctx, path)
 
 	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
 		log.Warn(err.Error())

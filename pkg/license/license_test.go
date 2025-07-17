@@ -59,7 +59,7 @@ func TestFindLicenseFiles(t *testing.T) {
 		fp.Close()
 	}
 
-	tmpFS := apkofs.DirFS(tmpDir)
+	tmpFS := apkofs.DirFS(t.Context(), tmpDir)
 
 	// Call function under test
 	licenseFiles, err := FindLicenseFiles(tmpFS)
@@ -135,7 +135,7 @@ func TestFindLicenseFiles(t *testing.T) {
 		fp.Close()
 	}
 
-	tmpFS = apkofs.DirFS(tmpDir)
+	tmpFS = apkofs.DirFS(t.Context(), tmpDir)
 
 	// Call function under test
 	licenseFiles, err = FindLicenseFiles(tmpFS)
@@ -165,7 +165,7 @@ func TestIdentify(t *testing.T) {
 	}
 
 	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(testDataDir)
+	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 	err = fs.WalkDir(dataFS, ".", func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			t.Errorf("Error walking through testdata directory: %v", err)
@@ -217,7 +217,7 @@ func TestLicenseCheck(t *testing.T) {
 	}
 
 	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(testDataDir)
+	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 
 	// Create a buffer to capture log output
 	var logBuf strings.Builder
@@ -293,7 +293,7 @@ func TestLicenseCheck_withOverrides(t *testing.T) {
 	}
 
 	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(testDataDir)
+	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 
 	// Call function under test
 	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)

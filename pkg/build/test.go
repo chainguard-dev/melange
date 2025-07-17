@@ -209,7 +209,7 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 
 	log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 
-	fsys := apkofs.DirFS(t.SourceDir, apkofs.WithCreateDir())
+	fsys := apkofs.DirFS(ctx, t.SourceDir, apkofs.WithCreateDir())
 
 	if fsys == nil {
 		return fmt.Errorf("unable to create/use directory %s", t.SourceDir)
@@ -296,7 +296,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		if err := t.PopulateWorkspace(ctx, apkofs.DirFS(t.SourceDir)); err != nil {
+		if err := t.PopulateWorkspace(ctx, apkofs.DirFS(ctx, t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}

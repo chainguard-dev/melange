@@ -37,7 +37,7 @@ require (
 	github.com/zealic/xignore v0.3.3
 	gitlab.alpinelinux.org/alpine/go v0.10.1
 	go.opentelemetry.io/otel v1.37.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.36.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0
 	go.opentelemetry.io/otel/sdk v1.37.0
 	golang.org/x/crypto v0.40.0
 	golang.org/x/exp v0.0.0-20250530174510-65e920069ea6

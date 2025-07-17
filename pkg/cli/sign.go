@@ -71,7 +71,7 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 		return err
 	}
 
-	t, err := os.Create(fmt.Sprintf("%s.new", indexFile))
+	t, err := os.OpenFile(fmt.Sprintf("%s.new", indexFile), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}

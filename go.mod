@@ -48,7 +48,7 @@ require (
 	golang.org/x/time v0.12.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v3 v3.0.1
-	mvdan.cc/sh/v3 v3.11.0
+	mvdan.cc/sh/v3 v3.12.0
 	sigs.k8s.io/release-utils v0.11.1
 	sigs.k8s.io/yaml v1.5.0
 )

@@ -340,7 +340,7 @@ func (pc *PackageBuild) GenerateDependencies(ctx context.Context, hdl sca.SCAHan
 	if pc.Build.DependencyLog != "" {
 		log.Info("writing dependency log")
 
-		logFile, err := os.Create(fmt.Sprintf("%s.%s", pc.Build.DependencyLog, pc.Arch))
+		logFile, err := os.OpenFile(fmt.Sprintf("%s.%s", pc.Build.DependencyLog, pc.Arch), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 		if err != nil {
 			log.Warnf("Unable to open dependency log: %v", err)
 		}
@@ -585,7 +585,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to create output directory: %w", err)
 	}
 
-	outFile, err := os.Create(pc.Filename())
+	outFile, err := os.OpenFile(pc.Filename(), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("unable to create apk file: %w", err)
 	}
@@ -614,7 +614,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to generate provenance: %w", err)
 		}
 
-		provenanceFile, err := os.Create(pc.ProvenanceFilename())
+		provenanceFile, err := os.OpenFile(pc.ProvenanceFilename(), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 		if err != nil {
 			return fmt.Errorf("unable to create provenance file: %w", err)
 		}

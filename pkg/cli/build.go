@@ -98,7 +98,7 @@ func buildCmd() *cobra.Command {
 			}
 
 			if traceFile != "" {
-				w, err := os.Create(traceFile)
+				w, err := os.OpenFile(traceFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 				if err != nil {
 					return fmt.Errorf("creating trace file: %w", err)
 				}

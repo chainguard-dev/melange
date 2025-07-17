@@ -240,7 +240,7 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
 	}
-	outFile, err := os.Create(destinationFile)
+	outFile, err := os.OpenFile(destinationFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to create archive file: %w", err)
 	}

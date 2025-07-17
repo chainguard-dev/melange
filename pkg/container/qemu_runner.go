@@ -431,7 +431,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		}
 	}
 
-	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
+	outFile, err := os.OpenFile(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -1522,7 +1522,7 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 		}
 	}
 
-	guestInitramfs, err := os.Create(initramfs)
+	guestInitramfs, err := os.OpenFile(initramfs, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
 		return "", err

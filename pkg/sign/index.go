@@ -87,7 +87,7 @@ func SignIndex(ctx context.Context, signingKey string, indexFile string) error {
 		return fmt.Errorf("unable to write signature tarball: %w", err)
 	}
 
-	idx, err := os.Create(indexFile)
+	idx, err := os.OpenFile(indexFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("unable to open index for writing: %w", err)
 	}

@@ -31,7 +31,7 @@ func TestLinters(t *testing.T) {
 		return func() string {
 			d := t.TempDir()
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, filepath.Dir(path)), 0o700))
-			f, err := os.Create(filepath.Join(d, path))
+			f, err := os.OpenFile(filepath.Join(d, path), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 			assert.NoError(t, err)
 			fmt.Fprintln(f, "blah")
 			defer f.Close()
@@ -261,17 +261,17 @@ func TestLinters(t *testing.T) {
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, "sbin"), 0o700))
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/sbin"), 0o700))
 			fmt.Printf("Creating dirs and such\n")
-			f, err := os.Create(filepath.Join(d, "bin/test"))
+			f, err := os.OpenFile(filepath.Join(d, "bin/test"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 			assert.NoError(t, err)
 			fmt.Fprintln(f, "blah")
 			defer f.Close()
 
-			g, err := os.Create(filepath.Join(d, "sbin/test"))
+			g, err := os.OpenFile(filepath.Join(d, "sbin/test"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 			assert.NoError(t, err)
 			fmt.Fprintln(g, "blah")
 			defer g.Close()
 
-			h, err := os.Create(filepath.Join(d, "usr/sbin/test"))
+			h, err := os.OpenFile(filepath.Join(d, "usr/sbin/test"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 			assert.NoError(t, err)
 			fmt.Fprintln(h, "blah")
 			defer h.Close()
@@ -327,22 +327,22 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// Egg info files should not count
-	_, err := os.Create(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"))
+	_, err := os.OpenFile(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	assert.NoError(t, err)
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// dist info files should not count
-	_, err = os.Create(filepath.Join(pythonPathdir, "foodist-0.1-py3.14.dist-info"))
+	_, err = os.OpenFile(filepath.Join(pythonPathdir, "foodist-0.1-py3.14.dist-info"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	assert.NoError(t, err)
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// pth files should not count
-	_, err = os.Create(filepath.Join(pythonPathdir, "foopth-0.1-py3.14.pth"))
+	_, err = os.OpenFile(filepath.Join(pythonPathdir, "foopth-0.1-py3.14.pth"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	assert.NoError(t, err)
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
 	// .so files duplicate with a dir should not count
-	_, err = os.Create(filepath.Join(pythonPathdir, "foo.so"))
+	_, err = os.OpenFile(filepath.Join(pythonPathdir, "foo.so"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	assert.NoError(t, err)
 	assert.NoError(t, LintBuild(ctx, nil, "multiple", dir, linters, nil))
 
@@ -391,7 +391,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	linters := []string{"setuidgid"}
 	filePath := filepath.Join(t.TempDir(), "test.txt")
 
-	f, err := os.Create(filePath)
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
 	assert.NoError(t, os.Chmod(filePath, 0o770|fs.ModeSetuid|fs.ModeSetgid))
@@ -411,7 +411,7 @@ func Test_worldWriteLinter(t *testing.T) {
 
 	// Create test file
 	filePath := filepath.Join(dir, "usr", "lib", "test.txt")
-	_, err := os.Create(filePath)
+	_, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	assert.NoError(t, err)
 
 	// Set writeable and executable bits for non-world

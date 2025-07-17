@@ -411,7 +411,7 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 		return fmt.Errorf("mkdir -p %s: %w", destDir, err)
 	}
 
-	outF, err := os.Create(destPath)
+	outF, err := os.OpenFile(destPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("create %s: %w", destPath, err)
 	}
@@ -540,7 +540,7 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	// Write out build settings into workspacedir
 	// For now, just the gcc spec file and just link settings.
 	// In the future can control debug symbol generation, march/mtune, etc.
-	specFile, err := os.Create(filepath.Join(b.WorkspaceDir, ".melange.gcc.spec"))
+	specFile, err := os.OpenFile(filepath.Join(b.WorkspaceDir, ".melange.gcc.spec"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}

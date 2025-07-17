@@ -47,7 +47,7 @@ func (m *GeneratedMelangeConfig) Write(ctx context.Context, dir string) error {
 	}
 
 	manifestPath := filepath.Join(dir, fmt.Sprintf("%s.yaml", m.Package.Name))
-	f, err := os.Create(manifestPath)
+	f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("creating file %s: %w", manifestPath, err)
 	}

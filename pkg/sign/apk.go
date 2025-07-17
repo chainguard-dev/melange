@@ -93,7 +93,7 @@ func APK(_ context.Context, apkPath string, keyPath string) error {
 		return err
 	}
 
-	w, err := os.Create(apkPath)
+	w, err := os.OpenFile(apkPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}

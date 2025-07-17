@@ -28,7 +28,7 @@ import (
 
 // Helper function to create a mock .apk file with a .melange.yaml file inside
 func createMockApk(apkFilePath string, addMelange bool) error {
-	file, err := os.Create(apkFilePath)
+	file, err := os.OpenFile(apkFilePath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}

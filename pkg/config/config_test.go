@@ -1334,6 +1334,17 @@ func TestPackageURL(t *testing.T) {
 			arch:     "arm64",
 			expected: "pkg:apk/alpine/lib-test_package.so@0.1.0-r1?arch=arm64&distro=alpine",
 		},
+		{
+			name: "package with unknown distro",
+			pkg: Package{
+				Name:    "lib-test_package.so",
+				Version: "0.1.0",
+				Epoch:   1,
+			},
+			distro:   "unknown",
+			arch:     "arm64",
+			expected: "pkg:apk/alpine/lib-test_package.so@0.1.0-r1?arch=arm64",
+		},
 	}
 
 	for _, tt := range tests {

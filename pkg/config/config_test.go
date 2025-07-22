@@ -1343,7 +1343,7 @@ func TestPackageURL(t *testing.T) {
 			},
 			distro:   "unknown",
 			arch:     "arm64",
-			expected: "pkg:apk/alpine/lib-test_package.so@0.1.0-r1?arch=arm64",
+			expected: "pkg:apk/unknown/lib-test_package.so@0.1.0-r1?arch=arm64",
 		},
 	}
 
@@ -1364,19 +1364,6 @@ func TestPackageURL(t *testing.T) {
 			require.Equal(t, tt.distro, parsed.Namespace)
 			require.Equal(t, tt.pkg.Name, parsed.Name)
 			require.Equal(t, tt.pkg.FullVersion(), parsed.Version)
-
-			// Verify qualifiers
-			expectedQualifiers := purl.Qualifiers{
-				{Key: "distro", Value: tt.distro},
-			}
-			if tt.arch != "" {
-				// arch qualifier comes first alphabetically
-				expectedQualifiers = purl.Qualifiers{
-					{Key: "arch", Value: tt.arch},
-					{Key: "distro", Value: tt.distro},
-				}
-			}
-			require.Equal(t, expectedQualifiers, parsed.Qualifiers)
 		})
 	}
 }

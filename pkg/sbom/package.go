@@ -59,6 +59,11 @@ type Package struct {
 	// SPDX license expression. Leaving this empty will result in NOASSERTION being
 	// used as its value.
 	LicenseDeclared string
+	
+	// SPDX license expression for concluded licenses. This is the license that the
+	// SBOM creator has concluded applies to the package (as opposed to what the
+	// package author declared). Leaving this empty will result in NOASSERTION.
+	LicenseConcluded string
 
 	// Name of the distro/organization that produced the package. E.g. "wolfi".
 	//
@@ -102,6 +107,16 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 		}
 	}
 
+	// Handle concluded licenses
+	if p.LicenseConcluded == "" {
+		p.LicenseConcluded = spdx.NOASSERTION
+	} else {
+		valid, bad := spdxexp.ValidateLicenses([]string{p.LicenseConcluded})
+		if !valid {
+			log.Warnf("invalid concluded license: %s", strings.Join(bad, ", "))
+		}
+	}
+
 	if p.DownloadLocation == "" {
 		p.DownloadLocation = spdx.NOASSERTION
 	}
@@ -111,7 +126,7 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 		Name:             p.Name,
 		Version:          p.Version,
 		FilesAnalyzed:    false,
-		LicenseConcluded: spdx.NOASSERTION,
+		LicenseConcluded: p.LicenseConcluded,
 		LicenseDeclared:  p.LicenseDeclared,
 		DownloadLocation: p.DownloadLocation,
 		CopyrightText:    p.Copyright,

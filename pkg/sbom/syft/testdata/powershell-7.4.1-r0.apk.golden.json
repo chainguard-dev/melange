@@ -1,0 +1,1470 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-powershell-7.4.1-r0",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": [
+      "Tool: melange (devel)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/dbe2dd485f547411ef17baa3717e98a5",
+  "documentDescribes": [
+    "SPDXRef-Package-powershell-7.4.1-r0"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-powershell-7.4.1-r0",
+      "name": "powershell",
+      "versionInfo": "7.4.1-r0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-JetBrains.Annotations-2021.2.0",
+      "name": "dotnet:JetBrains.Annotations",
+      "versionInfo": "2021.2.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/JetBrains.Annotations@2021.2.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Json.More.Net-1.9.3",
+      "name": "dotnet:Json.More.Net",
+      "versionInfo": "1.9.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Json.More.Net@1.9.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-JsonPointer.Net-3.0.3",
+      "name": "dotnet:JsonPointer.Net",
+      "versionInfo": "3.0.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/JsonPointer.Net@3.0.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-JsonSchema.Net-5.2.7",
+      "name": "dotnet:JsonSchema.Net",
+      "versionInfo": "5.2.7",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/JsonSchema.Net@5.2.7",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Markdig.Signed-0.33.0",
+      "name": "dotnet:Markdig.Signed",
+      "versionInfo": "0.33.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Markdig.Signed@0.33.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.ApplicationInsights-2.21.0",
+      "name": "dotnet:Microsoft.ApplicationInsights",
+      "versionInfo": "2.21.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.ApplicationInsights@2.21.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Bcl.AsyncInterfaces-5.0.0",
+      "name": "dotnet:Microsoft.Bcl.AsyncInterfaces",
+      "versionInfo": "5.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Bcl.AsyncInterfaces@5.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.CodeAnalysis.CSharp-4.8.0",
+      "name": "dotnet:Microsoft.CodeAnalysis.CSharp",
+      "versionInfo": "4.8.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.CodeAnalysis.CSharp@4.8.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.CodeAnalysis.Common-4.8.0",
+      "name": "dotnet:Microsoft.CodeAnalysis.Common",
+      "versionInfo": "4.8.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.CodeAnalysis.Common@4.8.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Extensions.ObjectPool-5.0.17",
+      "name": "dotnet:Microsoft.Extensions.ObjectPool",
+      "versionInfo": "5.0.17",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Extensions.ObjectPool@5.0.17",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Management.Infrastructure-3.0.0",
+      "name": "dotnet:Microsoft.Management.Infrastructure",
+      "versionInfo": "3.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure@3.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Management.Infrastructure.Runtime.Unix-3.0.0",
+      "name": "dotnet:Microsoft.Management.Infrastructure.Runtime.Unix",
+      "versionInfo": "3.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure.Runtime.Unix@3.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Commands.Management-7.4.1",
+      "name": "dotnet:Microsoft.PowerShell.Commands.Management",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.Commands.Management@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Commands.Utility-7.4.1",
+      "name": "dotnet:Microsoft.PowerShell.Commands.Utility",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.Commands.Utility@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.ConsoleHost-7.4.1",
+      "name": "dotnet:Microsoft.PowerShell.ConsoleHost",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.ConsoleHost@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.MarkdownRender-7.2.1",
+      "name": "dotnet:Microsoft.PowerShell.MarkdownRender",
+      "versionInfo": "7.2.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.MarkdownRender@7.2.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Native-7.4.0",
+      "name": "dotnet:Microsoft.PowerShell.Native",
+      "versionInfo": "7.4.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.Native@7.4.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.SDK-7.4.1",
+      "name": "dotnet:Microsoft.PowerShell.SDK",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.SDK@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Security-7.4.1",
+      "name": "dotnet:Microsoft.PowerShell.Security",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.PowerShell.Security@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Win32.Registry.AccessControl-8.0.0",
+      "name": "dotnet:Microsoft.Win32.Registry.AccessControl",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Win32.Registry.AccessControl@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Win32.SystemEvents-8.0.0",
+      "name": "dotnet:Microsoft.Win32.SystemEvents",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Win32.SystemEvents@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Microsoft.Windows.Compatibility-8.0.1",
+      "name": "dotnet:Microsoft.Windows.Compatibility",
+      "versionInfo": "8.0.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Microsoft.Windows.Compatibility@8.0.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-Newtonsoft.Json-13.0.3",
+      "name": "dotnet:Newtonsoft.Json",
+      "versionInfo": "13.0.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/Newtonsoft.Json@13.0.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.CodeDom-8.0.0",
+      "name": "dotnet:System.CodeDom",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.CodeDom@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ComponentModel.Composition-8.0.0",
+      "name": "dotnet:System.ComponentModel.Composition",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ComponentModel.Composition@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ComponentModel.Composition.Registration-8.0.0",
+      "name": "dotnet:System.ComponentModel.Composition.Registration",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ComponentModel.Composition.Registration@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Configuration.ConfigurationManager-8.0.0",
+      "name": "dotnet:System.Configuration.ConfigurationManager",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Configuration.ConfigurationManager@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Data.Odbc-8.0.0",
+      "name": "dotnet:System.Data.Odbc",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Data.Odbc@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Data.OleDb-8.0.0",
+      "name": "dotnet:System.Data.OleDb",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Data.OleDb@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Data.SqlClient-4.8.6",
+      "name": "dotnet:System.Data.SqlClient",
+      "versionInfo": "4.8.6",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Data.SqlClient@4.8.6",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Diagnostics.EventLog-8.0.0",
+      "name": "dotnet:System.Diagnostics.EventLog",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Diagnostics.EventLog@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Diagnostics.PerformanceCounter-8.0.0",
+      "name": "dotnet:System.Diagnostics.PerformanceCounter",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Diagnostics.PerformanceCounter@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.DirectoryServices-8.0.0",
+      "name": "dotnet:System.DirectoryServices",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.DirectoryServices@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.DirectoryServices.AccountManagement-8.0.0",
+      "name": "dotnet:System.DirectoryServices.AccountManagement",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.DirectoryServices.AccountManagement@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.DirectoryServices.Protocols-8.0.0",
+      "name": "dotnet:System.DirectoryServices.Protocols",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.DirectoryServices.Protocols@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Drawing.Common-8.0.1",
+      "name": "dotnet:System.Drawing.Common",
+      "versionInfo": "8.0.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Drawing.Common@8.0.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.IO.Packaging-8.0.0",
+      "name": "dotnet:System.IO.Packaging",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.IO.Packaging@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.IO.Ports-8.0.0",
+      "name": "dotnet:System.IO.Ports",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.IO.Ports@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Management-8.0.0",
+      "name": "dotnet:System.Management",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Management@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Management.Automation-7.4.1",
+      "name": "dotnet:System.Management.Automation",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Management.Automation@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Net.Http.WinHttpHandler-8.0.0",
+      "name": "dotnet:System.Net.Http.WinHttpHandler",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Net.Http.WinHttpHandler@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Private.ServiceModel-4.10.3",
+      "name": "dotnet:System.Private.ServiceModel",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Private.ServiceModel@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Reflection.Context-8.0.0",
+      "name": "dotnet:System.Reflection.Context",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Reflection.Context@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Runtime.Caching-8.0.0",
+      "name": "dotnet:System.Runtime.Caching",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Runtime.Caching@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Security.Cryptography.Pkcs-8.0.0",
+      "name": "dotnet:System.Security.Cryptography.Pkcs",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Security.Cryptography.Pkcs@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Security.Cryptography.ProtectedData-8.0.0",
+      "name": "dotnet:System.Security.Cryptography.ProtectedData",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Security.Cryptography.ProtectedData@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Security.Cryptography.Xml-8.0.0",
+      "name": "dotnet:System.Security.Cryptography.Xml",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Security.Cryptography.Xml@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Security.Permissions-8.0.0",
+      "name": "dotnet:System.Security.Permissions",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Security.Permissions@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceModel.Duplex-4.10.3",
+      "name": "dotnet:System.ServiceModel.Duplex",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceModel.Duplex@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceModel.Http-4.10.3",
+      "name": "dotnet:System.ServiceModel.Http",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceModel.Http@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceModel.NetTcp-4.10.3",
+      "name": "dotnet:System.ServiceModel.NetTcp",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceModel.NetTcp@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceModel.Primitives-4.10.3",
+      "name": "dotnet:System.ServiceModel.Primitives",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceModel.Primitives@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceModel.Security-4.10.3",
+      "name": "dotnet:System.ServiceModel.Security",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceModel.Security@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceModel.Syndication-8.0.0",
+      "name": "dotnet:System.ServiceModel.Syndication",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceModel.Syndication@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.ServiceProcess.ServiceController-8.0.0",
+      "name": "dotnet:System.ServiceProcess.ServiceController",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.ServiceProcess.ServiceController@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Speech-8.0.0",
+      "name": "dotnet:System.Speech",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Speech@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Threading.AccessControl-8.0.0",
+      "name": "dotnet:System.Threading.AccessControl",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Threading.AccessControl@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Web.Services.Description-4.10.3",
+      "name": "dotnet:System.Web.Services.Description",
+      "versionInfo": "4.10.3",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Web.Services.Description@4.10.3",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-System.Windows.Extensions-8.0.0",
+      "name": "dotnet:System.Windows.Extensions",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/System.Windows.Extensions@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-pwsh-7.4.1",
+      "name": "dotnet:pwsh",
+      "versionInfo": "7.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/pwsh@7.4.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-runtime.linux-x64.runtime.native.System.IO.Ports-8.0.0",
+      "name": "dotnet:runtime.linux-x64.runtime.native.System.IO.Ports",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/runtime.linux-x64.runtime.native.System.IO.Ports@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dotnet-runtime.native.System.IO.Ports-8.0.0",
+      "name": "dotnet:runtime.native.System.IO.Ports",
+      "versionInfo": "8.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:nuget/runtime.native.System.IO.Ports@8.0.0",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-JetBrains.Annotations-2021.2.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Json.More.Net-1.9.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-JsonPointer.Net-3.0.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-JsonSchema.Net-5.2.7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Markdig.Signed-0.33.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.ApplicationInsights-2.21.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Bcl.AsyncInterfaces-5.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.CodeAnalysis.CSharp-4.8.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.CodeAnalysis.Common-4.8.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Extensions.ObjectPool-5.0.17"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Management.Infrastructure-3.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Management.Infrastructure.Runtime.Unix-3.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Commands.Management-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Commands.Utility-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.ConsoleHost-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.MarkdownRender-7.2.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Native-7.4.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.SDK-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.PowerShell.Security-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Win32.Registry.AccessControl-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Win32.SystemEvents-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Microsoft.Windows.Compatibility-8.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-Newtonsoft.Json-13.0.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.CodeDom-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ComponentModel.Composition-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ComponentModel.Composition.Registration-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Configuration.ConfigurationManager-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Data.Odbc-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Data.OleDb-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Data.SqlClient-4.8.6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Diagnostics.EventLog-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Diagnostics.PerformanceCounter-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.DirectoryServices-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.DirectoryServices.AccountManagement-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.DirectoryServices.Protocols-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Drawing.Common-8.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.IO.Packaging-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.IO.Ports-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Management-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Management.Automation-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Net.Http.WinHttpHandler-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Private.ServiceModel-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Reflection.Context-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Runtime.Caching-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Security.Cryptography.Pkcs-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Security.Cryptography.ProtectedData-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Security.Cryptography.Xml-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Security.Permissions-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceModel.Duplex-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceModel.Http-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceModel.NetTcp-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceModel.Primitives-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceModel.Security-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceModel.Syndication-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.ServiceProcess.ServiceController-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Speech-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Threading.AccessControl-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Web.Services.Description-4.10.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-System.Windows.Extensions-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-pwsh-7.4.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-runtime.linux-x64.runtime.native.System.IO.Ports-8.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-powershell-7.4.1-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-dotnet-runtime.native.System.IO.Ports-8.0.0"
+    }
+  ]
+}

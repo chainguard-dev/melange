@@ -30,9 +30,11 @@ melange.images
 dist/
 tags
 ctags
+e2e-tests/melange-cache
 
 .DS_Store
 
-
 x86_64/**
 aarch64/**
+
+pkg/sbom/syft/testdata/*.apk

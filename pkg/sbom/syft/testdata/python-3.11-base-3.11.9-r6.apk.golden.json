@@ -1,0 +1,67 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-python-3.11-base-3.11.9-r6",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": [
+      "Tool: melange (devel)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/f70afff14eeab809e68326ff989facdf",
+  "documentDescribes": [
+    "SPDXRef-Package-python-3.11-base-3.11.9-r6"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-3.11-base-3.11.9-r6",
+      "name": "python-3.11-base",
+      "versionInfo": "3.11.9-r6",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-binary-python-3.11.9",
+      "name": "binary:python",
+      "versionInfo": "3.11.9",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:generic/python@3.11.9",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-python-3.11-base-3.11.9-r6",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-binary-python-3.11.9"
+    }
+  ]
+}

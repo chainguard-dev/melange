@@ -90,6 +90,25 @@
       "type": "object",
       "description": "Capabilities is the configuration for Linux capabilities for the runner."
     },
+    "Capability": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "add": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capability stores paths and an associated map of capabilities and justification to include in a package."
+    },
     "Checks": {
       "properties": {
         "disabled": {
@@ -211,7 +230,7 @@
         },
         "detection-override": {
           "type": "string",
-          "description": "Optional: The detected license that should be overriden, used in cases where the automation is wrong."
+          "description": "Optional: License override"
         }
       },
       "additionalProperties": false,
@@ -627,6 +646,13 @@
           "$ref": "#/$defs/CPE",
           "description": "The CPE field values to be used for matching against NVD vulnerability\nrecords, if known."
         },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
+        },
         "timeout": {
           "type": "integer",
           "description": "Optional: The amount of time to allow this build to take before timing out."
@@ -932,6 +958,13 @@
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the subpackage."
+        },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
         }
       },
       "additionalProperties": false,

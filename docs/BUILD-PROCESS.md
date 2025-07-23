@@ -84,10 +84,55 @@ The build process is as follows. The core routine is [`BuildPackage()`](../pkg/b
    1. Checking if the step is a `uses`. If so, execute `Run()` on it.
    1. If it is a `runs`, then execute the commands in the step.
 1. Build any subpackages using the same process.
+1. Generate SBOM (Software Bill of Materials) for each package and subpackage.
 1. Emit the final apk package as a `.apk` file.
 1. Emit any subpackages as `.apk` files.
 1. Clean up guest and workspace directories.
 1. If requested an index, generate and sign `APKINDEX`.
+
+## SBOM Generation
+
+Melange automatically generates Software Bill of Materials (SBOM) documents for every package it builds. These SBOMs are included inside the APK packages at `/var/lib/db/sbom/` in SPDX 2.3 JSON format.
+
+### Basic SBOM Generation
+
+By default, Melange creates SBOMs that include:
+
+- Package metadata (name, version, architecture)
+- Upstream source information (from fetch/git-checkout pipelines)
+- Build configuration details
+- License information
+- Relationships between packages and their sources
+
+### Enhanced SBOM with Syft Scanning
+
+When building with the `--scan-contents` flag, Melange uses [Syft](https://github.com/anchore/syft) to scan the package contents and enrich the SBOM with detected components:
+
+```bash
+melange build --scan-contents config.yaml
+```
+
+This enhanced scanning detects:
+
+- Go modules in compiled binaries
+- Python packages and dependencies
+- Node.js/npm packages
+- Ruby gems
+- Java/Maven artifacts
+- And many other language ecosystems
+
+The Syft-detected components are added to the SBOM with `CONTAINS` relationships to the main package, providing a comprehensive view of all software components included in the package.
+
+### SBOM Usage
+
+The generated SBOMs can be used for:
+
+- **Supply chain security**: Track all components and their sources
+- **Vulnerability management**: Identify components affected by CVEs
+- **License compliance**: Understand licensing requirements
+- **Dependency analysis**: Map out the complete dependency tree
+
+When packages built with Melange are assembled into container images using [apko](https://github.com/chainguard-dev/apko), the individual package SBOMs are concatenated into a complete image SBOM.
 
 ## Containing the Build
 

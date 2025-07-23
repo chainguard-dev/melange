@@ -56,6 +56,7 @@ import (
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/linter"
 	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/melange/pkg/sbom/syft"
 )
 
 const melangeOutputDirName = "melange-out"
@@ -154,6 +155,9 @@ type Build struct {
 
 	// Opt-in SLSA provenance generation for initial rollout/testing
 	GenerateProvenance bool
+
+	// Whether to scan package contents with Syft to enrich SBOM
+	ScanContents bool
 
 	// The package resolver associated with this build.
 	//
@@ -885,6 +889,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	b.SBOMGroup.SetLicensingInfos(li)
 
+	// If --scan-contents is enabled, scan package contents with Syft
+	if b.ScanContents {
+		if err := b.scanAndEnrichSBOMs(ctx); err != nil {
+			return fmt.Errorf("failed to scan package contents with Syft: %w", err)
+		}
+	}
+
 	// Convert the SBOMs we've been working on to their SPDX representation, and
 	// write them to disk. We'll handle any subpackages first, and then the main
 	// package, but the order doesn't really matter.
@@ -1396,4 +1407,49 @@ func stringsFromByteSlice(buf []byte) []string {
 		}
 	}
 	return result
+}
+
+// scanAndEnrichSBOMs scans package contents with Syft and enriches SBOMs
+func (b *Build) scanAndEnrichSBOMs(ctx context.Context) error {
+	log := clog.FromContext(ctx)
+	
+	// Scan main package
+	mainPkgDir := filepath.Join(b.WorkspaceDir, melangeOutputDirName, b.Configuration.Package.Name)
+	log.Infof("scanning main package directory: %s", mainPkgDir)
+	
+	scanner := syft.NewScanner(mainPkgDir)
+	syftPackages, err := scanner.Scan(ctx)
+	if err != nil {
+		return fmt.Errorf("scanning main package: %w", err)
+	}
+	
+	// Enrich main package SBOM
+	if len(syftPackages) > 0 {
+		mainDoc := b.SBOMGroup.Document(b.Configuration.Package.Name)
+		if err := syft.MergeIntoDocument(ctx, mainDoc, syftPackages, b.Configuration.Package.Name); err != nil {
+			return fmt.Errorf("merging Syft packages into main SBOM: %w", err)
+		}
+	}
+	
+	// Scan subpackages
+	for _, sp := range b.Configuration.Subpackages {
+		subPkgDir := filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name)
+		log.Infof("scanning subpackage directory: %s", subPkgDir)
+		
+		scanner := syft.NewScanner(subPkgDir)
+		syftPackages, err := scanner.Scan(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to scan subpackage %s: %w", sp.Name, err)
+		}
+		
+		// Enrich subpackage SBOM
+		if len(syftPackages) > 0 {
+			subDoc := b.SBOMGroup.Document(sp.Name)
+			if err := syft.MergeIntoDocument(ctx, subDoc, syftPackages, sp.Name); err != nil {
+				return fmt.Errorf("failed to merge Syft packages into subpackage %s SBOM: %w", sp.Name, err)
+			}
+		}
+	}
+	
+	return nil
 }

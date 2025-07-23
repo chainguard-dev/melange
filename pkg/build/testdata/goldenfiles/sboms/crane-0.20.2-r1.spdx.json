@@ -47,24 +47,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-testdata-buildC95configs-crane.yaml-c0ffee",
-      "name": "testdata/build_configs/crane.yaml",
-      "versionInfo": "c0ffee",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/wolfi-dev/os@c0ffee#testdata/build_configs/crane.yaml",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-github.com-google-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128-0",
       "name": "go-containerregistry",
       "versionInfo": "v0.20.2",
@@ -78,6 +60,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:github/google/go-containerregistry@v0.20.2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-testdata-buildC95configs-crane.yaml-c0ffee",
+      "name": "testdata/build_configs/crane.yaml",
+      "versionInfo": "c0ffee",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/wolfi-dev/os@c0ffee#testdata/build_configs/crane.yaml",
           "referenceType": "purl"
         }
       ]

@@ -23,10 +23,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
@@ -46,7 +46,7 @@ var apks = []string{
 	"python-3.11-base-3.11.9-r6.apk",
 	"terraform-1.5.7-r12.apk",
 	"thanos-0.32-0.32.5-r4.apk",
-	// TODO: keycloak
+	"keycloak-26.3.1-r1.apk",
 }
 
 func TestGoldenScans(t *testing.T) {
@@ -92,8 +92,22 @@ func TestGoldenScans(t *testing.T) {
 				}
 			}
 
+			// Extract package info from APK
+			apkFile, err := os.Open(apkPath)
+			require.NoError(t, err)
+			defer apkFile.Close()
+
+			stat, err := apkFile.Stat()
+			require.NoError(t, err)
+
+			pkg, err := apk.ParsePackage(ctx, apkFile, uint64(stat.Size()))
+			require.NoError(t, err, "Failed to parse APK")
+
+			pkgName := pkg.Name
+			pkgVersion := pkg.Version
+
 			// Extract the APK
-			err := extractAPK(apkPath, extractDir)
+			err = extractAPK(apkPath, extractDir)
 			require.NoError(t, err)
 
 			// Scan the extracted contents
@@ -105,12 +119,12 @@ func TestGoldenScans(t *testing.T) {
 
 			// Generate golden file if it needs update
 			if os.Getenv("UPDATE_GOLDEN") == "true" {
-				generateGoldenFile(t, goldenFile, packages)
+				generateGoldenFile(t, goldenFile, packages, pkgName, pkgVersion)
 			}
 
 			// Compare with golden file
 			if _, err := os.Stat(goldenFile); err == nil {
-				compareWithGolden(t, goldenFile, packages)
+				compareWithGolden(t, goldenFile, packages, pkgName, pkgVersion)
 			} else {
 				t.Skipf("Golden file does not exist: %s", goldenFile)
 			}
@@ -119,13 +133,7 @@ func TestGoldenScans(t *testing.T) {
 }
 
 // generateGoldenFile creates a golden file from the scan results
-func generateGoldenFile(t *testing.T, filename string, packages []sbom.Package) {
-	// Extract the package name from the APK filename
-	apkName := filepath.Base(filename)
-	apkName = strings.TrimSuffix(apkName, ".golden.json")
-
-	// Parse package info from APK name (e.g., "crane-0.19.1-r6.apk")
-	pkgName, version := parseAPKName(apkName)
+func generateGoldenFile(t *testing.T, filename string, packages []sbom.Package, pkgName, version string) {
 
 	// Create an SBOM document
 	doc := sbom.NewDocument()
@@ -171,17 +179,10 @@ func generateGoldenFile(t *testing.T, filename string, packages []sbom.Package) 
 }
 
 // compareWithGolden compares scan results with a golden file
-func compareWithGolden(t *testing.T, filename string, packages []sbom.Package) {
+func compareWithGolden(t *testing.T, filename string, packages []sbom.Package, pkgName, version string) {
 	// Read golden file
 	goldenData, err := os.ReadFile(filename)
 	require.NoError(t, err)
-
-	// Generate the same SBOM structure for comparison
-	apkName := filepath.Base(filename)
-	apkName = strings.TrimSuffix(apkName, ".golden.json")
-
-	// Parse package info from APK name
-	pkgName, version := parseAPKName(apkName)
 
 	// Create the same SBOM structure
 	doc := sbom.NewDocument()
@@ -214,70 +215,6 @@ func compareWithGolden(t *testing.T, filename string, packages []sbom.Package) {
 
 	require.JSONEq(t, string(goldenData), string(actualData),
 		"SBOM output differs from golden file. Run with UPDATE_GOLDEN=true to update.")
-}
-
-// parseAPKName parses an APK filename to extract package name and version
-// Examples:
-//   - "crane-0.19.1-r6.apk" → ("crane", "0.19.1-r6")
-//   - "perl-yaml-syck-1.34-r3.apk" → ("perl-yaml-syck", "1.34-r3")
-//   - "python-3.11-base-3.11.9-r6.apk" → ("python-3.11-base", "3.11.9-r6")
-func parseAPKName(apkName string) (name, version string) {
-	// Remove .apk suffix
-	nameWithoutApk := strings.TrimSuffix(apkName, ".apk")
-
-	// Find the last -r followed by a number (release/epoch)
-	rIndex := -1
-	for i := len(nameWithoutApk) - 2; i >= 0; i-- {
-		if nameWithoutApk[i] == '-' && nameWithoutApk[i+1] == 'r' {
-			// Check if what follows 'r' is a number
-			if i+2 < len(nameWithoutApk) {
-				restIsNumber := true
-				for j := i + 2; j < len(nameWithoutApk); j++ {
-					if nameWithoutApk[j] < '0' || nameWithoutApk[j] > '9' {
-						restIsNumber = false
-						break
-					}
-				}
-				if restIsNumber && len(nameWithoutApk[i+2:]) > 0 {
-					rIndex = i
-					break
-				}
-			}
-		}
-	}
-
-	if rIndex == -1 {
-		// No -r<number> found, treat the whole thing as the name
-		return nameWithoutApk, ""
-	}
-
-	// Everything from -r onwards is part of the version
-	nameAndMainVersion := nameWithoutApk[:rIndex]
-	release := nameWithoutApk[rIndex+1:] // includes the 'r'
-
-	// Find where the version starts
-	// Look for the last segment that starts with a digit after a dash
-	versionStartIndex := -1
-	for i := len(nameAndMainVersion) - 1; i >= 0; i-- {
-		if nameAndMainVersion[i] == '-' && i+1 < len(nameAndMainVersion) {
-			// Check if the next character is a digit
-			if nameAndMainVersion[i+1] >= '0' && nameAndMainVersion[i+1] <= '9' {
-				versionStartIndex = i + 1
-				break
-			}
-		}
-	}
-
-	if versionStartIndex == -1 {
-		// No version found, everything is the name
-		return nameAndMainVersion, release
-	}
-
-	name = nameAndMainVersion[:versionStartIndex-1] // -1 to exclude the dash
-	mainVersion := nameAndMainVersion[versionStartIndex:]
-	version = mainVersion + "-" + release
-
-	return name, version
 }
 
 // downloadAPK downloads an APK from the Wolfi package repository

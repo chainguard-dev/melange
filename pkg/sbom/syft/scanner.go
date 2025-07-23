@@ -117,10 +117,9 @@ func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
 		if err == nil {
 			packageURL = &parsedPURL
 		}
-	} else {
-		// Try to construct a PURL based on package type
-		packageURL = constructPURL(syftPkg)
+		// If parsing fails, we'll just skip the PURL
 	}
+	// Don't try to construct PURLs ourselves - rely on Syft's detection
 
 	// Extract license information
 	var licenseDeclared, licenseConcluded string
@@ -161,51 +160,4 @@ func convertSyftPackage(syftPkg pkg.Package) sbom.Package {
 		// Add type info as a component to ensure uniqueness
 		IDComponents: []string{string(syftPkg.Type), syftPkg.Name, syftPkg.Version},
 	}
-}
-
-// constructPURL attempts to construct a Package URL for packages that don't have one
-func constructPURL(p pkg.Package) *purl.PackageURL {
-	var purlType string
-	var namespace string
-
-	switch p.Type {
-	case pkg.GoModulePkg:
-		purlType = purl.TypeGolang
-		// For Go modules, the name is usually the full import path
-		if strings.Contains(p.Name, "/") {
-			parts := strings.SplitN(p.Name, "/", 2)
-			if len(parts) == 2 {
-				namespace = parts[0]
-				name := parts[1]
-				return &purl.PackageURL{
-					Type:      purlType,
-					Namespace: namespace,
-					Name:      name,
-					Version:   p.Version,
-				}
-			}
-		}
-	case pkg.PythonPkg:
-		purlType = purl.TypePyPi
-	case pkg.NpmPkg:
-		purlType = purl.TypeNPM
-	case pkg.GemPkg:
-		purlType = purl.TypeGem
-	case pkg.JavaPkg:
-		purlType = purl.TypeMaven
-	default:
-		// For unknown types, return nil
-		return nil
-	}
-
-	if purlType != "" {
-		return &purl.PackageURL{
-			Type:      purlType,
-			Namespace: namespace,
-			Name:      p.Name,
-			Version:   p.Version,
-		}
-	}
-
-	return nil
 }

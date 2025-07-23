@@ -28,35 +28,6 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-terraform-1.5.7-r12",
-      "name": "terraform",
-      "versionInfo": "1.5.7-r12",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi"
-    },
-    {
-      "SPDXID": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.0",
-      "name": "go-module:cloud.google.com/go",
-      "versionInfo": "v0.110.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/cloud.google.com/go@v0.110.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-cloud.google.com-go-compute-metadata-v0.2.3",
       "name": "go-module:cloud.google.com/go/compute/metadata",
       "versionInfo": "v0.2.3",
@@ -111,6 +82,24 @@
       ]
     },
     {
+      "SPDXID": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.0",
+      "name": "go-module:cloud.google.com/go",
+      "versionInfo": "v0.110.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/cloud.google.com/go@v0.110.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-Azure-azure-sdk-for-go-v59.2.0C43incompatible",
       "name": "go-module:github.com/Azure/azure-sdk-for-go",
       "versionInfo": "v59.2.0+incompatible",
@@ -124,24 +113,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/azure/azure-sdk-for-go@v59.2.0%2Bincompatible",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-Azure-go-autorest-autorest-v0.11.24",
-      "name": "go-module:github.com/Azure/go-autorest/autorest",
-      "versionInfo": "v0.11.24",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/azure/go-autorest@v0.11.24#autorest",
           "referenceType": "purl"
         }
       ]
@@ -214,6 +185,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/azure/go-autorest@v0.4.0#autorest/to",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-Azure-go-autorest-autorest-v0.11.24",
+      "name": "go-module:github.com/Azure/go-autorest/autorest",
+      "versionInfo": "v0.11.24",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/azure/go-autorest@v0.11.24#autorest",
           "referenceType": "purl"
         }
       ]
@@ -831,24 +820,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v4-v4.2.0",
-      "name": "go-module:github.com/golang-jwt/jwt/v4",
-      "versionInfo": "v4.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/golang-jwt/jwt@v4.2.0#v4",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-golang-groupcache-v0.0.0-20210331224755-41bb18bfe9da",
       "name": "go-module:github.com/golang/groupcache",
       "versionInfo": "v0.0.0-20210331224755-41bb18bfe9da",
@@ -862,6 +833,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/golang/groupcache@v0.0.0-20210331224755-41bb18bfe9da",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v4-v4.2.0",
+      "name": "go-module:github.com/golang-jwt/jwt/v4",
+      "versionInfo": "v4.2.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/golang-jwt/jwt@v4.2.0#v4",
           "referenceType": "purl"
         }
       ]
@@ -1425,24 +1414,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-v0.0.0-20230907181950-ee58ac1851c8",
-      "name": "go-module:github.com/hashicorp/terraform",
-      "versionInfo": "v0.0.0-20230907181950-ee58ac1851c8",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/hashicorp/terraform@v0.0.0-20230907181950-ee58ac1851c8",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-registry-address-v0.0.0-20220623143253-7d51757b572c",
       "name": "go-module:github.com/hashicorp/terraform-registry-address",
       "versionInfo": "v0.0.0-20220623143253-7d51757b572c",
@@ -1474,6 +1445,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/hashicorp/terraform-svchost@v0.1.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-v0.0.0-20230907181950-ee58ac1851c8",
+      "name": "go-module:github.com/hashicorp/terraform",
+      "versionInfo": "v0.0.0-20230907181950-ee58ac1851c8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/hashicorp/terraform@v0.0.0-20230907181950-ee58ac1851c8",
           "referenceType": "purl"
         }
       ]
@@ -1623,24 +1612,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-v0.44.0",
-      "name": "go-module:github.com/manicminer/hamilton",
-      "versionInfo": "v0.44.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/manicminer/hamilton@v0.44.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-autorest-v0.2.0",
       "name": "go-module:github.com/manicminer/hamilton-autorest",
       "versionInfo": "v0.2.0",
@@ -1654,6 +1625,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/manicminer/hamilton-autorest@v0.2.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-v0.44.0",
+      "name": "go-module:github.com/manicminer/hamilton",
+      "versionInfo": "v0.44.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/manicminer/hamilton@v0.44.0",
           "referenceType": "purl"
         }
       ]
@@ -2863,14 +2852,20 @@
           "referenceType": "purl"
         }
       ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-terraform-1.5.7-r12",
+      "name": "terraform",
+      "versionInfo": "1.5.7-r12",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
     }
   ],
   "relationships": [
-    {
-      "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.0"
-    },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
@@ -2889,12 +2884,12 @@
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-Azure-azure-sdk-for-go-v59.2.0C43incompatible"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-Azure-go-autorest-autorest-v0.11.24"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-Azure-azure-sdk-for-go-v59.2.0C43incompatible"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
@@ -2915,6 +2910,11 @@
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-Azure-go-autorest-autorest-to-v0.4.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-Azure-go-autorest-autorest-v0.11.24"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
@@ -3089,12 +3089,12 @@
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v4-v4.2.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-groupcache-v0.0.0-20210331224755-41bb18bfe9da"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-groupcache-v0.0.0-20210331224755-41bb18bfe9da"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v4-v4.2.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
@@ -3254,17 +3254,17 @@
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-v0.0.0-20230907181950-ee58ac1851c8"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-registry-address-v0.0.0-20220623143253-7d51757b572c"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-svchost-v0.1.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-hashicorp-terraform-v0.0.0-20230907181950-ee58ac1851c8"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
@@ -3309,12 +3309,12 @@
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-v0.44.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-autorest-v0.2.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-autorest-v0.2.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-manicminer-hamilton-v0.44.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-terraform-1.5.7-r12",

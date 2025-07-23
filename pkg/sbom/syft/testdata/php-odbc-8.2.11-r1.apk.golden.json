@@ -28,17 +28,6 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-php-odbc-8.2.11-r1",
-      "name": "php-odbc",
-      "versionInfo": "8.2.11-r1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi"
-    },
-    {
       "SPDXID": "SPDXRef-Package-binary-odbc-8.2.11",
       "name": "binary:odbc",
       "versionInfo": "8.2.11",
@@ -55,6 +44,17 @@
           "referenceType": "purl"
         }
       ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-php-odbc-8.2.11-r1",
+      "name": "php-odbc",
+      "versionInfo": "8.2.11-r1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
     }
   ],
   "relationships": [

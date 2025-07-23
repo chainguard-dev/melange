@@ -28,17 +28,6 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-python-3.11-base-3.11.9-r6",
-      "name": "python-3.11-base",
-      "versionInfo": "3.11.9-r6",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi"
-    },
-    {
       "SPDXID": "SPDXRef-Package-binary-python-3.11.9",
       "name": "binary:python",
       "versionInfo": "3.11.9",
@@ -55,6 +44,17 @@
           "referenceType": "purl"
         }
       ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-3.11-base-3.11.9-r6",
+      "name": "python-3.11-base",
+      "versionInfo": "3.11.9-r6",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
     }
   ],
   "relationships": [

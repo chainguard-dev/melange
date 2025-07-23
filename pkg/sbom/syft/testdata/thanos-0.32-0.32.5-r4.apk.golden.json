@@ -28,35 +28,6 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "name": "thanos-0.32",
-      "versionInfo": "0.32.5-r4",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi"
-    },
-    {
-      "SPDXID": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.4",
-      "name": "go-module:cloud.google.com/go",
-      "versionInfo": "v0.110.4",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/cloud.google.com/go@v0.110.4",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-cloud.google.com-go-compute-metadata-v0.2.3",
       "name": "go-module:cloud.google.com/go/compute/metadata",
       "versionInfo": "v0.2.3",
@@ -124,6 +95,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/cloud.google.com/go/trace@v1.10.1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.4",
+      "name": "go-module:cloud.google.com/go",
+      "versionInfo": "v0.110.4",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/cloud.google.com/go@v0.110.4",
           "referenceType": "purl"
         }
       ]
@@ -381,24 +370,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-v1.16.0",
-      "name": "go-module:github.com/aws/aws-sdk-go-v2",
-      "versionInfo": "v1.16.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/aws/aws-sdk-go-v2@v1.16.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-config-v1.15.1",
       "name": "go-module:github.com/aws/aws-sdk-go-v2/config",
       "versionInfo": "v1.15.1",
@@ -556,6 +527,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/aws/aws-sdk-go-v2@v1.16.1#service/sts",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-v1.16.0",
+      "name": "go-module:github.com/aws/aws-sdk-go-v2",
+      "versionInfo": "v1.16.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/aws/aws-sdk-go-v2@v1.16.0",
           "referenceType": "purl"
         }
       ]
@@ -1245,24 +1234,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v5-v5.0.0",
-      "name": "go-module:github.com/golang-jwt/jwt/v5",
-      "versionInfo": "v5.0.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/golang-jwt/jwt@v5.0.0#v5",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-golang-groupcache-v0.0.0-20210331224755-41bb18bfe9da",
       "name": "go-module:github.com/golang/groupcache",
       "versionInfo": "v0.0.0-20210331224755-41bb18bfe9da",
@@ -1276,6 +1247,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/golang/groupcache@v0.0.0-20210331224755-41bb18bfe9da",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v5-v5.0.0",
+      "name": "go-module:github.com/golang-jwt/jwt/v5",
+      "versionInfo": "v5.0.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/golang-jwt/jwt@v5.0.0#v5",
           "referenceType": "purl"
         }
       ]
@@ -1479,24 +1468,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-v1.3.0",
-      "name": "go-module:github.com/grpc-ecosystem/go-grpc-middleware",
-      "versionInfo": "v1.3.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/grpc-ecosystem/go-grpc-middleware@v1.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-providers-kit-v2-v2.0.0-20201002093600-73cf2ae9d891",
       "name": "go-module:github.com/grpc-ecosystem/go-grpc-middleware/providers/kit/v2",
       "versionInfo": "v2.0.0-20201002093600-73cf2ae9d891",
@@ -1510,6 +1481,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/grpc-ecosystem/go-grpc-middleware@v2.0.0-20201002093600-73cf2ae9d891#providers/kit/v2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-v1.3.0",
+      "name": "go-module:github.com/grpc-ecosystem/go-grpc-middleware",
+      "versionInfo": "v1.3.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/grpc-ecosystem/go-grpc-middleware@v1.3.0",
           "referenceType": "purl"
         }
       ]
@@ -2289,24 +2278,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-prometheus-common-v0.44.0",
-      "name": "go-module:github.com/prometheus/common",
-      "versionInfo": "v0.44.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/prometheus/common@v0.44.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-prometheus-common-sigv4-v0.1.0",
       "name": "go-module:github.com/prometheus/common/sigv4",
       "versionInfo": "v0.1.0",
@@ -2320,6 +2291,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/prometheus/common@v0.1.0#sigv4",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-prometheus-common-v0.44.0",
+      "name": "go-module:github.com/prometheus/common",
+      "versionInfo": "v0.44.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/prometheus/common@v0.44.0",
           "referenceType": "purl"
         }
       ]
@@ -2739,24 +2728,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-go.elastic.co-apm-v1.11.0",
-      "name": "go-module:go.elastic.co/apm",
-      "versionInfo": "v1.11.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/go.elastic.co/apm@v1.11.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-go.elastic.co-apm-module-apmhttp-v1.11.0",
       "name": "go-module:go.elastic.co/apm/module/apmhttp",
       "versionInfo": "v1.11.0",
@@ -2788,6 +2759,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/go.elastic.co/apm/module@v1.11.0#apmot",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-go.elastic.co-apm-v1.11.0",
+      "name": "go-module:go.elastic.co/apm",
+      "versionInfo": "v1.11.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/go.elastic.co/apm@v1.11.0",
           "referenceType": "purl"
         }
       ]
@@ -3009,24 +2998,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-v1.19.0",
-      "name": "go-module:go.opentelemetry.io/otel",
-      "versionInfo": "v1.19.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/go.opentelemetry.io/otel@v1.19.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-bridge-opentracing-v1.16.0",
       "name": "go-module:go.opentelemetry.io/otel/bridge/opentracing",
       "versionInfo": "v1.16.0",
@@ -3063,24 +3034,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-v1.19.0",
-      "name": "go-module:go.opentelemetry.io/otel/exporters/otlp/otlptrace",
-      "versionInfo": "v1.19.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/go.opentelemetry.io/otel/exporters@v1.19.0#otlp/otlptrace",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-otlptracegrpc-v1.19.0",
       "name": "go-module:go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
       "versionInfo": "v1.19.0",
@@ -3112,6 +3065,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/go.opentelemetry.io/otel/exporters@v1.19.0#otlp/otlptrace/otlptracehttp",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-v1.19.0",
+      "name": "go-module:go.opentelemetry.io/otel/exporters/otlp/otlptrace",
+      "versionInfo": "v1.19.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/go.opentelemetry.io/otel/exporters@v1.19.0#otlp/otlptrace",
           "referenceType": "purl"
         }
       ]
@@ -3166,6 +3137,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/go.opentelemetry.io/otel/trace@v1.19.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-v1.19.0",
+      "name": "go-module:go.opentelemetry.io/otel",
+      "versionInfo": "v1.19.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/go.opentelemetry.io/otel@v1.19.0",
           "referenceType": "purl"
         }
       ]
@@ -3513,24 +3502,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-google.golang.org-genproto-v0.0.0-20230717213848-3f92550aa753",
-      "name": "go-module:google.golang.org/genproto",
-      "versionInfo": "v0.0.0-20230717213848-3f92550aa753",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/google.golang.org/genproto@v0.0.0-20230717213848-3f92550aa753",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-google.golang.org-genproto-googleapis-api-v0.0.0-20230717213848-3f92550aa753",
       "name": "go-module:google.golang.org/genproto/googleapis/api",
       "versionInfo": "v0.0.0-20230717213848-3f92550aa753",
@@ -3562,6 +3533,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/google.golang.org/genproto/googleapis@v0.0.0-20230717213848-3f92550aa753#rpc",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-google.golang.org-genproto-v0.0.0-20230717213848-3f92550aa753",
+      "name": "go-module:google.golang.org/genproto",
+      "versionInfo": "v0.0.0-20230717213848-3f92550aa753",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/google.golang.org/genproto@v0.0.0-20230717213848-3f92550aa753",
           "referenceType": "purl"
         }
       ]
@@ -3691,14 +3680,20 @@
           "referenceType": "purl"
         }
       ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "name": "thanos-0.32",
+      "versionInfo": "0.32.5-r4",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
     }
   ],
   "relationships": [
-    {
-      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.4"
-    },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
@@ -3718,6 +3713,11 @@
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-cloud.google.com-go-trace-v1.10.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-cloud.google.com-go-v0.110.4"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -3792,11 +3792,6 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-v1.16.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-config-v1.15.1"
     },
     {
@@ -3838,6 +3833,11 @@
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-service-sts-v1.16.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-aws-aws-sdk-go-v2-v1.16.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4032,12 +4032,12 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v5-v5.0.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-groupcache-v0.0.0-20210331224755-41bb18bfe9da"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-groupcache-v0.0.0-20210331224755-41bb18bfe9da"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-golang-jwt-jwt-v5-v5.0.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4097,12 +4097,12 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-v1.3.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-providers-kit-v2-v2.0.0-20201002093600-73cf2ae9d891"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-providers-kit-v2-v2.0.0-20201002093600-73cf2ae9d891"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-grpc-ecosystem-go-grpc-middleware-v1.3.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4322,12 +4322,12 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-prometheus-common-v0.44.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-prometheus-common-sigv4-v0.1.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-prometheus-common-sigv4-v0.1.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-prometheus-common-v0.44.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4447,17 +4447,17 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-go.elastic.co-apm-v1.11.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-go.elastic.co-apm-module-apmhttp-v1.11.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-go.elastic.co-apm-module-apmot-v1.11.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-go.elastic.co-apm-v1.11.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4522,11 +4522,6 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-v1.19.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-bridge-opentracing-v1.16.0"
     },
     {
@@ -4537,17 +4532,17 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-v1.19.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-otlptracegrpc-v1.19.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-otlptracehttp-v1.19.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-exporters-otlp-otlptrace-v1.19.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4563,6 +4558,11 @@
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-trace-v1.19.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-go.opentelemetry.io-otel-v1.19.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
@@ -4662,17 +4662,17 @@
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-google.golang.org-genproto-v0.0.0-20230717213848-3f92550aa753"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-google.golang.org-genproto-googleapis-api-v0.0.0-20230717213848-3f92550aa753"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-go-module-google.golang.org-genproto-googleapis-rpc-v0.0.0-20230717213848-3f92550aa753"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-go-module-google.golang.org-genproto-v0.0.0-20230717213848-3f92550aa753"
     },
     {
       "spdxElementId": "SPDXRef-Package-thanos-0.32-0.32.5-r4",

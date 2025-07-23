@@ -93,24 +93,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-go-module-github.com-docker-docker-v24.0.9C43incompatible",
-      "name": "go-module:github.com/docker/docker",
-      "versionInfo": "v24.0.9+incompatible",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:golang/github.com/docker/docker@v24.0.9%2Bincompatible",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-go-module-github.com-docker-docker-credential-helpers-v0.7.0",
       "name": "go-module:github.com/docker/docker-credential-helpers",
       "versionInfo": "v0.7.0",
@@ -124,6 +106,24 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:golang/github.com/docker/docker-credential-helpers@v0.7.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-go-module-github.com-docker-docker-v24.0.9C43incompatible",
+      "name": "go-module:github.com/docker/docker",
+      "versionInfo": "v24.0.9+incompatible",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:golang/github.com/docker/docker@v24.0.9%2Bincompatible",
           "referenceType": "purl"
         }
       ]
@@ -400,12 +400,12 @@
     {
       "spdxElementId": "SPDXRef-Package-crane-0.19.1-r6",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-docker-docker-v24.0.9C43incompatible"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-docker-docker-credential-helpers-v0.7.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-crane-0.19.1-r6",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-docker-docker-credential-helpers-v0.7.0"
+      "relatedSpdxElement": "SPDXRef-Package-go-module-github.com-docker-docker-v24.0.9C43incompatible"
     },
     {
       "spdxElementId": "SPDXRef-Package-crane-0.19.1-r6",

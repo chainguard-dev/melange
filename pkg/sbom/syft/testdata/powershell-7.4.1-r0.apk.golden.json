@@ -28,17 +28,6 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-powershell-7.4.1-r0",
-      "name": "powershell",
-      "versionInfo": "7.4.1-r0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi"
-    },
-    {
       "SPDXID": "SPDXRef-Package-dotnet-JetBrains.Annotations-2021.2.0",
       "name": "dotnet:JetBrains.Annotations",
       "versionInfo": "2021.2.0",
@@ -1153,6 +1142,17 @@
           "referenceType": "purl"
         }
       ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-powershell-7.4.1-r0",
+      "name": "powershell",
+      "versionInfo": "7.4.1-r0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
     }
   ],
   "relationships": [

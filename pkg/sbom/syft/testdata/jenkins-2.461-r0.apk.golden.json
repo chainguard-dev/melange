@@ -28,17 +28,6 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-2.461-r0",
-      "name": "jenkins",
-      "versionInfo": "2.461-r0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: Wolfi",
-      "supplier": "Organization: Wolfi"
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-access-modifier-annotation-1.33",
       "name": "java-archive:access-modifier-annotation",
       "versionInfo": "1.33",
@@ -183,42 +172,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6",
-      "name": "jenkins-plugin:antisamy-markup-formatter",
-      "versionInfo": "162.v0e6ec0fcfcf6",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/antisamy-markup-formatter@162.v0e6ec0fcfcf6",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6",
-      "name": "jenkins-plugin:antisamy-markup-formatter",
-      "versionInfo": "162.v0e6ec0fcfcf6",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/antisamy-markup-formatter@162.v0e6ec0fcfcf6",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-antlr4-runtime-4.13.1",
       "name": "java-archive:antlr4-runtime",
       "versionInfo": "4.13.1",
@@ -232,42 +185,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.antlr/antlr4-runtime@4.13.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757",
-      "name": "jenkins-plugin:apache-httpcomponents-client-4-api",
-      "versionInfo": "4.5.14-208.v438351942757",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/apache-httpcomponents-client-4-api@4.5.14-208.v438351942757",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757",
-      "name": "jenkins-plugin:apache-httpcomponents-client-4-api",
-      "versionInfo": "4.5.14-208.v438351942757",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/apache-httpcomponents-client-4-api@4.5.14-208.v438351942757",
           "referenceType": "purl"
         }
       ]
@@ -340,42 +257,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.objectweb.asm.tree.analysis/asm-analysis@9.7",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8",
-      "name": "jenkins-plugin:asm-api",
-      "versionInfo": "9.7-33.v4d23ef79fcc8",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/asm-api@9.7-33.v4d23ef79fcc8",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8",
-      "name": "jenkins-plugin:asm-api",
-      "versionInfo": "9.7-33.v4d23ef79fcc8",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/asm-api@9.7-33.v4d23ef79fcc8",
           "referenceType": "purl"
         }
       ]
@@ -489,78 +370,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1",
-      "name": "jenkins-plugin:bootstrap5-api",
-      "versionInfo": "5.3.3-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/bootstrap5-api@5.3.3-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1",
-      "name": "jenkins-plugin:bootstrap5-api",
-      "versionInfo": "5.3.3-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/bootstrap5-api@5.3.3-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95",
-      "name": "jenkins-plugin:bouncycastle-api",
-      "versionInfo": "2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/bouncycastle-api@2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95",
-      "name": "jenkins-plugin:bouncycastle-api",
-      "versionInfo": "2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/bouncycastle-api@2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-bridge-method-annotation-1.29",
       "name": "java-archive:bridge-method-annotation",
       "versionInfo": "1.29",
@@ -615,78 +424,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599",
-      "name": "jenkins-plugin:caffeine-api",
-      "versionInfo": "3.1.8-133.v17b_1ff2e0599",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache License v2",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/caffeine-api@3.1.8-133.v17b_1ff2e0599",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599",
-      "name": "jenkins-plugin:caffeine-api",
-      "versionInfo": "3.1.8-133.v17b_1ff2e0599",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache License v2",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/caffeine-api@3.1.8-133.v17b_1ff2e0599",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0",
-      "name": "jenkins-plugin:checks-api",
-      "versionInfo": "2.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/checks-api@2.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0",
-      "name": "jenkins-plugin:checks-api",
-      "versionInfo": "2.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/checks-api@2.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-cli-2.461",
       "name": "java-archive:cli",
       "versionInfo": "2.461",
@@ -700,42 +437,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.jenkins-ci.main/cli@2.461",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e",
-      "name": "jenkins-plugin:command-launcher",
-      "versionInfo": "107.v773860566e2e",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/command-launcher@107.v773860566e2e",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e",
-      "name": "jenkins-plugin:command-launcher",
-      "versionInfo": "107.v773860566e2e",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/command-launcher@107.v773860566e2e",
           "referenceType": "purl"
         }
       ]
@@ -872,7 +573,7 @@
       "versionInfo": "2.16.1",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
+      "licenseDeclared": "https://www.apache.org/licenses/LICENSE-2.0.txt",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
       "supplier": "Organization: ",
@@ -890,7 +591,7 @@
       "versionInfo": "2.16.1",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "licenseDeclared": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
       "supplier": "Organization: ",
@@ -1047,42 +748,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2",
-      "name": "jenkins-plugin:commons-lang3-api",
-      "versionInfo": "3.13.0-62.v7d18e55f51e2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-lang3-api@3.13.0-62.v7d18e55f51e2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2",
-      "name": "jenkins-plugin:commons-lang3-api",
-      "versionInfo": "3.13.0-62.v7d18e55f51e2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-lang3-api@3.13.0-62.v7d18e55f51e2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-commons-text-1.11.0",
       "name": "java-archive:commons-text",
       "versionInfo": "1.11.0",
@@ -1096,42 +761,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.apache.commons/commons-text@1.11.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95",
-      "name": "jenkins-plugin:commons-text-api",
-      "versionInfo": "1.11.0-109.vfe16c66636eb_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-text-api@1.11.0-109.vfe16c66636eb_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95",
-      "name": "jenkins-plugin:commons-text-api",
-      "versionInfo": "1.11.0-109.vfe16c66636eb_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-text-api@1.11.0-109.vfe16c66636eb_",
           "referenceType": "purl"
         }
       ]
@@ -1173,42 +802,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9",
-      "name": "jenkins-plugin:display-url-api",
-      "versionInfo": "2.204.vf6fddd8a_8b_e9",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/display-url-api@2.204.vf6fddd8a_8b_e9",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9",
-      "name": "jenkins-plugin:display-url-api",
-      "versionInfo": "2.204.vf6fddd8a_8b_e9",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/display-url-api@2.204.vf6fddd8a_8b_e9",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-dom4j-2.1.4",
       "name": "java-archive:dom4j",
       "versionInfo": "2.1.4",
@@ -1222,42 +815,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.dom4j/dom4j@2.1.4",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1",
-      "name": "jenkins-plugin:echarts-api",
-      "versionInfo": "5.5.0-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/echarts-api@5.5.0-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1",
-      "name": "jenkins-plugin:echarts-api",
-      "versionInfo": "5.5.0-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/echarts-api@5.5.0-1",
           "referenceType": "purl"
         }
       ]
@@ -1312,42 +869,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/net.i2p.crypto/eddsa@0.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e",
-      "name": "jenkins-plugin:eddsa-api",
-      "versionInfo": "0.3.0-4.v84c6f0f4969e",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/eddsa-api@0.3.0-4.v84c6f0f4969e",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e",
-      "name": "jenkins-plugin:eddsa-api",
-      "versionInfo": "0.3.0-4.v84c6f0f4969e",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/eddsa-api@0.3.0-4.v84c6f0f4969e",
           "referenceType": "purl"
         }
       ]
@@ -1425,42 +946,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1",
-      "name": "jenkins-plugin:font-awesome-api",
-      "versionInfo": "6.5.2-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/font-awesome-api@6.5.2-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1",
-      "name": "jenkins-plugin:font-awesome-api",
-      "versionInfo": "6.5.2-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/font-awesome-api@6.5.2-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-groovy-all-2.4.21",
       "name": "java-archive:groovy-all",
       "versionInfo": "2.4.21",
@@ -1510,42 +995,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/com.google.code.gson/gson@2.11.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc",
-      "name": "jenkins-plugin:gson-api",
-      "versionInfo": "2.11.0-41.v019fcf6125dc",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache License 2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/gson-api@2.11.0-41.v019fcf6125dc",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc",
-      "name": "jenkins-plugin:gson-api",
-      "versionInfo": "2.11.0-41.v019fcf6125dc",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "Apache License 2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/gson-api@2.11.0-41.v019fcf6125dc",
           "referenceType": "purl"
         }
       ]
@@ -1839,42 +1288,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f",
-      "name": "jenkins-plugin:ionicons-api",
-      "versionInfo": "74.v93d5eb_813d5f",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/ionicons-api@74.v93d5eb_813d5f",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f",
-      "name": "jenkins-plugin:ionicons-api",
-      "versionInfo": "74.v93d5eb_813d5f",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/ionicons-api@74.v93d5eb_813d5f",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-istack-commons-runtime-3.0.12",
       "name": "java-archive:istack-commons-runtime",
       "versionInfo": "3.0.12",
@@ -2127,114 +1540,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c",
-      "name": "jenkins-plugin:jackson2-api",
-      "versionInfo": "2.17.0-379.v02de8ec9f64c",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The Apache Software License, Version 2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jackson2-api@2.17.0-379.v02de8ec9f64c",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c",
-      "name": "jenkins-plugin:jackson2-api",
-      "versionInfo": "2.17.0-379.v02de8ec9f64c",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The Apache Software License, Version 2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jackson2-api@2.17.0-379.v02de8ec9f64c",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1",
-      "name": "jenkins-plugin:jakarta-activation-api",
-      "versionInfo": "2.1.3-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "BSD-3-Clause",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-activation-api@2.1.3-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1",
-      "name": "jenkins-plugin:jakarta-activation-api",
-      "versionInfo": "2.1.3-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "BSD-3-Clause",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-activation-api@2.1.3-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1",
-      "name": "jenkins-plugin:jakarta-mail-api",
-      "versionInfo": "2.1.3-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "EPL-2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-mail-api@2.1.3-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1",
-      "name": "jenkins-plugin:jakarta-mail-api",
-      "versionInfo": "2.1.3-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "EPL-2.0",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-mail-api@2.1.3-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-jakarta.activation-api-2.1.3",
       "name": "java-archive:jakarta.activation-api",
       "versionInfo": "2.1.3",
@@ -2433,78 +1738,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7",
-      "name": "jenkins-plugin:javax-activation-api",
-      "versionInfo": "1.2.0-7",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "CDDL-1.1",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-activation-api@1.2.0-7",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7",
-      "name": "jenkins-plugin:javax-activation-api",
-      "versionInfo": "1.2.0-7",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "CDDL-1.1",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-activation-api@1.2.0-7",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10",
-      "name": "jenkins-plugin:javax-mail-api",
-      "versionInfo": "1.6.2-10",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "CDDL-1.1",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-mail-api@1.6.2-10",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10",
-      "name": "jenkins-plugin:javax-mail-api",
-      "versionInfo": "1.6.2-10",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "CDDL-1.1",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-mail-api@1.6.2-10",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-javax.activation-1.2.0",
       "name": "java-archive:javax.activation",
       "versionInfo": "1.2.0",
@@ -2554,42 +1787,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/com.sun.mail/javax.mail@1.6.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1",
-      "name": "jenkins-plugin:jaxb",
-      "versionInfo": "2.3.9-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jaxb@2.3.9-1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1",
-      "name": "jenkins-plugin:jaxb",
-      "versionInfo": "2.3.9-1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jaxb@2.3.9-1",
           "referenceType": "purl"
         }
       ]
@@ -2824,42 +2021,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.jfree/jcommon@1.0.23",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550",
-      "name": "jenkins-plugin:jdk-tool",
-      "versionInfo": "73.vddf737284550",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jdk-tool@73.vddf737284550",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550",
-      "name": "jenkins-plugin:jdk-tool",
-      "versionInfo": "73.vddf737284550",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jdk-tool@73.vddf737284550",
           "referenceType": "purl"
         }
       ]
@@ -3189,42 +2350,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2",
-      "name": "jenkins-plugin:jquery3-api",
-      "versionInfo": "3.7.1-2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jquery3-api@3.7.1-2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2",
-      "name": "jenkins-plugin:jquery3-api",
-      "versionInfo": "3.7.1-2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/jquery3-api@3.7.1-2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-json-20240303",
       "name": "java-archive:json",
       "versionInfo": "20240303",
@@ -3243,42 +2368,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726",
-      "name": "jenkins-plugin:json-api",
-      "versionInfo": "20240303-41.v94e11e6de726",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT No Attribution License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/json-api@20240303-41.v94e11e6de726",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726",
-      "name": "jenkins-plugin:json-api",
-      "versionInfo": "20240303-41.v94e11e6de726",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT No Attribution License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/json-api@20240303-41.v94e11e6de726",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-json-lib-2.4-jenkins-7",
       "name": "java-archive:json-lib",
       "versionInfo": "2.4-jenkins-7",
@@ -3292,42 +2381,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.kohsuke.stapler/json-lib@2.4-jenkins-7",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0",
-      "name": "jenkins-plugin:junit",
-      "versionInfo": "1265.v65b_14fa_f12f0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/junit@1265.v65b_14fa_f12f0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0",
-      "name": "jenkins-plugin:junit",
-      "versionInfo": "1265.v65b_14fa_f12f0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/junit@1265.v65b_14fa_f12f0",
           "referenceType": "purl"
         }
       ]
@@ -3441,114 +2494,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420",
-      "name": "jenkins-plugin:mailer",
-      "versionInfo": "472.vf7c289a_4b_420",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/mailer@472.vf7c289a_4b_420",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420",
-      "name": "jenkins-plugin:mailer",
-      "versionInfo": "472.vf7c289a_4b_420",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/mailer@472.vf7c289a_4b_420",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2",
-      "name": "jenkins-plugin:matrix-auth",
-      "versionInfo": "3.2.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-auth@3.2.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2",
-      "name": "jenkins-plugin:matrix-auth",
-      "versionInfo": "3.2.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-auth@3.2.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946",
-      "name": "jenkins-plugin:matrix-project",
-      "versionInfo": "832.va_66e270d2946",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-project@832.va_66e270d2946",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946",
-      "name": "jenkins-plugin:matrix-project",
-      "versionInfo": "832.va_66e270d2946",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-project@832.va_66e270d2946",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-memory-monitor-1.12",
       "name": "java-archive:memory-monitor",
       "versionInfo": "1.12",
@@ -3562,78 +2507,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.jenkins-ci/memory-monitor@1.12",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd",
-      "name": "jenkins-plugin:mina-sshd-api-common",
-      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-common@2.12.1-101.v85b_e08b_780dd",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd",
-      "name": "jenkins-plugin:mina-sshd-api-common",
-      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-common@2.12.1-101.v85b_e08b_780dd",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd",
-      "name": "jenkins-plugin:mina-sshd-api-core",
-      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-core@2.12.1-101.v85b_e08b_780dd",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd",
-      "name": "jenkins-plugin:mina-sshd-api-core",
-      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-core@2.12.1-101.v85b_e08b_780dd",
           "referenceType": "purl"
         }
       ]
@@ -3670,42 +2543,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/com.googlecode.owasp-java-html-sanitizer/owasp-java-html-sanitizer@20220608.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0",
-      "name": "jenkins-plugin:plugin-util-api",
-      "versionInfo": "4.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/plugin-util-api@4.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0",
-      "name": "jenkins-plugin:plugin-util-api",
-      "versionInfo": "4.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/plugin-util-api@4.1.0",
           "referenceType": "purl"
         }
       ]
@@ -3778,78 +2615,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.jvnet.robust-http-client/robust-http-client@1.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023",
-      "name": "jenkins-plugin:scm-api",
-      "versionInfo": "690.vfc8b_54395023",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/scm-api@690.vfc8b_54395023",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023",
-      "name": "jenkins-plugin:scm-api",
-      "versionInfo": "690.vfc8b_54395023",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/scm-api@690.vfc8b_54395023",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686",
-      "name": "jenkins-plugin:script-security",
-      "versionInfo": "1341.va_2819b_414686",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/script-security@1341.va_2819b_414686",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686",
-      "name": "jenkins-plugin:script-security",
-      "versionInfo": "1341.va_2819b_414686",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/script-security@1341.va_2819b_414686",
           "referenceType": "purl"
         }
       ]
@@ -3932,7 +2697,7 @@
       "versionInfo": "2.0.13",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
+      "licenseDeclared": "http://www.opensource.org/licenses/mit-license.php",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
       "supplier": "Organization: ",
@@ -3950,7 +2715,7 @@
       "versionInfo": "2.0.13",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "http://www.opensource.org/licenses/mit-license.php",
+      "licenseDeclared": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
       "supplier": "Organization: ",
@@ -4012,42 +2777,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/org.yaml/snakeyaml@2.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65",
-      "name": "jenkins-plugin:snakeyaml-api",
-      "versionInfo": "2.2-111.vc6598e30cc65",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT License (MIT)",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/snakeyaml-api@2.2-111.vc6598e30cc65",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65",
-      "name": "jenkins-plugin:snakeyaml-api",
-      "versionInfo": "2.2-111.vc6598e30cc65",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT License (MIT)",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/io.jenkins.plugins/snakeyaml-api@2.2-111.vc6598e30cc65",
           "referenceType": "purl"
         }
       ]
@@ -4273,7 +3002,7 @@
       "name": "java-archive:sshd-common",
       "versionInfo": "2.12.1",
       "filesAnalyzed": false,
-      "licenseConcluded": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
@@ -4291,7 +3020,7 @@
       "name": "java-archive:sshd-common",
       "versionInfo": "2.12.1",
       "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
+      "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
@@ -4431,42 +3160,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8",
-      "name": "jenkins-plugin:structs",
-      "versionInfo": "337.v1b_04ea_4df7c8",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/structs@337.v1b_04ea_4df7c8",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8",
-      "name": "jenkins-plugin:structs",
-      "versionInfo": "337.v1b_04ea_4df7c8",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/structs@337.v1b_04ea_4df7c8",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-support-log-formatter-1.2",
       "name": "java-archive:support-log-formatter",
       "versionInfo": "1.2",
@@ -4552,42 +3245,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/com.google.crypto.tink/tink@1.10.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e",
-      "name": "jenkins-plugin:trilead-api",
-      "versionInfo": "2.147.vb_73cc728a_32e",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/trilead-api@2.147.vb_73cc728a_32e",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e",
-      "name": "jenkins-plugin:trilead-api",
-      "versionInfo": "2.147.vb_73cc728a_32e",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "The MIT license",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/trilead-api@2.147.vb_73cc728a_32e",
           "referenceType": "purl"
         }
       ]
@@ -5097,114 +3754,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95",
-      "name": "jenkins-plugin:workflow-api",
-      "versionInfo": "1316.v33eb_726c50b_a_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-api@1316.v33eb_726c50b_a_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95",
-      "name": "jenkins-plugin:workflow-api",
-      "versionInfo": "1316.v33eb_726c50b_a_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-api@1316.v33eb_726c50b_a_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95",
-      "name": "jenkins-plugin:workflow-step-api",
-      "versionInfo": "657.v03b_e8115821b_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-step-api@657.v03b_e8115821b_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95",
-      "name": "jenkins-plugin:workflow-step-api",
-      "versionInfo": "657.v03b_e8115821b_",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-step-api@657.v03b_e8115821b_",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573",
-      "name": "jenkins-plugin:workflow-support",
-      "versionInfo": "907.v6713a_ed8a_573",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-support@907.v6713a_ed8a_573",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573",
-      "name": "jenkins-plugin:workflow-support",
-      "versionInfo": "907.v6713a_ed8a_573",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT License",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-support@907.v6713a_ed8a_573",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-xpp3-1.1.4c",
       "name": "java-archive:xpp3",
       "versionInfo": "1.1.4c",
@@ -5257,6 +3806,1457 @@
           "referenceType": "purl"
         }
       ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-2.461-r0",
+      "name": "jenkins",
+      "versionInfo": "2.461-r0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6",
+      "name": "jenkins-plugin:antisamy-markup-formatter",
+      "versionInfo": "162.v0e6ec0fcfcf6",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/antisamy-markup-formatter@162.v0e6ec0fcfcf6",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6",
+      "name": "jenkins-plugin:antisamy-markup-formatter",
+      "versionInfo": "162.v0e6ec0fcfcf6",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/antisamy-markup-formatter@162.v0e6ec0fcfcf6",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757",
+      "name": "jenkins-plugin:apache-httpcomponents-client-4-api",
+      "versionInfo": "4.5.14-208.v438351942757",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/apache-httpcomponents-client-4-api@4.5.14-208.v438351942757",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757",
+      "name": "jenkins-plugin:apache-httpcomponents-client-4-api",
+      "versionInfo": "4.5.14-208.v438351942757",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/apache-httpcomponents-client-4-api@4.5.14-208.v438351942757",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8",
+      "name": "jenkins-plugin:asm-api",
+      "versionInfo": "9.7-33.v4d23ef79fcc8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/asm-api@9.7-33.v4d23ef79fcc8",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8",
+      "name": "jenkins-plugin:asm-api",
+      "versionInfo": "9.7-33.v4d23ef79fcc8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/asm-api@9.7-33.v4d23ef79fcc8",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1",
+      "name": "jenkins-plugin:bootstrap5-api",
+      "versionInfo": "5.3.3-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/bootstrap5-api@5.3.3-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1",
+      "name": "jenkins-plugin:bootstrap5-api",
+      "versionInfo": "5.3.3-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/bootstrap5-api@5.3.3-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95",
+      "name": "jenkins-plugin:bouncycastle-api",
+      "versionInfo": "2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/bouncycastle-api@2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95",
+      "name": "jenkins-plugin:bouncycastle-api",
+      "versionInfo": "2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/bouncycastle-api@2.30.1.78.1-233.vfdcdeb_0a_08a_a_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599",
+      "name": "jenkins-plugin:caffeine-api",
+      "versionInfo": "3.1.8-133.v17b_1ff2e0599",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache License v2",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/caffeine-api@3.1.8-133.v17b_1ff2e0599",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599",
+      "name": "jenkins-plugin:caffeine-api",
+      "versionInfo": "3.1.8-133.v17b_1ff2e0599",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache License v2",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/caffeine-api@3.1.8-133.v17b_1ff2e0599",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0",
+      "name": "jenkins-plugin:checks-api",
+      "versionInfo": "2.2.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/checks-api@2.2.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0",
+      "name": "jenkins-plugin:checks-api",
+      "versionInfo": "2.2.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/checks-api@2.2.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e",
+      "name": "jenkins-plugin:command-launcher",
+      "versionInfo": "107.v773860566e2e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/command-launcher@107.v773860566e2e",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e",
+      "name": "jenkins-plugin:command-launcher",
+      "versionInfo": "107.v773860566e2e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/command-launcher@107.v773860566e2e",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2",
+      "name": "jenkins-plugin:commons-lang3-api",
+      "versionInfo": "3.13.0-62.v7d18e55f51e2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-lang3-api@3.13.0-62.v7d18e55f51e2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2",
+      "name": "jenkins-plugin:commons-lang3-api",
+      "versionInfo": "3.13.0-62.v7d18e55f51e2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-lang3-api@3.13.0-62.v7d18e55f51e2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95",
+      "name": "jenkins-plugin:commons-text-api",
+      "versionInfo": "1.11.0-109.vfe16c66636eb_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-text-api@1.11.0-109.vfe16c66636eb_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95",
+      "name": "jenkins-plugin:commons-text-api",
+      "versionInfo": "1.11.0-109.vfe16c66636eb_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/commons-text-api@1.11.0-109.vfe16c66636eb_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9",
+      "name": "jenkins-plugin:display-url-api",
+      "versionInfo": "2.204.vf6fddd8a_8b_e9",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/display-url-api@2.204.vf6fddd8a_8b_e9",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9",
+      "name": "jenkins-plugin:display-url-api",
+      "versionInfo": "2.204.vf6fddd8a_8b_e9",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/display-url-api@2.204.vf6fddd8a_8b_e9",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1",
+      "name": "jenkins-plugin:echarts-api",
+      "versionInfo": "5.5.0-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/echarts-api@5.5.0-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1",
+      "name": "jenkins-plugin:echarts-api",
+      "versionInfo": "5.5.0-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/echarts-api@5.5.0-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e",
+      "name": "jenkins-plugin:eddsa-api",
+      "versionInfo": "0.3.0-4.v84c6f0f4969e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/eddsa-api@0.3.0-4.v84c6f0f4969e",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e",
+      "name": "jenkins-plugin:eddsa-api",
+      "versionInfo": "0.3.0-4.v84c6f0f4969e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/eddsa-api@0.3.0-4.v84c6f0f4969e",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1",
+      "name": "jenkins-plugin:font-awesome-api",
+      "versionInfo": "6.5.2-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/font-awesome-api@6.5.2-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1",
+      "name": "jenkins-plugin:font-awesome-api",
+      "versionInfo": "6.5.2-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/font-awesome-api@6.5.2-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc",
+      "name": "jenkins-plugin:gson-api",
+      "versionInfo": "2.11.0-41.v019fcf6125dc",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache License 2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/gson-api@2.11.0-41.v019fcf6125dc",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc",
+      "name": "jenkins-plugin:gson-api",
+      "versionInfo": "2.11.0-41.v019fcf6125dc",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache License 2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/gson-api@2.11.0-41.v019fcf6125dc",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f",
+      "name": "jenkins-plugin:ionicons-api",
+      "versionInfo": "74.v93d5eb_813d5f",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/ionicons-api@74.v93d5eb_813d5f",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f",
+      "name": "jenkins-plugin:ionicons-api",
+      "versionInfo": "74.v93d5eb_813d5f",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/ionicons-api@74.v93d5eb_813d5f",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c",
+      "name": "jenkins-plugin:jackson2-api",
+      "versionInfo": "2.17.0-379.v02de8ec9f64c",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The Apache Software License, Version 2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jackson2-api@2.17.0-379.v02de8ec9f64c",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c",
+      "name": "jenkins-plugin:jackson2-api",
+      "versionInfo": "2.17.0-379.v02de8ec9f64c",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The Apache Software License, Version 2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jackson2-api@2.17.0-379.v02de8ec9f64c",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1",
+      "name": "jenkins-plugin:jakarta-activation-api",
+      "versionInfo": "2.1.3-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-activation-api@2.1.3-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1",
+      "name": "jenkins-plugin:jakarta-activation-api",
+      "versionInfo": "2.1.3-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-activation-api@2.1.3-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1",
+      "name": "jenkins-plugin:jakarta-mail-api",
+      "versionInfo": "2.1.3-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "EPL-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-mail-api@2.1.3-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1",
+      "name": "jenkins-plugin:jakarta-mail-api",
+      "versionInfo": "2.1.3-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "EPL-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jakarta-mail-api@2.1.3-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7",
+      "name": "jenkins-plugin:javax-activation-api",
+      "versionInfo": "1.2.0-7",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "CDDL-1.1",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-activation-api@1.2.0-7",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7",
+      "name": "jenkins-plugin:javax-activation-api",
+      "versionInfo": "1.2.0-7",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "CDDL-1.1",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-activation-api@1.2.0-7",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10",
+      "name": "jenkins-plugin:javax-mail-api",
+      "versionInfo": "1.6.2-10",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "CDDL-1.1",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-mail-api@1.6.2-10",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10",
+      "name": "jenkins-plugin:javax-mail-api",
+      "versionInfo": "1.6.2-10",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "CDDL-1.1",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/javax-mail-api@1.6.2-10",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1",
+      "name": "jenkins-plugin:jaxb",
+      "versionInfo": "2.3.9-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jaxb@2.3.9-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1",
+      "name": "jenkins-plugin:jaxb",
+      "versionInfo": "2.3.9-1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jaxb@2.3.9-1",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550",
+      "name": "jenkins-plugin:jdk-tool",
+      "versionInfo": "73.vddf737284550",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jdk-tool@73.vddf737284550",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550",
+      "name": "jenkins-plugin:jdk-tool",
+      "versionInfo": "73.vddf737284550",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/jdk-tool@73.vddf737284550",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2",
+      "name": "jenkins-plugin:jquery3-api",
+      "versionInfo": "3.7.1-2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jquery3-api@3.7.1-2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2",
+      "name": "jenkins-plugin:jquery3-api",
+      "versionInfo": "3.7.1-2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/jquery3-api@3.7.1-2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726",
+      "name": "jenkins-plugin:json-api",
+      "versionInfo": "20240303-41.v94e11e6de726",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT No Attribution License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/json-api@20240303-41.v94e11e6de726",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726",
+      "name": "jenkins-plugin:json-api",
+      "versionInfo": "20240303-41.v94e11e6de726",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT No Attribution License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/json-api@20240303-41.v94e11e6de726",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0",
+      "name": "jenkins-plugin:junit",
+      "versionInfo": "1265.v65b_14fa_f12f0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/junit@1265.v65b_14fa_f12f0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0",
+      "name": "jenkins-plugin:junit",
+      "versionInfo": "1265.v65b_14fa_f12f0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/junit@1265.v65b_14fa_f12f0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420",
+      "name": "jenkins-plugin:mailer",
+      "versionInfo": "472.vf7c289a_4b_420",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/mailer@472.vf7c289a_4b_420",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420",
+      "name": "jenkins-plugin:mailer",
+      "versionInfo": "472.vf7c289a_4b_420",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/mailer@472.vf7c289a_4b_420",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2",
+      "name": "jenkins-plugin:matrix-auth",
+      "versionInfo": "3.2.2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-auth@3.2.2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2",
+      "name": "jenkins-plugin:matrix-auth",
+      "versionInfo": "3.2.2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-auth@3.2.2",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946",
+      "name": "jenkins-plugin:matrix-project",
+      "versionInfo": "832.va_66e270d2946",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-project@832.va_66e270d2946",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946",
+      "name": "jenkins-plugin:matrix-project",
+      "versionInfo": "832.va_66e270d2946",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/matrix-project@832.va_66e270d2946",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd",
+      "name": "jenkins-plugin:mina-sshd-api-common",
+      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-common@2.12.1-101.v85b_e08b_780dd",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd",
+      "name": "jenkins-plugin:mina-sshd-api-common",
+      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-common@2.12.1-101.v85b_e08b_780dd",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd",
+      "name": "jenkins-plugin:mina-sshd-api-core",
+      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-core@2.12.1-101.v85b_e08b_780dd",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd",
+      "name": "jenkins-plugin:mina-sshd-api-core",
+      "versionInfo": "2.12.1-101.v85b_e08b_780dd",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins.mina-sshd-api/mina-sshd-api-core@2.12.1-101.v85b_e08b_780dd",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0",
+      "name": "jenkins-plugin:plugin-util-api",
+      "versionInfo": "4.1.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/plugin-util-api@4.1.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0",
+      "name": "jenkins-plugin:plugin-util-api",
+      "versionInfo": "4.1.0",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/plugin-util-api@4.1.0",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023",
+      "name": "jenkins-plugin:scm-api",
+      "versionInfo": "690.vfc8b_54395023",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/scm-api@690.vfc8b_54395023",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023",
+      "name": "jenkins-plugin:scm-api",
+      "versionInfo": "690.vfc8b_54395023",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/scm-api@690.vfc8b_54395023",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686",
+      "name": "jenkins-plugin:script-security",
+      "versionInfo": "1341.va_2819b_414686",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/script-security@1341.va_2819b_414686",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686",
+      "name": "jenkins-plugin:script-security",
+      "versionInfo": "1341.va_2819b_414686",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/script-security@1341.va_2819b_414686",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65",
+      "name": "jenkins-plugin:snakeyaml-api",
+      "versionInfo": "2.2-111.vc6598e30cc65",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT License (MIT)",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/snakeyaml-api@2.2-111.vc6598e30cc65",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65",
+      "name": "jenkins-plugin:snakeyaml-api",
+      "versionInfo": "2.2-111.vc6598e30cc65",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT License (MIT)",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/io.jenkins.plugins/snakeyaml-api@2.2-111.vc6598e30cc65",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8",
+      "name": "jenkins-plugin:structs",
+      "versionInfo": "337.v1b_04ea_4df7c8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/structs@337.v1b_04ea_4df7c8",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8",
+      "name": "jenkins-plugin:structs",
+      "versionInfo": "337.v1b_04ea_4df7c8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/structs@337.v1b_04ea_4df7c8",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e",
+      "name": "jenkins-plugin:trilead-api",
+      "versionInfo": "2.147.vb_73cc728a_32e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/trilead-api@2.147.vb_73cc728a_32e",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e",
+      "name": "jenkins-plugin:trilead-api",
+      "versionInfo": "2.147.vb_73cc728a_32e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "The MIT license",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins/trilead-api@2.147.vb_73cc728a_32e",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95",
+      "name": "jenkins-plugin:workflow-api",
+      "versionInfo": "1316.v33eb_726c50b_a_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-api@1316.v33eb_726c50b_a_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95",
+      "name": "jenkins-plugin:workflow-api",
+      "versionInfo": "1316.v33eb_726c50b_a_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-api@1316.v33eb_726c50b_a_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95",
+      "name": "jenkins-plugin:workflow-step-api",
+      "versionInfo": "657.v03b_e8115821b_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-step-api@657.v03b_e8115821b_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95",
+      "name": "jenkins-plugin:workflow-step-api",
+      "versionInfo": "657.v03b_e8115821b_",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-step-api@657.v03b_e8115821b_",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573",
+      "name": "jenkins-plugin:workflow-support",
+      "versionInfo": "907.v6713a_ed8a_573",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-support@907.v6713a_ed8a_573",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573",
+      "name": "jenkins-plugin:workflow-support",
+      "versionInfo": "907.v6713a_ed8a_573",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT License",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: ",
+      "supplier": "Organization: ",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:maven/org.jenkins-ci.plugins.workflow/workflow-support@907.v6713a_ed8a_573",
+          "referenceType": "purl"
+        }
+      ]
     }
   ],
   "relationships": [
@@ -5303,27 +5303,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-antlr4-runtime-4.13.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -5344,16 +5324,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-asm-analysis-9.7"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -5388,26 +5358,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-bridge-method-annotation-1.29"
     },
     {
@@ -5423,37 +5373,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-cli-2.461"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -5543,27 +5463,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-commons-text-1.11.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -5578,31 +5478,11 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-dom4j-2.1.4"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-eddsa-0.3.0"
     },
     {
@@ -5614,16 +5494,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-eddsa-0.3.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -5648,16 +5518,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-groovy-all-2.4.21"
     },
     {
@@ -5669,16 +5529,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-gson-2.11.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -5763,16 +5613,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-istack-commons-runtime-3.0.12"
     },
     {
@@ -5843,36 +5683,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-jakarta.activation-api-2.1.3"
     },
     {
@@ -5928,26 +5738,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-javax.activation-1.2.0"
     },
     {
@@ -5959,16 +5749,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-javax.mail-1.6.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6034,16 +5814,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-jcommon-1.0.23"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6138,42 +5908,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-json-20240303"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-json-lib-2.4-jenkins-7"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6208,57 +5948,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-memory-monitor-1.12"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6269,16 +5959,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-owasp-java-html-sanitizer-20220608.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6299,26 +5979,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-robust-http-client-1.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6364,16 +6024,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-snakeyaml-2.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6483,16 +6133,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-support-log-formatter-1.2"
     },
     {
@@ -6514,16 +6154,6 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-tink-1.10.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e"
     },
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
@@ -6668,36 +6298,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-xpp3-1.1.4c"
     },
     {
@@ -6709,6 +6309,406 @@
       "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-xstream-1.4.20"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-antisamy-markup-formatter-162.v0e6ec0fcfcf6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-apache-httpcomponents-client-4-api-4.5.14-208.v438351942757"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-asm-api-9.7-33.v4d23ef79fcc8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bootstrap5-api-5.3.3-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-bouncycastle-api-2.30.1.78.1-233.vfdcdebC950aC9508aC95aC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-caffeine-api-3.1.8-133.v17bC951ff2e0599"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-checks-api-2.2.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-command-launcher-107.v773860566e2e"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-lang3-api-3.13.0-62.v7d18e55f51e2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-commons-text-api-1.11.0-109.vfe16c66636ebC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-display-url-api-2.204.vf6fddd8aC958bC95e9"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-echarts-api-5.5.0-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-eddsa-api-0.3.0-4.v84c6f0f4969e"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-font-awesome-api-6.5.2-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-gson-api-2.11.0-41.v019fcf6125dc"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-ionicons-api-74.v93d5ebC95813d5f"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jackson2-api-2.17.0-379.v02de8ec9f64c"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-activation-api-2.1.3-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jakarta-mail-api-2.1.3-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-activation-api-1.2.0-7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-javax-mail-api-1.6.2-10"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jaxb-2.3.9-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jdk-tool-73.vddf737284550"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-jquery3-api-3.7.1-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-json-api-20240303-41.v94e11e6de726"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-junit-1265.v65bC9514faC95f12f0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mailer-472.vf7c289aC954bC95420"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-auth-3.2.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-matrix-project-832.vaC9566e270d2946"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-common-2.12.1-101.v85bC95e08bC95780dd"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-mina-sshd-api-core-2.12.1-101.v85bC95e08bC95780dd"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-plugin-util-api-4.1.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-scm-api-690.vfc8bC9554395023"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-script-security-1341.vaC952819bC95414686"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-snakeyaml-api-2.2-111.vc6598e30cc65"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-structs-337.v1bC9504eaC954df7c8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-trilead-api-2.147.vbC9573cc728aC9532e"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-api-1316.v33ebC95726c50bC95aC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-step-api-657.v03bC95e8115821bC95"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jenkins-2.461-r0",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-jenkins-plugin-workflow-support-907.v6713aC95ed8aC95573"
     }
   ]
 }

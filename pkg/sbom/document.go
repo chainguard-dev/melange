@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
+	"sort"
 	"time"
 
 	apko_build "chainguard.dev/apko/pkg/build"
@@ -64,6 +65,27 @@ func (d Document) ToSPDX(ctx context.Context, releaseData *apko_build.ReleaseDat
 			},
 		)
 	}
+
+	// Sort packages by ID for deterministic output
+	sort.Slice(spdxPkgs, func(i, j int) bool {
+		return spdxPkgs[i].ID < spdxPkgs[j].ID
+	})
+
+	// Sort relationships by Element, then Type, then Related for deterministic output
+	sort.Slice(d.Relationships, func(i, j int) bool {
+		if d.Relationships[i].Element != d.Relationships[j].Element {
+			return d.Relationships[i].Element < d.Relationships[j].Element
+		}
+		if d.Relationships[i].Type != d.Relationships[j].Type {
+			return d.Relationships[i].Type < d.Relationships[j].Type
+		}
+		return d.Relationships[i].Related < d.Relationships[j].Related
+	})
+
+	// Sort licensing infos by LicenseID for deterministic output
+	sort.Slice(licensingInfos, func(i, j int) bool {
+		return licensingInfos[i].LicenseID < licensingInfos[j].LicenseID
+	})
 
 	doc := spdx.Document{
 		ID:      "SPDXRef-DOCUMENT",

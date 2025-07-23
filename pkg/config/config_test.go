@@ -1289,3 +1289,100 @@ func TestSetCapability(t *testing.T) {
 		})
 	}
 }
+
+func TestPackageURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		pkg      Package
+		distro   string
+		arch     string
+		expected string
+	}{
+		{
+			name: "basic package URL",
+			pkg: Package{
+				Name:    "test-package",
+				Version: "1.0.0",
+				Epoch:   0,
+			},
+			distro:   "alpine",
+			arch:     "x86_64",
+			expected: "pkg:apk/alpine/test-package@1.0.0-r0?arch=x86_64&distro=alpine",
+		},
+		{
+			name: "package with epoch",
+			pkg: Package{
+				Name:    "test-package",
+				Version: "2.1.3",
+				Epoch:   5,
+			},
+			distro:   "wolfi",
+			arch:     "aarch64",
+			expected: "pkg:apk/wolfi/test-package@2.1.3-r5?arch=aarch64&distro=wolfi",
+		},
+		{
+			name: "package without architecture",
+			pkg: Package{
+				Name:    "test-package",
+				Version: "1.0.0",
+				Epoch:   0,
+			},
+			distro:   "alpine",
+			arch:     "",
+			expected: "pkg:apk/alpine/test-package@1.0.0-r0?distro=alpine",
+		},
+		{
+			name: "package with complex version",
+			pkg: Package{
+				Name:    "complex-package",
+				Version: "1.2.3-alpha.1",
+				Epoch:   10,
+			},
+			distro:   "chainguard",
+			arch:     "x86_64",
+			expected: "pkg:apk/chainguard/complex-package@1.2.3-alpha.1-r10?arch=x86_64&distro=chainguard",
+		},
+		{
+			name: "package with special characters in name",
+			pkg: Package{
+				Name:    "lib-test_package.so",
+				Version: "0.1.0",
+				Epoch:   1,
+			},
+			distro:   "alpine",
+			arch:     "arm64",
+			expected: "pkg:apk/alpine/lib-test_package.so@0.1.0-r1?arch=arm64&distro=alpine",
+		},
+		{
+			name: "package with unknown distro",
+			pkg: Package{
+				Name:    "lib-test_package.so",
+				Version: "0.1.0",
+				Epoch:   1,
+			},
+			distro:   "unknown",
+			arch:     "arm64",
+			expected: "pkg:apk/unknown/lib-test_package.so@0.1.0-r1?arch=arm64",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			packageURL := tt.pkg.PackageURL(tt.distro, tt.arch)
+			require.NotNil(t, packageURL)
+
+			actualURL := packageURL.String()
+			require.Equal(t, tt.expected, actualURL, "PackageURL string representation should match expected format")
+
+			// Verify the PackageURL can be parsed back
+			parsed, err := purl.FromString(actualURL)
+			require.NoError(t, err, "Generated PackageURL should be parseable")
+
+			// Verify components
+			require.Equal(t, purlTypeAPK, parsed.Type)
+			require.Equal(t, tt.distro, parsed.Namespace)
+			require.Equal(t, tt.pkg.Name, parsed.Name)
+			require.Equal(t, tt.pkg.FullVersion(), parsed.Version)
+		})
+	}
+}

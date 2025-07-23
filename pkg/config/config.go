@@ -266,6 +266,13 @@ func newAPKPackageURL(distro, name, version, arch string) *purl.PackageURL {
 		Version:   version,
 	}
 
+	if distro != "unknown" {
+		u.Qualifiers = append(u.Qualifiers, purl.Qualifier{
+			Key:   "distro",
+			Value: distro,
+		})
+	}
+
 	if arch != "" {
 		u.Qualifiers = append(u.Qualifiers, purl.Qualifier{
 			Key:   "arch",

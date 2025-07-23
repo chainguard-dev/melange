@@ -57,114 +57,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-abbrev-0.1.0",
-      "name": "java-archive:abbrev",
-      "versionInfo": "0.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/abbrev@0.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-actions-checkout-master",
-      "name": "github-action:actions/checkout",
-      "versionInfo": "master",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/actions/checkout@master",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-actions-checkout-v2",
-      "name": "github-action:actions/checkout",
-      "versionInfo": "v2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/actions/checkout@v2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-actions-checkout-v2",
-      "name": "github-action:actions/checkout",
-      "versionInfo": "v2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/actions/checkout@v2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-actions-checkout-v2",
-      "name": "github-action:actions/checkout",
-      "versionInfo": "v2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/actions/checkout@v2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-actions-checkout-v4",
-      "name": "github-action:actions/checkout",
-      "versionInfo": "v4",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/actions/checkout@v4",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-backport9-1.13",
       "name": "java-archive:backport9",
       "versionInfo": "1.13",
@@ -196,24 +88,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/base64@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-base64-0.1.1",
-      "name": "java-archive:base64",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/base64@0.1.1",
           "referenceType": "purl"
         }
       ]
@@ -309,24 +183,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-benchmark-0.2.0",
-      "name": "java-archive:benchmark",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/benchmark@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-bigdecimal-3.1.4",
       "name": "gem:bigdecimal",
       "versionInfo": "3.1.4",
@@ -340,24 +196,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/bigdecimal@3.1.4",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-bigdecimal-3.1.4",
-      "name": "java-archive:bigdecimal",
-      "versionInfo": "3.1.4",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/bigdecimal@3.1.4",
           "referenceType": "purl"
         }
       ]
@@ -381,24 +219,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-bundler-2.3.26",
-      "name": "java-archive:bundler",
-      "versionInfo": "2.3.26",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/bundler@2.3.26",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-cgi-0.3.6",
       "name": "gem:cgi",
       "versionInfo": "0.3.6",
@@ -412,24 +232,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/cgi@0.3.6",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-cgi-0.3.6",
-      "name": "java-archive:cgi",
-      "versionInfo": "0.3.6",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/cgi@0.3.6",
           "referenceType": "purl"
         }
       ]
@@ -471,24 +273,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-csv-3.2.5",
-      "name": "java-archive:csv",
-      "versionInfo": "3.2.5",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/csv@3.2.5",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-date-3.3.3",
       "name": "gem:date",
       "versionInfo": "3.3.3",
@@ -502,24 +286,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/date@3.3.3",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-date-3.3.3",
-      "name": "java-archive:date",
-      "versionInfo": "3.3.3",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/date@3.3.3",
           "referenceType": "purl"
         }
       ]
@@ -543,24 +309,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-debug-0.2.1",
-      "name": "java-archive:debug",
-      "versionInfo": "0.2.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/debug@0.2.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-delegate-0.2.0",
       "name": "gem:delegate",
       "versionInfo": "0.2.0",
@@ -574,24 +322,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/delegate@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-delegate-0.2.0",
-      "name": "java-archive:delegate",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/delegate@0.2.0",
           "referenceType": "purl"
         }
       ]
@@ -615,24 +345,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-didC95youC95mean-1.6.1",
-      "name": "java-archive:did_you_mean",
-      "versionInfo": "1.6.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/did_you_mean@1.6.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-digest-3.1.0",
       "name": "gem:digest",
       "versionInfo": "3.1.0",
@@ -646,24 +358,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/digest@3.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-digest-3.1.0",
-      "name": "java-archive:digest",
-      "versionInfo": "3.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/digest@3.1.0",
           "referenceType": "purl"
         }
       ]
@@ -723,24 +417,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-drb-2.1.0",
-      "name": "java-archive:drb",
-      "versionInfo": "2.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/drb@2.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-english-0.7.1",
       "name": "gem:english",
       "versionInfo": "0.7.1",
@@ -754,24 +430,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/english@0.7.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-english-0.7.1",
-      "name": "java-archive:english",
-      "versionInfo": "0.7.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/english@0.7.1",
           "referenceType": "purl"
         }
       ]
@@ -795,24 +453,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-erb-2.2.3",
-      "name": "java-archive:erb",
-      "versionInfo": "2.2.3",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/erb@2.2.3",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-errorC95highlight-0.3.0",
       "name": "gem:error_highlight",
       "versionInfo": "0.3.0",
@@ -826,24 +466,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/error_highlight@0.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-errorC95highlight-0.3.0",
-      "name": "java-archive:error_highlight",
-      "versionInfo": "0.3.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/error_highlight@0.3.0",
           "referenceType": "purl"
         }
       ]
@@ -885,24 +507,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-ffi-1.16.3",
-      "name": "java-archive:ffi",
-      "versionInfo": "1.16.3",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/ffi@1.16.3",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-ffi-binary-libfixposix-0.5.1.1",
       "name": "gem:ffi-binary-libfixposix",
       "versionInfo": "0.5.1.1",
@@ -916,24 +520,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/ffi-binary-libfixposix@0.5.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-ffi-binary-libfixposix-0.5.1.1",
-      "name": "java-archive:ffi-binary-libfixposix",
-      "versionInfo": "0.5.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/ffi-binary-libfixposix@0.5.1.1",
           "referenceType": "purl"
         }
       ]
@@ -957,24 +543,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-ffi-bindings-libfixposix-0.5.1.0",
-      "name": "java-archive:ffi-bindings-libfixposix",
-      "versionInfo": "0.5.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/ffi-bindings-libfixposix@0.5.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-fileutils-1.6.0",
       "name": "gem:fileutils",
       "versionInfo": "1.6.0",
@@ -988,42 +556,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/fileutils@1.6.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-fileutils-1.6.0",
-      "name": "java-archive:fileutils",
-      "versionInfo": "1.6.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/fileutils@1.6.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-gem-fileutils-UNKNOWN",
-      "name": "gem:fileutils",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:gem/fileutils",
           "referenceType": "purl"
         }
       ]
@@ -1047,24 +579,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-find-0.1.1",
-      "name": "java-archive:find",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/find@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-forwardable-1.3.2",
       "name": "gem:forwardable",
       "versionInfo": "1.3.2",
@@ -1078,24 +592,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/forwardable@1.3.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-forwardable-1.3.2",
-      "name": "java-archive:forwardable",
-      "versionInfo": "1.3.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/forwardable@1.3.2",
           "referenceType": "purl"
         }
       ]
@@ -1137,24 +633,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-getoptlong-0.1.1",
-      "name": "java-archive:getoptlong",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/getoptlong@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-invokebinder-1.13",
       "name": "java-archive:invokebinder",
       "versionInfo": "1.13",
@@ -1191,24 +669,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-io-console-0.7.2",
-      "name": "java-archive:io-console",
-      "versionInfo": "0.7.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/io-console@0.7.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-io-wait-0.3.0",
       "name": "gem:io-wait",
       "versionInfo": "0.3.0",
@@ -1222,24 +682,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/io-wait@0.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-io-wait-0.3.0",
-      "name": "java-archive:io-wait",
-      "versionInfo": "0.3.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/io-wait@0.3.0",
           "referenceType": "purl"
         }
       ]
@@ -1263,24 +705,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-ipaddr-1.2.4",
-      "name": "java-archive:ipaddr",
-      "versionInfo": "1.2.4",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/ipaddr@1.2.4",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-irb-1.4.2",
       "name": "gem:irb",
       "versionInfo": "1.4.2",
@@ -1299,24 +723,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-irb-1.4.2",
-      "name": "java-archive:irb",
-      "versionInfo": "1.4.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/irb@1.4.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-jar-dependencies-0.4.1",
       "name": "gem:jar-dependencies",
       "versionInfo": "0.4.1",
@@ -1330,24 +736,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/jar-dependencies@0.4.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-jar-dependencies-0.4.1",
-      "name": "java-archive:jar-dependencies",
-      "versionInfo": "0.4.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/jar-dependencies@0.4.1",
           "referenceType": "purl"
         }
       ]
@@ -1659,24 +1047,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-jruby-core-9.4.7.0",
-      "name": "java-archive:jruby-core",
-      "versionInfo": "9.4.7.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jruby/jruby-core@9.4.7.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-jruby-openssl-0.14.5",
       "name": "gem:jruby-openssl",
       "versionInfo": "0.14.5",
@@ -1690,24 +1060,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/jruby-openssl@0.14.5",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-jruby-openssl-0.14.5",
-      "name": "java-archive:jruby-openssl",
-      "versionInfo": "0.14.5",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/jruby-openssl@0.14.5",
           "referenceType": "purl"
         }
       ]
@@ -1754,24 +1106,6 @@
       "versionInfo": "1.3.7",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/jruby-readline@1.3.7",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-jruby-readline-1.3.7",
-      "name": "java-archive:jruby-readline",
-      "versionInfo": "1.3.7",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "EPL-1.0 AND GPL-2.0 AND LGPL-2.1",
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: ",
@@ -1780,24 +1114,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:maven/rubygems/jruby-readline@1.3.7",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-jruby-stdlib-9.4.7.0",
-      "name": "java-archive:jruby-stdlib",
-      "versionInfo": "9.4.7.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/org.jruby/jruby-stdlib@9.4.7.0",
           "referenceType": "purl"
         }
       ]
@@ -1816,24 +1132,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/json@2.7.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-json-2.7.1",
-      "name": "java-archive:json",
-      "versionInfo": "2.7.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/json@2.7.1",
           "referenceType": "purl"
         }
       ]
@@ -1875,24 +1173,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-logger-1.5.1",
-      "name": "java-archive:logger",
-      "versionInfo": "1.5.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/logger@1.5.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-matrix-0.4.2",
       "name": "gem:matrix",
       "versionInfo": "0.4.2",
@@ -1906,42 +1186,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/matrix@0.4.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-matrix-0.4.2",
-      "name": "java-archive:matrix",
-      "versionInfo": "0.4.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/matrix@0.4.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-gem-matrix-UNKNOWN",
-      "name": "gem:matrix",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "BSD-2-Clause AND Ruby",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:gem/matrix",
           "referenceType": "purl"
         }
       ]
@@ -1965,24 +1209,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-minitest-5.15.0",
-      "name": "java-archive:minitest",
-      "versionInfo": "5.15.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/minitest@5.15.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-mutexC95m-0.1.1",
       "name": "gem:mutex_m",
       "versionInfo": "0.1.1",
@@ -1996,24 +1222,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/mutex_m@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-mutexC95m-0.1.1",
-      "name": "java-archive:mutex_m",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/mutex_m@0.1.1",
           "referenceType": "purl"
         }
       ]
@@ -2037,24 +1245,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-net-ftp-0.1.3",
-      "name": "java-archive:net-ftp",
-      "versionInfo": "0.1.3",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/net-ftp@0.1.3",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-net-http-0.3.0",
       "name": "gem:net-http",
       "versionInfo": "0.3.0",
@@ -2068,24 +1258,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/net-http@0.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-net-http-0.3.0",
-      "name": "java-archive:net-http",
-      "versionInfo": "0.3.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/net-http@0.3.0",
           "referenceType": "purl"
         }
       ]
@@ -2109,24 +1281,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-net-imap-0.2.3",
-      "name": "java-archive:net-imap",
-      "versionInfo": "0.2.3",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/net-imap@0.2.3",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-net-pop-0.1.1",
       "name": "gem:net-pop",
       "versionInfo": "0.1.1",
@@ -2140,24 +1294,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/net-pop@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-net-pop-0.1.1",
-      "name": "java-archive:net-pop",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/net-pop@0.1.1",
           "referenceType": "purl"
         }
       ]
@@ -2181,24 +1317,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-net-protocol-0.1.2",
-      "name": "java-archive:net-protocol",
-      "versionInfo": "0.1.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/net-protocol@0.1.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-net-smtp-0.3.1",
       "name": "gem:net-smtp",
       "versionInfo": "0.3.1",
@@ -2217,24 +1335,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-net-smtp-0.3.1",
-      "name": "java-archive:net-smtp",
-      "versionInfo": "0.3.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/net-smtp@0.3.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-nkf-0.2.0",
       "name": "gem:nkf",
       "versionInfo": "0.2.0",
@@ -2248,24 +1348,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/nkf@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-nkf-0.2.0",
-      "name": "java-archive:nkf",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/nkf@0.2.0",
           "referenceType": "purl"
         }
       ]
@@ -2307,24 +1389,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-observer-0.1.1",
-      "name": "java-archive:observer",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/observer@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-open-uri-0.3.0",
       "name": "gem:open-uri",
       "versionInfo": "0.3.0",
@@ -2343,24 +1407,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-open-uri-0.3.0",
-      "name": "java-archive:open-uri",
-      "versionInfo": "0.3.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/open-uri@0.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-open3-0.1.2",
       "name": "gem:open3",
       "versionInfo": "0.1.2",
@@ -2374,24 +1420,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/open3@0.1.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-open3-0.1.2",
-      "name": "java-archive:open3",
-      "versionInfo": "0.1.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/open3@0.1.2",
           "referenceType": "purl"
         }
       ]
@@ -2433,24 +1461,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-optparse-0.2.0",
-      "name": "java-archive:optparse",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/optparse@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-ostruct-0.5.5",
       "name": "gem:ostruct",
       "versionInfo": "0.5.5",
@@ -2464,24 +1474,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/ostruct@0.5.5",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-ostruct-0.5.5",
-      "name": "java-archive:ostruct",
-      "versionInfo": "0.5.5",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/ostruct@0.5.5",
           "referenceType": "purl"
         }
       ]
@@ -2523,42 +1515,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-powerC95assert-2.0.1",
-      "name": "java-archive:power_assert",
-      "versionInfo": "2.0.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/power_assert@2.0.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-gem-powerC95assert-UNKNOWN",
-      "name": "gem:power_assert",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "'BSD-2-Clause' AND Ruby",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:gem/power_assert",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-pp-0.3.0",
       "name": "gem:pp",
       "versionInfo": "0.3.0",
@@ -2572,24 +1528,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/pp@0.3.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-pp-0.3.0",
-      "name": "java-archive:pp",
-      "versionInfo": "0.3.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/pp@0.3.0",
           "referenceType": "purl"
         }
       ]
@@ -2613,24 +1551,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-prettyprint-0.1.1",
-      "name": "java-archive:prettyprint",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/prettyprint@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-prime-0.1.2",
       "name": "gem:prime",
       "versionInfo": "0.1.2",
@@ -2644,42 +1564,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/prime@0.1.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-prime-0.1.2",
-      "name": "java-archive:prime",
-      "versionInfo": "0.1.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/prime@0.1.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-gem-prime-UNKNOWN",
-      "name": "gem:prime",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "BSD-2-Clause AND Ruby",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:gem/prime",
           "referenceType": "purl"
         }
       ]
@@ -2703,24 +1587,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-pstore-0.1.1",
-      "name": "java-archive:pstore",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/pstore@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-psych-5.1.1.1",
       "name": "gem:psych",
       "versionInfo": "5.1.1.1",
@@ -2734,24 +1600,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/psych@5.1.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-psych-5.1.1.1",
-      "name": "java-archive:psych",
-      "versionInfo": "5.1.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/psych@5.1.1.1",
           "referenceType": "purl"
         }
       ]
@@ -2793,24 +1641,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-racc-1.6.0",
-      "name": "java-archive:racc",
-      "versionInfo": "1.6.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/racc@1.6.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-rake-13.0.6",
       "name": "gem:rake",
       "versionInfo": "13.0.6",
@@ -2824,42 +1654,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/rake@13.0.6",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-gem-rake-UNKNOWN",
-      "name": "gem:rake",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "MIT",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:gem/rake",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-rake-UNKNOWN",
-      "name": "java-archive:rake",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rake",
           "referenceType": "purl"
         }
       ]
@@ -2883,24 +1677,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-rake-ant-1.0.6",
-      "name": "java-archive:rake-ant",
-      "versionInfo": "1.0.6",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rake-ant@1.0.6",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-rdoc-6.4.1.1",
       "name": "gem:rdoc",
       "versionInfo": "6.4.1.1",
@@ -2914,24 +1690,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/rdoc@6.4.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-rdoc-6.4.1.1",
-      "name": "java-archive:rdoc",
-      "versionInfo": "6.4.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rdoc@6.4.1.1",
           "referenceType": "purl"
         }
       ]
@@ -2973,24 +1731,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-reline-0.4.2",
-      "name": "java-archive:reline",
-      "versionInfo": "0.4.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/reline@0.4.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-resolv-0.4.0",
       "name": "gem:resolv",
       "versionInfo": "0.4.0",
@@ -3027,24 +1767,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-resolv-replace-0.1.0",
-      "name": "java-archive:resolv-replace",
-      "versionInfo": "0.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/resolv-replace@0.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-rexml-3.2.5",
       "name": "gem:rexml",
       "versionInfo": "3.2.5",
@@ -3058,24 +1780,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/rexml@3.2.5",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-rexml-3.2.5",
-      "name": "java-archive:rexml",
-      "versionInfo": "3.2.5",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rexml@3.2.5",
           "referenceType": "purl"
         }
       ]
@@ -3099,24 +1803,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-rinda-0.1.1",
-      "name": "java-archive:rinda",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rinda@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-rss-0.2.9",
       "name": "gem:rss",
       "versionInfo": "0.2.9",
@@ -3130,150 +1816,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/rss@0.2.9",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-rss-0.2.9",
-      "name": "java-archive:rss",
-      "versionInfo": "0.2.9",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rss@0.2.9",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-gem-rss-UNKNOWN",
-      "name": "gem:rss",
-      "versionInfo": "UNKNOWN",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:gem/rss",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-workflow-ruby-actions-.github-workflows-rubyC95versions.yml-master",
-      "name": "github-action-workflow:ruby/actions/.github/workflows/ruby_versions.yml",
-      "versionInfo": "master",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/ruby/actions@master#.github/workflows/ruby_versions.yml",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-ruby-setup-ruby-v1",
-      "name": "github-action:ruby/setup-ruby",
-      "versionInfo": "v1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/ruby/setup-ruby@v1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-ruby-setup-ruby-v1",
-      "name": "github-action:ruby/setup-ruby",
-      "versionInfo": "v1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/ruby/setup-ruby@v1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-ruby-setup-ruby-v1",
-      "name": "github-action:ruby/setup-ruby",
-      "versionInfo": "v1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/ruby/setup-ruby@v1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-ruby-setup-ruby-v1",
-      "name": "github-action:ruby/setup-ruby",
-      "versionInfo": "v1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/ruby/setup-ruby@v1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-github-action-ruby-setup-ruby-v1",
-      "name": "github-action:ruby/setup-ruby",
-      "versionInfo": "v1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:github/ruby/setup-ruby@v1",
           "referenceType": "purl"
         }
       ]
@@ -3297,24 +1839,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-ruby2C95keywords-0.0.5",
-      "name": "java-archive:ruby2_keywords",
-      "versionInfo": "0.0.5",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/ruby2_keywords@0.0.5",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-rubygems-update-3.3.26",
       "name": "gem:rubygems-update",
       "versionInfo": "3.3.26",
@@ -3328,24 +1852,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/rubygems-update@3.3.26",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-rubygems-update-3.3.26",
-      "name": "java-archive:rubygems-update",
-      "versionInfo": "3.3.26",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/rubygems-update@3.3.26",
           "referenceType": "purl"
         }
       ]
@@ -3369,24 +1875,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-securerandom-0.2.0",
-      "name": "java-archive:securerandom",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/securerandom@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-shellwords-0.1.0",
       "name": "gem:shellwords",
       "versionInfo": "0.1.0",
@@ -3405,24 +1893,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-shellwords-0.1.0",
-      "name": "java-archive:shellwords",
-      "versionInfo": "0.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/shellwords@0.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-singleton-0.1.1",
       "name": "gem:singleton",
       "versionInfo": "0.1.1",
@@ -3436,24 +1906,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/singleton@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-singleton-0.1.1",
-      "name": "java-archive:singleton",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/singleton@0.1.1",
           "referenceType": "purl"
         }
       ]
@@ -3495,24 +1947,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-stringio-3.0.8",
-      "name": "java-archive:stringio",
-      "versionInfo": "3.0.8",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/stringio@3.0.8",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-java-archive-stringio-UNKNOWN",
       "name": "java-archive:stringio",
       "versionInfo": "UNKNOWN",
@@ -3544,24 +1978,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/strscan@3.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-strscan-3.1.0",
-      "name": "java-archive:strscan",
-      "versionInfo": "3.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/strscan@3.1.0",
           "referenceType": "purl"
         }
       ]
@@ -3603,24 +2019,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-subspawn-0.1.1",
-      "name": "java-archive:subspawn",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/subspawn@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-subspawn-posix-0.1.1",
       "name": "gem:subspawn-posix",
       "versionInfo": "0.1.1",
@@ -3634,24 +2032,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/subspawn-posix@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-subspawn-posix-0.1.1",
-      "name": "java-archive:subspawn-posix",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/subspawn-posix@0.1.1",
           "referenceType": "purl"
         }
       ]
@@ -3675,24 +2055,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-test-unit-3.5.3",
-      "name": "java-archive:test-unit",
-      "versionInfo": "3.5.3",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/test-unit@3.5.3",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-time-0.2.2",
       "name": "gem:time",
       "versionInfo": "0.2.2",
@@ -3706,24 +2068,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/time@0.2.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-time-0.2.2",
-      "name": "java-archive:time",
-      "versionInfo": "0.2.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/time@0.2.2",
           "referenceType": "purl"
         }
       ]
@@ -3747,24 +2091,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-timeout-0.3.2",
-      "name": "java-archive:timeout",
-      "versionInfo": "0.3.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/timeout@0.3.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-tsort-0.1.0",
       "name": "gem:tsort",
       "versionInfo": "0.1.0",
@@ -3778,24 +2104,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/tsort@0.1.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-tsort-0.1.0",
-      "name": "java-archive:tsort",
-      "versionInfo": "0.1.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/tsort@0.1.0",
           "referenceType": "purl"
         }
       ]
@@ -3819,24 +2127,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-un-0.2.0",
-      "name": "java-archive:un",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/un@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-uri-0.12.2",
       "name": "gem:uri",
       "versionInfo": "0.12.2",
@@ -3850,24 +2140,6 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:gem/uri@0.12.2",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-uri-0.12.2",
-      "name": "java-archive:uri",
-      "versionInfo": "0.12.2",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/uri@0.12.2",
           "referenceType": "purl"
         }
       ]
@@ -3909,24 +2181,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-java-archive-weakref-0.1.1",
-      "name": "java-archive:weakref",
-      "versionInfo": "0.1.1",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/weakref@0.1.1",
-          "referenceType": "purl"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-gem-yaml-0.2.0",
       "name": "gem:yaml",
       "versionInfo": "0.2.0",
@@ -3943,24 +2197,6 @@
           "referenceType": "purl"
         }
       ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-java-archive-yaml-0.2.0",
-      "name": "java-archive:yaml",
-      "versionInfo": "0.2.0",
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "originator": "Organization: ",
-      "supplier": "Organization: ",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:maven/rubygems/yaml@0.2.0",
-          "referenceType": "purl"
-        }
-      ]
     }
   ],
   "relationships": [
@@ -3972,47 +2208,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-abbrev-0.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-actions-checkout-master"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-actions-checkout-v2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-actions-checkout-v2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-actions-checkout-v2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-actions-checkout-v4"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-backport9-1.13"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-base64-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-base64-0.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4042,17 +2243,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-benchmark-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-bigdecimal-3.1.4"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-bigdecimal-3.1.4"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4062,17 +2253,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-bundler-2.3.26"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-cgi-0.3.6"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-cgi-0.3.6"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4087,17 +2268,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-csv-3.2.5"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-date-3.3.3"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-date-3.3.3"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4107,17 +2278,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-debug-0.2.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-delegate-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-delegate-0.2.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4127,17 +2288,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-didC95youC95mean-1.6.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-digest-3.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-digest-3.1.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4157,17 +2308,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-drb-2.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-english-0.7.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-english-0.7.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4177,17 +2318,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-erb-2.2.3"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-errorC95highlight-0.3.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-errorC95highlight-0.3.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4202,17 +2333,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-ffi-1.16.3"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-ffi-binary-libfixposix-0.5.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-ffi-binary-libfixposix-0.5.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4222,22 +2343,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-ffi-bindings-libfixposix-0.5.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-fileutils-1.6.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-fileutils-1.6.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-gem-fileutils-UNKNOWN"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4247,17 +2353,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-find-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-forwardable-1.3.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-forwardable-1.3.2"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4272,11 +2368,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-getoptlong-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-invokebinder-1.13"
     },
     {
@@ -4287,17 +2378,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-io-console-0.7.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-io-wait-0.3.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-io-wait-0.3.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4307,27 +2388,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-ipaddr-1.2.4"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-irb-1.4.2"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-irb-1.4.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-jar-dependencies-0.4.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-jar-dependencies-0.4.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4417,17 +2483,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-jruby-core-9.4.7.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-jruby-openssl-0.14.5"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-jruby-openssl-0.14.5"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4447,22 +2503,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-jruby-readline-1.3.7"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-jruby-stdlib-9.4.7.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-json-2.7.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-json-2.7.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4477,22 +2518,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-logger-1.5.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-matrix-0.4.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-matrix-0.4.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-gem-matrix-UNKNOWN"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4502,17 +2528,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-minitest-5.15.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-mutexC95m-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-mutexC95m-0.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4522,17 +2538,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-net-ftp-0.1.3"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-net-http-0.3.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-net-http-0.3.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4542,17 +2548,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-net-imap-0.2.3"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-net-pop-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-net-pop-0.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4562,27 +2558,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-net-protocol-0.1.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-net-smtp-0.3.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-net-smtp-0.3.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-nkf-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-nkf-0.2.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4597,27 +2578,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-observer-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-open-uri-0.3.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-open-uri-0.3.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-open3-0.1.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-open3-0.1.2"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4632,17 +2598,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-optparse-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-ostruct-0.5.5"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-ostruct-0.5.5"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4657,22 +2613,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-powerC95assert-2.0.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-gem-powerC95assert-UNKNOWN"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-pp-0.3.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-pp-0.3.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4682,22 +2623,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-prettyprint-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-prime-0.1.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-prime-0.1.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-gem-prime-UNKNOWN"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4707,17 +2633,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-pstore-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-psych-5.1.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-psych-5.1.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4732,22 +2648,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-racc-1.6.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-rake-13.0.6"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-gem-rake-UNKNOWN"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rake-UNKNOWN"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4757,17 +2658,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rake-ant-1.0.6"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-rdoc-6.4.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rdoc-6.4.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4782,11 +2673,6 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-reline-0.4.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-resolv-0.4.0"
     },
     {
@@ -4797,17 +2683,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-resolv-replace-0.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-rexml-3.2.5"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rexml-3.2.5"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4817,52 +2693,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rinda-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-rss-0.2.9"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rss-0.2.9"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-gem-rss-UNKNOWN"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-workflow-ruby-actions-.github-workflows-rubyC95versions.yml-master"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-ruby-setup-ruby-v1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-ruby-setup-ruby-v1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-ruby-setup-ruby-v1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-ruby-setup-ruby-v1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-github-action-ruby-setup-ruby-v1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4872,17 +2703,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-ruby2C95keywords-0.0.5"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-rubygems-update-3.3.26"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-rubygems-update-3.3.26"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4892,27 +2713,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-securerandom-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-shellwords-0.1.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-shellwords-0.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-singleton-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-singleton-0.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4927,22 +2733,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-stringio-3.0.8"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-java-archive-stringio-UNKNOWN"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-strscan-3.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-strscan-3.1.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4957,17 +2753,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-subspawn-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-subspawn-posix-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-subspawn-posix-0.1.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4977,17 +2763,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-test-unit-3.5.3"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-time-0.2.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-time-0.2.2"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -4997,17 +2773,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-timeout-0.3.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-tsort-0.1.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-tsort-0.1.0"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -5017,17 +2783,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-un-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-uri-0.12.2"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-uri-0.12.2"
     },
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
@@ -5042,17 +2798,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-weakref-0.1.1"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-gem-yaml-0.2.0"
-    },
-    {
-      "spdxElementId": "SPDXRef-Package-jruby-9.4-9.4.7.0-r0",
-      "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-java-archive-yaml-0.2.0"
     }
   ]
 }

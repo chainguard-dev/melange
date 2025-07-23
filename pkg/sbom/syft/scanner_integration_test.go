@@ -145,18 +145,9 @@ require github.com/spf13/cobra v1.8.0
 	packages, err := scanner.Scan(ctx)
 	require.NoError(t, err)
 
-	// With DirectoryTag catalogers, manifest files ARE scanned
-	// We should find the Python packages
-	require.Len(t, packages, 3)
-
-	// Verify we found the expected packages
-	packageNames := make(map[string]bool)
-	for _, pkg := range packages {
-		packageNames[pkg.Name] = true
-	}
-	require.True(t, packageNames["python:flask"])
-	require.True(t, packageNames["python:requests"])
-	require.True(t, packageNames["go-module:github.com/spf13/cobra"])
+	// With FileTag/ImageTag catalogers, manifest files are NOT scanned
+	// Only binary files are analyzed
+	require.Len(t, packages, 0) // No binary files to analyze
 }
 
 // TestMergerIntegration tests the full integration of scanning and merging
@@ -184,14 +175,14 @@ pandas==2.1.1
 	syftPackages, err := scanner.Scan(ctx)
 	require.NoError(t, err)
 
-	// With DirectoryTag catalogers, packages WILL be found from requirements.txt
-	require.Len(t, syftPackages, 2)
+	// With FileTag/ImageTag catalogers, packages will NOT be found from requirements.txt
+	require.Len(t, syftPackages, 0)
 
-	// Test merge with the found packages
+	// Test merge with no packages (edge case)
 	err = MergeIntoDocument(ctx, doc, syftPackages, "test-package")
 	require.NoError(t, err)
 
-	// Document should have original + Syft packages
-	require.Len(t, doc.Packages, 3)
-	require.Len(t, doc.Relationships, 2)
+	// Document should have only original package, no relationships
+	require.Len(t, doc.Packages, 1)
+	require.Len(t, doc.Relationships, 0)
 }

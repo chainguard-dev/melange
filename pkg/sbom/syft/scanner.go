@@ -23,6 +23,7 @@ import (
 
 	"chainguard.dev/melange/pkg/sbom"
 	"github.com/anchore/syft/syft"
+	"github.com/anchore/syft/syft/cataloging/filecataloging"
 	"github.com/anchore/syft/syft/cataloging/pkgcataloging"
 	"github.com/anchore/syft/syft/license"
 	"github.com/anchore/syft/syft/pkg"
@@ -66,7 +67,8 @@ func (s *Scanner) Scan(ctx context.Context) ([]sbom.Package, error) {
 	// that can find language-specific package manifests and installed software
 	cfg := syft.DefaultCreateSBOMConfig().WithCatalogerSelection(
 		pkgcataloging.NewSelectionRequest().WithDefaults(
-			pkgcataloging.DirectoryTag,
+			filecataloging.FileTag,
+			pkgcataloging.ImageTag,
 		).WithRemovals(
 			"elf-package", // Don't consider ELF notes, which may report as being "apks"
 			"sbom",        // If we find an SBOM (e.g., scanning whole APKs in golden_test), don't use it to catalog.

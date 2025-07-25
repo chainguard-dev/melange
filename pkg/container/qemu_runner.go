@@ -1241,18 +1241,10 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 
 	cmd := shellquote.Join(command...)
 
-	session.Stdin = strings.NewReader(cmd)
-
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
-	err = session.Shell()
+	err = session.Run(cmd)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
-		return err
-	}
-
-	// Wait for the session to finish
-	if err := session.Wait(); err != nil {
-		clog.FromContext(ctx).Errorf("Failed wait for session running: %q: %v", cmd, err)
 		return err
 	}
 

@@ -25,7 +25,9 @@
       "licenseDeclared": "NOASSERTION",
       "description": "Operating System",
       "downloadLocation": "NOASSERTION",
-      "primaryPackagePurpose": "OPERATING-SYSTEM"
+      "primaryPackagePurpose": "OPERATING-SYSTEM",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
     },
     {
       "SPDXID": "SPDXRef-Package-crane-0.20.2-r1",

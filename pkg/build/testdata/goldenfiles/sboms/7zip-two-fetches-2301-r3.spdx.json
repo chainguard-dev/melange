@@ -25,9 +25,9 @@
       "licenseDeclared": "NOASSERTION",
       "description": "Operating System",
       "downloadLocation": "NOASSERTION",
-      "primaryPackagePurpose": "OPERATING-SYSTEM",
       "originator": "Organization: Wolfi",
       "supplier": "Organization: Wolfi",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
       "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-r3",

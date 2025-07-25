@@ -112,7 +112,7 @@ func CopyFile(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(dest, b, 0644); err != nil {
+	if err := os.WriteFile(dest, b, 0o644); err != nil {
 		return err
 	}
 	return nil
@@ -161,7 +161,7 @@ func TestEmitSignature(t *testing.T) {
 		Name:     MockName,
 		Typeflag: tar.TypeReg,
 		Size:     int64(len(controlData)),
-		Mode:     int64(os.ModePerm),
+		Mode:     int64(0o644),
 		Uid:      0,
 		Gid:      0,
 		Uname:    "root",
@@ -169,7 +169,7 @@ func TestEmitSignature(t *testing.T) {
 		ModTime:  sde,
 	}
 	if diff := cmp.Diff(hdr, hdrWant, cmpopts.IgnoreFields(tar.Header{}, "AccessTime", "ChangeTime", "Format")); diff != "" {
-		t.Errorf("Expected %v got %v", hdr, hdrWant)
+		t.Errorf("Expected %v got %v", hdrWant, hdr)
 	}
 
 	if hdr.Name != "mockiavelli" {

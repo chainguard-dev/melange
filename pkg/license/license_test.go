@@ -52,14 +52,14 @@ func TestFindLicenseFiles(t *testing.T) {
 
 	for _, name := range testFiles {
 		filePath := filepath.Join(tmpDir, name)
-		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
+		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0o666)
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", name, err)
 		}
 		fp.Close()
 	}
 
-	tmpFS := apkofs.DirFS(tmpDir)
+	tmpFS := apkofs.DirFS(t.Context(), tmpDir)
 
 	// Call function under test
 	licenseFiles, err := FindLicenseFiles(tmpFS)
@@ -101,6 +101,50 @@ func TestFindLicenseFiles(t *testing.T) {
 			t.Errorf("Expected license file %s not found", expected)
 		}
 	}
+
+	testInoreFiles := []string{
+		"node_modules/LICENSE",
+		"node_modules/LICENSE.md",
+		"venv/COPYING",
+		"venv/COPYING.txt",
+		"venv/random.txt",
+		"env/LICENSE-MIT.md",
+		"env/README.md",
+		"env/LICENSE-APACHE",
+		".virtualenv/LICENSE.gemspec",
+		".virtualenv/COPYRIGHT",
+		".virtualenv/MIT-COPYING",
+		"node_modules/copyme",
+		"node_modules/COPY",
+		"node_modules/LICENSE.txt",
+		"rust-src-1.86.0/rust-src/foo/LICENSE-MIT",
+		"rustc-src-1.86.0/rust-src/foo/LICENSE-MIT",
+	}
+
+	tmpDir = t.TempDir()
+	for _, name := range testInoreFiles {
+		filePath := filepath.Join(tmpDir, name)
+		err := os.MkdirAll(filepath.Join(tmpDir, filepath.Dir(name)), os.ModePerm)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", name, err)
+		}
+		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0o666)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", name, err)
+		}
+		fp.Close()
+	}
+
+	tmpFS = apkofs.DirFS(t.Context(), tmpDir)
+
+	// Call function under test
+	licenseFiles, err = FindLicenseFiles(tmpFS)
+	if len(licenseFiles) > 0 {
+		t.Fatalf("Failed to test ignored files")
+	}
+	if err != nil {
+		t.Fatalf("FindLicenseFiles returned an error: %v", err)
+	}
 }
 
 func TestIdentify(t *testing.T) {
@@ -117,10 +161,11 @@ func TestIdentify(t *testing.T) {
 		"LICENSE-BSD-modified": "BSD-3-Clause",
 		"LICENSE-GPLv2":        "GPL-2.0",
 		"LICENSE-GPLv3":        "GPL-3.0",
+		"COPYRIGHT":            "NOASSERTION",
 	}
 
 	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(testDataDir)
+	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 	err = fs.WalkDir(dataFS, ".", func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			t.Errorf("Error walking through testdata directory: %v", err)
@@ -172,7 +217,7 @@ func TestLicenseCheck(t *testing.T) {
 	}
 
 	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(testDataDir)
+	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 
 	// Create a buffer to capture log output
 	var logBuf strings.Builder
@@ -215,21 +260,21 @@ func TestLicenseCheck(t *testing.T) {
 		}
 	}
 
-	// Now also check the log output and make sure that "ignored" is present only for the low-confidence license,
-	// LICENSE-BSD-modified.
+	// Now also check the log output and make sure that "low-confidence" is present only for the low-confidence
+	// licenses: LICENSE-BSD-modified and COPYRIGHT (the latter is not a valid license)
 	found := false
 	lines := strings.Split(logBuf.String(), "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "ignored") {
-			// Check if the line contains the expected license
-			if !strings.Contains(line, "LICENSE-BSD-modified") {
-				t.Errorf("Unexpected log line with 'ignored': %s", line)
+		if strings.Contains(line, "low-confidence") {
+			// Check if the line contains one of the expected licenses
+			if !strings.Contains(line, "LICENSE-BSD-modified") && !strings.Contains(line, "COPYRIGHT") {
+				t.Errorf("Unexpected log line with 'low-confidence': %s", line)
 			}
 			found = true
 		}
 	}
 	if !found {
-		t.Error("Expected log line with 'ignored' not found")
+		t.Error("Expected log line with 'low-confidence' not found")
 	}
 }
 
@@ -248,7 +293,7 @@ func TestLicenseCheck_withOverrides(t *testing.T) {
 	}
 
 	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(testDataDir)
+	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 
 	// Call function under test
 	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)

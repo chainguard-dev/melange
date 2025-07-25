@@ -9,11 +9,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
-
-	"io"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/melange/pkg/container"
@@ -25,6 +25,7 @@ func TestBuild_BuildPackage(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedVersion string
+		buildErrMatch   *regexp.Regexp
 	}{
 		{
 			name:            "crane",
@@ -33,6 +34,11 @@ func TestBuild_BuildPackage(t *testing.T) {
 		{
 			name:            "7zip-two-fetches",
 			expectedVersion: "2301-r3",
+		},
+		{
+			name:            "bogus-version",
+			expectedVersion: "1.0.0_b6",
+			buildErrMatch:   regexp.MustCompile("parse version"),
 		},
 	}
 
@@ -68,6 +74,10 @@ func TestBuild_BuildPackage(t *testing.T) {
 				}
 
 				if err := b.BuildPackage(ctx); err != nil {
+					if tt.buildErrMatch != nil && tt.buildErrMatch.MatchString(err.Error()) {
+						t.Logf("%s build correctly identified invalid version %s", tt.name, b.Configuration.Package.Version)
+						return
+					}
 					t.Fatalf("building package: %v", err)
 				}
 

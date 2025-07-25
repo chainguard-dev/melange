@@ -133,7 +133,7 @@ func TestContext_getSourceSha(t *testing.T) {
 		TestURL        string
 		PackageVersion string
 	}
-	var tests = []struct {
+	tests := []struct {
 		name   string
 		fields fields
 	}{
@@ -203,7 +203,8 @@ func TestContext_getSourceSha(t *testing.T) {
 				Sha512sums: []apkbuild.SourceHash{
 					{
 						Source: tt.fields.TestURL,
-						Hash:   tt.fields.Sha512},
+						Hash:   tt.fields.Sha512,
+					},
 				},
 			},
 			GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{},

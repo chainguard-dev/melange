@@ -126,7 +126,6 @@ func (c Context) Generate(ctx context.Context, apkBuildURI, pkgName string) erro
 func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName string) error {
 	req, _ := http.NewRequestWithContext(ctx, "GET", apkbuildURL, nil)
 	resp, err := c.Client.Do(req)
-
 	if err != nil {
 		return fmt.Errorf("getting %s: %w", apkbuildURL, err)
 	}
@@ -138,7 +137,6 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 	apkbuildFile := apkbuild.NewApkbuildFile(packageName, resp.Body)
 
 	parsedApkBuild, err := apkbuild.Parse(apkbuildFile, nil)
-
 	if err != nil {
 		return fmt.Errorf("failed to parse apkbuild %s: %w", apkbuildURL, err)
 	}
@@ -266,7 +264,6 @@ func getGitHubIdentifierFromURL(packageURL string) (string, bool) {
 func (c *Context) setupUpdateBlock(packageURL string, packageVersion string, converter *ApkConvertor) {
 	// Check if the package was fetched from GitHub
 	if identifier, isGitHub := getGitHubIdentifierFromURL(packageURL); isGitHub {
-
 		// Enable GitHub monitoring
 		converter.GeneratedMelangeConfig.Update = config.Update{
 			Enabled: true,

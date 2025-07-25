@@ -16,6 +16,7 @@ package container
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -116,10 +117,10 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 		"--clearenv")
 
 	// If we need to run as an user, we run as that user.
-	if cfg.RunAs != "" {
+	if cfg.RunAsUID != "" {
 		baseargs = append(baseargs, "--unshare-user")
-		baseargs = append(baseargs, "--uid", cfg.RunAs)
-		baseargs = append(baseargs, "--gid", cfg.RunAs)
+		baseargs = append(baseargs, "--uid", cfg.RunAsUID)
+		baseargs = append(baseargs, "--gid", cfg.RunAsUID)
 		// Else if we're not using melange as root, we force the use of the
 		// Apko build user. This avoids problems on machines where default
 		// regular user is NOT 1000.
@@ -226,8 +227,30 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 
 // WorkspaceTar implements Runner
 // This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
-func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
+func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Bubblewrap runner.
+func (bw *bubblewrap) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error) {
+	// Read the os-release through a bubblewrap command
+	execCmd := bw.cmd(ctx, cfg, false, nil, "cat", "/etc/os-release")
+
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Warn)
+	defer stderr.Close()
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+
+	execCmd.Stdout = bufWriter
+	execCmd.Stderr = stderr
+	err := execCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read os-release: %w", err)
+	}
+
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type bubblewrapOCILoader struct {
@@ -241,7 +264,7 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
-	guestDir, err := os.MkdirTemp("", "melange-guest-*")
+	guestDir, err := os.MkdirTemp("", "bubblewrap-guest-*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}

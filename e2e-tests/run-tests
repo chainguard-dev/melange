@@ -27,7 +27,7 @@ key="local-melange.rsa"
 if [ -f "$key" -a -f "$key.pub" ]; then
     echo "using existing $key"
 else
-    melange keygen "$key" ||
+    $MELANGE keygen "$key" ||
         { echo "failed to create local-melange signing key"; exit 1; }
 fi
 
@@ -39,15 +39,18 @@ for yaml in "$@"; do
   case "$base" in
     *-build-test)
       ops="build test"
+      args="$args --debug"
       ;;
     *-nopkg-test)
       ops="test"
       args="$args --test-package-append busybox"
       args="$args --test-package-append=python-3"
+      args="$args --debug"
       ;;
     *-test)
       ops="test"
       args="${base%-test}"
+      args="$args --debug"
       ;;
     *-build)
       ops="build"
@@ -67,6 +70,7 @@ for yaml in "$@"; do
     vrc "Testing $base from $yaml for $op" \
       ${MELANGE} "$op" \
         --arch=x86_64 --source-dir=./test-fixtures \
+        --runner=qemu \
         "$yaml" \
         ${args} $opargs \
         "--keyring-append=$PWD/$key.pub" \

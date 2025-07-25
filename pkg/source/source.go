@@ -76,7 +76,7 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 
 		// Look for the .melange.yaml file
 		if header.Typeflag == tar.TypeReg && filepath.Base(header.Name) == ".melange.yaml" {
-			if err := os.MkdirAll(destDir, 0755); err != nil {
+			if err := os.MkdirAll(destDir, 0o755); err != nil {
 				return fmt.Errorf("failed to create destination directory: %w", err)
 			}
 
@@ -189,7 +189,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 
 		log.Infof("Found source fetching step: %s.\nFetching source to %s\n", step.Uses, destDir)
 		// Always make sure we're operating in the destDir directory.
-		err = os.MkdirAll(destDir, 0755)
+		err = os.MkdirAll(destDir, 0o755)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create destination directory: %v", err)
 		}

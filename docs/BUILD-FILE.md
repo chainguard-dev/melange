@@ -208,6 +208,16 @@ options:
   no-commands: true
 ```
 
+`no-versioned-shlib-deps` - The generated `depends` for shared
+libraries shipped by this package should not be versioned.  By
+default, melange will generate versioned `depends` for shared
+libraries.
+
+```
+options:
+  no-versioned-shlib-deps: true
+```
+
 ### scriptlets
 List of executable scripts that run at various stages of the package lifecycle,
 triggered by configurable events. These are useful to handle tasks that only

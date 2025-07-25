@@ -32,6 +32,7 @@ import (
 func licenseCheck() *cobra.Command {
 	var workDir string
 	var fix bool
+	var format string
 	cmd := &cobra.Command{
 		Use:     "license-check file",
 		Short:   "Gather and check licensing data",
@@ -63,8 +64,13 @@ func licenseCheck() *cobra.Command {
 				sourceDir = workDir
 			}
 
-			sourceFS := apkofs.DirFS(sourceDir)
-			detectedLicenses, _, err := license.LicenseCheck(ctx, cfg, sourceFS)
+			// Turn sourceDir to an absolute path
+			sourceDir, err = filepath.Abs(sourceDir)
+			if err != nil {
+				return fmt.Errorf("failed to get absolute path for source directory: %w", err)
+			}
+			sourceFS := apkofs.DirFS(ctx, sourceDir)
+			detectedLicenses, diffs, err := license.LicenseCheck(ctx, cfg, sourceFS)
 			if err != nil {
 				return err
 			}
@@ -77,7 +83,12 @@ func licenseCheck() *cobra.Command {
 					return err
 				}
 
-				copyrightRenovator := copyright.New(ctx, copyright.WithLicenses(detectedLicenses))
+				copyrightRenovator := copyright.New(
+					ctx,
+					copyright.WithLicenses(detectedLicenses),
+					copyright.WithDiffs(diffs),
+					copyright.WithFormat(format),
+				)
 				err = rc.Renovate(cmd.Context(), copyrightRenovator)
 			}
 
@@ -87,6 +98,7 @@ func licenseCheck() *cobra.Command {
 
 	cmd.Flags().StringVar(&workDir, "workdir", "", "path to the working directory, e.g. where the source will be extracted to")
 	cmd.Flags().BoolVar(&fix, "fix", false, "fix license issues in the melange yaml file")
+	cmd.Flags().StringVar(&format, "format", "flat", "license fix strategy format: 'simple' or 'flat'")
 
 	return cmd
 }

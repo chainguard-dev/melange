@@ -17,6 +17,17 @@
   ],
   "packages": [
     {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
       "SPDXID": "SPDXRef-Package-crane-0.20.2-r1",
       "name": "crane",
       "versionInfo": "0.20.2-r1",
@@ -30,7 +41,7 @@
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:apk/wolfi/crane@0.20.2-r1?arch=x86_64",
+          "referenceLocator": "pkg:apk/wolfi/crane@0.20.2-r1?arch=x86_64\u0026distro=wolfi",
           "referenceType": "purl"
         }
       ]
@@ -60,7 +71,7 @@
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "Apache-2.0",
-      "downloadLocation": "NOASSERTION",
+      "downloadLocation": "https://github.com/google/go-containerregistry/archive/c195f151efe3369874c72662cd69ad43ee485128.tar.gz",
       "originator": "Organization: Google",
       "supplier": "Organization: Google",
       "externalRefs": [

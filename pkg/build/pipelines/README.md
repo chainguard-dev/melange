@@ -42,13 +42,14 @@ Check out sources from git
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | branch | false | The branch to check out, otherwise HEAD is checked out. For reproducibility, tag is generally favored over branch. Branch and tag are mutually exclusive.  |  |
-| cherry-picks | false | List of cherry picks to apply. New line separated entries.  Lines can be empty. Any content on a line after `#` is ignored. After removing comments, each line is of the form:      [branch/]commit-id: comment explaining cherry-pick  comment and commit-id are required.  branch on origin that the commit lives should be provided or git is not guaranteed to have a reference to the commit-id.    Example:     cherry-picks: |       3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:  |  |
+| cherry-picks | false | List of cherry picks to apply. New line separated entries. Lines can be empty. Any content on a line after `#` is ignored. After removing comments, each line is of the form:      [branch/]commit-id: comment explaining cherry-pick  comment and commit-id are required.  branch on origin that the commit lives should be provided or git is not guaranteed to have a reference to the commit-id.    Example:     cherry-picks: |       3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:  |  |
 | depth | false | The depth to use when cloning. Use -1 to get full branch history. If 'branch' and 'expected-commit' are provided the default is -1. Otherwise, default is to use '1' (shallow clone).  | unset |
 | destination | false | The path to check out the sources to.  | . |
 | expected-commit | false | The expected commit hash  |  |
 | recurse-submodules | false | Indicates whether --recurse-submodules should be passed to git clone.  | false |
 | repository | true | The repository to check out sources from.  |  |
 | tag | false | The tag to check out.  Branch and tag are mutually exclusive.  |  |
+| type-hint | false | Type hint to use during SBOM generation for the provided git repository. This is primarily used to identify Gitlab based sources which are not heuristically identifiable as Gitlab.  Supported hints: gitlab.  |  |
 
 ## patch
 

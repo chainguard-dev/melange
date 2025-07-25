@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -113,6 +114,15 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 		})
 	}
 
+	// No license found, append a no-assertion entry
+	if len(licenses) == 0 {
+		licenses = append(licenses, License{
+			Name:       "NOASSERTION",
+			Confidence: 0.0,
+			Source:     licensePath,
+		})
+	}
+
 	return licenses, nil
 }
 
@@ -120,7 +130,6 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 	// This file is using regular expressions defined in the regexp.go file
 	var licenseFiles []LicenseFile
-	var ignore bool
 	err := fs.WalkDir(fsys, ".", func(filePath string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -134,22 +143,8 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 			return nil
 		}
 
-		// Check if the file matches any of the license-related regex patterns
-		for regex, weight := range filenameRegexes {
-			if !regex.MatchString(info.Name()) {
-				continue
-			}
-			// licensee does this check as part of the regex, but in go we don't have
-			// the same regex capabilities
-			for _, ext := range ignoredExt {
-				if ignore = filepath.Ext(info.Name()) == ext; ignore {
-					break
-				}
-			}
-			if ignore {
-				continue
-			}
-
+		is, weight := IsLicenseFile(filePath)
+		if is {
 			// Licenses in the top level directory have a higher weight so that they
 			// always appear first
 			if filepath.Dir(filePath) == "." {
@@ -160,7 +155,6 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 				Path:   filePath,
 				Weight: weight,
 			})
-			break
 		}
 
 		return nil
@@ -176,6 +170,50 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 	})
 
 	return licenseFiles, nil
+}
+
+// IsLicenseFile checks if a file is a license file based on its name.
+// Returns true/fals if the file is a license file, and the weight value
+// associated with the match, as some matches are potentially more relevant.
+func IsLicenseFile(filename string) (bool, float64) {
+	// Ignore files in these paths
+
+	// Packages like Rust embed the semver in certain paths, so replace the segment with `-`
+	// rust-1.86.0-src -> rust-src
+	re := regexp.MustCompile(`\-\d+\.\d+\.\d+\-`)
+	filename = re.ReplaceAllString(filename, "-")
+
+	ignoredPaths := []string{
+		".virtualenv",
+		"env",
+		"node_modules",
+		"rust-src",
+		"rustc-src",
+		"venv",
+	}
+	for _, i := range ignoredPaths {
+		if slices.Contains(strings.Split(filename, string(filepath.Separator)), i) {
+			return false, 0.0
+		}
+	}
+
+	// normalize to file name only
+	filename = filepath.Base(filename)
+
+	filenameExt := filepath.Ext(filename)
+	// Check if the file matches any of the license-related regex patterns
+	for regex, weight := range filenameRegexes {
+		if !regex.MatchString(filename) {
+			continue
+		}
+		// licensee does this check as part of the regex, but in go we don't have
+		// the same regex capabilities
+		if slices.Contains(ignoredExt, filenameExt) {
+			continue
+		}
+		return true, weight
+	}
+	return false, 0.0
 }
 
 // CollectLicenseInfo collects license information from the given filesystem.
@@ -214,8 +252,8 @@ func CollectLicenseInfo(ctx context.Context, fsys fs.FS) ([]License, error) {
 	return detectedLicenses, nil
 }
 
-// isLicenseMatchConfident checks if the license match is confident enough to be considered valid.
-func isLicenseMatchConfident(dl License) bool {
+// IsLicenseMatchConfident checks if the license match is confident enough to be considered valid.
+func IsLicenseMatchConfident(dl License) bool {
 	// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
 	// We'll make this configurable in the future
 	return dl.Confidence >= 0.9
@@ -236,12 +274,14 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		return nil, nil, nil
 	}
 
-	// Print out all the gathered licenses
+	// Print out all the gathered licenses and record low-confidence ones
+	lowConfidence := []License{}
 	for _, dl := range detectedLicenses {
 		s := ""
 		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-		if !isLicenseMatchConfident(dl) {
-			s = " ignored"
+		if !IsLicenseMatchConfident(dl) {
+			s = " low-confidence"
+			lowConfidence = append(lowConfidence, dl)
 		}
 		log.Infof("  %s: %s (%f%s) (%s)", dl.Source, dl.Name, dl.Confidence, s, dl.Type)
 	}
@@ -281,6 +321,15 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 			log.Warnf("no license differences detected")
 		}
 	}
+
+	if len(lowConfidence) > 0 {
+		log.Warnf("following license files could not be confidently assessed:")
+		for _, dl := range lowConfidence {
+			log.Warnf("  %s: %s (%f) (%s)", dl.Source, dl.Name, dl.Confidence, dl.Type)
+		}
+		log.Warnf("could not identify some licenses, please check the configuration")
+	}
+
 	log.Infof("license information check complete")
 
 	return detectedLicenses, diffs, nil
@@ -318,7 +367,7 @@ func getLicenseDifferences(detectedLicenses []License, melangeLicenses []License
 	diffs := []LicenseDiff{}
 	for _, dl := range detectedLicenses {
 		// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-		if !isLicenseMatchConfident(dl) {
+		if !IsLicenseMatchConfident(dl) {
 			continue
 		}
 

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -52,12 +53,18 @@ type Config struct {
 	ImgRef                string
 	PodID                 string
 	Arch                  apko_types.Architecture
+	RunAsUID              string
 	RunAs                 string
 	WorkspaceDir          string
+	CacheDir              string
 	CPU, CPUModel, Memory string
-	SSHKey                []byte
+	SSHKey                ssh.Signer
 	SSHAddress            string
+	SSHWorkspaceAddress   string
 	SSHHostKey            string
 	Disk                  string
 	Timeout               time.Duration
+	SSHClient             *ssh.Client
+	WorkspaceClient       *ssh.Client
+	QemuPID               int
 }

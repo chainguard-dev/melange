@@ -17,14 +17,16 @@ package config
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
 	"iter"
 	"maps"
+	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -88,6 +90,8 @@ type PackageOption struct {
 	NoDepends bool `json:"no-depends,omitempty" yaml:"no-depends,omitempty"`
 	// Optional: Mark this package as not providing any executables
 	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
+	// Optional: Don't generate versioned depends for shared libraries
+	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
 }
 
 type Checks struct {
@@ -262,6 +266,13 @@ func newAPKPackageURL(distro, name, version, arch string) *purl.PackageURL {
 		Version:   version,
 	}
 
+	if distro != "unknown" {
+		u.Qualifiers = append(u.Qualifiers, purl.Qualifier{
+			Key:   "distro",
+			Value: distro,
+		})
+	}
+
 	if arch != "" {
 		u.Qualifiers = append(u.Qualifiers, purl.Qualifier{
 			Key:   "arch",
@@ -428,7 +439,7 @@ func (p Package) LicenseExpression() string {
 	}
 	for _, cp := range p.Copyright {
 		if licenseExpression != "" {
-			licenseExpression += " OR "
+			licenseExpression += " AND "
 		}
 		licenseExpression += cp.License
 	}
@@ -523,6 +534,123 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
+// SHA256 generates a digest based on the text provided
+// Returns a hex encoded string
+func SHA256(text string) string {
+	algorithm := sha256.New()
+	algorithm.Write([]byte(text))
+	return hex.EncodeToString(algorithm.Sum(nil))
+}
+
+// getGitSBOMPackage creates an SBOM package for Git based repositories.
+// Returns nil package and nil error if the repository is not from a supported platform or
+// if neither a tag of expectedCommit is not provided
+func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
+	var repoType, namespace, name, ref string
+	var downloadLocation string
+
+	repoURL, err := url.Parse(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	if expectedCommit != "" {
+		ref = expectedCommit
+	} else if tag != "" {
+		ref = tag
+	} else {
+		// No commit or tag provided - we're done
+		return nil, nil
+	}
+
+	trimmedPath := strings.TrimPrefix(repoURL.Path, "/")
+	namespace, name, _ = strings.Cut(trimmedPath, "/")
+	name = strings.TrimSuffix(name, ".git")
+
+	switch {
+	case repoURL.Host == "github.com":
+		repoType = purl.TypeGithub
+		downloadLocation = fmt.Sprintf("%s://github.com/%s/%s/archive/%s.tar.gz", repoURL.Scheme, namespace, name, ref)
+
+	case repoURL.Host == "gitlab.com":
+		repoType = purl.TypeGitlab
+		downloadLocation = fmt.Sprintf("%s://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, namespace, name, ref, ref)
+
+	case strings.HasPrefix(repoURL.Host, "gitlab") || hint == "gitlab":
+		repoType = purl.TypeGeneric
+		downloadLocation = fmt.Sprintf("%s://%s/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, repoURL.Host, namespace, name, ref, ref)
+
+	default:
+		repoType = purl.TypeGeneric
+		// We can't determine the namespace so use the supplier passed instead.
+		namespace = supplier
+		name = strings.TrimSuffix(trimmedPath, ".git")
+		// Use first letter of name as a directory to avoid a single huge bucket of tarballs
+		downloadLocation = fmt.Sprintf("https://tarballs.cgr.dev/%s/%s-%s.tar.gz", name[:1], SHA256(name), ref)
+	}
+
+	// Prefer tag to commit, but use only ONE of these.
+	versions := []string{
+		tag,
+		expectedCommit,
+	}
+
+	// Encode vcs_url with git+ prefix and @commit suffix
+	var vcsUrl string
+	if !strings.HasPrefix(repo, "git") {
+		vcsUrl = "git+" + repo
+	} else {
+		vcsUrl = repo
+	}
+
+	if expectedCommit != "" {
+		vcsUrl += "@" + expectedCommit
+	}
+
+	for _, v := range versions {
+		if v == "" {
+			continue
+		}
+
+		var pu *purl.PackageURL
+
+		switch {
+		case repoType == purl.TypeGithub || repoType == purl.TypeGitlab:
+			pu = &purl.PackageURL{
+				Type:      repoType,
+				Namespace: namespace,
+				Name:      name,
+				Version:   v,
+			}
+		case repoType == purl.TypeGeneric:
+			pu = &purl.PackageURL{
+				Type:       "generic",
+				Name:       name,
+				Version:    v,
+				Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
+			}
+		}
+
+		if err := pu.Normalize(); err != nil {
+			return nil, err
+		}
+
+		return &sbom.Package{
+			IDComponents:     idComponents,
+			Name:             name,
+			Version:          v,
+			LicenseDeclared:  licenseDeclared,
+			Namespace:        namespace,
+			PURL:             pu,
+			DownloadLocation: downloadLocation,
+		}, nil
+	}
+
+	// If we get here, we have a repo but no tag or commit. Without version
+	// information, we can't create a sensible SBOM package.
+	return nil, nil
+}
+
 // SBOMPackageForUpstreamSource returns an SBOM package for the upstream source
 // of the package, if this Pipeline step was used to bring source code from an
 // upstream project into the build. This function helps with generating SBOMs
@@ -539,14 +667,17 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 	case "fetch":
 		args := make(map[string]string)
 		args["download_url"] = with["uri"]
+		checksums := make(map[string]string)
 
 		expectedSHA256 := with["expected-sha256"]
 		if len(expectedSHA256) > 0 {
 			args["checksum"] = "sha256:" + expectedSHA256
+			checksums["SHA256"] = expectedSHA256
 		}
 		expectedSHA512 := with["expected-sha512"]
 		if len(expectedSHA512) > 0 {
 			args["checksum"] = "sha512:" + expectedSHA512
+			checksums["SHA512"] = expectedSHA512
 		}
 
 		// These get defaulted correctly from within the fetch pipeline definition
@@ -570,11 +701,13 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		}
 
 		return &sbom.Package{
-			IDComponents: idComponents,
-			Name:         pkgName,
-			Version:      pkgVersion,
-			Namespace:    supplier,
-			PURL:         pu,
+			IDComponents:     idComponents,
+			Name:             pkgName,
+			Version:          pkgVersion,
+			Namespace:        supplier,
+			Checksums:        checksums,
+			PURL:             pu,
+			DownloadLocation: args["download_url"],
 		}, nil
 
 	case "git-checkout":
@@ -582,6 +715,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
+		hint := with["type-hint"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -600,83 +734,12 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		if strings.HasPrefix(repo, "https://github.com/") {
-			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
-
-			// Prefer tag to commit, but use only ONE of these.
-
-			versions := []string{
-				tag,
-				expectedCommit,
-			}
-
-			for _, v := range versions {
-				if v == "" {
-					continue
-				}
-
-				pu := &purl.PackageURL{
-					Type:      purl.TypeGithub,
-					Namespace: namespace,
-					Name:      name,
-					Version:   v,
-				}
-				if err := pu.Normalize(); err != nil {
-					return nil, err
-				}
-
-				return &sbom.Package{
-					IDComponents:    idComponents,
-					Name:            name,
-					Version:         v,
-					LicenseDeclared: licenseDeclared,
-					Namespace:       namespace,
-					PURL:            pu,
-				}, nil
-			}
-
-			// If we get here, we have a GitHub repo but no tag or commit. Without version
-			// information, we can't create a sensible SBOM package.
-			//
-			// TODO: Decide if this should be an error condition.
-
-			return nil, nil
-		}
-
-		// Create nice looking package name, last component of uri, without .git
-		name := strings.TrimSuffix(path.Base(repo), ".git")
-
-		// Encode vcs_url with git+ prefix and @commit suffix
-		vcsUrl := "git+" + repo
-
-		if len(expectedCommit) > 0 {
-			vcsUrl += "@" + expectedCommit
-		}
-
-		// Use tag as version
-		version := ""
-		if len(tag) > 0 {
-			version = tag
-		}
-
-		pu := purl.PackageURL{
-			Type:       "generic",
-			Name:       name,
-			Version:    version,
-			Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
-		}
-		if err := pu.Normalize(); err != nil {
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint, supplier)
+		if err != nil {
 			return nil, err
+		} else if gitPackage != nil {
+			return gitPackage, nil
 		}
-
-		return &sbom.Package{
-			IDComponents:    idComponents,
-			Name:            name,
-			Version:         version,
-			LicenseDeclared: licenseDeclared,
-			Namespace:       supplier,
-			PURL:            &pu,
-		}, nil
 	}
 
 	// This is not a fetch or git-checkout step.

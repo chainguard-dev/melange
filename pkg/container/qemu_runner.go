@@ -18,15 +18,12 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
 	_ "embed"
 	"encoding/base64"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
@@ -34,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -41,16 +39,20 @@ import (
 	"syscall"
 	"time"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/license"
 	"github.com/chainguard-dev/clog"
+	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/kballard/go-shellquote"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/term"
 )
@@ -81,24 +83,20 @@ func (bw *qemu) Name() string {
 
 // Run runs a Qemu task given a Config and command string.
 func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
+	// in case of buildless pipelines we just nop
+	if cfg.SSHKey == nil {
+		return nil
+	}
+
 	log := clog.FromContext(ctx)
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
 
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
-	user := "root"
-	if cfg.RunAs != "" {
-		user = "build"
-	}
-
 	err := sendSSHCommand(ctx,
-		user,
-		cfg.SSHAddress,
+		cfg.SSHClient,
 		cfg,
 		envOverride,
-		nil,
 		stderr,
 		stdout,
 		false,
@@ -112,13 +110,35 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 }
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
-	clog.InfoContextf(ctx, "debugging command %s", strings.Join(args, " "))
+	clog.FromContext(ctx).Debugf("running debug command: %v", args)
 
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
+	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
-		user = "build"
+		user = cfg.RunAs
+	}
+
+	log.Debug("qemu: ssh - get user ssh key pair")
+	pubKey, err := getUserSSHKey()
+	if err != nil {
+		log.Warn("qemu: could not get user ssh key pair, using ephemeral ones")
+	}
+	if pubKey != nil {
+		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", strings.TrimSpace(string(pubKey)))
+		err := sendSSHCommand(ctx,
+			cfg.WorkspaceClient,
+			cfg,
+			nil,
+			nil,
+			nil,
+			false,
+			[]string{"sh", "-c", command},
+		)
+		if err == nil {
+			clog.InfoContextf(ctx, "To enter this environment: ssh %s@localhost -p %s",
+				user,
+				strings.Split(cfg.SSHAddress, ":")[1])
+		}
 	}
 
 	// handle terminal size, resizing and sigwinch to keep
@@ -140,12 +160,6 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	signal.Notify(winch, syscall.SIGWINCH)
 	defer signal.Stop(winch)
 
-	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
-		return err
-	}
-
 	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
@@ -156,10 +170,10 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.PublicKeys(cfg.SSHKey),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
+			Ciphers: []string{"aes128-gcm@openssh.com"},
 		},
 		HostKeyCallback: hostKeyCallback,
 	}
@@ -194,6 +208,17 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 			return err
 		}
 	}
+
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
+	}
+
 	// Get terminal type from environment
 	termType := os.Getenv("TERM")
 	if termType == "" {
@@ -292,15 +317,8 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	// Trigger an initial resize to make sure sizes match
 	winch <- syscall.SIGWINCH
 
-	clog.FromContext(ctx).Debugf("running debug command: %v", args)
-
-	err = session.Shell()
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to start shell: %v", err)
-		return err
-	}
-	// Wait for the session to end
-	return session.Wait()
+	cmd := shellquote.Join(args...)
+	return session.Run(cmd)
 }
 
 // TestUsability determines if the Qemu runner can be used
@@ -332,12 +350,27 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.StartPod")
 	defer span.End()
 
-	port, err := randomPortN()
+	sshPort, err := randomPortN()
 	if err != nil {
 		return err
 	}
 
-	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(port)
+	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(sshPort)
+
+	// ensure sshWorkspacePort is random but not same as port1
+	var sshWorkspacePort int
+	for {
+		sshWorkspacePort, err = randomPortN()
+		if err != nil {
+			return err
+		}
+
+		if sshWorkspacePort != sshPort {
+			break
+		}
+	}
+
+	cfg.SSHWorkspaceAddress = "127.0.0.1:" + strconv.Itoa(sshWorkspacePort)
 
 	return createMicroVM(ctx, cfg)
 }
@@ -353,10 +386,8 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
-		"root",
-		cfg.SSHAddress,
+		cfg.SSHClient,
 		cfg,
-		nil,
 		nil,
 		nil,
 		nil,
@@ -364,22 +395,45 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
-		return err
+		clog.FromContext(ctx).Warnf("failed to gracefully shutdown vm, killing it: %v", err)
+		// in case of graceful shutdown failure, axe it with pkill
+		return syscall.Kill(cfg.QemuPID, syscall.SIGKILL)
 	}
 
 	return nil
 }
 
 // WorkspaceTar implements Runner
-func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, error) {
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
-	user := "root"
-	if cfg.RunAs != "" {
-		user = "build"
+func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
+	// in case of buildless pipelines we just nop
+	if cfg.SSHKey == nil {
+		return nil, nil
 	}
 
-	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar.gz"))
+	// For qemu, we also want to get all the detected license files for the
+	// license checking that will be done later.
+	// First, get the list of all files from the remote workspace.
+	licenseFiles, err := getWorkspaceLicenseFiles(ctx, cfg, extraFiles)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to extract list of files for licensing: %v", err)
+		return nil, err
+	}
+	// Now, append those files to the extraFiles list (there should be no
+	// duplicates)
+	extraFiles = append(extraFiles, licenseFiles...)
+	// We inject the list of extra files to a remote file in order to use it
+	// with `-T` option of tar. This avoids passing too many arguments to
+	// the command, that would lead to an "-ash: sh: Argument list too long"
+	// error otherwise.
+	if len(extraFiles) > 0 {
+		err = streamExtraFilesList(ctx, cfg, extraFiles)
+		if err != nil {
+			clog.FromContext(ctx).Errorf("failed to send list of extra files: %v", err)
+			return nil, err
+		}
+	}
+
+	outFile, err := os.Create(filepath.Join(cfg.WorkspaceDir, "melange-out.tar"))
 	if err != nil {
 		return nil, err
 	}
@@ -393,22 +447,65 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config) (io.ReadCloser, e
 	// We could just cp -a to /mnt as it is our shared workspace directory, but
 	// this will lose some file metadata like hardlinks, owners and so on.
 	// Example of package that won't work when using "cp -a" is glibc.
+	retrieveCommand := "cd /mount/home/build && find melange-out -type p -delete > /dev/null 2>&1 || true && tar cvpf - --xattrs --acls melange-out"
+	// we append also all the necessary files that we might need, for example Licenses
+	// for license checks
+	if len(extraFiles) > 0 {
+		retrieveCommand = retrieveCommand + " -T extrafiles.txt"
+	}
+
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
-		user,
-		cfg.SSHAddress,
+		cfg.WorkspaceClient,
 		cfg,
 		nil,
-		nil,
-		nil,
+		stderr,
 		outFile,
 		false,
-		[]string{"sh", "-c", "cd /home/build && tar cvpzf - --xattrs --acls --exclude='*fifo*' *"},
+		[]string{"sh", "-c", retrieveCommand},
 	)
 	if err != nil {
+		var buf bytes.Buffer
+		_, cerr := io.Copy(&buf, outFile)
+		if cerr != nil {
+			clog.FromContext(ctx).Errorf("failed to tar workspace: %v", cerr)
+			return nil, cerr
+		}
+		clog.FromContext(ctx).Errorf("failed to tar workspace: %v", buf.String())
 		return nil, err
 	}
 
 	return os.Open(outFile.Name())
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Qemu runner.
+func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.ReleaseData, error) {
+	// in case of buildless pipelines we just nop
+	if cfg.SSHKey == nil {
+		return nil, nil
+	}
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err := sendSSHCommand(ctx,
+		cfg.WorkspaceClient,
+		cfg,
+		nil,
+		nil,
+		bufWriter,
+		false,
+		[]string{"sh", "-c", "cat /etc/os-release"},
+	)
+
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to get os-release: %v", err)
+		return nil, err
+	}
+
+	// Parse the os-release contents
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type qemuOCILoader struct{}
@@ -418,42 +515,23 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 	defer span.End()
 
 	// qemu does not have the idea of container images or layers or such, just
-	// create an initramfs from the layer
-	guestInitramfs, err := os.CreateTemp("", "melange-guest-*.initramfs.cpio")
+	// create a rootfs from the layer
+	guestRootfs, err := os.CreateTemp("", "melange-guest-*.tar")
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create guest dir: %v", err)
 		return ref, err
 	}
 
-	// in case of some kernel images, we also need the /lib/modules directory to load
-	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
-	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
-		clog.FromContext(ctx).Debugf("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
-		if _, err := os.Stat(qemuModule); err == nil {
-			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
-			layer, err = injectKernelModules(ctx, layer, qemuModule)
-			if err != nil {
-				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
-				return "", err
-			}
-		}
+	// the uncompressed layer will be unpacked in a rootfs by the
+	// initramfs later
+	layerUncompress, err := layer.Uncompressed()
+	if err != nil {
+		return "", err
 	}
+	_, err = io.Copy(guestRootfs, layerUncompress)
+	guestRootfs.Close()
 
-	// We see issues with qemu launching the initrd when the size of the
-	// uncompressed CPIO exceeds ~2G and change (very suspiciously around
-	// max signed int32), so take the performance hit of compressing the initrd
-	// (a double hit b/c the kernel will decompress).
-	gzw := gzip.NewWriter(guestInitramfs)
-	if err := apko_cpio.FromLayer(layer, gzw); err != nil {
-		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
-		return ref, err
-	}
-	if err := gzw.Close(); err != nil {
-		clog.FromContext(ctx).Errorf("failed to close gzip writer: %v", err)
-		return ref, err
-	}
-
-	return guestInitramfs.Name(), nil
+	return guestRootfs.Name(), nil
 }
 
 func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
@@ -466,13 +544,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
 	if err != nil {
-		return err
-	}
-
-	// always be sure to create the VM rootfs first!
-	kernelPath, rootfsInitrdPath, err := getKernelPath(ctx, cfg)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
 		return err
 	}
 
@@ -535,32 +606,29 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
-	baseargs = append(baseargs, "-kernel", kernelPath)
-	baseargs = append(baseargs, "-initrd", rootfsInitrdPath)
-
+	// default to use 85% of available memory, if a mem limit is set, respect it.
+	mem := int64(float64(getAvailableMemoryKB()) * 0.85)
 	if cfg.Memory != "" {
 		memKb, err := convertHumanToKB(cfg.Memory)
 		if err != nil {
 			return err
 		}
 
-		if memKb > int64(getAvailableMemoryKB()) {
-			log.Warnf("qemu: requested too much memory, requested: %d, have: %d", memKb, getAvailableMemoryKB())
-			memKb = int64(getAvailableMemoryKB())
+		if mem > memKb {
+			mem = memKb
 		}
-
-		cfg.Memory = fmt.Sprintf("%dk", memKb)
-	} else {
-		// Use at most ~85% of the available host memory
-		cfg.Memory = fmt.Sprintf("%dk", int(float64(getAvailableMemoryKB())*0.85))
 	}
-	baseargs = append(baseargs, "-m", cfg.Memory)
+	baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
 
+	// default to use all CPUs, if a cpu limit is set, respect it.
+	nproc := runtime.NumCPU()
 	if cfg.CPU != "" {
-		baseargs = append(baseargs, "-smp", cfg.CPU)
-	} else {
-		baseargs = append(baseargs, "-smp", fmt.Sprintf("%d", runtime.NumCPU()))
+		cpu, err := strconv.Atoi(cfg.CPU)
+		if err == nil && nproc > cpu {
+			nproc = cpu
+		}
 	}
+	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d,dies=1,sockets=1,cores=%d,threads=1", nproc, nproc))
 
 	// use kvm on linux, Hypervisor.framework on macOS, and software for cross-arch
 	switch {
@@ -600,14 +668,14 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, serialArgs...)
 	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22")
+	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHWorkspaceAddress+"-:2223")
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset panic=-1 sshkey="+sshkey)
+	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset random.trust_cpu=on panic=-1 sshkey="+sshkey)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
@@ -615,11 +683,37 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
+	if cfg.CacheDir != "" {
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
+		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
+
+		// ensure the cachedir exists
+		if err := os.MkdirAll(cfg.CacheDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create shared cachedir: %w", err)
+		}
+
+	}
+
 	// if no size is specified, let's go for a default
 	if cfg.Disk == "" {
 		clog.FromContext(ctx).Debugf("qemu: no disk space specified, using default: %s", defaultDiskSize)
 		cfg.Disk = defaultDiskSize
 	}
+
+	kernelPath, err := getKernelPath(ctx)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("could not prepare rootfs: %v", err)
+		return err
+	}
+
+	initramFile, err := generateCpio(ctx, cfg)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("qemu: could not generate initramfs: %v", err)
+		return err
+	}
+
+	baseargs = append(baseargs, "-kernel", kernelPath)
+	baseargs = append(baseargs, "-initrd", initramFile)
 
 	// if we want a disk, just add it, the init will mount it to the build home automatically
 	diskFile, err := generateDiskFile(ctx, cfg.Disk)
@@ -628,15 +722,27 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
-	// append raw disk, init will take care of formatting it if present.
-	baseargs = append(baseargs, "-object", "iothread,id=io1")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1")
-	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=none,format=raw,aio=threads,werror=report,rerror=report,file="+diskFile)
 	// save the disk name, we will wipe it off when done
 	cfg.Disk = diskFile
 
+	// append raw disk, init will take care of formatting it if present.
+	baseargs = append(baseargs, "-object", "iothread,id=io1")
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	if runtime.GOOS == "linux" {
+		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,cache.direct=on,format=raw,aio=native,file="+diskFile)
+	}
+	if runtime.GOOS == "darwin" {
+		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,file="+diskFile)
+	}
+
+	// append the rootfs tar.gz, init will take care of populating the disk with it
+	baseargs = append(baseargs, "-object", "iothread,id=io2")
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
+
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
+	clog.FromContext(ctx).Info("qemu: starting VM")
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
 	outRead, outWrite := io.Pipe()
@@ -688,6 +794,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	started := make(chan struct{})
 
+	clog.FromContext(ctx).Info("qemu: waiting for SSH")
 	go func() {
 		// one-hour timeout with a 500ms sleep
 		retries := 7200
@@ -729,27 +836,220 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("qemu: could not get VM host key")
 	}
 
-	// default to root user but if a different user is specified
-	// we will use the embedded build:1000:1000 user
+	err = setupSSHClients(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("qemu: could not setup SSH client")
+	}
+
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
+	defer stdout.Close()
+	defer stderr.Close()
+
+	if cfg.CacheDir != "" {
+		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
+		setupMountCommand := fmt.Sprintf(
+			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p melange_cache %s && "+
+				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
+			DefaultCacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+			DefaultCacheDir,
+			DefaultCacheDir,
+			filepath.Join("/mount", DefaultCacheDir),
+		)
+		if setupMountCommand != ": " {
+			err = sendSSHCommand(ctx,
+				cfg.WorkspaceClient,
+				cfg,
+				nil,
+				stderr,
+				stdout,
+				false,
+				[]string{"sh", "-c", setupMountCommand},
+			)
+			if err != nil {
+				err = qemuCmd.Process.Kill()
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	clog.FromContext(ctx).Info("qemu: setting up local workspace")
+	err = sendSSHCommand(ctx,
+		cfg.SSHClient,
+		cfg,
+		nil,
+		stderr,
+		stdout,
+		false,
+		[]string{"sh", "-c", "find /mnt/ -mindepth 1 -maxdepth 1 -exec cp -a {} /home/build/ \\;"},
+	)
+	if err != nil {
+		err = qemuCmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+	}
+
+	cfg.QemuPID = qemuCmd.Process.Pid
+	return nil
+}
+
+func setupSSHClients(ctx context.Context, cfg *Config) error {
+	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
+		return err
+	}
+
+	// default to root user, unless a different user is specified
 	user := "root"
 	if cfg.RunAs != "" {
-		user = "build"
+		user = cfg.RunAs
 	}
-	clog.FromContext(ctx).Info("qemu: setting up local workspace")
-	return sendSSHCommand(ctx,
-		user,
-		cfg.SSHAddress,
+
+	// Create SSH client configuration
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(cfg.SSHKey),
+		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-gcm@openssh.com"},
+		},
+		HostKeyCallback: hostKeyCallback,
+	}
+
+	// Connect to the SSH server
+	cfg.SSHClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+
+	// Connect to the SSH server
+	cfg.WorkspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+// getWorkspaceLicenseFiles returns a list of possible license files from the
+// workspace
+func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []string) ([]string, error) {
+	// let's create a string writer so that the SSH command can write
+	// the list of files to it
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err := sendSSHCommand(ctx,
+		cfg.WorkspaceClient,
 		cfg,
 		nil,
 		nil,
-		nil,
-		nil,
+		bufWriter,
 		false,
-		[]string{"sh", "-c", "cp -a /mnt/. /home/build"},
+		[]string{"sh", "-c", "cd /mount/home/build && find . -type f -links 1 -print"},
 	)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to extract list of files for licensing: %v", buf.String())
+		return nil, err
+	}
+
+	// Turn extraFiles into a map for faster lookup
+	extraFilesMap := make(map[string]struct{})
+	for _, file := range extraFiles {
+		extraFilesMap[filepath.Clean(file)] = struct{}{}
+	}
+
+	// Now, we can read the list of files from the string writer and add those
+	// license files that are not in the extraFiles list
+	licenseFiles := []string{}
+	foundFiles := strings.SplitSeq(buf.String(), "\n")
+	for f := range foundFiles {
+		if _, ok := extraFilesMap[filepath.Clean(f)]; ok {
+			continue
+		}
+		if strings.Contains(f, "melange-out") {
+			continue
+		}
+		if is, _ := license.IsLicenseFile(f); is {
+			licenseFiles = append(licenseFiles, f)
+		}
+	}
+
+	return licenseFiles, nil
 }
 
-func getKernelPath(ctx context.Context, cfg *Config) (string, string, error) {
+// send to the builder the list of extra files, to avoid sending a single long
+// command (avoiding "-ash: sh: Argument list too long") we will use stdin to
+// stream it. this also has the upside of not relying on a single-shot connection
+// to pass potentially lot of data.
+// split in chunks (100 stirngs at time) in order to avoid flackiness in the
+// connection.
+func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string) error {
+	writtenStrings := 0
+	chunkSize := 100
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Warn), logwriter.New(log.Error)
+	for {
+		session, err := cfg.SSHClient.NewSession()
+		if err != nil {
+			clog.FromContext(ctx).Errorf("Failed to create session: %s", err)
+			return err
+		}
+		defer session.Close()
+
+		session.Stderr = stderr
+		session.Stdout = stdout
+		stdin, err := session.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stdin pipe: %v", err)
+		}
+		cmd := "cat >> /home/build/extrafiles.txt"
+		if err := session.Start(cmd); err != nil {
+			return fmt.Errorf("failed to start command: %v", err)
+		}
+
+		// Write 100 strings there (or remainder)
+		endIndex := writtenStrings + chunkSize
+		endIndex = min(endIndex, len(extraFiles))
+		chunk := extraFiles[writtenStrings:endIndex]
+
+		clog.FromContext(ctx).Debugf("sent %d of %d",
+			writtenStrings, len(extraFiles))
+		if _, err := io.Copy(stdin, strings.NewReader(
+			strings.Join(chunk, "\n")+"\n"),
+		); err != nil {
+			return fmt.Errorf("failed to write content: %v", err)
+		}
+
+		if err := stdin.Close(); err != nil {
+			return fmt.Errorf("failed to close stdin: %v", err)
+		}
+
+		if err := session.Wait(); err != nil {
+			return fmt.Errorf("command failed: %v", err)
+		}
+
+		writtenStrings = endIndex
+
+		if writtenStrings >= len(extraFiles) {
+			break
+		}
+	}
+
+	clog.FromContext(ctx).Debugf("sent %d of %d",
+		writtenStrings, len(extraFiles))
+
+	return nil
+}
+
+func getKernelPath(ctx context.Context) (string, error) {
 	clog.FromContext(ctx).Debug("qemu: setting up kernel for vm")
 	kernel := "/boot/vmlinuz"
 	if kernelVar, ok := os.LookupEnv("QEMU_KERNEL_IMAGE"); ok {
@@ -759,86 +1059,10 @@ func getKernelPath(ctx context.Context, cfg *Config) (string, string, error) {
 			kernel = kernelVar
 		}
 	} else if _, err := os.Stat(kernel); err != nil {
-		return "", "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE and QEMU_KERNEL_MODULES if needed")
+		return "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE")
 	}
 
-	return kernel, cfg.ImgRef, nil
-}
-
-// in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
-// we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
-func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
-	clog.FromContext(ctx).Info("qemu: appending modules to initramfs")
-
-	// get tar layer, we will need to inject new files into it
-	uncompressed, err := rootfs.Uncompressed()
-	if err != nil {
-		return nil, err
-	}
-	defer uncompressed.Close()
-
-	// copy old tar layer into new tar
-	buf := new(bytes.Buffer)
-	tarWriter := tar.NewWriter(buf)
-	tartReader := tar.NewReader(uncompressed)
-
-	for {
-		header, err := tartReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return nil, err
-		}
-		if _, err := io.Copy(tarWriter, tartReader); err != nil {
-			return nil, err
-		}
-	}
-
-	// Walk through the input directory and add files to the tar archive
-	err = filepath.Walk(modulesPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", path, err)
-		}
-
-		header, err := tar.FileInfoHeader(info, path)
-		if err != nil {
-			return fmt.Errorf("failed to create tar header for %s: %w", path, err)
-		}
-
-		header.Name = "/lib/modules/" + filepath.ToSlash(path[len(modulesPath):])
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return fmt.Errorf("failed to write tar header for %s: %w", path, err)
-		}
-
-		if _, err := tarWriter.Write(data); err != nil {
-			return fmt.Errorf("failed to write file %s to tar: %w", path, err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	opener := func() (io.ReadCloser, error) {
-		// Return a ReadCloser from the buffer
-		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
-	}
-
-	// Create a layer from the Opener
-	return tarball.LayerFromOpener(opener)
+	return kernel, nil
 }
 
 func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
@@ -878,14 +1102,14 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 // this avoids the ssh client trying to connect on a booting server.
 func checkSSHServer(address string) error {
 	// Establish a connection to the address
-	conn, err := net.DialTimeout("tcp", address, time.Second)
+	conn, err := net.DialTimeout("tcp", address, 50*time.Millisecond)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
 	defer conn.Close()
 
 	// Set a deadline for the connection
-	err = conn.SetDeadline(time.Now().Add(time.Second * 15))
+	err = conn.SetDeadline(time.Now().Add(time.Second))
 	if err != nil {
 		return err
 	}
@@ -908,20 +1132,20 @@ func checkSSHServer(address string) error {
 func getHostKey(ctx context.Context, cfg *Config) error {
 	var hostKey ssh.PublicKey
 
-	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
-		return err
+	// default to root user, unless a different user is specified
+	user := "root"
+	if cfg.RunAs != "" {
+		user = cfg.RunAs
 	}
 
 	// Create SSH client configuration
 	config := &ssh.ClientConfig{
-		User: "build",
+		User: user,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.PublicKeys(cfg.SSHKey),
 		},
 		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
+			Ciphers: []string{"aes128-gcm@openssh.com"},
 		},
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			hostKey = key
@@ -938,7 +1162,10 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 	defer client.Close()
 
 	// Write the host key to the known_hosts file
-	hostKeyLine := fmt.Sprintf("%s %s %s\n", cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()))
+	hostKeyLine := fmt.Sprintf("%s %s %s\n%s %s %s\n",
+		cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
+		cfg.SSHWorkspaceAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
+	)
 	clog.FromContext(ctx).Debugf("host-key: %s", hostKeyLine)
 
 	knownHost, err := os.CreateTemp("", "known_hosts_*")
@@ -958,43 +1185,11 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
-func sendSSHCommand(ctx context.Context, user, address string,
+func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	cfg *Config, extraVars map[string]string,
-	stdin io.Reader, stderr, stdout io.Writer,
+	stderr, stdout io.Writer,
 	tty bool, command []string,
 ) error {
-	signer, err := ssh.ParsePrivateKey(cfg.SSHKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Unable to parse private key: %v", err)
-		return err
-	}
-
-	hostKeyCallback, err := knownhosts.New(cfg.SSHHostKey)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("could not create hostkeycallback function: %v", err)
-		return err
-	}
-
-	// Create SSH client configuration
-	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		Config: ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes256-gcm@openssh.com"},
-		},
-		HostKeyCallback: hostKeyCallback,
-	}
-
-	// Connect to the SSH server
-	client, err := ssh.Dial("tcp", address, config)
-	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
-		return err
-	}
-	defer client.Close()
-
 	// Create a session
 	session, err := client.NewSession()
 	if err != nil {
@@ -1017,7 +1212,16 @@ func sendSSHCommand(ctx context.Context, user, address string,
 		}
 	}
 
-	session.Stdin = stdin
+	err = session.Setenv("CAP_ADD", strings.Join(cfg.Capabilities.Add, ","))
+	if err != nil {
+		return err
+	}
+
+	err = session.Setenv("CAP_DROP", strings.Join(cfg.Capabilities.Drop, ","))
+	if err != nil {
+		return err
+	}
+
 	session.Stderr = stderr
 	session.Stdout = stdout
 
@@ -1040,11 +1244,54 @@ func sendSSHCommand(ctx context.Context, user, address string,
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command: %v", err)
+		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
 		return err
 	}
 
 	return nil
+}
+
+func getUserSSHKey() ([]byte, error) {
+	socket := os.Getenv("SSH_AUTH_SOCK")
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		log.Warnf("Failed to open SSH_AUTH_SOCK: %v, falling back to key search", err)
+		currentUser, err := user.Current()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get current user: %w", err)
+		}
+		sshDir := filepath.Join(currentUser.HomeDir, ".ssh")
+		knownPublicKeyFiles := []string{
+			"id_ecdsa.pub",
+			"id_ed25519.pub",
+		}
+
+		for _, keyFile := range knownPublicKeyFiles {
+			path := filepath.Join(sshDir, keyFile)
+			content, err := os.ReadFile(path)
+			if err == nil {
+				return content, nil
+			}
+		}
+
+		return nil, nil
+	}
+
+	agentClient := agent.NewClient(conn)
+
+	signer, err := agentClient.Signers()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range signer {
+		res := v.PublicKey()
+		if res != nil {
+			return ssh.MarshalAuthorizedKey(res), nil
+		}
+	}
+
+	return nil, nil
 }
 
 func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
@@ -1055,21 +1302,12 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 		return nil, err
 	}
 
-	// Get ASN.1 DER format
-	privDER, err := x509.MarshalECPrivateKey(privateKey)
+	// Private key in PEM format
+	signer, err := ssh.NewSignerFromKey(privateKey)
 	if err != nil {
 		return nil, err
 	}
-
-	// pem.Block
-	privBlock := pem.Block{
-		Type:    "EC PRIVATE KEY",
-		Headers: nil,
-		Bytes:   privDER,
-	}
-
-	// Private key in PEM format
-	cfg.SSHKey = pem.EncodeToMemory(&privBlock)
+	cfg.SSHKey = signer
 
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
@@ -1152,28 +1390,52 @@ func getAvailableMemoryKB() int {
 
 		for s.Scan() {
 			var n int
-			if nItems, _ := fmt.Sscanf(s.Text(), "MemTotal: %d kB", &n); nItems == 1 {
+			// Try to get MemAvailable first (available on newer kernels)
+			if nItems, _ := fmt.Sscanf(s.Text(), "MemAvailable: %d kB", &n); nItems == 1 {
 				return n
 			}
 		}
-	case "darwin":
-		cmd := exec.Command("sysctl", "hw.memsize")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return mem
+
+		// If MemAvailable is not found, fall back to MemFree + Buffers + Cached
+		// Reset the file position
+		if _, err := f.Seek(0, 0); err != nil {
+			return 0
 		}
-		outputStr := strings.TrimSpace(string(output))
-		parts := strings.Split(outputStr, ": ")
-		if len(parts) != 2 {
+		s = bufio.NewScanner(f)
+
+		var memFree, buffers, cached int
+		for s.Scan() {
+			if nItems, _ := fmt.Sscanf(s.Text(), "MemFree: %d kB", &memFree); nItems == 1 {
+				continue
+			}
+			if nItems, _ := fmt.Sscanf(s.Text(), "Buffers: %d kB", &buffers); nItems == 1 {
+				continue
+			}
+			if nItems, _ := fmt.Sscanf(s.Text(), "Cached: %d kB", &cached); nItems == 1 {
+				continue
+			}
+		}
+
+		if memFree > 0 {
+			return memFree + buffers + cached
+		}
+	case "darwin":
+		var memSize int64
+
+		cmd := exec.Command("sysctl", "-n", "hw.memsize_available")
+		sysctlOut, err := cmd.Output()
+		if err != nil {
 			return mem
 		}
 
-		memsize, err := strconv.ParseInt(parts[1], 10, 64)
+		sysctlOutStr := strings.TrimSpace(string(sysctlOut))
+		memSize, err = strconv.ParseInt(sysctlOutStr, 10, 64)
 		if err != nil {
 			return mem
 		}
-		// hw.memsize returns the memory size in bytes
-		return int(memsize / 1024)
+
+		// use at most 50% of total ram, in kb
+		return int(memSize) / 2 / 1024
 	}
 
 	return mem
@@ -1187,4 +1449,175 @@ func randomPortN() (int, error) {
 	defer l.Close()
 
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func generateCpio(ctx context.Context, cfg *Config) (string, error) {
+	/*
+	 * we only build once, useful for local development, we
+	 * cache it.
+	 * if present, we nop and return, else we build it.
+	 */
+	cacheDir := filepath.Join(
+		"kernel",
+		cfg.Arch.ToAPK())
+
+	cacheDir = filepath.Join(cacheDir, "melange-cpio")
+
+	initramfs := filepath.Join(
+		cacheDir,
+		"melange-guest.initramfs.cpio")
+	initramfsInfo, err := os.Stat(initramfs)
+
+	// if file is presend and less than 24h old, then we just reuse it
+	if err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour {
+		return initramfs, nil
+	}
+
+	clog.FromContext(ctx).Info("qemu: generating initramfs")
+
+	err = os.MkdirAll(cacheDir, os.ModePerm)
+	if err != nil {
+		return "", fmt.Errorf("unable to dest directory: %w", err)
+	}
+
+	spec := apko_types.ImageConfiguration{
+		Contents: apko_types.ImageContents{
+			BuildRepositories: []string{
+				"https://apk.cgr.dev/chainguard",
+			},
+			Packages: []string{
+				"microvm-init",
+			},
+		},
+	}
+	opts := []apko_build.Option{
+		apko_build.WithImageConfiguration(spec),
+		apko_build.WithArch(cfg.Arch),
+	}
+
+	tmpDir, err := os.MkdirTemp("", "melange-guest-*.initramfs")
+	if err != nil {
+		return "", fmt.Errorf("unable to create build context: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	bc, err := apko_build.New(ctx, apkofs.DirFS(ctx, tmpDir, apkofs.WithCreateDir()), opts...)
+	if err != nil {
+		return "", fmt.Errorf("unable to create build context: %w", err)
+	}
+
+	bc.Summarize(ctx)
+	if err := bc.BuildImage(ctx); err != nil {
+		return "", fmt.Errorf("unable to generate image: %w", err)
+	}
+	layerTarGZ, layer, err := bc.ImageLayoutToLayer(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(layerTarGZ)
+
+	log.Debugf("using %s for image layer", layerTarGZ)
+
+	// in case of some kernel images, we also need the /lib/modules directory to load
+	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
+	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
+		clog.FromContext(ctx).Debugf("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
+		if _, err := os.Stat(qemuModule); err == nil {
+			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
+			layer, err = injectKernelModules(ctx, layer, qemuModule)
+			if err != nil {
+				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
+				return "", err
+			}
+		}
+	}
+
+	guestInitramfs, err := os.Create(initramfs)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
+		return "", err
+	}
+
+	if err := apko_cpio.FromLayer(layer, guestInitramfs); err != nil {
+		clog.FromContext(ctx).Errorf("failed to convert cpio initramfs: %v", err)
+		return "", err
+	}
+
+	return guestInitramfs.Name(), nil
+}
+
+// in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
+// we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
+func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
+	clog.FromContext(ctx).Info("qemu: appending modules to initramfs")
+
+	// get tar layer, we will need to inject new files into it
+	uncompressed, err := rootfs.Uncompressed()
+	if err != nil {
+		return nil, err
+	}
+	defer uncompressed.Close()
+
+	// copy old tar layer into new tar
+	buf := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buf)
+	tartReader := tar.NewReader(uncompressed)
+
+	for {
+		header, err := tartReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(tarWriter, tartReader); err != nil {
+			return nil, err
+		}
+	}
+
+	// Walk through the input directory and add files to the tar archive
+	err = filepath.Walk(modulesPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		header, err := tar.FileInfoHeader(info, path)
+		if err != nil {
+			return fmt.Errorf("failed to create tar header for %s: %w", path, err)
+		}
+
+		header.Name = "/lib/modules/" + filepath.ToSlash(path[len(modulesPath):])
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return fmt.Errorf("failed to write tar header for %s: %w", path, err)
+		}
+
+		if _, err := tarWriter.Write(data); err != nil {
+			return fmt.Errorf("failed to write file %s to tar: %w", path, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	opener := func() (io.ReadCloser, error) {
+		// Return a ReadCloser from the buffer
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	}
+
+	// Create a layer from the Opener
+	return tarball.LayerFromOpener(opener)
 }

@@ -194,6 +194,11 @@ var linterMap = map[string]linter{
 		Explain:         "Move binary to /usr/bin",
 		defaultBehavior: Require,
 	},
+	"cudaruntimelib": {
+		LinterFunc:      allPaths(cudaDriverLibLinter),
+		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. Installing them in an image could override the host libraries and break GPU support. If this library is needed for build-time linking or ldd-check tests, please use a package containing a stub library instead. For libcuda.so, use nvidia-cuda-cudart-$cuda_version. For libnvidia-ml.so, use nvidia-cuda-nvml-dev-$cuda_version.",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -215,6 +220,7 @@ func optLinter(_ context.Context, _ *config.Configuration, _, path string) error
 
 	return nil
 }
+
 func objectLinter(_ context.Context, _ *config.Configuration, _, path string) error {
 	if filepath.Ext(path) == ".o" {
 		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
@@ -324,8 +330,8 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		}
 
 		mode := info.Mode()
-		if mode&0002 != 0 {
-			if mode&0111 != 0 {
+		if mode&0o002 != 0 {
+			if mode&0o111 != 0 {
 				return fmt.Errorf("world-writeable executable file found in package (security risk): %s", path)
 			}
 			return fmt.Errorf("world-writeable file found in package: %s", path)
@@ -367,7 +373,7 @@ func strippedLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 
 		ext := filepath.Ext(path)
 		mode := info.Mode()
-		if mode&0111 == 0 && !isObjectFileRegex.MatchString(ext) {
+		if mode&0o111 == 0 && !isObjectFileRegex.MatchString(ext) {
 			// Not an executable or library
 			return nil
 		}
@@ -678,7 +684,7 @@ func LintBuild(ctx context.Context, cfg *config.Configuration, packageName strin
 	}
 
 	log := clog.FromContext(ctx)
-	fsys := apkofs.DirFS(path)
+	fsys := apkofs.DirFS(ctx, path)
 
 	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
 		log.Warn(err.Error())
@@ -779,39 +785,72 @@ func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
 }
 
 func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	paths := []string{}
+	dirs := []string{"sbin", "bin", "usr/sbin", "lib", "lib64"}
+
+	pathInDir := func(path string, dirs ...string) bool {
+		for _, d := range dirs {
+			if path == d || strings.HasPrefix(path, d+"/") {
+				return true
+			}
+		}
+		return false
+	}
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if err != nil {
 			return err
 		}
+
 		if isIgnoredPath(path) {
-			return nil
+			return filepath.SkipDir
 		}
 
-		// We don't really care if a package is re-adding a symlink and this catches wolfi-baselayout
-		// without special casing it with the package name.
-		if path == "sbin" || path == "bin" || path == "usr/sbin" {
+		// If it's not a directory of interest just skip the whole tree
+		if !(path == "." || path == "usr" || pathInDir(path, dirs...)) {
+			return filepath.SkipDir
+		}
+
+		if slices.Contains(dirs, path) {
 			if d.IsDir() || d.Type().IsRegular() {
-				return fmt.Errorf("package contains non-symlink file at /sbin, /bin or /usr/sbin in violation of usrmerge")
-			} else {
+				paths = append(paths, path)
 				return nil
 			}
 		}
 
-		if strings.HasPrefix(path, "sbin") {
-			return fmt.Errorf("package writes to /sbin in violation of usrmerge: %s", path)
-		}
-
-		if strings.HasPrefix(path, "bin") {
-			return fmt.Errorf("package writes to /bin in violation of usrmerge: %s", path)
-		}
-
-		if strings.HasPrefix(path, "usr/sbin") {
-			return fmt.Errorf("package writes to /usr/sbin in violation of usrmerge: %s", path)
+		if pathInDir(path, dirs...) {
+			paths = append(paths, path)
 		}
 
 		return nil
 	})
+	if err != nil {
+		fmt.Print("Returned error?")
+		return err
+	}
+
+	if len(paths) > 0 {
+		err_string := "Package contains paths in violation of usrmerge:"
+		for _, path := range paths {
+			err_string = strings.Join([]string{err_string, path}, "\n")
+		}
+		err_string += "\n"
+		return errors.New(err_string)
+
+	}
+
+	return nil
+}
+
+var isCudaDriverLibRegex = regexp.MustCompile(`^usr/lib/lib(cuda|nvidia-ml)\.so(\.[0-9]+)*$`)
+
+func cudaDriverLibLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+	if !isCudaDriverLibRegex.MatchString(path) {
+		return nil
+	}
+
+	return fmt.Errorf("CUDA driver-specific library found: %s", path)
 }

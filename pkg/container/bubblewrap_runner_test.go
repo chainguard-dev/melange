@@ -35,7 +35,7 @@ func TestBubblewrapCmd(t *testing.T) {
 		},
 		{
 			name:         "With config RunAs",
-			config:       &Config{RunAs: "65535"},
+			config:       &Config{RunAsUID: "65535"},
 			expectedArgs: fmt.Sprintf("--unshare-user --uid %s --gid %s", "65535", "65535"),
 		},
 	}

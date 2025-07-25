@@ -207,6 +207,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	// Pipelines can have their own environment variables, which override the global ones.
 	envOverride := map[string]string{
+		// NOTE: This does not currently override PATH in the qemu runner, that's set at openssh build time
 		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
 	}
 

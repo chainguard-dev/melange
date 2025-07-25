@@ -2,12 +2,23 @@
 # Pipeline Reference
 
 
+- [split/bin](#splitbin)
 - [split/debug](#splitdebug)
 - [split/dev](#splitdev)
 - [split/infodir](#splitinfodir)
 - [split/locales](#splitlocales)
 - [split/manpages](#splitmanpages)
 - [split/static](#splitstatic)
+
+## split/bin
+
+Split executable files
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| package | false | The package to split executable files from  |  |
 
 ## split/debug
 

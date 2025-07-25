@@ -104,9 +104,33 @@ func isInDir(path string, dirs []string) bool {
 // These are typically NVIDIA libraries that are installed by the host driver.
 func isHostProvidedLibrary(lib string) bool {
 	hostLibs := []string{
+		"libEGL_nvidia.so.1",
+		"libGLESv1_CM_nvidia.so.1",
+		"libGLESv2_nvidia.so.1",
+		"libGLX_nvidia.so.1",
 		"libcuda.so.1",
+		"libcudadebugger.so.1",
 		"libnvcuvid.so.1",
+		"libnvidia-allocator.so.1",
+		"libnvidia-cfg.so.1",
+		"libnvidia-eglcore.so.1",
 		"libnvidia-encode.so.1",
+		"libnvidia-fbc.so.1",
+		"libnvidia-glcore.so.1",
+		"libnvidia-glsi.so.1",
+		"libnvidia-glvkspirv.so.1",
+		"libnvidia-gpucomp.so.1",
+		"libnvidia-ml.so.1",
+		"libnvidia-ngx.so.1",
+		"libnvidia-nvvm.so.1",
+		"libnvidia-opencl.so.1",
+		"libnvidia-opticalflow.so.1",
+		"libnvidia-pkcs11-openssl3.so.1",
+		"libnvidia-pkcs11.so.1",
+		"libnvidia-ptxjitcompiler.so.1",
+		"libnvidia-rtcore.so.1",
+		"libnvidia-tls.so.1",
+		"libnvoptix.so.1",
 	}
 	
 	for _, hostLib := range hostLibs {

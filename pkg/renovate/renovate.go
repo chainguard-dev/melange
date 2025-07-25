@@ -121,7 +121,7 @@ func (rc *RenovationContext) LoadConfig(ctx context.Context) error {
 // WriteConfig writes the modified configuration data back to the config
 // file.
 func (rc *RenovationContext) WriteConfig() error {
-	configFile, err := os.Create(rc.Context.ConfigFile)
+	configFile, err := os.OpenFile(rc.Context.ConfigFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}

@@ -81,7 +81,7 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 			}
 
 			destFilePath := filepath.Join(destDir, ".melange.yaml")
-			destFile, err := os.Create(destFilePath)
+			destFile, err := os.OpenFile(destFilePath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 			if err != nil {
 				return fmt.Errorf("failed to create destination file: %w", err)
 			}

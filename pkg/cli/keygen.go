@@ -87,7 +87,7 @@ func KeygenCmd(ctx context.Context, keyName string, bitSize int) error {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: privateKeyData,
 	}
-	privatePem, err := os.Create(kc.KeyName)
+	privatePem, err := os.OpenFile(kc.KeyName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("unable to open private key for writing: %w", err)
 	}
@@ -107,7 +107,7 @@ func KeygenCmd(ctx context.Context, keyName string, bitSize int) error {
 		Type:  "PUBLIC KEY",
 		Bytes: publicKeyData,
 	}
-	publicPem, err := os.Create(fmt.Sprintf("%s.pub", kc.KeyName))
+	publicPem, err := os.OpenFile(fmt.Sprintf("%s.pub", kc.KeyName), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("unable to open public key for writing: %w", err)
 	}

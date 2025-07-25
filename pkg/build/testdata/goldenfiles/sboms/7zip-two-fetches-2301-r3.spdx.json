@@ -41,7 +41,7 @@
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:apk/wolfi/7zip-two-fetches@2301-r3?arch=x86_64",
+          "referenceLocator": "pkg:apk/wolfi/7zip-two-fetches@2301-r3?arch=x86_64\u0026distro=wolfi",
           "referenceType": "purl"
         }
       ]

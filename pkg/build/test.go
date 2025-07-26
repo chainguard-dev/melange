@@ -30,15 +30,15 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/tarfs"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
 	"sigs.k8s.io/release-utils/version"
 
+	"chainguard.dev/melange/internal/container"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/container"
 )
 
 type Test struct {

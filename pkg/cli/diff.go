@@ -12,23 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// Package cli provides compatibility aliases for functions that have been moved.
+// Deprecated: The Diff function has been moved to pkg/util.
+package cli
 
 import (
-	"context"
-	"os"
-	"os/signal"
-
-	"chainguard.dev/melange/internal/cli"
-	"github.com/chainguard-dev/clog"
+	"chainguard.dev/melange/pkg/util"
 )
 
-func main() {
-	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer done()
-
-	if err := cli.New().ExecuteContext(ctx); err != nil {
-		clog.Error(err.Error())
-		os.Exit(1)
-	}
+// Diff is a compatibility wrapper for the function that has been moved to pkg/util.
+// Deprecated: Use util.Diff instead. This function will be removed in a future version.
+func Diff(oldName string, old []byte, newName string, new []byte, comments bool) []byte {
+	return util.Diff(oldName, old, newName, new, comments)
 }

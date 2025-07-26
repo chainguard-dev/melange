@@ -37,10 +37,10 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/pgzip"
 
+	"chainguard.dev/melange/internal/sca"
+	"chainguard.dev/melange/internal/sign"
+	"chainguard.dev/melange/internal/tarball"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/sca"
-	"chainguard.dev/melange/pkg/sign"
-	"chainguard.dev/melange/pkg/tarball"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/psanford/memfs"
@@ -504,9 +504,7 @@ func (pc *PackageBuild) EmitPackage(ctx context.Context) error {
 	// provide the tar writer etc/passwd and etc/group of guest filesystem
 	userinfofs := pc.Build.GuestFS
 
-	hdl := &SCABuildInterface{
-		PackageBuild: pc,
-	}
+	hdl := sca.NewBuildInterface(&packageBuildAdapter{pb: pc})
 
 	// generate so:/cmd: virtuals for the filesystem
 	if err := pc.GenerateDependencies(ctx, hdl); err != nil {

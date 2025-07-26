@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/melange/internal/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/stretchr/testify/require"

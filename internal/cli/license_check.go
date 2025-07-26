@@ -25,8 +25,8 @@ import (
 	"chainguard.dev/melange/internal/license"
 	"chainguard.dev/melange/internal/renovate"
 	"chainguard.dev/melange/internal/renovate/copyright"
+	"chainguard.dev/melange/internal/source"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/source"
 )
 
 func licenseCheck() *cobra.Command {

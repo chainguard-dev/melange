@@ -17,7 +17,6 @@ import (
 	"time"
 
 	rlhttp "chainguard.dev/melange/internal/http"
-	"chainguard.dev/melange/pkg/manifest"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 
@@ -47,10 +46,15 @@ type NavigationMap struct {
 type Dependency struct {
 	Name string
 }
+type generatedMelangeConfig struct {
+	config.Configuration `yaml:",inline"`
+	GeneratedFromComment string `yaml:"-"`
+}
+
 type ApkConvertor struct {
 	*apkbuild.Apkbuild
-	ApkBuildRaw                      []byte
-	*manifest.GeneratedMelangeConfig `yaml:"-"`
+	ApkBuildRaw             []byte
+	*generatedMelangeConfig `yaml:"-"`
 }
 
 // New initialise including a map of existing wolfios packages
@@ -143,11 +147,11 @@ func (c Context) getApkBuildFile(ctx context.Context, apkbuildURL, packageName s
 
 	c.ApkConvertors[packageName] = ApkConvertor{
 		Apkbuild: &parsedApkBuild,
-		GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{
+		generatedMelangeConfig: &generatedMelangeConfig{
 			GeneratedFromComment: apkbuildURL,
 		},
 	}
-	c.ApkConvertors[packageName].GeneratedMelangeConfig.Package = config.Package{
+	c.ApkConvertors[packageName].generatedMelangeConfig.Package = config.Package{
 		Epoch: 0,
 	}
 	c.OrderedKeys = append(c.OrderedKeys, packageName)
@@ -265,7 +269,7 @@ func (c *Context) setupUpdateBlock(packageURL string, packageVersion string, con
 	// Check if the package was fetched from GitHub
 	if identifier, isGitHub := getGitHubIdentifierFromURL(packageURL); isGitHub {
 		// Enable GitHub monitoring
-		converter.GeneratedMelangeConfig.Update = config.Update{
+		converter.generatedMelangeConfig.Update = config.Update{
 			Enabled: true,
 			GitHubMonitor: &config.GitHubMonitor{
 				Identifier: identifier, // Set the owner/repo identifier
@@ -276,7 +280,7 @@ func (c *Context) setupUpdateBlock(packageURL string, packageVersion string, con
 		}
 	} else {
 		// Fallback to release-monitoring.org if it's not a GitHub package
-		converter.GeneratedMelangeConfig.Update = config.Update{
+		converter.generatedMelangeConfig.Update = config.Update{
 			Enabled: true,
 			ReleaseMonitor: &config.ReleaseMonitor{
 				Identifier: 12345, // Example ID, replace this with actual logic to get the ID
@@ -357,7 +361,7 @@ func (c *Context) buildFetchStep(ctx context.Context, converter ApkConvertor) er
 			}
 
 			// Add the pipeline to the generated configuration
-			converter.GeneratedMelangeConfig.Pipeline = append(converter.GeneratedMelangeConfig.Pipeline, pipeline)
+			converter.generatedMelangeConfig.Pipeline = append(converter.generatedMelangeConfig.Pipeline, pipeline)
 
 			// Set up the update block based on the package source (GitHub or release-monitoring)
 			c.setupUpdateBlock(apkBuild.Url, apkBuild.Pkgver, &converter)
@@ -449,7 +453,7 @@ func (c *Context) buildFetchStep(ctx context.Context, converter ApkConvertor) er
 				"expected-sha256": expectedSha,
 			},
 		}
-		converter.GeneratedMelangeConfig.Pipeline = append(converter.GeneratedMelangeConfig.Pipeline, pipeline)
+		converter.generatedMelangeConfig.Pipeline = append(converter.generatedMelangeConfig.Pipeline, pipeline)
 
 	}
 
@@ -458,10 +462,10 @@ func (c *Context) buildFetchStep(ctx context.Context, converter ApkConvertor) er
 
 // maps APKBUILD values to mconvert
 func (c ApkConvertor) mapconvert() {
-	c.GeneratedMelangeConfig.Package.Name = c.Apkbuild.Pkgname
-	c.GeneratedMelangeConfig.Package.Description = c.Apkbuild.Pkgdesc
-	c.GeneratedMelangeConfig.Package.Version = c.Apkbuild.Pkgver
-	c.GeneratedMelangeConfig.Package.Epoch = 0
+	c.generatedMelangeConfig.Package.Name = c.Apkbuild.Pkgname
+	c.generatedMelangeConfig.Package.Description = c.Apkbuild.Pkgdesc
+	c.generatedMelangeConfig.Package.Version = c.Apkbuild.Pkgver
+	c.generatedMelangeConfig.Package.Epoch = 0
 
 	// Add the version-check test block
 	testPipeline := config.Pipeline{
@@ -477,12 +481,12 @@ func (c ApkConvertor) mapconvert() {
 	}
 
 	// Add the test block to the configuration
-	c.GeneratedMelangeConfig.Test = testBlock
+	c.generatedMelangeConfig.Test = testBlock
 
 	copyright := config.Copyright{
 		License: c.Apkbuild.License,
 	}
-	c.GeneratedMelangeConfig.Package.Copyright = append(c.GeneratedMelangeConfig.Package.Copyright, copyright)
+	c.generatedMelangeConfig.Package.Copyright = append(c.generatedMelangeConfig.Package.Copyright, copyright)
 
 	// triggers
 	if c.Apkbuild.Triggers != nil {
@@ -492,7 +496,7 @@ func (c ApkConvertor) mapconvert() {
 				Script: "FIXME",
 			},
 		}
-		c.GeneratedMelangeConfig.Package.Scriptlets = &scriptlets
+		c.generatedMelangeConfig.Package.Scriptlets = &scriptlets
 	}
 
 	// if c.Apkbuild.Funcs["build"] != nil {
@@ -513,10 +517,10 @@ func (c ApkConvertor) mapconvert() {
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "meson/install"})
 	//
 	// case BuilderTypeMake:
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/configure"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make-install"})
-	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "strip"})
+	c.generatedMelangeConfig.Pipeline = append(c.generatedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/configure"})
+	c.generatedMelangeConfig.Pipeline = append(c.generatedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make"})
+	c.generatedMelangeConfig.Pipeline = append(c.generatedMelangeConfig.Pipeline, config.Pipeline{Uses: "autoconf/make-install"})
+	c.generatedMelangeConfig.Pipeline = append(c.generatedMelangeConfig.Pipeline, config.Pipeline{Uses: "strip"})
 
 	//default:
 	//	c.GeneratedMelangeConfig.Pipeline = append(c.GeneratedMelangeConfig.Pipeline, config.Pipeline{Uses: "# FIXME"})
@@ -565,7 +569,7 @@ func (c ApkConvertor) mapconvert() {
 			subpackage.Pipeline = []config.Pipeline{{Runs: "FIXME"}}
 		}
 
-		c.GeneratedMelangeConfig.Subpackages = append(c.GeneratedMelangeConfig.Subpackages, subpackage)
+		c.generatedMelangeConfig.Subpackages = append(c.generatedMelangeConfig.Subpackages, subpackage)
 	}
 }
 
@@ -610,7 +614,7 @@ func (c ApkConvertor) buildEnvironment(additionalRepositories, additionalKeyring
 			break
 		}
 	}
-	c.GeneratedMelangeConfig.Environment = env
+	c.generatedMelangeConfig.Environment = env
 }
 
 func contains(s []string, str string) bool {
@@ -641,13 +645,13 @@ func (c ApkConvertor) write(ctx context.Context, orderNumber, outdir string) err
 	defer f.Close()
 
 	// Write the initial comment to the YAML file
-	if _, err := f.WriteString(fmt.Sprintf("# Generated from %s\n", c.GeneratedMelangeConfig.GeneratedFromComment)); err != nil {
+	if _, err := f.WriteString(fmt.Sprintf("# Generated from %s\n", c.generatedMelangeConfig.GeneratedFromComment)); err != nil {
 		return fmt.Errorf("writing to file %s: %w", manifestFile, err)
 	}
 
 	// Marshal the configuration into a YAML node for formatting
 	var n yaml.Node
-	if err := n.Encode(c.GeneratedMelangeConfig); err != nil {
+	if err := n.Encode(c.generatedMelangeConfig); err != nil {
 		return fmt.Errorf("encoding YAML to node: %w", err)
 	}
 

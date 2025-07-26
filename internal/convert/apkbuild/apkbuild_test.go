@@ -12,7 +12,6 @@ import (
 	"time"
 
 	rlhttp "chainguard.dev/melange/internal/http"
-	"chainguard.dev/melange/pkg/manifest"
 
 	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog/slogtest"
@@ -207,7 +206,7 @@ func TestContext_getSourceSha(t *testing.T) {
 					},
 				},
 			},
-			GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{},
+			generatedMelangeConfig: &generatedMelangeConfig{},
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -218,7 +217,7 @@ func TestContext_getSourceSha(t *testing.T) {
 			pipeline := config.Pipeline{Uses: "fetch", With: with}
 
 			assert.NoError(t, c.buildFetchStep(slogtest.Context(t), c.ApkConvertors[tt.name]))
-			assert.Equalf(t, pipeline, c.ApkConvertors[tt.name].GeneratedMelangeConfig.Pipeline[0], "expected sha incorrect")
+			assert.Equalf(t, pipeline, c.ApkConvertors[tt.name].generatedMelangeConfig.Pipeline[0], "expected sha incorrect")
 		})
 	}
 }
@@ -269,14 +268,14 @@ func Test_context_mapconvert(t *testing.T) {
 			}
 			c.ApkConvertors[tt.name] = ApkConvertor{
 				Apkbuild:               apkBuild,
-				GeneratedMelangeConfig: &manifest.GeneratedMelangeConfig{},
+				generatedMelangeConfig: &generatedMelangeConfig{},
 			}
 			c.ApkConvertors[tt.name].mapconvert()
 
 			expected, err := os.ReadFile(filepath.Join("testdata", tt.name+".yaml"))
 			assert.NoError(t, err)
 
-			config := c.ApkConvertors[tt.name].GeneratedMelangeConfig
+			config := c.ApkConvertors[tt.name].generatedMelangeConfig
 			actual, err := yaml.Marshal(&config)
 
 			assert.NoError(t, err)

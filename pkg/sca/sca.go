@@ -651,10 +651,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			return nil
 		}
 
-		if mode.Perm()&0o555 != 0o555 {
-			return nil
-		}
-
 		basename := filepath.Base(path)
 
 		// most likely a shell script instead of an ELF, so treat any

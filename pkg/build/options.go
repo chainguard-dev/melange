@@ -111,14 +111,6 @@ func WithWorkspaceDir(workspaceDir string) Option {
 	}
 }
 
-// withWorkspaceIgnore sets the workspace ignore rules file to use.
-func withWorkspaceIgnore(workspaceIgnore string) Option {
-	return func(b *Build) error {
-		b.WorkspaceIgnore = workspaceIgnore
-		return nil
-	}
-}
-
 // WithEmptyWorkspace sets whether the workspace should be empty.
 func WithEmptyWorkspace(emptyWorkspace bool) Option {
 	return func(b *Build) error {
@@ -221,15 +213,6 @@ func WithExtraRepos(extraRepos []string) Option {
 func WithDependencyLog(logFile string) Option {
 	return func(b *Build) error {
 		b.DependencyLog = logFile
-		return nil
-	}
-}
-
-// withBinShOverlay sets a filename to copy from when installing /bin/sh
-// into a build environment.
-func withBinShOverlay(binShOverlay string) Option {
-	return func(b *Build) error {
-		b.BinShOverlay = binShOverlay
 		return nil
 	}
 }

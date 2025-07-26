@@ -38,14 +38,6 @@ func WithTestWorkspaceDir(workspaceDir string) TestOption {
 	}
 }
 
-// withTestWorkspaceIgnore sets the workspace ignore rules file to use.
-func withTestWorkspaceIgnore(workspaceIgnore string) TestOption {
-	return func(t *Test) error {
-		t.WorkspaceIgnore = workspaceIgnore
-		return nil
-	}
-}
-
 // WithPipelineDir sets the pipeline directory to extend the built-in pipeline directory.
 func WithTestPipelineDir(pipelineDir string) TestOption {
 	return func(t *Test) error {
@@ -122,15 +114,6 @@ func WithTestInteractive(interactive bool) TestOption {
 func WithTestExtraRepos(extraRepos []string) TestOption {
 	return func(t *Test) error {
 		t.ExtraRepos = extraRepos
-		return nil
-	}
-}
-
-// withTestBinShOverlay sets a filename to copy from when installing /bin/sh
-// into a test environment.
-func withTestBinShOverlay(binShOverlay string) TestOption {
-	return func(t *Test) error {
-		t.BinShOverlay = binShOverlay
 		return nil
 	}
 }

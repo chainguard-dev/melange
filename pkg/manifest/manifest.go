@@ -18,23 +18,23 @@ type GeneratedMelangeConfig struct {
 	GeneratedFromComment string `yaml:"-"`
 }
 
-func (m *GeneratedMelangeConfig) SetPackage(pkg config.Package) {
+func (m *GeneratedMelangeConfig) setPackage(pkg config.Package) {
 	m.Package = pkg
 }
 
-func (m *GeneratedMelangeConfig) SetEnvironment(env apkotypes.ImageConfiguration) {
+func (m *GeneratedMelangeConfig) setEnvironment(env apkotypes.ImageConfiguration) {
 	m.Environment = env
 }
 
-func (m *GeneratedMelangeConfig) SetPipeline(pipeline []config.Pipeline) {
+func (m *GeneratedMelangeConfig) setPipeline(pipeline []config.Pipeline) {
 	m.Pipeline = pipeline
 }
 
-func (m *GeneratedMelangeConfig) SetSubpackages(sub []config.Subpackage) {
+func (m *GeneratedMelangeConfig) setSubpackages(sub []config.Subpackage) {
 	m.Subpackages = sub
 }
 
-func (m *GeneratedMelangeConfig) SetGeneratedFromComment(comment string) {
+func (m *GeneratedMelangeConfig) setGeneratedFromComment(comment string) {
 	m.GeneratedFromComment = comment
 }
 

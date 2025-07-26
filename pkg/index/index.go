@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"chainguard.dev/apko/pkg/apk/apk"
-	"chainguard.dev/melange/pkg/sign"
+	"chainguard.dev/melange/internal/sign"
 	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"

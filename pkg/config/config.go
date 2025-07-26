@@ -36,7 +36,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/melange/internal/sbom"
 	purl "github.com/package-url/packageurl-go"
 
 	"github.com/chainguard-dev/clog"
@@ -538,9 +538,9 @@ type Pipeline struct {
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
 }
 
-// SHA256 generates a digest based on the text provided
+// sha256text generates a digest based on the text provided
 // Returns a hex encoded string
-func SHA256(text string) string {
+func sha256text(text string) string {
 	algorithm := sha256.New()
 	algorithm.Write([]byte(text))
 	return hex.EncodeToString(algorithm.Sum(nil))
@@ -590,7 +590,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		namespace = supplier
 		name = strings.TrimSuffix(trimmedPath, ".git")
 		// Use first letter of name as a directory to avoid a single huge bucket of tarballs
-		downloadLocation = fmt.Sprintf("https://tarballs.cgr.dev/%s/%s-%s.tar.gz", name[:1], SHA256(name), ref)
+		downloadLocation = fmt.Sprintf("https://tarballs.cgr.dev/%s/%s-%s.tar.gz", name[:1], sha256text(name), ref)
 	}
 
 	// Prefer tag to commit, but use only ONE of these.
@@ -927,13 +927,13 @@ type ReleaseMonitor struct {
 	VersionFilterPrefix string `json:"version-filter-prefix,omitempty" yaml:"version-filter-prefix,omitempty"`
 }
 
-// VersionHandler is an interface that defines methods for retrieving version filtering and stripping parameters.
+// versionHandler is an interface that defines methods for retrieving version filtering and stripping parameters.
 // It is used to provide a common interface for handling version-related operations for different types of version monitors.
-type VersionHandler interface {
-	GetStripPrefix() string
-	GetStripSuffix() string
-	GetFilterPrefix() string
-	GetFilterContains() string
+type versionHandler interface {
+	getStripPrefix() string
+	getStripSuffix() string
+	getFilterPrefix() string
+	getFilterContains() string
 }
 
 // GitHubMonitor indicates using the GitHub API
@@ -969,62 +969,62 @@ type GitMonitor struct {
 }
 
 // GetStripPrefix returns the prefix that should be stripped from the GitMonitor version.
-func (gm *GitMonitor) GetStripPrefix() string {
+func (gm *GitMonitor) getStripPrefix() string {
 	return gm.StripPrefix
 }
 
 // GetStripSuffix returns the suffix that should be stripped from the GitMonitor version.
-func (gm *GitMonitor) GetStripSuffix() string {
+func (gm *GitMonitor) getStripSuffix() string {
 	return gm.StripSuffix
 }
 
 // GetFilterPrefix returns the prefix filter to apply when searching tags in GitMonitor.
-func (gm *GitMonitor) GetFilterPrefix() string {
+func (gm *GitMonitor) getFilterPrefix() string {
 	return gm.TagFilterPrefix
 }
 
 // GetFilterContains returns the substring filter to apply when searching tags in GitMonitor.
-func (gm *GitMonitor) GetFilterContains() string {
+func (gm *GitMonitor) getFilterContains() string {
 	return gm.TagFilterContains
 }
 
 // GetStripPrefix returns the prefix that should be stripped from the GitHubMonitor version.
-func (ghm *GitHubMonitor) GetStripPrefix() string {
+func (ghm *GitHubMonitor) getStripPrefix() string {
 	return ghm.StripPrefix
 }
 
 // GetStripSuffix returns the suffix that should be stripped from the GitHubMonitor version.
-func (ghm *GitHubMonitor) GetStripSuffix() string {
+func (ghm *GitHubMonitor) getStripSuffix() string {
 	return ghm.StripSuffix
 }
 
 // GetFilterPrefix returns the prefix filter to apply when searching tags in GitHubMonitor.
-func (ghm *GitHubMonitor) GetFilterPrefix() string {
+func (ghm *GitHubMonitor) getFilterPrefix() string {
 	return ghm.TagFilterPrefix
 }
 
 // GetFilterContains returns the substring filter to apply when searching tags in GitHubMonitor.
-func (ghm *GitHubMonitor) GetFilterContains() string {
+func (ghm *GitHubMonitor) getFilterContains() string {
 	return ghm.TagFilterContains
 }
 
 // GetStripPrefix returns the prefix that should be stripped from the ReleaseMonitor version.
-func (rm *ReleaseMonitor) GetStripPrefix() string {
+func (rm *ReleaseMonitor) getStripPrefix() string {
 	return rm.StripPrefix
 }
 
 // GetStripSuffix returns the suffix that should be stripped from the ReleaseMonitor version.
-func (rm *ReleaseMonitor) GetStripSuffix() string {
+func (rm *ReleaseMonitor) getStripSuffix() string {
 	return rm.StripSuffix
 }
 
 // GetFilterPrefix returns the prefix filter to apply when searching versions in ReleaseMonitor.
-func (rm *ReleaseMonitor) GetFilterPrefix() string {
+func (rm *ReleaseMonitor) getFilterPrefix() string {
 	return rm.VersionFilterPrefix
 }
 
 // GetFilterContains returns the substring filter to apply when searching versions in ReleaseMonitor.
-func (rm *ReleaseMonitor) GetFilterContains() string {
+func (rm *ReleaseMonitor) getFilterContains() string {
 	return rm.VersionFilterContains
 }
 
@@ -1141,10 +1141,10 @@ func WithDefaultMemory(memory string) ConfigurationParsingOption {
 	}
 }
 
-// WithFS sets the fs.FS implementation to use. So far this FS is used only for
+// withFS sets the fs.FS implementation to use. So far this FS is used only for
 // reading the configuration file. If not provided, the default FS will be an
 // os.DirFS created from the configuration file's containing directory.
-func WithFS(filesystem fs.FS) ConfigurationParsingOption {
+func withFS(filesystem fs.FS) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.filesystem = filesystem
 	}

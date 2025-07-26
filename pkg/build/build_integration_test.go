@@ -16,8 +16,8 @@ import (
 	"testing"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
-	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/internal/container"
+	"chainguard.dev/melange/internal/container/docker"
 	"github.com/google/go-cmp/cmp"
 )
 

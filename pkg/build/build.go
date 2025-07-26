@@ -37,10 +37,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -50,12 +50,12 @@ import (
 	"golang.org/x/sys/unix"
 	"sigs.k8s.io/release-utils/version"
 
+	"chainguard.dev/melange/internal/container"
+	"chainguard.dev/melange/internal/license"
+	"chainguard.dev/melange/internal/linter"
+	"chainguard.dev/melange/internal/sbom"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
-	"chainguard.dev/melange/pkg/license"
-	"chainguard.dev/melange/pkg/linter"
-	"chainguard.dev/melange/pkg/sbom"
 )
 
 const melangeOutputDirName = "melange-out"
@@ -103,7 +103,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -248,7 +248,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 
 	// Now that we can find out the names of all the packages we'll be producing, we
 	// can start tracking SBOM data for each of them, using our SBOMGroup type.
-	b.SBOMGroup = NewSBOMGroup(slices.Collect(b.Configuration.AllPackageNames())...)
+	b.SBOMGroup = newSBOMGroup(slices.Collect(b.Configuration.AllPackageNames())...)
 
 	if len(b.Configuration.Package.TargetArchitecture) == 1 &&
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
@@ -266,7 +266,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 		b.SourceDateEpoch = t
 	}
-	b.SBOMGroup.SetCreatedTime(b.SourceDateEpoch)
+	b.SBOMGroup.setCreatedTime(b.SourceDateEpoch)
 
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
@@ -742,7 +742,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 				continue
 			}
 
-			b.SBOMGroup.AddUpstreamSourcePackage(pkg)
+			b.SBOMGroup.addUpstreamSourcePackage(pkg)
 		}
 
 		// add the main package to the linter queue
@@ -883,7 +883,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("gathering licensing infos: %w", err)
 	}
-	b.SBOMGroup.SetLicensingInfos(li)
+	b.SBOMGroup.setLicensingInfos(li)
 
 	// Convert the SBOMs we've been working on to their SPDX representation, and
 	// write them to disk. We'll handle any subpackages first, and then the main
@@ -999,7 +999,7 @@ func (b *Build) addSBOMPackageForBuildConfigFile() error {
 		return fmt.Errorf("getting PURL for build config: %w", err)
 	}
 
-	b.SBOMGroup.AddBuildConfigurationPackage(&sbom.Package{
+	b.SBOMGroup.addBuildConfigurationPackage(&sbom.Package{
 		Name:            b.ConfigFile,
 		Version:         b.ConfigFileRepositoryCommit,
 		LicenseDeclared: b.ConfigFileLicense,

@@ -19,7 +19,7 @@ import (
 func TestUpdateIndex(t *testing.T) {
 	ctx := slogtest.Context(t)
 
-	filename := filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk")
+	filename := filepath.Join("..", "..", "internal", "sca", "testdata", "libcap-2.69-r0.apk")
 
 	idx, err := New(WithPackageFiles([]string{filename}))
 	if err != nil {
@@ -60,7 +60,7 @@ func TestUpdateIndex(t *testing.T) {
 
 func mangleApk(t *testing.T, newDesc string) string {
 	t.Helper()
-	file, err := os.Open(filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk"))
+	file, err := os.Open(filepath.Join("..", "..", "internal", "sca", "testdata", "libcap-2.69-r0.apk"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestMergeIndex(t *testing.T) {
 	ctx := slogtest.Context(t)
 	newDesc := "This should replace the existing description"
 
-	filename := filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk")
+	filename := filepath.Join("..", "..", "internal", "sca", "testdata", "libcap-2.69-r0.apk")
 	oldindex := filepath.Join(t.TempDir(), "OLDAPKINDEX.tar.gz")
 
 	idx, err := New(WithIndexFile(oldindex), WithPackageFiles([]string{filename}))

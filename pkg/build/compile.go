@@ -24,7 +24,7 @@ import (
 	"slices"
 	"strings"
 
-	"chainguard.dev/melange/pkg/cond"
+	"chainguard.dev/melange/internal/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"

@@ -17,7 +17,7 @@ package build
 import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
-	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/internal/container"
 )
 
 type TestOption func(*Test) error
@@ -38,8 +38,8 @@ func WithTestWorkspaceDir(workspaceDir string) TestOption {
 	}
 }
 
-// WithWorkspaceIgnore sets the workspace ignore rules file to use.
-func WithTestWorkspaceIgnore(workspaceIgnore string) TestOption {
+// withTestWorkspaceIgnore sets the workspace ignore rules file to use.
+func withTestWorkspaceIgnore(workspaceIgnore string) TestOption {
 	return func(t *Test) error {
 		t.WorkspaceIgnore = workspaceIgnore
 		return nil
@@ -126,9 +126,9 @@ func WithTestExtraRepos(extraRepos []string) TestOption {
 	}
 }
 
-// WithTestBinShOverlay sets a filename to copy from when installing /bin/sh
+// withTestBinShOverlay sets a filename to copy from when installing /bin/sh
 // into a test environment.
-func WithTestBinShOverlay(binShOverlay string) TestOption {
+func withTestBinShOverlay(binShOverlay string) TestOption {
 	return func(t *Test) error {
 		t.BinShOverlay = binShOverlay
 		return nil

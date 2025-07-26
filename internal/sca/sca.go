@@ -84,15 +84,67 @@ type SCAHandle interface {
 	PkgResolver() *apk.PkgResolver
 }
 
+type GeneratorArgs struct {
+	// Extra directories where libraries can be found.  This is
+	// filled by getLdSoConfDLibPaths.
+	extraLibDirs []string
+
+	// A map of vendored shlib -> package name.  This is filled by
+	// getAllVendoredShlibs.
+	allVendoredShlibs map[string]string
+}
+
 // DependencyGenerator takes an SCAHandle, config.Dependencies pointer
-// and a list of paths to be appended to libDirs and returns findings
+// and a GeneratorArgs struct with extra arguments and returns findings
 // based on analysis.
-type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies, []string) error
+type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies, *GeneratorArgs) error
 
 func isInDir(path string, dirs []string) bool {
 	mydir := filepath.Dir(path)
 	for _, d := range dirs {
 		if mydir == d || mydir+"/" == d {
+			return true
+		}
+	}
+	return false
+}
+
+// isHostProvidedLibrary returns true if the library is provided by the host
+// system and should not be included in dependency or provides generation.
+// These are typically NVIDIA libraries that are installed by the host driver.
+func isHostProvidedLibrary(lib string) bool {
+	hostLibs := []string{
+		"libEGL_nvidia.so.1",
+		"libGLESv1_CM_nvidia.so.1",
+		"libGLESv2_nvidia.so.1",
+		"libGLX_nvidia.so.1",
+		"libcuda.so.1",
+		"libcudadebugger.so.1",
+		"libnvcuvid.so.1",
+		"libnvidia-allocator.so.1",
+		"libnvidia-cfg.so.1",
+		"libnvidia-eglcore.so.1",
+		"libnvidia-encode.so.1",
+		"libnvidia-fbc.so.1",
+		"libnvidia-glcore.so.1",
+		"libnvidia-glsi.so.1",
+		"libnvidia-glvkspirv.so.1",
+		"libnvidia-gpucomp.so.1",
+		"libnvidia-ml.so.1",
+		"libnvidia-ngx.so.1",
+		"libnvidia-nvvm.so.1",
+		"libnvidia-opencl.so.1",
+		"libnvidia-opticalflow.so.1",
+		"libnvidia-pkcs11-openssl3.so.1",
+		"libnvidia-pkcs11.so.1",
+		"libnvidia-ptxjitcompiler.so.1",
+		"libnvidia-rtcore.so.1",
+		"libnvidia-tls.so.1",
+		"libnvoptix.so.1",
+	}
+	
+	for _, hostLib := range hostLibs {
+		if lib == hostLib {
 			return true
 		}
 	}
@@ -175,7 +227,7 @@ func getLdSoConfDLibPaths(ctx context.Context, hdl SCAHandle) ([]string, error) 
 	return extraLibPaths, nil
 }
 
-func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 
 	log.Info("scanning for commands...")
@@ -238,7 +290,7 @@ func findInterpreter(bin *elf.File) (string, error) {
 
 // dereferenceCrossPackageSymlink attempts to dereference a symlink across multiple package
 // directories.
-func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []string) (string, string, error) {
+func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, args *GeneratorArgs) (string, string, error) {
 	targetPackageNames := hdl.RelativeNames()
 
 	pkgFS, err := hdl.Filesystem()
@@ -253,7 +305,7 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 
 	realPath = filepath.Base(realPath)
 
-	expandedLibDirs := append(libDirs, extraLibDirs...)
+	expandedLibDirs := append(libDirs, args.extraLibDirs...)
 
 	for _, pkgName := range targetPackageNames {
 		baseFS, err := hdl.FilesystemForRelative(pkgName)
@@ -448,13 +500,13 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 	return "", nil
 }
 
-func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, extraLibDirs []string) error {
+func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	if !strings.Contains(path, ".so") {
 		return nil
 	}
 
-	targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path, extraLibDirs)
+	targetPkg, realPath, err := dereferenceCrossPackageSymlink(hdl, path, args)
 	if err != nil {
 		return nil
 	}
@@ -507,7 +559,62 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 	return nil
 }
 
-func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func getAllVendoredShlibs(ctx context.Context, hdl SCAHandle, extraLibDirs []string) (map[string]string, error) {
+	log := clog.FromContext(ctx)
+
+	log.Info("gathering list of vendored shlibs...")
+
+	targetPackageNames := hdl.RelativeNames()
+
+	expandedLibDirs := append(libDirs, extraLibDirs...)
+
+	allVendoredShlibs := make(map[string]string)
+
+	for _, pkgName := range targetPackageNames {
+		fsys, err := hdl.FilesystemForRelative(pkgName)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := fs.WalkDir(fsys, "/", func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return fs.SkipAll
+				}
+				return err
+			}
+
+			if !strings.Contains(path, ".so.") && !strings.HasSuffix(path, ".so") {
+				return nil
+			}
+
+			fi, err := d.Info()
+			if err != nil {
+				return err
+			}
+
+			mode := fi.Mode()
+			if !mode.IsRegular() && mode & os.ModeSymlink != os.ModeSymlink {
+				return nil
+			}
+
+			dirPath := filepath.Dir(path)
+			if !isInDir(dirPath, expandedLibDirs) {
+				libName := filepath.Base(path)
+				log.Infof("   found vendored lib %s for package %s", libName, pkgName)
+				allVendoredShlibs[libName] = pkgName
+			}
+
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	return allVendoredShlibs, nil
+}
+
+func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shared object dependencies...")
 
@@ -516,7 +623,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		return err
 	}
 
-	expandedLibDirs := append(libDirs, extraLibDirs...)
+	expandedLibDirs := append(libDirs, args.extraLibDirs...)
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -534,17 +641,13 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		isLink := mode.Type()&fs.ModeSymlink == fs.ModeSymlink
 
 		if isLink {
-			if err := processSymlinkSo(ctx, hdl, path, generated, extraLibDirs); err != nil {
+			if err := processSymlinkSo(ctx, hdl, path, generated, args); err != nil {
 				return err
 			}
 		}
 
 		// If it is not a regular file, we are finished processing it.
 		if !mode.IsRegular() && !isLink {
-			return nil
-		}
-
-		if mode.Perm()&0o555 != 0o555 {
 			return nil
 		}
 
@@ -590,13 +693,40 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 
 		for _, lib := range libs {
-			// Cuda is a dangling library, which must come from the host
-			if lib == "libcuda.so.1" {
+			// These are dangling libraries, which must come from the host
+			if isHostProvidedLibrary(lib) {
 				continue
 			}
-			if strings.Contains(lib, ".so.") {
-				log.Infof("  found lib %s for %s", lib, path)
-				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+			if strings.Contains(lib, ".so.") || strings.HasSuffix(lib, ".so") {
+				pkgName, isVendoredDep := args.allVendoredShlibs[lib]
+
+				// There are corner cases when we have
+				// a vendored shared library in a
+				// subpackage X and a binary linked
+				// against it in another subpackage Y
+				// (e.g. see postfix and
+				// postfix-stone).  In this case, we
+				// want to generate a depends
+				// relationship from Y -> X.
+				if isVendoredDep {
+					// Vendored dependency.
+					if pkgName == hdl.PackageName() {
+						log.Infof("  found vendored lib %s", lib)
+						continue
+					}
+
+					if !hdl.Options().NoVendoredCrossPackageDeps {
+						log.Infof("  found vendored lib %s from package %s; depending on %s=%s", lib, pkgName, pkgName, hdl.Version())
+						generated.Runtime = append(generated.Runtime, fmt.Sprintf("%s=%s", pkgName, hdl.Version()))
+					} else {
+						log.Infof("  found vendored lib %s; not generating any depends", lib)
+						continue
+					}
+				} else {
+					// Regular library dependency.
+					log.Infof("  found lib %s for %s", lib, path)
+					generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", lib))
+				}
 
 				shlibVer, err := determineShlibVersion(ctx, hdl, lib)
 				if err != nil {
@@ -631,9 +761,9 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			}
 
 			for _, soname := range sonames {
-				// Packages should not provide libcuda.so.1 because they will
-				// conflict with the driver injected by the host.
-				if soname == "libcuda.so.1" {
+				// Packages should not provide these shared objects because they
+				// will conflict with the driver injected by the host.
+				if isHostProvidedLibrary(soname) {
 					continue
 				}
 
@@ -687,7 +817,7 @@ var generateRuntimePkgConfigDeps = true
 
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
-func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for pkg-config data...")
 
@@ -777,7 +907,7 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 
 // generatePythonDeps generates a python-3.X-base dependency for packages which ship
 // Python modules.
-func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for python modules...")
 
@@ -841,7 +971,7 @@ func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 
 // generateRubyDeps generates a ruby-X.Y dependency for packages which ship
 // Ruby gems.
-func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for ruby gems...")
 
@@ -888,7 +1018,7 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 }
 
 // For a documentation package add a dependency on man-db and / or texinfo as appropriate
-func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for -doc package...")
 	if !strings.HasSuffix(hdl.PackageName(), "-doc") {
@@ -1011,7 +1141,7 @@ func getShbang(fp io.Reader) (string, error) {
 	return bin, nil
 }
 
-func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, args *GeneratorArgs) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for shbang deps...")
 
@@ -1072,6 +1202,16 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		return err
 	}
 
+	allVendoredShlibs, err := getAllVendoredShlibs(ctx, hdl, extraLibDirs)
+	if err != nil {
+		return err
+	}
+
+	args := GeneratorArgs{
+		extraLibDirs,
+		allVendoredShlibs,
+	}
+
 	generators := []DependencyGenerator{
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
@@ -1083,7 +1223,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 	}
 
 	for _, gen := range generators {
-		if err := gen(ctx, hdl, generated, extraLibDirs); err != nil {
+		if err := gen(ctx, hdl, generated, &args); err != nil {
 			return err
 		}
 	}

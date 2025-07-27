@@ -1,0 +1,30 @@
+package:
+  name: libcap
+  version: "2.69"
+  epoch: 1
+  description: "POSIX 1003.1e capabilities"
+  copyright:
+    - license: BSD-3-Clause OR GPL-2.0-only
+
+environment:
+  contents:
+    packages:
+      - bash
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - perl
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-${{package.version}}.tar.xz
+      expected-sha512: 647c307dc451517da9d089495ab959b4a6fbbe41c79f4e1e9bb663569dad630ead0c2e413dfb393319e3ea14dc9848c81b392107fe3382ce1813d278c3394a7f
+
+  - runs: |
+      set -x
+      make BUILD_CC=gcc CC=gcc lib=lib prefix=/usr DESTDIR="${{targets.destdir}}"
+      make lib=/lib prefix=/usr RAISE_SETFCAP=no DESTDIR="${{targets.destdir}}" install
+      chmod 755 "${{targets.destdir}}/usr/lib/libcap.so.${{package.version}}"
+
+  - uses: strip

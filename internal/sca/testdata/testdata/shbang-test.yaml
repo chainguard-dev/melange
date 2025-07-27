@@ -1,0 +1,112 @@
+package:
+  name: shbang-test
+  version: 1
+  epoch: 1
+  description: shbang test
+  copyright:
+    - license: MIT
+  options:
+    # This ensures that no-provides doesn't also disable no-requires
+    no-provides: true
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - build-base
+      - busybox
+
+pipeline:
+  - runs: |
+      wbin() {
+          local f="$1"
+          cat > "$BD/usr/bin/$f"
+          echo "wrote usr/bin/$f" 1>&2
+          chmod 755 "$BD/usr/bin/$f"
+      }
+
+      BD=${{targets.destdir}}
+      mkdir -p "$BD/usr/bin"
+      mkdir -p "$BD/usr/share/doc/${{package.name}}"
+      cat > "$BD/usr/share/doc/${{package.name}}/README.md" << EOF
+      This is just a silly package with some executables
+      EOF
+
+      echo -n "x" | wbin "almost-empty-file"
+
+      wbin "empty-file" </dev/null
+
+      wbin "bash-via-env" <<"EOF"
+      #!/usr/bin/env bash
+      echo hi world
+      EOF
+
+      wbin "bash-straight-up" <<"EOF"
+      #!/bin/bash
+      echo hi from bash
+      EOF
+
+      wbin "binsh-via-env" <<"EOF"
+      #!/usr/bin/env sh
+      echo hi from env-found-sh
+      EOF
+
+      wbin "binsh" <<"EOF"
+      #!/bin/sh
+      echo hi from /bin/sh
+      EOF
+
+      wbin "python-via-env" <<"EOF"
+      #!/usr/bin/env python3
+      print("hello world")
+      EOF
+
+      wbin "python-via-env" <<"EOF"
+      #!/usr/bin/env -S envDashSCmd foo
+      print("hello world")
+      EOF
+
+      wbin "python-straight" <<"EOF"
+      #!/usr/bin/python3.12
+      print("hello world")
+      EOF
+
+      cat > hello.c <<"EOF"
+      #include <stdio.h>
+      int main(int argc, char *argv[]) {
+          printf("hello world\n");
+      }
+      EOF
+
+      wbin "ignore1" <<"EOF"
+      ## Ingore1
+      EOF
+
+      wbin "ignore5" <<"EOF"
+      !! Ignore5
+      EOF
+
+      wbin "ignore2" <<"EOF"
+      !# Ignore2
+      EOF
+
+      wbin "ignore3" <<"EOF"
+      ! Ignore3
+      EOF
+
+      wbin "ignore4" <<"EOF"
+      # Ignore4
+      EOF
+
+      gcc -o hello hello.c && strip hello && cp hello "$BD/usr/bin/hello"
+
+update:
+  enabled: false
+
+test:
+  pipeline:
+    # Test that bash is a SCA-detected runtime dependency
+    - runs: which bash

@@ -56,6 +56,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(completion())
 	cmd.AddCommand(compile())
 	cmd.AddCommand(convert())
+	cmd.AddCommand(editVarsCmd())
 	cmd.AddCommand(indexCmd())
 	cmd.AddCommand(keygen())
 	cmd.AddCommand(licenseCheck())

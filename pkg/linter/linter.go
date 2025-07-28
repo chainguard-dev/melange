@@ -243,8 +243,8 @@ func documentationLinter(_ context.Context, _ *config.Configuration, pkgname, pa
 }
 
 var (
-    manRegex  = regexp.MustCompile(`(?i)^usr/(?:(?:local/)?share/man|man)/man[0-9][^/]*/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?$`)
-    infoRegex = regexp.MustCompile(`(?i)^usr/share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
+	manRegex  = regexp.MustCompile(`(?i)^usr/(?:(?:local/)?share/man|man)/man[0-9][^/]*/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?$`)
+	infoRegex = regexp.MustCompile(`(?i)^usr/share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
 )
 
 func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {

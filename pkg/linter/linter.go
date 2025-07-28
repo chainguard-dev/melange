@@ -114,6 +114,11 @@ var linterMap = map[string]linter{
 		Explain:         "This package contains intermediate object files",
 		defaultBehavior: Warn,
 	},
+	"maninfo": {
+		LinterFunc:      allPaths(manInfoLinter),
+		Explain:         "Place documentation into a separate package or remove it",
+		defaultBehavior: Warn,
+	},
 	"sbom": {
 		LinterFunc:      allPaths(sbomLinter),
 		Explain:         "Remove any files in /var/lib/db/sbom from the package",
@@ -234,6 +239,19 @@ func documentationLinter(_ context.Context, _ *config.Configuration, pkgname, pa
 	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(pkgname, "-doc") {
 		return errors.New("package contains documentation files but is not a documentation package")
 	}
+	return nil
+}
+
+var (
+    manRegex  = regexp.MustCompile(`(?i)^usr/(?:(?:local/)?share/man|man)/man[0-9][^/]*/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?$`)
+    infoRegex = regexp.MustCompile(`(?i)^usr/share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
+)
+
+func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if (manRegex.MatchString(path) || infoRegex.MatchString(path)) && !strings.HasSuffix(pkgname, "-doc") {
+		return errors.New("package contains man/info files but is not a documentation package")
+	}
+
 	return nil
 }
 

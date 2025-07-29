@@ -19,6 +19,7 @@ package renovate
 
 import (
 	"chainguard.dev/melange/internal/renovate"
+	"gopkg.in/yaml.v3"
 )
 
 // Context is a compatibility alias for the internal type.
@@ -39,4 +40,10 @@ func New(opts ...Option) (*Context, error) {
 // Deprecated: This function will be removed in a future version.
 func WithConfig(configFile string) Option {
 	return renovate.WithConfig(configFile)
+}
+
+// NodeFromMapping is a compatibility wrapper for the internal function.
+// Deprecated: This function will be removed in a future version.
+func NodeFromMapping(parentNode *yaml.Node, key string) (*yaml.Node, error) {
+	return renovate.NodeFromMapping(parentNode, key)
 }

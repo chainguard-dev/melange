@@ -927,6 +927,26 @@ type ReleaseMonitor struct {
 	VersionFilterPrefix string `json:"version-filter-prefix,omitempty" yaml:"version-filter-prefix,omitempty"`
 }
 
+// GetStripPrefix returns the prefix to strip from the version for ReleaseMonitor.
+func (rm *ReleaseMonitor) GetStripPrefix() string {
+	return rm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix to strip from the version for ReleaseMonitor.
+func (rm *ReleaseMonitor) GetStripSuffix() string {
+	return rm.StripSuffix
+}
+
+// GetFilterPrefix returns the prefix filter for ReleaseMonitor.
+func (rm *ReleaseMonitor) GetFilterPrefix() string {
+	return rm.VersionFilterPrefix
+}
+
+// GetFilterContains returns the contains filter for ReleaseMonitor.
+func (rm *ReleaseMonitor) GetFilterContains() string {
+	return rm.VersionFilterContains
+}
+
 // GitHubMonitor indicates using the GitHub API
 type GitHubMonitor struct {
 	// Org/repo for GitHub
@@ -947,6 +967,35 @@ type GitHubMonitor struct {
 	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`
 }
 
+// VersionHandler is an interface that defines methods for retrieving version filtering and stripping parameters.
+// It is used to provide a common interface for handling version-related operations for different types of version monitors.
+type VersionHandler interface {
+	GetStripPrefix() string
+	GetStripSuffix() string
+	GetFilterPrefix() string
+	GetFilterContains() string
+}
+
+// GetStripPrefix returns the prefix to strip from the version for GitHubMonitor.
+func (ghm *GitHubMonitor) GetStripPrefix() string {
+	return ghm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix to strip from the version for GitHubMonitor.
+func (ghm *GitHubMonitor) GetStripSuffix() string {
+	return ghm.StripSuffix
+}
+
+// GetFilterPrefix returns the prefix filter for GitHubMonitor.
+func (ghm *GitHubMonitor) GetFilterPrefix() string {
+	return ghm.TagFilterPrefix
+}
+
+// GetFilterContains returns the contains filter for GitHubMonitor.
+func (ghm *GitHubMonitor) GetFilterContains() string {
+	return ghm.TagFilterContains
+}
+
 // GitMonitor indicates using Git
 type GitMonitor struct {
 	// StripPrefix is the prefix to strip from the version
@@ -957,6 +1006,26 @@ type GitMonitor struct {
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
 	// Filter to apply when searching tags on a GitHub repository
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+}
+
+// GetStripPrefix returns the prefix to strip from the version for GitMonitor.
+func (gm *GitMonitor) GetStripPrefix() string {
+	return gm.StripPrefix
+}
+
+// GetStripSuffix returns the suffix to strip from the version for GitMonitor.
+func (gm *GitMonitor) GetStripSuffix() string {
+	return gm.StripSuffix
+}
+
+// GetFilterPrefix returns the prefix filter for GitMonitor.
+func (gm *GitMonitor) GetFilterPrefix() string {
+	return gm.TagFilterPrefix
+}
+
+// GetFilterContains returns the contains filter for GitMonitor.
+func (gm *GitMonitor) GetFilterContains() string {
+	return gm.TagFilterContains
 }
 
 // VersionTransform allows mapping the package version to an APK version
@@ -1090,6 +1159,15 @@ func WithEnvFileForParsing(path string) ConfigurationParsingOption {
 func WithVarsFileForParsing(path string) ConfigurationParsingOption {
 	return func(options *configOptions) {
 		options.varsFilePath = path
+	}
+}
+
+// WithFS sets the fs.FS implementation to use. So far this FS is used only for
+// reading the configuration file. If not provided, the default FS will be an
+// os.DirFS created from the configuration file's containing directory.
+func WithFS(filesystem fs.FS) ConfigurationParsingOption {
+	return func(options *configOptions) {
+		options.filesystem = filesystem
 	}
 }
 

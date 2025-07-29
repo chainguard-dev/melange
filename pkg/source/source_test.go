@@ -124,10 +124,11 @@ func TestFetchSourceFromMelange(t *testing.T) {
 		fileName      string
 		expectedSteps []string
 		expectedName  string
+		expectedFiles []string
 	}{
-		{"fetch.yaml", []string{"fetch"}, "fetch"},
-		{"fetch-with-patch.yaml", []string{"fetch", "patch"}, "fetch-with-patch"},
-		{"git-checkout.yaml", []string{"git-checkout"}, "git-checkout"},
+		{"fetch.yaml", []string{"fetch"}, "fetch", nil},
+		{"fetch-with-patch.yaml", []string{"fetch", "patch"}, "fetch-with-patch", []string{"foo.patch"}},
+		{"git-checkout.yaml", []string{"git-checkout"}, "git-checkout", nil},
 	}
 
 	// Test each file
@@ -159,6 +160,16 @@ func TestFetchSourceFromMelange(t *testing.T) {
 			for i, step := range stepsRun {
 				if step != tc.expectedSteps[i] {
 					t.Errorf("Expected step %s, got %s", tc.expectedSteps[i], step)
+				}
+			}
+
+			// Validate the files in the destination directory
+			if tc.expectedFiles != nil {
+				for _, file := range tc.expectedFiles {
+					filePath := filepath.Join(destDir, file)
+					if _, err := os.Stat(filePath); os.IsNotExist(err) {
+						t.Errorf("Expected file %s to exist in %s, but it does not", file, destDir)
+					}
 				}
 			}
 		})

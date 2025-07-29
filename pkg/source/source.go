@@ -104,6 +104,12 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*config.Configuration, error) {
 	log := clog.FromContext(ctx)
 
+	// Make sure destDir is an absolute path
+	destDir, err := filepath.Abs(destDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for destination directory: %w", err)
+	}
+
 	// Temporary directory for all ephemeral stuff. Best to keep this separate
 	// as we'll be extracting our pipelines code there, and we wouldn't want
 	// anyone to cause harm by overwriting the pipelines code.

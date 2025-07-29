@@ -164,12 +164,13 @@ func TestFetchSourceFromMelange(t *testing.T) {
 			}
 
 			// Validate the files in the destination directory
-			if tc.expectedFiles != nil {
-				for _, file := range tc.expectedFiles {
-					filePath := filepath.Join(destDir, file)
-					if _, err := os.Stat(filePath); os.IsNotExist(err) {
-						t.Errorf("Expected file %s to exist in %s, but it does not", file, destDir)
-					}
+			if tc.expectedFiles == nil {
+				return
+			}
+			for _, file := range tc.expectedFiles {
+				filePath := filepath.Join(destDir, file)
+				if _, err := os.Stat(filePath); os.IsNotExist(err) {
+					t.Errorf("Expected file %s to exist in %s, but it does not", file, destDir)
 				}
 			}
 		})

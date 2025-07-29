@@ -24,7 +24,6 @@ packages/
 rebuilt-packages/
 .idea/
 bin/
-generated/
 melange.images
 /.DS_Store
 dist/
@@ -36,3 +35,5 @@ ctags
 
 x86_64/**
 aarch64/**
+
+internal/sca/testdata/generated/x86_64/go-fips-bin-0.0.1-r0.apk

@@ -243,13 +243,27 @@ func documentationLinter(_ context.Context, _ *config.Configuration, pkgname, pa
 }
 
 var (
-	manRegex  = regexp.MustCompile(`(?i)^usr/(?:(?:local/)?share/man|man)/man[0-9][^/]*/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?$`)
-	infoRegex = regexp.MustCompile(`(?i)^usr/share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
+	manRegex  = regexp.MustCompile(`(?i)^usr/(?:local/)?share/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$|^usr/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$`)
+	infoRegex = regexp.MustCompile(`(?i)^usr/(local/)?share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
 )
 
 func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
-	if (manRegex.MatchString(path) || infoRegex.MatchString(path)) && !strings.HasSuffix(pkgname, "-doc") {
-		return errors.New("package contains man/info files but is not a documentation package")
+	if strings.HasSuffix(pkgname, "-doc") {
+		return nil
+	}
+
+	if manRegex.MatchString(path) || infoRegex.MatchString(path) {
+		parts := strings.SplitN(path, "/", 4)
+		if len(parts) >= 3 {
+			var prefix string
+			if strings.Contains(parts[2], ".") {
+				prefix = "/" + strings.Join(parts[:2], "/")
+			} else {
+				prefix = "/" + strings.Join(parts[:3], "/")
+			}
+			return fmt.Errorf("package contains man/info files in %q but is not a documentation package", prefix)
+		}
+		return fmt.Errorf("package contains man/info files in %q but is not a documentation package", "/"+path)
 	}
 
 	return nil

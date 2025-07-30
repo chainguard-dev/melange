@@ -19,7 +19,7 @@ import (
 	"os"
 	"os/signal"
 
-	"chainguard.dev/melange/pkg/cli"
+	"chainguard.dev/melange/internal/cli"
 	"github.com/chainguard-dev/clog"
 )
 

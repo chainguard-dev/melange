@@ -3,7 +3,7 @@ package build
 import (
 	"time"
 
-	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/melange/internal/sbom"
 	"github.com/spdx/tools-golang/spdx/v2/common"
 )
 
@@ -14,9 +14,9 @@ type SBOMGroup struct {
 	set map[string]*sbom.Document
 }
 
-// NewSBOMGroup creates a new SBOMGroup, initializing SBOMs for each package and
+// newSBOMGroup creates a new SBOMGroup, initializing SBOMs for each package and
 // subpackage name provided.
-func NewSBOMGroup(pkgNames ...string) *SBOMGroup {
+func newSBOMGroup(pkgNames ...string) *SBOMGroup {
 	sg := &SBOMGroup{
 		set: make(map[string]*sbom.Document),
 	}
@@ -29,15 +29,15 @@ func NewSBOMGroup(pkgNames ...string) *SBOMGroup {
 	return sg
 }
 
-// SetCreatedTime sets the creation time for all SBOMs in the group.
-func (sg *SBOMGroup) SetCreatedTime(t time.Time) {
+// setCreatedTime sets the creation time for all SBOMs in the group.
+func (sg *SBOMGroup) setCreatedTime(t time.Time) {
 	for _, doc := range sg.set {
 		doc.CreatedTime = t
 	}
 }
 
-// SetLicensingInfos sets the licensing information for all SBOMs in the group.
-func (sg *SBOMGroup) SetLicensingInfos(li map[string]string) {
+// setLicensingInfos sets the licensing information for all SBOMs in the group.
+func (sg *SBOMGroup) setLicensingInfos(li map[string]string) {
 	for _, doc := range sg.set {
 		doc.LicensingInfos = li
 	}
@@ -48,18 +48,18 @@ func (sg *SBOMGroup) Document(name string) *sbom.Document {
 	return sg.set[name]
 }
 
-// AddBuildConfigurationPackage adds a package serving as the "build
+// addBuildConfigurationPackage adds a package serving as the "build
 // configuration package" to all SBOMs in the group.
-func (sg *SBOMGroup) AddBuildConfigurationPackage(p *sbom.Package) {
+func (sg *SBOMGroup) addBuildConfigurationPackage(p *sbom.Package) {
 	for _, doc := range sg.set {
 		doc.AddPackage(p)
 		doc.AddRelationship(doc.Describes, p, common.TypeRelationshipDescribeBy)
 	}
 }
 
-// AddUpstreamSourcePackage adds a package serving as an "upstream source
+// addUpstreamSourcePackage adds a package serving as an "upstream source
 // package" to all SBOMs in the group.
-func (sg *SBOMGroup) AddUpstreamSourcePackage(p *sbom.Package) {
+func (sg *SBOMGroup) addUpstreamSourcePackage(p *sbom.Package) {
 	for _, doc := range sg.set {
 		doc.AddPackage(p)
 		doc.AddRelationship(doc.Describes, p, common.TypeRelationshipGeneratedFrom)

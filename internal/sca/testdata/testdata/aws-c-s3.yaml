@@ -1,0 +1,60 @@
+package:
+  name: aws-c-s3
+  version: 0.4.9
+  epoch: 0
+  description: "AWS C99 library implementation for communicating with the S3 service"
+  copyright:
+    - license: Apache-2.0
+  dependencies:
+    runtime:
+      - aws-c-auth
+      - aws-c-cal
+      - aws-c-common
+      - aws-c-http
+      - aws-c-io
+      - aws-checksums
+
+environment:
+  contents:
+    packages:
+      - aws-c-auth-dev
+      - aws-c-cal-dev
+      - aws-c-common-dev
+      - aws-c-compression-dev
+      - aws-c-http-dev
+      - aws-c-io-dev
+      - aws-c-sdkutils-dev
+      - aws-checksums-dev
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - cmake
+      - curl-dev
+      - s2n-tls-dev
+      - samurai
+
+pipeline:
+  - uses: fetch
+    with:
+      expected-sha256: 42927e6142bc6aa487d1b299834a828031ea9286b298ca2a2c89c505cf173adb
+      uri: https://github.com/awslabs/aws-c-s3/archive/refs/tags/v${{package.version}}.tar.gz
+
+  - runs: |
+      if [ "$CBUILD" != "$CHOST" ]; then
+        CMAKE_CROSSOPTS="-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_HOST_SYSTEM_NAME=Linux"
+      fi
+      CFLAGS="$CFLAGS -flto=auto" \
+      CXXFLAGS="$CXXFLAGS -flto=auto" \
+      cmake -B build -G Ninja \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=/usr/lib \
+        -DBUILD_SHARED_LIBS=True \
+        -DCMAKE_BUILD_TYPE=None \
+        -DBUILD_TESTING="$(want_check && echo ON || echo OFF)" \
+        $CMAKE_CROSSOPTS
+      cmake --build build
+
+  - runs: |
+      DESTDIR="${{targets.destdir}}" cmake --install build
+
+  - uses: strip

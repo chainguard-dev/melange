@@ -1,0 +1,77 @@
+package:
+  name: systemd
+  version: "256.2"
+  epoch: 1
+  description: The systemd System and Service Manager
+  copyright:
+    - license: LGPL-2.1-or-later AND GPL-2.0-or-later
+
+environment:
+  contents:
+    packages:
+      - build-base
+      - busybox-full
+      - ca-certificates-bundle
+      - clang-16
+      - cmake
+      - coreutils
+      - gperf
+      - kmod-dev
+      - libbpf
+      - libcap-dev
+      - libmount
+      - libuuid
+      - llvm16
+      - meson
+      - ninja
+      - posix-libc-utils
+      - py3-jinja2
+      - py3-pyelftools
+      - python3
+      - util-linux-dev
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/systemd/systemd
+      tag: v${{package.version}}
+      expected-commit: c7e144eb4a2ed3838e2d361262d3eee8830d9bf5
+
+  - uses: meson/configure
+
+  - uses: meson/compile
+
+  - uses: meson/install
+
+  - runs: |
+      mkdir -p ${{targets.destdir}}/lib
+      mv ${{targets.destdir}}/usr/lib/libsystemd.so* ${{targets.destdir}}/lib/
+
+subpackages:
+  - name: "systemd-dev"
+    description: "headers for systemd"
+    pipeline:
+      - uses: split/dev
+
+  - name: "libsystemd"
+    description: "systemd library"
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}/lib
+          mv ${{targets.destdir}}/lib/libsystemd.so.* ${{targets.subpkgdir}}/lib
+
+  - name: "systemd-init"
+    description: "Configure systemd for use as an init system"
+    dependencies:
+      runtime:
+        - ${{package.name}}
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.subpkgdir}}/
+          ln -s /usr/lib/systemd/systemd ${{targets.subpkgdir}}/init
+
+update:
+  enabled: true
+  github:
+    identifier: systemd/systemd
+    strip-prefix: v

@@ -28,7 +28,6 @@ require (
 	github.com/moby/moby v28.3.2+incompatible
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/package-url/packageurl-go v0.1.3
-	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20241019191636-4ef911798f9b
 	github.com/spdx/tools-golang v0.5.5
 	github.com/spf13/cobra v1.9.1
@@ -58,6 +57,7 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/tools v0.35.0 // indirect

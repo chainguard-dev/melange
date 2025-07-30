@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chainguard.dev/melange/pkg/cli"
+	"chainguard.dev/melange/internal/cli"
 	"github.com/spf13/cobra/doc"
 )
 

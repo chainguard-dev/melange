@@ -12,126 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package renovate provides compatibility aliases for the internal renovate package.
+// Deprecated: These types and functions are deprecated and will be removed in a future version.
+// External packages should not depend on melange's renovate implementation.
 package renovate
 
 import (
-	"context"
-	"os"
-	"runtime"
-	"strconv"
-
-	"github.com/chainguard-dev/yam/pkg/yam/formatted"
-
-	apko_types "chainguard.dev/apko/pkg/build/types"
-
-	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/internal/renovate"
+	"gopkg.in/yaml.v3"
 )
 
-// Context contains the default settings for renovations.
-type Context struct {
-	ConfigFile string
-}
+// Context is a compatibility alias for the internal type.
+// Deprecated: This type will be removed in a future version.
+type Context = renovate.Context
 
-type Option func(ctx *Context) error
+// Option is a compatibility alias for the internal type.
+// Deprecated: This type will be removed in a future version.
+type Option = renovate.Option
 
-// WithConfig sets the config file to do renovations on.
-func WithConfig(configFile string) Option {
-	return func(ctx *Context) error {
-		ctx.ConfigFile = configFile
-		return nil
-	}
-}
-
-// New creates a new renovation context.
+// New is a compatibility wrapper for the internal function.
+// Deprecated: This function will be removed in a future version.
 func New(opts ...Option) (*Context, error) {
-	c := Context{}
-
-	for _, opt := range opts {
-		if err := opt(&c); err != nil {
-			return nil, err
-		}
-	}
-
-	return &c, nil
+	return renovate.New(opts...)
 }
 
-// RenovationContext encapsulates state relating to an
-// ongoing renovation.
-type RenovationContext struct {
-	Context       *Context
-	Configuration *config.Configuration
-	Vars          map[string]string
+// WithConfig is a compatibility wrapper for the internal function.
+// Deprecated: This function will be removed in a future version.
+func WithConfig(configFile string) Option {
+	return renovate.WithConfig(configFile)
 }
 
-// Renovator performs a renovation.
-type Renovator func(ctx context.Context, rc *RenovationContext) error
-
-// Renovate loads a config file, applies a chain of Renovators
-// to perform a renovation, and writes the result back.
-func (c *Context) Renovate(ctx context.Context, renovators ...Renovator) error {
-	rc := RenovationContext{Context: c}
-
-	if err := rc.LoadConfig(ctx); err != nil {
-		return err
-	}
-
-	for _, ren := range renovators {
-		if err := ren(ctx, &rc); err != nil {
-			return err
-		}
-	}
-
-	if err := rc.WriteConfig(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// LoadConfig loads the configuration data into an AST for renovation.
-func (rc *RenovationContext) LoadConfig(ctx context.Context) error {
-	cfg, err := config.ParseConfiguration(ctx, rc.Context.ConfigFile)
-	if err != nil {
-		return err
-	}
-
-	vars, err := cfg.GetVarsFromConfig()
-	if err != nil {
-		return err
-	}
-
-	// These are probably sufficient for now.
-	// TODO(Elizafox): Enable cross-arch bumping
-	vars[config.SubstitutionPackageName] = cfg.Package.Name
-	vars[config.SubstitutionPackageVersion] = cfg.Package.Version
-	vars[config.SubstitutionPackageEpoch] = strconv.FormatUint(cfg.Package.Epoch, 10)
-	vars[config.SubstitutionBuildArch] = apko_types.ParseArchitecture(runtime.GOARCH).ToAPK()
-	vars[config.SubstitutionBuildGoArch] = apko_types.ParseArchitecture(runtime.GOARCH).String()
-
-	err = cfg.PerformVarSubstitutions(vars)
-	if err != nil {
-		return err
-	}
-
-	rc.Configuration = cfg
-	rc.Vars = vars
-	return nil
-}
-
-// WriteConfig writes the modified configuration data back to the config
-// file.
-func (rc *RenovationContext) WriteConfig() error {
-	configFile, err := os.Create(rc.Context.ConfigFile)
-	if err != nil {
-		return err
-	}
-	defer configFile.Close()
-
-	enc := formatted.NewEncoder(configFile).AutomaticConfig()
-
-	if err := enc.Encode(rc.Configuration.Root().Content[0]); err != nil {
-		return err
-	}
-
-	return nil
+// NodeFromMapping is a compatibility wrapper for the internal function.
+// Deprecated: This function will be removed in a future version.
+func NodeFromMapping(parentNode *yaml.Node, key string) (*yaml.Node, error) {
+	return renovate.NodeFromMapping(parentNode, key)
 }

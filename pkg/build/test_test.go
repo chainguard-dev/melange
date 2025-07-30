@@ -22,13 +22,12 @@ import (
 
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/melange/internal/container"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
-	"github.com/yookoala/realpath"
 )
 
 const (
@@ -59,12 +58,6 @@ func defaultEnv(opts ...func(*apko_types.ImageConfiguration)) apko_types.ImageCo
 
 func TestBuildWorkspaceConfig(t *testing.T) {
 	tmpDir := t.TempDir()
-	// realpath is used to get the real path of the temp dir
-	tmpDirReal, err := realpath.Realpath(tmpDir)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
 	// Just define the base stuff here that we can then
 	// modify in the tests.
 	baseTest := Test{
@@ -91,44 +84,42 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 		t       *Test
 		wantErr string
 		want    *container.Config
-	}{
-		{
-			name: "test - no cache dir",
-			t:    &baseTest,
-			want: func() *container.Config {
-				want := wantBase
-				return &want
-			}(),
-		}, {
-			name: "test - with cache dir, exists",
-			t: func() *Test {
-				cacheT := baseTest
-				cacheT.CacheDir = tmpDir
-				return &cacheT
-			}(),
-			want: func() *container.Config {
-				want := wantBase
-				want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDirReal, Destination: "/var/cache/melange"})
-				want.CacheDir = tmpDirReal
-				return &want
-			}(),
-		}, {
-			name: "test - with cache dir, exists, environment",
-			t: func() *Test {
-				cacheT := baseTest
-				cacheT.CacheDir = tmpDir
-				return &cacheT
-			}(),
-			env: map[string]string{"FOO": "bar", "BAZ": "zzz"},
-			want: func() *container.Config {
-				want := wantBase
-				want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDirReal, Destination: "/var/cache/melange"})
-				want.Environment = map[string]string{"FOO": "bar", "BAZ": "zzz", "HOME": "/root"}
-				want.CacheDir = tmpDir
-				return &want
-			}(),
-		},
-	}
+	}{{
+		name: "test - no cache dir",
+		t:    &baseTest,
+		want: func() *container.Config {
+			want := wantBase
+			return &want
+		}(),
+	}, {
+		name: "test - with cache dir, exists",
+		t: func() *Test {
+			cacheT := baseTest
+			cacheT.CacheDir = tmpDir
+			return &cacheT
+		}(),
+		want: func() *container.Config {
+			want := wantBase
+			want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDir, Destination: "/var/cache/melange"})
+			want.CacheDir = tmpDir
+			return &want
+		}(),
+	}, {
+		name: "test - with cache dir, exists, environment",
+		t: func() *Test {
+			cacheT := baseTest
+			cacheT.CacheDir = tmpDir
+			return &cacheT
+		}(),
+		env: map[string]string{"FOO": "bar", "BAZ": "zzz"},
+		want: func() *container.Config {
+			want := wantBase
+			want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDir, Destination: "/var/cache/melange"})
+			want.Environment = map[string]string{"FOO": "bar", "BAZ": "zzz", "HOME": "/root"}
+			want.CacheDir = tmpDir
+			return &want
+		}(),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := slogtest.Context(t)

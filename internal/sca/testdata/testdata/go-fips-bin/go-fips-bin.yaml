@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2022 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+#
+# This is a sample configuration file to demonstrate how to build a software
+# project using melange's built-in go/install pipeline.
+#
+# For more information about melange's built-in golang support check out:
+#
+#
+# For an equivalent pipeline that uses go/install to build the same project
+# please see go-install.yaml in this directory.
+package:
+  name: go-fips-bin
+  version: 0.0.1
+  epoch: 0
+  description: "A tiny fips-like go binary"
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+
+pipeline:
+  - uses: go/install
+    with:
+      package: .
+      # This is an approximation to the real go-fips toolchain
+      experiments: boringcrypto

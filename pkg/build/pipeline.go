@@ -27,9 +27,9 @@ import (
 	"strings"
 
 	apkoTypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/cond"
+	"chainguard.dev/melange/internal/cond"
+	"chainguard.dev/melange/internal/container"
 	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 )

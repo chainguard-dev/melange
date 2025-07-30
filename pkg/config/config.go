@@ -1241,7 +1241,7 @@ func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_
 func replaceImageContents(r *strings.Replacer, in apko_types.ImageContents) apko_types.ImageContents {
 	return apko_types.ImageContents{
 		BuildRepositories:   replaceAll(r, in.BuildRepositories),
-		RuntimeRepositories: replaceAll(r, in.RuntimeRepositories),
+		Repositories: replaceAll(r, in.Repositories),
 		Keyring:             replaceAll(r, in.Keyring),
 		Packages:            replaceAll(r, in.Packages),
 		BaseImage:           in.BaseImage, // TODO

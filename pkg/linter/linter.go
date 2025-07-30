@@ -253,17 +253,7 @@ func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path str
 	}
 
 	if manRegex.MatchString(path) || infoRegex.MatchString(path) {
-		parts := strings.SplitN(path, "/", 4)
-		if len(parts) >= 3 {
-			var prefix string
-			if strings.Contains(parts[2], ".") {
-				prefix = "/" + strings.Join(parts[:2], "/")
-			} else {
-				prefix = "/" + strings.Join(parts[:3], "/")
-			}
-			return fmt.Errorf("package contains man/info files in %q but is not a documentation package", prefix)
-		}
-		return fmt.Errorf("package contains man/info files in %q but is not a documentation package", "/"+path)
+		return fmt.Errorf("package contains man/info files but is not a documentation package")
 	}
 
 	return nil

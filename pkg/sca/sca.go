@@ -698,6 +698,11 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 		defer ef.Close()
 
+		if ef.Machine != elf.EM_X86_64 && ef.Machine != elf.EM_AARCH64 {
+			log.Debugf("skipping binary %s; unsupported architecture %s", path, ef.Machine.String())
+			return nil
+		}
+
 		interp, err := findInterpreter(ef)
 		if err != nil {
 			return err

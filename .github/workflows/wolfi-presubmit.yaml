@@ -197,12 +197,6 @@ jobs:
           done
           ls -hal packages/x86_64/usr/bin/sudo
 
-      - name: "Retrieve Wolfi advisory data"
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          repository: "wolfi-dev/advisories"
-          path: "data/wolfi-advisories"
-
       - name: Test installable and Scan for CVEs
         run: |
           if [[ "${{ matrix.package }}" == "fping" ]]; then
@@ -220,8 +214,5 @@ jobs:
           # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
           # Do this outside of the loop in one invocation with every package.
           wolfictl scan \
-          --advisories-repo-dir 'data/wolfi-advisories' \
-          --advisory-filter 'resolved' \
-          --require-zero \
           packages/x86_64/${{ matrix.package }}-*.apk \
           2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.

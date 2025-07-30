@@ -750,16 +750,14 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 					// Vendored dependency.
 					if pkgName == hdl.PackageName() {
 						log.Infof("  found vendored lib %s", lib)
-						continue
-					}
-
-					if !hdl.Options().NoVendoredCrossPackageDeps {
+					} else if !hdl.Options().NoVendoredCrossPackageDeps {
 						log.Infof("  found vendored lib %s from package %s; depending on %s=%s", lib, pkgName, pkgName, hdl.Version())
 						generated.Runtime = append(generated.Runtime, fmt.Sprintf("%s=%s", pkgName, hdl.Version()))
 					} else {
-						log.Infof("  found vendored lib %s; not generating any depends", lib)
-						continue
+						log.Infof("  found vendored lib %s from package %s; not generating any depends", lib, pkgName)
 					}
+					// We don't need to generate so-ver statements for vendored libraries.
+					continue
 				} else {
 					// Regular library dependency.
 					log.Infof("  found lib %s for %s", lib, path)

@@ -92,6 +92,12 @@ var ignoredLibs = []string{
 	"libc.musl-aarch64.so.1",
 }
 
+// List of ELF sections that should not appear in binaries being
+// analyzed by us.  If they do, we can skip the analysis.
+var invalidELFSections = []string {
+	".note.android.ident",
+}
+
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
 type SCAFS interface {
@@ -701,6 +707,12 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		if ef.Machine != elf.EM_X86_64 && ef.Machine != elf.EM_AARCH64 {
 			log.Debugf("skipping binary %s; unsupported architecture %s", path, ef.Machine.String())
 			return nil
+		}
+		for _, elfSection := range invalidELFSections {
+			if ef.Section(elfSection) != nil {
+				log.Debugf("skipping binary %s; invalid ELF section %v found", path, elfSection)
+				return nil
+			}
 		}
 
 		interp, err := findInterpreter(ef)

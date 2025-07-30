@@ -40,6 +40,64 @@ import (
 
 var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
 
+// List of libraries that are provided by the host.
+var hostLibs = []string{
+	"libEGL_nvidia.so.1",
+	"libGLESv1_CM_nvidia.so.1",
+	"libGLESv2_nvidia.so.1",
+	"libGLX_nvidia.so.1",
+	"libcuda.so.1",
+	"libcudadebugger.so.1",
+	"libnvcuvid.so.1",
+	"libnvidia-allocator.so.1",
+	"libnvidia-cfg.so.1",
+	"libnvidia-eglcore.so.1",
+	"libnvidia-encode.so.1",
+	"libnvidia-fbc.so.1",
+	"libnvidia-glcore.so.1",
+	"libnvidia-glsi.so.1",
+	"libnvidia-glvkspirv.so.1",
+	"libnvidia-gpucomp.so.1",
+	"libnvidia-ml.so.1",
+	"libnvidia-ngx.so.1",
+	"libnvidia-nvvm.so.1",
+	"libnvidia-opencl.so.1",
+	"libnvidia-opticalflow.so.1",
+	"libnvidia-pkcs11-openssl3.so.1",
+	"libnvidia-pkcs11.so.1",
+	"libnvidia-ptxjitcompiler.so.1",
+	"libnvidia-rtcore.so.1",
+	"libnvidia-tls.so.1",
+	"libnvoptix.so.1",
+}
+
+// List of libraries that should be ignored when calculating
+// dependencies.
+var ignoredLibs = []string{
+	// Our glibc libraries are always versioned.  Some packages
+	// might ship prebuilt binaries that depend on unversioned
+	// libc libraries; these can be e.g. Android or musl binaries,
+	// and therefore we should ignore these dependencies.
+	//
+	// For an example of such a package, see Wolfi's grafana-image-renderer.
+	"libc.so",
+	"libdl.so",
+	"libm.so",
+
+	// Some packages ship prebuilt binaries linked against musl.
+	// We don't want to generate dependencies for that.
+	//
+	// For an example of such a package, see Wolfi's code-server.
+	"libc.musl-x86_64.so.1",
+	"libc.musl-aarch64.so.1",
+}
+
+// List of ELF sections that should not appear in binaries being
+// analyzed by us.  If they do, we can skip the analysis.
+var invalidELFSections = []string {
+	".note.android.ident",
+}
+
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
 type SCAFS interface {
@@ -113,42 +171,16 @@ func isInDir(path string, dirs []string) bool {
 // system and should not be included in dependency or provides generation.
 // These are typically NVIDIA libraries that are installed by the host driver.
 func isHostProvidedLibrary(lib string) bool {
-	hostLibs := []string{
-		"libEGL_nvidia.so.1",
-		"libGLESv1_CM_nvidia.so.1",
-		"libGLESv2_nvidia.so.1",
-		"libGLX_nvidia.so.1",
-		"libcuda.so.1",
-		"libcudadebugger.so.1",
-		"libnvcuvid.so.1",
-		"libnvidia-allocator.so.1",
-		"libnvidia-cfg.so.1",
-		"libnvidia-eglcore.so.1",
-		"libnvidia-encode.so.1",
-		"libnvidia-fbc.so.1",
-		"libnvidia-glcore.so.1",
-		"libnvidia-glsi.so.1",
-		"libnvidia-glvkspirv.so.1",
-		"libnvidia-gpucomp.so.1",
-		"libnvidia-ml.so.1",
-		"libnvidia-ngx.so.1",
-		"libnvidia-nvvm.so.1",
-		"libnvidia-opencl.so.1",
-		"libnvidia-opticalflow.so.1",
-		"libnvidia-pkcs11-openssl3.so.1",
-		"libnvidia-pkcs11.so.1",
-		"libnvidia-ptxjitcompiler.so.1",
-		"libnvidia-rtcore.so.1",
-		"libnvidia-tls.so.1",
-		"libnvoptix.so.1",
-	}
-	
-	for _, hostLib := range hostLibs {
-		if lib == hostLib {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(hostLibs, lib)
+}
+
+// isIgnoredLibrary returns true if lib should be ignored during
+// dependency generation.
+//
+// Typically, this happens when dealing with binaries or shared
+// libraries that link against libraries we don't ship or support.
+func isIgnoredLibrary(lib string) bool {
+	return slices.Contains(ignoredLibs, lib)
 }
 
 // getLdSoConfDLibPaths will iterate over the files being installed by
@@ -672,6 +704,17 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 		defer ef.Close()
 
+		if ef.Machine != elf.EM_X86_64 && ef.Machine != elf.EM_AARCH64 {
+			log.Debugf("skipping binary %s; unsupported architecture %s", path, ef.Machine.String())
+			return nil
+		}
+		for _, elfSection := range invalidELFSections {
+			if ef.Section(elfSection) != nil {
+				log.Debugf("skipping binary %s; invalid ELF section %v found", path, elfSection)
+				return nil
+			}
+		}
+
 		interp, err := findInterpreter(ef)
 		if err != nil {
 			return err
@@ -695,8 +738,15 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		for _, lib := range libs {
 			// These are dangling libraries, which must come from the host
 			if isHostProvidedLibrary(lib) {
+				log.Debugf("  skipping lib %s because it is provided by the host", lib)
 				continue
 			}
+
+			if isIgnoredLibrary(lib) {
+				log.Debugf("  ignoring lib %s", lib)
+				continue
+			}
+
 			if strings.Contains(lib, ".so.") || strings.HasSuffix(lib, ".so") {
 				pkgName, isVendoredDep := args.allVendoredShlibs[lib]
 
@@ -712,16 +762,14 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 					// Vendored dependency.
 					if pkgName == hdl.PackageName() {
 						log.Infof("  found vendored lib %s", lib)
-						continue
-					}
-
-					if !hdl.Options().NoVendoredCrossPackageDeps {
+					} else if !hdl.Options().NoVendoredCrossPackageDeps {
 						log.Infof("  found vendored lib %s from package %s; depending on %s=%s", lib, pkgName, pkgName, hdl.Version())
 						generated.Runtime = append(generated.Runtime, fmt.Sprintf("%s=%s", pkgName, hdl.Version()))
 					} else {
-						log.Infof("  found vendored lib %s; not generating any depends", lib)
-						continue
+						log.Infof("  found vendored lib %s from package %s; not generating any depends", lib, pkgName)
 					}
+					// We don't need to generate so-ver statements for vendored libraries.
+					continue
 				} else {
 					// Regular library dependency.
 					log.Infof("  found lib %s for %s", lib, path)

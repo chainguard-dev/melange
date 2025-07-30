@@ -71,6 +71,27 @@ var hostLibs = []string{
 	"libnvoptix.so.1",
 }
 
+// List of libraries that should be ignored when calculating
+// dependencies.
+var ignoredLibs = []string{
+	// Our glibc libraries are always versioned.  Some packages
+	// might ship prebuilt binaries that depend on unversioned
+	// libc libraries; these can be e.g. Android or musl binaries,
+	// and therefore we should ignore these dependencies.
+	//
+	// For an example of such a package, see Wolfi's grafana-image-renderer.
+	"libc.so",
+	"libdl.so",
+	"libm.so",
+
+	// Some packages ship prebuilt binaries linked against musl.
+	// We don't want to generate dependencies for that.
+	//
+	// For an example of such a package, see Wolfi's code-server.
+	"libc.musl-x86_64.so.1",
+	"libc.musl-aarch64.so.1",
+}
+
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
 type SCAFS interface {
@@ -146,6 +167,14 @@ func isInDir(path string, dirs []string) bool {
 func isHostProvidedLibrary(lib string) bool {
 	return slices.Contains(hostLibs, lib)
 }
+
+// isIgnoredLibrary returns true if lib should be ignored during
+// dependency generation.
+//
+// Typically, this happens when dealing with binaries or shared
+// libraries that link against libraries we don't ship or support.
+func isIgnoredLibrary(lib string) bool {
+	return slices.Contains(ignoredLibs, lib)
 }
 
 // getLdSoConfDLibPaths will iterate over the files being installed by
@@ -695,6 +724,12 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 				log.Debugf("  skipping lib %s because it is provided by the host", lib)
 				continue
 			}
+
+			if isIgnoredLibrary(lib) {
+				log.Debugf("  ignoring lib %s", lib)
+				continue
+			}
+
 			if strings.Contains(lib, ".so.") || strings.HasSuffix(lib, ".so") {
 				pkgName, isVendoredDep := args.allVendoredShlibs[lib]
 

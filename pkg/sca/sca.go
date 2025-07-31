@@ -40,37 +40,6 @@ import (
 
 var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
 
-// List of libraries that are provided by the host.
-var hostLibs = []string{
-	"libEGL_nvidia.so.1",
-	"libGLESv1_CM_nvidia.so.1",
-	"libGLESv2_nvidia.so.1",
-	"libGLX_nvidia.so.1",
-	"libcuda.so.1",
-	"libcudadebugger.so.1",
-	"libnvcuvid.so.1",
-	"libnvidia-allocator.so.1",
-	"libnvidia-cfg.so.1",
-	"libnvidia-eglcore.so.1",
-	"libnvidia-encode.so.1",
-	"libnvidia-fbc.so.1",
-	"libnvidia-glcore.so.1",
-	"libnvidia-glsi.so.1",
-	"libnvidia-glvkspirv.so.1",
-	"libnvidia-gpucomp.so.1",
-	"libnvidia-ml.so.1",
-	"libnvidia-ngx.so.1",
-	"libnvidia-nvvm.so.1",
-	"libnvidia-opencl.so.1",
-	"libnvidia-opticalflow.so.1",
-	"libnvidia-pkcs11-openssl3.so.1",
-	"libnvidia-pkcs11.so.1",
-	"libnvidia-ptxjitcompiler.so.1",
-	"libnvidia-rtcore.so.1",
-	"libnvidia-tls.so.1",
-	"libnvoptix.so.1",
-}
-
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
 type SCAFS interface {
@@ -144,8 +113,42 @@ func isInDir(path string, dirs []string) bool {
 // system and should not be included in dependency or provides generation.
 // These are typically NVIDIA libraries that are installed by the host driver.
 func isHostProvidedLibrary(lib string) bool {
-	return slices.Contains(hostLibs, lib)
-}
+	hostLibs := []string{
+		"libEGL_nvidia.so.1",
+		"libGLESv1_CM_nvidia.so.1",
+		"libGLESv2_nvidia.so.1",
+		"libGLX_nvidia.so.1",
+		"libcuda.so.1",
+		"libcudadebugger.so.1",
+		"libnvcuvid.so.1",
+		"libnvidia-allocator.so.1",
+		"libnvidia-cfg.so.1",
+		"libnvidia-eglcore.so.1",
+		"libnvidia-encode.so.1",
+		"libnvidia-fbc.so.1",
+		"libnvidia-glcore.so.1",
+		"libnvidia-glsi.so.1",
+		"libnvidia-glvkspirv.so.1",
+		"libnvidia-gpucomp.so.1",
+		"libnvidia-ml.so.1",
+		"libnvidia-ngx.so.1",
+		"libnvidia-nvvm.so.1",
+		"libnvidia-opencl.so.1",
+		"libnvidia-opticalflow.so.1",
+		"libnvidia-pkcs11-openssl3.so.1",
+		"libnvidia-pkcs11.so.1",
+		"libnvidia-ptxjitcompiler.so.1",
+		"libnvidia-rtcore.so.1",
+		"libnvidia-tls.so.1",
+		"libnvoptix.so.1",
+	}
+	
+	for _, hostLib := range hostLibs {
+		if lib == hostLib {
+			return true
+		}
+	}
+	return false
 }
 
 // getLdSoConfDLibPaths will iterate over the files being installed by
@@ -692,7 +695,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		for _, lib := range libs {
 			// These are dangling libraries, which must come from the host
 			if isHostProvidedLibrary(lib) {
-				log.Debugf("  skipping lib %s because it is provided by the host", lib)
 				continue
 			}
 			if strings.Contains(lib, ".so.") || strings.HasSuffix(lib, ".so") {

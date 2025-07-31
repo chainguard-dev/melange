@@ -73,7 +73,6 @@ func TestAnalyze(t *testing.T) {
 				"so:liblcms2-e69eef39.so.2.0.16",
 				"so:liblzma-13fa198c.so.5.4.5",
 				"so:libm.so.6",
-				"so:libopenblas64_p-r0-0cf96a72.3.23.dev.so",
 				"so:libopenjp2-eca49203.so.2.5.0",
 				"so:libpng16-78d422d5.so.16.40.0",
 				"so:libpthread.so.0",
@@ -150,17 +149,6 @@ func TestAnalyze(t *testing.T) {
 				"so:libm.so.6",
 				"so:libmount.so.1",
 				"so:libssl.so.3",
-				// libsystemd-core-256.so and
-				// libsystemd-shared-256.so are
-				// false-positives that get added to
-				// runtime deps because systemd links
-				// against these vendored libraries,
-				// but melange doesn't have enough
-				// context to determine that they are
-				// vendored because they're shipped by
-				// another subpackage.
-				"so:libsystemd-core-256.so",
-				"so:libsystemd-shared-256.so",
 				"so:libudev.so.1",
 			},
 			Provides: []string{

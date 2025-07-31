@@ -218,16 +218,6 @@ options:
   no-versioned-shlib-deps: true
 ```
 
-`no-vendored-cross-package-deps` - When a subpackage `X` ships a
-vendored shared library that's used by subpackage `Y`, melange won't
-generate a `depends` from `Y -> X`.  By default, melange will generate
-a `depends` for `X=version`.
-
-```
-options:
-  no-vendored-cross-package-deps: true
-```
-
 ### scriptlets
 List of executable scripts that run at various stages of the package lifecycle,
 triggered by configurable events. These are useful to handle tasks that only

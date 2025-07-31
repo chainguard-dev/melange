@@ -211,9 +211,6 @@ jobs:
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /usr/bin/sudo"
           elif [[ "${{ matrix.package }}" == "postfix" ]]; then
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /var/spool/postfix; ls -hal /var/lib/postfix"
-            # Test https://github.com/chainguard-dev/melange/pull/2072
-            PKGVER=$(tar -Oxf ./packages/x86_64/${{ matrix.package }}-stone-*.apk .PKGINFO | grep '^pkgver' | cut -d' ' -f3)
-            tar -Oxf ./packages/x86_64/${{ matrix.package }}-stone-*.apk .PKGINFO | grep "^depend = ${{ matrix.package }}=${PKGVER}"
           else
             docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk"
           fi

@@ -77,7 +77,7 @@ func (scabi *SCABuildInterface) Filesystem() (sca.SCAFS, error) {
 // Options returns the configured SCA engine options for the package being built.
 func (scabi *SCABuildInterface) Options() config.PackageOption {
 	if scabi.PackageBuild.Options == nil {
-		return config.PackageOption{}
+		return config.DefaultPackageOption()
 	}
 	return *scabi.PackageBuild.Options
 }

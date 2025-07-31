@@ -1386,3 +1386,103 @@ func TestPackageURL(t *testing.T) {
 		})
 	}
 }
+
+func TestNoVendoredCrossPackageDepsDefault(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	tests := []struct {
+		name           string
+		yamlContent    string
+		expectedResult bool
+	}{
+		{
+			name: "no options specified - should default to true",
+			yamlContent: `
+package:
+  name: test-package
+  version: 1.0.0
+  epoch: 0
+  description: test package
+environment:
+  contents:
+    packages:
+      - build-base
+pipeline:
+  - runs: echo "test"
+`,
+			expectedResult: true,
+		},
+		{
+			name: "explicit false - should be false",
+			yamlContent: `
+package:
+  name: test-package
+  version: 1.0.0
+  epoch: 0
+  description: test package
+  options:
+    no-vendored-cross-package-deps: false
+environment:
+  contents:
+    packages:
+      - build-base
+pipeline:
+  - runs: echo "test"
+`,
+			expectedResult: false,
+		},
+		{
+			name: "explicit true - should be true",
+			yamlContent: `
+package:
+  name: test-package
+  version: 1.0.0
+  epoch: 0
+  description: test package
+  options:
+    no-vendored-cross-package-deps: true
+environment:
+  contents:
+    packages:
+      - build-base
+pipeline:
+  - runs: echo "test"
+`,
+			expectedResult: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fp := filepath.Join(os.TempDir(), "melange-test-no-vendored-cross-package-deps-"+tt.name+".yaml")
+			if err := os.WriteFile(fp, []byte(tt.yamlContent), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(fp)
+
+			cfg, err := ParseConfiguration(ctx, fp)
+			if err != nil {
+				t.Fatalf("failed to parse configuration: %s", err)
+			}
+
+			// Test via the SCA interface (which uses DefaultPackageOption() when options is nil)
+			scaInterface := &struct {
+				options *PackageOption
+			}{
+				options: cfg.Package.Options,
+			}
+
+			var actualResult bool
+			if scaInterface.options == nil {
+				// This mimics what the SCA interface does
+				defaultOpts := DefaultPackageOption()
+				actualResult = defaultOpts.NoVendoredCrossPackageDeps
+			} else {
+				actualResult = scaInterface.options.NoVendoredCrossPackageDeps
+			}
+
+			require.Equal(t, tt.expectedResult, actualResult,
+				"NoVendoredCrossPackageDeps should be %t for test case: %s", tt.expectedResult, tt.name)
+		})
+	}
+}

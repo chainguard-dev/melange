@@ -74,7 +74,7 @@ func (th *testHandle) Filesystem() (SCAFS, error) {
 
 func (th *testHandle) Options() config.PackageOption {
 	if th.cfg.Package.Options == nil {
-		return config.PackageOption{}
+		return config.DefaultPackageOption()
 	}
 	return *th.cfg.Package.Options
 }

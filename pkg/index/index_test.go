@@ -87,7 +87,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 		t.Fatal(err)
 	}
 
-	f, err := os.Create(filepath.Join(t.TempDir(), "libcap-2.69-r0.apk"))
+	f, err := os.OpenFile(filepath.Join(t.TempDir(), "libcap-2.69-r0.apk"), os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -190,7 +190,7 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 		log.Warnf("cache directory is a GCS bucket, not copying file: %s", cfg.CacheDir)
 		return nil
 	}
-	destinationFile, err := os.Create(destinationPath)
+	destinationFile, err := os.OpenFile(destinationPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}

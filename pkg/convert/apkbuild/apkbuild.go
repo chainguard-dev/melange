@@ -634,7 +634,7 @@ func (c ApkConvertor) write(ctx context.Context, orderNumber, outdir string) err
 
 	// Prepare the file path for the YAML output
 	manifestFile := filepath.Join(outdir, fmt.Sprintf("%s0-%s.yaml", orderNumber, c.Apkbuild.Pkgname))
-	f, err := os.Create(manifestFile)
+	f, err := os.OpenFile(manifestFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("creating file %s: %w", manifestFile, err)
 	}

@@ -113,8 +113,9 @@ func TestLinters(t *testing.T) {
 	for _, c := range []struct {
 		cfg     *config.Configuration
 		dirFunc func() string
-		linter  string // NB: Also the package name for this test, but that's weird!
+		linter  string // NB: Also used as the fallback package name for the test if unspecified!
 		pass    bool
+		pkgname string
 	}{{
 		dirFunc: t.TempDir,
 		linter:  "empty",
@@ -292,12 +293,83 @@ func TestLinters(t *testing.T) {
 		dirFunc: mkfile(t, "usr/lib/libcuda.so.560.35.05"),
 		linter:  "cudaruntimelib",
 		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "regular-doc",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/share/man/man8/bar.8.gz"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/local/share/man/man3/baz.3"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/man/man5/qux.5"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/info/test.info"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/info/test.info.gz"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/info/test.info-1"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/info/dir"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/share/info/test.info"),
+		linter:  "maninfo",
+		pkgname: "regular-doc",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/bin/normal"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/local/share/info/test.info"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo.so.1"),
+		linter:  "maninfo",
+		pkgname: "regular-package",
+		pass:    true,
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {
 			dir := c.dirFunc()
+
+			pkgname := c.pkgname
+			if pkgname == "" {
+				pkgname = c.linter // Fallback to using the linter name as the fake package name
+			}
+
 			// In required mode, it should raise an error.
-			err := LintBuild(ctx, c.cfg, c.linter, dir, []string{c.linter}, nil)
+			err := LintBuild(ctx, c.cfg, pkgname, dir, []string{c.linter}, nil)
 			if c.pass {
 				assert.NoError(t, err)
 			} else {
@@ -305,7 +377,7 @@ func TestLinters(t *testing.T) {
 			}
 
 			// In warn mode, it should never raise an error.
-			assert.NoError(t, LintBuild(ctx, c.cfg, c.linter, dir, nil, []string{c.linter}))
+			assert.NoError(t, LintBuild(ctx, c.cfg, pkgname, dir, nil, []string{c.linter}))
 		})
 	}
 }

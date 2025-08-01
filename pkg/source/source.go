@@ -24,7 +24,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog"
@@ -102,6 +104,12 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*config.Configuration, error) {
 	log := clog.FromContext(ctx)
 
+	// Make sure destDir is an absolute path
+	destDir, err := filepath.Abs(destDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for destination directory: %w", err)
+	}
+
 	// Temporary directory for all ephemeral stuff. Best to keep this separate
 	// as we'll be extracting our pipelines code there, and we wouldn't want
 	// anyone to cause harm by overwriting the pipelines code.
@@ -175,6 +183,24 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 		fmt.Println(err)
 	}
 	defer os.Chdir(wd) //nolint:errcheck
+
+	// Also, if we're handling a melange yaml file, check if next to it there is a
+	// directory called the same name as the melange yaml file, and if so, copy its
+	// contents to the destination directory. This is needed for patch and others.
+	if !isApk {
+		pkgd := strings.TrimSuffix(filePath, filepath.Ext(filePath))
+
+		if _, err := os.Stat(pkgd); err == nil {
+			log.Infof("Found melange directory: %s\nCopying contents to %s\n", pkgd, destDir)
+			srcFS := apkofs.DirFS(ctx, pkgd)
+			err := os.CopyFS(destDir, srcFS)
+			if err != nil {
+				return nil, fmt.Errorf("failed to copy melange directory contents: %v", err)
+			}
+		} else if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("error checking melange directory: %v", err)
+		}
+	}
 
 	// Iterate over the pipeline steps and look for any source fetching steps.
 	for _, step := range cfg.Pipeline {

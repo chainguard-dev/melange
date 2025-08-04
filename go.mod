@@ -6,9 +6,9 @@ require (
 	chainguard.dev/apko v0.30.2
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.24
+	github.com/chainguard-dev/yam v0.2.27
 	github.com/charmbracelet/log v0.4.2
-	github.com/docker/cli v28.3.2+incompatible
+	github.com/docker/cli v28.3.3+incompatible
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.3
@@ -25,7 +25,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.30
-	github.com/moby/moby v28.3.2+incompatible
+	github.com/moby/moby v28.3.3+incompatible
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1

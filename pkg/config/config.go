@@ -94,8 +94,15 @@ type PackageOption struct {
 	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
 	// Optional: Don't generate inter-package depends when one
 	// subpackage depends on a vendored shared library shipped by
-	// another.
+	// another. Defaults to true (disabled).
 	NoVendoredCrossPackageDeps bool `json:"no-vendored-cross-package-deps,omitempty" yaml:"no-vendored-cross-package-deps,omitempty"`
+}
+
+// DefaultPackageOption returns a PackageOption with appropriate default values.
+func DefaultPackageOption() PackageOption {
+	return PackageOption{
+		NoVendoredCrossPackageDeps: true,
+	}
 }
 
 type Checks struct {

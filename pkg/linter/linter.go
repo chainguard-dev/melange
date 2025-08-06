@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -122,12 +123,12 @@ var linterMap = map[string]linter{
 	"sbom": {
 		LinterFunc:      allPaths(sbomLinter),
 		Explain:         "Remove any files in /var/lib/db/sbom from the package",
-		defaultBehavior: Ignore, // TODO: needs work to be useful
+		defaultBehavior: Warn, // TODO: needs work to be useful
 	},
 	"setuidgid": {
 		LinterFunc:      isSetUIDOrGIDLinter,
 		Explain:         "Unset the setuid/setgid bit on the relevant files, or remove this linter",
-		defaultBehavior: Warn,
+		defaultBehavior: Require,
 	},
 	"srv": {
 		LinterFunc:      allPaths(srvLinter),
@@ -151,8 +152,8 @@ var linterMap = map[string]linter{
 	},
 	"worldwrite": {
 		LinterFunc:      worldWriteableLinter,
-		Explain:         "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
-		defaultBehavior: Warn,
+		Explain:         "Change the permissions of any permissive files in the package, disable the linter, or make this a -compat package",
+		defaultBehavior: Require,
 	},
 	"strip": {
 		LinterFunc:      strippedLinter,
@@ -267,13 +268,14 @@ func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string,
 		if err != nil {
 			return err
 		}
-		if isIgnoredPath(path) {
-			return nil
-		}
 
 		info, err := d.Info()
 		if err != nil {
 			return err
+		}
+
+		if !d.Type().IsRegular() { // Don't worry about non-files
+			return nil
 		}
 
 		mode := info.Mode()
@@ -287,8 +289,8 @@ func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string,
 }
 
 func sbomLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "var/lib/db/sbom/") {
-		return fmt.Errorf("package writes to %s", path)
+	if filepath.Dir(path) == "var/lib/db/sbom" && !strings.HasSuffix(path, ".spdx.json") {
+		return fmt.Errorf("package writes to %s", filepath.Dir(path))
 	}
 	return nil
 }
@@ -338,9 +340,6 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		if err != nil {
 			return err
 		}
-		if isIgnoredPath(path) {
-			return nil
-		}
 
 		if !d.Type().IsRegular() { // Don't worry about non-files
 			return nil
@@ -352,11 +351,13 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		}
 
 		mode := info.Mode()
+		perm := fmt.Sprintf("0%s", strconv.FormatUint(uint64(mode.Perm()), 8))
+
 		if mode&0o002 != 0 {
 			if mode&0o111 != 0 {
-				return fmt.Errorf("world-writeable executable file found in package (security risk): %s", path)
+				return fmt.Errorf("world-writeable executable file found in package (security risk): %s - %s", path, perm)
 			}
-			return fmt.Errorf("world-writeable file found in package: %s", path)
+			return fmt.Errorf("world-writeable file found in package: %s - %s", path, perm)
 		}
 		return nil
 	})
@@ -700,18 +701,18 @@ func checkLinters(linters []string) error {
 }
 
 // Lint the given build directory at the given path
-func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, path string, require, warn []string) error {
+func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, require, warn []string, fsys apkofs.FullFS) error {
 	if err := checkLinters(append(require, warn...)); err != nil {
 		return err
 	}
 
 	log := clog.FromContext(ctx)
-	fsys := apkofs.DirFS(ctx, path)
+	log.Infof("linting apk: %s", packageName)
 
 	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
 		log.Warn(err.Error())
 	}
-	log.Infof("linting apk: %s", packageName)
+
 	return lintPackageFS(ctx, cfg, packageName, fsys, require)
 }
 

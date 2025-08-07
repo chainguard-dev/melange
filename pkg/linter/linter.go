@@ -260,6 +260,22 @@ func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path str
 	return nil
 }
 
+func modeToOctal(mode os.FileMode) string {
+	perm := uint64(mode.Perm())
+
+	if mode&os.ModeSetuid != 0 {
+		perm |= 04000
+	}
+	if mode&os.ModeSetgid != 0 {
+		perm |= 02000
+	}
+	if mode&os.ModeSticky != 0 {
+		perm |= 01000
+	}
+
+	return strconv.FormatUint(perm, 8)
+}
+
 func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
@@ -279,11 +295,24 @@ func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string,
 		}
 
 		mode := info.Mode()
-		if mode&fs.ModeSetuid != 0 {
-			return fmt.Errorf("file is setuid")
-		} else if mode&fs.ModeSetgid != 0 {
-			return fmt.Errorf("file is setgid")
+		perm := modeToOctal(mode)
+
+		bits := mode & (fs.ModeSetuid | fs.ModeSetgid | fs.ModeSticky)
+		if bits != 0 {
+			var parts []string
+			if mode&fs.ModeSetuid != 0 {
+				parts = append(parts, "setuid")
+			}
+			if mode&fs.ModeSetgid != 0 {
+				parts = append(parts, "setgid")
+			}
+			if mode&fs.ModeSticky != 0 {
+				parts = append(parts, "sticky")
+			}
+			return fmt.Errorf("file with special permissions found in package: %s - %s (%s)",
+				path, perm, strings.Join(parts, "+"))
 		}
+
 		return nil
 	})
 }
@@ -351,7 +380,7 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		}
 
 		mode := info.Mode()
-		perm := fmt.Sprintf("0%s", strconv.FormatUint(uint64(mode.Perm()), 8))
+		perm := modeToOctal(mode)
 
 		if mode&0o002 != 0 {
 			if mode&0o111 != 0 {

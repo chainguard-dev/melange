@@ -392,7 +392,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	linters := []string{"python/multiple"}
 
 	// Base dir
-	pythonPathdir := filepath.Join("usr", "lib", "python3.13", "site-packages")
+	pythonPathdir := filepath.Join("usr", "lib", "python3.14", "site-packages")
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")
@@ -444,7 +444,7 @@ func Test_pythonTestLinter(t *testing.T) {
 	linters := []string{"python/test"}
 
 	// Base dir
-	pythonPathdir := filepath.Join("usr", "lib", "python3.13", "site-packages")
+	pythonPathdir := filepath.Join("usr", "lib", "python3.14", "site-packages")
 
 	// Make one "package"
 	packagedir := filepath.Join(pythonPathdir, "foo")

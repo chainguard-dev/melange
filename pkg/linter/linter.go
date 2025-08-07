@@ -219,8 +219,8 @@ func devLinter(_ context.Context, _ *config.Configuration, _, path string) error
 	return nil
 }
 
-func optLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "opt/") {
+func optLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "opt/") {
 		return fmt.Errorf("package writes to /opt")
 	}
 
@@ -331,8 +331,8 @@ func infodirLinter(_ context.Context, _ *config.Configuration, _, path string) e
 	return nil
 }
 
-func srvLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "srv/") {
+func srvLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "srv/") {
 		return fmt.Errorf("package writes to /srv")
 	}
 	return nil
@@ -347,8 +347,8 @@ func tempDirLinter(_ context.Context, _ *config.Configuration, _, path string) e
 	return nil
 }
 
-func usrLocalLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "usr/local/") {
+func usrLocalLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "usr/local/") {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
 	return nil
@@ -700,11 +700,6 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 }
 
 func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
-	// If this is a compat package, do nothing.
-	if strings.HasSuffix(pkgname, "-compat") {
-		return nil
-	}
-
 	errs := []error{}
 	for _, linterName := range linters {
 		if err := ctx.Err(); err != nil {

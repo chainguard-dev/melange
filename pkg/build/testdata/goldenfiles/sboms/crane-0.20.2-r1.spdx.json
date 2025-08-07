@@ -25,6 +25,8 @@
       "licenseDeclared": "NOASSERTION",
       "description": "Operating System",
       "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {

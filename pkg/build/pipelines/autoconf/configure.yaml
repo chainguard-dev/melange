@@ -45,3 +45,14 @@ pipeline:
         --infodir=/usr/share/info \
         --localstatedir=/var \
         ${{inputs.opts}}
+
+      # Check for -march=native in generated autotools files
+      march_native_files=$(find . -name "config.log" -o -name "config.status" -o -name "Makefile" -o -name "*.pc")
+      if [[ -n "${march_native_files}" ]]; then
+        for file in ${march_native_files}; do
+          if grep -E 'C(XX)?FLAGS(.+)?-march=native(.+)?' "${file}"; then
+            echo "Error: Found -march=native CFLAGS/CXXFLAGS in ${file}. This creates non-portable binaries."
+            exit 1
+          fi
+        done
+      fi

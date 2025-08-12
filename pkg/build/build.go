@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -37,10 +38,10 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/tarfs"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
@@ -103,7 +104,7 @@ type Build struct {
 	WorkspaceDir    string
 	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
-	GuestFS apkofs.FullFS
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
@@ -770,7 +771,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 		}
 
-		// add the main package to the linter queue
+		// add the subpackage to the linter queue
 		lintTarget := linterTarget{
 			pkgName:  sp.Name,
 			disabled: sp.Checks.Disabled,
@@ -819,7 +820,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		uid := owner["uid"]
 		gid := owner["gid"]
 		if err := b.WorkspaceDirFS.Chown(path, uid, gid); err != nil {
-			log.Warnf("failed to change ownership of %s to %d:%d", path, uid, gid)
+			log.Warnf("failed to change ownership of %s to %d:%d: %v", path, uid, gid, err)
 		}
 	}
 
@@ -859,7 +860,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)
-		path := filepath.Join(b.WorkspaceDir, melangeOutputDirName, lt.pkgName)
+
+		// lint the in-memory filesystem which contains the correct mode bits, xattrs, etc.
+		fsys, err := apkofs.Sub(b.WorkspaceDirFS, filepath.Join(melangeOutputDirName, lt.pkgName))
+		if err != nil {
+			return fmt.Errorf("failed to return filesystem for workspace subtree: %w", err)
+		}
 
 		// Downgrade disabled checks from required to warn
 		require := slices.DeleteFunc(b.LintRequire, func(s string) bool {
@@ -869,13 +875,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return a == b
 		})
 
-		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, path, require, warn); err != nil {
+		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, require, warn, fsys); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}
 
 	// Perform all license related linting and analysis
-	if _, _, err := license.LicenseCheck(ctx, b.Configuration, apkofs.DirFS(ctx, b.WorkspaceDir)); err != nil {
+	if _, _, err := license.LicenseCheck(ctx, b.Configuration, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("license check: %w", err)
 	}
 
@@ -1315,6 +1321,10 @@ func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.File
 			return err
 		}
 
+		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
+		}
+
 		relPath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
@@ -1324,25 +1334,24 @@ func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.File
 		if err != nil {
 			return err
 		}
-		mode := fi.Mode()
 
-		// Store ownership info, defaulting to root when unavailable
+		// store the file mode bits for every relative path in the provided directory
+		// some paths may not be related to or used by the package itself (i.e., they may be candidates for cleanup)
+		// but we may want to have them for future linting at the very least
+		modes[relPath] = fi.Mode()
+
+		// Store ownership info, defaulting to root when unavailable or invalid
 		owners[relPath] = map[string]int{
 			"uid": 0,
 			"gid": 0,
 		}
 		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
-			owners[relPath]["uid"] = int(stat.Uid)
-			owners[relPath]["gid"] = int(stat.Gid)
-		}
-
-		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
-			return nil
-		}
-
-		// If the path is within the melange-out directory, store the relative path and mode bits
-		if strings.Contains(path, melangeOutputDirName) {
-			modes[relPath] = mode
+			if stat.Uid <= math.MaxInt32 {
+				owners[relPath]["uid"] = int(stat.Uid)
+			}
+			if stat.Gid <= math.MaxInt32 {
+				owners[relPath]["gid"] = int(stat.Gid)
+			}
 		}
 
 		size, err := unix.Listxattr(path, nil)

@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -114,15 +115,20 @@ var linterMap = map[string]linter{
 		Explain:         "This package contains intermediate object files",
 		defaultBehavior: Warn,
 	},
+	"maninfo": {
+		LinterFunc:      allPaths(manInfoLinter),
+		Explain:         "Place documentation into a separate package or remove it",
+		defaultBehavior: Warn,
+	},
 	"sbom": {
 		LinterFunc:      allPaths(sbomLinter),
 		Explain:         "Remove any files in /var/lib/db/sbom from the package",
-		defaultBehavior: Ignore, // TODO: needs work to be useful
+		defaultBehavior: Warn, // TODO: needs work to be useful
 	},
 	"setuidgid": {
 		LinterFunc:      isSetUIDOrGIDLinter,
 		Explain:         "Unset the setuid/setgid bit on the relevant files, or remove this linter",
-		defaultBehavior: Warn,
+		defaultBehavior: Require,
 	},
 	"srv": {
 		LinterFunc:      allPaths(srvLinter),
@@ -146,8 +152,8 @@ var linterMap = map[string]linter{
 	},
 	"worldwrite": {
 		LinterFunc:      worldWriteableLinter,
-		Explain:         "Change the permissions of any world-writeable files in the package, disable the linter, or make this a -compat package",
-		defaultBehavior: Warn,
+		Explain:         "Change the permissions of any permissive files in the package, disable the linter, or make this a -compat package",
+		defaultBehavior: Require,
 	},
 	"strip": {
 		LinterFunc:      strippedLinter,
@@ -213,8 +219,8 @@ func devLinter(_ context.Context, _ *config.Configuration, _, path string) error
 	return nil
 }
 
-func optLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "opt/") {
+func optLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "opt/") {
 		return fmt.Errorf("package writes to /opt")
 	}
 
@@ -237,6 +243,39 @@ func documentationLinter(_ context.Context, _ *config.Configuration, pkgname, pa
 	return nil
 }
 
+var (
+	manRegex  = regexp.MustCompile(`^usr/(?:local/)?share/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$|^usr/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$`)
+	infoRegex = regexp.MustCompile(`^usr/(?:local/)?share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
+)
+
+func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if strings.HasSuffix(pkgname, "-doc") {
+		return nil
+	}
+
+	if manRegex.MatchString(path) || infoRegex.MatchString(path) {
+		return fmt.Errorf("package contains man/info files but is not a documentation package")
+	}
+
+	return nil
+}
+
+func modeToOctal(mode os.FileMode) string {
+	perm := uint64(mode.Perm())
+
+	if mode&os.ModeSetuid != 0 {
+		perm |= 04000
+	}
+	if mode&os.ModeSetgid != 0 {
+		perm |= 02000
+	}
+	if mode&os.ModeSticky != 0 {
+		perm |= 01000
+	}
+
+	return strconv.FormatUint(perm, 8)
+}
+
 func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
@@ -245,28 +284,42 @@ func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string,
 		if err != nil {
 			return err
 		}
-		if isIgnoredPath(path) {
-			return nil
-		}
 
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
 
-		mode := info.Mode()
-		if mode&fs.ModeSetuid != 0 {
-			return fmt.Errorf("file is setuid")
-		} else if mode&fs.ModeSetgid != 0 {
-			return fmt.Errorf("file is setgid")
+		if !d.Type().IsRegular() { // Don't worry about non-files
+			return nil
 		}
+
+		mode := info.Mode()
+		perm := modeToOctal(mode)
+
+		bits := mode & (fs.ModeSetuid | fs.ModeSetgid | fs.ModeSticky)
+		if bits != 0 {
+			var parts []string
+			if mode&fs.ModeSetuid != 0 {
+				parts = append(parts, "setuid")
+			}
+			if mode&fs.ModeSetgid != 0 {
+				parts = append(parts, "setgid")
+			}
+			if mode&fs.ModeSticky != 0 {
+				parts = append(parts, "sticky")
+			}
+			return fmt.Errorf("file with special permissions found in package: %s - %s (%s)",
+				path, perm, strings.Join(parts, "+"))
+		}
+
 		return nil
 	})
 }
 
 func sbomLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "var/lib/db/sbom/") {
-		return fmt.Errorf("package writes to %s", path)
+	if filepath.Dir(path) == "var/lib/db/sbom" && !strings.HasSuffix(path, ".spdx.json") {
+		return fmt.Errorf("package writes to %s", filepath.Dir(path))
 	}
 	return nil
 }
@@ -278,8 +331,8 @@ func infodirLinter(_ context.Context, _ *config.Configuration, _, path string) e
 	return nil
 }
 
-func srvLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "srv/") {
+func srvLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "srv/") {
 		return fmt.Errorf("package writes to /srv")
 	}
 	return nil
@@ -294,8 +347,8 @@ func tempDirLinter(_ context.Context, _ *config.Configuration, _, path string) e
 	return nil
 }
 
-func usrLocalLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "usr/local/") {
+func usrLocalLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "usr/local/") {
 		return fmt.Errorf("/usr/local path found in non-compat package")
 	}
 	return nil
@@ -316,9 +369,6 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		if err != nil {
 			return err
 		}
-		if isIgnoredPath(path) {
-			return nil
-		}
 
 		if !d.Type().IsRegular() { // Don't worry about non-files
 			return nil
@@ -330,11 +380,13 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		}
 
 		mode := info.Mode()
+		perm := modeToOctal(mode)
+
 		if mode&0o002 != 0 {
 			if mode&0o111 != 0 {
-				return fmt.Errorf("world-writeable executable file found in package (security risk): %s", path)
+				return fmt.Errorf("world-writeable executable file found in package (security risk): %s - %s", path, perm)
 			}
-			return fmt.Errorf("world-writeable file found in package: %s", path)
+			return fmt.Errorf("world-writeable file found in package: %s - %s", path, perm)
 		}
 		return nil
 	})
@@ -648,11 +700,6 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 }
 
 func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
-	// If this is a compat package, do nothing.
-	if strings.HasSuffix(pkgname, "-compat") {
-		return nil
-	}
-
 	errs := []error{}
 	for _, linterName := range linters {
 		if err := ctx.Err(); err != nil {
@@ -678,18 +725,18 @@ func checkLinters(linters []string) error {
 }
 
 // Lint the given build directory at the given path
-func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, path string, require, warn []string) error {
+func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, require, warn []string, fsys apkofs.FullFS) error {
 	if err := checkLinters(append(require, warn...)); err != nil {
 		return err
 	}
 
 	log := clog.FromContext(ctx)
-	fsys := apkofs.DirFS(ctx, path)
+	log.Infof("linting apk: %s", packageName)
 
 	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
 		log.Warn(err.Error())
 	}
-	log.Infof("linting apk: %s", packageName)
+
 	return lintPackageFS(ctx, cfg, packageName, fsys, require)
 }
 

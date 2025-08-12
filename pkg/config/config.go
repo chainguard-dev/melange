@@ -92,6 +92,10 @@ type PackageOption struct {
 	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
 	// Optional: Don't generate versioned depends for shared libraries
 	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
+	// Optional: Don't generate inter-package depends when one
+	// subpackage depends on a vendored shared library shipped by
+	// another.
+	NoVendoredCrossPackageDeps bool `json:"no-vendored-cross-package-deps,omitempty" yaml:"no-vendored-cross-package-deps,omitempty"`
 }
 
 type Checks struct {
@@ -1236,11 +1240,11 @@ func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_
 
 func replaceImageContents(r *strings.Replacer, in apko_types.ImageContents) apko_types.ImageContents {
 	return apko_types.ImageContents{
-		BuildRepositories:   replaceAll(r, in.BuildRepositories),
-		RuntimeRepositories: replaceAll(r, in.RuntimeRepositories),
-		Keyring:             replaceAll(r, in.Keyring),
-		Packages:            replaceAll(r, in.Packages),
-		BaseImage:           in.BaseImage, // TODO
+		BuildRepositories: replaceAll(r, in.BuildRepositories),
+		Repositories:      replaceAll(r, in.Repositories),
+		Keyring:           replaceAll(r, in.Keyring),
+		Packages:          replaceAll(r, in.Packages),
+		BaseImage:         in.BaseImage, // TODO
 	}
 }
 

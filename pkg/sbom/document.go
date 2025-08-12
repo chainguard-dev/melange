@@ -114,6 +114,8 @@ func (d Document) createOperatingSystemPackage(os *apko_build.ReleaseData) spdx.
 		LicenseDeclared:  spdx.NOASSERTION,
 		DownloadLocation: spdx.NOASSERTION,
 		PrimaryPurpose:   "OPERATING-SYSTEM",
+		Originator:       d.Describes.getSupplier(),
+		Supplier:         d.Describes.getSupplier(),
 	}
 }
 

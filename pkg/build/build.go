@@ -1031,7 +1031,7 @@ func (b *Build) SummarizePaths(ctx context.Context) {
 
 func (b *Build) summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange %s is building:", version.GetVersionInfo().GitVersion)
+	log.Infof("melange %s with runner %s is building:", version.GetVersionInfo().GitVersion, b.Runner.Name())
 	log.Debugf("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }

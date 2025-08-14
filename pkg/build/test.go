@@ -30,8 +30,8 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/apko/pkg/tarfs"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
@@ -155,6 +155,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
 
+	t.Summarize(ctx)
 	bc.Summarize(ctx)
 
 	// lay out the contents for the image in a directory.
@@ -407,7 +408,7 @@ func (t *Test) SummarizePaths(ctx context.Context) {
 
 func (t *Test) Summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange %s is testing:", version.GetVersionInfo().GitVersion)
+	log.Infof("melange %s with runner %s is testing:", version.GetVersionInfo().GitVersion, t.Runner.Name())
 	log.Debugf("  configuration file: %s", t.ConfigFile)
 	t.SummarizePaths(ctx)
 }

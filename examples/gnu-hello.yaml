@@ -25,7 +25,7 @@ environment:
 pipeline:
   - uses: fetch
     with:
-      uri: https://ftp.gnu.org/gnu/hello/hello-${{package.version}}.tar.gz
+      uri: https://mirrors.ocf.berkeley.edu/gnu/hello/hello-${{package.version}}.tar.gz
       expected-sha256: cf04af86dc085268c5f4470fbae49b18afbc221b78096aab842d934a76bad0ab
 
   - uses: autoconf/configure

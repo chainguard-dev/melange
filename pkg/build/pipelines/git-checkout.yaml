@@ -37,7 +37,7 @@ inputs:
   cherry-picks:
     description: |
       List of cherry picks to apply.
-      New line separated entries. 
+      New line separated entries.
       Lines can be empty.
       Any content on a line after `#` is ignored.
       After removing comments, each line is of the form:
@@ -51,6 +51,13 @@ inputs:
         Example:
           cherry-picks: |
             3.10/62705d869aca4055e8a96e2ed4f9013e9917c661:
+  type-hint:
+    description: |
+      Type hint to use during SBOM generation for the provided
+      git repository. This is primarily used to identify Gitlab
+      based sources which are not heuristically identifiable as
+      Gitlab.  Supported hints: gitlab.
+
 
 pipeline:
   - runs: |

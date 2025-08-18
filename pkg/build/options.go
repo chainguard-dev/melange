@@ -111,14 +111,6 @@ func WithWorkspaceDir(workspaceDir string) Option {
 	}
 }
 
-// WithGuestDir sets the guest directory to use.
-func WithGuestDir(guestDir string) Option {
-	return func(b *Build) error {
-		b.GuestDir = guestDir
-		return nil
-	}
-}
-
 // WithWorkspaceIgnore sets the workspace ignore rules file to use.
 func WithWorkspaceIgnore(workspaceIgnore string) Option {
 	return func(b *Build) error {
@@ -419,6 +411,14 @@ func WithLibcFlavorOverride(libc string) Option {
 func WithIgnoreSignatures(ignore bool) Option {
 	return func(b *Build) error {
 		b.IgnoreSignatures = ignore
+		return nil
+	}
+}
+
+// WithGenerateProvenance sets whether to generate SLSA provenance during the build.
+func WithGenerateProvenance(provenance bool) Option {
+	return func(b *Build) error {
+		b.GenerateProvenance = provenance
 		return nil
 	}
 }

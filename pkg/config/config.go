@@ -17,13 +17,16 @@ package config
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
 	"iter"
 	"maps"
+	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -81,12 +84,18 @@ type Scriptlets struct {
 type PackageOption struct {
 	// Optional: Signify this package as a virtual package which does not provide
 	// any files, executables, libraries, etc... and is otherwise empty
-	NoProvides bool `json:"no-provides" yaml:"no-provides"`
+	NoProvides bool `json:"no-provides,omitempty" yaml:"no-provides,omitempty"`
 	// Optional: Mark this package as a self contained package that does not
 	// depend on any other package
-	NoDepends bool `json:"no-depends" yaml:"no-depends"`
+	NoDepends bool `json:"no-depends,omitempty" yaml:"no-depends,omitempty"`
 	// Optional: Mark this package as not providing any executables
-	NoCommands bool `json:"no-commands" yaml:"no-commands"`
+	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
+	// Optional: Don't generate versioned depends for shared libraries
+	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
+	// Optional: Don't generate inter-package depends when one
+	// subpackage depends on a vendored shared library shipped by
+	// another.
+	NoVendoredCrossPackageDeps bool `json:"no-vendored-cross-package-deps,omitempty" yaml:"no-vendored-cross-package-deps,omitempty"`
 }
 
 type Checks struct {
@@ -125,6 +134,8 @@ type Package struct {
 	// The CPE field values to be used for matching against NVD vulnerability
 	// records, if known.
 	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 
 	// Optional: The amount of time to allow this build to take before timing out.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -153,6 +164,15 @@ type CPE struct {
 	TargetSW  string `json:"target_sw,omitempty" yaml:"target_sw,omitempty"`
 	TargetHW  string `json:"target_hw,omitempty" yaml:"target_hw,omitempty"`
 	Other     string `json:"other,omitempty" yaml:"other,omitempty"`
+}
+
+// Capability stores paths and an associated map of capabilities and justification to include in a package.
+// These capabilities will be set after pipelines run to avoid permissions issues with `setcap`.
+// Empty justifications will result in an error.
+type Capability struct {
+	Path   string            `json:"path,omitempty" yaml:"path,omitempty"`
+	Add    map[string]string `json:"add,omitempty" yaml:"add,omitempty"`
+	Reason string            `json:"reason,omitempty" yaml:"reason,omitempty"`
 }
 
 func (cpe CPE) IsZero() bool {
@@ -248,6 +268,13 @@ func newAPKPackageURL(distro, name, version, arch string) *purl.PackageURL {
 		Namespace: distro,
 		Name:      name,
 		Version:   version,
+	}
+
+	if distro != "unknown" {
+		u.Qualifiers = append(u.Qualifiers, purl.Qualifier{
+			Key:   "distro",
+			Value: distro,
+		})
 	}
 
 	if arch != "" {
@@ -403,6 +430,8 @@ type Copyright struct {
 	License string `json:"license" yaml:"license"`
 	// Optional: Path to text of the custom License Ref
 	LicensePath string `json:"license-path,omitempty" yaml:"license-path,omitempty"`
+	// Optional: License override
+	DetectionOverride string `json:"detection-override,omitempty" yaml:"detection-override,omitempty"`
 }
 
 // LicenseExpression returns an SPDX license expression formed from the data in
@@ -414,7 +443,7 @@ func (p Package) LicenseExpression() string {
 	}
 	for _, cp := range p.Copyright {
 		if licenseExpression != "" {
-			licenseExpression += " OR "
+			licenseExpression += " AND "
 		}
 		licenseExpression += cp.License
 	}
@@ -505,8 +534,125 @@ type Pipeline struct {
 	//
 	// This defaults to the guests' build workspace (/home/build)
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
-	// Optional: environment variables to override the apko environment
+	// Optional: environment variables to override apko
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+}
+
+// SHA256 generates a digest based on the text provided
+// Returns a hex encoded string
+func SHA256(text string) string {
+	algorithm := sha256.New()
+	algorithm.Write([]byte(text))
+	return hex.EncodeToString(algorithm.Sum(nil))
+}
+
+// getGitSBOMPackage creates an SBOM package for Git based repositories.
+// Returns nil package and nil error if the repository is not from a supported platform or
+// if neither a tag of expectedCommit is not provided
+func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
+	var repoType, namespace, name, ref string
+	var downloadLocation string
+
+	repoURL, err := url.Parse(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	if expectedCommit != "" {
+		ref = expectedCommit
+	} else if tag != "" {
+		ref = tag
+	} else {
+		// No commit or tag provided - we're done
+		return nil, nil
+	}
+
+	trimmedPath := strings.TrimPrefix(repoURL.Path, "/")
+	namespace, name, _ = strings.Cut(trimmedPath, "/")
+	name = strings.TrimSuffix(name, ".git")
+
+	switch {
+	case repoURL.Host == "github.com":
+		repoType = purl.TypeGithub
+		downloadLocation = fmt.Sprintf("%s://github.com/%s/%s/archive/%s.tar.gz", repoURL.Scheme, namespace, name, ref)
+
+	case repoURL.Host == "gitlab.com":
+		repoType = purl.TypeGitlab
+		downloadLocation = fmt.Sprintf("%s://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, namespace, name, ref, ref)
+
+	case strings.HasPrefix(repoURL.Host, "gitlab") || hint == "gitlab":
+		repoType = purl.TypeGeneric
+		downloadLocation = fmt.Sprintf("%s://%s/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, repoURL.Host, namespace, name, ref, ref)
+
+	default:
+		repoType = purl.TypeGeneric
+		// We can't determine the namespace so use the supplier passed instead.
+		namespace = supplier
+		name = strings.TrimSuffix(trimmedPath, ".git")
+		// Use first letter of name as a directory to avoid a single huge bucket of tarballs
+		downloadLocation = fmt.Sprintf("https://tarballs.cgr.dev/%s/%s-%s.tar.gz", name[:1], SHA256(name), ref)
+	}
+
+	// Prefer tag to commit, but use only ONE of these.
+	versions := []string{
+		tag,
+		expectedCommit,
+	}
+
+	// Encode vcs_url with git+ prefix and @commit suffix
+	var vcsUrl string
+	if !strings.HasPrefix(repo, "git") {
+		vcsUrl = "git+" + repo
+	} else {
+		vcsUrl = repo
+	}
+
+	if expectedCommit != "" {
+		vcsUrl += "@" + expectedCommit
+	}
+
+	for _, v := range versions {
+		if v == "" {
+			continue
+		}
+
+		var pu *purl.PackageURL
+
+		switch {
+		case repoType == purl.TypeGithub || repoType == purl.TypeGitlab:
+			pu = &purl.PackageURL{
+				Type:      repoType,
+				Namespace: namespace,
+				Name:      name,
+				Version:   v,
+			}
+		case repoType == purl.TypeGeneric:
+			pu = &purl.PackageURL{
+				Type:       "generic",
+				Name:       name,
+				Version:    v,
+				Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
+			}
+		}
+
+		if err := pu.Normalize(); err != nil {
+			return nil, err
+		}
+
+		return &sbom.Package{
+			IDComponents:     idComponents,
+			Name:             name,
+			Version:          v,
+			LicenseDeclared:  licenseDeclared,
+			Namespace:        namespace,
+			PURL:             pu,
+			DownloadLocation: downloadLocation,
+		}, nil
+	}
+
+	// If we get here, we have a repo but no tag or commit. Without version
+	// information, we can't create a sensible SBOM package.
+	return nil, nil
 }
 
 // SBOMPackageForUpstreamSource returns an SBOM package for the upstream source
@@ -525,14 +671,17 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 	case "fetch":
 		args := make(map[string]string)
 		args["download_url"] = with["uri"]
+		checksums := make(map[string]string)
 
 		expectedSHA256 := with["expected-sha256"]
 		if len(expectedSHA256) > 0 {
 			args["checksum"] = "sha256:" + expectedSHA256
+			checksums["SHA256"] = expectedSHA256
 		}
 		expectedSHA512 := with["expected-sha512"]
 		if len(expectedSHA512) > 0 {
 			args["checksum"] = "sha512:" + expectedSHA512
+			checksums["SHA512"] = expectedSHA512
 		}
 
 		// These get defaulted correctly from within the fetch pipeline definition
@@ -556,11 +705,13 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		}
 
 		return &sbom.Package{
-			IDComponents: idComponents,
-			Name:         pkgName,
-			Version:      pkgVersion,
-			Namespace:    supplier,
-			PURL:         pu,
+			IDComponents:     idComponents,
+			Name:             pkgName,
+			Version:          pkgVersion,
+			Namespace:        supplier,
+			Checksums:        checksums,
+			PURL:             pu,
+			DownloadLocation: args["download_url"],
 		}, nil
 
 	case "git-checkout":
@@ -568,6 +719,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
+		hint := with["type-hint"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -586,83 +738,12 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		if strings.HasPrefix(repo, "https://github.com/") {
-			namespace, name, _ := strings.Cut(strings.TrimPrefix(repo, "https://github.com/"), "/")
-
-			// Prefer tag to commit, but use only ONE of these.
-
-			versions := []string{
-				tag,
-				expectedCommit,
-			}
-
-			for _, v := range versions {
-				if v == "" {
-					continue
-				}
-
-				pu := &purl.PackageURL{
-					Type:      purl.TypeGithub,
-					Namespace: namespace,
-					Name:      name,
-					Version:   v,
-				}
-				if err := pu.Normalize(); err != nil {
-					return nil, err
-				}
-
-				return &sbom.Package{
-					IDComponents:    idComponents,
-					Name:            name,
-					Version:         v,
-					LicenseDeclared: licenseDeclared,
-					Namespace:       namespace,
-					PURL:            pu,
-				}, nil
-			}
-
-			// If we get here, we have a GitHub repo but no tag or commit. Without version
-			// information, we can't create a sensible SBOM package.
-			//
-			// TODO: Decide if this should be an error condition.
-
-			return nil, nil
-		}
-
-		// Create nice looking package name, last component of uri, without .git
-		name := strings.TrimSuffix(path.Base(repo), ".git")
-
-		// Encode vcs_url with git+ prefix and @commit suffix
-		vcsUrl := "git+" + repo
-
-		if len(expectedCommit) > 0 {
-			vcsUrl += "@" + expectedCommit
-		}
-
-		// Use tag as version
-		version := ""
-		if len(tag) > 0 {
-			version = tag
-		}
-
-		pu := purl.PackageURL{
-			Type:       "generic",
-			Name:       name,
-			Version:    version,
-			Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
-		}
-		if err := pu.Normalize(); err != nil {
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint, supplier)
+		if err != nil {
 			return nil, err
+		} else if gitPackage != nil {
+			return gitPackage, nil
 		}
-
-		return &sbom.Package{
-			IDComponents:    idComponents,
-			Name:            name,
-			Version:         version,
-			LicenseDeclared: licenseDeclared,
-			Namespace:       supplier,
-			PURL:            &pu,
-		}, nil
 	}
 
 	// This is not a fetch or git-checkout step.
@@ -694,6 +775,8 @@ type Subpackage struct {
 	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
+	// Capabilities to set after the pipeline completes.
+	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 }
 
 type Input struct {
@@ -718,7 +801,8 @@ type Configuration struct {
 	// Package metadata
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: environment variables to override apko
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 	// Optional: Linux capabilities configuration to apply to the melange runner.
 	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 
@@ -768,7 +852,8 @@ type Test struct {
 	// Environment.Contents.Packages automatically get
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment"`
+	// Optional: Additional Environment the test needs to run
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
@@ -1155,11 +1240,11 @@ func replaceEntrypoint(r *strings.Replacer, in apko_types.ImageEntrypoint) apko_
 
 func replaceImageContents(r *strings.Replacer, in apko_types.ImageContents) apko_types.ImageContents {
 	return apko_types.ImageContents{
-		BuildRepositories:   replaceAll(r, in.BuildRepositories),
-		RuntimeRepositories: replaceAll(r, in.RuntimeRepositories),
-		Keyring:             replaceAll(r, in.Keyring),
-		Packages:            replaceAll(r, in.Packages),
-		BaseImage:           in.BaseImage, // TODO
+		BuildRepositories: replaceAll(r, in.BuildRepositories),
+		Repositories:      replaceAll(r, in.Repositories),
+		Keyring:           replaceAll(r, in.Keyring),
+		Packages:          replaceAll(r, in.Packages),
+		BaseImage:         in.BaseImage, // TODO
 	}
 }
 
@@ -1275,6 +1360,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
+		SetCap:             in.SetCap,
 	}
 }
 
@@ -1628,6 +1714,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
+	if err := validateCapabilities(cfg.Package.SetCap); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
 
 	saw := map[string]int{cfg.Package.Name: -1}
 	for i, sp := range cfg.Subpackages {
@@ -1652,6 +1741,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 			return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 		}
 		if err := validatePipelines(ctx, sp.Pipeline); err != nil {
+			return ErrInvalidConfiguration{Problem: err}
+		}
+		if err := validateCapabilities(sp.SetCap); err != nil {
 			return ErrInvalidConfiguration{Problem: err}
 		}
 	}
@@ -1792,4 +1884,127 @@ func (dep *Dependencies) Summarize(ctx context.Context) {
 			log.Info("    " + dep)
 		}
 	}
+}
+
+// validCapabilities contains a list of _in-use_ capabilities and their respective bits from existing package specs.
+// https://github.com/torvalds/linux/blob/master/include/uapi/linux/capability.h#L106-L422
+var validCapabilities = map[string]uint32{
+	"cap_net_bind_service": 10,
+	"cap_net_admin":        12,
+	"cap_net_raw":          13,
+	"cap_ipc_lock":         14,
+	"cap_sys_admin":        21,
+}
+
+func getCapabilityValue(attr string) uint32 {
+	if value, ok := validCapabilities[attr]; ok {
+		return 1 << value
+	}
+	return 0
+}
+
+func validateCapabilities(setcap []Capability) error {
+	var errs []error
+
+	for _, cap := range setcap {
+		for add := range cap.Add {
+			// Allow for multiple capabilities per addition
+			// e.g., cap_net_raw,cap_net_admin,cap_net_bind_service+eip
+			for p := range strings.SplitSeq(add, ",") {
+				if _, ok := validCapabilities[p]; !ok {
+					errs = append(errs, fmt.Errorf("invalid capability %q for path %q", p, cap.Path))
+				}
+			}
+		}
+		if cap.Reason == "" {
+			errs = append(errs, fmt.Errorf("unjustified reason for capability %q", cap.Add))
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return errors.Join(errs...)
+}
+
+type capabilityData struct {
+	Effective   uint32
+	Permitted   uint32
+	Inheritable uint32
+}
+
+// ParseCapabilities processes all capabilities for a given path.
+func ParseCapabilities(caps []Capability) (map[string]capabilityData, error) {
+	pathCapabilities := map[string]capabilityData{}
+
+	for _, c := range caps {
+		for attrs, data := range c.Add {
+			for attr := range strings.SplitSeq(attrs, ",") {
+				capValues := getCapabilityValue(attr)
+				effective, permitted, inheritable := parseCapability(data)
+
+				caps, ok := pathCapabilities[c.Path]
+				if !ok {
+					caps = struct {
+						Effective   uint32
+						Permitted   uint32
+						Inheritable uint32
+					}{}
+				}
+
+				if effective {
+					caps.Effective |= capValues
+				}
+				if permitted {
+					caps.Permitted |= capValues
+				}
+				if inheritable {
+					caps.Inheritable |= capValues
+				}
+
+				pathCapabilities[c.Path] = caps
+			}
+		}
+	}
+
+	return pathCapabilities, nil
+}
+
+// parseCapability determines which bits are set for a given capability.
+func parseCapability(capFlag string) (effective, permitted, inheritable bool) {
+	for _, c := range capFlag {
+		switch c {
+		case 'e':
+			effective = true
+		case 'p':
+			permitted = true
+		case 'i':
+			inheritable = true
+		}
+	}
+	return
+}
+
+// EncodeCapability returns the byte slice necessary to set the final capability xattr.
+func EncodeCapability(effectiveBits, permittedBits, inheritableBits uint32) []byte {
+	revision := uint32(0x03000000)
+
+	var flags uint32 = 0
+	if effectiveBits != 0 {
+		flags = 0x01
+	}
+	magic := revision | flags
+
+	data := make([]byte, 24)
+
+	binary.LittleEndian.PutUint32(data[0:4], magic)
+	binary.LittleEndian.PutUint32(data[4:8], permittedBits)
+	binary.LittleEndian.PutUint32(data[8:12], inheritableBits)
+
+	binary.LittleEndian.PutUint32(data[12:16], 0)
+	binary.LittleEndian.PutUint32(data[16:20], 0)
+	binary.LittleEndian.PutUint32(data[20:24], 0)
+
+	return data
 }

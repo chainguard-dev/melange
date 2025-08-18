@@ -103,19 +103,20 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 			name: "test - with cache dir, exists",
 			t: func() *Test {
 				cacheT := baseTest
-				cacheT.CacheDir = tmpDir
+				cacheT.CacheDir = tmpDirReal
 				return &cacheT
 			}(),
 			want: func() *container.Config {
 				want := wantBase
 				want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDirReal, Destination: "/var/cache/melange"})
+				want.CacheDir = tmpDirReal
 				return &want
 			}(),
 		}, {
 			name: "test - with cache dir, exists, environment",
 			t: func() *Test {
 				cacheT := baseTest
-				cacheT.CacheDir = tmpDir
+				cacheT.CacheDir = tmpDirReal
 				return &cacheT
 			}(),
 			env: map[string]string{"FOO": "bar", "BAZ": "zzz"},
@@ -123,6 +124,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 				want := wantBase
 				want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDirReal, Destination: "/var/cache/melange"})
 				want.Environment = map[string]string{"FOO": "bar", "BAZ": "zzz", "HOME": "/root"}
+				want.CacheDir = tmpDirReal
 				return &want
 			}(),
 		},
@@ -227,7 +229,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "blue"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "michelangelo",
 					Test: &config.Test{
@@ -240,7 +243,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "orange"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "raphael",
 					Test: &config.Test{
@@ -253,7 +257,8 @@ func TestConfigurationLoad(t *testing.T) {
 								Uses: "go/build",
 								With: map[string]string{"packages": "red"},
 							},
-						}},
+						},
+					},
 				}, {
 					Name: "simple",
 					Test: &config.Test{
@@ -264,7 +269,8 @@ func TestConfigurationLoad(t *testing.T) {
 							}, {
 								Uses: "simple-uses",
 							},
-						}},
+						},
+					},
 				}},
 			},
 		}, {

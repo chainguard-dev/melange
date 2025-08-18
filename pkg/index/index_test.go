@@ -97,7 +97,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 
 	if err := tw.WriteHeader(&tar.Header{
 		Name: ".PKGINFO",
-		Mode: 0644,
+		Mode: 0o644,
 		Size: int64(len(b)),
 	}); err != nil {
 		t.Fatal(err)

@@ -38,14 +38,6 @@ func WithTestWorkspaceDir(workspaceDir string) TestOption {
 	}
 }
 
-// WithGuestDir sets the guest directory to use.
-func WithTestGuestDir(guestDir string) TestOption {
-	return func(t *Test) error {
-		t.GuestDir = guestDir
-		return nil
-	}
-}
-
 // WithWorkspaceIgnore sets the workspace ignore rules file to use.
 func WithTestWorkspaceIgnore(workspaceIgnore string) TestOption {
 	return func(t *Test) error {
@@ -201,6 +193,15 @@ func WithTestAuth(domain, user, pass string) TestOption {
 func WithTestRemove(c bool) TestOption {
 	return func(t *Test) error {
 		t.Remove = c
+		return nil
+	}
+}
+
+// WithIgnoreSignatures indicates whether to ignore signatures when
+// installing packages.
+func WithTestIgnoreSignatures(ignore bool) TestOption {
+	return func(t *Test) error {
+		t.IgnoreSignatures = ignore
 		return nil
 	}
 }

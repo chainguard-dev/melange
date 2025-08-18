@@ -35,13 +35,11 @@ func test() *cobra.Command {
 	var cacheDir string
 	var cacheSource string
 	var apkCacheDir string
-	var guestDir string
 	var archstrs []string
 	var pipelineDirs []string
 	var extraKeys []string
 	var extraRepos []string
 	var envFile string
-	var overlayBinSh string
 	var testOption []string
 	var debug bool
 	var debugRunner bool
@@ -49,6 +47,7 @@ func test() *cobra.Command {
 	var runner string
 	var extraTestPackages []string
 	var remove bool
+	var ignoreSignatures bool
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -69,17 +68,16 @@ func test() *cobra.Command {
 				build.WithTestCacheDir(cacheDir),
 				build.WithTestCacheSource(cacheSource),
 				build.WithTestPackageCacheDir(apkCacheDir),
-				build.WithTestGuestDir(guestDir),
 				build.WithTestExtraKeys(extraKeys),
 				build.WithTestExtraRepos(extraRepos),
 				build.WithExtraTestPackages(extraTestPackages),
-				build.WithTestBinShOverlay(overlayBinSh),
 				build.WithTestRunner(r),
 				build.WithTestEnvFile(envFile),
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
 				build.WithTestRemove(remove),
+				build.WithTestIgnoreSignatures(ignoreSignatures),
 			}
 
 			if len(args) > 0 {
@@ -119,8 +117,6 @@ func test() *cobra.Command {
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
-	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringSliceVar(&testOption, "test-option", []string{}, "build options to enable")
 	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
@@ -132,6 +128,7 @@ func test() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
+	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
 
 	return cmd
 }

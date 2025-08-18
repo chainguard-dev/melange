@@ -15,6 +15,8 @@
 package docker
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -220,7 +222,7 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 	}
 
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
-		User:         cfg.RunAs,
+		User:         cfg.RunAsUID,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -358,8 +360,66 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 
 // WorkspaceTar implements Runner
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
-func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config) (io.ReadCloser, error) {
+func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Docker runner.
+func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*apko_build.ReleaseData, error) {
+	if cfg.PodID == "" {
+		return nil, fmt.Errorf("pod not running")
+	}
+
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+		User:         cfg.RunAsUID,
+		Cmd:          []string{"cat", "/etc/os-release"},
+		WorkingDir:   runnerWorkdir,
+		Tty:          false,
+		AttachStderr: true,
+		AttachStdout: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create exec task to read os-release: %w", err)
+	}
+
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
+		Tty: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to exec task: %w", err)
+	}
+	defer attachResp.Close()
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Warn)
+	defer stderr.Close()
+
+	_, err = stdcopy.StdCopy(bufWriter, stderr, attachResp.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read os-release output: %w", err)
+	}
+
+	// Flush the buffer to ensure all data is written
+	err = bufWriter.Flush()
+	if err != nil {
+		return nil, fmt.Errorf("failed to flush buffer: %w", err)
+	}
+
+	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exit code from os-release task: %w", err)
+	}
+
+	if inspectResp.ExitCode != 0 {
+		return nil, fmt.Errorf("os-release task exited with code %d", inspectResp.ExitCode)
+	}
+
+	// Parse the os-release contents
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type dockerLoader struct {

@@ -207,6 +207,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	// Pipelines can have their own environment variables, which override the global ones.
 	envOverride := map[string]string{
+		// NOTE: This does not currently override PATH in the qemu runner, that's set at openssh build time
 		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
 	}
 
@@ -216,7 +217,11 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	workdir := WorkDir
 	if pipeline.WorkDir != "" {
-		workdir = pipeline.WorkDir
+		if filepath.IsAbs(pipeline.WorkDir) {
+			workdir = pipeline.WorkDir
+		} else {
+			workdir = filepath.Join(WorkDir, pipeline.WorkDir)
+		}
 	}
 
 	// We might have called signal.Ignore(os.Interrupt) as part of a previous debug step,
@@ -342,4 +347,4 @@ func expectedShaLength(shaType string) int {
 }
 
 //go:embed pipelines/*
-var f embed.FS
+var PipelinesFS embed.FS

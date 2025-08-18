@@ -11,9 +11,7 @@ import (
 	"github.com/invopop/jsonschema"
 )
 
-var (
-	outputFlag = flag.String("o", "", "output path")
-)
+var outputFlag = flag.String("o", "", "output path")
 
 func main() {
 	flag.Parse()
@@ -33,7 +31,7 @@ func main() {
 	if err := enc.Encode(schema); err != nil {
 		log.Fatal(err)
 	}
-	if err := os.WriteFile(*outputFlag, b.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(*outputFlag, b.Bytes(), 0o644); err != nil {
 		log.Fatal(err)
 	}
 }

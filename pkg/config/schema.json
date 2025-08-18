@@ -111,7 +111,7 @@
         },
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
-          "description": "The specification for the packages build environment"
+          "description": "The specification for the packages build environment\nOptional: environment variables to override apko"
         },
         "capabilities": {
           "$ref": "#/$defs/Capabilities",
@@ -171,8 +171,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "package",
-        "environment"
+        "package"
       ],
       "description": "Configuration is the root melange configuration."
     },
@@ -209,6 +208,10 @@
         "license-path": {
           "type": "string",
           "description": "Optional: Path to text of the custom License Ref"
+        },
+        "detection-override": {
+          "type": "string",
+          "description": "Optional: The detected license that should be overriden, used in cases where the automation is wrong."
         }
       },
       "additionalProperties": false,
@@ -426,6 +429,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "layering": {
+          "$ref": "#/$defs/Layering"
         }
       },
       "additionalProperties": false,
@@ -498,6 +504,18 @@
         "required": {
           "type": "boolean",
           "description": "Optional: A toggle denoting whether the input is required or not"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Layering": {
+      "properties": {
+        "strategy": {
+          "type": "string"
+        },
+        "budget": {
+          "type": "integer"
         }
       },
       "additionalProperties": false,
@@ -639,15 +657,14 @@
         "no-commands": {
           "type": "boolean",
           "description": "Optional: Mark this package as not providing any executables"
+        },
+        "no-versioned-shlib-deps": {
+          "type": "boolean",
+          "description": "Optional: Don't generate versioned depends for shared libraries"
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "no-provides",
-        "no-depends",
-        "no-commands"
-      ]
+      "type": "object"
     },
     "PathMutation": {
       "properties": {
@@ -736,7 +753,7 @@
             "type": "string"
           },
           "type": "object",
-          "description": "Optional: environment variables to override the apko environment"
+          "description": "Optional: environment variables to override apko"
         }
       },
       "additionalProperties": false,
@@ -927,7 +944,7 @@
       "properties": {
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
-          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank."
+          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank.\nOptional: Additional Environment the test needs to run"
         },
         "pipeline": {
           "items": {
@@ -940,7 +957,6 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "environment",
         "pipeline"
       ]
     },

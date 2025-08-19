@@ -25,6 +25,7 @@ rebuilt-packages/
 .idea/
 bin/
 generated/
+kernel/
 melange.images
 /.DS_Store
 dist/

@@ -1,4 +1,5 @@
 # Some nice defines for the "make install" target
+TOP_D := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 OS := $(shell uname -s)
 ifeq ($(OS), Darwin)
@@ -156,10 +157,62 @@ integration:
 .PHONY: test
 test: integration
 
+ARCH ?= $(shell uname -m)
+ifeq (${ARCH}, arm64)
+	ARCH = aarch64
+endif
+
+
+curlget = mkdir -p $$(dirname $(2)) && \
+  echo "curl[$(1)] from $(2)" && \
+  mkdir -p $(dir $(1)) && \
+  curl --fail -LS --silent -o $(1).tmp.$$$$ $(2) && \
+	mv "$(1).tmp.$$$$" "$(1)"
+
+.PHONY: fetch-kernel
+fetch-kernel:
+	rm -rf kernel/$(ARCH)
+	$(MAKE) kernel/$(ARCH)/vmlinuz
+
+QEMU_KERNEL_REPO = https://dl-cdn.alpinelinux.org/alpine/edge/main/
+kernel/%/APKINDEX.tar.gz:
+	@$(call curlget,$@,$(QEMU_KERNEL_REPO)/$(ARCH)/APKINDEX.tar.gz)
+
+kernel/%/APKINDEX: kernel/%/APKINDEX.tar.gz
+	tar -x -C kernel --to-stdout -f $< APKINDEX > $@.tmp.$$$$ && mv $@.tmp.$$$$ $@
+	touch $@
+
+kernel/%/chosen: kernel/%/APKINDEX
+	# Extract lines with 'P:linux-qemu-generic' and the following line that contains the version
+	# This approach is compatible with both GNU and BSD sed
+	awk '/^P:linux-virt$$/ {print; getline; print}' $< > kernel/$*/available
+	grep '^V:' kernel/$*/available | sed 's/V://' | \
+	  sort -V | tail -n1 > $@.tmp
+	# Sanity check that this looks like an apk version
+	grep -E '^([0-9]+\.)+[0-9]+-r[0-9]+$$' $@.tmp
+	mv $@.tmp $@
+
+kernel/%/linux.apk: kernel/%/chosen
+	@$(call curlget,$@,$(QEMU_KERNEL_REPO)/$*/linux-virt-$(shell cat kernel/$*/chosen).apk)
+
+# kernel/<arch>/vmlinuz makes kernel/<arch>/modules as a side effect
+kernel/%/vmlinuz: kernel/%/linux.apk
+	tmpd=kernel/.$$$$ && mkdir -p $$tmpd $(dir $@) && \
+		rm -Rf $(dir $@)/vmlinuz $(dir $@)/modules && \
+		tar -x -C $$tmpd -f $< 2> /dev/null && \
+	    mv -v $$tmpd/boot/vmlinuz* $(dir $@)/vmlinuz && \
+		mv -v $$tmpd/lib/modules $(dir $@) ; \
+		rc=$$?; rm -Rf $$tmpd; exit $$rc
+	touch $@
+
 .PHONY: test-e2e
-test-e2e: generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
+test-e2e: kernel/$(ARCH)/vmlinuz melange generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
 	go test -tags e2e ./... -race
-	cd e2e-tests && ./run-tests
+	cd e2e-tests && \
+	QEMU_KERNEL_IMAGE=$(TOP_D)/kernel/$(ARCH)/vmlinuz \
+	QEMU_KERNEL_MODULES=$(TOP_D)/kernel/$(ARCH)/modules/ \
+	MELANGE=$(TOP_D)/melange \
+	./run-tests
 
 .PHONY: clean
 clean: ## Clean the workspace

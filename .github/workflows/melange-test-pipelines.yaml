@@ -76,12 +76,6 @@ jobs:
           go-version-file: './go.mod'
           check-latest: true
 
-      - name: Download kernel for VMs
-        run: |
-          KERNEL_PKG="$(curl -sL https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$1 == "P" {printf "%s-", $2} $1 == "V" {printf "%s.apk\n", $2}' | grep "linux-virt" | grep -v dev)"
-          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/$KERNEL_PKG"
-          mkdir -p /tmp/kernel
-          tar -xf ./linux-virt.apk -C /tmp/kernel/
 
       - name: Install QEMU/KVM
         run: |
@@ -96,7 +90,4 @@ jobs:
 
       - name: Run e2e-tests
         run: |
-          make \
-            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
-            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
-            test-e2e
+          make test-e2e

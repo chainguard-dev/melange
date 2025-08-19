@@ -10,6 +10,12 @@ vrc() {
     return $rc
 }
 
+ARCH=${ARCH:-$(uname -m)}
+# macOS reports "arm64"
+if [ "arm64" = "${ARCH}" ]; then
+    ARCH="aarch64"
+fi
+
 MELANGE=${MELANGE:-melange}
 if [ "$MELANGE" = "melange" ]; then
     MELANGE=$(which melange)
@@ -69,7 +75,7 @@ for yaml in "$@"; do
 
     vrc "Testing $base from $yaml for $op" \
       ${MELANGE} "$op" \
-        --arch=x86_64 --source-dir=./test-fixtures \
+        --arch=${ARCH} --source-dir=./test-fixtures \
         --runner=qemu \
         "$yaml" \
         ${args} $opargs \

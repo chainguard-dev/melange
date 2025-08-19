@@ -508,6 +508,33 @@ func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.Re
 	return apko_build.ParseReleaseData(&buf)
 }
 
+// getGuestKernelVersion returns the kernel version for the Qemu runner.
+func getGuestKernelVersion(ctx context.Context, cfg *Config) (version string, err error) {
+	if cfg.SSHKey == nil {
+		return "", nil
+	}
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+	err = sendSSHCommand(ctx,
+		cfg.WorkspaceClient,
+		cfg,
+		nil,
+		nil,
+		bufWriter,
+		false,
+		[]string{"uname", "-rv"},
+	)
+
+	if err != nil {
+		clog.FromContext(ctx).Errorf("failed to get kernel release version: %v", err)
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 type qemuOCILoader struct{}
 
 func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
@@ -844,6 +871,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
 	defer stderr.Close()
+
+	kv, err := getGuestKernelVersion(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("qemu: unable to query guest kernel version")
+	}
+	clog.FromContext(ctx).Infof("qemu: running kernel version: %s", kv)
 
 	if cfg.CacheDir != "" {
 		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)

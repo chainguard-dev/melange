@@ -70,7 +70,11 @@ for yaml in "$@"; do
   for op in $ops; do
     opargs=""
     case "$op" in
-        build) opargs="--signing-key=$PWD/$key";;
+        # For some reason build takes '--pipeline-dir' and test takes
+        # --pipeline-dirs. And we need to pass both to compile the
+        # melange file
+        "build") opargs="--signing-key=$PWD/$key --pipeline-dir $PWD/pipelines";;
+        "test") opargs="--pipeline-dirs $PWD/pipelines";;
     esac
 
     vrc "Testing $base from $yaml for $op" \

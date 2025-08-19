@@ -1,0 +1,29 @@
+package:
+  name: uses-env-propagation
+  version: "0.0.1"
+  epoch: 0
+  description: Test environment propagation to external pipeline files via uses
+  copyright:
+    - license: APACHE-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - busybox
+  environment:
+    GLOBAL_VAR: "from_config"
+
+pipeline:
+  - uses: check-env
+    environment:
+      PIPELINE_VAR: "from_uses"
+
+update:
+  enabled: true
+  release-monitor:
+    identifier: 15
+

@@ -146,6 +146,7 @@ func buildCmd() *cobra.Command {
 			}
 
 			archs := apko_types.ParseArchitectures(archstrs)
+			log.Infof("melange version %s with runner %s building %s at commit %s for arches %s", cmd.Version, r.Name(), buildConfigFilePath, configFileGitCommit, archs)
 			options := []build.Option{
 				build.WithBuildDate(buildDate),
 				build.WithWorkspaceDir(workspaceDir),

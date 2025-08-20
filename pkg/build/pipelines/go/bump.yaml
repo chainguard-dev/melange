@@ -27,7 +27,7 @@ inputs:
     description: "Set the go version for which the tidied go.mod and go.sum files should be compatible"
     default: ""
   work:
-    description: "use go work vendor instead of go mod vendor"
+    description: "Use go work vendor instead of go mod vendor for projects with go work enabled"
     default: false
 
 pipeline:

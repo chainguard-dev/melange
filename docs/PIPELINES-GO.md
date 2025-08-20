@@ -148,6 +148,19 @@ pipeline:
 (:bulb: Experiment with this code,
 [download it from the examples directory](https://github.com/chainguard-dev/melange/blob/main/examples/go-bump.yaml))
 
+### Using go workspace mode
+
+The `go/bump` pipeline also supports Go workspace mode through the `work` parameter. When enabled, it will use `go work vendor` instead of `go mod vendor` for dependency management. This is useful for projects that use Go workspaces (go.work files).
+
+Example usage with workspace mode:
+
+```yaml
+  - uses: go/bump
+    with:
+      deps: github.com/sirupsen/logrus@v1.9.3
+      work: true
+```
+
 For the most up to date supported features check the
 [build](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/build.yaml),
 [install](https://github.com/chainguard-dev/melange/blob/main/pkg/build/pipelines/go/install.yaml),

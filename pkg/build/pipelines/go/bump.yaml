@@ -26,10 +26,13 @@ inputs:
   tidy-compat:
     description: "Set the go version for which the tidied go.mod and go.sum files should be compatible"
     default: ""
+  work:
+    description: "use go work vendor instead of go mod vendor"
+    default: false
 
 pipeline:
   - runs: |
       cd "${{inputs.modroot}}"
 
       # We use the --tidy flag to run go mod tidy before and after in some cases (if old versions of go are used, we need to update the go.mod format)
-      gobump --packages "${{inputs.deps}}" --replaces "${{inputs.replaces}}" --tidy=${{inputs.tidy}} --show-diff=${{inputs.show-diff}} --go-version=${{inputs.go-version}} --compat=${{inputs.tidy-compat}}
+      gobump --packages "${{inputs.deps}}" --replaces "${{inputs.replaces}}" --tidy=${{inputs.tidy}} --show-diff=${{inputs.show-diff}} --go-version=${{inputs.go-version}} --compat=${{inputs.tidy-compat}} --work=${{inputs.work}}

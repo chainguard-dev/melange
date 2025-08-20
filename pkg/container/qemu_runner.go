@@ -94,7 +94,7 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stderr.Close()
 
 	err := sendSSHCommand(ctx,
-		cfg.SSHClient,
+		cfg.SSHBuildClient,
 		cfg,
 		envOverride,
 		stderr,
@@ -126,7 +126,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	if pubKey != nil {
 		command := fmt.Sprintf("echo %q | tee -a /root/.ssh/authorized_keys /home/*/.ssh/authorized_keys", strings.TrimSpace(string(pubKey)))
 		err := sendSSHCommand(ctx,
-			cfg.WorkspaceClient,
+			cfg.SSHControlClient,
 			cfg,
 			nil,
 			nil,
@@ -357,20 +357,20 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 
 	cfg.SSHAddress = "127.0.0.1:" + strconv.Itoa(sshPort)
 
-	// ensure sshWorkspacePort is random but not same as port1
-	var sshWorkspacePort int
+	// ensure sshControlPort is random but not same as port1
+	var sshControlPort int
 	for {
-		sshWorkspacePort, err = randomPortN()
+		sshControlPort, err = randomPortN()
 		if err != nil {
 			return err
 		}
 
-		if sshWorkspacePort != sshPort {
+		if sshControlPort != sshPort {
 			break
 		}
 	}
 
-	cfg.SSHWorkspaceAddress = "127.0.0.1:" + strconv.Itoa(sshWorkspacePort)
+	cfg.SSHControlAddress = "127.0.0.1:" + strconv.Itoa(sshControlPort)
 
 	return createMicroVM(ctx, cfg)
 }
@@ -386,7 +386,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
-		cfg.SSHClient,
+		cfg.SSHBuildClient,
 		cfg,
 		nil,
 		nil,
@@ -457,7 +457,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	log := clog.FromContext(ctx)
 	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
-		cfg.WorkspaceClient,
+		cfg.SSHControlClient,
 		cfg,
 		nil,
 		stderr,
@@ -490,7 +490,7 @@ func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.Re
 	bufWriter := bufio.NewWriter(&buf)
 	defer bufWriter.Flush()
 	err := sendSSHCommand(ctx,
-		cfg.WorkspaceClient,
+		cfg.SSHControlClient,
 		cfg,
 		nil,
 		nil,
@@ -518,7 +518,7 @@ func getGuestKernelVersion(ctx context.Context, cfg *Config) (version string, er
 	bufWriter := bufio.NewWriter(&buf)
 	defer bufWriter.Flush()
 	err = sendSSHCommand(ctx,
-		cfg.WorkspaceClient,
+		cfg.SSHControlClient,
 		cfg,
 		nil,
 		nil,
@@ -695,7 +695,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, serialArgs...)
 	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHWorkspaceAddress+"-:2223")
+	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHControlAddress+"-:2223")
 	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
@@ -891,7 +891,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		)
 		if setupMountCommand != ": " {
 			err = sendSSHCommand(ctx,
-				cfg.WorkspaceClient,
+				cfg.SSHControlClient,
 				cfg,
 				nil,
 				stderr,
@@ -910,7 +910,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
 	err = sendSSHCommand(ctx,
-		cfg.SSHClient,
+		cfg.SSHBuildClient,
 		cfg,
 		nil,
 		stderr,
@@ -955,14 +955,14 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 	}
 
 	// Connect to the SSH server
-	cfg.SSHClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
+	cfg.SSHBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server
-	cfg.WorkspaceClient, err = ssh.Dial("tcp", cfg.SSHWorkspaceAddress, config)
+	cfg.SSHControlClient, err = ssh.Dial("tcp", cfg.SSHControlAddress, config)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
@@ -980,7 +980,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 	bufWriter := bufio.NewWriter(&buf)
 	defer bufWriter.Flush()
 	err := sendSSHCommand(ctx,
-		cfg.WorkspaceClient,
+		cfg.SSHControlClient,
 		cfg,
 		nil,
 		nil,
@@ -1030,7 +1030,7 @@ func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string)
 	log := clog.FromContext(ctx)
 	stdout, stderr := logwriter.New(log.Warn), logwriter.New(log.Error)
 	for {
-		session, err := cfg.SSHClient.NewSession()
+		session, err := cfg.SSHBuildClient.NewSession()
 		if err != nil {
 			clog.FromContext(ctx).Errorf("Failed to create session: %s", err)
 			return err
@@ -1197,7 +1197,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 	// Write the host key to the known_hosts file
 	hostKeyLine := fmt.Sprintf("%s %s %s\n%s %s %s\n",
 		cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
-		cfg.SSHWorkspaceAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
+		cfg.SSHControlAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
 	)
 	clog.FromContext(ctx).Debugf("host-key: %s", hostKeyLine)
 

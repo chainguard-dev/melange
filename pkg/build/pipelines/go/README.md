@@ -50,6 +50,7 @@ Bump go deps to a certain version
 | show-diff | false | Show the difference between the go.mod file before and after the bump | false |
 | tidy | false | Run go mod tidy command before and after the bump | true |
 | tidy-compat | false | Set the go version for which the tidied go.mod and go.sum files should be compatible |  |
+| work | false | Use go work vendor instead of go mod vendor for projects with go work enabled | false |
 
 ## go/covdata
 

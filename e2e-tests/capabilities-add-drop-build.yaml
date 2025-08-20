@@ -21,17 +21,17 @@ pipeline:
   - name: Test default effective capability
     runs: |
       # Skip test if on QEMU runner, since the runner does not support process capabilities add/drop Melange feature.
-      { test -f /sys/class/dmi/id/sys_vendor && grep -E "^QEMU$" /sys/class/dmi/id/sys_vendor && exit 0; } || true
+      {  grep -E "melange_qemu_runner=1" /proc/cmdline && exit 0; } || true
       capsh --decode=$(grep CapEff /proc/self/status | cut -d ':' -f2 | xargs) | grep -i cap_dac_override
 
   - name: Test added non-default effective capability
     runs: |
       # Skip test if on QEMU runner, since the runner does not support process capabilities add/drop Melange feature.
-      { test -f /sys/class/dmi/id/sys_vendor && grep -E "^QEMU$" /sys/class/dmi/id/sys_vendor && exit 0; } || true
+      {  grep -E "melange_qemu_runner=1" /proc/cmdline && exit 0; } || true
       capsh --decode=$(grep CapEff /proc/self/status | cut -d ':' -f2 | xargs) | grep -i cap_net_admin
 
   - name: Test dropped default effective capability
     runs: |
       # Skip test if on QEMU runner, since the runner does not support process capabilities add/drop Melange feature.
-      { test -f /sys/class/dmi/id/sys_vendor && grep -E "^QEMU$" /sys/class/dmi/id/sys_vendor && exit 0; } || true
+      {  grep -E "melange_qemu_runner=1" /proc/cmdline && exit 0; } || true
       capsh --decode=$(grep CapEff /proc/self/status | cut -d ':' -f2 | xargs) | grep -vi cap_sys_chroot

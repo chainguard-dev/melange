@@ -156,10 +156,27 @@ integration:
 .PHONY: test
 test: integration
 
+ARCH ?= $(shell uname -m)
+ifeq (${ARCH}, arm64)
+	ARCH = aarch64
+endif
+
+
+.PHONY: fetch-kernel
+fetch-kernel:
+	$(eval KERNEL_PKG := $(shell curl -sL https://dl-cdn.alpinelinux.org/alpine/edge/main/$(ARCH)/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$$1 == "P" {printf "%s-", $$2} $$1 == "V" {printf "%s.apk\n", $$2}' | grep "linux-virt" | grep -v dev))
+	curl -s -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/$(ARCH)/$(KERNEL_PKG)"
+	mkdir -p kernel/${ARCH}
+	tar -xf ./linux-virt.apk -C kernel/${ARCH}
+
 .PHONY: test-e2e
-test-e2e: generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
-	go test -tags e2e ./... -race
-	cd e2e-tests && ./run-tests
+test-e2e: fetch-kernel generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
+	$(eval KERNEL_VER := $(shell ls kernel/lib/modules))
+	cd e2e-tests && \
+	QEMU_KERNEL_IMAGE=$(realpath kernel/${ARCH}/boot/vmlinuz-virt) \
+	QEMU_KERNEL_MODULES=$(realpath kernel/${ARCH}/lib/modules/) \
+	MELANGE=$(realpath melange) \
+	./run-tests
 
 .PHONY: clean
 clean: ## Clean the workspace

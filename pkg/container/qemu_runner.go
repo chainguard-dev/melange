@@ -675,7 +675,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset random.trust_cpu=on panic=-1 sshkey="+sshkey)
+	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset random.trust_cpu=on panic=-1 sshkey="+sshkey+" melange_qemu_runner=1")
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
@@ -796,8 +796,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: waiting for SSH")
 	go func() {
-		// one-hour timeout with a 500ms sleep
-		retries := 7200
+		// one-min timeout with a 500ms sleep
+		retries := 60
 		try := 0
 		for try < retries {
 			if logCtx.Err() != nil {

@@ -375,8 +375,8 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	return createMicroVM(ctx, cfg)
 }
 
-// TerminatePod terminates a pod if necessary.  Not implemented
-// for Qemu runners.
+// TerminatePod terminates a pod if necessary. For Qemu runners, shuts
+// down the guest VM.
 func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "qemu.TerminatePod")
 	defer span.End()
@@ -386,7 +386,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
-		cfg.SSHBuildClient,
+		cfg.SSHControlClient,
 		cfg,
 		nil,
 		nil,
@@ -909,6 +909,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	clog.FromContext(ctx).Info("qemu: setting up local workspace")
+	// This has to happen as the user we are building as, so
+	// files copied are owned by the build user, and thus cleanup
+	// step that happens at the end of the build to remove the
+	// files succeeds
 	err = sendSSHCommand(ctx,
 		cfg.SSHBuildClient,
 		cfg,
@@ -942,8 +946,20 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 		user = cfg.RunAs
 	}
 
-	// Create SSH client configuration
-	config := &ssh.ClientConfig{
+	// Create privileged SSH control client configuration
+	controlConfig := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(cfg.SSHKey),
+		},
+		Config: ssh.Config{
+			Ciphers: []string{"aes128-gcm@openssh.com"},
+		},
+		HostKeyCallback: hostKeyCallback,
+	}
+
+	// Create SSH build client configuration
+	buildConfig := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(cfg.SSHKey),
@@ -955,14 +971,21 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 	}
 
 	// Connect to the SSH server
-	cfg.SSHBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, config)
+	cfg.SSHBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, buildConfig)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
-	// Connect to the SSH server
-	cfg.SSHControlClient, err = ssh.Dial("tcp", cfg.SSHControlAddress, config)
+	// Connect to the SSH server on the control (unchrooted) port
+	cfg.SSHControlClient, err = ssh.Dial("tcp", cfg.SSHControlAddress, controlConfig)
+	if err != nil {
+		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
+		return err
+	}
+
+	// Connect to the SSH server on the chrooted port with privilege
+	cfg.SSHControlBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, controlConfig)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err

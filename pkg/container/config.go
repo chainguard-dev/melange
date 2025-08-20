@@ -65,6 +65,7 @@ type Config struct {
 	Disk                  string
 	Timeout               time.Duration
 	SSHBuildClient        *ssh.Client // SSH client for the build environment, may not have privileges
+	SSHControlBuildClient *ssh.Client // SSH client for control operations in the build environment, has privileges
 	SSHControlClient      *ssh.Client // SSH client for unrestricted control environment, has privileges
 	QemuPID               int
 	RunAsGID              string

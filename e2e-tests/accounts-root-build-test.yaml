@@ -1,0 +1,124 @@
+# test that packages / subpackages build and test as root when
+# specified in the build configuration
+package:
+  name: accounts-root-build-test
+  description: Test that specifying non-root builds happen as non-root
+  version: 0.1.0
+  epoch: 0
+environment:
+  contents:
+    packages:
+      - busybox
+  accounts:
+    # build environments should have the root user (uid=0) created by default
+    run-as: root
+
+pipeline:
+  - name: check this pipeline is running as uid = 0
+    runs: test "$(id -u)" == "0"
+  - name: check this pipeline is running as user root
+    runs: test "$(id -un)" == "root"
+  - name: check this pipeline is running as gid = 0
+    runs: test "$(id -g)" == "0"
+  - name: check this pipeline is running with group root
+    runs: test "$(id -gn)" == "root"
+  - name: ensure we can write to the contents dir
+    runs: touch "${{targets.contextdir}}/foo.txt"
+  - name: ensure we can write to our home dir
+    runs: mktemp -p "${HOME}"
+  - name: ensure we can write to our default dir
+    runs: mktemp -p .
+
+
+subpackages:
+  - name: accounts-root-build-subpackage-test
+    description: test that when specifying root at the top-level, subpackage builds also happen as root
+    pipeline:
+      - name: check this pipeline is running as uid = 0
+        runs: test "$(id -u)" == "0"
+      - name: check this pipeline is running as user root
+        runs: test "$(id -un)" == "root"
+      - name: check this pipeline is running as gid = 0
+        runs: test "$(id -g)" == "0"
+      - name: check this pipeline is running with group root
+        runs: test "$(id -gn)" == "root"
+      - name: ensure we can write to the contents dir
+        # context dirs aren't automatically created for subpackages, alas
+        runs: |
+          mkdir -p "${{targets.contextdir}}"
+          touch "${{targets.contextdir}}/foo.txt"
+      - name: ensure we can write to our home dir
+        runs: mktemp -p "${HOME}"
+      - name: ensure we can write to our default dir
+        runs: mktemp -p .
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+        accounts:
+          # test environments should have the root user (uid=0) created by default
+          run-as: root
+      pipeline:
+        - name: check this pipeline is running as uid = 0
+          runs: test "$(id -u)" == "0"
+        - name: check this pipeline is running as user root
+          runs: test "$(id -un)" == "root"
+        - name: check this pipeline is running as gid = 0
+          runs: test "$(id -g)" == "0"
+        - name: check this pipeline is running with group root
+          runs: test "$(id -gn)" == "root"
+        - name: ensure we can write to our home dir
+          runs: mktemp -p "${HOME}"
+        - name: ensure we can write to our default dir
+          runs: mktemp -p .
+
+
+# Note: melange does not seem to support specifying a different user in
+# a subpackage build; if it did, we'd add these tests
+#
+#  - name: accounts-root-top-level-root-subpackage-test
+#    description: test that specifying root at the top-level subpackages to run as root
+#    environment:
+#      accounts:
+#        # build environments should have the root user (uid=0) created by default
+#        run-as: root
+#    pipeline:
+#      - name: check this pipeline is running as uid = 0
+#        runs: test "$(id -u)" == "0"
+#      - name: check this pipeline is running as user root
+#        runs: test "$(id -un)" == "root"
+#
+#  - name: accounts-root-build-explicit-subpackage-test
+#    description: test that specifying root at the top-level still allows subpackages to run as non-root
+#    environment:
+#      accounts:
+#        # build environments should have the build user (uid=1000) created by default
+#        run-as: build
+#    pipeline:
+#      - name: check this pipeline is running as uid = 1000
+#        runs: test "$(id -u)" == "1000"
+#      - name: check this pipeline is running as user build
+#        runs: test "$(id -un)" == "build"
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    accounts:
+      # test environments should have the root user (uid=0) created by default
+      run-as: root
+  pipeline:
+    - name: check this pipeline is running as uid = 0
+      runs: test "$(id -u)" == "0"
+    - name: check this pipeline is running as user root
+      runs: test "$(id -un)" == "root"
+    - name: check this pipeline is running as gid = 0
+      runs: test "$(id -g)" == "0"
+    - name: check this pipeline is running with group root
+      runs: test "$(id -gn)" == "root"
+    - name: ensure we can write to our home dir
+      runs: mktemp -p "${HOME}"
+    - name: ensure we can write to our default dir
+      runs: mktemp -p .

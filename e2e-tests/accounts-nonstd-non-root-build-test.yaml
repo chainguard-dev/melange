@@ -1,0 +1,154 @@
+# test that packages / subpackages build and test as added non-root user
+# when specified in the build configuration
+package:
+  name: accounts-nonstd-non-root-build-test
+  description: Test that specifying non-root builds happen as non-root
+  version: 0.1.0
+  epoch: 0
+environment:
+  contents:
+    packages:
+      - busybox
+  accounts:
+    users:
+      - username: nonroot
+        uid: 12345
+        gid: 12346
+    groups:
+      - groupname: nongroup
+        gid: 12346
+    run-as: nonroot
+
+pipeline:
+  - name: check this pipeline is running as uid = 12345
+    runs: test "$(id -u)" == "12345"
+  - name: check this pipeline is running as user nonroot
+    runs: test "$(id -un)" == "nonroot"
+  - name: check this pipeline is running as gid = 12346
+    runs: test "$(id -g)" == "12346"
+  - name: check this pipeline is running as group nongroup
+    runs: test "$(id -gn)" == "nongroup"
+  - name: ensure we can write to the contents dir
+    runs: touch "${{targets.contextdir}}/foo.txt"
+  - name: ensure we can write to our home dir
+    runs: mktemp -p "${HOME}"
+  - name: ensure we can write to our default dir
+    runs: mktemp -p .
+
+subpackages:
+  - name: accounts-nonstd-non-root-build-subpackage-test
+    description: test that specifying non-root subpackage builds happen as non-root
+    pipeline:
+      - name: check this pipeline is running as uid = 12345
+        runs: test "$(id -u)" == "12345"
+      - name: check this pipeline is running as user nonroot
+        runs: test "$(id -un)" == "nonroot"
+      - name: check this pipeline is running as gid = 12346
+        runs: test "$(id -g)" == "12346"
+      - name: check this pipeline is running as group nongroup
+        runs: test "$(id -gn)" == "nongroup"
+      - name: ensure we can write to the contents dir
+        # context dirs aren't automatically created for subpackages, alas
+        runs: |
+          mkdir -p "${{targets.contextdir}}"
+          touch "${{targets.contextdir}}/foo.txt"
+      - name: ensure we can write to our home dir
+        runs: mktemp -p "${HOME}"
+      - name: ensure we can write to our default dir
+        runs: mktemp -p .
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+        accounts:
+          run-as: nonroot
+          users:
+            - username: nonroot
+              uid: 12345
+              gid: 12346
+          groups:
+            - groupname: nongroup
+              gid: 12346
+      pipeline:
+        - name: check this pipeline is running as uid = 12345
+          runs: test "$(id -u)" == "12345"
+        - name: check this pipeline is running as user nonroot
+          runs: test "$(id -un)" == "nonroot"
+        - name: check this pipeline is running as gid = 12346
+          runs: test "$(id -g)" == "12346"
+        - name: check this pipeline is running with group nongroup
+          runs: test "$(id -gn)" == "nongroup"
+        - name: ensure we can write to our home dir
+          runs: mktemp -p "${HOME}"
+        - name: ensure we can write to our default dir
+          runs: mktemp -p .
+
+
+# Note: melange does not seem to support specifying a different user in
+# a subpackage build; if it did, we'd add these tests
+#
+#  - name: accounts-nonstd-non-root-build-explicit-subpackage-test
+#    description: test that specifying non-root at the top-level causes builds to happen as non-root
+#    environment:
+#      accounts:
+#        users:
+#          - username: nonroot
+#            uid: 12345
+#            gid: 12346
+#        groups:
+#          - groupname: nongroup
+#            gid: 12346
+#        run-as: nonroot
+#    pipeline:
+#      - name: check this pipeline is running as uid = 1000
+#        runs: test "$(id -u)" == "1000"
+#      - name: check this pipeline is running as user build
+#        runs: test "$(id -un)" == "build"
+#
+#  - name: accounts-nonstd-non-root-top-level-root-subpackage-test
+#    description: test that specifying non-root at the top-level still allows subpackages to run as root
+#    environment:
+#      accounts:
+#        users:
+#          - username: nonroot
+#            uid: 12345
+#            gid: 12346
+#        groups:
+#          - groupname: nongroup
+#            gid: 12346
+#        # build environments should have the build user (uid=1000) by default
+#        run-as: root
+#    pipeline:
+#      - name: check this pipeline is running as uid = 0
+#        runs: test "$(id -u)" == "0"
+#      - name: check this pipeline is running as user root
+#        runs: test "$(id -un)" == "root"
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    accounts:
+      run-as: nonroot
+      users:
+        - username: nonroot
+          uid: 12345
+          gid: 12346
+      groups:
+        - groupname: nongroup
+          gid: 12346
+  pipeline:
+    - name: check this pipeline is running as uid = 12345
+      runs: test "$(id -u)" == "12345"
+    - name: check this pipeline is running as user nonroot
+      runs: test "$(id -un)" == "nonroot"
+    - name: check this pipeline is running as gid = 12346
+      runs: test "$(id -g)" == "12346"
+    - name: check this pipeline is running with group nongroup
+      runs: test "$(id -gn)" == "nongroup"
+    - name: ensure we can write to our home dir
+      runs: mktemp -p "${HOME}"
+    - name: ensure we can write to our default dir
+      runs: mktemp -p .

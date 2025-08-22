@@ -59,12 +59,14 @@ type Config struct {
 	CacheDir              string
 	CPU, CPUModel, Memory string
 	SSHKey                ssh.Signer
-	SSHAddress            string
-	SSHWorkspaceAddress   string
+	SSHAddress            string // SSH address for the build / chrooted environment
+	SSHControlAddress     string // SSH address for the control / management environment
 	SSHHostKey            string
 	Disk                  string
 	Timeout               time.Duration
-	SSHClient             *ssh.Client
-	WorkspaceClient       *ssh.Client
+	SSHBuildClient        *ssh.Client // SSH client for the build environment, may not have privileges
+	SSHControlBuildClient *ssh.Client // SSH client for control operations in the build environment, has privileges
+	SSHControlClient      *ssh.Client // SSH client for unrestricted control environment, has privileges
 	QemuPID               int
+	RunAsGID              string
 }

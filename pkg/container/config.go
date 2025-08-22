@@ -67,4 +67,5 @@ type Config struct {
 	SSHClient             *ssh.Client
 	WorkspaceClient       *ssh.Client
 	QemuPID               int
+	RunAsGID              string
 }

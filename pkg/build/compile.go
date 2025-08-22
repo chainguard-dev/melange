@@ -219,7 +219,7 @@ func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pi
 
 func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline, parent map[string]string) error {
 	log := clog.FromContext(ctx)
-	name, uses, with := pipeline.Name, pipeline.Uses, maps.Clone(pipeline.With)
+	name, uses, with, env := pipeline.Name, pipeline.Uses, maps.Clone(pipeline.With), maps.Clone(pipeline.Environment)
 
 	// When compiling an already-compiled config, `uses` will be redundant and FYI only,
 	// so ignore it if there is also a `pipelines` spelled out.
@@ -254,6 +254,11 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 				return fmt.Errorf("undefined input %q to pipeline %q", k, pipeline.Uses)
 			}
 		}
+
+		// Propagate environment variables from the original pipeline to the loaded pipeline.
+		m := maps.Clone(pipeline.Environment)
+		maps.Copy(m, env)
+		pipeline.Environment = m
 
 		// We want to keep the original name here because loading the pipeline will overwrite it.
 		pipeline.Name = name
@@ -317,6 +322,8 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		if p.WorkDir == "" {
 			p.WorkDir = pipeline.WorkDir
 		}
+
+		maps.Copy(p.Environment, p.Environment)
 
 		if err := c.compilePipeline(ctx, sm, p, mutated); err != nil {
 			return fmt.Errorf("compiling Pipeline[%d]: %w", i, err)

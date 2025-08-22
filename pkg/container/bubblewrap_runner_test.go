@@ -38,6 +38,11 @@ func TestBubblewrapCmd(t *testing.T) {
 			config:       &Config{RunAsUID: "65535"},
 			expectedArgs: fmt.Sprintf("--unshare-user --uid %s --gid %s", "65535", "65535"),
 		},
+		{
+			name:         "With config RunAs with distinct UID and GID",
+			config:       &Config{RunAsUID: "65535", RunAsGID: "1000"},
+			expectedArgs: fmt.Sprintf("--unshare-user --uid %s --gid %s", "65535", "1000"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

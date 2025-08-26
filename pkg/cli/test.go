@@ -44,6 +44,8 @@ func test() *cobra.Command {
 	var debug bool
 	var debugRunner bool
 	var interactive bool
+	var saveScripts bool
+	var exportScripts string
 	var runner string
 	var extraTestPackages []string
 	var remove bool
@@ -76,6 +78,8 @@ func test() *cobra.Command {
 				build.WithTestDebug(debug),
 				build.WithTestDebugRunner(debugRunner),
 				build.WithTestInteractive(interactive),
+				build.WithTestSaveScripts(saveScripts),
+				build.WithTestExportScripts(exportScripts),
 				build.WithTestRemove(remove),
 				build.WithTestIgnoreSignatures(ignoreSignatures),
 			}
@@ -125,6 +129,8 @@ func test() *cobra.Command {
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
+	cmd.Flags().BoolVar(&saveScripts, "save-scripts", false, "when enabled, saves pipeline scripts inside the build container for debugging")
+	cmd.Flags().StringVar(&exportScripts, "export-scripts", "", "directory to export pipeline scripts to host filesystem (automatically enables script generation)")
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")

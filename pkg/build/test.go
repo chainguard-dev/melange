@@ -65,6 +65,8 @@ type Test struct {
 	Debug             bool
 	DebugRunner       bool
 	Interactive       bool
+	SaveScripts       bool
+	ExportScripts     string // Directory path to export scripts to host
 	Auth              map[string]options.Auth
 	IgnoreSignatures  bool
 }
@@ -305,10 +307,12 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	}
 
 	pr := &pipelineRunner{
-		interactive: t.Interactive,
-		debug:       t.Debug,
-		config:      cfg,
-		runner:      t.Runner,
+		interactive:   t.Interactive,
+		debug:         t.Debug,
+		saveScripts:   t.SaveScripts,
+		exportScripts: t.ExportScripts,
+		config:        cfg,
+		runner:        t.Runner,
 	}
 
 	if !t.IsTestless() {
@@ -366,10 +370,12 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			subCfg.Arch = t.Arch
 
 			pr := &pipelineRunner{
-				interactive: t.Interactive,
-				debug:       t.Debug,
-				config:      subCfg,
-				runner:      t.Runner,
+				interactive:   t.Interactive,
+				debug:         t.Debug,
+				saveScripts:   t.SaveScripts,
+				exportScripts: t.ExportScripts,
+				config:        subCfg,
+				runner:        t.Runner,
 			}
 
 			if err := t.Runner.StartPod(ctx, subCfg); err != nil {

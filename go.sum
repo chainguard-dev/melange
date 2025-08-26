@@ -1,5 +1,5 @@
-chainguard.dev/apko v0.30.5 h1:FbkEqqvS2965PJ9lx/p7a8myFTg7TXrje0grJq20MQk=
-chainguard.dev/apko v0.30.5/go.mod h1:WWlchAz28M73vw/GIoixD4ywoV5vAjzI1UCpZ9L1XWA=
+chainguard.dev/apko v0.30.6 h1:TaXonng//kkqymddXpVf4bY645/Sim9m5KgLZ90j8Q4=
+chainguard.dev/apko v0.30.6/go.mod h1:WWlchAz28M73vw/GIoixD4ywoV5vAjzI1UCpZ9L1XWA=
 chainguard.dev/go-grpc-kit v0.17.11 h1:m4ZL2yg6sSrdPA593qVh9KHTZ+XOmLwqv3Jt5vT0FuU=
 chainguard.dev/go-grpc-kit v0.17.11/go.mod h1:aYlrvAscMZBtVIA7bykUWfbjhL2fDoUCECHvopC2xWY=
 chainguard.dev/sdk v0.1.37 h1:4hZ2enarpA/FZ1JMXE3EOlpzd18LmdWZ7UScwdSlrSs=
@@ -47,8 +47,8 @@ github.com/chainguard-dev/clog v1.7.0 h1:guPznsK8vLHvzz1QJe2yU6MFeYaiSOFOQBYw4OX
 github.com/chainguard-dev/clog v1.7.0/go.mod h1:4+WFhRMsGH79etYXY3plYdp+tCz/KCkU8fAr0HoaPvs=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2vgQC024I9/boh9r1ihVv8Z14+pbvWqXeYMCnZJpc=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10/go.mod h1:1p6+MesLcjKeON5BRWa7I87mvAY0QmKjgginIM3w6BI=
-github.com/chainguard-dev/yam v0.2.29 h1:kvcRdrjc2qL9N1smVvJA6BTsvcyNvxpqTy893ceXhPI=
-github.com/chainguard-dev/yam v0.2.29/go.mod h1:FBsSbqX1ryE3iOVhxgDGi4tKi835l27xoH8dYWKa4XM=
+github.com/chainguard-dev/yam v0.2.30 h1:lcONtkzeJBZdFy06ZRpclwP6gzlv5YGt4SswaDrA6Ts=
+github.com/chainguard-dev/yam v0.2.30/go.mod h1:FBsSbqX1ryE3iOVhxgDGi4tKi835l27xoH8dYWKa4XM=
 github.com/charmbracelet/colorprofile v0.3.0 h1:KtLh9uuu1RCt+Hml4s6Hz+kB1PfV3wi++1h5ia65yKQ=
 github.com/charmbracelet/colorprofile v0.3.0/go.mod h1:oHJ340RS2nmG1zRGPmhJKJ/jf4FPNNk0P39/wBPA1G0=
 github.com/charmbracelet/lipgloss v1.1.0 h1:vYXsiLHVkK7fp74RkV7b2kq9+zDLoEU4MZoFqR/noCY=
@@ -550,8 +550,8 @@ google.golang.org/protobuf v1.22.0/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2
 google.golang.org/protobuf v1.23.0/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2l/sGQquU=
 google.golang.org/protobuf v1.23.1-0.20200526195155-81db48ad09cc/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2l/sGQquU=
 google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlbajtzgsN7c=
-google.golang.org/protobuf v1.36.7 h1:IgrO7UwFQGJdRNXH/sQux4R1Dj1WAKcLElzeeRaXV2A=
-google.golang.org/protobuf v1.36.7/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
+google.golang.org/protobuf v1.36.8 h1:xHScyCOEuuwZEc6UtSOvPbAT4zRh0xcNRYekJwfqyMc=
+google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

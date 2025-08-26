@@ -3,10 +3,10 @@ module chainguard.dev/melange
 go 1.24.5
 
 require (
-	chainguard.dev/apko v0.30.5
+	chainguard.dev/apko v0.30.6
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.29
+	github.com/chainguard-dev/yam v0.2.30
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v28.3.3+incompatible
 	github.com/docker/docker v28.3.3+incompatible
@@ -169,7 +169,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250728155136-f173205681a0 // indirect
 	google.golang.org/grpc v1.74.2 // indirect
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/apimachinery v0.33.3 // indirect
 )

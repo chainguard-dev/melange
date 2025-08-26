@@ -92,10 +92,6 @@ type PackageOption struct {
 	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
 	// Optional: Don't generate versioned depends for shared libraries
 	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
-	// Optional: Don't generate inter-package depends when one
-	// subpackage depends on a vendored shared library shipped by
-	// another.
-	NoVendoredCrossPackageDeps bool `json:"no-vendored-cross-package-deps,omitempty" yaml:"no-vendored-cross-package-deps,omitempty"`
 }
 
 type Checks struct {

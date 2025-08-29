@@ -246,6 +246,10 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	steps := 0
 
 	for _, p := range pipeline.Pipeline {
+		// Merge nested pipeline environment with parent environment
+		mergedEnv := maps.Clone(envOverride)
+		maps.Copy(mergedEnv, p.Environment)
+		p.Environment = mergedEnv
 		if ran, err := r.runPipeline(ctx, &p); err != nil {
 			return false, fmt.Errorf("unable to run pipeline: %w", err)
 		} else if ran {

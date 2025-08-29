@@ -23,6 +23,7 @@ Run a build using the go compiler
 | experiments | false | A comma-separated list of Golang experiment names (ex: loopvar) to use when building the binary.  |  |
 | extra-args | false | A space-separated list of extra arguments to pass to the go build command.  |  |
 | go-package | false | The go package to install  | go |
+| ignore-untracked-files | false | If true, we will provide a gitignore that ignore all untracked files.  | true |
 | install-dir | false | Directory where binaries will be installed  | bin |
 | ldflags | false | List of [pattern=]arg to append to the go compiler with -ldflags |  |
 | modroot | false | Top directory of the go module, this is where go.mod lives. Before buiding the go pipeline wil cd into this directory.  | . |

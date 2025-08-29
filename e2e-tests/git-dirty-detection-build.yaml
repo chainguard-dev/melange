@@ -1,0 +1,133 @@
+package:
+  name: git-dirty-detection-test
+  version: 1.0.0
+  epoch: 0
+  description: "Test configuration for testing go/build git dirty detection - all cases"
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - go
+      - git
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  # Initialize git repo once
+  - runs: |
+      mkdir -p hello-app
+      cd hello-app
+
+      cat > go.mod <<"EOF"
+      module test-hello
+
+      go 1.21
+      EOF
+
+      cat > main.go <<"EOF"
+      package main
+
+      import "fmt"
+
+      func main() {
+          fmt.Println("Hello, World!")
+      }
+      EOF
+
+      # Initialize git repo and commit everything (clean state)
+      git init
+      git config user.email "test@example.com"
+      git config user.name "Test User"
+      git add .
+      git commit -m "Initial commit"
+
+  # Test 1: Clean repository should not have +dirty
+  - uses: go/build
+    with:
+      modroot: hello-app
+      packages: .
+      output: git-clean-binary
+      ignore-untracked-files: false
+
+  - name: Verify clean repo does not have +dirty
+    runs: |
+      echo "=== TEST 1: CLEAN REPO ==="
+      go version -m ${{targets.destdir}}/usr/bin/git-clean-binary
+
+      if go version -m ${{targets.destdir}}/usr/bin/git-clean-binary | grep -q "+dirty"; then
+        echo "ERROR: Clean repo binary contains +dirty when it shouldn't"
+        exit 1
+      else
+        echo "PASS: Clean repo binary correctly does not contain +dirty"
+      fi
+
+  # Test 2: Modified tracked file should have +dirty (even with ignore-untracked-files: true)
+  - runs: |
+      cd hello-app
+      echo "// Modified tracked file" >> main.go
+
+  - uses: go/build
+    with:
+      modroot: hello-app
+      packages: .
+      output: git-modified-tracked-binary
+      ignore-untracked-files: true
+
+  - name: Verify modified tracked file has +dirty
+    runs: |
+      echo "=== TEST 2: MODIFIED TRACKED FILE ==="
+      go version -m ${{targets.destdir}}/usr/bin/git-modified-tracked-binary
+
+      if go version -m ${{targets.destdir}}/usr/bin/git-modified-tracked-binary | grep -q "+dirty"; then
+        echo "PASS: Modified tracked file binary correctly contains +dirty"
+      else
+        echo "ERROR: Modified tracked file binary should contain +dirty but doesn't"
+        exit 1
+      fi
+
+  # Test 3: Reset to clean, add untracked file, ignore-untracked-files: false should be +dirty
+  - runs: |
+      cd hello-app
+      git checkout -- main.go  # Reset to clean
+      echo "untracked content" > untracked.txt
+
+  - uses: go/build
+    with:
+      modroot: hello-app
+      packages: .
+      output: git-untracked-not-ignored-binary
+      ignore-untracked-files: false
+
+  - name: Verify untracked files with ignore-untracked-files=false has +dirty
+    runs: |
+      echo "=== TEST 3: UNTRACKED FILES, IGNORE=FALSE ==="
+      go version -m ${{targets.destdir}}/usr/bin/git-untracked-not-ignored-binary
+
+      if go version -m ${{targets.destdir}}/usr/bin/git-untracked-not-ignored-binary | grep -q "+dirty"; then
+        echo "PASS: Untracked files with ignore=false binary correctly contains +dirty"
+      else
+        echo "ERROR: Untracked files with ignore=false binary should contain +dirty but doesn't"
+        exit 1
+      fi
+
+  # Test 4: Same untracked file, ignore-untracked-files: true should NOT be +dirty
+  - uses: go/build
+    with:
+      modroot: hello-app
+      packages: .
+      output: git-untracked-ignored-binary
+      ignore-untracked-files: true
+
+  - name: Verify untracked files with ignore-untracked-files=true does NOT have +dirty
+    runs: |
+      echo "=== TEST 4: UNTRACKED FILES, IGNORE=TRUE ==="
+      go version -m ${{targets.destdir}}/usr/bin/git-untracked-ignored-binary
+
+      if go version -m ${{targets.destdir}}/usr/bin/git-untracked-ignored-binary | grep -q "+dirty"; then
+        echo "ERROR: Untracked files with ignore=true binary contains +dirty when it shouldn't"
+        exit 1
+      else
+        echo "PASS: Untracked files with ignore=true binary correctly does not contain +dirty"
+      fi

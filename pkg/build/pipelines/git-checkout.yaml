@@ -162,8 +162,12 @@ pipeline:
           local flags="" depthflag="" dest_fullpath="" workdir=""
           local remote="origin" rcfile="" rc="" quiet="--quiet"
           flags="--config=advice.detachedHead=false"
-          [ -n "$branch" ] && flags="$flags --branch=$branch"
-          [ -n "$tag" ] && flags="$flags --branch=$tag"
+          if [ -n "$expcommit" ]; then
+            flags="$flags --revision=$expcommit"
+          else
+            [ -n "$branch" ] && flags="$flags --branch=$branch"
+            [ -n "$tag" ] && flags="$flags --branch=$tag"
+          fi
           [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
 
           if [ "$depth" = "unset" ]; then

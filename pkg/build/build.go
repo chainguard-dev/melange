@@ -1086,6 +1086,30 @@ func runAs(accts apko_types.ImageAccounts) string {
 	panic(fmt.Sprintf("unable to find user with UID %d", uid))
 }
 
+func runAsGID(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "0"
+	default:
+	}
+	if uid, err := strconv.Atoi(accts.RunAs); err == nil {
+		for _, u := range accts.Users {
+			if u.UID == uint32(uid) {
+				return fmt.Sprint(*u.GID)
+			}
+		}
+	} else {
+		for _, u := range accts.Users {
+			if accts.RunAs == u.UserName {
+				return fmt.Sprint(*u.GID)
+			}
+		}
+	}
+	panic(fmt.Sprintf("unable to find gid for user with username %s", accts.RunAs))
+}
+
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
 	if b.isBuildLess() {
@@ -1131,6 +1155,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		Timeout:      b.Configuration.Package.Timeout,
 		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
 		RunAs:        runAs(b.Configuration.Environment.Accounts),
+		RunAsGID:     runAsGID(b.Configuration.Environment.Accounts),
 	}
 
 	if b.Configuration.Package.Resources != nil {

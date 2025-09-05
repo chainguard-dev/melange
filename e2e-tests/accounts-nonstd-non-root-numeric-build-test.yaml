@@ -1,0 +1,115 @@
+# test that packages / subpackages build and test as added non-root user
+# when specified in the build configuration as a numeric user id
+package:
+  name: accounts-nonstd-non-root-numeric-build-test
+  description: Test that specifying non-root builds happen as non-root
+  version: 0.1.0
+  epoch: 0
+environment:
+  contents:
+    packages:
+      - busybox
+  accounts:
+    users:
+      - username: nonroot
+        uid: 12345
+        gid: 12346
+    groups:
+      - groupname: nongroup
+        gid: 12346
+    run-as: 12345
+pipeline:
+  - uses: check-accounts
+    with:
+      expected_uid: 12345
+      expected_username: nonroot
+      expected_gid: 12346
+      expected_groupname: nongroup
+subpackages:
+  - name: accounts-nonstd-non-root-numeric-build-subpackage-test
+    description: test that specifying non-root subpackage builds happen as non-root
+    pipeline:
+      - uses: check-accounts
+        with:
+          expected_uid: 12345
+          expected_username: nonroot
+          expected_gid: 12346
+          expected_groupname: nongroup
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+        accounts:
+          run-as: 12345
+          users:
+            - username: nonroot
+              uid: 12345
+              gid: 12346
+          groups:
+            - groupname: nongroup
+              gid: 12346
+      pipeline:
+        - uses: check-accounts
+          with:
+            expected_uid: 12345
+            expected_username: nonroot
+            expected_gid: 12346
+            expected_groupname: nongroup
+  - name: accounts-nonstd-non-root-numeric-build-subpackage-root-user-test
+    description: test that when specifying root at the top-level, subpackage tests can be performed as root user
+    # Note: melange does not seem to support specifying a different user in
+    # a subpackage build, so don't do anything in this subpackage's
+    # build phase
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+        accounts:
+          # test environments should have the root user (uid=0) created by default
+          run-as: 0
+      pipeline:
+        - uses: check-accounts
+          with:
+            expected_uid: 0
+            expected_username: root
+            expected_gid: 0
+            expected_groupname: root
+  - name: accounts-nonstd-non-root-build-numeric-subpackage-build-user-test
+    description: test that when specifying root at the top-level, subpackage tests can be performed as build user
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+        accounts:
+          run-as: 1000
+      pipeline:
+        - uses: check-accounts
+          with:
+            expected_uid: 1000
+            expected_username: build
+            expected_gid: 1000
+            expected_groupname: build
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+    accounts:
+      run-as: 12345
+      users:
+        - username: nonroot
+          uid: 12345
+          gid: 12346
+      groups:
+        - groupname: nongroup
+          gid: 12346
+  pipeline:
+    - uses: check-accounts
+      with:
+        expected_uid: 12345
+        expected_username: nonroot
+        expected_gid: 12346
+        expected_groupname: nongroup

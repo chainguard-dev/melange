@@ -1,0 +1,54 @@
+# test that packages / subpackages build and test as the default user
+# (currently root/0 for qemu and docker, and build/1000 for bubblewrap)
+# when run-as is not specified.
+package:
+  name: accounts-default-user-build-test
+  description: Test that specifying non-root builds happen as non-root
+  version: 0.1.0
+  epoch: 0
+environment:
+  contents:
+    packages:
+      - busybox
+pipeline:
+  - uses: check-accounts
+    with:
+      expected_uid: 0
+      expected_username: root
+      expected_gid: 0
+      expected_groupname: root
+subpackages:
+  - name: accounts-default-user-build-subpackage-test
+    description: |
+      test that when specifying root at the top-level, subpackage builds also happen as the same user/group
+    pipeline:
+      - uses: check-accounts
+        with:
+          expected_uid: 0
+          expected_username: root
+          expected_gid: 0
+          expected_groupname: root
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - uses: check-accounts
+          with:
+            expected_uid: 0
+            expected_username: root
+            expected_gid: 0
+            expected_groupname: root
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - uses: check-accounts
+      with:
+        expected_uid: 0
+        expected_username: root
+        expected_gid: 0
+        expected_groupname: root

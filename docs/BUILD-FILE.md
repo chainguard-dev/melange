@@ -4,16 +4,18 @@ This documents the melange build file structure, fields, when, and why to use va
 
 # High level structure overview
 
-The following are the high level sections for the build file, with detailed descriptions for each of them, and their fields in the sections following. 
+The following are the high level sections for the build file, with detailed descriptions for each of them, and their fields in the sections following.
 
- ## Required
- ### package
+## Required
+### package
 
    Package metadata about this package, name, version, etc.
- ### environment
+
+### environment
 
     Specification for the packages build environment
- ### pipeline
+
+### pipeline
 
     Ordered list of pipelines that produce this package
 
@@ -21,18 +23,23 @@ The following are the high level sections for the build file, with detailed desc
 ### subpackages
 
    List of subpackages that this package also produces. For example, docs.
+
 ### data
 
    Arbitrary list of data available for templating in the pipeline.
+
 ### [update](./UPDATE.md)
 
    Defines how this package is auto updated
+
 ### vars
 
    Map of arbitrary variables available for templating in the pipeline.
+
 ### [var-transforms](./VAR-TRANSFORMS.md)
 
    List of transformations to create for the builtin template variables.
+
 ### options
 
    Deviations to the build
@@ -43,20 +50,20 @@ Details about the particular package that will be used to find and use it.
 
 ### name
 Unique name for the package. Convention is to use the same name as the YAML file without extension. This is what people will search for, so it's a good idea to keep it consistent with how the package is named in other distributions. for example:
-```
+```yaml
 name: python-3.10
 ```
 
 ### version
 Version of the package. For example:
-```
+```yaml
 version: 3.10.12
 ```
 
 ### epoch
 Monotonically increasing value (starting at 0) indicating same version of the
 package, but with changes (security patches for example) applied to it.
-```
+```yaml
 epoch: 0
 ```
 
@@ -66,7 +73,7 @@ form: `<name>-<version>-r<epoch>.apk` for our example above, this would be:
 
 ### description
 Human readable description of the package. Make this meaningful, as this information shows up when searching for the package with apk, for example:
-```
+```yaml
 description: "the Python programming language"
 ```
 
@@ -100,7 +107,7 @@ The license paths that this license applies to
 Attestations for this license.
 
 For example, saying that this entire package has license `PSF-2.0`
-```
+```yaml
 copyright:
   - license: PSF-2.0
 ```
@@ -113,7 +120,7 @@ List of packages that this package depends on at runtime, but not during build
 time. These will get installed by apk as system dependencies when the package is
 installed. For example, saying that a package depends on `openssl`, `socat`, and
 `curl` at runtime:
-```
+```yaml
 dependencies:
   runtime:
     - openssl
@@ -126,7 +133,7 @@ Provides allows you to create "aliases" for a package. If your `package.name` is
 for example `php-8.1`, but you want somebody be able to get this package by
 `php`, you could provide a section like this:
 
-```
+```yaml
   dependencies:
     provides:
       - php=8.1.23
@@ -137,7 +144,7 @@ provide a floating version, so that when the package gets upgraded, the user
 will get the latest one. For that melange provides a `${{package.full-version}}`
 variable. It gets expanded to `${{package.version}}-r${{package-epoch}}`. So for
 the example above, you could do this
-```
+```yaml
   dependencies:
     provides:
       - php=${{package.full-version}}
@@ -146,8 +153,9 @@ the example above, you could do this
 You can also do the same thing to provide parallel version streams, so again
 using our php example, there are 8.1.X and 8.2.X streams, so the condensed
 example here:
+
 `php-8.1.yaml`:
-```
+```yaml
 package:
   name: php-8.1
   version: 8.1.23
@@ -158,7 +166,7 @@ package:
 ```
 
 `php-8.2.yaml`:
-```
+```yaml
 package:
   name: php-8.2
   version: 8.2.10
@@ -184,7 +192,7 @@ or libraries. Turns off the SCA-based dependency generators. A good example of
 this is a package placeholder that then provides more targeted packages, for
 example:
 
-```
+```yaml
 options:
   no-provides: true
 ```
@@ -192,7 +200,7 @@ options:
 `no-depends` - This is a self contained package that does not depend on any
 other package. Turns off SCA-based dependency generators.
 
-```
+```yaml
 options:
   no-depends: true
 ```
@@ -203,7 +211,7 @@ generate provider entries for them. This allows for things like apk search
 cmd:foo, apk add cmd:bar to work. By default melange does the right thing, so
 you probably need a good reason to turn this off.
 
-```
+```yaml
 options:
   no-commands: true
 ```
@@ -213,7 +221,7 @@ libraries shipped by this package should not be versioned.  By
 default, melange will generate versioned `depends` for shared
 libraries.
 
-```
+```yaml
 options:
   no-versioned-shlib-deps: true
 ```
@@ -223,10 +231,10 @@ List of executable scripts that run at various stages of the package lifecycle,
 triggered by configurable events. These are useful to handle tasks that only
 happen during install, uninstall, upgrade. The life-cycle events are:
 `pre-install`, `post-install`, `pre-deinstall`, `post-deinstall`, `pre-upgrade`,
- `post-upgrade`. The script should contain the shebang interpereter, for
+`post-upgrade`. The script should contain the shebang interpereter, for
 example:
 
- ```
+```yaml
 scriptlets:
   post-deinstall: |
     #!/bin/busybox sh
@@ -237,7 +245,7 @@ In addition to lifecycle events, you can define `Trigger` which defines a list
 of paths to monitor, which causes a script to run. The script should contain the
 shebang interpreter, for example:
 
-```
+```yaml
 scriptlets:
   trigger:
     paths:
@@ -295,7 +303,7 @@ matches a repository, then all is well. I'd assume so.
 Packages is the list of packages to install in the build environment for running the pipeline; in other words, these are the necessary build time dependencies for the package.
 
 For example:
-```
+```yaml
 environment:
   contents:
     repositories:
@@ -309,7 +317,7 @@ environment:
 ```
 
 To specify a version for packages, you can use the following syntax:
-```
+```yaml
 environment:
   packages:
     - go>1.21    # install anything newer than 1.21, excluding 1.21
@@ -380,7 +388,7 @@ environment:
 environment allows you to control environmental variables to set while running
 the pipeline. For example, to set the env variable `CGO_ENABLED` to `0`:
 
-```
+```yaml
 environment:
   environment:
     CGO_ENABLED: "0"

@@ -312,6 +312,63 @@ environment:
 ```
 For additional information, see the [Chainguard Academy article](https://edu.chainguard.dev/open-source/wolfi/apk-version-selection/).
 
+## accounts
+Accounts support adding additional users and groups into the build
+environment, as well as running the build under a different user than
+the build runner's default.
+
+### run-as
+Specifies which user to run the build under, the user must already
+exist or be created in the build environment using the `users` field.
+
+Generally the default is the preferred user to use. There are some
+situations where specifying a specific user for the build is preferred,
+especially as ongoing work is done to de-privilege the build when
+using the QEMU runner; if the build requires a privileged operation like
+making a binary setuid, it mey be necessary to specify building as `root`.
+
+Tests are more likely to be situations where running as the non-default
+user may be desired.
+
+### users
+List of users to inject into the build image
+
+#### username
+The name of the user
+
+#### uid
+The uid of the user
+
+#### gid
+The primary gid of the user
+
+### groups
+List of groups to inject into the build image
+
+#### groupname
+The name of the group
+
+#### gid
+The gid of the grpup
+
+An example creating two users in the same group, and running the build as
+one of the users:
+
+```yaml
+environment:
+  accounts:
+    users:
+      - username: user_one
+        uid: 2000
+        gid: 1500
+      - username: user_two
+        uid: 2001
+        gid: 1500
+    groups:
+      - groupname: webusers
+      - gid 1500
+    run-as: user_one
+```
 
 ## environment
 environment allows you to control environmental variables to set while running

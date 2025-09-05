@@ -257,6 +257,12 @@ those directories? Something else??
 Environment defines the build environment, including what the dependencies are,
 including repositories, packages, etc.
 
+**NOTE**: environment configuration can only be specified in
+the top level build configuration. Environment settings cannot be
+extended or modified in a subpackage build definition. This is different
+from subpackage test definitions, where separate environments can be
+specified for each subpackage that differ from the main package.
+
 ## Local building
 When building locally, you'll also need to include information about where to find Wolfi packages. This is not needed when submitting the package to the Wolfi OS repository. The "contents" node is used for that:
 
@@ -286,7 +292,7 @@ TODO(vaikas): Are there any constraints here, or if any key in the keyring
 matches a repository, then all is well. I'd assume so.
 
 ### packages
-Packages is the list of packages to install for running the pipeline.
+Packages is the list of packages to install in the build environment for running the pipeline; in other words, these are the necessary build time dependencies for the package.
 
 For example:
 ```

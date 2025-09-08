@@ -132,7 +132,7 @@ func isHostProvidedLibrary(lib string) bool {
 		"libnvidia-tls.so.1",
 		"libnvoptix.so.1",
 	}
-	
+
 	for _, hostLib := range hostLibs {
 		if lib == hostLib {
 			return true
@@ -702,12 +702,14 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if setting.Key == "GOEXPERIMENT" && slices.Contains(fipsexperiments, setting.Value) {
 				fipscrypto = true
 			}
+			if setting.Key == "microsoft_systemcrypto" && setting.Value == "1" {
+				fipscrypto = true
+			}
 		}
 		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
 		if cgo && fipscrypto {
 			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
 			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
-			generated.Runtime = append(generated.Runtime, "so:libssl.so.3")
 		}
 
 		return nil

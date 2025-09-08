@@ -40,7 +40,6 @@ func TestGoFipsBinDeps(t *testing.T) {
 			"so:ld-linux-x86-64.so.2",
 			"so:libc.so.6",
 			"so:libcrypto.so.3",
-			"so:libssl.so.3",
 		},
 		Provides: []string{"cmd:go-fips-bin=0.0.1-r0"},
 	}

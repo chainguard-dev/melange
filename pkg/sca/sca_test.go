@@ -14,7 +14,9 @@
 
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/ld-so-conf-d-test.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/shbang-test.yaml --arch=x86_64
-//go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin.yaml --arch=x86_64
+//go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin-1.23.yaml --arch=x86_64
+//go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin-1.24.yaml --arch=x86_64
+//go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin-1.25.yaml --arch=x86_64
 //go:generate curl -s -o ./testdata/py3-seaborn.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/py3-seaborn.yaml
 //go:generate curl -s -o ./testdata/systemd.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/systemd.yaml
 

@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2025 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+package:
+  name: go-fips-bin-1.24
+  version: 0.0.1
+  epoch: 0
+  description: "A tiny fips go binary"
+
+environment:
+  contents:
+    repositories:
+      - https://apk.cgr.dev/chainguard
+      - https://apk.cgr.dev/chainguard-private
+
+pipeline:
+  - uses: go/build
+    with:
+      packages: .
+      output: go-fips-bin
+      go-package: go-fips~1.24

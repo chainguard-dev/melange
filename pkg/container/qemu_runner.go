@@ -707,11 +707,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
 	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
-	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
+	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,readonly=on,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
 	if cfg.CacheDir != "" {
-		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,readonly=on,path="+cfg.CacheDir)
 		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
 
 		// ensure the cachedir exists
@@ -881,7 +881,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	if cfg.CacheDir != "" {
 		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
 		setupMountCommand := fmt.Sprintf(
-			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p melange_cache %s && "+
+			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p -o ro melange_cache %s && "+
 				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
 			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),

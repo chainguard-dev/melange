@@ -840,7 +840,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				close(started)
 				return
 			} else {
-				log.Debug(err.Error())
+				log.Info(err.Error())
 			}
 		}
 	}()

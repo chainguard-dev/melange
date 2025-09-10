@@ -1158,7 +1158,7 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 // this avoids the ssh client trying to connect on a booting server.
 func checkSSHServer(address string) error {
 	// Establish a connection to the address
-	conn, err := net.DialTimeout("tcp", address, 50*time.Millisecond)
+	conn, err := net.DialTimeout("tcp", address, 150*time.Millisecond)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}

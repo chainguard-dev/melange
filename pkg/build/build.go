@@ -1096,18 +1096,22 @@ func runAsGID(accts apko_types.ImageAccounts) string {
 	}
 	if uid, err := strconv.Atoi(accts.RunAs); err == nil {
 		for _, u := range accts.Users {
-			if u.UID == uint32(uid) {
+			if u.UID == uint32(uid) && u.GID != nil {
 				return fmt.Sprint(*u.GID)
 			}
 		}
 	} else {
 		for _, u := range accts.Users {
-			if accts.RunAs == u.UserName {
+			if accts.RunAs == u.UserName && u.GID != nil {
 				return fmt.Sprint(*u.GID)
 			}
 		}
 	}
-	panic(fmt.Sprintf("unable to find gid for user with username %s", accts.RunAs))
+
+	// Couldn't find group membership, return empty string to use Runner defaults
+	// TODO(stevebeattie): we should probably log this fact, but we
+	// don't have the context to do so
+	return ""
 }
 
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {

@@ -14,7 +14,7 @@ inputs:
 
   packages:
     description: |
-      List of space-separated packages to compile. Files con also be specified.
+      List of space-separated packages to compile. Files can also be specified.
       This value is passed as an argument to go build. All paths are relative
       to inputs.modroot.
     required: true

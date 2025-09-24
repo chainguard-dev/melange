@@ -4,6 +4,7 @@ needs:
   packages:
     - R
     - R-dev
+    - R-doc
     - busybox
 
 inputs:

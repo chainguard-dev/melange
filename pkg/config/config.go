@@ -532,6 +532,14 @@ type Pipeline struct {
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
 	// Optional: environment variables to override apko
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+	// Optional: Build-time only execution - runs during build but not included in exported scripts
+	BuildOnly bool `json:"build-only,omitempty" yaml:"build-only,omitempty"`
+	// Optional: Break into interactive debugging before this step executes
+	BreakBefore bool `json:"break-before,omitempty" yaml:"break-before,omitempty"`
+	// Optional: Stop pipeline execution after this step (but continue to packaging)
+	StopAfter bool `json:"stop-after,omitempty" yaml:"stop-after,omitempty"`
+	// Optional: Skip remaining pipeline steps if this step succeeds
+	SkipRemaining bool `json:"skip-remaining,omitempty" yaml:"skip-remaining,omitempty"`
 }
 
 // SHA256 generates a digest based on the text provided
@@ -1264,18 +1272,22 @@ func replaceImageConfig(r *strings.Replacer, in apko_types.ImageConfiguration) a
 
 func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 	return Pipeline{
-		Name:        r.Replace(in.Name),
-		Uses:        in.Uses,
-		With:        replaceMap(r, in.With),
-		Runs:        r.Replace(in.Runs),
-		Pipeline:    replacePipelines(r, in.Pipeline),
-		Inputs:      in.Inputs,
-		Needs:       replaceNeeds(r, in.Needs),
-		Label:       in.Label,
-		If:          r.Replace(in.If),
-		Assertions:  in.Assertions,
-		WorkDir:     r.Replace(in.WorkDir),
-		Environment: replaceMap(r, in.Environment),
+		Name:          r.Replace(in.Name),
+		Uses:          in.Uses,
+		With:          replaceMap(r, in.With),
+		Runs:          r.Replace(in.Runs),
+		Pipeline:      replacePipelines(r, in.Pipeline),
+		Inputs:        in.Inputs,
+		Needs:         replaceNeeds(r, in.Needs),
+		Label:         in.Label,
+		If:            r.Replace(in.If),
+		Assertions:    in.Assertions,
+		WorkDir:       r.Replace(in.WorkDir),
+		Environment:   replaceMap(r, in.Environment),
+		BuildOnly:     in.BuildOnly,
+		BreakBefore:   in.BreakBefore,
+		StopAfter:     in.StopAfter,
+		SkipRemaining: in.SkipRemaining,
 	}
 }
 

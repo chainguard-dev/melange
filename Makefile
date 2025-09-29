@@ -214,6 +214,69 @@ test-e2e: kernel/$(ARCH)/vmlinuz melange generate # This is invoked by a separat
 	MELANGE=$(TOP_D)/melange \
 	./run-tests
 
+#######################
+# Script Export Tests
+#######################
+
+.PHONY: test-script-export
+test-script-export: kernel/$(ARCH)/vmlinuz melange ## Build and test script export functionality
+	@echo "Building script export test package..."
+	QEMU_KERNEL_IMAGE=$(TOP_D)/kernel/$(ARCH)/vmlinuz \
+	QEMU_KERNEL_MODULES=$(TOP_D)/kernel/$(ARCH)/modules/ \
+	$(TOP_D)/melange build \
+		--runner=qemu \
+		--pipeline-dir ./e2e-tests/script-export-pipelines/ \
+		--out-dir ./e2e-tests/output/ \
+		--cache-dir /tmp/script-export-cache \
+		./e2e-tests/script-export-test.yaml
+	@echo "Running script export validation tests..."
+	QEMU_KERNEL_IMAGE=$(TOP_D)/kernel/$(ARCH)/vmlinuz \
+	QEMU_KERNEL_MODULES=$(TOP_D)/kernel/$(ARCH)/modules/ \
+	$(TOP_D)/melange test \
+		--runner=qemu \
+		--repository-append ./e2e-tests/output/ \
+		--repository-append https://packages.wolfi.dev/os \
+		--keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+		--ignore-signatures \
+		--pipeline-dirs ./e2e-tests/script-export-pipelines/ \
+		./e2e-tests/script-export-test.yaml
+
+.PHONY: test-script-export-debug
+test-script-export-debug: kernel/$(ARCH)/vmlinuz melange ## Build script export test in debug mode with script saving
+	@echo "Building script export test package in debug mode..."
+	QEMU_KERNEL_IMAGE=$(TOP_D)/kernel/$(ARCH)/vmlinuz \
+	QEMU_KERNEL_MODULES=$(TOP_D)/kernel/$(ARCH)/modules/ \
+	$(TOP_D)/melange build \
+		--runner=qemu \
+		--arch=$(ARCH) \
+		--debug \
+		--interactive \
+		--save-scripts \
+		--pipeline-dir ./e2e-tests/script-export-pipelines/ \
+		--out-dir ./e2e-tests/output/ \
+		--cache-dir /tmp/script-export-cache \
+		./e2e-tests/script-export-test.yaml
+	@echo "Running script export validation tests in debug mode..."
+	QEMU_KERNEL_IMAGE=$(TOP_D)/kernel/$(ARCH)/vmlinuz \
+	QEMU_KERNEL_MODULES=$(TOP_D)/kernel/$(ARCH)/modules/ \
+	$(TOP_D)/melange test \
+		--runner=qemu \
+		--arch=$(ARCH) \
+		--debug \
+		--interactive \
+		--save-scripts \
+		--repository-append ./e2e-tests/output/ \
+		--repository-append https://packages.wolfi.dev/os \
+		--keyring-append https://packages.wolfi.dev/os/wolfi-signing.rsa.pub \
+		--ignore-signatures \
+		--pipeline-dirs ./e2e-tests/script-export-pipelines/ \
+		./e2e-tests/script-export-test.yaml
+
+.PHONY: clean-script-export-test
+clean-script-export-test: ## Clean script export test artifacts
+	rm -rf ./e2e-tests/output/
+	rm -rf /tmp/script-export-cache
+
 .PHONY: clean
 clean: ## Clean the workspace
 	rm -rf melange

@@ -118,6 +118,22 @@ func WithTestInteractive(interactive bool) TestOption {
 	}
 }
 
+// WithTestSaveScripts indicates whether to save pipeline scripts for debugging
+func WithTestSaveScripts(saveScripts bool) TestOption {
+	return func(t *Test) error {
+		t.SaveScripts = saveScripts
+		return nil
+	}
+}
+
+// WithTestExportScripts indicates where to export pipeline scripts to the host filesystem
+func WithTestExportScripts(exportDir string) TestOption {
+	return func(t *Test) error {
+		t.ExportScripts = exportDir
+		return nil
+	}
+}
+
 // WithTestExtraRepos adds a set of extra repos to the test context.
 func WithTestExtraRepos(extraRepos []string) TestOption {
 	return func(t *Test) error {

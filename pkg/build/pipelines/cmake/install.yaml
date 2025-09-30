@@ -13,4 +13,4 @@ inputs:
 
 pipeline:
   - runs: |
-      DESTDIR="${{targets.contextdir}}" cmake --install ${{inputs.output-dir}}
+      VERBOSE=1 DESTDIR="${{targets.contextdir}}" cmake --install "${{inputs.output-dir}}"

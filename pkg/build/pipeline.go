@@ -287,6 +287,13 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 		envOverride["HISTFILE"] = path.Join(home, ".ash_history")
 	}
 
+	// Required for many TUIs (emacs, make menuconfig, etc)
+	termType := os.Getenv("TERM")
+	if termType == "" {
+		termType = "xterm-256color"
+	}
+	envOverride["TERM"] = termType
+
 	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
 	log.Info(fmt.Sprintf("Execing into pod %q to debug interactively.", r.config.PodID), "workdir", workdir)
 	log.Infof("Type 'exit 0' to continue the next pipeline step or 'exit 1' to abort.")

@@ -881,7 +881,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	if cfg.CacheDir != "" {
 		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
 		setupMountCommand := fmt.Sprintf(
-			"mkdir -p %s %s /mount/upper /mount/work && mount -t 9p melange_cache %s && "+
+			"mkdir -p %s %s /mount/upper /mount/work && "+
+				"chmod 1777 /mount/upper && "+
+				"mount -t 9p melange_cache %s && "+
 				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
 			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),

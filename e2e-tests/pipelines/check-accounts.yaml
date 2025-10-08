@@ -37,3 +37,7 @@ pipeline:
     runs: mktemp -p "${HOME}"
   - name: ensure we can write to our default dir
     runs: mktemp -p .
+  - name: ensure we can write to the melange cache overlay directory
+    # the melange cache overlay is only mounted in build pipelines. not
+    # test pipelines so only perform the test if the directory exists
+    runs: test ! -d /var/cache/melange || mktemp -p /var/cache/melange

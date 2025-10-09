@@ -32,6 +32,8 @@ type GitCheckoutOptions struct {
 	Destination    string
 	ExpectedCommit string
 	CherryPicks    string
+	Patches        string
+	WorkspaceDir   string // Directory where patch files are located (usually config dir)
 }
 
 func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
@@ -94,6 +96,16 @@ func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
 		}
 	}
 
+	// Apply patches if specified
+	if opts.Patches != "" {
+		log.Infof("Applying patches")
+		patches := parsePatchList(opts.Patches)
+
+		if err := applyPatches(ctx, opts.Destination, opts.WorkspaceDir, patches); err != nil {
+			return fmt.Errorf("failed to apply patches: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -139,6 +151,79 @@ func applyCherryPicks(ctx context.Context, repoPath string, commits []string) er
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to cherry-pick %s: %w", commit, err)
+		}
+	}
+
+	return nil
+}
+
+func parsePatchList(input string) []string {
+	// Parse whitespace-delimited patch list
+	return strings.Fields(input)
+}
+
+func applyPatches(ctx context.Context, repoPath string, workspaceDir string, patches []string) error {
+	log := clog.FromContext(ctx)
+
+	for _, patch := range patches {
+		// Resolve patch path relative to workspace directory
+		patchPath := patch
+		if workspaceDir != "" && !strings.HasPrefix(patch, "/") {
+			patchPath = fmt.Sprintf("%s/%s", workspaceDir, patch)
+		}
+
+		log.Infof("Applying patch %s", patchPath)
+
+		// Try git am first (preserves commit metadata if present)
+		amCmd := exec.CommandContext(ctx, "git", "am", patchPath)
+		amCmd.Dir = repoPath
+		amCmd.Stdout = os.Stdout
+		amCmd.Stderr = os.Stderr
+
+		if err := amCmd.Run(); err != nil {
+			// git am failed, abort to clean up
+			log.Infof("git am failed, aborting to clean up")
+			abortCmd := exec.CommandContext(ctx, "git", "am", "--abort")
+			abortCmd.Dir = repoPath
+			_ = abortCmd.Run() // Ignore error, may not be in am session
+
+			// Try git apply --check to see if patch is valid
+			log.Infof("Checking if patch can be applied with git apply")
+			checkCmd := exec.CommandContext(ctx, "git", "apply", "--check", patchPath)
+			checkCmd.Dir = repoPath
+			checkCmd.Stderr = os.Stderr
+
+			if err := checkCmd.Run(); err != nil {
+				return fmt.Errorf("patch %s cannot be applied: %w", patchPath, err)
+			}
+
+			// Apply the patch
+			applyCmd := exec.CommandContext(ctx, "git", "apply", patchPath)
+			applyCmd.Dir = repoPath
+			applyCmd.Stdout = os.Stdout
+			applyCmd.Stderr = os.Stderr
+			if err := applyCmd.Run(); err != nil {
+				return fmt.Errorf("failed to apply patch %s: %w", patchPath, err)
+			}
+
+			// Stage all changes
+			addCmd := exec.CommandContext(ctx, "git", "add", "-A")
+			addCmd.Dir = repoPath
+			if err := addCmd.Run(); err != nil {
+				return fmt.Errorf("failed to stage changes for patch %s: %w", patchPath, err)
+			}
+
+			// Commit with patch filename
+			commitMsg := fmt.Sprintf("Apply patch: %s", patch)
+			commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", commitMsg)
+			commitCmd.Dir = repoPath
+			commitCmd.Stdout = os.Stdout
+			commitCmd.Stderr = os.Stderr
+			if err := commitCmd.Run(); err != nil {
+				return fmt.Errorf("failed to commit patch %s: %w", patchPath, err)
+			}
+
+			log.Infof("Applied patch %s using git apply + commit", patchPath)
 		}
 	}
 

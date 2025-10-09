@@ -18,6 +18,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
+	"strings"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/go-git/go-git/v5"
@@ -28,6 +31,7 @@ type GitCheckoutOptions struct {
 	Repository     string
 	Destination    string
 	ExpectedCommit string
+	CherryPicks    string
 }
 
 func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
@@ -76,6 +80,67 @@ func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
 	}
 
 	log.Infof("Checked out commit %s", head.Hash().String())
+
+	// Apply cherry-picks if specified
+	if opts.CherryPicks != "" {
+		log.Infof("Applying cherry-picks")
+		picks, err := parseCherryPicks(opts.CherryPicks)
+		if err != nil {
+			return fmt.Errorf("failed to parse cherry-picks: %w", err)
+		}
+
+		if err := applyCherryPicks(ctx, opts.Destination, picks); err != nil {
+			return fmt.Errorf("failed to apply cherry-picks: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func parseCherryPicks(input string) ([]string, error) {
+	commits := make([]string, 0)
+
+	for line := range strings.SplitSeq(input, "\n") {
+		// Trim whitespace
+		line = strings.TrimSpace(line)
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse format: [branch/]commit: comment
+		// We only care about the commit hash
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid cherry-pick format (expected '[branch/]commit: comment'): %s", line)
+		}
+
+		pickSpec := strings.TrimSpace(parts[0])
+
+		// Strip optional branch prefix (we don't need it with full clone)
+		commit := path.Base(pickSpec)
+
+		commits = append(commits, commit)
+	}
+
+	return commits, nil
+}
+
+func applyCherryPicks(ctx context.Context, repoPath string, commits []string) error {
+	log := clog.FromContext(ctx)
+
+	for _, commit := range commits {
+		log.Infof("Cherry-picking %s", commit)
+
+		cmd := exec.CommandContext(ctx, "git", "cherry-pick", "-x", commit)
+		cmd.Dir = repoPath
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to cherry-pick %s: %w", commit, err)
+		}
+	}
 
 	return nil
 }

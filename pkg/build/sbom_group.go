@@ -62,7 +62,6 @@ func (sg *SBOMGroup) AddBuildConfigurationPackage(p *sbom.Package) {
 // package" to all SBOMs in the group.
 func (sg *SBOMGroup) AddUpstreamSourcePackage(p *sbom.Package) {
 	for _, doc := range sg.set {
-		doc.AddPackage(p)
-		doc.AddRelationship(doc.Describes, p, common.TypeRelationshipGeneratedFrom)
+		doc.AddUpstreamSourcePackage(p)
 	}
 }

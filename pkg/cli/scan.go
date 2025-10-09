@@ -371,10 +371,8 @@ func scanTarCmd(ctx context.Context) error {
 
 	log.Infof("Reading tar stream from stdin...")
 
-	// Handle potential gzip compression
-	var reader io.Reader = os.Stdin
-
 	// Try to detect gzip magic bytes
+	var reader io.Reader
 	peekReader := bufio.NewReader(os.Stdin)
 	peek, err := peekReader.Peek(2)
 	if err != nil && err != io.EOF {
@@ -496,7 +494,6 @@ func (t *TarSCAHandle) Options() config.PackageOption                           
 func (t *TarSCAHandle) BaseDependencies() config.Dependencies                   { return config.Dependencies{} }
 func (t *TarSCAHandle) InstalledPackages() map[string]string                    { return map[string]string{} }
 func (t *TarSCAHandle) PkgResolver() *apk.PkgResolver                           { return nil }
-
 
 type pkginfo struct {
 	pkgname   string

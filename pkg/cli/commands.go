@@ -64,6 +64,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(scan())
 	cmd.AddCommand(signCmd())
 	cmd.AddCommand(signIndex())
+	cmd.AddCommand(sourceCmd())
 	cmd.AddCommand(test())
 	cmd.AddCommand(updateCache())
 	cmd.AddCommand(version.Version())

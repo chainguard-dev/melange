@@ -58,6 +58,7 @@ Currently only supports git-checkout.
 						Repository:     step.With["repository"],
 						Destination:    destination,
 						ExpectedCommit: step.With["expected-commit"],
+						CherryPicks:    step.With["cherry-picks"],
 					}
 
 					if err := source.GitCheckout(ctx, opts); err != nil {

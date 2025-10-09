@@ -120,7 +120,7 @@ func parseCherryPicks(input string) ([]string, error) {
 
 		// Strip optional branch prefix (we don't need it with full clone)
 		commit := pickSpec
-		if slashIdx := strings.Index(pickSpec, "/"); slashIdx != -1 {
+		if slashIdx := strings.LastIndex(pickSpec, "/"); slashIdx != -1 {
 			commit = pickSpec[slashIdx+1:]
 		}
 

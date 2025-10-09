@@ -56,6 +56,8 @@ func compile() *cobra.Command {
 	var debug bool
 	var debugRunner bool
 	var interactive bool
+	var saveScripts bool
+	var exportScripts string
 	var remove bool
 	var runner string
 	var failOnLintWarning bool
@@ -129,6 +131,8 @@ func compile() *cobra.Command {
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),
 				build.WithInteractive(interactive),
+				build.WithSaveScripts(saveScripts),
+				build.WithExportScripts(exportScripts),
 				build.WithRemove(remove),
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
@@ -196,6 +200,8 @@ func compile() *cobra.Command {
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
+	cmd.Flags().BoolVar(&saveScripts, "save-scripts", false, "when enabled, saves pipeline scripts inside the build container for debugging")
+	cmd.Flags().StringVar(&exportScripts, "export-scripts", "", "directory to export pipeline scripts to host filesystem (automatically enables script generation)")
 	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
 	cmd.Flags().BoolVar(&failOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")

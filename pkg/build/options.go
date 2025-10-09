@@ -321,6 +321,22 @@ func WithInteractive(interactive bool) Option {
 	}
 }
 
+// WithSaveScripts indicates whether to save pipeline scripts for debugging
+func WithSaveScripts(saveScripts bool) Option {
+	return func(b *Build) error {
+		b.SaveScripts = saveScripts
+		return nil
+	}
+}
+
+// WithExportScripts indicates where to export pipeline scripts to the host filesystem
+func WithExportScripts(exportDir string) Option {
+	return func(b *Build) error {
+		b.ExportScripts = exportDir
+		return nil
+	}
+}
+
 // WithRemove indicates whether the the build will clean up after itself.
 // This includes deleting any intermediate artifacts like container images and temp workspace and guest dirs.
 func WithRemove(remove bool) Option {

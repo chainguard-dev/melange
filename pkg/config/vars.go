@@ -76,15 +76,7 @@ func (cfg Configuration) PerformVarSubstitutions(nw map[string]string) error {
 			return fmt.Errorf("match value: %s string does not compile into a regex: %w", v.Match, err)
 		}
 
-		// Check if the regex matches at all
-		if !re.MatchString(from) {
-			return fmt.Errorf("var-transform %q failed: regex %q does not match input %q (no substitution will be performed)", v.To, v.Match, from)
-		}
-
 		output := re.ReplaceAllString(from, v.Replace)
-		if output == "" {
-			return fmt.Errorf("var-transform %q resulted in empty value (from=%q, match=%q, replace=%q) - transformed variables cannot be empty", v.To, from, v.Match, v.Replace)
-		}
 		nw[nk] = output
 	}
 

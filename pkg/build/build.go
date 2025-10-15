@@ -106,33 +106,36 @@ type Build struct {
 	WorkspaceIgnore string
 	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
-	PipelineDirs          []string
-	SourceDir             string
-	SigningKey            string
-	SigningPassphrase     string
-	Namespace             string
-	GenerateIndex         bool
-	EmptyWorkspace        bool
-	OutDir                string
-	Arch                  apko_types.Architecture
-	Libc                  string
-	ExtraKeys             []string
-	ExtraRepos            []string
-	ExtraPackages         []string
-	DependencyLog         string
-	BinShOverlay          string
-	CreateBuildLog        bool
-	CacheDir              string
-	ApkCacheDir           string
-	CacheSource           string
-	StripOriginName       bool
-	EnvFile               string
-	VarsFile              string
-	Runner                container.Runner
-	containerConfig       *container.Config
-	Debug                 bool
-	DebugRunner           bool
-	Interactive           bool
+	PipelineDirs      []string
+	SourceDir         string
+	SigningKey        string
+	SigningPassphrase string
+	Namespace         string
+	GenerateIndex     bool
+	EmptyWorkspace    bool
+	OutDir            string
+	Arch              apko_types.Architecture
+	Libc              string
+	ExtraKeys         []string
+	ExtraRepos        []string
+	ExtraPackages     []string
+	DependencyLog     string
+	BinShOverlay      string
+	CreateBuildLog    bool
+	CacheDir          string
+	ApkCacheDir       string
+	CacheSource       string
+	StripOriginName   bool
+	EnvFile           string
+	VarsFile          string
+	Runner            container.Runner
+	containerConfig   *container.Config
+	Debug             bool
+	DebugRunner       bool
+	Interactive       bool
+	SaveScripts       bool
+	ExportScripts     string // Directory path to export scripts to host
+
 	Remove                bool
 	LintRequire, LintWarn []string
 	DefaultCPU            string
@@ -674,10 +677,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	pr := &pipelineRunner{
-		interactive: b.Interactive,
-		debug:       b.Debug,
-		config:      b.workspaceConfig(ctx),
-		runner:      b.Runner,
+		interactive:   b.Interactive,
+		debug:         b.Debug,
+		saveScripts:   b.SaveScripts,
+		exportScripts: b.ExportScripts,
+		config:        b.workspaceConfig(ctx),
+		runner:        b.Runner,
 	}
 
 	if b.EmptyWorkspace {

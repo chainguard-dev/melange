@@ -27,14 +27,31 @@ func sourceCmd() *cobra.Command {
 	var sourceDir string
 
 	cmd := &cobra.Command{
-		Use:   "source [config.yaml]",
+		Use:   "source",
+		Short: "Manage melange source code",
+		Long:  `Commands for managing source code from melange configurations.`,
+	}
+
+	// Shared flags for all source subcommands
+	cmd.PersistentFlags().StringVarP(&outputDir, "output", "o", "./source", "output directory for extracted source")
+	cmd.PersistentFlags().StringVar(&sourceDir, "source-dir", "", "directory where patches and other sources are located (defaults to ./package-name/)")
+
+	// Add subcommands
+	cmd.AddCommand(sourceGetCmd(&outputDir, &sourceDir))
+
+	return cmd
+}
+
+func sourceGetCmd(outputDir *string, sourceDir *string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get [config.yaml]",
 		Short: "Extract source code from melange configuration",
 		Long: `Extract source code by cloning git repositories from melange configuration.
 
 This command parses a melange configuration file and extracts sources to the given directory
 Currently only supports git-checkout.
 `,
-		Example: `  melange source vim.yaml -o ./src`,
+		Example: `  melange source get vim.yaml -o ./src`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -79,16 +96,17 @@ Currently only supports git-checkout.
 			log.Infof("Found git-checkout step")
 
 			// Construct destination: outputDir/packageName
-			destination := fmt.Sprintf("%s/%s", outputDir, cfg.Package.Name)
+			destination := fmt.Sprintf("%s/%s", *outputDir, cfg.Package.Name)
 
 			// Default sourceDir to package-name subdirectory in config file's directory
 			// This matches melange build behavior: --source-dir ./package-name/
-			if sourceDir == "" {
-				sourceDir = filepath.Join(filepath.Dir(buildConfigPath), cfg.Package.Name)
+			srcDir := *sourceDir
+			if srcDir == "" {
+				srcDir = filepath.Join(filepath.Dir(buildConfigPath), cfg.Package.Name)
 			}
 
 			// Make sourceDir absolute since git commands will run from the cloned repo
-			absSourceDir, err := filepath.Abs(sourceDir)
+			absSourceDir, err := filepath.Abs(srcDir)
 			if err != nil {
 				return fmt.Errorf("failed to get absolute path for source-dir: %w", err)
 			}
@@ -106,13 +124,10 @@ Currently only supports git-checkout.
 				return fmt.Errorf("failed to checkout source: %w", err)
 			}
 
-			log.Infof("Successfully extracted source to %s", outputDir)
+			log.Infof("Successfully extracted source to %s", *outputDir)
 			return nil
 		},
 	}
-
-	cmd.Flags().StringVarP(&outputDir, "output", "o", "./source", "output directory for extracted source")
-	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory where patches and other sources are located (defaults to ./package-name/)")
 
 	return cmd
 }

@@ -1,3 +1,4 @@
+
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
@@ -5,6 +6,7 @@
 - [split/bin](#splitbin)
 - [split/debug](#splitdebug)
 - [split/dev](#splitdev)
+- [split/docs](#splitdocs)
 - [split/infodir](#splitinfodir)
 - [split/locales](#splitlocales)
 - [split/manpages](#splitmanpages)
@@ -39,6 +41,16 @@ Split development files
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | package | false | The package to split development files from  |  |
+
+## split/docs
+
+Split docs
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| package | false | The package to split docs from  |  |
 
 ## split/infodir
 

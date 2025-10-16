@@ -1,0 +1,34 @@
+name: Split docs
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  package:
+    description: |
+      The package to split docs from
+    required: false
+
+pipeline:
+  - runs: |
+      PACKAGE_DIR="${{targets.destdir}}"
+      if [ -n "${{inputs.package}}" ]; then
+        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
+      fi
+
+      if [ "$PACKAGE_DIR" = "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!"
+        exit 1
+      fi
+
+      for docdir in \
+        "$PACKAGE_DIR/usr/share/doc" \
+        "$PACKAGE_DIR/usr/local/share/doc"; do
+
+        if [ -d "$docdir" ]; then
+          mkdir -p "${{targets.contextdir}}/usr/share/doc"
+          mv "$docdir"/* "${{targets.contextdir}}/usr/share/doc/"
+          rmdir --parents --ignore-fail-on-non-empty "$docdir"
+        fi
+      done

@@ -2,6 +2,7 @@
 # Pipeline Reference
 
 
+- [split/alldocs](#splitalldocs)
 - [split/bin](#splitbin)
 - [split/debug](#splitdebug)
 - [split/dev](#splitdev)
@@ -9,6 +10,16 @@
 - [split/locales](#splitlocales)
 - [split/manpages](#splitmanpages)
 - [split/static](#splitstatic)
+
+## split/alldocs
+
+Split all docs
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| package | false | The package to split all docs from  |  |
 
 ## split/bin
 

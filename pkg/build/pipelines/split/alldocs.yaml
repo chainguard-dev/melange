@@ -1,0 +1,56 @@
+name: Split all docs
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  package:
+    description: |
+      The package to split all docs from
+    required: false
+
+pipeline:
+  - name: "split all docs"
+    runs: |
+      PACKAGE_DIR="${{targets.destdir}}"
+      if [ -n "${{inputs.package}}" ]; then
+        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
+      fi
+
+      if [ "$PACKAGE_DIR" = "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!"
+        exit 1
+      fi
+
+      # info dir
+      if [ -d "$PACKAGE_DIR/usr/share/info" ]; then
+        rm -f "$PACKAGE_DIR"/usr/share/info/dir
+
+        mkdir -p "${{targets.contextdir}}/usr/share"
+        mv "$PACKAGE_DIR"/usr/share/info "${{targets.contextdir}}/usr/share"
+      fi
+
+      # man pages
+      for mandir in \
+        "$PACKAGE_DIR/usr/share/man" \
+        "$PACKAGE_DIR/usr/local/share/man" \
+        "$PACKAGE_DIR/usr/man"; do
+
+        if [ -d "$mandir" ]; then
+          mkdir -p "${{targets.contextdir}}/usr/share/man"
+          mv "$mandir"/* "${{targets.contextdir}}/usr/share/man/"
+          rmdir --parents --ignore-fail-on-non-empty "$mandir"
+        fi
+      done
+
+      # other docs
+      for docdir in \
+        "$PACKAGE_DIR/usr/share/doc" \
+        "$PACKAGE_DIR/usr/local/share/doc"; do
+        if [ -d "$docdir" ]; then
+          mkdir -p "${{targets.contextdir}}/usr/share/doc"
+          mv "$docdir"/* "${{targets.contextdir}}/usr/share/doc/"
+          rmdir --parents --ignore-fail-on-non-empty "$docdir"
+        fi
+      done

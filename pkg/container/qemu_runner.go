@@ -1035,7 +1035,7 @@ func getWorkspaceLicenseFiles(ctx context.Context, cfg *Config, extraFiles []str
 		if strings.Contains(f, "melange-out") {
 			continue
 		}
-		if is, _ := license.IsLicenseFile(f); is {
+		if is, _ := license.IsLicenseFile(f, false); is {
 			licenseFiles = append(licenseFiles, f)
 		}
 	}

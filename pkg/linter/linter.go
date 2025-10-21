@@ -490,7 +490,7 @@ func duplicateLinter(ctx context.Context, _ *config.Configuration, _ string, fsy
 
 		basename := filepath.Base(path)
 
-		if isLicense, _ := license.IsLicenseFile(path); isLicense {
+		if isLicense, _ := license.IsLicenseFile(path, true); isLicense {
 			return nil
 		}
 

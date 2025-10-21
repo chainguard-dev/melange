@@ -143,7 +143,7 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 			return nil
 		}
 
-		is, weight := IsLicenseFile(filePath)
+		is, weight := IsLicenseFile(filePath, false)
 		if is {
 			// Licenses in the top level directory have a higher weight so that they
 			// always appear first
@@ -175,7 +175,10 @@ func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
 // IsLicenseFile checks if a file is a license file based on its name.
 // Returns true/fals if the file is a license file, and the weight value
 // associated with the match, as some matches are potentially more relevant.
-func IsLicenseFile(filename string) (bool, float64) {
+// overrideIgnore skips over ignored paths to allow linters
+// to correctly determine whether a path is a valid license file
+// (e.g., to avoid listing each instance of a given LICENSE file as a duplicate)
+func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
 	// Ignore files in these paths
 
 	// Packages like Rust embed the semver in certain paths, so replace the segment with `-`
@@ -191,9 +194,11 @@ func IsLicenseFile(filename string) (bool, float64) {
 		"rustc-src",
 		"venv",
 	}
-	for _, i := range ignoredPaths {
-		if slices.Contains(strings.Split(filename, string(filepath.Separator)), i) {
-			return false, 0.0
+	if !overrideIgnore {
+		for _, i := range ignoredPaths {
+			if slices.Contains(strings.Split(filename, string(filepath.Separator)), i) {
+				return false, 0.0
+			}
 		}
 	}
 

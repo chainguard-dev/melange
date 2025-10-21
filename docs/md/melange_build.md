@@ -54,7 +54,7 @@ melange build [flags]
   -k, --keyring-append strings                                  path to extra keys to include in the build environment keyring
       --license string                                          license to use for the build config file itself (default "NOASSERTION")
       --lint-require strings                                    linters that must pass (default [dev,infodir,setuidgid,tempdir,usrmerge,varempty,worldwrite])
-      --lint-warn strings                                       linters that will generate warnings (default [cudaruntimelib,dll,duplicate,lddcheck,maninfo,nonlinux,object,opt,pkgconf,python/docs,python/multiple,python/test,sbom,srv,staticarchive,strip,unsupportedarch,usrlocal])
+      --lint-warn strings                                       linters that will generate warnings (default [binaryarch,cudaruntimelib,dll,duplicate,dylib,lddcheck,maninfo,nonlinux,object,opt,pkgconf,python/docs,python/multiple,python/test,sbom,srv,staticarchive,strip,unsupportedarch,usrlocal])
       --memory string                                           default memory resources to use for builds
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")

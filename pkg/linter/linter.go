@@ -17,7 +17,9 @@ package linter
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"debug/elf"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -40,6 +42,7 @@ import (
 	"chainguard.dev/apko/pkg/apk/auth"
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/license"
 )
 
 type linterFunc func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error
@@ -112,7 +115,7 @@ var linterMap = map[string]linter{
 	},
 	"object": {
 		LinterFunc:      allPaths(objectLinter),
-		Explain:         "This package contains intermediate object files",
+		Explain:         "This package contains intermediate object files (.o files)",
 		defaultBehavior: Warn,
 	},
 	"maninfo": {
@@ -205,6 +208,41 @@ var linterMap = map[string]linter{
 		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. Installing them in an image could override the host libraries and break GPU support. If this library is needed for build-time linking or ldd-check tests, please use a package containing a stub library instead. For libcuda.so, use nvidia-cuda-cudart-$cuda_version. For libnvidia-ml.so, use nvidia-cuda-nvml-dev-$cuda_version.",
 		defaultBehavior: Warn,
 	},
+	"dll": {
+		LinterFunc:      allPaths(dllLinter),
+		Explain:         "This package contains Windows libraries",
+		defaultBehavior: Warn,
+	},
+	"dylib": {
+		LinterFunc:      allPaths(dylibLinter),
+		Explain:         "This package contains macOS libraries",
+		defaultBehavior: Warn,
+	},
+	"nonlinux": {
+		LinterFunc:      allPaths(nonLinuxLinter),
+		Explain:         "This package contains references to non-Linux paths",
+		defaultBehavior: Warn,
+	},
+	"unsupportedarch": {
+		LinterFunc:      allPaths(unsupportedArchLinter),
+		Explain:         "This package contains references to unsupported architectures (only aarch64/arm64 and amd64/x86_64 are supported)",
+		defaultBehavior: Warn,
+	},
+	"binaryarch": {
+		LinterFunc:      binaryArchLinter,
+		Explain:         "This package contains binaries compiled for unsupported architectures (only aarch64/arm64 and amd64/x86_64 binaries are supported)",
+		defaultBehavior: Warn,
+	},
+	"staticarchive": {
+		LinterFunc:      allPaths(staticArchiveLinter),
+		Explain:         "This package contains static archives (.a files)",
+		defaultBehavior: Warn,
+	},
+	"duplicate": {
+		LinterFunc:      duplicateLinter,
+		Explain:         "This package contains files with the same name and content in different directories (consider symlinking)",
+		defaultBehavior: Warn,
+	},
 }
 
 // Determine if a path should be ignored by a linter
@@ -231,6 +269,323 @@ func objectLinter(_ context.Context, _ *config.Configuration, _, path string) er
 	if filepath.Ext(path) == ".o" {
 		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
 	}
+	return nil
+}
+
+func staticArchiveLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	// Static archives are expected in -dev/-static packages
+	if strings.HasSuffix(pkgname, "-dev") || strings.HasSuffix(pkgname, "-static") {
+		return nil
+	}
+
+	if filepath.Ext(path) == ".a" {
+		return fmt.Errorf("package contains static archive %q. Static archives bloat packages and should typically be in -dev packages or removed", path)
+	}
+	return nil
+}
+
+func dllLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if strings.HasSuffix(pkgname, "-dev") {
+		return nil
+	}
+
+	if filepath.Ext(path) == ".dll" {
+		return fmt.Errorf("package contains DLL file %q", path)
+	}
+	return nil
+}
+
+func dylibLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if strings.HasSuffix(pkgname, "-dev") {
+		return nil
+	}
+
+	if filepath.Ext(path) == ".dylib" {
+		return fmt.Errorf("package contains dylib file %q", path)
+	}
+	return nil
+}
+
+func nonLinuxLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+	names := []string{"darwin", "macos", "osx", "windows"}
+	paths := make([]string, 0)
+
+	for _, n := range names {
+		if strings.Contains(strings.ToLower(filepath.Dir(path)), n) || strings.Contains(strings.ToLower(filepath.Base(path)), n) {
+			paths = append(paths, path)
+		}
+	}
+
+	if len(paths) > 0 {
+		return fmt.Errorf("package contains non-Linux reference(s) %q", strings.Join(paths, ","))
+	}
+	return nil
+}
+
+func unsupportedArchLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+	supported := []string{"aarch64", "arm64", "amd64", "x86_64", "x86-64"}
+
+	archs := []string{
+		"i386", "i686", "x86_32", "x86-32",
+		"ppc64", "ppc64le", "powerpc",
+		"s390x", "s390",
+		"mips", "mipsel", "mips64",
+		"riscv", "riscv64",
+		"sparc", "sparc64",
+		"ia64", "m68k",
+	}
+
+	pathLower := strings.ToLower(path)
+	dirLower := strings.ToLower(filepath.Dir(path))
+	baseLower := strings.ToLower(filepath.Base(path))
+
+	for _, arch := range archs {
+		if strings.Contains(dirLower, "/"+arch+"/") || strings.Contains(dirLower, "/"+arch) && dirLower == strings.ToLower(filepath.Dir(path)) {
+			return fmt.Errorf("package contains unsupported architecture reference %q in %q", arch, path)
+		}
+
+		for _, sep := range []string{"-", "_", "."} {
+			if strings.Contains(baseLower, sep+arch+sep) ||
+				strings.Contains(baseLower, sep+arch+".") ||
+				strings.HasSuffix(baseLower, sep+arch) {
+
+				isSupported := false
+				for _, s := range supported {
+					if strings.Contains(pathLower, s) {
+						isSupported = true
+						break
+					}
+				}
+				if !isSupported {
+					return fmt.Errorf("package contains unsupported architecture reference %q in %q", arch, path)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func binaryArchLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		if !d.Type().IsRegular() {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		if info.Size() < int64(len(elfMagic)) {
+			return nil
+		}
+
+		ext := filepath.Ext(path)
+		mode := info.Mode()
+		if mode&0o111 == 0 && !isObjectFileRegex.MatchString(ext) {
+			return nil
+		}
+
+		f, err := fsys.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer f.Close()
+
+		readerAt, ok := f.(io.ReaderAt)
+		if !ok {
+			return nil
+		}
+
+		hdr := make([]byte, len(elfMagic))
+		if _, err := readerAt.ReadAt(hdr, 0); err != nil {
+			return nil
+		}
+
+		if !bytes.Equal(elfMagic, hdr) {
+			return nil
+		}
+
+		elfFile, err := elf.NewFile(readerAt)
+		if err != nil {
+			return nil
+		}
+		defer elfFile.Close()
+
+		var archName string
+		switch elfFile.Machine {
+		case elf.EM_X86_64:
+			archName = "amd64"
+		case elf.EM_AARCH64:
+			archName = "arm64"
+		case elf.EM_386:
+			archName = "i386"
+		case elf.EM_ARM:
+			archName = "arm"
+		case elf.EM_PPC64:
+			archName = "ppc64"
+		case elf.EM_S390:
+			archName = "s390"
+		case elf.EM_MIPS:
+			archName = "mips"
+		case elf.EM_RISCV:
+			archName = "riscv"
+		default:
+			archName = fmt.Sprintf("unknown (%v)", elfFile.Machine)
+		}
+
+		if elfFile.Machine != elf.EM_X86_64 && elfFile.Machine != elf.EM_AARCH64 {
+			return fmt.Errorf("binary compiled for unsupported architecture %s: %s", archName, path)
+		}
+
+		return nil
+	})
+}
+
+type duplicateInfo struct {
+	paths []string
+	size  int64
+}
+
+func duplicateLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
+	type fileKey struct {
+		hash     string
+		basename string
+	}
+	filesByKey := make(map[fileKey]*duplicateInfo)
+
+	const minFileSizeBytes = 1024 // 1 KB
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() || d.Type()&fs.ModeSymlink != 0 {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+
+		basename := filepath.Base(path)
+
+		if isLicense, _ := license.IsLicenseFile(path); isLicense {
+			return nil
+		}
+
+		if info.Size() < minFileSizeBytes {
+			return nil
+		}
+
+		f, err := fsys.Open(path)
+		if err != nil {
+			return fmt.Errorf("opening file %s: %w", path, err)
+		}
+		defer f.Close()
+
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return fmt.Errorf("hashing file %s: %w", path, err)
+		}
+
+		hash := hex.EncodeToString(h.Sum(nil))
+		key := fileKey{hash: hash, basename: basename}
+
+		if existing, found := filesByKey[key]; found {
+			existing.paths = append(existing.paths, path)
+		} else {
+			filesByKey[key] = &duplicateInfo{
+				paths: []string{path},
+				size:  info.Size(),
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	type duplicateSet struct {
+		count    int
+		size     int64
+		wasted   int64
+		paths    []string
+		basename string
+	}
+
+	var duplicateSets []duplicateSet
+	var totalWasted int64
+
+	for key, info := range filesByKey {
+		if len(info.paths) > 1 {
+			slices.Sort(info.paths)
+
+			wasted := int64(len(info.paths)-1) * info.size
+			totalWasted += wasted
+
+			duplicateSets = append(duplicateSets, duplicateSet{
+				count:    len(info.paths),
+				size:     info.size,
+				wasted:   wasted,
+				paths:    info.paths,
+				basename: key.basename,
+			})
+		}
+	}
+
+	if len(duplicateSets) > 0 {
+		slices.SortFunc(duplicateSets, func(a, b duplicateSet) int {
+			if a.wasted > b.wasted {
+				return -1
+			} else if a.wasted < b.wasted {
+				return 1
+			}
+			return 0
+		})
+
+		var output []string
+		for _, ds := range duplicateSets {
+			output = append(output, fmt.Sprintf(
+				"  %d copies of '%s' (%s each, wasting %s):",
+				ds.count,
+				ds.basename,
+				humanize.Bytes(uint64(ds.size)),
+				humanize.Bytes(uint64(ds.wasted)),
+			))
+
+			for _, p := range ds.paths {
+				output = append(output, "    "+p)
+			}
+		}
+
+		summary := fmt.Sprintf("package contains %d duplicate file(s) with same name in different directories (wasting %s total)", len(duplicateSets), humanize.Bytes(uint64(totalWasted)))
+
+		return fmt.Errorf("%s:\n%s", summary, strings.Join(output, "\n"))
+	}
+
 	return nil
 }
 
@@ -700,14 +1055,20 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 }
 
 func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
-	errs := []error{}
+	log := clog.FromContext(ctx)
+	var errs []error
+
 	for _, linterName := range linters {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		linter := linterMap[linterName]
 		if err := linter.LinterFunc(ctx, cfg, pkgname, fsys); err != nil {
-			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w; suggest: %s", linterName, pkgname, err, linter.Explain))
+			log.Warnf("[%s] %v", linterName, err)
+			if linter.Explain != "" {
+				log.Warnf("  → %s", linter.Explain)
+			}
+			errs = append(errs, fmt.Errorf("linter %q failed: %w", linterName, err))
 		}
 	}
 
@@ -733,11 +1094,15 @@ func LintBuild(ctx context.Context, cfg *config.Configuration, packageName strin
 	log := clog.FromContext(ctx)
 	log.Infof("linting apk: %s", packageName)
 
-	if err := lintPackageFS(ctx, cfg, packageName, fsys, warn); err != nil {
-		log.Warn(err.Error())
+	// Run warning linters - logs directly, ignores errors
+	_ = lintPackageFS(ctx, cfg, packageName, fsys, warn)
+
+	// Run required linters - logs directly, returns errors
+	if err := lintPackageFS(ctx, cfg, packageName, fsys, require); err != nil {
+		return err
 	}
 
-	return lintPackageFS(ctx, cfg, packageName, fsys, require)
+	return nil
 }
 
 // Lint the given APK at the given path
@@ -809,10 +1174,16 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 	}
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
-	if err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn); err != nil {
-		log.Warn(err.Error())
+
+	// Run warning linters - logs directly, ignores errors
+	_ = lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn)
+
+	// Run required linters - logs directly, returns errors
+	if err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require); err != nil {
+		return err
 	}
-	return lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require)
+
+	return nil
 }
 
 func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {

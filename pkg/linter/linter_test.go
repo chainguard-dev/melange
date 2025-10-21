@@ -19,6 +19,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -359,6 +360,214 @@ func TestLinters(t *testing.T) {
 		linter:  "maninfo",
 		pkgname: "regular-package",
 		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/foo.dll"),
+		linter:  "dll",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/bin/bar.dll"),
+		linter:  "dll",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/foo.so"),
+		linter:  "dll",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/darwin/foo.so"),
+		linter:  "nonlinux",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/foo-darwin.so"),
+		linter:  "nonlinux",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/osx/foo.so"),
+		linter:  "nonlinux",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/foo-windows.exe"),
+		linter:  "nonlinux",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/foo.so"),
+		linter:  "nonlinux",
+		pass:    true,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			// Create two identical files (duplicates) larger than 1KB
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/lib"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/share"), 0o755))
+
+			// Create content larger than 1KB (1024 bytes)
+			content := strings.Repeat("same content ", 100) // ~1200 bytes
+
+			f1, err := os.Create(filepath.Join(d, "usr/lib/duplicate.txt"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f1, content)
+			f1.Close()
+
+			f2, err := os.Create(filepath.Join(d, "usr/share/duplicate.txt"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f2, content)
+			f2.Close()
+
+			return d
+		},
+		linter: "duplicate",
+		pass:   false,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/lib"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/share"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "opt"), 0o755))
+
+			// Create content larger than 1KB (1024 bytes)
+			content := strings.Repeat("vendored dependency ", 100) // ~2000 bytes
+
+			f1, err := os.Create(filepath.Join(d, "usr/lib/file.so"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f1, content)
+			f1.Close()
+
+			f2, err := os.Create(filepath.Join(d, "usr/share/file.so"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f2, content)
+			f2.Close()
+
+			f3, err := os.Create(filepath.Join(d, "opt/file.so"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f3, content)
+			f3.Close()
+
+			return d
+		},
+		linter: "duplicate",
+		pass:   false,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/lib"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/share"), 0o755))
+
+			f1, err := os.Create(filepath.Join(d, "usr/lib/file.txt"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f1, "content one")
+			f1.Close()
+
+			f2, err := os.Create(filepath.Join(d, "usr/share/file.txt"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f2, "content two")
+			f2.Close()
+
+			return d
+		},
+		linter: "duplicate",
+		pass:   true,
+	}, {
+		dirFunc: mkfile(t, "usr/bin/unique.txt"),
+		linter:  "duplicate",
+		pass:    true,
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			// Create small duplicate files (< 1KB) that should be ignored
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/lib/python3.11"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/lib/python3.11/foo"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/lib/python3.11/bar"), 0o755))
+
+			// Create identical __init__.py files (empty, < 1KB)
+			f1, err := os.Create(filepath.Join(d, "usr/lib/python3.11/foo/__init__.py"))
+			assert.NoError(t, err)
+			f1.Close()
+
+			f2, err := os.Create(filepath.Join(d, "usr/lib/python3.11/bar/__init__.py"))
+			assert.NoError(t, err)
+			f2.Close()
+
+			return d
+		},
+		linter: "duplicate",
+		pass:   true, // Small files should be ignored
+	}, {
+		dirFunc: func() string {
+			d := t.TempDir()
+			// Create duplicate LICENSE files (> 1KB) that should be ignored
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/share/doc/foo"), 0o755))
+			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/share/doc/bar"), 0o755))
+
+			// Create identical LICENSE files (Apache 2.0 is ~11KB)
+			licenseContent := strings.Repeat("Apache License Version 2.0\n", 100) // ~2.7KB
+
+			f1, err := os.Create(filepath.Join(d, "usr/share/doc/foo/LICENSE"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f1, licenseContent)
+			f1.Close()
+
+			f2, err := os.Create(filepath.Join(d, "usr/share/doc/bar/LICENSE"))
+			assert.NoError(t, err)
+			fmt.Fprintln(f2, licenseContent)
+			f2.Close()
+
+			return d
+		},
+		linter: "duplicate",
+		pass:   true, // LICENSE files should always be ignored
+	}, {
+		dirFunc: mkfile(t, "usr/lib/i386/libfoo.so"),
+		linter:  "unsupportedarch",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo-i686.so"),
+		linter:  "unsupportedarch",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/ppc64le/libbar.so"),
+		linter:  "unsupportedarch",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/riscv64/libtest.so"),
+		linter:  "unsupportedarch",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/s390x/libfoo.so"),
+		linter:  "unsupportedarch",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/aarch64/libfoo.so"),
+		linter:  "unsupportedarch",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/x86_64/libfoo.so"),
+		linter:  "unsupportedarch",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo-amd64.so"),
+		linter:  "unsupportedarch",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo.a"),
+		linter:  "staticarchive",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libbar.a"),
+		linter:  "staticarchive",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo.so"),
+		linter:  "staticarchive",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libdpkg.a"),
+		linter:  "staticarchive",
+		pkgname: "dpkg-dev",
+		pass:    true, // .a files are expected in -dev packages
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libtest.a"),
+		linter:  "staticarchive",
+		pkgname: "test-dev",
+		pass:    true, // .a files are expected in -dev packages
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

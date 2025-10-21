@@ -53,13 +53,6 @@ type linter struct {
 	defaultBehavior defaultBehavior
 }
 
-type LintResult struct {
-	Linter      string
-	Package     string
-	Error       error
-	Explanation string
-}
-
 type defaultBehavior int
 
 const (
@@ -220,6 +213,11 @@ var linterMap = map[string]linter{
 		Explain:         "This package contains Windows libraries",
 		defaultBehavior: Warn,
 	},
+	"dylib": {
+		LinterFunc:      allPaths(dylibLinter),
+		Explain:         "This package contains macOS libraries",
+		defaultBehavior: Warn,
+	},
 	"nonlinux": {
 		LinterFunc:      allPaths(nonLinuxLinter),
 		Explain:         "This package contains references to non-Linux paths",
@@ -228,6 +226,11 @@ var linterMap = map[string]linter{
 	"unsupportedarch": {
 		LinterFunc:      allPaths(unsupportedArchLinter),
 		Explain:         "This package contains references to unsupported architectures (only aarch64/arm64 and amd64/x86_64 are supported)",
+		defaultBehavior: Warn,
+	},
+	"binaryarch": {
+		LinterFunc:      binaryArchLinter,
+		Explain:         "This package contains binaries compiled for unsupported architectures (only aarch64/arm64 and amd64/x86_64 binaries are supported)",
 		defaultBehavior: Warn,
 	},
 	"staticarchive": {
@@ -270,8 +273,8 @@ func objectLinter(_ context.Context, _ *config.Configuration, _, path string) er
 }
 
 func staticArchiveLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
-	// Static archives are expected in -dev packages
-	if strings.HasSuffix(pkgname, "-dev") {
+	// Static archives are expected in -dev/-static packages
+	if strings.HasSuffix(pkgname, "-dev") || strings.HasSuffix(pkgname, "-static") {
 		return nil
 	}
 
@@ -281,19 +284,34 @@ func staticArchiveLinter(_ context.Context, _ *config.Configuration, pkgname, pa
 	return nil
 }
 
-func dllLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+func dllLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if strings.HasSuffix(pkgname, "-dev") {
+		return nil
+	}
+
 	if filepath.Ext(path) == ".dll" {
 		return fmt.Errorf("package contains DLL file %q", path)
 	}
 	return nil
 }
 
+func dylibLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+	if strings.HasSuffix(pkgname, "-dev") {
+		return nil
+	}
+
+	if filepath.Ext(path) == ".dylib" {
+		return fmt.Errorf("package contains dylib file %q", path)
+	}
+	return nil
+}
+
 func nonLinuxLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	names := []string{"darwin", "osx", "windows"}
+	names := []string{"darwin", "macos", "osx", "windows"}
 	paths := make([]string, 0)
 
 	for _, n := range names {
-		if strings.Contains(filepath.Dir(path), n) || strings.Contains(filepath.Base(path), n) {
+		if strings.Contains(strings.ToLower(filepath.Dir(path)), n) || strings.Contains(strings.ToLower(filepath.Base(path)), n) {
 			paths = append(paths, path)
 		}
 	}
@@ -346,6 +364,93 @@ func unsupportedArchLinter(_ context.Context, _ *config.Configuration, _, path s
 	}
 
 	return nil
+}
+
+func binaryArchLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
+	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if isIgnoredPath(path) {
+			return nil
+		}
+
+		if !d.Type().IsRegular() {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		if info.Size() < int64(len(elfMagic)) {
+			return nil
+		}
+
+		ext := filepath.Ext(path)
+		mode := info.Mode()
+		if mode&0o111 == 0 && !isObjectFileRegex.MatchString(ext) {
+			return nil
+		}
+
+		f, err := fsys.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer f.Close()
+
+		readerAt, ok := f.(io.ReaderAt)
+		if !ok {
+			return nil
+		}
+
+		hdr := make([]byte, len(elfMagic))
+		if _, err := readerAt.ReadAt(hdr, 0); err != nil {
+			return nil
+		}
+
+		if !bytes.Equal(elfMagic, hdr) {
+			return nil
+		}
+
+		elfFile, err := elf.NewFile(readerAt)
+		if err != nil {
+			return nil
+		}
+		defer elfFile.Close()
+
+		var archName string
+		switch elfFile.Machine {
+		case elf.EM_X86_64:
+			archName = "amd64"
+		case elf.EM_AARCH64:
+			archName = "arm64"
+		case elf.EM_386:
+			archName = "i386"
+		case elf.EM_ARM:
+			archName = "arm"
+		case elf.EM_PPC64:
+			archName = "ppc64"
+		case elf.EM_S390:
+			archName = "s390"
+		case elf.EM_MIPS:
+			archName = "mips"
+		case elf.EM_RISCV:
+			archName = "riscv"
+		default:
+			archName = fmt.Sprintf("unknown (%v)", elfFile.Machine)
+		}
+
+		if elfFile.Machine != elf.EM_X86_64 && elfFile.Machine != elf.EM_AARCH64 {
+			return fmt.Errorf("binary compiled for unsupported architecture %s: %s", archName, path)
+		}
+
+		return nil
+	})
 }
 
 type duplicateInfo struct {
@@ -949,94 +1054,25 @@ func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, p
 	return fmt.Errorf("shared object found")
 }
 
-func formatLintResults(results []LintResult, severity string, useColor bool) string {
-	if len(results) == 0 {
-		return ""
-	}
+func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
+	log := clog.FromContext(ctx)
+	var errs []error
 
-	// ANSI color codes
-	const (
-		colorReset  = "\033[0m"
-		colorYellow = "\033[33m"
-		colorRed    = "\033[31m"
-		colorCyan   = "\033[36m"
-	)
-
-	var output strings.Builder
-	output.WriteString(fmt.Sprintf("\n%s (%d):\n", strings.ToUpper(severity), len(results)))
-	output.WriteString(strings.Repeat("─", 80) + "\n")
-
-	for i, result := range results {
-		if i > 0 {
-			output.WriteString("\n")
-		}
-
-		// Colorize linter name based on severity (only if useColor is true)
-		var linterName string
-		if useColor {
-			linterColor := colorCyan
-			if severity == "errors" {
-				linterColor = colorRed
-			} else if severity == "warnings" {
-				linterColor = colorYellow
-			}
-			linterName = fmt.Sprintf("%s%s%s", linterColor, result.Linter, colorReset)
-		} else {
-			linterName = result.Linter
-		}
-
-		output.WriteString(fmt.Sprintf("  [%s] %s\n", linterName, result.Error.Error()))
-		if result.Explanation != "" {
-			output.WriteString(fmt.Sprintf("  → %s\n", result.Explanation))
-		}
-	}
-
-	return output.String()
-}
-
-// isTerminal checks if we should use colored output
-func isTerminal() bool {
-	// Check if NO_COLOR environment variable is set (standard)
-	if os.Getenv("NO_COLOR") != "" {
-		return false
-	}
-
-	// Check if we're running in a CI environment
-	if os.Getenv("CI") != "" {
-		return false
-	}
-
-	// Check if TERM is set to dumb
-	if os.Getenv("TERM") == "dumb" {
-		return false
-	}
-
-	// Check if stderr is a terminal
-	if fileInfo, _ := os.Stderr.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
-		return true
-	}
-
-	return false
-}
-
-func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) ([]LintResult, error) {
-	var results []LintResult
 	for _, linterName := range linters {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return err
 		}
 		linter := linterMap[linterName]
 		if err := linter.LinterFunc(ctx, cfg, pkgname, fsys); err != nil {
-			results = append(results, LintResult{
-				Linter:      linterName,
-				Package:     pkgname,
-				Error:       err,
-				Explanation: linter.Explain,
-			})
+			log.Warnf("[%s] %v", linterName, err)
+			if linter.Explain != "" {
+				log.Warnf("  → %s", linter.Explain)
+			}
+			errs = append(errs, fmt.Errorf("linter %q failed: %w", linterName, err))
 		}
 	}
 
-	return results, nil
+	return errors.Join(errs...)
 }
 
 func checkLinters(linters []string) error {
@@ -1058,31 +1094,12 @@ func LintBuild(ctx context.Context, cfg *config.Configuration, packageName strin
 	log := clog.FromContext(ctx)
 	log.Infof("linting apk: %s", packageName)
 
-	useColor := isTerminal()
+	// Run warning linters - logs directly, ignores errors
+	_ = lintPackageFS(ctx, cfg, packageName, fsys, warn)
 
-	// Run warning linters
-	warnResults, err := lintPackageFS(ctx, cfg, packageName, fsys, warn)
-	if err != nil {
+	// Run required linters - logs directly, returns errors
+	if err := lintPackageFS(ctx, cfg, packageName, fsys, require); err != nil {
 		return err
-	}
-	if len(warnResults) > 0 {
-		log.Warn(formatLintResults(warnResults, "warnings", useColor))
-	}
-
-	// Run required linters
-	requireResults, err := lintPackageFS(ctx, cfg, packageName, fsys, require)
-	if err != nil {
-		return err
-	}
-	if len(requireResults) > 0 {
-		formattedErrors := formatLintResults(requireResults, "errors", useColor)
-		log.Error(formattedErrors)
-		// Convert results back to errors for returning
-		var errs []error
-		for _, result := range requireResults {
-			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w", result.Linter, result.Package, result.Error))
-		}
-		return errors.Join(errs...)
 	}
 
 	return nil
@@ -1158,31 +1175,12 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
 
-	useColor := isTerminal()
+	// Run warning linters - logs directly, ignores errors
+	_ = lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn)
 
-	// Run warning linters
-	warnResults, err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn)
-	if err != nil {
+	// Run required linters - logs directly, returns errors
+	if err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require); err != nil {
 		return err
-	}
-	if len(warnResults) > 0 {
-		log.Warn(formatLintResults(warnResults, "warnings", useColor))
-	}
-
-	// Run required linters
-	requireResults, err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require)
-	if err != nil {
-		return err
-	}
-	if len(requireResults) > 0 {
-		formattedErrors := formatLintResults(requireResults, "errors", useColor)
-		log.Error(formattedErrors)
-		// Convert results back to errors for returning
-		var errs []error
-		for _, result := range requireResults {
-			errs = append(errs, fmt.Errorf("linter %q failed on package %q: %w", result.Linter, result.Package, result.Error))
-		}
-		return errors.Join(errs...)
 	}
 
 	return nil

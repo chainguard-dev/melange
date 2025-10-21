@@ -73,6 +73,38 @@ subpackages:
             test ! -f /usr/lib/libother.so.1 || exit 1
             echo "PASS: Pattern-based split works correctly"
 
+  - name: split-lib-build-test-custom-paths
+    description: Test custom paths splitting
+    pipeline:
+      # Create libraries in custom paths
+      - runs: |
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib64
+          mkdir -p ${{targets.outdir}}/${{package.name}}/opt/lib
+          echo "lib64" > ${{targets.outdir}}/${{package.name}}/usr/lib64/libcustom64.so.1
+          echo "optlib" > ${{targets.outdir}}/${{package.name}}/opt/lib/liboptional.so.2.0
+          # Also create one in default location to verify defaults still work
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib
+          echo "default" > ${{targets.outdir}}/${{package.name}}/usr/lib/libdefault.so.1
+      - uses: split/lib
+        with:
+          package: ${{package.name}}
+          paths: |
+            usr/lib64
+            opt/lib
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            # Should have libraries from custom paths
+            test -f /usr/lib64/libcustom64.so.1 || exit 1
+            test -f /opt/lib/liboptional.so.2.0 || exit 1
+            # Should also have libraries from default paths
+            test -f /usr/lib/libdefault.so.1 || exit 1
+            echo "PASS: Custom paths split works correctly"
+
 test:
   environment:
     contents:

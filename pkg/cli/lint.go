@@ -29,11 +29,12 @@ import (
 
 func lint() *cobra.Command {
 	var lintRequire, lintWarn []string
+	var outDir string
 	cmd := &cobra.Command{
 		Use:     "lint",
 		Short:   "EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors",
 		Long:    `Lint is an EXPERIMENTAL COMMAND - Lints an APK file, checking for problems and errors.`,
-		Example: `  melange lint [--enable=foo[,bar]] [--disable=baz] foo.apk`,
+		Example: `  melange lint [--enable=foo[,bar]] [--disable=baz] [--out-dir=./output] foo.apk`,
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -47,12 +48,11 @@ func lint() *cobra.Command {
 			errs := []error{}
 			var mu sync.Mutex
 			for _, pkg := range args {
-				pkg := pkg
 				g.Go(func() error {
 					if err := ctx.Err(); err != nil {
 						return err
 					}
-					if err := linter.LintAPK(ctx, pkg, lintRequire, lintWarn); err != nil {
+					if err := linter.LintAPK(ctx, pkg, lintRequire, lintWarn, outDir); err != nil {
 						mu.Lock()
 						defer mu.Unlock()
 						errs = append(errs, err)
@@ -69,6 +69,7 @@ func lint() *cobra.Command {
 
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
+	cmd.Flags().StringVar(&outDir, "out-dir", "packages", "directory where lint results JSON files will be saved")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")

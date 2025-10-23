@@ -122,6 +122,7 @@ type Build struct {
 	DependencyLog         string
 	BinShOverlay          string
 	CreateBuildLog        bool
+	PersistLintResults    bool
 	CacheDir              string
 	ApkCacheDir           string
 	CacheSource           string
@@ -875,7 +876,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return a == b
 		})
 
-		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, require, warn, fsys); err != nil {
+		// Conditionally persist lint results based on flag
+		outDir := ""
+		if b.PersistLintResults {
+			outDir = b.OutDir
+		}
+
+		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, require, warn, fsys, outDir, b.Arch.ToAPK()); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}

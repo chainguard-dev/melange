@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -43,6 +44,7 @@ import (
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/license"
+	"chainguard.dev/melange/pkg/linter/types"
 )
 
 type linterFunc func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error
@@ -64,25 +66,39 @@ const (
 	Warn
 )
 
-func allPaths(fn func(ctx context.Context, cfg *config.Configuration, pkgname, path string) error) func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
-	return func(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
-		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				// Ignore directories
-				return nil
-			}
-			if err := fn(ctx, cfg, pkgname, path); err != nil {
-				return fmt.Errorf("%w: %s", err, path)
-			}
+// collectMatchingPaths walks the filesystem and collects all paths matching the predicate,
+// returning a structured error if any paths are found.
+func collectMatchingPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(path string) bool, messageFunc func(pkgname string, paths []string) string) error {
+	var matchedPaths []string
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
 			return nil
-		})
+		}
+		if predicate(path) {
+			matchedPaths = append(matchedPaths, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
+
+	if len(matchedPaths) > 0 {
+		details := &types.PathListDetails{
+			Paths: matchedPaths,
+		}
+		return types.NewStructuredError(messageFunc(pkgname, matchedPaths), details)
+	}
+
+	return nil
 }
 
 func DefaultRequiredLinters() []string {
@@ -99,32 +115,32 @@ func DefaultWarnLinters() []string {
 
 var linterMap = map[string]linter{
 	"dev": {
-		LinterFunc:      allPaths(devLinter),
+		LinterFunc:      devLinter,
 		Explain:         "If this package is creating /dev nodes, it should use udev instead; otherwise, remove any files in /dev",
 		defaultBehavior: Require,
 	},
 	"documentation": {
-		LinterFunc:      allPaths(documentationLinter),
+		LinterFunc:      documentationLinter,
 		Explain:         "Place documentation into a separate package or remove it",
 		defaultBehavior: Ignore, // TODO: Lots of packages write to READMEs, etc.
 	},
 	"opt": {
-		LinterFunc:      allPaths(optLinter),
+		LinterFunc:      optLinter,
 		Explain:         "This package should be a -compat package",
 		defaultBehavior: Warn,
 	},
 	"object": {
-		LinterFunc:      allPaths(objectLinter),
+		LinterFunc:      objectLinter,
 		Explain:         "This package contains intermediate object files (.o files)",
 		defaultBehavior: Warn,
 	},
 	"maninfo": {
-		LinterFunc:      allPaths(manInfoLinter),
+		LinterFunc:      manInfoLinter,
 		Explain:         "Place documentation into a separate package or remove it",
 		defaultBehavior: Warn,
 	},
 	"sbom": {
-		LinterFunc:      allPaths(sbomLinter),
+		LinterFunc:      sbomLinter,
 		Explain:         "Remove any files in /var/lib/db/sbom from the package",
 		defaultBehavior: Warn, // TODO: needs work to be useful
 	},
@@ -134,22 +150,22 @@ var linterMap = map[string]linter{
 		defaultBehavior: Require,
 	},
 	"srv": {
-		LinterFunc:      allPaths(srvLinter),
+		LinterFunc:      srvLinter,
 		Explain:         "This package should be a -compat package",
 		defaultBehavior: Warn,
 	},
 	"tempdir": {
-		LinterFunc:      allPaths(tempDirLinter),
+		LinterFunc:      tempDirLinter,
 		Explain:         "Remove any offending files in temporary dirs in the pipeline",
 		defaultBehavior: Require,
 	},
 	"usrlocal": {
-		LinterFunc:      allPaths(usrLocalLinter),
+		LinterFunc:      usrLocalLinter,
 		Explain:         "This package should be a -compat package",
 		defaultBehavior: Warn,
 	},
 	"varempty": {
-		LinterFunc:      allPaths(varEmptyLinter),
+		LinterFunc:      varEmptyLinter,
 		Explain:         "Remove any offending files in /var/empty in the pipeline",
 		defaultBehavior: Require,
 	},
@@ -164,7 +180,7 @@ var linterMap = map[string]linter{
 		defaultBehavior: Warn,
 	},
 	"infodir": {
-		LinterFunc:      allPaths(infodirLinter),
+		LinterFunc:      infodirLinter,
 		Explain:         "Remove /usr/share/info/dir from the package (run split/infodir)",
 		defaultBehavior: Require,
 	},
@@ -189,12 +205,12 @@ var linterMap = map[string]linter{
 		defaultBehavior: Warn,
 	},
 	"pkgconf": {
-		LinterFunc:      allPaths(pkgconfTestLinter),
+		LinterFunc:      pkgconfTestLinter,
 		Explain:         "This package provides files in a pkgconfig directory, please add the pkgconf test pipeline",
 		defaultBehavior: Warn,
 	},
 	"lddcheck": {
-		LinterFunc:      allPaths(lddcheckTestLinter),
+		LinterFunc:      lddcheckTestLinter,
 		Explain:         "This package provides shared object files, please add the ldd-check test pipeline",
 		defaultBehavior: Warn,
 	},
@@ -204,27 +220,27 @@ var linterMap = map[string]linter{
 		defaultBehavior: Require,
 	},
 	"cudaruntimelib": {
-		LinterFunc:      allPaths(cudaDriverLibLinter),
+		LinterFunc:      cudaDriverLibLinter,
 		Explain:         "CUDA driver-specific libraries should be passed into the container by the host. Installing them in an image could override the host libraries and break GPU support. If this library is needed for build-time linking or ldd-check tests, please use a package containing a stub library instead. For libcuda.so, use nvidia-cuda-cudart-$cuda_version. For libnvidia-ml.so, use nvidia-cuda-nvml-dev-$cuda_version.",
 		defaultBehavior: Warn,
 	},
 	"dll": {
-		LinterFunc:      allPaths(dllLinter),
+		LinterFunc:      dllLinter,
 		Explain:         "This package contains Windows libraries",
 		defaultBehavior: Warn,
 	},
 	"dylib": {
-		LinterFunc:      allPaths(dylibLinter),
+		LinterFunc:      dylibLinter,
 		Explain:         "This package contains macOS libraries",
 		defaultBehavior: Warn,
 	},
 	"nonlinux": {
-		LinterFunc:      allPaths(nonLinuxLinter),
+		LinterFunc:      nonLinuxLinter,
 		Explain:         "This package contains references to non-Linux paths",
 		defaultBehavior: Warn,
 	},
 	"unsupportedarch": {
-		LinterFunc:      allPaths(unsupportedArchLinter),
+		LinterFunc:      unsupportedArchLinter,
 		Explain:         "This package contains references to unsupported architectures (only aarch64/arm64 and amd64/x86_64 are supported)",
 		defaultBehavior: Warn,
 	},
@@ -234,7 +250,7 @@ var linterMap = map[string]linter{
 		defaultBehavior: Warn,
 	},
 	"staticarchive": {
-		LinterFunc:      allPaths(staticArchiveLinter),
+		LinterFunc:      staticArchiveLinter,
 		Explain:         "This package contains static archives (.a files)",
 		defaultBehavior: Warn,
 	},
@@ -250,79 +266,139 @@ func isIgnoredPath(path string) bool {
 	return strings.HasPrefix(path, "var/lib/db/sbom/")
 }
 
-func devLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "dev/") {
-		return fmt.Errorf("package writes to /dev")
-	}
-	return nil
+func devLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return strings.HasPrefix(path, "dev/") },
+		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to /dev", pkgname) },
+	)
 }
 
-func optLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
-	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "opt/") {
-		return fmt.Errorf("package writes to /opt")
+func optLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	if strings.HasSuffix(pkgname, "-compat") {
+		return nil
 	}
-
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return strings.HasPrefix(path, "opt/") },
+		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to /opt", pkgname) },
+	)
 }
 
-func objectLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if filepath.Ext(path) == ".o" {
-		return fmt.Errorf("package contains intermediate object file %q. This is usually wrong. In most cases they should be removed", path)
-	}
-	return nil
+func objectLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return filepath.Ext(path) == ".o" },
+		func(pkgname string, paths []string) string {
+			fileWord := "file"
+			if len(paths) > 1 {
+				fileWord = "files"
+			}
+			return fmt.Sprintf("%s contains %d intermediate object %s. This is usually wrong. In most cases they should be removed", pkgname, len(paths), fileWord)
+		},
+	)
 }
 
-func staticArchiveLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+func staticArchiveLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	// Static archives are expected in -dev/-static packages
 	if strings.HasSuffix(pkgname, "-dev") || strings.HasSuffix(pkgname, "-static") {
 		return nil
 	}
-
-	if filepath.Ext(path) == ".a" {
-		return fmt.Errorf("package contains static archive %q. Static archives bloat packages and should typically be in -dev packages or removed", path)
-	}
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return filepath.Ext(path) == ".a" },
+		func(pkgname string, paths []string) string {
+			fileWord := "archive"
+			if len(paths) > 1 {
+				fileWord = "archives"
+			}
+			return fmt.Sprintf("%s contains %d static %s. Static archives bloat packages and should typically be in -dev packages or removed", pkgname, len(paths), fileWord)
+		},
+	)
 }
 
-func dllLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+func dllLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	if strings.HasSuffix(pkgname, "-dev") {
 		return nil
 	}
-
-	if filepath.Ext(path) == ".dll" {
-		return fmt.Errorf("package contains DLL file %q", path)
-	}
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return filepath.Ext(path) == ".dll" },
+		func(pkgname string, paths []string) string {
+			fileWord := "file"
+			if len(paths) > 1 {
+				fileWord = "files"
+			}
+			return fmt.Sprintf("%s contains %d DLL %s", pkgname, len(paths), fileWord)
+		},
+	)
 }
 
-func dylibLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+func dylibLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	if strings.HasSuffix(pkgname, "-dev") {
 		return nil
 	}
-
-	if filepath.Ext(path) == ".dylib" {
-		return fmt.Errorf("package contains dylib file %q", path)
-	}
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return filepath.Ext(path) == ".dylib" },
+		func(pkgname string, paths []string) string {
+			fileWord := "file"
+			if len(paths) > 1 {
+				fileWord = "files"
+			}
+			return fmt.Sprintf("%s contains %d dylib %s", pkgname, len(paths), fileWord)
+		},
+	)
 }
 
-func nonLinuxLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	names := []string{"darwin", "macos", "osx", "windows"}
-	paths := make([]string, 0)
+func nonLinuxLinter(_ context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	// Map of canonical platform name -> variants to detect in paths
+	platforms := map[string][]string{
+		"macos":   {"darwin", "macos", "mac_os", "mac-os", "osx", "os_x", "os-x"},
+		"windows": {"windows", "win32", "win64"},
+	}
 
-	for _, n := range names {
-		if strings.Contains(strings.ToLower(filepath.Dir(path)), n) || strings.Contains(strings.ToLower(filepath.Base(path)), n) {
-			paths = append(paths, path)
+	var references []types.NonLinuxReference
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		dirLower := strings.ToLower(filepath.Dir(path))
+		baseLower := strings.ToLower(filepath.Base(path))
+
+		// Check for platform references in the path
+		for platform, variants := range platforms {
+			for _, variant := range variants {
+				if strings.Contains(dirLower, variant) || strings.Contains(baseLower, variant) {
+					references = append(references, types.NonLinuxReference{
+						Path:     path,
+						Platform: platform,
+					})
+					return nil // Found a match for this file, move to next file
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
 
-	if len(paths) > 0 {
-		return fmt.Errorf("package contains non-Linux reference(s) %q", strings.Join(paths, ","))
+	if len(references) > 0 {
+		details := &types.NonLinuxDetails{
+			References: references,
+		}
+
+		message := fmt.Sprintf("%s contains %d non-Linux reference(s)", pkgname, len(references))
+		return types.NewStructuredError(message, details)
 	}
+
 	return nil
 }
 
-func unsupportedArchLinter(_ context.Context, _ *config.Configuration, _, path string) error {
+func unsupportedArchLinter(_ context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
 	supported := []string{"aarch64", "arm64", "amd64", "x86_64", "x86-64"}
 
 	archs := []string{
@@ -335,39 +411,76 @@ func unsupportedArchLinter(_ context.Context, _ *config.Configuration, _, path s
 		"ia64", "m68k",
 	}
 
-	pathLower := strings.ToLower(path)
-	dirLower := strings.ToLower(filepath.Dir(path))
-	baseLower := strings.ToLower(filepath.Base(path))
+	var unsupportedFiles []types.UnsupportedArchInfo
 
-	for _, arch := range archs {
-		if strings.Contains(dirLower, "/"+arch+"/") || strings.Contains(dirLower, "/"+arch) && dirLower == strings.ToLower(filepath.Dir(path)) {
-			return fmt.Errorf("package contains unsupported architecture reference %q in %q", arch, path)
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
 
-		for _, sep := range []string{"-", "_", "."} {
-			if strings.Contains(baseLower, sep+arch+sep) ||
-				strings.Contains(baseLower, sep+arch+".") ||
-				strings.HasSuffix(baseLower, sep+arch) {
+		if d.IsDir() {
+			return nil
+		}
 
-				isSupported := false
-				for _, s := range supported {
-					if strings.Contains(pathLower, s) {
-						isSupported = true
-						break
+		pathLower := strings.ToLower(path)
+		dirLower := strings.ToLower(filepath.Dir(path))
+		baseLower := strings.ToLower(filepath.Base(path))
+
+		for _, arch := range archs {
+			if strings.Contains(dirLower, "/"+arch+"/") || strings.Contains(dirLower, "/"+arch) && dirLower == strings.ToLower(filepath.Dir(path)) {
+				unsupportedFiles = append(unsupportedFiles, types.UnsupportedArchInfo{
+					Path: path,
+					Arch: arch,
+				})
+				return nil
+			}
+
+			for _, sep := range []string{"-", "_", "."} {
+				if strings.Contains(baseLower, sep+arch+sep) ||
+					strings.Contains(baseLower, sep+arch+".") ||
+					strings.HasSuffix(baseLower, sep+arch) {
+
+					isSupported := false
+					for _, s := range supported {
+						if strings.Contains(pathLower, s) {
+							isSupported = true
+							break
+						}
 					}
-				}
-				if !isSupported {
-					return fmt.Errorf("package contains unsupported architecture reference %q in %q", arch, path)
+					if !isSupported {
+						unsupportedFiles = append(unsupportedFiles, types.UnsupportedArchInfo{
+							Path: path,
+							Arch: arch,
+						})
+						return nil
+					}
 				}
 			}
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if len(unsupportedFiles) > 0 {
+		details := &types.UnsupportedArchDetails{
+			Files: unsupportedFiles,
+		}
+
+		message := fmt.Sprintf("%s contains %d unsupported architecture reference(s)", pkgname, len(unsupportedFiles))
+		return types.NewStructuredError(message, details)
 	}
 
 	return nil
 }
 
-func binaryArchLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+func binaryArchLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	var unsupportedBinaries []types.BinaryArchInfo
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -446,11 +559,33 @@ func binaryArchLinter(ctx context.Context, _ *config.Configuration, _ string, fs
 		}
 
 		if elfFile.Machine != elf.EM_X86_64 && elfFile.Machine != elf.EM_AARCH64 {
-			return fmt.Errorf("binary compiled for unsupported architecture %s: %s", archName, path)
+			unsupportedBinaries = append(unsupportedBinaries, types.BinaryArchInfo{
+				Path: path,
+				Arch: archName,
+			})
 		}
 
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	if len(unsupportedBinaries) > 0 {
+		details := &types.BinaryArchDetails{
+			Binaries: unsupportedBinaries,
+		}
+
+		binaryWord := "binary"
+		if len(unsupportedBinaries) > 1 {
+			binaryWord = "binaries"
+		}
+		message := fmt.Sprintf("%s contains %d %s compiled for unsupported architecture(s)", pkgname, len(unsupportedBinaries), binaryWord)
+		return types.NewStructuredError(message, details)
+	}
+
+	return nil
 }
 
 type duplicateInfo struct {
@@ -458,7 +593,7 @@ type duplicateInfo struct {
 	size  int64
 }
 
-func duplicateLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
+func duplicateLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	type fileKey struct {
 		hash     string
 		basename string
@@ -566,6 +701,28 @@ func duplicateLinter(ctx context.Context, _ *config.Configuration, _ string, fsy
 			return 0
 		})
 
+		// Build structured details
+		duplicates := make([]*types.DuplicateFileInfo, 0, len(duplicateSets))
+		for _, ds := range duplicateSets {
+			duplicates = append(duplicates, &types.DuplicateFileInfo{
+				Basename:    ds.basename,
+				Count:       ds.count,
+				SizeBytes:   ds.size,
+				Size:        humanize.Bytes(uint64(ds.size)),
+				WastedBytes: ds.wasted,
+				WastedSize:  humanize.Bytes(uint64(ds.wasted)),
+				Paths:       ds.paths,
+			})
+		}
+
+		details := &types.DuplicateFilesDetails{
+			TotalDuplicateSets: len(duplicateSets),
+			TotalWastedBytes:   totalWasted,
+			TotalWastedSize:    humanize.Bytes(uint64(totalWasted)),
+			Duplicates:         duplicates,
+		}
+
+		// Build human-readable message for logs
 		var output []string
 		for _, ds := range duplicateSets {
 			output = append(output, fmt.Sprintf(
@@ -581,9 +738,10 @@ func duplicateLinter(ctx context.Context, _ *config.Configuration, _ string, fsy
 			}
 		}
 
-		summary := fmt.Sprintf("package contains %d duplicate file(s) with same name in different directories (wasting %s total)", len(duplicateSets), humanize.Bytes(uint64(totalWasted)))
+		summary := fmt.Sprintf("%s contains %d duplicate file(s) with same name in different directories (wasting %s total)", pkgname, len(duplicateSets), humanize.Bytes(uint64(totalWasted)))
+		message := fmt.Sprintf("%s:\n%s", summary, strings.Join(output, "\n"))
 
-		return fmt.Errorf("%s:\n%s", summary, strings.Join(output, "\n"))
+		return types.NewStructuredError(message, details)
 	}
 
 	return nil
@@ -591,11 +749,20 @@ func duplicateLinter(ctx context.Context, _ *config.Configuration, _ string, fsy
 
 var isDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 
-func documentationLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
-	if isDocumentationFileRegex.MatchString(path) && !strings.HasSuffix(pkgname, "-doc") {
-		return errors.New("package contains documentation files but is not a documentation package")
+func documentationLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	if strings.HasSuffix(pkgname, "-doc") {
+		return nil
 	}
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return isDocumentationFileRegex.MatchString(path) },
+		func(pkgname string, paths []string) string {
+			fileWord := "file"
+			if len(paths) > 1 {
+				fileWord = "files"
+			}
+			return fmt.Sprintf("%s contains %d documentation %s but is not a documentation package", pkgname, len(paths), fileWord)
+		},
+	)
 }
 
 var (
@@ -603,16 +770,20 @@ var (
 	infoRegex = regexp.MustCompile(`^usr/(?:local/)?share/info/(?:dir|[^/]+\.info(?:\-[0-9]+)?(?:\.(?:gz|bz2|xz|lzma|Z))?)$`)
 )
 
-func manInfoLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
+func manInfoLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	if strings.HasSuffix(pkgname, "-doc") {
 		return nil
 	}
-
-	if manRegex.MatchString(path) || infoRegex.MatchString(path) {
-		return fmt.Errorf("package contains man/info files but is not a documentation package")
-	}
-
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return manRegex.MatchString(path) || infoRegex.MatchString(path) },
+		func(pkgname string, paths []string) string {
+			fileWord := "file"
+			if len(paths) > 1 {
+				fileWord = "files"
+			}
+			return fmt.Sprintf("%s contains %d man/info %s but is not a documentation package", pkgname, len(paths), fileWord)
+		},
+	)
 }
 
 func modeToOctal(mode os.FileMode) string {
@@ -631,8 +802,10 @@ func modeToOctal(mode os.FileMode) string {
 	return strconv.FormatUint(perm, 8)
 }
 
-func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	var specialPermFiles []types.FilePermissionInfo
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -664,60 +837,98 @@ func isSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, _ string,
 			if mode&fs.ModeSticky != 0 {
 				parts = append(parts, "sticky")
 			}
-			return fmt.Errorf("file with special permissions found in package: %s - %s (%s)",
-				path, perm, strings.Join(parts, "+"))
+			specialPermFiles = append(specialPermFiles, types.FilePermissionInfo{
+				Path:        path,
+				Mode:        perm,
+				Permissions: parts,
+			})
 		}
 
 		return nil
 	})
-}
 
-func sbomLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if filepath.Dir(path) == "var/lib/db/sbom" && !strings.HasSuffix(path, ".spdx.json") {
-		return fmt.Errorf("package writes to %s", filepath.Dir(path))
+	if err != nil {
+		return err
 	}
+
+	if len(specialPermFiles) > 0 {
+		details := &types.SpecialPermissionsDetails{
+			Files: specialPermFiles,
+		}
+
+		fileWord := "file"
+		if len(specialPermFiles) > 1 {
+			fileWord = "files"
+		}
+		message := fmt.Sprintf("%s contains %d %s with special permissions (setuid/setgid)", pkgname, len(specialPermFiles), fileWord)
+		return types.NewStructuredError(message, details)
+	}
+
 	return nil
 }
 
-func infodirLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "usr/share/info/dir/") {
-		return fmt.Errorf("package writes to /usr/share/info/dir/")
-	}
-	return nil
+func sbomLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool {
+			return filepath.Dir(path) == "var/lib/db/sbom" && !strings.HasSuffix(path, ".spdx.json")
+		},
+		func(pkgname string, paths []string) string {
+			return fmt.Sprintf("%s writes to var/lib/db/sbom", pkgname)
+		},
+	)
 }
 
-func srvLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
-	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "srv/") {
-		return fmt.Errorf("package writes to /srv")
+func infodirLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return strings.HasPrefix(path, "usr/share/info/dir/") },
+		func(pkgname string, paths []string) string {
+			return fmt.Sprintf("%s writes to /usr/share/info/dir/", pkgname)
+		},
+	)
+}
+
+func srvLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	if strings.HasSuffix(pkgname, "-compat") {
+		return nil
 	}
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return strings.HasPrefix(path, "srv/") },
+		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to /srv", pkgname) },
+	)
 }
 
 var isTempDirRegex = regexp.MustCompile("^(var/)?(tmp|run)/")
 
-func tempDirLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if isTempDirRegex.MatchString(path) {
-		return fmt.Errorf("package writes to a temp dir")
-	}
-	return nil
+func tempDirLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return isTempDirRegex.MatchString(path) },
+		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to a temp dir", pkgname) },
+	)
 }
 
-func usrLocalLinter(_ context.Context, _ *config.Configuration, pkgname, path string) error {
-	if !strings.HasSuffix(pkgname, "-compat") && strings.HasPrefix(path, "usr/local/") {
-		return fmt.Errorf("/usr/local path found in non-compat package")
+func usrLocalLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	if strings.HasSuffix(pkgname, "-compat") {
+		return nil
 	}
-	return nil
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return strings.HasPrefix(path, "usr/local/") },
+		func(pkgname string, paths []string) string {
+			return fmt.Sprintf("%s contains /usr/local path in non-compat package", pkgname)
+		},
+	)
 }
 
-func varEmptyLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if strings.HasPrefix(path, "var/empty/") {
-		return fmt.Errorf("package writes to /var/empty")
-	}
-	return nil
+func varEmptyLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return strings.HasPrefix(path, "var/empty/") },
+		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to /var/empty", pkgname) },
+	)
 }
 
 func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	var worldWriteableFiles []types.FilePermissionInfo
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -738,21 +949,47 @@ func worldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		perm := modeToOctal(mode)
 
 		if mode&0o002 != 0 {
+			permissions := []string{"world-writable"}
 			if mode&0o111 != 0 {
-				return fmt.Errorf("world-writeable executable file found in package (security risk): %s - %s", path, perm)
+				permissions = append(permissions, "executable")
 			}
-			return fmt.Errorf("world-writeable file found in package: %s - %s", path, perm)
+			worldWriteableFiles = append(worldWriteableFiles, types.FilePermissionInfo{
+				Path:        path,
+				Mode:        perm,
+				Permissions: permissions,
+			})
 		}
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	if len(worldWriteableFiles) > 0 {
+		details := &types.WorldWriteableDetails{
+			Files: worldWriteableFiles,
+		}
+
+		fileWord := "file"
+		if len(worldWriteableFiles) > 1 {
+			fileWord = "files"
+		}
+		message := fmt.Sprintf("%s contains %d world-writeable %s", pkgname, len(worldWriteableFiles), fileWord)
+		return types.NewStructuredError(message, details)
+	}
+
+	return nil
 }
 
 var elfMagic = []byte{'\x7f', 'E', 'L', 'F'}
 
 var isObjectFileRegex = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 
-func strippedLinter(ctx context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+func strippedLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	var unstrippedBinaries []string
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -816,10 +1053,29 @@ func strippedLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 
 		// No debug sections allowed
 		if file.Section(".debug") != nil || file.Section(".zdebug") != nil {
-			return fmt.Errorf("ELF file is not stripped")
+			unstrippedBinaries = append(unstrippedBinaries, path)
 		}
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	if len(unstrippedBinaries) > 0 {
+		details := &types.UnstrippedBinaryDetails{
+			Binaries: unstrippedBinaries,
+		}
+
+		binaryWord := "binary"
+		if len(unstrippedBinaries) > 1 {
+			binaryWord = "binaries"
+		}
+		message := fmt.Sprintf("%s contains %d unstripped %s", pkgname, len(unstrippedBinaries), binaryWord)
+		return types.NewStructuredError(message, details)
+	}
+
+	return nil
 }
 
 func emptyLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
@@ -947,8 +1203,17 @@ func pythonMultiplePackagesLinter(_ context.Context, _ *config.Configuration, _ 
 			slmatches[i] = k
 			i++
 		}
+		slices.Sort(slmatches)
+
+		details := &types.PythonMultipleDetails{
+			Count:    len(slmatches),
+			Packages: slmatches,
+		}
+
 		smatches := strings.Join(slmatches, ", ")
-		return fmt.Errorf("multiple Python packages detected: %d found (%s)", len(slmatches), smatches)
+		message := fmt.Sprintf("multiple Python packages detected: %d found (%s)", len(slmatches), smatches)
+
+		return types.NewStructuredError(message, details)
 	}
 
 	return nil
@@ -972,89 +1237,157 @@ func pythonTestLinter(_ context.Context, _ *config.Configuration, _ string, fsys
 
 var PkgconfDirRegex = regexp.MustCompile("^usr/(lib|share)/pkgconfig/")
 
-func pkgconfTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
-	if !PkgconfDirRegex.MatchString(path) {
+func pkgconfTestLinter(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
+	// Check if the appropriate test is configured
+	hasTest := false
+	if cfg != nil {
+		if cfg.Package.Name == pkgname {
+			if cfg.Test != nil {
+				for _, test := range cfg.Test.Pipeline {
+					if test.Uses == "test/pkgconf" {
+						hasTest = true
+						break
+					}
+				}
+			}
+		} else {
+			for _, p := range cfg.Subpackages {
+				if p.Name == pkgname {
+					if p.Test != nil {
+						for _, test := range p.Test.Pipeline {
+							if test.Uses == "test/pkgconf" {
+								hasTest = true
+								break
+							}
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// If test is configured, no need to check files
+	if hasTest {
 		return nil
 	}
 
-	if cfg == nil {
-		return fmt.Errorf("pkgconfig directory found and missing .melange.yaml")
-	}
-
-	if cfg.Package.Name == pkgname {
-		if cfg.Test != nil {
-			for _, test := range cfg.Test.Pipeline {
-				if test.Uses == "test/pkgconf" {
-					return nil
-				}
+	// Collect all pkgconfig files
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return PkgconfDirRegex.MatchString(path) },
+		func(pkgname string, paths []string) string {
+			if cfg == nil {
+				return fmt.Sprintf("%s contains pkgconfig files but missing .melange.yaml", pkgname)
 			}
-		}
-	} else {
-		for _, p := range cfg.Subpackages {
-			if p.Name != pkgname {
-				continue
-			}
-
-			if p.Test == nil {
-				break
-			}
-
-			for _, test := range p.Test.Pipeline {
-				if test.Uses == "test/pkgconf" {
-					return nil
-				}
-			}
-
-			break
-		}
-	}
-
-	return fmt.Errorf("pkgconfig directory found")
+			return fmt.Sprintf("%s contains pkgconfig files but test/pkgconf is not configured", pkgname)
+		},
+	)
 }
 
 var isSharedObjectFileRegex = regexp.MustCompile(`\.so(?:\.[0-9]+)*$`)
 
-func lddcheckTestLinter(_ context.Context, cfg *config.Configuration, pkgname, path string) error {
-	if !isSharedObjectFileRegex.MatchString(path) {
+func lddcheckTestLinter(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS) error {
+	// Check if the appropriate test is configured
+	hasTest := false
+	if cfg != nil {
+		if cfg.Package.Name == pkgname {
+			if cfg.Test != nil {
+				for _, test := range cfg.Test.Pipeline {
+					if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
+						hasTest = true
+						break
+					}
+				}
+			}
+		} else {
+			for _, p := range cfg.Subpackages {
+				if p.Name == pkgname {
+					if p.Test != nil {
+						for _, test := range p.Test.Pipeline {
+							if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
+								hasTest = true
+								break
+							}
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// If test is configured, no need to check files
+	if hasTest {
 		return nil
 	}
 
-	if cfg == nil {
-		return fmt.Errorf("shared object found and missing .melange.yaml")
-	}
-
-	if cfg.Package.Name == pkgname {
-		if cfg.Test != nil {
-			for _, test := range cfg.Test.Pipeline {
-				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
-					return nil
-				}
+	// Collect all shared object files
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return isSharedObjectFileRegex.MatchString(path) },
+		func(pkgname string, paths []string) string {
+			if cfg == nil {
+				return fmt.Sprintf("%s contains shared objects but missing .melange.yaml", pkgname)
 			}
-		}
-	} else {
-		for _, p := range cfg.Subpackages {
-			if p.Name != pkgname {
-				continue
-			}
-
-			if p.Test == nil {
-				break
-			}
-
-			for _, test := range p.Test.Pipeline {
-				if test.Uses == "test/ldd-check" || test.Uses == "test/tw/ldd-check" {
-					return nil
-				}
-			}
-
-			break
-		}
-	}
-
-	return fmt.Errorf("shared object found")
+			return fmt.Sprintf("%s contains shared objects but test/ldd-check is not configured", pkgname)
+		},
+	)
 }
 
-func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string) error {
+// logStructuredDetails displays itemized details for structured errors
+func logStructuredDetails(log *clog.Logger, details any) {
+	if details == nil {
+		return
+	}
+
+	switch d := details.(type) {
+	case *types.DuplicateFilesDetails:
+		for _, dup := range d.Duplicates {
+			log.Warnf("    - %s (%d copies, %s wasted)", dup.Basename, dup.Count, dup.WastedSize)
+		}
+	case *types.NonLinuxDetails:
+		for _, ref := range d.References {
+			log.Warnf("    - %s (%s)", ref.Path, ref.Platform)
+		}
+	case *types.UnsupportedArchDetails:
+		for _, file := range d.Files {
+			log.Warnf("    - %s (%s)", file.Path, file.Arch)
+		}
+	case *types.BinaryArchDetails:
+		for _, bin := range d.Binaries {
+			log.Warnf("    - %s (%s)", bin.Path, bin.Arch)
+		}
+	case *types.SpecialPermissionsDetails:
+		for _, file := range d.Files {
+			log.Warnf("    - %s (mode: %s, %s)", file.Path, file.Mode, strings.Join(file.Permissions, "+"))
+		}
+	case *types.WorldWriteableDetails:
+		for _, file := range d.Files {
+			perms := ""
+			if len(file.Permissions) > 0 {
+				perms = fmt.Sprintf(" [%s]", strings.Join(file.Permissions, "+"))
+			}
+			log.Warnf("    - %s (mode: %s)%s", file.Path, file.Mode, perms)
+		}
+	case *types.UnstrippedBinaryDetails:
+		for _, bin := range d.Binaries {
+			log.Warnf("    - %s", bin)
+		}
+	case *types.PythonMultipleDetails:
+		for _, pkg := range d.Packages {
+			log.Warnf("    - %s", pkg)
+		}
+	case *types.PathListDetails:
+		for _, path := range d.Paths {
+			log.Warnf("    - %s", path)
+		}
+	case *types.UsrMergeDetails:
+		for _, path := range d.Paths {
+			log.Warnf("    - %s", path)
+		}
+	}
+}
+
+func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string, results map[string]*types.PackageLintResults, fullPackageName string) error {
 	log := clog.FromContext(ctx)
 	var errs []error
 
@@ -1064,10 +1397,51 @@ func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname strin
 		}
 		linter := linterMap[linterName]
 		if err := linter.LinterFunc(ctx, cfg, pkgname, fsys); err != nil {
-			log.Warnf("[%s] %v", linterName, err)
+			// Extract message and structured details if available
+			var message string
+			var details any
+
+			if structErr, ok := err.(*types.StructuredError); ok {
+				message = structErr.Message
+				details = structErr.Details
+			} else {
+				message = err.Error()
+			}
+
+			// Split message into lines for better console readability
+			messageLines := strings.Split(message, "\n")
+
+			// Log multi-line errors with proper formatting
+			log.Warnf("[%s] %s", linterName, messageLines[0])
+			for _, line := range messageLines[1:] {
+				if line != "" {
+					log.Warnf("  %s", line)
+				}
+			}
+
+			// Initialize package results
+			if _, ok := results[pkgname]; !ok {
+				results[pkgname] = &types.PackageLintResults{
+					PackageName: fullPackageName,
+					Findings:    make(map[string][]*types.LinterFinding),
+				}
+			}
+
+			// Append finding to the linter's findings list
+			finding := &types.LinterFinding{
+				Message: messageLines[0], // Use first line as the summary message
+				Details: details,
+			}
 			if linter.Explain != "" {
 				log.Warnf("  → %s", linter.Explain)
+				finding.Explain = linter.Explain
 			}
+
+			// Display itemized findings for structured details
+			logStructuredDetails(log, details)
+
+			results[pkgname].Findings[linterName] = append(results[pkgname].Findings[linterName], finding)
+
 			errs = append(errs, fmt.Errorf("linter %q failed: %w", linterName, err))
 		}
 	}
@@ -1085,28 +1459,88 @@ func checkLinters(linters []string) error {
 	return errors.Join(errs...)
 }
 
-// Lint the given build directory at the given path
-func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, require, warn []string, fsys apkofs.FullFS) error {
-	if err := checkLinters(append(require, warn...)); err != nil {
-		return err
+// saveLintResults saves the lint results to JSON files in the packages directory
+func saveLintResults(ctx context.Context, cfg *config.Configuration, results map[string]*types.PackageLintResults, outputDir, arch string) error {
+	log := clog.FromContext(ctx)
+
+	// If cfg is nil, we can't determine version/epoch, so skip saving
+	if cfg == nil {
+		log.Warnf("skipping lint results persistence: configuration is nil")
+		return nil
 	}
 
-	log := clog.FromContext(ctx)
-	log.Infof("linting apk: %s", packageName)
+	// Ensure the package directory exists
+	packageDir := filepath.Join(outputDir, arch)
+	if err := os.MkdirAll(packageDir, 0o755); err != nil {
+		return fmt.Errorf("creating package directory: %w", err)
+	}
 
-	// Run warning linters - logs directly, ignores errors
-	_ = lintPackageFS(ctx, cfg, packageName, fsys, warn)
+	// Save results for each package
+	for pkgName, pkgResults := range results {
+		// Generate the filename: lint-{packagename}-{version}-r{epoch}.json
+		filename := fmt.Sprintf("lint-%s-%s-r%d.json", pkgName, cfg.Package.Version, cfg.Package.Epoch)
+		filepath := filepath.Join(packageDir, filename)
 
-	// Run required linters - logs directly, returns errors
-	if err := lintPackageFS(ctx, cfg, packageName, fsys, require); err != nil {
-		return err
+		// Marshal to JSON with indentation for readability
+		jsonData, err := json.MarshalIndent(pkgResults, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshaling lint results for %s: %w", pkgName, err)
+		}
+
+		// Write to file
+		if err := os.WriteFile(filepath, jsonData, 0o644); err != nil {
+			return fmt.Errorf("writing lint results to %s: %w", filepath, err)
+		}
+
+		log.Infof("saved lint results to %s", filepath)
 	}
 
 	return nil
 }
 
+// Lint the given build directory at the given path
+// Lint results will be stored as JSON in the packages directory
+func LintBuild(ctx context.Context, cfg *config.Configuration, packageName string, require, warn []string, fsys apkofs.FullFS, outputDir, arch string) error {
+	if err := checkLinters(append(require, warn...)); err != nil {
+		return err
+	}
+
+	// map of pkgname -> lint results
+	results := make(map[string]*types.PackageLintResults)
+
+	log := clog.FromContext(ctx)
+	log.Infof("linting apk: %s", packageName)
+
+	// Construct full package name with version and epoch
+	var fullPackageName string
+	if cfg != nil {
+		fullPackageName = fmt.Sprintf("%s-%s-r%d", packageName, cfg.Package.Version, cfg.Package.Epoch)
+	} else {
+		fullPackageName = packageName
+	}
+
+	// Run warning linters - logs directly, ignores errors
+	_ = lintPackageFS(ctx, cfg, packageName, fsys, warn, results, fullPackageName)
+
+	// Run required linters - logs directly, returns errors
+	lintErr := lintPackageFS(ctx, cfg, packageName, fsys, require, results, fullPackageName)
+
+	// Save lint results to JSON file if there are any findings
+	if len(results) > 0 {
+		log.Infof("saving %d package lint result(s) to %s", len(results), filepath.Join(outputDir, arch))
+		if err := saveLintResults(ctx, cfg, results, outputDir, arch); err != nil {
+			log.Warnf("failed to save lint results: %v", err)
+		}
+	} else {
+		log.Infof("no lint findings to persist for package %s", packageName)
+	}
+
+	return lintErr
+}
+
 // Lint the given APK at the given path
-func LintAPK(ctx context.Context, path string, require, warn []string) error {
+// If outputDir is provided, lint results will be saved to JSON files
+func LintAPK(ctx context.Context, path string, require, warn []string, outputDir string) error {
 	log := clog.FromContext(ctx)
 	if err := checkLinters(append(require, warn...)); err != nil {
 		return err
@@ -1145,7 +1579,7 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 	}
 	defer exp.Close()
 
-	// Get the package name
+	// Get the package name and metadata
 	f, err := exp.ControlFS.Open(".PKGINFO")
 	if err != nil {
 		return fmt.Errorf("could not open .PKGINFO file: %w", err)
@@ -1162,28 +1596,61 @@ func LintAPK(ctx context.Context, path string, require, warn []string) error {
 		return fmt.Errorf("could not load .PKGINFO file: %w", err)
 	}
 
-	pkgname := pkginfo.Section("").Key("pkgname").MustString("")
+	section := pkginfo.Section("")
+	pkgname := section.Key("pkgname").MustString("")
 	if pkgname == "" {
 		return fmt.Errorf("pkgname is nonexistent")
 	}
+
+	// Extract version and epoch for synthetic config (for JSON file naming)
+	pkgver := section.Key("pkgver").MustString("")
+	epochStr := section.Key("epoch").MustString("0")
+	epoch, _ := strconv.Atoi(epochStr)
+
+	// Extract architecture from PKGINFO
+	arch := section.Key("arch").MustString("")
 
 	cfg, err := parseMelangeYaml(exp.ControlFS)
 	if err != nil {
 		// TODO: Consider making this fatal if the universe gets rebuilt with new melange.
 		clog.FromContext(ctx).Warnf("parsing .melange.yaml: %v", err)
+
+		// Create a synthetic config for JSON file naming
+		if cfg == nil && outputDir != "" {
+			cfg = &config.Configuration{
+				Package: config.Package{
+					Version: pkgver,
+					Epoch:   uint64(epoch),
+				},
+			}
+		}
 	}
+
+	// Construct full package name with version and epoch
+	fullPackageName := fmt.Sprintf("%s-%s-r%d", pkgname, pkgver, epoch)
 
 	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
 
+	// map of pkgname -> lint results
+	results := make(map[string]*types.PackageLintResults)
+
 	// Run warning linters - logs directly, ignores errors
-	_ = lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn)
+	_ = lintPackageFS(ctx, cfg, pkgname, exp.TarFS, warn, results, fullPackageName)
 
 	// Run required linters - logs directly, returns errors
-	if err := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require); err != nil {
-		return err
+	lintErr := lintPackageFS(ctx, cfg, pkgname, exp.TarFS, require, results, fullPackageName)
+
+	// Save lint results to JSON file if outputDir is provided and there are findings
+	if outputDir != "" && len(results) > 0 {
+		log.Infof("saving %d package lint result(s) to %s", len(results), filepath.Join(outputDir, arch))
+		if err := saveLintResults(ctx, cfg, results, outputDir, arch); err != nil {
+			log.Warnf("failed to save lint results: %v", err)
+		}
+	} else if outputDir != "" {
+		log.Infof("no lint findings to persist for package %s", pkgname)
 	}
 
-	return nil
+	return lintErr
 }
 
 func parseMelangeYaml(fsys fs.FS) (*config.Configuration, error) {
@@ -1251,13 +1718,17 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 	}
 
 	if len(paths) > 0 {
-		err_string := "Package contains paths in violation of usrmerge:"
-		for _, path := range paths {
-			err_string = strings.Join([]string{err_string, path}, "\n")
+		details := &types.UsrMergeDetails{
+			Paths: paths,
 		}
-		err_string += "\n"
-		return errors.New(err_string)
 
+		// Build human-readable message
+		message := "Package contains paths in violation of usrmerge:"
+		for _, path := range paths {
+			message = strings.Join([]string{message, path}, "\n")
+		}
+
+		return types.NewStructuredError(message, details)
 	}
 
 	return nil
@@ -1265,10 +1736,11 @@ func usrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 
 var isCudaDriverLibRegex = regexp.MustCompile(`^usr/lib/lib(cuda|nvidia-ml)\.so(\.[0-9]+)*$`)
 
-func cudaDriverLibLinter(_ context.Context, _ *config.Configuration, _, path string) error {
-	if !isCudaDriverLibRegex.MatchString(path) {
-		return nil
-	}
-
-	return fmt.Errorf("CUDA driver-specific library found: %s", path)
+func cudaDriverLibLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	return collectMatchingPaths(ctx, pkgname, fsys,
+		func(path string) bool { return isCudaDriverLibRegex.MatchString(path) },
+		func(pkgname string, paths []string) string {
+			return fmt.Sprintf("%s contains CUDA driver-specific libraries", pkgname)
+		},
+	)
 }

@@ -297,6 +297,15 @@ func WithCreateBuildLog(createBuildLog bool) Option {
 	}
 }
 
+// WithPersistLintResults indicates whether to persist lint results to JSON files
+// in the packages/{arch} directory.
+func WithPersistLintResults(persistLintResults bool) Option {
+	return func(b *Build) error {
+		b.PersistLintResults = persistLintResults
+		return nil
+	}
+}
+
 // WithDebug indicates whether debug logging of pipelines should be enabled.
 func WithDebug(debug bool) Option {
 	return func(b *Build) error {

@@ -15,6 +15,7 @@
 package linter
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -24,6 +25,7 @@ import (
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/linter/types"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
 )
@@ -580,7 +582,7 @@ func TestLinters(t *testing.T) {
 			}
 
 			// In required mode, it should raise an error.
-			err := LintBuild(ctx, c.cfg, pkgname, []string{c.linter}, nil, fsys)
+			err := LintBuild(ctx, c.cfg, pkgname, []string{c.linter}, nil, fsys, t.TempDir(), "x86_64")
 			if c.pass {
 				assert.NoError(t, err)
 			} else {
@@ -588,7 +590,7 @@ func TestLinters(t *testing.T) {
 			}
 
 			// In warn mode, it should never raise an error.
-			assert.NoError(t, LintBuild(ctx, c.cfg, pkgname, nil, []string{c.linter}, fsys))
+			assert.NoError(t, LintBuild(ctx, c.cfg, pkgname, nil, []string{c.linter}, fsys, t.TempDir(), "x86_64"))
 		})
 	}
 }
@@ -608,32 +610,32 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, fsys.MkdirAll(packagedir, 0o700))
 
 	// One package should not trip it
-	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// Egg info files should not count
 	_, err := fsys.Create(filepath.Join(pythonPathdir, "fooegg-0.1-py3.14.egg-info"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// dist info files should not count
 	_, err = fsys.Create(filepath.Join(pythonPathdir, "foodist-0.1-py3.14.dist-info"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// pth files should not count
 	_, err = fsys.Create(filepath.Join(pythonPathdir, "foopth-0.1-py3.14.pth"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// .so files duplicate with a dir should not count
 	_, err = fsys.Create(filepath.Join(pythonPathdir, "foo.so"))
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// __pycache__ dirs should not count
 	err = fsys.MkdirAll(filepath.Join(pythonPathdir, "__pycache__"), 0o700)
 	assert.NoError(t, err)
-	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// Make another "package" (at this point we should have 2)
 	packagedir = filepath.Join(pythonPathdir, "bar")
@@ -641,7 +643,7 @@ func Test_pythonMultiplePackagesLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Two should trip it
-	assert.Error(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys))
+	assert.Error(t, LintBuild(ctx, nil, "multiple", linters, nil, fsys, t.TempDir(), "x86_64"))
 }
 
 func Test_pythonTestLinter(t *testing.T) {
@@ -660,14 +662,14 @@ func Test_pythonTestLinter(t *testing.T) {
 	assert.NoError(t, fsys.MkdirAll(packagedir, 0o700))
 
 	// One package should not trip it
-	assert.NoError(t, LintBuild(ctx, nil, "python-test", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "python-test", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// Create docs
 	docsdir := filepath.Join(pythonPathdir, "test")
 	assert.NoError(t, fsys.MkdirAll(docsdir, 0o700))
 
 	// This should trip
-	assert.Error(t, LintBuild(ctx, nil, "python-test", linters, nil, fsys))
+	assert.Error(t, LintBuild(ctx, nil, "python-test", linters, nil, fsys, t.TempDir(), "x86_64"))
 }
 
 func Test_setUidGidLinter(t *testing.T) {
@@ -681,7 +683,7 @@ func Test_setUidGidLinter(t *testing.T) {
 	_, err := fsys.Create(filePath)
 	assert.NoError(t, err)
 	assert.NoError(t, fsys.Chmod(filePath, 0o770|fs.ModeSetuid|fs.ModeSetgid))
-	assert.Error(t, LintBuild(ctx, nil, "setuidgid", linters, nil, fsys))
+	assert.Error(t, LintBuild(ctx, nil, "setuidgid", linters, nil, fsys, t.TempDir(), "x86_64"))
 }
 
 func Test_worldWriteLinter(t *testing.T) {
@@ -694,7 +696,7 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, fsys.MkdirAll(filepath.Join("usr", "lib"), 0o777))
 
 	// Ensure 777 dirs don't trigger it
-	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// Create test file
 	filePath := filepath.Join("usr", "lib", "test.txt")
@@ -706,26 +708,54 @@ func Test_worldWriteLinter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Linter should not trigger
-	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys))
+	assert.NoError(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// Set writeable bit (but not executable bit)
 	err = fsys.Chmod(filePath, 0o776)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	assert.Error(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys))
+	assert.Error(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys, t.TempDir(), "x86_64"))
 
 	// Set writeable and executable bit
 	err = fsys.Chmod(filePath, 0o777)
 	assert.NoError(t, err)
 
 	// Linter should trigger
-	assert.Error(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys))
+	assert.Error(t, LintBuild(ctx, nil, "worldwrite", linters, nil, fsys, t.TempDir(), "x86_64"))
 }
 
 func Test_lintApk(t *testing.T) {
 	ctx := slogtest.Context(t)
 
-	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), DefaultRequiredLinters(), DefaultWarnLinters()))
-	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), DefaultRequiredLinters(), DefaultWarnLinters()))
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), DefaultRequiredLinters(), DefaultWarnLinters(), ""))
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "kubeflow-pipelines-2.1.3-r7.apk"), DefaultRequiredLinters(), DefaultWarnLinters(), ""))
+}
+
+func Test_lintApkWithOutput(t *testing.T) {
+	ctx := slogtest.Context(t)
+	outDir := t.TempDir()
+
+	// Lint an APK with output directory specified
+	assert.NoError(t, LintAPK(ctx, filepath.Join("testdata", "hello-wolfi-2.12.1-r1.apk"), DefaultRequiredLinters(), DefaultWarnLinters(), outDir))
+
+	// Verify JSON file was created (hello-wolfi is aarch64, and the version format includes epoch)
+	jsonPath := filepath.Join(outDir, "aarch64", "lint-hello-wolfi-2.12.1-r1-r0.json")
+	assert.FileExists(t, jsonPath)
+
+	// Verify JSON content is valid
+	data, err := os.ReadFile(jsonPath)
+	assert.NoError(t, err)
+
+	var results types.PackageLintResults
+	assert.NoError(t, json.Unmarshal(data, &results))
+	assert.Equal(t, "hello-wolfi-2.12.1-r1-r0", results.PackageName)
+	assert.NotEmpty(t, results.Findings)
+
+	// Verify the findings have structured details
+	assert.Contains(t, results.Findings, "maninfo")
+	manInfoFindings := results.Findings["maninfo"]
+	assert.NotEmpty(t, manInfoFindings)
+	assert.NotEmpty(t, manInfoFindings[0].Message)
+	assert.NotEmpty(t, manInfoFindings[0].Explain)
 }

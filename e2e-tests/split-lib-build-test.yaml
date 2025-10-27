@@ -21,7 +21,11 @@ pipeline:
       echo "mock lib" > ${{targets.destdir}}/usr/lib/libssl.so.3.0.0
       echo "mock lib" > ${{targets.destdir}}/usr/lib/libcrypto.so.3.0.0
 
-      # Create a .so symlink (should NOT be moved by split/lib)
+      # Create versioned symlinks (SHOULD be moved by split/lib)
+      ln -s libtest.so.1.0.0 ${{targets.destdir}}/usr/lib/libtest.so.1
+      ln -s libssl.so.3.0.0 ${{targets.destdir}}/usr/lib/libssl.so.3
+
+      # Create unversioned .so symlink (should NOT be moved by split/lib)
       ln -s libtest.so.1.0.0 ${{targets.destdir}}/usr/lib/libtest.so
 
       # Create a static library (should NOT be moved by split/lib)
@@ -43,7 +47,12 @@ subpackages:
             test -f /usr/lib/libtest.so.1.0.0 || exit 1
             test -f /usr/lib/libssl.so.3.0.0 || exit 1
             test -f /usr/lib/libcrypto.so.3.0.0 || exit 1
-            echo "PASS: Subpackage has all .so.* files"
+
+            # Subpackage should also have versioned .so.* symlinks
+            test -L /usr/lib/libtest.so.1 || exit 1
+            test -L /usr/lib/libssl.so.3 || exit 1
+
+            echo "PASS: Subpackage has all .so.* files and versioned symlinks"
 
   - name: split-lib-build-test-ssl
     description: Test pattern-based splitting
@@ -112,9 +121,13 @@ test:
         - busybox
   pipeline:
     - runs: |
-        # Main package should still have symlinks and static libs
+        # Main package should still have unversioned .so symlinks and static libs
         test -L /usr/lib/libtest.so || exit 1
         test -f /usr/lib/libstatic.a || exit 1
-        # But should NOT have .so.* files (they were split)
+
+        # But should NOT have .so.* files or versioned .so.* symlinks (they were split)
         test ! -f /usr/lib/libtest.so.1.0.0 || exit 1
-        echo "PASS: Main package correctly retains non-.so.* files"
+        test ! -L /usr/lib/libtest.so.1 || exit 1
+        test ! -L /usr/lib/libssl.so.3 || exit 1
+
+        echo "PASS: Main package correctly retains only unversioned .so symlinks and static libs"

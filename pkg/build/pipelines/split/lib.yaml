@@ -80,7 +80,7 @@ pipeline:
             MATCH_PATTERN="lib${pattern}.so.*"
           fi
 
-          find "$libdir" -maxdepth 1 -name "$MATCH_PATTERN" -type f 2>/dev/null | while read -r lib; do
+          find "$libdir" -maxdepth 1 -name "$MATCH_PATTERN" \( -type f -o -type l \) 2>/dev/null | while read -r lib; do
             if [ -e "$PACKAGE_DIR/$lib" ]; then
               d="${{targets.contextdir}}/${lib%/*}"
               mkdir -p "$d"

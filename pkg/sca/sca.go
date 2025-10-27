@@ -38,7 +38,7 @@ import (
 	"chainguard.dev/melange/pkg/config"
 )
 
-var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
+var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/", "usr/lib/x86_64-linux-gnu/"}
 
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.

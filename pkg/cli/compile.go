@@ -65,6 +65,7 @@ func compile() *cobra.Command {
 	var configFileGitCommit string
 	var configFileGitRepoURL string
 	var configFileLicense string
+	var generateProvenance bool
 
 	cmd := &cobra.Command{
 		Use:     "compile",
@@ -136,6 +137,7 @@ func compile() *cobra.Command {
 				build.WithConfigFileRepositoryCommit(configFileGitCommit),
 				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
 				build.WithConfigFileLicense(configFileLicense),
+				build.WithGenerateProvenance(generateProvenance),
 			}
 
 			if len(args) > 0 {
@@ -201,6 +203,7 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
+	cmd.Flags().BoolVar(&generateProvenance, "generate-provenance", false, "generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)")
 
 	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
 	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")

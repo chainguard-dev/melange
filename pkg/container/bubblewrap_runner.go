@@ -289,6 +289,19 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 		}
 		// #nosec G305 - Extracting trusted container image in controlled build environment
 		fullname := filepath.Join(guestDir, hdr.Name)
+		fullAbs, err := filepath.Abs(fullname)
+		if err != nil {
+			return ref, fmt.Errorf("failed to get absolute path for %s: %w", fullname, err)
+		}
+		guestAbs, err := filepath.Abs(guestDir)
+		if err != nil {
+			return ref, fmt.Errorf("failed to get absolute path for %s: %w", guestDir, err)
+		}
+		rel, err := filepath.Rel(guestAbs, fullAbs)
+		if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(hdr.Name) || strings.Contains(hdr.Name, "..") {
+			clog.Infof("skipping potentially unsafe archive entry: %q", hdr.Name)
+			continue
+		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(fullname, hdr.FileInfo().Mode().Perm()); err != nil {
@@ -302,17 +315,87 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			}
 			// #nosec G110 - Extracting trusted container image in controlled build environment
 			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
 				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
 			}
-			f.Close()
+
+			if err := f.Close(); err != nil {
+				return ref, fmt.Errorf("failed to close file %s: %w", fullname, err)
+			}
 		case tar.TypeSymlink:
-			// #nosec G305 - Creating symlink from trusted container image in controlled build environment
-			if err := os.Symlink(hdr.Linkname, filepath.Join(guestDir, hdr.Name)); err != nil {
+			// #nosec G305 - Path is validated below using EvalSymlinks and boundary checks
+			symlinkPath := filepath.Join(guestDir, hdr.Name)
+
+			symlinkDir := filepath.Dir(symlinkPath)
+			symlinkDirResolved := symlinkDir
+			if evalDir, err := filepath.EvalSymlinks(symlinkDir); err == nil {
+				symlinkDirResolved = evalDir
+			}
+
+			symlinkDirAbs, err := filepath.Abs(symlinkDirResolved)
+			if err != nil {
+				clog.Infof("skipping symlink with invalid location: %q: %v", hdr.Name, err)
+				continue
+			}
+			symlinkDirRel, err := filepath.Rel(guestAbs, symlinkDirAbs)
+			if err != nil || strings.HasPrefix(symlinkDirRel, "..") {
+				clog.Infof("skipping symlink location outside extraction directory: %q (resolves to %q)", hdr.Name, symlinkDirAbs)
+				continue
+			}
+
+			// #nosec G305 - Target path validated below with boundary checks to prevent escape
+			targetPath := filepath.Join(symlinkDirResolved, hdr.Linkname)
+			targetAbs, err := filepath.Abs(targetPath)
+			if err != nil {
+				clog.Infof("skipping symlink with invalid target: %q -> %q: %v", hdr.Name, hdr.Linkname, err)
+				continue
+			}
+
+			targetRel, err := filepath.Rel(guestAbs, targetAbs)
+			if err != nil || strings.HasPrefix(targetRel, "..") || filepath.IsAbs(targetRel) {
+				clog.Infof("skipping symlink pointing outside extraction directory: %q -> %q (resolves to %q)", hdr.Name, hdr.Linkname, targetAbs)
+				continue
+			}
+
+			if err := os.Symlink(hdr.Linkname, symlinkPath); err != nil {
 				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)
 			}
 		case tar.TypeLink:
-			// #nosec G305 - Creating hardlink from trusted container image in controlled build environment
-			if err := os.Link(filepath.Join(guestDir, hdr.Linkname), filepath.Join(guestDir, hdr.Name)); err != nil {
+			// #nosec G305 - Paths are validated below using EvalSymlinks and boundary checks
+			hardlinkPath := filepath.Join(guestDir, hdr.Name)
+			// #nosec G305 - Target path validated below with boundary checks to prevent escape
+			hardlinkTarget := filepath.Join(guestDir, hdr.Linkname)
+
+			hardlinkDir := filepath.Dir(hardlinkPath)
+			hardlinkDirResolved := hardlinkDir
+			if evalDir, err := filepath.EvalSymlinks(hardlinkDir); err == nil {
+				hardlinkDirResolved = evalDir
+			}
+
+			hardlinkDirAbs, err := filepath.Abs(hardlinkDirResolved)
+			if err != nil {
+				clog.Infof("skipping hardlink with invalid location: %q: %v", hdr.Name, err)
+				continue
+			}
+			hardlinkDirRel, err := filepath.Rel(guestAbs, hardlinkDirAbs)
+			if err != nil || strings.HasPrefix(hardlinkDirRel, "..") {
+				clog.Infof("skipping hardlink location outside extraction directory: %q (resolves to %q)", hdr.Name, hardlinkDirAbs)
+				continue
+			}
+
+			targetAbs, err := filepath.Abs(hardlinkTarget)
+			if err != nil {
+				clog.Infof("skipping hardlink with invalid target: %q -> %q: %v", hdr.Name, hdr.Linkname, err)
+				continue
+			}
+
+			targetRel, err := filepath.Rel(guestAbs, targetAbs)
+			if err != nil || strings.HasPrefix(targetRel, "..") || filepath.IsAbs(hdr.Linkname) {
+				clog.Infof("skipping hardlink pointing outside extraction directory: %q -> %q (resolves to %q)", hdr.Name, hdr.Linkname, targetAbs)
+				continue
+			}
+
+			if err := os.Link(hardlinkTarget, hardlinkPath); err != nil {
 				return ref, fmt.Errorf("failed to create hardlink %s: %w", fullname, err)
 			}
 		default:

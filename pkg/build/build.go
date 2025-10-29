@@ -1069,12 +1069,13 @@ func runAs(accts apko_types.ImageAccounts) string {
 	default:
 	}
 	// If accts.RunAs is numeric, then look up the username.
-	uid, err := strconv.Atoi(accts.RunAs)
-	if err != nil {
+	parsed, err := strconv.ParseUint(accts.RunAs, 10, 32)
+	if err != nil || parsed > math.MaxInt32 {
 		return accts.RunAs
 	}
+	uid := uint32(parsed)
 	for _, u := range accts.Users {
-		if u.UID == uint32(uid) {
+		if u.UID == uid {
 			return u.UserName
 		}
 	}
@@ -1089,9 +1090,10 @@ func runAsGID(accts apko_types.ImageAccounts) string {
 		return "0"
 	default:
 	}
-	if uid, err := strconv.Atoi(accts.RunAs); err == nil {
+	if parsed, err := strconv.ParseUint(accts.RunAs, 10, 32); err == nil {
+		uid := uint32(parsed)
 		for _, u := range accts.Users {
-			if u.UID == uint32(uid) && u.GID != nil {
+			if u.UID == uid && u.GID != nil {
 				return fmt.Sprint(*u.GID)
 			}
 		}

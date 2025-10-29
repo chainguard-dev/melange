@@ -133,8 +133,14 @@ func (pc *PackageBuild) AppendBuildLog(dir string) error {
 	defer f.Close()
 
 	// separate with pipe so it is easy to parse
-	_, err = fmt.Fprintf(f, "%s|%s|%s|%s-r%d\n", pc.Arch, pc.OriginName, pc.PackageName, pc.Origin.Version, pc.Origin.Epoch)
-	return err
+	if _, err = fmt.Fprintf(f, "%s|%s|%s|%s-r%d\n", pc.Arch, pc.OriginName, pc.PackageName, pc.Origin.Version, pc.Origin.Epoch); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close package info file: %w", err)
+	}
+	return nil
 }
 
 func (pc *PackageBuild) Identity() string {

@@ -609,7 +609,6 @@ func Diff(oldName string, old []byte, newName string, new []byte, comments bool)
 				count.x++
 				count.y++
 			}
-			done = pair{start.x + n, start.y + n}
 
 			// Format and emit chunk.
 			// Convert line numbers to 1-indexed.

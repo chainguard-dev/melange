@@ -41,7 +41,7 @@ func (m *GeneratedMelangeConfig) SetGeneratedFromComment(comment string) {
 
 func (m *GeneratedMelangeConfig) Write(ctx context.Context, dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, os.ModePerm)
+		err = os.MkdirAll(dir, 0o755)
 		if err != nil {
 			return fmt.Errorf("creating output directory %s: %w", dir, err)
 		}

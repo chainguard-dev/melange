@@ -23,7 +23,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.18.0
 	github.com/klauspost/pgzip v1.2.6
-	github.com/moby/moby v28.3.3+incompatible
+	github.com/moby/moby v28.5.1+incompatible
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1

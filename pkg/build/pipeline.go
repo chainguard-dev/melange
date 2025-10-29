@@ -27,11 +27,12 @@ import (
 	"strings"
 
 	apkoTypes "chainguard.dev/apko/pkg/build/types"
+	"github.com/chainguard-dev/clog"
+
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
-	"github.com/chainguard-dev/clog"
 )
 
 const WorkDir = "/home/build"
@@ -105,9 +106,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, 
 		return nil, err
 	}
 
-	for k, v := range subst_nw {
-		nw[k] = v
-	}
+	maps.Copy(nw, subst_nw)
 
 	// Perform substitutions on current map
 	if err := cfg.PerformVarSubstitutions(nw); err != nil {
@@ -160,7 +159,6 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
-
 	}
 
 	return data, nil
@@ -169,7 +167,7 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 func matchValidShaChars(s string) bool {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		if !(c >= '0' && c <= '9') && !(c >= 'a' && c <= 'f') && !(c >= 'A' && c <= 'F') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
 			return false
 		}
 	}
@@ -177,7 +175,7 @@ func matchValidShaChars(s string) bool {
 }
 
 // Build a script to run as part of evalRun
-func buildEvalRunCommand(pipeline *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
+func buildEvalRunCommand(_ *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
 	script := fmt.Sprintf(`set -e%c
 [ -d '%s' ] || mkdir -p '%s'
 cd '%s'
@@ -211,9 +209,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
 	}
 
-	for k, v := range pipeline.Environment {
-		envOverride[k] = v
-	}
+	maps.Copy(envOverride, pipeline.Environment)
 
 	workdir := WorkDir
 	if pipeline.WorkDir != "" {
@@ -307,6 +303,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 	signal.Ignore(os.Interrupt)
 
 	// Populate $HOME/.ash_history with the current command so you can hit up arrow to repeat it.
+	// #nosec G306 - Shell history file in workspace directory
 	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0o644); err != nil {
 		return fmt.Errorf("failed to write history file: %w", err)
 	}
@@ -318,7 +315,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 	// Reset to the default signal handling.
 	signal.Reset(os.Interrupt)
 
-	// If Debug() returns succesfully (via exit 0), it is a signal to continue execution.
+	// If Debug() returns successfully (via exit 0), it is a signal to continue execution.
 	return nil
 }
 

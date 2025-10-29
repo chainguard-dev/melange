@@ -36,8 +36,9 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/sbom"
 	purl "github.com/package-url/packageurl-go"
+
+	"chainguard.dev/melange/pkg/sbom"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/joho/godotenv"
@@ -60,7 +61,7 @@ type Trigger struct {
 
 type Scriptlets struct {
 	// Optional: A script to run on a custom trigger
-	Trigger Trigger `json:"trigger,omitempty" yaml:"trigger,omitempty"`
+	Trigger Trigger `json:"trigger" yaml:"trigger,omitempty"`
 	// Optional: The script to run pre install. The script should contain the
 	// shebang interpreter.
 	PreInstall string `json:"pre-install,omitempty" yaml:"pre-install,omitempty"`
@@ -119,17 +120,17 @@ type Package struct {
 	// The list of copyrights for this package
 	Copyright []Copyright `json:"copyright,omitempty" yaml:"copyright,omitempty"`
 	// List of packages to depends on
-	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Dependencies Dependencies `json:"dependencies" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
 	Options *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks" yaml:"checks,omitempty"`
 	// The CPE field values to be used for matching against NVD vulnerability
 	// records, if known.
-	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
+	CPE CPE `json:"cpe" yaml:"cpe,omitempty"`
 	// Capabilities to set after the pipeline completes.
 	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 
@@ -452,11 +453,11 @@ func (p Package) LicenseExpression() string {
 // directory, and reads in the license content. LicensingInfos then returns a
 // map of the `Copyright.License` field to the string content of the file from
 // `.LicensePath`.
-func (p Package) LicensingInfos(WorkspaceDir string) (map[string]string, error) {
+func (p Package) LicensingInfos(workspaceDir string) (map[string]string, error) {
 	licenseInfos := make(map[string]string)
 	for _, cp := range p.Copyright {
 		if cp.LicensePath != "" {
-			content, err := os.ReadFile(filepath.Join(WorkspaceDir, cp.LicensePath))
+			content, err := os.ReadFile(filepath.Join(workspaceDir, cp.LicensePath))
 			if err != nil {
 				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
 			}
@@ -475,7 +476,7 @@ func (p Package) FullCopyright() string {
 			copyright += cp.Attestation + "\n"
 		}
 	}
-	// No copyright found, instead of ommitting the field declare
+	// No copyright found, instead of omitting the field declare
 	// that no determination was attempted, which is better than a
 	// whitespace (which should also be interpreted as
 	// NOASSERTION)
@@ -554,12 +555,12 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		return nil, err
 	}
 
-	if expectedCommit != "" {
+	switch {
+	case expectedCommit != "":
 		ref = expectedCommit
-	} else if tag != "" {
+	case tag != "":
 		ref = tag
-	} else {
-		// No commit or tag provided - we're done
+	default:
 		return nil, nil
 	}
 
@@ -614,15 +615,15 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 
 		var pu *purl.PackageURL
 
-		switch {
-		case repoType == purl.TypeGithub || repoType == purl.TypeGitlab:
+		switch repoType {
+		case purl.TypeGithub, purl.TypeGitlab:
 			pu = &purl.PackageURL{
 				Type:      repoType,
 				Namespace: namespace,
 				Name:      name,
 				Version:   v,
 			}
-		case repoType == purl.TypeGeneric:
+		case purl.TypeGeneric:
 			pu = &purl.PackageURL{
 				Type:       "generic",
 				Name:       name,
@@ -757,7 +758,7 @@ type Subpackage struct {
 	// Optional: The list of pipelines that produce subpackage.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: List of packages to depend on
-	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Dependencies Dependencies `json:"dependencies" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
 	Options    *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	Scriptlets *Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
@@ -768,7 +769,7 @@ type Subpackage struct {
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 	// Capabilities to set after the pipeline completes.
@@ -798,9 +799,9 @@ type Configuration struct {
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
 	// Optional: environment variables to override apko
-	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
+	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment,omitempty"`
 	// Optional: Linux capabilities configuration to apply to the melange runner.
-	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	Capabilities Capabilities `json:"capabilities" yaml:"capabilities,omitempty"`
 
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
@@ -810,7 +811,7 @@ type Configuration struct {
 	// pipeline
 	Data []RangeData `json:"data,omitempty" yaml:"data,omitempty"`
 	// Optional: The update block determining how this package is auto updated
-	Update Update `json:"update,omitempty" yaml:"update,omitempty"`
+	Update Update `json:"update" yaml:"update,omitempty"`
 	// Optional: A map of arbitrary variables that can be used via templating in
 	// the pipeline
 	Vars map[string]string `json:"vars,omitempty" yaml:"vars,omitempty"`
@@ -849,7 +850,7 @@ type Test struct {
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
-	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
+	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment,omitempty"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
@@ -1513,9 +1514,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 			return nil, fmt.Errorf("loading variables file: %w", err)
 		}
 
-		for k, v := range vars {
-			cfg.Vars[k] = v
-		}
+		maps.Copy(cfg.Vars, vars)
 	}
 
 	// Mutate config properties with substitutions.
@@ -1603,9 +1602,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		cfg.Environment.Environment = envMap
 
 		// Overlay the environment in the YAML on top as override.
-		for k, v := range curEnv {
-			cfg.Environment.Environment[k] = v
-		}
+		maps.Copy(cfg.Environment.Environment, curEnv)
 	}
 
 	// Set up some useful environment variables.

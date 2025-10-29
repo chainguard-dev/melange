@@ -26,8 +26,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chainguard.dev/melange/internal/logwriter"
 	"golang.org/x/sys/unix"
+
+	"chainguard.dev/melange/internal/logwriter"
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -89,13 +90,13 @@ func (bw *bubblewrap) testUnshareUser(ctx context.Context) error {
 		return nil
 	}
 
-	return fmt.Errorf("%s\n",
+	return fmt.Errorf("%s",
 		strings.Join([]string{
-			"Unable to execute 'bwrap --unshare-user true'.",
-			"Command failed with: ",
+			"unable to execute 'bwrap --unshare-user true'.",
+			"command failed with: ",
 			"  " + string(out),
-			"See https://github.com/chainguard-dev/melange/issues/1508 for fix",
-		}, "\n"))
+			"see https://github.com/chainguard-dev/melange/issues/1508 for fix",
+		}, ""))
 }
 
 func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverride map[string]string, args ...string) *exec.Cmd {
@@ -286,6 +287,7 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 		if err != nil {
 			break
 		}
+		// #nosec G305 - Extracting trusted container image in controlled build environment
 		fullname := filepath.Join(guestDir, hdr.Name)
 		switch hdr.Typeflag {
 		case tar.TypeDir:
@@ -298,15 +300,18 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			if err != nil {
 				return ref, fmt.Errorf("failed to create file %s: %w", fullname, err)
 			}
+			// #nosec G110 - Extracting trusted container image in controlled build environment
 			if _, err := io.Copy(f, tr); err != nil {
 				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
 			}
 			f.Close()
 		case tar.TypeSymlink:
+			// #nosec G305 - Creating symlink from trusted container image in controlled build environment
 			if err := os.Symlink(hdr.Linkname, filepath.Join(guestDir, hdr.Name)); err != nil {
 				return ref, fmt.Errorf("failed to create symlink %s: %w", fullname, err)
 			}
 		case tar.TypeLink:
+			// #nosec G305 - Creating hardlink from trusted container image in controlled build environment
 			if err := os.Link(filepath.Join(guestDir, hdr.Linkname), filepath.Join(guestDir, hdr.Name)); err != nil {
 				return ref, fmt.Errorf("failed to create hardlink %s: %w", fullname, err)
 			}

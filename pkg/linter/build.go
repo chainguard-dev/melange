@@ -20,9 +20,10 @@ import (
 	"path/filepath"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
+	"github.com/chainguard-dev/clog"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/linter/types"
-	"github.com/chainguard-dev/clog"
 )
 
 // Lint the given build directory at the given path

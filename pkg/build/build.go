@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -47,7 +48,6 @@ import (
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
-	"golang.org/x/exp/maps"
 	"golang.org/x/sys/unix"
 	"sigs.k8s.io/release-utils/version"
 
@@ -280,9 +280,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		log.Infof("applying configuration patches for build option %s", optName)
 
 		if opt, ok := b.Configuration.Options[optName]; ok {
-			if err := b.applyBuildOption(opt); err != nil {
-				return nil, err
-			}
+			b.applyBuildOption(opt)
 		}
 	}
 
@@ -369,7 +367,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	b.PkgResolver = apk.NewPkgResolver(ctx, namedIndexes)
 
 	bc.Summarize(ctx)
-	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to summarize
+	log.Infof("auth configured for: %v", maps.Keys(b.Auth)) // TODO: add this to summarize
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {
@@ -431,15 +429,13 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 }
 
 // applyBuildOption applies a patch described by a BuildOption to a package build.
-func (b *Build) applyBuildOption(bo config.BuildOption) error {
+func (b *Build) applyBuildOption(bo config.BuildOption) {
 	// Patch the variables block.
 	if b.Configuration.Vars == nil {
 		b.Configuration.Vars = make(map[string]string)
 	}
 
-	for k, v := range bo.Vars {
-		b.Configuration.Vars[k] = v
-	}
+	maps.Copy(b.Configuration.Vars, bo.Vars)
 
 	// Patch the build environment configuration.
 	lo := bo.Environment.Contents.Packages
@@ -457,8 +453,6 @@ func (b *Build) applyBuildOption(bo config.BuildOption) error {
 
 		b.Configuration.Environment.Contents.Packages = pkgList
 	}
-
-	return nil
 }
 
 func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error) {
@@ -602,7 +596,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	ver := b.Configuration.Package.Version
 	if _, err := apk.ParseVersion(ver); err != nil {
-		return fmt.Errorf("Unable to parse version '%s' for %s: %v", ver, b.ConfigFile, err)
+		return fmt.Errorf("unable to parse version '%s' for %s: %w", ver, b.ConfigFile, err)
 	}
 
 	namespace := b.Namespace
@@ -624,7 +618,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// build process so that we can later add more kinds of packages that relate to
 	// these packages, as we learn more during the build.
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
 		spSBOM := b.SBOMGroup.Document(sp.Name)
 
 		apkSubPkg := &sbom.Package{
@@ -757,7 +750,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
 		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
 			return err
 		}
@@ -790,7 +782,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	b.WorkspaceDirFS = apkofs.DirFS(ctx, b.WorkspaceDir)
 
-	// Retreive the os-release information from the runner
+	// Retrieve the os-release information from the runner
 	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
 	if err != nil {
 		log.Warnf("failed to retrieve release data from runner, OS section will be unknown: %v", err)
@@ -844,11 +836,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			hex := fmt.Sprintf("0x%s", hex.EncodeToString(enc))
 			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, fullPath)}
 			if err := b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...); err != nil {
-				return fmt.Errorf("failed to set capabilities within VM on %s: %v\n", path, err)
+				return fmt.Errorf("failed to set capabilities within VM on %s: %w", path, err)
 			}
 		} else {
 			if err := b.WorkspaceDirFS.SetXattr(fullPath, "security.capability", enc); err != nil {
-				log.Warnf("failed to set capabilities on %s: %v\n", path, err)
+				log.Warnf("failed to set capabilities on %s: %v", path, err)
 			}
 		}
 	}
@@ -924,8 +916,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// emit subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
-
 		if err := b.Emit(ctx, pkgFromSub(&sp)); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
@@ -952,8 +942,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range b.Configuration.Subpackages {
-			subpkg := subpkg
-
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
 		}
@@ -1234,8 +1222,8 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 		var uid, gid int
 		fi := hdr.FileInfo()
 		if stat, ok := fi.Sys().(*tar.Header); ok {
-			uid = int(stat.Uid)
-			gid = int(stat.Gid)
+			uid = stat.Uid
+			gid = stat.Gid
 		}
 
 		switch hdr.Typeflag {

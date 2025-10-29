@@ -27,12 +27,13 @@ import (
 
 	"chainguard.dev/apko/pkg/apk/auth"
 	"chainguard.dev/apko/pkg/apk/expandapk"
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/linter/types"
 	"github.com/chainguard-dev/clog"
 	"github.com/dustin/go-humanize"
 	"go.yaml.in/yaml/v2"
 	"gopkg.in/ini.v1"
+
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/linter/types"
 )
 
 // Lint the given APK at the given path

@@ -19,9 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
-	"gopkg.in/yaml.v3"
 
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/require"

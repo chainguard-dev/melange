@@ -27,9 +27,10 @@ import (
 	"strings"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
+	"github.com/chainguard-dev/clog"
+
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
-	"github.com/chainguard-dev/clog"
 )
 
 // Variable to allow mocking the runCommand function in tests.
@@ -44,6 +45,7 @@ func runPipelineStep(ctx context.Context, step config.Pipeline) error {
 	stderr = outputBuf
 
 	cmd := []string{"/bin/sh", "-c", step.Pipeline[0].Runs}
+	// #nosec G204 - Executing pipeline step from trusted melange configuration
 	proc := exec.Command(cmd[0], cmd[1:]...)
 	proc.Stdout = stdout
 	proc.Stderr = stderr
@@ -89,6 +91,7 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 			}
 			defer destFile.Close()
 
+			// #nosec G110 - Extracting known .melange.yaml file from trusted APK package
 			if _, err := io.Copy(destFile, tarReader); err != nil {
 				return fmt.Errorf("failed to extract .melange.yaml: %w", err)
 			}
@@ -115,7 +118,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	// anyone to cause harm by overwriting the pipelines code.
 	tmpDir, err := os.MkdirTemp("", "melange-")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temporary directory: %v", err)
+		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -123,7 +126,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	isApk := false
 	if filepath.Ext(filePath) == ".apk" {
 		if err := extractMelangeYamlFromTarball(filePath, tmpDir); err != nil {
-			log.Fatalf("Failed to extract melange yaml from apk package: %v", err)
+			return nil, fmt.Errorf("failed to extract melange yaml from apk package: %w", err)
 		}
 		filePath = filepath.Join(tmpDir, ".melange.yaml")
 		isApk = true
@@ -133,7 +136,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	// though!
 	cfg, err := config.ParseConfiguration(ctx, filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse melange config: %v", err)
+		return nil, fmt.Errorf("failed to parse melange config: %w", err)
 	}
 
 	// Temporarily copy out the embedded files and directories from f into a
@@ -141,7 +144,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	// compilation.
 	err = os.CopyFS(tmpDir, build.PipelinesFS)
 	if err != nil {
-		return nil, fmt.Errorf("failed to copy embedded pilelines: %v", err)
+		return nil, fmt.Errorf("failed to copy embedded pilelines: %w", err)
 	}
 
 	// Prepare the substitution map and compile the pipelines, making sure that
@@ -155,7 +158,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	// directory. Add those to the list of directories to search for pipelines.
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path of file: %v", err)
+		return nil, fmt.Errorf("failed to get absolute path of file: %w", err)
 	}
 	baseDir := filepath.Dir(absFilePath)
 	pipelinesDir := filepath.Join(baseDir, "pipelines")
@@ -164,16 +167,16 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 		log.Infof("Found pipelines directory in base directory: %s", pipelinesDir)
 		c.PipelineDirs = append(c.PipelineDirs, pipelinesDir)
 	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("error checking pipelines directory: %v", err)
+		return nil, fmt.Errorf("error checking pipelines directory: %w", err)
 	}
 
 	sm, err := build.NewSubstitutionMap(cfg, "amd64", "gnu", nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create substitution map: %v", err)
+		return nil, fmt.Errorf("failed to create substitution map: %w", err)
 	}
 	err = c.CompilePipelines(ctx, sm, cfg.Pipeline)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compile pipelines: %v", err)
+		return nil, fmt.Errorf("failed to compile pipelines: %w", err)
 	}
 
 	// During command execution we change the working directory. We need to
@@ -195,10 +198,10 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 			srcFS := apkofs.DirFS(ctx, pkgd)
 			err := os.CopyFS(destDir, srcFS)
 			if err != nil {
-				return nil, fmt.Errorf("failed to copy melange directory contents: %v", err)
+				return nil, fmt.Errorf("failed to copy melange directory contents: %w", err)
 			}
 		} else if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("error checking melange directory: %v", err)
+			return nil, fmt.Errorf("error checking melange directory: %w", err)
 		}
 	}
 
@@ -217,15 +220,15 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 		// Always make sure we're operating in the destDir directory.
 		err = os.MkdirAll(destDir, 0o755)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create destination directory: %v", err)
+			return nil, fmt.Errorf("failed to create destination directory: %w", err)
 		}
 		err = os.Chdir(destDir)
 		if err != nil {
-			return nil, fmt.Errorf("failed to change directory: %v", err)
+			return nil, fmt.Errorf("failed to change directory: %w", err)
 		}
 		err = sourceRunPipelineStep(ctx, step)
 		if err != nil {
-			return nil, fmt.Errorf("failed to run step: %v", err)
+			return nil, fmt.Errorf("failed to run step: %w", err)
 		}
 	}
 

@@ -66,7 +66,6 @@ func UnsupportedArchLinter(_ context.Context, cfg *config.Configuration, pkgname
 				if strings.Contains(baseLower, sep+arch+sep) ||
 					strings.Contains(baseLower, sep+arch+".") ||
 					strings.HasSuffix(baseLower, sep+arch) {
-
 					isSupported := false
 					for _, s := range supported {
 						if strings.Contains(pathLower, s) {

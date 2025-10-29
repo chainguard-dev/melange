@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...interface{}) {
+var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...any) {
 	require.ErrorAs(t, err, &config.ErrInvalidConfiguration{})
 }
 

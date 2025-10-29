@@ -133,12 +133,7 @@ func isHostProvidedLibrary(lib string) bool {
 		"libnvoptix.so.1",
 	}
 
-	for _, hostLib := range hostLibs {
-		if lib == hostLib {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(hostLibs, lib)
 }
 
 // getLdSoConfDLibPaths will iterate over the files being installed by
@@ -295,7 +290,8 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 
 	realPath = filepath.Base(realPath)
 
-	expandedLibDirs := append(libDirs, extraLibDirs...)
+	expandedLibDirs := append([]string{}, libDirs...)
+	expandedLibDirs = append(expandedLibDirs, extraLibDirs...)
 
 	for _, pkgName := range targetPackageNames {
 		baseFS, err := hdl.FilesystemForRelative(pkgName)
@@ -558,7 +554,8 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		return err
 	}
 
-	expandedLibDirs := append(libDirs, extraLibDirs...)
+	expandedLibDirs := append([]string{}, libDirs...)
+	expandedLibDirs = append(expandedLibDirs, extraLibDirs...)
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -946,7 +943,6 @@ func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Depen
 		}
 
 		if isInDir(path, []string{"usr/share/man"}) {
-
 			// Do not add a man-db dependency if one already exists.
 			for _, dep := range hdl.BaseDependencies().Runtime {
 				if dep == "man-db" {
@@ -959,7 +955,6 @@ func generateDocDeps(ctx context.Context, hdl SCAHandle, generated *config.Depen
 		}
 
 		if isInDir(path, []string{"usr/share/info"}) {
-
 			// Do not add a texinfo dependency if one already exists.
 			for _, dep := range hdl.BaseDependencies().Runtime {
 				if dep == "texinfo" {
@@ -1007,13 +1002,14 @@ func getShbang(fp io.Reader) (string, error) {
 
 	buf := make([]byte, 80)
 	blen, err := io.ReadFull(fp, buf)
-	if err == io.EOF {
+	switch {
+	case errors.Is(err, io.EOF):
 		return "", nil
-	} else if err == io.ErrUnexpectedEOF {
+	case errors.Is(err, io.ErrUnexpectedEOF):
 		if blen < 2 {
 			return "", nil
 		}
-	} else if err != nil {
+	case err != nil:
 		return "", err
 	}
 
@@ -1031,15 +1027,14 @@ func getShbang(fp io.Reader) (string, error) {
 
 	// if #! is '/usr/bin/env foo', then use next arg as the dep
 	if bin == "/usr/bin/env" {
-		if len(toks) == 1 {
+		switch {
+		case len(toks) == 1:
 			return "", fmt.Errorf("a shbang of only '/usr/bin/env'")
-		} else if len(toks) == 2 {
+		case len(toks) == 2:
 			bin = toks[1]
-		} else if len(toks) >= 3 && toks[1] == "-S" && !strings.HasPrefix(toks[2], "-") {
-			// we really need a env argument parser to figure out what the next cmd is.
-			// special case handle /usr/bin/env -S prog [arg1 [arg2 [...]]]
+		case len(toks) >= 3 && toks[1] == "-S" && !strings.HasPrefix(toks[2], "-"):
 			bin = toks[2]
-		} else {
+		default:
 			return "", fmt.Errorf("a shbang of only '/usr/bin/env' with multiple arguments (%d %s)", len(toks), strings.Join(toks, " "))
 		}
 	}

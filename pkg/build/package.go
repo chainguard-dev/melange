@@ -133,7 +133,7 @@ func (pc *PackageBuild) AppendBuildLog(dir string) error {
 	defer f.Close()
 
 	// separate with pipe so it is easy to parse
-	_, err = f.WriteString(fmt.Sprintf("%s|%s|%s|%s-r%d\n", pc.Arch, pc.OriginName, pc.PackageName, pc.Origin.Version, pc.Origin.Epoch))
+	_, err = fmt.Fprintf(f, "%s|%s|%s|%s-r%d\n", pc.Arch, pc.OriginName, pc.PackageName, pc.Origin.Version, pc.Origin.Epoch)
 	return err
 }
 
@@ -358,11 +358,11 @@ func (pc *PackageBuild) GenerateDependencies(ctx context.Context, hdl sca.SCAHan
 	// dep that we don't want to be satisfied by a vendored dep.
 	unvendored := removeSelfProvidedDeps(generated.Runtime, generated.Vendored)
 
-	newruntime := append(pc.Dependencies.Runtime, unvendored...)
-	pc.Dependencies.Runtime = slices.Compact(slices.Sorted(slices.Values(newruntime)))
+	pc.Dependencies.Runtime = append(pc.Dependencies.Runtime, unvendored...)
+	pc.Dependencies.Runtime = slices.Compact(slices.Sorted(slices.Values(pc.Dependencies.Runtime)))
 
-	newprovides := append(pc.Dependencies.Provides, generated.Provides...)
-	pc.Dependencies.Provides = slices.Compact(slices.Sorted(slices.Values(newprovides)))
+	pc.Dependencies.Provides = append(pc.Dependencies.Provides, generated.Provides...)
+	pc.Dependencies.Provides = slices.Compact(slices.Sorted(slices.Values(pc.Dependencies.Provides)))
 
 	pc.Dependencies.Runtime = removeSelfProvidedDeps(pc.Dependencies.Runtime, pc.Dependencies.Provides)
 

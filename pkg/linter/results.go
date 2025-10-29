@@ -21,9 +21,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/chainguard-dev/clog"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/linter/types"
-	"github.com/chainguard-dev/clog"
 )
 
 // saveLintResults saves the lint results to JSON files in the packages directory
@@ -55,6 +56,7 @@ func saveLintResults(ctx context.Context, cfg *config.Configuration, results map
 		}
 
 		// Write to file
+		// #nosec G306 - Lint results file should be world-readable
 		if err := os.WriteFile(filepath, jsonData, 0o644); err != nil {
 			return fmt.Errorf("writing lint results to %s: %w", filepath, err)
 		}

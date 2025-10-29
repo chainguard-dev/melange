@@ -24,10 +24,11 @@ import (
 	"testing"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/linter/types"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/assert"
+
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/linter/types"
 )
 
 func TestLinters(t *testing.T) {
@@ -678,11 +679,10 @@ func Test_setUidGidLinter(t *testing.T) {
 	fsys := apkofs.DirFS(ctx, dir)
 
 	linters := []string{"setuidgid"}
-	filePath := filepath.Join("test.txt")
 
-	_, err := fsys.Create(filePath)
+	_, err := fsys.Create("test.txt")
 	assert.NoError(t, err)
-	assert.NoError(t, fsys.Chmod(filePath, 0o770|fs.ModeSetuid|fs.ModeSetgid))
+	assert.NoError(t, fsys.Chmod("test.txt", 0o770|fs.ModeSetuid|fs.ModeSetgid))
 	assert.Error(t, LintBuild(ctx, nil, "setuidgid", linters, nil, fsys, t.TempDir(), "x86_64"))
 }
 

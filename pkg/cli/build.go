@@ -26,10 +26,6 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/container/docker"
-	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
@@ -37,6 +33,11 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/pkg/linter"
 )
 
 const BuiltinPipelineDir = "/usr/share/melange/pipelines"
@@ -330,7 +331,8 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Build{}
 	for _, arch := range archs {
-		opts := append(baseOpts, build.WithArch(arch))
+		opts := append([]build.Option{}, baseOpts...)
+		opts = append(opts, build.WithArch(arch))
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
@@ -358,8 +360,6 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	}
 
 	for _, bc := range bcs {
-		bc := bc
-
 		errg.Go(func() error {
 			lctx := ctx
 			if len(bcs) != 1 {

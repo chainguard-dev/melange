@@ -709,11 +709,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.
 	// this dramatically improves compile time, making them comparable to bwrap or docker runners.
-	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,path="+cfg.WorkspaceDir)
+	baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev100,readonly=on,path="+cfg.WorkspaceDir)
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
 	if cfg.CacheDir != "" {
-		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,path="+cfg.CacheDir)
+		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,readonly=on,path="+cfg.CacheDir)
 		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
 
 		// ensure the cachedir exists
@@ -885,7 +885,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		setupMountCommand := fmt.Sprintf(
 			"mkdir -p %s %s /mount/upper /mount/work && "+
 				"chmod 1777 /mount/upper && "+
-				"mount -t 9p melange_cache %s && "+
+				"mount -t 9p -o ro melange_cache %s && "+
 				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
 			DefaultCacheDir,
 			filepath.Join("/mount", DefaultCacheDir),
@@ -931,6 +931,26 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	clog.FromContext(ctx).Info("qemu: unmounting host workspace from guest")
+	// now that we've copied files from the host filesystem into the
+	// guest's workspace, we can umount the filesystem, as nothing in
+	// the build should reference the original location and it reduces
+	// the ability of later build steps to possibly intteract with the
+	// host.
+	err = sendSSHCommand(ctx,
+		cfg.SSHControlClient,
+		cfg,
+		nil,
+		stderr,
+		stdout,
+		false,
+		[]string{"sh", "-c", "umount /mount/mnt"},
+	)
+	if err != nil {
+		clog.FromContext(ctx).Warnf("qemu: failed to unmount /mount/mnt in guest; umount missing?")
+		// don't fail the build because of this.
 	}
 
 	cfg.QemuPID = qemuCmd.Process.Pid

@@ -59,31 +59,30 @@ jobs:
           - bubblewrap
           - qemu
         package:
-          - hello-wolfi
-          - glibc
-          - tini
-          - lzo
-          - bubblewrap
-          - dpkg
+          # - rust-1.86 # takes ~35-40 minutes to build; used for testing LICENSE file functionality
           #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
+          #- glibc # takes ~35-40 minutes to build; not an all-encompassing signal of Melange functionality; TODO: replace with a smaller, related package
+          #- xmlto # TODO: https://github.com/wolfi-dev/os/issues/26442
+          - bubblewrap
+          - cadvisor # uses cgroups
+          - dpkg
+          - fixuid # uses a diff test user
+          - fping # uses get/setcaps
           - gitsign
           - grafana-image-renderer
           - guac
+          - hello-wolfi
+          - lzo
           - mdbook
-          - s3cmd
-          - py3-pyelftools # Uses license-path
-          - cadvisor # uses cgroups
-          - fping # uses get/setcaps
-          - fixuid # uses a diff test user
+          - ncurses
           - perl-yaml-syck
           - postfix
-          - ncurses
+          - py3-pyelftools # Uses license-path
+          - py3-supported-python
+          - s3cmd
           - subversion
           - sudo
-          - py3-supported-python
-          - rust-1.86
-          # TODO: https://github.com/wolfi-dev/os/issues/26442
-          #- xmlto
+          - tini
 
     steps:
       - uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1

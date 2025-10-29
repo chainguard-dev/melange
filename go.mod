@@ -9,7 +9,7 @@ require (
 	github.com/chainguard-dev/yam v0.2.38
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v28.5.1+incompatible
-	github.com/docker/docker v28.3.3+incompatible
+	github.com/docker/docker v28.5.1+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.4
 	github.com/go-git/go-git/v5 v5.16.3
@@ -109,7 +109,6 @@ require (
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/go-licenses/v2 v2.0.1
 	github.com/google/s2a-go v0.1.9 // indirect

@@ -35,10 +35,11 @@ import (
 
 	"chainguard.dev/apko/pkg/apk/apk"
 	"chainguard.dev/apko/pkg/apk/expandapk"
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/ini.v1"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 type testHandle struct {
@@ -363,9 +364,7 @@ func TestLdSoConfD(t *testing.T) {
 		t.Fatal(err)
 	} else if extraLibPaths == nil {
 		t.Error("getLdSoConfDLibPaths: expected 'my/lib/test', got nil")
-	} else {
-		if extraLibPaths[0] != "my/lib/test" {
-			t.Errorf("getLdSoConfDLibPaths: expected 'my/lib/test', got '%s'", extraLibPaths[0])
-		}
+	} else if extraLibPaths[0] != "my/lib/test" {
+		t.Errorf("getLdSoConfDLibPaths: expected 'my/lib/test', got '%s'", extraLibPaths[0])
 	}
 }

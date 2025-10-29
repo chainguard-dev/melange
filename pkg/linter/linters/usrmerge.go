@@ -52,7 +52,7 @@ func UsrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 		}
 
 		// If it's not a directory of interest just skip the whole tree
-		if !(path == "." || path == "usr" || pathInDir(path, dirs...)) {
+		if path != "." && path != "usr" && !pathInDir(path, dirs...) {
 			return filepath.SkipDir
 		}
 

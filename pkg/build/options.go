@@ -21,6 +21,7 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 )

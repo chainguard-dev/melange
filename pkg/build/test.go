@@ -28,7 +28,6 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 	"chainguard.dev/apko/pkg/tarfs"
@@ -259,7 +258,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	// Unless a specific architecture is requests, we run the test for all.
 	inarchs := len(pkg.TargetArchitecture) == 0
 	for _, ta := range pkg.TargetArchitecture {
-		if types.ParseArchitecture(ta) == t.Arch {
+		if apko_types.ParseArchitecture(ta) == t.Arch {
 			inarchs = true
 			break
 		}
@@ -469,6 +468,6 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 	return &cfg, nil
 }
 
-func (t *Test) guestFS(ctx context.Context) apkofs.FullFS {
+func (t *Test) guestFS(_ context.Context) apkofs.FullFS {
 	return tarfs.New()
 }

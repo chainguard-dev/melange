@@ -24,8 +24,9 @@ import (
 	"testing"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 func TestFindLicenseFiles(t *testing.T) {
@@ -263,8 +264,8 @@ func TestLicenseCheck(t *testing.T) {
 	// Now also check the log output and make sure that "low-confidence" is present only for the low-confidence
 	// licenses: LICENSE-BSD-modified and COPYRIGHT (the latter is not a valid license)
 	found := false
-	lines := strings.Split(logBuf.String(), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(logBuf.String(), "\n")
+	for line := range lines {
 		if strings.Contains(line, "low-confidence") {
 			// Check if the line contains one of the expected licenses
 			if !strings.Contains(line, "LICENSE-BSD-modified") && !strings.Contains(line, "COPYRIGHT") {

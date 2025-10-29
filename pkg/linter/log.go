@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"chainguard.dev/melange/pkg/linter/types"
 	"github.com/chainguard-dev/clog"
+
+	"chainguard.dev/melange/pkg/linter/types"
 )
 
 // logStructuredDetails displays itemized details for structured errors

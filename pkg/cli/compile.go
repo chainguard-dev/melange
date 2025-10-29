@@ -24,10 +24,11 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+
+	"chainguard.dev/melange/pkg/build"
 )
 
 func compile() *cobra.Command {

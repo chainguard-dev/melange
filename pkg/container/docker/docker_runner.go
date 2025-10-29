@@ -28,9 +28,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/internal/contextreader"
-	"chainguard.dev/melange/internal/logwriter"
-	mcontainer "chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/container"
@@ -41,6 +38,10 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"chainguard.dev/melange/internal/contextreader"
+	"chainguard.dev/melange/internal/logwriter"
+	mcontainer "chainguard.dev/melange/pkg/container"
 )
 
 var _ mcontainer.Debugger = (*docker)(nil)
@@ -311,14 +312,14 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 
 	// Wire up stdin to into a tty into the Attach connection.
 	g.Go(func() error {
-		interm := streams.NewIn(os.Stdin)
-		if err := interm.SetRawTerminal(); err != nil {
+		interim := streams.NewIn(os.Stdin)
+		if err := interim.SetRawTerminal(); err != nil {
 			return fmt.Errorf("set raw in: %w", err)
 		}
-		defer interm.RestoreTerminal()
+		defer interim.RestoreTerminal()
 
 		// Allows us to cancel the Read().
-		ctxr := contextreader.New(inctx, interm)
+		ctxr := contextreader.New(inctx, interim)
 
 		if _, err := io.Copy(attachResp.Conn, ctxr); err != nil {
 			return fmt.Errorf("copy in : %w", err)

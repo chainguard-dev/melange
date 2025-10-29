@@ -8,12 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/require"
 
-	"chainguard.dev/melange/pkg/renovate"
+	"chainguard.dev/melange/pkg/config"
+
 	"github.com/stretchr/testify/assert"
+
+	"chainguard.dev/melange/pkg/renovate"
 )
 
 func TestBump_versions(t *testing.T) {
@@ -31,7 +33,7 @@ func TestBump_versions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := slogtest.Context(t)
-			err, server := setupTestServer(t)
+			server, err := setupTestServer(t)
 			assert.NoError(t, err)
 
 			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
@@ -178,7 +180,7 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")
 }
 
-func setupTestServer(t *testing.T) (error, *httptest.Server) {
+func setupTestServer(t *testing.T) (*httptest.Server, error) {
 	packageData, err := os.ReadFile(filepath.Join("testdata", "cheese-7.0.1.tar.gz"))
 	assert.NoError(t, err)
 
@@ -191,5 +193,5 @@ func setupTestServer(t *testing.T) (error, *httptest.Server) {
 		_, err = rw.Write(packageData)
 		assert.NoError(t, err)
 	}))
-	return err, server
+	return server, err
 }

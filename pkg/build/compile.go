@@ -24,12 +24,13 @@ import (
 	"slices"
 	"strings"
 
-	"chainguard.dev/melange/pkg/cond"
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog"
 	"gopkg.in/yaml.v3"
 	"mvdan.cc/sh/v3/syntax"
+
+	"chainguard.dev/melange/pkg/cond"
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/util"
 )
 
 const unidentifiablePipeline = "???"

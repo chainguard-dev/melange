@@ -24,11 +24,12 @@ import (
 	"sort"
 	"strings"
 
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog"
 	golicenses "github.com/google/go-licenses/v2/licenses"
 	licenseclassifier "github.com/google/licenseclassifier/v2"
 	"github.com/google/licenseclassifier/v2/assets"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 // NOTE: the detection logic is done via a Classifier type as this is how it was
@@ -309,11 +310,12 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([
 		if len(diffs) > 0 {
 			log.Warnf("detected license differences:")
 			for _, diff := range diffs {
-				if diff.Is == "" {
+				switch {
+				case diff.Is == "":
 					log.Warnf("  %s: %s not found", diff.Path, diff.Should)
-				} else if diff.Override != "" {
+				case diff.Override != "":
 					log.Warnf("  %s: requested override from %s to %s, but now detecting as %s", diff.Path, diff.Override, diff.Is, diff.Should)
-				} else {
+				default:
 					log.Warnf("  %s: %s != %s", diff.Path, diff.Should, diff.Is)
 				}
 

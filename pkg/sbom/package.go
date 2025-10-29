@@ -141,13 +141,13 @@ func (p Package) ID() string {
 }
 
 func (p Package) getChecksums() []spdx.Checksum {
-	var algos []string
+	algos := make([]string, 0, len(p.Checksums))
 	for algo := range p.Checksums {
 		algos = append(algos, algo)
 	}
 	sort.Strings(algos)
 
-	var result []spdx.Checksum
+	result := make([]spdx.Checksum, 0, len(p.Checksums))
 	for _, algo := range algos {
 		result = append(result, spdx.Checksum{
 			Algorithm: algo,

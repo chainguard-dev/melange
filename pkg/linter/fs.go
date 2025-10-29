@@ -21,9 +21,10 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/chainguard-dev/clog"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/linter/types"
-	"github.com/chainguard-dev/clog"
 )
 
 func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname string, fsys fs.FS, linters []string, results map[string]*types.PackageLintResults, fullPackageName string) error {
@@ -40,7 +41,8 @@ func lintPackageFS(ctx context.Context, cfg *config.Configuration, pkgname strin
 			var message string
 			var details any
 
-			if structErr, ok := err.(*types.StructuredError); ok {
+			structErr := &types.StructuredError{}
+			if errors.As(err, &structErr) {
 				message = structErr.Message
 				details = structErr.Details
 			} else {

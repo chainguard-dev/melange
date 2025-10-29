@@ -20,8 +20,9 @@ import (
 	"os"
 	"text/template"
 
-	"chainguard.dev/melange/pkg/config"
 	"github.com/spf13/cobra"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 func query() *cobra.Command {

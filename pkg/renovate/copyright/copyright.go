@@ -23,9 +23,10 @@ import (
 
 	"github.com/chainguard-dev/clog"
 
+	"gopkg.in/yaml.v3"
+
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/renovate"
-	"gopkg.in/yaml.v3"
 )
 
 // CopyrightConfig contains the configuration data for a copyright update
@@ -85,13 +86,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 
 		// Check if there's any licenses that were properly detected.
 		// If not, we probably shouldn't do anything.
-		canFix := false
-		for _, l := range ccfg.Licenses {
-			if license.IsLicenseMatchConfident(l) {
-				canFix = true
-				break
-			}
-		}
+		canFix := slices.ContainsFunc(ccfg.Licenses, license.IsLicenseMatchConfident)
 		if !canFix {
 			log.Infof("no confident licenses found to update")
 			return nil

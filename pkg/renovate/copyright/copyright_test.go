@@ -21,9 +21,10 @@ import (
 
 	"github.com/chainguard-dev/clog/slogtest"
 
+	"github.com/stretchr/testify/assert"
+
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/renovate"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCopyright_update(t *testing.T) {

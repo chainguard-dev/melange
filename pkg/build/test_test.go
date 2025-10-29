@@ -20,15 +20,15 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 	"github.com/yookoala/realpath"
+
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/container"
 )
 
 const (
@@ -44,8 +44,8 @@ var gid1000 = uint32(1000)
 
 func defaultEnv(opts ...func(*apko_types.ImageConfiguration)) apko_types.ImageConfiguration {
 	env := apko_types.ImageConfiguration{
-		Accounts: types.ImageAccounts{
-			Groups: []types.Group{{GroupName: "build", GID: 1000, Members: []string{buildUser}}},
+		Accounts: apko_types.ImageAccounts{
+			Groups: []apko_types.Group{{GroupName: "build", GID: 1000, Members: []string{buildUser}}},
 			Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: apko_types.GID(&gid1000)}},
 		},
 	}

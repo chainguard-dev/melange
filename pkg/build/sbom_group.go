@@ -3,8 +3,9 @@ package build
 import (
 	"time"
 
-	"chainguard.dev/melange/pkg/sbom"
 	"github.com/spdx/tools-golang/spdx/v2/common"
+
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 // An SBOMGroup stores SBOMs corresponding to each package (or subpackage)

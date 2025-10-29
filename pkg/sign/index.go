@@ -31,6 +31,7 @@ import (
 	"github.com/psanford/memfs"
 
 	"chainguard.dev/apko/pkg/apk/signature"
+
 	"chainguard.dev/melange/pkg/tarball"
 )
 

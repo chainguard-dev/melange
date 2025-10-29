@@ -149,7 +149,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 }
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.
-func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml.Node, targetVersion string) error {
+func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml.Node, _ string) error {
 	log := clog.FromContext(ctx)
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
@@ -223,11 +223,9 @@ func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha stri
 	tag, err := renovate.NodeFromMapping(withNode, "tag")
 	if err != nil {
 		log.Infof("git-checkout node does not contain a tag, assume we need to update the expected-commit sha")
-	} else {
-		if !strings.Contains(tag.Value, "${{package.version}}") && !strings.Contains(tag.Value, "${{vars.mangled-package-version}}") {
-			log.Infof("Skipping git-checkout node as it does not contain a version substitution so assuming it is not the main checkout")
-			return nil
-		}
+	} else if !strings.Contains(tag.Value, "${{package.version}}") && !strings.Contains(tag.Value, "${{vars.mangled-package-version}}") {
+		log.Infof("Skipping git-checkout node as it does not contain a version substitution so assuming it is not the main checkout")
+		return nil
 	}
 
 	log.Infof("processing git-checkout node")

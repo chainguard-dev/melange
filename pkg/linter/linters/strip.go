@@ -88,7 +88,7 @@ func StrippedLinter(ctx context.Context, _ *config.Configuration, pkgname string
 
 		file, err := elf.NewFile(readerAt)
 		if err != nil {
-			return fmt.Errorf("Could not open file %q as executable: %v\n", path, err)
+			return fmt.Errorf("could not open file %q as executable: %w", path, err)
 		}
 		defer file.Close()
 

@@ -21,6 +21,7 @@ import (
 
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
 )

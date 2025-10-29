@@ -22,11 +22,12 @@ import (
 	"io"
 	"os"
 
-	"chainguard.dev/melange/pkg/sign"
 	"github.com/chainguard-dev/clog"
 	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/sign"
 )
 
 type signIndexOpts struct {
@@ -130,6 +131,7 @@ func parseIndexWithoutSignature(_ context.Context, indexFile string) ([]byte, er
 			if err := tw.WriteHeader(hdr); err != nil {
 				return nil, err
 			}
+			// #nosec G110 - Copying specific known files from trusted APK index
 			if _, err := io.Copy(tw, tr); err != nil {
 				return nil, err
 			}

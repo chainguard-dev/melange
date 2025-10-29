@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/renovate"

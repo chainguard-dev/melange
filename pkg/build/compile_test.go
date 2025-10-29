@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+
 	"chainguard.dev/melange/pkg/config"
 )
 

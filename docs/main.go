@@ -23,8 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"chainguard.dev/melange/pkg/cli"
 	"github.com/spf13/cobra/doc"
+
+	"chainguard.dev/melange/pkg/cli"
 )
 
 const fmTemplate = `---

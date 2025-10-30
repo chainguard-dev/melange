@@ -81,7 +81,7 @@ pipeline:
           fi
 
           find "$libdir" -maxdepth 1 -name "$MATCH_PATTERN" \( -type f -o -type l \) 2>/dev/null | while read -r lib; do
-            if [ -e "$PACKAGE_DIR/$lib" ]; then
+            if [ -e "$PACKAGE_DIR/$lib" ] || [ -h "$PACKAGE_DIR/$lib" ]; then
               d="${{targets.contextdir}}/${lib%/*}"
               mkdir -p "$d"
               mv "$PACKAGE_DIR/$lib" "$d"

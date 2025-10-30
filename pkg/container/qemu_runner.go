@@ -43,8 +43,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
-	"chainguard.dev/melange/internal/logwriter"
-	"chainguard.dev/melange/pkg/license"
 	"github.com/chainguard-dev/clog"
 	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -55,6 +53,9 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/term"
+
+	"chainguard.dev/melange/internal/logwriter"
+	"chainguard.dev/melange/pkg/license"
 )
 
 var _ Debugger = (*qemu)(nil)
@@ -146,14 +147,14 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	fd := int(os.Stdin.Fd())
 	oldState, err := term.MakeRaw(fd)
 	if err != nil {
-		return fmt.Errorf("failed to set terminal to raw mode: %v", err)
+		return fmt.Errorf("failed to set terminal to raw mode: %w", err)
 	}
 	//nolint:errcheck
 	defer term.Restore(fd, oldState)
 
 	width, height, err := term.GetSize(fd)
 	if err != nil {
-		return fmt.Errorf("failed to get terminal size: %v", err)
+		return fmt.Errorf("failed to get terminal size: %w", err)
 	}
 
 	winch := make(chan os.Signal, 1)
@@ -451,7 +452,7 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
 	if len(extraFiles) > 0 {
-		retrieveCommand = retrieveCommand + " -T extrafiles.txt"
+		retrieveCommand += " -T extrafiles.txt"
 	}
 
 	log := clog.FromContext(ctx)
@@ -673,11 +674,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	case cfg.CPUModel != "":
 		baseargs = append(baseargs, "-cpu", cfg.CPUModel)
 	case cfg.Arch.ToAPK() != apko_types.ParseArchitecture(runtime.GOARCH).ToAPK():
-		if cfg.Arch.ToAPK() == "aarch64" {
+		switch cfg.Arch.ToAPK() {
+		case "aarch64":
 			baseargs = append(baseargs, "-cpu", "cortex-a76")
-		} else if cfg.Arch.ToAPK() == "x86_64" {
+		case "x86_64":
 			baseargs = append(baseargs, "-cpu", "Haswell-v4")
-		} else {
+		default:
 			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
 	default:
@@ -718,7 +720,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		if err := os.MkdirAll(cfg.CacheDir, 0o755); err != nil {
 			return fmt.Errorf("failed to create shared cachedir: %w", err)
 		}
-
 	}
 
 	// if no size is specified, let's go for a default
@@ -768,6 +769,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
+	// #nosec G204 - Architecture is from validated configuration, not user input
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
 	clog.FromContext(ctx).Info("qemu: starting VM")
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
@@ -851,7 +853,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
-		return fmt.Errorf("qemu: VM exited unexpectedly: %v", err)
+		return fmt.Errorf("qemu: VM exited unexpectedly: %w", err)
 	case <-ctx.Done():
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
@@ -1066,11 +1068,11 @@ func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string)
 		session.Stdout = stdout
 		stdin, err := session.StdinPipe()
 		if err != nil {
-			return fmt.Errorf("failed to create stdin pipe: %v", err)
+			return fmt.Errorf("failed to create stdin pipe: %w", err)
 		}
 		cmd := "cat >> /home/build/extrafiles.txt"
 		if err := session.Start(cmd); err != nil {
-			return fmt.Errorf("failed to start command: %v", err)
+			return fmt.Errorf("failed to start command: %w", err)
 		}
 
 		// Write 100 strings there (or remainder)
@@ -1083,15 +1085,15 @@ func streamExtraFilesList(ctx context.Context, cfg *Config, extraFiles []string)
 		if _, err := io.Copy(stdin, strings.NewReader(
 			strings.Join(chunk, "\n")+"\n"),
 		); err != nil {
-			return fmt.Errorf("failed to write content: %v", err)
+			return fmt.Errorf("failed to write content: %w", err)
 		}
 
 		if err := stdin.Close(); err != nil {
-			return fmt.Errorf("failed to close stdin: %v", err)
+			return fmt.Errorf("failed to close stdin: %w", err)
 		}
 
 		if err := session.Wait(); err != nil {
-			return fmt.Errorf("command failed: %v", err)
+			return fmt.Errorf("command failed: %w", err)
 		}
 
 		writtenStrings = endIndex
@@ -1148,7 +1150,7 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 	}
 
 	// we need bytes
-	size = size * 1024
+	size *= 1024
 
 	clog.FromContext(ctx).Debugf("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
 	return diskName.Name(), os.Truncate(diskName.Name(), size)
@@ -1246,7 +1248,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	cfg *Config, extraVars map[string]string,
 	stderr, stdout io.Writer,
-	tty bool, command []string,
+	tty bool, command []string, //nolint:unparam
 ) error {
 	// Create a session
 	session, err := client.NewSession()
@@ -1632,6 +1634,7 @@ func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath strin
 		if err := tarWriter.WriteHeader(header); err != nil {
 			return nil, err
 		}
+		// #nosec G110 - Copying trusted tar content in controlled build environment
 		if _, err := io.Copy(tarWriter, tartReader); err != nil {
 			return nil, err
 		}

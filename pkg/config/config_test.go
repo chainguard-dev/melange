@@ -8,10 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/melange/pkg/sbom"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/stretchr/testify/require"
+
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 func Test_validateCPE(t *testing.T) {
@@ -1269,7 +1270,7 @@ func TestSetCapability(t *testing.T) {
 						continue
 					}
 					for attr, flag := range capEntry.Add {
-						for _, a := range strings.Split(attr, ",") {
+						for a := range strings.SplitSeq(attr, ",") {
 							val := getCapabilityValue(a)
 							e, p, i := parseCapability(flag)
 

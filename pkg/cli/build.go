@@ -26,10 +26,6 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/container/docker"
-	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
@@ -37,6 +33,11 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/pkg/linter"
 )
 
 const BuiltinPipelineDir = "/usr/share/melange/pipelines"
@@ -63,6 +64,7 @@ func buildCmd() *cobra.Command {
 	var purlNamespace string
 	var buildOption []string
 	var createBuildLog bool
+	var persistLintResults bool
 	var debug bool
 	var debugRunner bool
 	var interactive bool
@@ -171,6 +173,7 @@ func buildCmd() *cobra.Command {
 				build.WithNamespace(purlNamespace),
 				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
+				build.WithPersistLintResults(persistLintResults),
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),
 				build.WithInteractive(interactive),
@@ -242,6 +245,7 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
+	cmd.Flags().BoolVar(&persistLintResults, "persist-lint-results", false, "persist lint results to JSON files in packages/{arch}/ directory")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
@@ -327,7 +331,8 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Build{}
 	for _, arch := range archs {
-		opts := append(baseOpts, build.WithArch(arch))
+		opts := append([]build.Option{}, baseOpts...)
+		opts = append(opts, build.WithArch(arch))
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
@@ -355,8 +360,6 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	}
 
 	for _, bc := range bcs {
-		bc := bc
-
 		errg.Go(func() error {
 			lctx := ctx
 			if len(bcs) != 1 {

@@ -60,6 +60,7 @@ melange build [flags]
       --out-dir string                                          directory where packages will be output (default "./packages/")
       --override-host-triplet-libc-substitution-flavor string   override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu (default "gnu")
       --package-append strings                                  extra packages to install for each of the build environments
+      --persist-lint-results                                    persist lint results to JSON files in packages/{arch}/ directory
       --pipeline-dir string                                     directory used to extend defined built-in pipelines
   -r, --repository-append strings                               path to extra repositories to include in the build environment
       --rm                                                      clean up intermediate artifacts (e.g. container images, temp dirs) (default true)

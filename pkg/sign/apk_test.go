@@ -73,7 +73,7 @@ func TestAPK(t *testing.T) {
 	}
 }
 
-func parseAPK(ctx context.Context, apkPath string) (control []byte, sigName string, sig []byte, err error) {
+func parseAPK(_ context.Context, apkPath string) (control []byte, sigName string, sig []byte, err error) {
 	apkr, err := os.Open(apkPath)
 	if err != nil {
 		return nil, "", nil, err

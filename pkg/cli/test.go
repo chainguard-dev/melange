@@ -22,11 +22,12 @@ import (
 	"strings"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/build"
 )
 
 func test() *cobra.Command {
@@ -178,8 +179,6 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 	}
 
 	for _, bc := range bcs {
-		bc := bc
-
 		errg.Go(func() error {
 			if err := bc.TestPackage(ctx); err != nil {
 				log.Errorf("ERROR: failed to test package. the test environment has been preserved:")

@@ -19,9 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"chainguard.dev/melange/pkg/config"
 	intoto "github.com/in-toto/attestation/go/v1"
 	"github.com/stretchr/testify/require"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 func TestGenerateSLSA(t *testing.T) {

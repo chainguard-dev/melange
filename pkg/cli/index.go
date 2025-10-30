@@ -17,8 +17,9 @@ package cli
 import (
 	"context"
 
-	"chainguard.dev/melange/pkg/index"
 	"github.com/spf13/cobra"
+
+	"chainguard.dev/melange/pkg/index"
 )
 
 func indexCmd() *cobra.Command {

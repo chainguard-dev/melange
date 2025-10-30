@@ -30,12 +30,13 @@ import (
 
 	"chainguard.dev/apko/pkg/apk/apk"
 	"chainguard.dev/apko/pkg/apk/expandapk"
-	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/sca"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/sca"
 )
 
 type scanConfig struct {
@@ -104,16 +105,20 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 
 		var r io.Reader
 		if strings.HasPrefix(u, "http") {
+			// #nosec G107 - URL is constructed from trusted configuration values
 			resp, err := http.Get(u)
 			if err != nil {
 				return fmt.Errorf("get %s: %w", u, err)
 			}
+			defer resp.Body.Close()
 			r = resp.Body
 		} else {
-			r, err = os.Open(u)
+			f, err := os.Open(u)
 			if err != nil {
 				return err
 			}
+			defer f.Close()
+			r = f
 		}
 		exp, err := expandapk.ExpandApk(ctx, r, "")
 		if err != nil {
@@ -191,20 +196,24 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 
 			var r io.Reader
 			if strings.HasPrefix(u, "http") {
+				// #nosec G107 - URL is constructed from trusted configuration values
 				resp, err := http.Get(u)
 				if err != nil {
 					return fmt.Errorf("get %s: %w", u, err)
 				}
+				defer resp.Body.Close()
 				if resp.StatusCode != http.StatusOK {
 					log.Errorf("Get %s: %d", u, resp.StatusCode)
 					continue
 				}
 				r = resp.Body
 			} else {
-				r, err = os.Open(u)
+				f, err := os.Open(u)
 				if err != nil {
 					return err
 				}
+				defer f.Close()
+				r = f
 			}
 
 			exp, err := expandapk.ExpandApk(ctx, r, "")
@@ -594,10 +603,7 @@ func Diff(oldName string, old []byte, newName string, new []byte, comments bool)
 
 		// End chunk with common lines for context.
 		if len(ctext) > 0 {
-			n := end.x - start.x
-			if n > C {
-				n = C
-			}
+			n := min(end.x-start.x, C)
 			for _, s := range x[start.x : start.x+n] {
 				ctext = append(ctext, " "+s)
 				count.x++
@@ -712,7 +718,7 @@ func tgs(x, y []string) []pair {
 	for i := range T {
 		T[i] = n + 1
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := sort.Search(n, func(k int) bool {
 			return T[k] >= J[i]
 		})

@@ -10,8 +10,9 @@ import (
 	"strings"
 	"text/template"
 
-	"chainguard.dev/melange/pkg/config"
 	"sigs.k8s.io/yaml"
+
+	"chainguard.dev/melange/pkg/config"
 
 	_ "embed"
 )
@@ -126,7 +127,8 @@ func writeFile(path string, doc []*PipelineDoc) error {
 
 	// File doesn't exist, write as-is.
 	if os.IsNotExist(err) {
-		return os.WriteFile(path, out.Bytes(), os.ModePerm)
+		// #nosec G306 - Documentation file should be world-readable
+		return os.WriteFile(path, out.Bytes(), 0o644)
 	}
 
 	// Remove existing content
@@ -137,5 +139,6 @@ func writeFile(path string, doc []*PipelineDoc) error {
 	// Append to the end
 	content = append(content, out.Bytes()...)
 	fmt.Println("Wrote", path)
-	return os.WriteFile(path, content, os.ModePerm)
+	// #nosec G306 - Documentation file should be world-readable
+	return os.WriteFile(path, content, 0o644)
 }

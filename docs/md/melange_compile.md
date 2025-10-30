@@ -43,6 +43,7 @@ melange compile [flags]
       --env-file string             file to use for preloaded environment variables
       --fail-on-lint-warning        turns linter warnings into failures
       --generate-index              whether to generate APKINDEX.tar.gz (default true)
+      --generate-provenance         generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)
       --git-commit string           commit hash of the git repository containing the build config file (defaults to detecting HEAD)
       --git-repo-url string         URL of the git repository containing the build config file (defaults to detecting from configured git remotes)
   -h, --help                        help for compile

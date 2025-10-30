@@ -19,8 +19,9 @@ import (
 	"os"
 	"os/signal"
 
-	"chainguard.dev/melange/pkg/cli"
 	"github.com/chainguard-dev/clog"
+
+	"chainguard.dev/melange/pkg/cli"
 )
 
 func main() {
@@ -29,6 +30,7 @@ func main() {
 
 	if err := cli.New().ExecuteContext(ctx); err != nil {
 		clog.Error(err.Error())
-		os.Exit(1)
+		done()
+		os.Exit(1) //nolint:gocritic // done() is called manually before exit
 	}
 }

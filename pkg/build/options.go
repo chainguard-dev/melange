@@ -21,6 +21,7 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 )
@@ -293,6 +294,15 @@ func WithEnabledBuildOptions(enabledBuildOptions []string) Option {
 func WithCreateBuildLog(createBuildLog bool) Option {
 	return func(b *Build) error {
 		b.CreateBuildLog = createBuildLog
+		return nil
+	}
+}
+
+// WithPersistLintResults indicates whether to persist lint results to JSON files
+// in the packages/{arch} directory.
+func WithPersistLintResults(persistLintResults bool) Option {
+	return func(b *Build) error {
+		b.PersistLintResults = persistLintResults
 		return nil
 	}
 }

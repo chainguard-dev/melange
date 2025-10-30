@@ -17,14 +17,15 @@ import (
 	goapk "chainguard.dev/apko/pkg/apk/apk"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
-	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog"
 	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 )
 
 func rebuild() *cobra.Command {
@@ -43,7 +44,7 @@ func rebuild() *cobra.Command {
 
 			r, err := getRunner(ctx, runner, true)
 			if err != nil {
-				return fmt.Errorf("failed to create runner: %v", err)
+				return fmt.Errorf("failed to create runner: %w", err)
 			}
 
 			origins := make(map[string]bool)
@@ -51,12 +52,12 @@ func rebuild() *cobra.Command {
 			for _, a := range args {
 				cfg, pkginfo, cfgpkg, err := getConfig(a)
 				if err != nil {
-					return fmt.Errorf("failed to get config for %s: %v", a, err)
+					return fmt.Errorf("failed to get config for %s: %w", a, err)
 				}
 
 				cfgpurl, err := purl.FromString(cfgpkg.ExternalRefs[0].Locator)
 				if err != nil {
-					return fmt.Errorf("failed to parse package URL %q: %v", cfgpkg.ExternalRefs[0].Locator, err)
+					return fmt.Errorf("failed to parse package URL %q: %w", cfgpkg.ExternalRefs[0].Locator, err)
 				}
 
 				arch := pkginfo.Arch
@@ -83,7 +84,7 @@ func rebuild() *cobra.Command {
 					if err := BuildCmd(ctx,
 						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
 						opts...); err != nil {
-						return fmt.Errorf("failed to rebuild %q: %v", a, err)
+						return fmt.Errorf("failed to rebuild %q: %w", a, err)
 					}
 
 					origins[pkginfo.Origin] = true
@@ -94,7 +95,7 @@ func rebuild() *cobra.Command {
 					new := filepath.Join(outDir, arch, fmt.Sprintf("%s-%s.apk", pkginfo.Name, pkginfo.Version))
 					clog.Infof("diffing %s and %s", old, new)
 					if err := diffAPKs(old, new); err != nil {
-						return fmt.Errorf("failed to diff APKs %s and %s: %v", old, new, err)
+						return fmt.Errorf("failed to diff APKs %s and %s: %w", old, new, err)
 					}
 				}
 			}
@@ -113,7 +114,7 @@ func rebuild() *cobra.Command {
 func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Package, error) {
 	f, err := os.Open(fn)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to open file %s: %v", fn, err)
+		return nil, nil, nil, fmt.Errorf("failed to open file %s: %w", fn, err)
 	}
 	defer f.Close()
 
@@ -123,7 +124,7 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to create gzip reader: %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer gz.Close()
 	tr := tar.NewReader(gz)
@@ -141,31 +142,31 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 			}
 			return nil, nil, nil, fmt.Errorf("failed to find necessary rebuild information in %s", fn)
 		} else if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read tar header: %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to read tar header: %w", err)
 		}
 
 		switch hdr.Name {
 		case ".melange.yaml":
 			cfg = new(config.Configuration)
 			if err := yaml.NewDecoder(io.LimitReader(tr, hdr.Size)).Decode(cfg); err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to decode .melange.yaml: %v", err)
+				return nil, nil, nil, fmt.Errorf("failed to decode .melange.yaml: %w", err)
 			}
 
 		case ".PKGINFO":
 			i, err := ini.ShadowLoad(tr)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to load .PKGINFO: %v", err)
+				return nil, nil, nil, fmt.Errorf("failed to load .PKGINFO: %w", err)
 			}
 			pkginfo = new(goapk.PackageInfo)
 			if err = i.MapTo(pkginfo); err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to map .PKGINFO: %v", err)
+				return nil, nil, nil, fmt.Errorf("failed to map .PKGINFO: %w", err)
 			}
 
 		case fmt.Sprintf("var/lib/db/sbom/%s-%s.spdx.json", pkginfo.Name, pkginfo.Version),
 			fmt.Sprintf("var/lib/db/sbom/%s-%s-r%d.spdx.json", cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch):
 			doc := new(spdx.Document)
 			if err := json.NewDecoder(io.LimitReader(tr, hdr.Size)).Decode(doc); err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to decode SBOM: %v", err)
+				return nil, nil, nil, fmt.Errorf("failed to decode SBOM: %w", err)
 			}
 
 			for _, p := range doc.Packages {
@@ -189,32 +190,32 @@ func diffAPKs(old, new string) error {
 	oldh, newh := sha256.New(), sha256.New()
 	oldf, err := os.Open(old)
 	if err != nil {
-		return fmt.Errorf("failed to open old APK %s: %v", old, err)
+		return fmt.Errorf("failed to open old APK %s: %w", old, err)
 	}
 	defer oldf.Close()
 	oldgr, err := gzip.NewReader(io.TeeReader(oldf, oldh))
 	if err != nil {
-		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+		return fmt.Errorf("failed to create gzip reader for old APK %s: %w", old, err)
 	}
 	defer oldgr.Close()
 	oldm, err := filemap(tar.NewReader(oldgr))
 	if err != nil {
-		return fmt.Errorf("failed to create file map for old APK %s: %v", old, err)
+		return fmt.Errorf("failed to create file map for old APK %s: %w", old, err)
 	}
 
 	newf, err := os.Open(new)
 	if err != nil {
-		return fmt.Errorf("failed to open new APK %s: %v", new, err)
+		return fmt.Errorf("failed to open new APK %s: %w", new, err)
 	}
 	defer newf.Close()
 	newgr, err := gzip.NewReader(io.TeeReader(newf, newh))
 	if err != nil {
-		return fmt.Errorf("failed to create gzip reader for old APK %s: %v", old, err)
+		return fmt.Errorf("failed to create gzip reader for old APK %s: %w", old, err)
 	}
 	defer oldgr.Close()
 	newm, err := filemap(tar.NewReader(newgr))
 	if err != nil {
-		return fmt.Errorf("failed to create file map for new APK %s: %v", new, err)
+		return fmt.Errorf("failed to create file map for new APK %s: %w", new, err)
 	}
 
 	var errs []error
@@ -261,7 +262,7 @@ func filemap(tr *tar.Reader) (map[string]entry, error) {
 		if errors.Is(err, io.EOF) {
 			return m, nil
 		} else if err != nil {
-			return nil, fmt.Errorf("failed to read tar header: %v", err)
+			return nil, fmt.Errorf("failed to read tar header: %w", err)
 		}
 		h := sha256.New()
 		var w io.Writer = h
@@ -270,7 +271,7 @@ func filemap(tr *tar.Reader) (map[string]entry, error) {
 			w = io.MultiWriter(w, &buf)
 		}
 		if _, err := io.Copy(w, tr); err != nil {
-			return nil, fmt.Errorf("failed to read tar entry %s: %v", hdr.Name, err)
+			return nil, fmt.Errorf("failed to read tar entry %s: %w", hdr.Name, err)
 		}
 		entry := entry{digest: fmt.Sprintf("%x", h.Sum(nil))}
 		if isImportantPath(hdr.Name) {

@@ -24,6 +24,9 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/source"
 )
 
 func sourceCmd() *cobra.Command {

@@ -55,7 +55,6 @@ func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(pa
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

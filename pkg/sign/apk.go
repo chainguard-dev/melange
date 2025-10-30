@@ -32,7 +32,7 @@ import (
 // APK() signs an APK file with the provided key. The existing APK file is
 // replaced with the signed APK file.
 func APK(_ context.Context, apkPath string, keyPath string) error {
-	f, err := os.Open(apkPath)
+	f, err := os.Open(apkPath) // #nosec G304 - User-specified APK package for signing
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func APK(_ context.Context, apkPath string, keyPath string) error {
 		return err
 	}
 
-	w, err := os.Create(apkPath)
+	w, err := os.Create(apkPath) // #nosec G304 - Writing signed APK package
 	if err != nil {
 		return err
 	}

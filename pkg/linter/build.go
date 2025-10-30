@@ -54,7 +54,7 @@ func LintBuild(ctx context.Context, cfg *config.Configuration, packageName strin
 	lintErr := lintPackageFS(ctx, cfg, packageName, fsys, require, results, fullPackageName)
 
 	// Save lint results to JSON file if there are any findings
-	if len(results) > 0 {
+	if outputDir != "" && len(results) > 0 {
 		log.Infof("saving %d package lint result(s) to %s", len(results), filepath.Join(outputDir, arch))
 		if err := saveLintResults(ctx, cfg, results, outputDir, arch); err != nil {
 			log.Warnf("failed to save lint results: %v", err)

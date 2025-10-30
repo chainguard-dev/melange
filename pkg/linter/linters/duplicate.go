@@ -102,7 +102,6 @@ func DuplicateLinter(ctx context.Context, _ *config.Configuration, pkgname strin
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -148,33 +147,55 @@ func DuplicateLinter(ctx context.Context, _ *config.Configuration, pkgname strin
 		// Build structured details
 		duplicates := make([]*types.DuplicateFileInfo, 0, len(duplicateSets))
 		for _, ds := range duplicateSets {
+			// File sizes should be non-negative
+			dsSize := uint64(0)
+			if ds.size > 0 {
+				dsSize = uint64(ds.size)
+			}
+			dsWasted := uint64(0)
+			if ds.wasted > 0 {
+				dsWasted = uint64(ds.wasted)
+			}
 			duplicates = append(duplicates, &types.DuplicateFileInfo{
 				Basename:    ds.basename,
 				Count:       ds.count,
 				SizeBytes:   ds.size,
-				Size:        humanize.Bytes(uint64(ds.size)),
+				Size:        humanize.Bytes(dsSize),
 				WastedBytes: ds.wasted,
-				WastedSize:  humanize.Bytes(uint64(ds.wasted)),
+				WastedSize:  humanize.Bytes(dsWasted),
 				Paths:       ds.paths,
 			})
 		}
 
+		totalWastedUint := uint64(0)
+		if totalWasted > 0 {
+			totalWastedUint = uint64(totalWasted)
+		}
 		details := &types.DuplicateFilesDetails{
 			TotalDuplicateSets: len(duplicateSets),
 			TotalWastedBytes:   totalWasted,
-			TotalWastedSize:    humanize.Bytes(uint64(totalWasted)),
+			TotalWastedSize:    humanize.Bytes(totalWastedUint),
 			Duplicates:         duplicates,
 		}
 
 		// Build human-readable message for logs
 		var output []string
 		for _, ds := range duplicateSets {
+			// File sizes should be non-negative
+			dsSize := uint64(0)
+			if ds.size > 0 {
+				dsSize = uint64(ds.size)
+			}
+			dsWasted := uint64(0)
+			if ds.wasted > 0 {
+				dsWasted = uint64(ds.wasted)
+			}
 			output = append(output, fmt.Sprintf(
 				"  %d copies of '%s' (%s each, wasting %s):",
 				ds.count,
 				ds.basename,
-				humanize.Bytes(uint64(ds.size)),
-				humanize.Bytes(uint64(ds.wasted)),
+				humanize.Bytes(dsSize),
+				humanize.Bytes(dsWasted),
 			))
 
 			for _, p := range ds.paths {
@@ -182,7 +203,7 @@ func DuplicateLinter(ctx context.Context, _ *config.Configuration, pkgname strin
 			}
 		}
 
-		summary := fmt.Sprintf("%s contains %d duplicate file(s) with same name in different directories (wasting %s total)", pkgname, len(duplicateSets), humanize.Bytes(uint64(totalWasted)))
+		summary := fmt.Sprintf("%s contains %d duplicate file(s) with same name in different directories (wasting %s total)", pkgname, len(duplicateSets), humanize.Bytes(totalWastedUint))
 		message := fmt.Sprintf("%s:\n%s", summary, strings.Join(output, "\n"))
 
 		return types.NewStructuredError(message, details)

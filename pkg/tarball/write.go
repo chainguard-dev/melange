@@ -18,7 +18,12 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
-	"crypto/sha1" //nolint:gosec
+
+	// SHA1 is required by the APK package format specification for file checksums.
+	// This is not used for cryptographic security but for integrity verification
+	// as mandated by apk-tools. Cannot be replaced with stronger algorithms without
+	// breaking APK package compatibility.
+	"crypto/sha1" // #nosec G505 - Required by APK format specification
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -132,8 +137,13 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 			if err != nil {
 				return err
 			}
-			major = unix.Major(uint64(dev))
-			minor = unix.Minor(uint64(dev))
+			// Device numbers should be non-negative
+			devUint := uint64(0)
+			if dev > 0 {
+				devUint = uint64(dev)
+			}
+			major = unix.Major(devUint)
+			minor = unix.Minor(devUint)
 		}
 
 		header, err := tar.FileInfoHeader(info, link)
@@ -221,7 +231,8 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 		}
 		if c.UseChecksums {
 			if link != "" {
-				linkDigest := sha1.Sum([]byte(link)) //nolint:gosec
+				// SHA1 required by APK format (apk-tools expects this specific algorithm)
+				linkDigest := sha1.Sum([]byte(link)) // #nosec G401 - APK format requirement
 				linkChecksum := hex.EncodeToString(linkDigest[:])
 				header.PAXRecords["APK-TOOLS.checksum.SHA1"] = linkChecksum
 			} else if info.Mode().IsRegular() {
@@ -231,7 +242,8 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 				}
 				defer data.Close()
 
-				fileDigest := sha1.New() //nolint:gosec
+				// SHA1 required by APK format (apk-tools expects this specific algorithm)
+				fileDigest := sha1.New() // #nosec G401 - APK format requirement
 				if _, err := io.CopyBuffer(fileDigest, data, buf); err != nil {
 					return err
 				}

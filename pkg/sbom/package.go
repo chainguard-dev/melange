@@ -133,11 +133,12 @@ func (p Package) ID() string {
 		)
 	}
 
-	id := "SPDXRef-Package"
+	var id strings.Builder
+	id.WriteString("SPDXRef-Package")
 	for _, component := range p.IDComponents {
-		id += "-" + component
+		id.WriteString("-" + component)
 	}
-	return stringToIdentifier(id)
+	return stringToIdentifier(id.String())
 }
 
 func (p Package) getChecksums() []spdx.Checksum {

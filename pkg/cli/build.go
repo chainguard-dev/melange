@@ -100,7 +100,7 @@ func buildCmd() *cobra.Command {
 			}
 
 			if traceFile != "" {
-				w, err := os.Create(traceFile)
+				w, err := os.Create(traceFile) // #nosec G304 - User-specified trace file output
 				if err != nil {
 					return fmt.Errorf("creating trace file: %w", err)
 				}

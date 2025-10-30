@@ -117,7 +117,6 @@ func BinaryArchLinter(ctx context.Context, _ *config.Configuration, pkgname stri
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

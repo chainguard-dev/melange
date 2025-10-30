@@ -98,7 +98,7 @@ func main() {
 }
 
 func parseFile(path string) (*config.Pipeline, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) // #nosec G304 - Reading pipeline definition for documentation
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func writeFile(path string, doc []*PipelineDoc) error {
 	}
 
 	path = filepath.Join(path, "README.md")
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 - Reading README for documentation generation
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}

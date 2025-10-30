@@ -48,7 +48,7 @@ func SignIndex(ctx context.Context, signingKey string, indexFile string) error {
 
 	log.Infof("signing index %s with key %s", indexFile, signingKey)
 
-	indexData, err := os.ReadFile(indexFile)
+	indexData, err := os.ReadFile(indexFile) // #nosec G304 - User-specified APK index file for signing
 	if err != nil {
 		return fmt.Errorf("unable to read index for signing: %w", err)
 	}
@@ -88,7 +88,7 @@ func SignIndex(ctx context.Context, signingKey string, indexFile string) error {
 		return fmt.Errorf("unable to write signature tarball: %w", err)
 	}
 
-	idx, err := os.Create(indexFile)
+	idx, err := os.Create(indexFile) // #nosec G304 - Writing signed APK index
 	if err != nil {
 		return fmt.Errorf("unable to open index for writing: %w", err)
 	}
@@ -108,7 +108,7 @@ func SignIndex(ctx context.Context, signingKey string, indexFile string) error {
 }
 
 func indexIsAlreadySigned(indexFile string) (bool, error) {
-	index, err := os.Open(indexFile)
+	index, err := os.Open(indexFile) // #nosec G304 - User-specified APK index file for signature check
 	if err != nil {
 		return false, fmt.Errorf("cannot open index file %s: %w", indexFile, err)
 	}

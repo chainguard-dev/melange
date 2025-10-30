@@ -13,16 +13,16 @@
 // limitations under the License.
 
 //go:build e2e
-// +build e2e
 
 package sca
 
 import (
 	"testing"
 
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 func TestGoFipsBinDeps(t *testing.T) {

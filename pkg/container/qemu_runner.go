@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"net"
 	"os"
 	"os/exec"
@@ -504,7 +503,6 @@ func (bw *qemu) GetReleaseData(ctx context.Context, cfg *Config) (*apko_build.Re
 		false,
 		[]string{"sh", "-c", "cat /etc/os-release"},
 	)
-
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to get os-release: %v", err)
 		return nil, err
@@ -532,7 +530,6 @@ func getGuestKernelVersion(ctx context.Context, cfg *Config) (version string, er
 		false,
 		[]string{"uname", "-rv"},
 	)
-
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to get kernel release version: %v", err)
 		return "", err
@@ -562,7 +559,12 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 	_, err = io.Copy(guestRootfs, layerUncompress)
-	guestRootfs.Close()
+	if closeErr := guestRootfs.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return "", err
+	}
 
 	return guestRootfs.Name(), nil
 }
@@ -836,8 +838,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	qemuExit := make(chan error, 1)
 	go func() {
 		err := qemuCmd.Wait()
-		outWrite.Close()
-		errWrite.Close()
+		_ = outWrite.Close() // Ignore error in goroutine cleanup
+		_ = errWrite.Close() // Ignore error in goroutine cleanup
 		qemuExit <- err
 	}()
 
@@ -1368,7 +1370,7 @@ func getUserSSHKey() ([]byte, error) {
 
 		for _, keyFile := range knownPublicKeyFiles {
 			path := filepath.Join(sshDir, keyFile)
-			content, err := os.ReadFile(path)
+			content, err := os.ReadFile(path) // #nosec G304 - Reading SSH key from known location
 			if err == nil {
 				return content, nil
 			}
@@ -1564,13 +1566,13 @@ func getAvailableMemoryKB() int {
 		}
 
 		sysctlOutStr := strings.TrimSpace(string(sysctlOut))
-		memSize, err = strconv.ParseInt(sysctlOutStr, 10, 64)
+		memSize, err = strconv.ParseInt(sysctlOutStr, 10, strconv.IntSize)
 		if err != nil {
 			return mem
 		}
 
 		// use at most 50% of total ram, in kb
-		if memSize > 0 && memSize < int64(math.MaxInt) {
+		if memSize > 0 {
 			return int(memSize) / 2 / 1024
 		}
 		return mem
@@ -1628,14 +1630,14 @@ func secureDelete(ctx context.Context, path string) {
 		return
 	}
 
-	if err := os.Chmod(path, 0600); err != nil {
+	if err := os.Chmod(path, 0o600); err != nil {
 		clog.FromContext(ctx).Debugf("secure delete: cannot make %s writable: %v", path, err)
 	}
 
-	file, err := os.OpenFile(path, os.O_WRONLY, 0)
+	file, err := os.OpenFile(path, os.O_WRONLY, 0) // #nosec G304 - Secure file deletion operation
 	if err != nil {
 		clog.FromContext(ctx).Warnf("secure delete: cannot open %s for overwriting: %v", path, err)
-		os.Remove(path)
+		_ = os.Remove(path) // Best effort cleanup in error path
 		return
 	}
 	defer file.Close()
@@ -1661,7 +1663,10 @@ func secureDelete(ctx context.Context, path string) {
 	if err := file.Sync(); err != nil {
 		clog.FromContext(ctx).Warnf("secure delete: failed to sync %s: %v", path, err)
 	}
-	file.Close()
+	// Close explicitly before remove (defer also closes but this ensures it's closed first)
+	if err := file.Close(); err != nil {
+		clog.FromContext(ctx).Warnf("secure delete: failed to close %s: %v", path, err)
+	}
 
 	if err := os.Remove(path); err != nil {
 		clog.FromContext(ctx).Warnf("secure delete: failed to remove %s: %v", path, err)
@@ -1762,7 +1767,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 		}
 	}
 
-	guestInitramfs, err := os.Create(initramfsPath)
+	guestInitramfs, err := os.Create(initramfsPath) // #nosec G304 - Creating initramfs in build output
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
 		return err
@@ -1803,7 +1808,7 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 		}
 	}()
 
-	baseFile, err := os.Open(baseInitramfs)
+	baseFile, err := os.Open(baseInitramfs) // #nosec G304 - Reading base initramfs from cache
 	if err != nil {
 		return "", fmt.Errorf("failed to open base initramfs: %w", err)
 	}
@@ -1819,13 +1824,13 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 	publicKeyBytes := ssh.MarshalAuthorizedKey(cfg.VMHostKeyPublic)
 
 	// Write the private key file with 0400 permissions (read-only, owner only)
-	privateKeyRecord := cpio.StaticFile("etc/ssh/ssh_host_ed25519_key", string(cfg.VMHostKeyPrivateKeyBytes), 0400)
+	privateKeyRecord := cpio.StaticFile("etc/ssh/ssh_host_ed25519_key", string(cfg.VMHostKeyPrivateKeyBytes), 0o400)
 	if err := cpio.WriteRecordsAndDirs(cpioWriter, []cpio.Record{privateKeyRecord}); err != nil {
 		return "", fmt.Errorf("failed to write host private key: %w", err)
 	}
 
 	// Write the public key file with 0644 permissions (world-readable)
-	publicKeyRecord := cpio.StaticFile("etc/ssh/ssh_host_ed25519_key.pub", string(publicKeyBytes), 0644)
+	publicKeyRecord := cpio.StaticFile("etc/ssh/ssh_host_ed25519_key.pub", string(publicKeyBytes), 0o644)
 	if err := cpio.WriteRecordsAndDirs(cpioWriter, []cpio.Record{publicKeyRecord}); err != nil {
 		return "", fmt.Errorf("failed to write host public key: %w", err)
 	}
@@ -1835,9 +1840,11 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 		return "", fmt.Errorf("failed to finalize cpio: %w", err)
 	}
 
-	combinedInitramfs.Close()
+	if err := combinedInitramfs.Close(); err != nil {
+		return "", fmt.Errorf("failed to close initramfs: %w", err)
+	}
 
-	if err := os.Chmod(initramfsPath, 0400); err != nil {
+	if err := os.Chmod(initramfsPath, 0o400); err != nil {
 		return "", fmt.Errorf("failed to set read-only permissions on initramfs: %w", err)
 	}
 
@@ -1889,7 +1896,7 @@ func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath strin
 			return nil
 		}
 
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) // #nosec G304 - Reading guest file for verification
 		if err != nil {
 			return fmt.Errorf("failed to read file %s: %w", path, err)
 		}

@@ -457,7 +457,7 @@ func (p Package) LicensingInfos(workspaceDir string) (map[string]string, error) 
 	licenseInfos := make(map[string]string)
 	for _, cp := range p.Copyright {
 		if cp.LicensePath != "" {
-			content, err := os.ReadFile(filepath.Join(workspaceDir, cp.LicensePath))
+			content, err := os.ReadFile(filepath.Join(workspaceDir, cp.LicensePath)) // #nosec G304 - Reading license file from build workspace
 			if err != nil {
 				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
 			}
@@ -942,6 +942,7 @@ type GitHubMonitor struct {
 	// If the version in GitHub contains a suffix which should be ignored
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
 	// Filter to apply when searching tags on a GitHub repository
+	//
 	// Deprecated: Use TagFilterPrefix instead
 	TagFilter string `json:"tag-filter,omitempty" yaml:"tag-filter,omitempty"`
 	// Prefix filter to apply when searching tags on a GitHub repository
@@ -1502,7 +1503,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 
 	// If a variables file was defined, merge it into the variables block.
 	if varsFile := options.varsFilePath; varsFile != "" {
-		f, err := os.Open(varsFile)
+		f, err := os.Open(varsFile) // #nosec G304 - User-specified variables file from configuration
 		if err != nil {
 			return nil, fmt.Errorf("loading variables file: %w", err)
 		}
@@ -1976,7 +1977,7 @@ func parseCapability(capFlag string) (effective, permitted, inheritable bool) {
 			inheritable = true
 		}
 	}
-	return
+	return effective, permitted, inheritable
 }
 
 // EncodeCapability returns the byte slice necessary to set the final capability xattr.

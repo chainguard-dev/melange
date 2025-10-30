@@ -190,13 +190,13 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 		log.Warnf("cache directory is a GCS bucket, not copying file: %s", cfg.CacheDir)
 		return nil
 	}
-	destinationFile, err := os.Create(destinationPath)
+	destinationFile, err := os.Create(destinationPath) // #nosec G304 - Creating cached file in download directory
 	if err != nil {
 		return err
 	}
 	defer destinationFile.Close()
 
-	sourceFile, err := os.Open(downloadedFile)
+	sourceFile, err := os.Open(downloadedFile) // #nosec G304 - Reading downloaded file from cache
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func downloadFile(ctx context.Context, uri string) (string, error) {
 
 // hashFile calculates the hash for a file and returns it as a hex string.
 func hashFile(downloadedFile string, digest hash.Hash) (string, error) {
-	hashedFile, err := os.Open(downloadedFile)
+	hashedFile, err := os.Open(downloadedFile) // #nosec G304 - Reading downloaded file for hashing
 	if err != nil {
 		return "", err
 	}

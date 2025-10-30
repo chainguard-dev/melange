@@ -401,7 +401,7 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	destPath := filepath.Join(dest, src)
 	destDir := filepath.Dir(destPath)
 
-	inF, err := os.Open(basePath)
+	inF, err := os.Open(basePath) // #nosec G304 - Internal build workspace file operation
 	if err != nil {
 		return err
 	}
@@ -411,7 +411,7 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 		return fmt.Errorf("mkdir -p %s: %w", destDir, err)
 	}
 
-	outF, err := os.Create(destPath)
+	outF, err := os.Create(destPath) // #nosec G304 - Internal build workspace file operation
 	if err != nil {
 		return fmt.Errorf("create %s: %w", destPath, err)
 	}
@@ -471,7 +471,7 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 
 	log.Infof("loading ignore rules from %s", ignorePath)
 
-	inF, err := os.Open(ignorePath)
+	inF, err := os.Open(ignorePath) // #nosec G304 - Reading workspace ignore file from build configuration
 	if err != nil {
 		return nil, err
 	}

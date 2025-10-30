@@ -1082,7 +1082,9 @@ func generateShbangDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 			} else if shbang != "" {
 				cmds[filepath.Base(shbang)] = path
 			}
-			fp.Close()
+			if err := fp.Close(); err != nil {
+				log.Warnf("Error closing %s: %v", path, err)
+			}
 		} else {
 			log.Infof("Failed to open %s: %v", path, err)
 		}

@@ -232,7 +232,7 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 
 		for _, pd := range c.PipelineDirs {
 			log.Debugf("trying to load pipeline %q from %q", uses, pd)
-			data, err = os.ReadFile(filepath.Join(pd, uses+".yaml"))
+			data, err = os.ReadFile(filepath.Join(pd, uses+".yaml")) // #nosec G304 - Loading pipeline definition from configured directory
 			if err == nil {
 				log.Debugf("Found pipeline %s", string(data))
 				break
@@ -400,7 +400,9 @@ func maybeIncludeSyntaxError(runs string, err error) error {
 		return err
 	}
 
-	padding := len("> ") + int(perr.Pos.Col())
+	// perr.Pos.Col() returns uint, convert to int for padding calculation
+	// Column numbers are small in practice, so this conversion is safe
+	padding := len("> ") + int(perr.Pos.Col()) // #nosec G115 - column numbers are always small
 
 	// For example...
 	// 14:13: not a valid test operator: -m

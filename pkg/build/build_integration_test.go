@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package build
 
@@ -16,9 +15,10 @@ import (
 	"testing"
 
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"github.com/google/go-cmp/cmp"
+
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/container/docker"
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestBuild_BuildPackage(t *testing.T) {

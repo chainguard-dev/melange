@@ -58,14 +58,6 @@ import (
 // concurrent builds on giant machines, and uses only 1 core on tiny machines.
 var pgzipThreads = min(runtime.GOMAXPROCS(0), 8)
 
-func min(l, r int) int {
-	if l < r {
-		return l
-	}
-
-	return r
-}
-
 type PackageBuild struct {
 	Build         *Build
 	Origin        *config.Package
@@ -125,7 +117,7 @@ func (pc *PackageBuild) AppendBuildLog(dir string) error {
 		return nil
 	}
 
-	f, err := os.OpenFile(filepath.Join(dir, "packages.log"),
+	f, err := os.OpenFile(filepath.Join(dir, "packages.log"), // #nosec G304 - Writing to build output directory
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err

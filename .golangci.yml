@@ -11,6 +11,7 @@ linters:
     - gosec
     - importas
     - misspell
+    - modernize
     - prealloc
     - staticcheck
     - tparallel
@@ -28,7 +29,8 @@ linters:
       template-path: header.tmpl
     gosec:
       excludes:
-        - G115
+        - G115  # Integer overflow conversions - handled where needed
+        - G301  # Directory permissions (0o755) - directories may be accessed by non-melange users/processes in CI/CD environments
   exclusions:
     generated: lax
     presets:
@@ -51,6 +53,7 @@ issues:
 formatters:
   enable:
     - gofmt
+    - gofumpt
     - goimports
   settings:
     goimports:

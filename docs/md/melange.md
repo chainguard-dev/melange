@@ -33,6 +33,7 @@ toc: true
 * [melange scan](/docs/md/melange_scan.md)	 - Scan an existing APK to regenerate .PKGINFO
 * [melange sign](/docs/md/melange_sign.md)	 - Sign an APK package
 * [melange sign-index](/docs/md/melange_sign-index.md)	 - Sign an APK index
+* [melange source](/docs/md/melange_source.md)	 - Manage melange source code
 * [melange test](/docs/md/melange_test.md)	 - Test a package with a YAML configuration file
 * [melange update-cache](/docs/md/melange_update-cache.md)	 - Update a source artifact cache
 * [melange version](/docs/md/melange_version.md)	 - Prints the version

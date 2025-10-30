@@ -15,6 +15,7 @@
 package container
 
 import (
+	"crypto/ed25519"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -46,27 +47,32 @@ type Capabilities struct {
 }
 
 type Config struct {
-	PackageName           string
-	Mounts                []BindMount
-	Capabilities          Capabilities
-	Environment           map[string]string
-	ImgRef                string
-	PodID                 string
-	Arch                  apko_types.Architecture
-	RunAsUID              string
-	RunAs                 string
-	WorkspaceDir          string
-	CacheDir              string
-	CPU, CPUModel, Memory string
-	SSHKey                ssh.Signer
-	SSHAddress            string // SSH address for the build / chrooted environment
-	SSHControlAddress     string // SSH address for the control / management environment
-	SSHHostKey            string
-	Disk                  string
-	Timeout               time.Duration
-	SSHBuildClient        *ssh.Client // SSH client for the build environment, may not have privileges
-	SSHControlBuildClient *ssh.Client // SSH client for control operations in the build environment, has privileges
-	SSHControlClient      *ssh.Client // SSH client for unrestricted control environment, has privileges
-	QemuPID               int
-	RunAsGID              string
+	PackageName              string
+	Mounts                   []BindMount
+	Capabilities             Capabilities
+	Environment              map[string]string
+	ImgRef                   string
+	PodID                    string
+	Arch                     apko_types.Architecture
+	RunAsUID                 string
+	RunAs                    string
+	WorkspaceDir             string
+	CacheDir                 string
+	CPU, CPUModel, Memory    string
+	SSHKey                   ssh.Signer
+	SSHAddress               string             // SSH address for the build / chrooted environment
+	SSHControlAddress        string             // SSH address for the control / management environment
+	SSHHostKey               string             // Path to known_hosts file containing the VM's host key
+	VMHostKeySigner          ssh.Signer         // VM's SSH host key (private signer)
+	VMHostKeyPublic          ssh.PublicKey      // VM's SSH host key (public) - for verification
+	VMHostKeyPrivateKeyBytes []byte             // VM's SSH host key (raw private key bytes) - for injection
+	VMHostKeyPrivate         ed25519.PrivateKey // VM's SSH host key (raw private key) - for explicit zeroing
+	InitramfsPath            string             // Path to temp initramfs file (contains sensitive key material)
+	Disk                     string
+	Timeout                  time.Duration
+	SSHBuildClient           *ssh.Client // SSH client for the build environment, may not have privileges
+	SSHControlBuildClient    *ssh.Client // SSH client for control operations in the build environment, has privileges
+	SSHControlClient         *ssh.Client // SSH client for unrestricted control environment, has privileges
+	QemuPID                  int
+	RunAsGID                 string
 }

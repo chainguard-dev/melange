@@ -104,6 +104,9 @@ jobs:
           sudo chmod a+x /usr/bin/melange
           melange version
 
+      # needed to run tests for Bubblewrap packages
+      - uses: docker/setup-docker-action@3fb92d6d9c634363128c8cce4bc3b2826526370a # v4.4.0
+
       # this need to point to main to always get the latest action
       - uses: wolfi-dev/actions/install-wolfictl@main # main
 
@@ -122,6 +125,9 @@ jobs:
       - if: matrix.runner == 'bubblewrap'
         run: |
           make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/${{ matrix.package }}
+      - if: matrix.runner == 'bubblewrap'
+        run: |
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="docker" test/${{ matrix.package }}
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'

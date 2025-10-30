@@ -20,13 +20,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	_ "embed"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"os"
 	"os/exec"
@@ -48,6 +51,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/kballard/go-shellquote"
+	"github.com/u-root/u-root/pkg/cpio"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -384,6 +388,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer os.Remove(cfg.ImgRef)
 	defer os.Remove(cfg.Disk)
 	defer os.Remove(cfg.SSHHostKey)
+	defer secureDelete(ctx, cfg.InitramfsPath)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -575,6 +580,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// Generate VM host key for pre-provisioned, secure host key verification
+	err = generateVMHostKey(ctx, cfg)
+	if err != nil {
+		return err
+	}
+
 	baseargs := []string{}
 	bios := false
 	useVM := false
@@ -740,6 +751,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// Store initramfs path for cleanup
+	cfg.InitramfsPath = initramFile
+
+	defer func() {
+		if cfg.InitramfsPath != "" {
+			secureDelete(ctx, cfg.InitramfsPath)
+		}
+	}()
+
 	baseargs = append(baseargs, "-kernel", kernelPath)
 	baseargs = append(baseargs, "-initrd", initramFile)
 
@@ -850,6 +870,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	select {
 	case <-started:
 		log.Info("qemu: VM started successfully, SSH server is up")
+		secureDelete(ctx, cfg.InitramfsPath)
+		cfg.InitramfsPath = ""
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
@@ -869,6 +891,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		return fmt.Errorf("qemu: could not setup SSH client")
 	}
+
+	// Zero out sensitive private key material now that all SSH connections are established
+	// The public key is retained for verification in setupSSHClients
+	zeroSensitiveFields(ctx, cfg)
 
 	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
 	defer stdout.Close()
@@ -1132,7 +1158,7 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 	}
 
 	if _, err := os.Stat(diskPath); err != nil {
-		err = os.MkdirAll(diskPath, os.ModePerm)
+		err = os.MkdirAll(diskPath, 0o755)
 		if err != nil {
 			return "", err
 		}
@@ -1189,8 +1215,22 @@ func checkSSHServer(address string) error {
 	return fmt.Errorf("ssh: unknown connection error")
 }
 
+// getHostKey verifies the VM's SSH host key against the pre-provisioned key
 func getHostKey(ctx context.Context, cfg *Config) error {
-	var hostKey ssh.PublicKey
+	if cfg.VMHostKeyPublic == nil {
+		return fmt.Errorf("VM host key not pre-provisioned")
+	}
+
+	clog.FromContext(ctx).Info("qemu: verifying VM host key against pre-provisioned key")
+
+	// Validate this is a localhost connection
+	host, _, err := net.SplitHostPort(cfg.SSHAddress)
+	if err != nil {
+		return fmt.Errorf("invalid SSH address format: %w", err)
+	}
+	if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+		return fmt.Errorf("refusing SSH connection to non-localhost address: %s", host)
+	}
 
 	// default to root user, unless a different user is specified
 	user := "root"
@@ -1207,30 +1247,28 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 		Config: ssh.Config{
 			Ciphers: []string{"aes128-gcm@openssh.com"},
 		},
-		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			hostKey = key
-			return nil // Accept the host key for the purpose of retrieving it
-		},
+		HostKeyCallback: ssh.FixedHostKey(cfg.VMHostKeyPublic),
 	}
 
-	// Connect to the SSH server
 	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
-		return err
+		clog.FromContext(ctx).Errorf("Failed to verify and connect to VM: %s", err)
+		return fmt.Errorf("vm host key verification failed (possible security issue): %w", err)
 	}
 	defer client.Close()
 
-	// Write the host key to the known_hosts file
+	clog.FromContext(ctx).Info("qemu: VM host key successfully verified against pre-provisioned key")
+
+	// Write the verified host key to a known_hosts file for use by setupSSHClients
+	// which uses knownhosts.New() for subsequent connections
 	hostKeyLine := fmt.Sprintf("%s %s %s\n%s %s %s\n",
-		cfg.SSHAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
-		cfg.SSHControlAddress, hostKey.Type(), base64.StdEncoding.EncodeToString(hostKey.Marshal()),
+		cfg.SSHAddress, cfg.VMHostKeyPublic.Type(), base64.StdEncoding.EncodeToString(cfg.VMHostKeyPublic.Marshal()),
+		cfg.SSHControlAddress, cfg.VMHostKeyPublic.Type(), base64.StdEncoding.EncodeToString(cfg.VMHostKeyPublic.Marshal()),
 	)
-	clog.FromContext(ctx).Debugf("host-key: %s", hostKeyLine)
 
 	knownHost, err := os.CreateTemp("", "known_hosts_*")
 	if err != nil {
-		clog.FromContext(ctx).Errorf("host-key fetch - failed to create random known_hosts file: %v", err)
+		clog.FromContext(ctx).Errorf("host-key - failed to create known_hosts file: %v", err)
 		return err
 	}
 	defer knownHost.Close()
@@ -1239,9 +1277,11 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 
 	_, err = knownHost.Write([]byte(hostKeyLine))
 	if err != nil {
-		clog.FromContext(ctx).Errorf("host-key fetch - failed to write to known_hosts file: %v", err)
+		clog.FromContext(ctx).Errorf("host-key - failed to write to known_hosts file: %v", err)
 		return err
 	}
+
+	clog.FromContext(ctx).Debugf("qemu: host key written to %s for subsequent connections", cfg.SSHHostKey)
 	return nil
 }
 
@@ -1378,6 +1418,41 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
 
+// generateVMHostKey generates an SSH host key pair for the VM.
+func generateVMHostKey(ctx context.Context, cfg *Config) error {
+	clog.FromContext(ctx).Info("qemu: generating SSH host key for VM")
+
+	// Generate Ed25519 key (modern, secure, and fast)
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return fmt.Errorf("failed to generate VM host key: %w", err)
+	}
+
+	// Create SSH signer from the private key
+	signer, err := ssh.NewSignerFromKey(privateKey)
+	if err != nil {
+		return fmt.Errorf("failed to create signer from VM host key: %w", err)
+	}
+
+	// Marshal the private key in OpenSSH format for injection into initramfs
+	privateKeyPEM, err := ssh.MarshalPrivateKey(privateKey, "")
+	if err != nil {
+		return fmt.Errorf("failed to marshal VM host private key: %w", err)
+	}
+
+	// Store the signer, public key, raw private key, and marshaled private key
+	cfg.VMHostKeySigner = signer
+	cfg.VMHostKeyPublic = signer.PublicKey()
+	cfg.VMHostKeyPrivate = privateKey // Keep reference to raw key for explicit zeroing
+	cfg.VMHostKeyPrivateKeyBytes = pem.EncodeToMemory(privateKeyPEM)
+
+	clog.FromContext(ctx).Debugf("qemu: generated VM host key: %s %s",
+		cfg.VMHostKeyPublic.Type(),
+		base64.StdEncoding.EncodeToString(publicKey))
+
+	return nil
+}
+
 // Use binary values for all units
 const (
 	_  = iota
@@ -1495,7 +1570,10 @@ func getAvailableMemoryKB() int {
 		}
 
 		// use at most 50% of total ram, in kb
-		return int(memSize) / 2 / 1024
+		if memSize > 0 && memSize < int64(math.MaxInt) {
+			return int(memSize) / 2 / 1024
+		}
+		return mem
 	}
 
 	return mem
@@ -1511,6 +1589,87 @@ func randomPortN() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
+// zeroSensitiveFields zeros out sensitive cryptographic material from memory after it's no longer needed.
+func zeroSensitiveFields(ctx context.Context, cfg *Config) {
+	clog.FromContext(ctx).Debug("qemu: zeroing sensitive cryptographic material from memory")
+
+	if cfg.VMHostKeyPrivate != nil {
+		for i := range cfg.VMHostKeyPrivate {
+			cfg.VMHostKeyPrivate[i] = 0
+		}
+		cfg.VMHostKeyPrivate = nil
+	}
+
+	if cfg.VMHostKeyPrivateKeyBytes != nil {
+		for i := range cfg.VMHostKeyPrivateKeyBytes {
+			cfg.VMHostKeyPrivateKeyBytes[i] = 0
+		}
+		cfg.VMHostKeyPrivateKeyBytes = nil
+	}
+
+	cfg.VMHostKeySigner = nil
+
+	runtime.GC()
+
+	clog.FromContext(ctx).Debug("qemu: sensitive key material zeroed and GC triggered")
+}
+
+// secureDelete overwrites a file with random data before deleting it.
+func secureDelete(ctx context.Context, path string) {
+	if path == "" {
+		return
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			clog.FromContext(ctx).Debugf("secure delete: cannot stat %s: %v", path, err)
+		}
+		return
+	}
+
+	if err := os.Chmod(path, 0600); err != nil {
+		clog.FromContext(ctx).Debugf("secure delete: cannot make %s writable: %v", path, err)
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY, 0)
+	if err != nil {
+		clog.FromContext(ctx).Warnf("secure delete: cannot open %s for overwriting: %v", path, err)
+		os.Remove(path)
+		return
+	}
+	defer file.Close()
+
+	size := info.Size()
+	buf := make([]byte, 4096)
+	for written := int64(0); written < size; {
+		toWrite := min(int64(len(buf)), size-written)
+
+		if _, err := rand.Read(buf[:toWrite]); err != nil {
+			clog.FromContext(ctx).Warnf("secure delete: failed to generate random data: %v", err)
+			break
+		}
+
+		if _, err := file.Write(buf[:toWrite]); err != nil {
+			clog.FromContext(ctx).Warnf("secure delete: failed to overwrite %s: %v", path, err)
+			break
+		}
+
+		written += toWrite
+	}
+
+	if err := file.Sync(); err != nil {
+		clog.FromContext(ctx).Warnf("secure delete: failed to sync %s: %v", path, err)
+	}
+	file.Close()
+
+	if err := os.Remove(path); err != nil {
+		clog.FromContext(ctx).Warnf("secure delete: failed to remove %s: %v", path, err)
+	} else {
+		clog.FromContext(ctx).Debugf("secure delete: successfully deleted %s", path)
+	}
+}
+
 func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 	/*
 	 * we only build once, useful for local development, we
@@ -1523,21 +1682,32 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 
 	cacheDir = filepath.Join(cacheDir, "melange-cpio")
 
-	initramfs := filepath.Join(
+	baseInitramfs := filepath.Join(
 		cacheDir,
 		"melange-guest.initramfs.cpio")
-	initramfsInfo, err := os.Stat(initramfs)
+	initramfsInfo, err := os.Stat(baseInitramfs)
 
-	// if file is presend and less than 24h old, then we just reuse it
-	if err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour {
-		return initramfs, nil
+	// Check if we can use the cached base initramfs (less than 24h old)
+	useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
+
+	if !useCache {
+		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	clog.FromContext(ctx).Info("qemu: generating initramfs")
+	return injectHostKeyIntoCpio(ctx, cfg, baseInitramfs)
+}
 
-	err = os.MkdirAll(cacheDir, os.ModePerm)
+// generateBaseInitramfs creates the base initramfs with microvm-init.
+// This is cached for performance as it doesn't change often.
+func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string) error {
+	clog.FromContext(ctx).Info("qemu: generating base initramfs")
+
+	err := os.MkdirAll(cacheDir, 0o755)
 	if err != nil {
-		return "", fmt.Errorf("unable to dest directory: %w", err)
+		return fmt.Errorf("unable to create dest directory: %w", err)
 	}
 
 	spec := apko_types.ImageConfiguration{
@@ -1557,22 +1727,22 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 
 	tmpDir, err := os.MkdirTemp("", "melange-guest-*.initramfs")
 	if err != nil {
-		return "", fmt.Errorf("unable to create build context: %w", err)
+		return fmt.Errorf("unable to create build context: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
 	bc, err := apko_build.New(ctx, apkofs.DirFS(ctx, tmpDir, apkofs.WithCreateDir()), opts...)
 	if err != nil {
-		return "", fmt.Errorf("unable to create build context: %w", err)
+		return fmt.Errorf("unable to create build context: %w", err)
 	}
 
 	bc.Summarize(ctx)
 	if err := bc.BuildImage(ctx); err != nil {
-		return "", fmt.Errorf("unable to generate image: %w", err)
+		return fmt.Errorf("unable to generate image: %w", err)
 	}
 	layerTarGZ, layer, err := bc.ImageLayoutToLayer(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer os.Remove(layerTarGZ)
 
@@ -1587,23 +1757,93 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 			layer, err = injectKernelModules(ctx, layer, qemuModule)
 			if err != nil {
 				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
-				return "", err
+				return err
 			}
 		}
 	}
 
-	guestInitramfs, err := os.Create(initramfs)
+	guestInitramfs, err := os.Create(initramfsPath)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
-		return "", err
+		return err
 	}
+	defer guestInitramfs.Close()
 
 	if err := apko_cpio.FromLayer(layer, guestInitramfs); err != nil {
 		clog.FromContext(ctx).Errorf("failed to convert cpio initramfs: %v", err)
-		return "", err
+		return err
 	}
 
-	return guestInitramfs.Name(), nil
+	return nil
+}
+
+// injectHostKeyIntoCpio creates a new initramfs by concatenating the base
+// initramfs with a secondary cpio containing the VM's SSH host key.
+// This allows us to use cached base initramfs while injecting fresh keys each time.
+//
+// The file exists only briefly until QEMU reads it into memory, at which point it should be deleted.
+func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs string) (string, error) {
+	if cfg.VMHostKeySigner == nil || cfg.VMHostKeyPrivateKeyBytes == nil {
+		return "", fmt.Errorf("VM host key not generated")
+	}
+
+	clog.FromContext(ctx).Debug("qemu: injecting SSH host key into initramfs")
+
+	combinedInitramfs, err := os.CreateTemp("", "melange-initramfs-*.cpio")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp initramfs file: %w", err)
+	}
+	defer combinedInitramfs.Close()
+	initramfsPath := combinedInitramfs.Name()
+
+	success := false
+	defer func() {
+		if !success {
+			secureDelete(ctx, initramfsPath)
+		}
+	}()
+
+	baseFile, err := os.Open(baseInitramfs)
+	if err != nil {
+		return "", fmt.Errorf("failed to open base initramfs: %w", err)
+	}
+	defer baseFile.Close()
+
+	if _, err := io.Copy(combinedInitramfs, baseFile); err != nil {
+		return "", fmt.Errorf("failed to copy base initramfs: %w", err)
+	}
+
+	// Create u-root CPIO writer for appending additional files
+	cpioWriter := cpio.Newc.Writer(combinedInitramfs)
+
+	publicKeyBytes := ssh.MarshalAuthorizedKey(cfg.VMHostKeyPublic)
+
+	// Write the private key file with 0400 permissions (read-only, owner only)
+	privateKeyRecord := cpio.StaticFile("etc/ssh/ssh_host_ed25519_key", string(cfg.VMHostKeyPrivateKeyBytes), 0400)
+	if err := cpio.WriteRecordsAndDirs(cpioWriter, []cpio.Record{privateKeyRecord}); err != nil {
+		return "", fmt.Errorf("failed to write host private key: %w", err)
+	}
+
+	// Write the public key file with 0644 permissions (world-readable)
+	publicKeyRecord := cpio.StaticFile("etc/ssh/ssh_host_ed25519_key.pub", string(publicKeyBytes), 0644)
+	if err := cpio.WriteRecordsAndDirs(cpioWriter, []cpio.Record{publicKeyRecord}); err != nil {
+		return "", fmt.Errorf("failed to write host public key: %w", err)
+	}
+
+	// Write CPIO trailer to finalize the archive
+	if err := cpioWriter.WriteRecord(cpio.TrailerRecord); err != nil {
+		return "", fmt.Errorf("failed to finalize cpio: %w", err)
+	}
+
+	combinedInitramfs.Close()
+
+	if err := os.Chmod(initramfsPath, 0400); err != nil {
+		return "", fmt.Errorf("failed to set read-only permissions on initramfs: %w", err)
+	}
+
+	clog.FromContext(ctx).Debugf("qemu: created initramfs with injected host key at %s", initramfsPath)
+	success = true
+	return initramfsPath, nil
 }
 
 // in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)

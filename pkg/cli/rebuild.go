@@ -112,7 +112,7 @@ func rebuild() *cobra.Command {
 }
 
 func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Package, error) {
-	f, err := os.Open(fn)
+	f, err := os.Open(fn) // #nosec G304 - User-specified APK package for rebuild verification
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to open file %s: %w", fn, err)
 	}
@@ -188,7 +188,7 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 
 func diffAPKs(old, new string) error {
 	oldh, newh := sha256.New(), sha256.New()
-	oldf, err := os.Open(old)
+	oldf, err := os.Open(old) // #nosec G304 - User-specified APK package for comparison
 	if err != nil {
 		return fmt.Errorf("failed to open old APK %s: %w", old, err)
 	}
@@ -203,7 +203,7 @@ func diffAPKs(old, new string) error {
 		return fmt.Errorf("failed to create file map for old APK %s: %w", old, err)
 	}
 
-	newf, err := os.Open(new)
+	newf, err := os.Open(new) // #nosec G304 - User-specified APK package for comparison
 	if err != nil {
 		return fmt.Errorf("failed to open new APK %s: %w", new, err)
 	}

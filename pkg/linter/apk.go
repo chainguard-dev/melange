@@ -63,7 +63,7 @@ func LintAPK(ctx context.Context, path string, require, warn []string, outputDir
 		defer resp.Body.Close()
 		r = resp.Body
 	} else {
-		file, err := os.Open(path)
+		file, err := os.Open(path) // #nosec G304 - User-specified APK package for linting
 		if err != nil {
 			return fmt.Errorf("linting apk %q: %w", path, err)
 		}
@@ -115,10 +115,15 @@ func LintAPK(ctx context.Context, path string, require, warn []string, outputDir
 
 		// Create a synthetic config for JSON file naming
 		if cfg == nil && outputDir != "" {
+			// Ensure epoch is non-negative before conversion
+			epochUint := uint64(0)
+			if epoch > 0 {
+				epochUint = uint64(epoch)
+			}
 			cfg = &config.Configuration{
 				Package: config.Package{
 					Version: pkgver,
-					Epoch:   uint64(epoch),
+					Epoch:   epochUint,
 				},
 			}
 		}
@@ -127,7 +132,12 @@ func LintAPK(ctx context.Context, path string, require, warn []string, outputDir
 	// Construct full package name with version and epoch
 	fullPackageName := fmt.Sprintf("%s-%s-r%d", pkgname, pkgver, epoch)
 
-	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(uint64(exp.Size)))
+	// exp.Size is int but sizes should be non-negative
+	size := uint64(0)
+	if exp.Size > 0 {
+		size = uint64(exp.Size)
+	}
+	log.Infof("linting apk: %s (size: %s)", pkgname, humanize.Bytes(size))
 
 	// map of pkgname -> lint results
 	results := make(map[string]*types.PackageLintResults)

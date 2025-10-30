@@ -61,7 +61,6 @@ func NonLinuxLinter(_ context.Context, _ *config.Configuration, pkgname string, 
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

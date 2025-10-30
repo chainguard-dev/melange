@@ -309,13 +309,13 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 			}
 			continue
 		case tar.TypeReg:
-			f, err := os.OpenFile(fullname, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode().Perm())
+			f, err := os.OpenFile(fullname, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode().Perm()) // #nosec G304 - Extracting OCI image layer file
 			if err != nil {
 				return ref, fmt.Errorf("failed to create file %s: %w", fullname, err)
 			}
 			// #nosec G110 - Extracting trusted container image in controlled build environment
 			if _, err := io.Copy(f, tr); err != nil {
-				f.Close()
+				_ = f.Close() // Ignore error in error path
 				return ref, fmt.Errorf("failed to copy file %s: %w", fullname, err)
 			}
 
@@ -420,7 +420,9 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error {
 	clog.FromContext(ctx).Debugf("removing image path %s", ref)
 	if b.remove {
-		os.RemoveAll(b.guestDir)
+		if err := os.RemoveAll(b.guestDir); err != nil {
+			clog.FromContext(ctx).Warnf("failed to remove guest dir %s: %v", b.guestDir, err)
+		}
 	}
 	return os.RemoveAll(ref)
 }

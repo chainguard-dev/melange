@@ -57,7 +57,7 @@ func runPipelineStep(ctx context.Context, step config.Pipeline) error {
 // Function to extract the .melange.yaml from an apk package.
 func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 	// Open the tarball file, since that's what an apk package is.
-	file, err := os.Open(apkPath)
+	file, err := os.Open(apkPath) // #nosec G304 - User-specified APK source package
 	if err != nil {
 		return fmt.Errorf("failed to open apk package: %w", err)
 	}
@@ -85,7 +85,7 @@ func extractMelangeYamlFromTarball(apkPath, destDir string) error {
 			}
 
 			destFilePath := filepath.Join(destDir, ".melange.yaml")
-			destFile, err := os.Create(destFilePath)
+			destFile, err := os.Create(destFilePath) // #nosec G304 - Extracting melange config from APK
 			if err != nil {
 				return fmt.Errorf("failed to create destination file: %w", err)
 			}

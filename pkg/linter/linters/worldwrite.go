@@ -59,7 +59,6 @@ func WorldWriteableLinter(ctx context.Context, _ *config.Configuration, pkgname 
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

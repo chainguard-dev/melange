@@ -90,6 +90,25 @@
       "type": "object",
       "description": "Capabilities is the configuration for Linux capabilities for the runner."
     },
+    "Capability": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "add": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capability stores paths and an associated map of capabilities and justification to include in a package."
+    },
     "Checks": {
       "properties": {
         "disabled": {
@@ -171,7 +190,10 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "package"
+        "package",
+        "environment",
+        "capabilities",
+        "update"
       ],
       "description": "Configuration is the root melange configuration."
     },
@@ -211,7 +233,7 @@
         },
         "detection-override": {
           "type": "string",
-          "description": "Optional: The detected license that should be overriden, used in cases where the automation is wrong."
+          "description": "Optional: License override"
         }
       },
       "additionalProperties": false,
@@ -290,7 +312,7 @@
         },
         "tag-filter": {
           "type": "string",
-          "description": "Filter to apply when searching tags on a GitHub repository\nDeprecated: Use TagFilterPrefix instead"
+          "description": "Filter to apply when searching tags on a GitHub repository\n\nDeprecated: Use TagFilterPrefix instead"
         },
         "tag-filter-prefix": {
           "type": "string",
@@ -440,6 +462,12 @@
     "ImageContents": {
       "properties": {
         "build_repositories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "runtime_repositories": {
           "items": {
             "type": "string"
           },
@@ -627,6 +655,13 @@
           "$ref": "#/$defs/CPE",
           "description": "The CPE field values to be used for matching against NVD vulnerability\nrecords, if known."
         },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
+        },
         "timeout": {
           "type": "integer",
           "description": "Optional: The amount of time to allow this build to take before timing out."
@@ -641,7 +676,10 @@
       "required": [
         "name",
         "version",
-        "epoch"
+        "epoch",
+        "dependencies",
+        "checks",
+        "cpe"
       ]
     },
     "PackageOption": {
@@ -879,7 +917,10 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "trigger"
+      ]
     },
     "Subpackage": {
       "properties": {
@@ -932,12 +973,21 @@
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the subpackage."
+        },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "dependencies",
+        "checks"
       ]
     },
     "Test": {
@@ -957,6 +1007,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
+        "environment",
         "pipeline"
       ]
     },

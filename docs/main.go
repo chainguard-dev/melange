@@ -62,7 +62,7 @@ func main() {
 		return baseURL + strings.ToLower(base) + suffix
 	}
 
-	if err := os.MkdirAll(pathout, os.ModePerm); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(pathout, 0o755); err != nil && !os.IsExist(err) {
 		log.Fatalf("error creating directory %#v: %#v", pathout, err)
 	}
 

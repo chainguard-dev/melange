@@ -99,7 +99,7 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 
 // parseIndexWithoutSignature takes in an index file and returns the unsigned []byte representation of it
 func parseIndexWithoutSignature(_ context.Context, indexFile string) ([]byte, error) {
-	orig, err := os.Open(indexFile)
+	orig, err := os.Open(indexFile) // #nosec G304 - User-specified APK index file for signing
 	if err != nil {
 		return nil, err
 	}

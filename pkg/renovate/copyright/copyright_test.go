@@ -169,7 +169,7 @@ func TestCopyright_updateSimple(t *testing.T) {
 	input, err := os.ReadFile(src)
 	assert.NoError(t, err)
 
-	err = os.WriteFile(testFile, input, 0644)
+	err = os.WriteFile(testFile, input, 0o644)
 	assert.NoError(t, err)
 
 	rctx, err := renovate.New(renovate.WithConfig(testFile))

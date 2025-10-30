@@ -29,13 +29,13 @@ func modeToOctal(mode os.FileMode) string {
 	perm := uint64(mode.Perm())
 
 	if mode&os.ModeSetuid != 0 {
-		perm |= 04000
+		perm |= 0o4000
 	}
 	if mode&os.ModeSetgid != 0 {
-		perm |= 02000
+		perm |= 0o2000
 	}
 	if mode&os.ModeSticky != 0 {
-		perm |= 01000
+		perm |= 0o1000
 	}
 
 	return strconv.FormatUint(perm, 8)
@@ -85,7 +85,6 @@ func IsSetUIDOrGIDLinter(ctx context.Context, _ *config.Configuration, pkgname s
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

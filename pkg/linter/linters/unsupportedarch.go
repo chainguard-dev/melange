@@ -86,7 +86,6 @@ func UnsupportedArchLinter(_ context.Context, cfg *config.Configuration, pkgname
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

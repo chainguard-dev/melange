@@ -31,25 +31,25 @@ func GetPythonSitePackages(fsys fs.FS) (matches []string, err error) {
 	if err != nil {
 		// Shouldn't get here, per the Go docs.
 		err = fmt.Errorf("error checking for Python site directories: %w", err)
-		return
+		return matches, err
 	}
 
 	if len(pythondirs) == 0 {
 		// Nothing to do
-		return
+		return matches, err
 	} else if len(pythondirs) > 1 {
 		err = fmt.Errorf("more than one Python version detected: %d found", len(pythondirs))
-		return
+		return matches, err
 	}
 
 	matches, err = fs.Glob(fsys, filepath.Join(pythondirs[0], "site-packages", "*"))
 	if err != nil {
 		// Shouldn't get here as well.
 		err = fmt.Errorf("error checking for Python packages: %w", err)
-		return
+		return matches, err
 	}
 
-	return
+	return matches, err
 }
 
 func PythonDocsLinter(_ context.Context, _ *config.Configuration, _ string, fsys fs.FS) error {

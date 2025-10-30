@@ -113,7 +113,7 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 			defer resp.Body.Close()
 			r = resp.Body
 		} else {
-			f, err := os.Open(u)
+			f, err := os.Open(u) // #nosec G304 - User-specified APK or config file for scanning
 			if err != nil {
 				return err
 			}
@@ -208,7 +208,7 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 				}
 				r = resp.Body
 			} else {
-				f, err := os.Open(u)
+				f, err := os.Open(u) // #nosec G304 - User-specified APK or config file for scanning
 				if err != nil {
 					return err
 				}
@@ -306,10 +306,14 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 				diff := Diff(old, b, file, generated, sc.comments)
 				if diff != nil {
 					sawDiff = true
-					os.Stdout.Write(diff)
+					if _, err := os.Stdout.Write(diff); err != nil {
+						return fmt.Errorf("failed to write diff: %w", err)
+					}
 				}
 			} else if sc.pkg == "" || sc.pkg == subpkg.Name {
-				os.Stdout.Write(generated)
+				if _, err := os.Stdout.Write(generated); err != nil {
+					return fmt.Errorf("failed to write output: %w", err)
+				}
 			}
 		}
 
@@ -334,10 +338,14 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 			diff := Diff(old, b, file, generated, sc.comments)
 			if diff != nil {
 				sawDiff = true
-				os.Stdout.Write(diff)
+				if _, err := os.Stdout.Write(diff); err != nil {
+					return fmt.Errorf("failed to write diff: %w", err)
+				}
 			}
 		} else if sc.pkg == "" || sc.pkg == pkg.Name {
-			os.Stdout.Write(generated)
+			if _, err := os.Stdout.Write(generated); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
 		}
 	}
 

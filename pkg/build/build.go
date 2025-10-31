@@ -762,6 +762,20 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 			}
+
+			// Populate SBOM data for the subpackage.
+			for i, p := range sp.Pipeline {
+				uniqueID := strconv.Itoa(i)
+				pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
+				if err != nil {
+					return fmt.Errorf("creating SBOM package for upstream source: %w", err)
+				}
+				if pkg == nil {
+					// This particular pipeline step doesn't tell us about the upstream source code.
+					continue
+				}
+				b.SBOMGroup.Document(sp.Name).AddUpstreamSourcePackage(pkg)
+			}
 		}
 
 		// add the subpackage to the linter queue

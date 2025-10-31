@@ -10,6 +10,7 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/chainguard-dev/clog"
+	"github.com/spdx/tools-golang/spdx/v2/common"
 	"sigs.k8s.io/release-utils/version"
 )
 
@@ -141,4 +142,9 @@ func (d *Document) AddRelationship(a, b Element, typ string) {
 		Related: b.ID(),
 		Type:    typ,
 	})
+}
+
+func (d *Document) AddUpstreamSourcePackage(p *Package) {
+	d.AddPackage(p)
+	d.AddRelationship(d.Describes, p, common.TypeRelationshipGeneratedFrom)
 }

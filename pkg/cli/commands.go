@@ -62,6 +62,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(packageVersion())
 	cmd.AddCommand(query())
 	cmd.AddCommand(scan())
+	cmd.AddCommand(scanTar())
 	cmd.AddCommand(signCmd())
 	cmd.AddCommand(signIndex())
 	cmd.AddCommand(test())

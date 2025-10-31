@@ -17,6 +17,7 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"github.com/chainguard-dev/clog"
+	"github.com/jonjohnsonjr/targz/tarfs"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 
@@ -75,6 +77,18 @@ func scan() *cobra.Command {
 	cmd.Flags().StringVar(&sc.purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 
 	return cmd
+}
+
+func scanTar() *cobra.Command {
+	return &cobra.Command{
+		Use:     "scan-tar",
+		Short:   "Scan a tar stream from stdin and analyze dependencies",
+		Example: `docker export container_id | melange scan-tar --name mypackage --version 1.0.0`,
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return scanTarCmd(cmd.Context())
+		},
+	}
 }
 
 // TODO: It would be cool if there was a way this could take just a directory.
@@ -355,6 +369,148 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 
 	return nil
 }
+
+// scanTarCmd processes a tar stream from stdin and analyzes it for dependencies
+func scanTarCmd(ctx context.Context) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "scan-tar")
+	defer span.End()
+
+	log := clog.FromContext(ctx)
+
+	// Create temporary file to store the tar stream
+	// This is necessary because apko's tarfs requires io.ReaderAt (random access)
+	tmpFile, err := os.CreateTemp("", "melange-scan-*.tar")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	log.Infof("Reading tar stream from stdin...")
+
+	// Try to detect gzip magic bytes
+	var reader io.Reader
+	peekReader := bufio.NewReader(os.Stdin)
+	peek, err := peekReader.Peek(2)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("peek stdin: %w", err)
+	}
+
+	// Check for gzip magic bytes (1f 8b)
+	if len(peek) >= 2 && peek[0] == 0x1f && peek[1] == 0x8b {
+		log.Infof("Detected gzip-compressed tar stream")
+		gzReader, err := gzip.NewReader(peekReader)
+		if err != nil {
+			return fmt.Errorf("create gzip reader: %w", err)
+		}
+		defer gzReader.Close()
+		reader = gzReader
+	} else {
+		reader = peekReader
+	}
+
+	// Copy the tar stream to temporary file
+	written, err := io.Copy(tmpFile, reader)
+	if err != nil {
+		return fmt.Errorf("copy tar stream: %w", err)
+	}
+
+	log.Infof("Wrote %d bytes to temporary file", written)
+
+	if written == 0 {
+		return fmt.Errorf("no data received from stdin")
+	}
+
+	// Seek back to beginning for reading
+	if _, err := tmpFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek temp file: %w", err)
+	}
+
+	// Create our custom TarSCAHandle
+	tarHandle, err := newTarSCAHandle(tmpFile)
+	if err != nil {
+		return fmt.Errorf("create tar SCA handle: %w", err)
+	}
+
+	// Run SCA analysis
+	generated := &config.Dependencies{}
+	if err := sca.Analyze(ctx, tarHandle, generated); err != nil {
+		return fmt.Errorf("SCA analysis: %w", err)
+	}
+
+	// For tar scanning, remove versions from command provides since commands
+	// don't have meaningful separate versions from the container
+	for i, provide := range generated.Provides {
+		if strings.HasPrefix(provide, "cmd:") {
+			if idx := strings.Index(provide, "="); idx != -1 {
+				generated.Provides[i] = provide[:idx]
+			}
+		}
+	}
+
+	// Output results in the same format as regular scan
+	log.Infof("Analysis complete. Found %d runtime deps, %d provides, %d vendored",
+		len(generated.Runtime), len(generated.Provides), len(generated.Vendored))
+
+	// Create a minimal PackageBuild for output formatting
+	pkg := &config.Package{}
+
+	bb := &build.Build{
+		Configuration: &config.Configuration{
+			Package: *pkg,
+		},
+	}
+
+	pb := &build.PackageBuild{
+		Build:        bb,
+		Origin:       pkg,
+		Dependencies: *generated,
+	}
+
+	var buf bytes.Buffer
+	if err := pb.GenerateControlData(&buf); err != nil {
+		return fmt.Errorf("generate control data: %w", err)
+	}
+
+	os.Stdout.Write(buf.Bytes())
+	return nil
+}
+
+// TarSCAHandle implements sca.SCAHandle for tar files
+type TarSCAHandle struct {
+	tarFile *os.File
+	tarFS   *tarfs.FS
+}
+
+// newTarSCAHandle creates a new TarSCAHandle from a tar file
+func newTarSCAHandle(tarFile *os.File) (*TarSCAHandle, error) {
+	// Get file info to determine size
+	stat, err := tarFile.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat tar file: %w", err)
+	}
+
+	// Create tarfs filesystem
+	fs, err := tarfs.New(tarFile, stat.Size())
+	if err != nil {
+		return nil, fmt.Errorf("create tar filesystem: %w", err)
+	}
+
+	return &TarSCAHandle{
+		tarFile: tarFile,
+		tarFS:   fs,
+	}, nil
+}
+
+func (t *TarSCAHandle) PackageName() string                                     { return "" }
+func (t *TarSCAHandle) RelativeNames() []string                                 { return []string{} }
+func (t *TarSCAHandle) Version() string                                         { return "" }
+func (t *TarSCAHandle) FilesystemForRelative(pkgName string) (sca.SCAFS, error) { return t.tarFS, nil }
+func (t *TarSCAHandle) Filesystem() (sca.SCAFS, error)                          { return t.tarFS, nil }
+func (t *TarSCAHandle) Options() config.PackageOption                           { return config.PackageOption{} }
+func (t *TarSCAHandle) BaseDependencies() config.Dependencies                   { return config.Dependencies{} }
+func (t *TarSCAHandle) InstalledPackages() map[string]string                    { return map[string]string{} }
+func (t *TarSCAHandle) PkgResolver() *apk.PkgResolver                           { return nil }
 
 type pkginfo struct {
 	pkgname   string

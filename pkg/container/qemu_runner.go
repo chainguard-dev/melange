@@ -707,6 +707,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-cpu", "host")
 	}
 
+	cmdlineVar, ok := os.LookupEnv("QEMU_KERNEL_CMDLINE")
+	if ok {
+		clog.FromContext(ctx).Infof("qemu: QEMU_KERNEL_CMDLINE set to: %s", cmdlineVar)
+	} else {
+		cmdlineVar = ""
+	}
+
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise
 	baseargs = append(baseargs, "-display", "none")
@@ -727,7 +734,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
 
 	// Build kernel command line arguments
-	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on panic=-1 sshkey=" + sshkey + " melange_qemu_runner=1"
+	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on panic=-1 " + cmdlineVar + " sshkey=" + sshkey + " melange_qemu_runner=1"
 
 	// Check for TESTING environment variable and pass it to microvm-init
 	// TESTING must be a number (0 for disabled, non-zero for enabled)

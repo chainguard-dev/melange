@@ -24,6 +24,7 @@ toc: true
 * [melange bump](/docs/md/melange_bump.md)	 - Update a Melange YAML file to reflect a new package version
 * [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
 * [melange completion](/docs/md/melange_completion.md)	 - Generate completion script
+* [melange fetch-source](/docs/md/melange_fetch-source.md)	 - Download package source code
 * [melange index](/docs/md/melange_index.md)	 - Creates a repository index from a list of package files
 * [melange keygen](/docs/md/melange_keygen.md)	 - Generate a key for package signing
 * [melange license-check](/docs/md/melange_license-check.md)	 - Gather and check licensing data

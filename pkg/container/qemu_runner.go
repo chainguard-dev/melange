@@ -699,6 +699,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-cpu", "host")
 	}
 
+	cmdlineVar, ok := os.LookupEnv("QEMU_KERNEL_CMDLINE")
+	if ok {
+		clog.FromContext(ctx).Infof("qemu: QEMU_KERNEL_CMDLINE set to: %s", cmdlineVar)
+	} else {
+		cmdlineVar = ""
+	}
+
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise
 	baseargs = append(baseargs, "-display", "none")
@@ -717,7 +724,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset random.trust_cpu=on panic=-1 sshkey="+sshkey+" melange_qemu_runner=1")
+	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset random.trust_cpu=on panic=-1 "+cmdlineVar+" sshkey="+sshkey+" melange_qemu_runner=1 ")
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.

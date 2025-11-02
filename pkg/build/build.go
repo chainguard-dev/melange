@@ -1291,6 +1291,10 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 				continue
 			}
 			attrName := strings.TrimPrefix(k, "SCHILY.xattr.")
+			// XFS specific priviledged copies of posix. xattrs
+			if strings.HasPrefix(attrName, "trusted.") {
+				continue
+			}
 			fmt.Println("setting xattr", attrName, "on", hdr.Name)
 			if err := fs.SetXattr(hdr.Name, attrName, []byte(v)); err != nil {
 				return fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
@@ -1334,6 +1338,8 @@ var xattrIgnoreList = map[string]bool{
 	"security.csm":                  true,
 	"security.selinux":              true,
 	"com.docker.grpcfuse.ownership": true,
+	"trusted.SGI_ACL_FILE":          true,
+	"trusted.SGI_ACL_DEFAULT":       true,
 }
 
 // Record on-disk metadata set during package builds in order to apply them in the new in-memory filesystem

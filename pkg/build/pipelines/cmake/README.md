@@ -14,6 +14,7 @@ Build a CMake project
 
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
+| opts | false | Compile options for the CMake build.  |  |
 | output-dir | false | The output directory for the CMake build.  | output |
 
 ## cmake/configure

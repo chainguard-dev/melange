@@ -25,11 +25,14 @@ package:
 update:
   enabled: true # provide a flag to easily prevent a package from receiving auto update PRs
   manual: true # indicates that this package should be manually updated, usually taking care over special version numbers which can be hard to automate
-  shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+  shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java 
+  require-sequential: true # Default: false - indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
   release-monitor:
     identifier: 38 # Mandatory, ID number for release monitor
     strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
     strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
+    version-filter-prefix: v17.2 # Optional, filter to apply when searching versions with a prefix
+    version-filter-contains: foo # Optional, filter to apply when searching versions with any match
 ```
 
 ## GitHub
@@ -48,12 +51,15 @@ update:
   enabled: true # provide a flag to easily toggle a package from receiving auto update PRs
   manual: true # indicates that this package should be manually updated, usually taking care over special version numbers which can be hard to automate
   shared: false # indicate that an update to this package requires an epoch bump of downstream dependencies, e.g. golang, java
+  require-sequential: true # Default: false - indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
   github: # alternative today is `release_monitor:`
     identifier: sigstore/cosign # Mandatory, org/repo for github
     strip-prefix: v # Optional, if the version obtained from the update service contains a prefix which should be ignored
     strip-suffix: ignore_me # Optional, if the version obtained from the update service contains a suffix which should be ignored
     use-tag: true # Optional, override the default of using a GitHub release to identify related tag to fetch.  Not all projects use GitHub releases but just use tags
-    tag-filter: foo # Optional, filter to apply when searching tags on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
+    tag-filter: foo # Deprecated: Use tag-filter-prefix instead
+    tag-filter-prefix: v17.2 # Optional, filter to apply when searching tags with a prefix on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
+    tag-filter-contains: foo # Optional, filter to apply when searching tags with any match on a GitHub repository, some repos maintain a mixture of tags for different major versions for example
 ```
 
 ## Git
@@ -79,6 +85,8 @@ update:
   git:
     tag-filter-prefix: v17.2
     strip-prefix: v
+    strip-suffix: ignore_me
+    tag-filter-contains: foo
   schedule:
     period: daily
     reason: upstream project does not support tags or releases

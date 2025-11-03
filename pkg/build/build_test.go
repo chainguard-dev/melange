@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...interface{}) {
+var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...any) {
 	require.ErrorAs(t, err, &config.ErrInvalidConfiguration{})
 }
 
@@ -208,8 +208,8 @@ func TestConfiguration_Load(t *testing.T) {
 						"GOPATH":     "/var/cache/melange/go",
 					},
 					Accounts: apko_types.ImageAccounts{
-						Users:  []apko_types.User{{UserName: "build", UID: 1000, GID: 1000}},
-						Groups: []apko_types.Group{{GroupName: "build", GID: 1000, Members: []string{"build"}}},
+						Users:  []apko_types.User{{UserName: buildUser, UID: 1000, GID: apko_types.GID(&gid1000)}},
+						Groups: []apko_types.Group{{GroupName: buildUser, GID: 1000, Members: []string{buildUser}}},
 					},
 				},
 				Subpackages: []config.Subpackage{},
@@ -282,15 +282,16 @@ package:
 		},
 		Subpackages: []config.Subpackage{},
 	}
+	gid1000 := uint32(1000)
 	expected.Environment.Accounts.Users = []apko_types.User{{
-		UserName: "build",
+		UserName: buildUser,
 		UID:      1000,
-		GID:      1000,
+		GID:      apko_types.GID(&gid1000),
 	}}
 	expected.Environment.Accounts.Groups = []apko_types.Group{{
-		GroupName: "build",
+		GroupName: buildUser,
 		GID:       1000,
-		Members:   []string{"build"},
+		Members:   []string{buildUser},
 	}}
 	expected.Environment.Environment = map[string]string{
 		"HOME":       "/home/build",
@@ -299,7 +300,7 @@ package:
 	}
 
 	f := filepath.Join(t.TempDir(), "config")
-	if err := os.WriteFile(f, []byte(contents), 0755); err != nil {
+	if err := os.WriteFile(f, []byte(contents), 0o755); err != nil {
 		t.Fatal(err)
 	}
 

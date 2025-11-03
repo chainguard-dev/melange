@@ -1,10 +1,6 @@
 package bump
 
 import (
-	"chainguard.dev/melange/pkg/config"
-	"github.com/chainguard-dev/clog/slogtest"
-	"github.com/stretchr/testify/require"
-
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,8 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"chainguard.dev/melange/pkg/renovate"
+	"github.com/chainguard-dev/clog/slogtest"
+	"github.com/stretchr/testify/require"
+
+	"chainguard.dev/melange/pkg/config"
+
 	"github.com/stretchr/testify/assert"
+
+	"chainguard.dev/melange/pkg/renovate"
 )
 
 func TestBump_versions(t *testing.T) {
@@ -24,14 +26,14 @@ func TestBump_versions(t *testing.T) {
 		newVersion      string
 		expectedVersion string
 	}{
-		{name: "float_issue.yaml", newVersion: "7.0.1", expectedVersion: "version: 7.0.1"},
-		{name: "quoted.yaml", newVersion: "7.0.1", expectedVersion: "version: 7.0.1"},
-		{name: "major_minor_patch.yaml", newVersion: "7.0.1", expectedVersion: "version: 7.0.1"},
+		{name: "float_issue.yaml", newVersion: "7.0.1", expectedVersion: `version: "7.0.1"`},
+		{name: "quoted.yaml", newVersion: "7.0.1", expectedVersion: `version: "7.0.1"`},
+		{name: "major_minor_patch.yaml", newVersion: "7.0.1", expectedVersion: `version: "7.0.1"`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := slogtest.Context(t)
-			err, server := setupTestServer(t)
+			server, err := setupTestServer(t)
 			assert.NoError(t, err)
 
 			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
@@ -41,7 +43,7 @@ func TestBump_versions(t *testing.T) {
 			melangConfig := strings.Replace(string(data), "REPLACE_ME", server.URL, 1)
 
 			// write the modified melange config to our working temp folder
-			err = os.WriteFile(filepath.Join(dir, tt.name), []byte(melangConfig), 0755)
+			err = os.WriteFile(filepath.Join(dir, tt.name), []byte(melangConfig), 0o755)
 			assert.NoError(t, err)
 
 			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
@@ -84,7 +86,7 @@ func TestBump_withExpectedCommit(t *testing.T) {
 			assert.NoError(t, err)
 
 			// write the modified melange config to our working temp folder
-			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0o755)
 			assert.NoError(t, err)
 
 			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
@@ -125,7 +127,7 @@ func TestBump_withExpectedCommitAndMangledVarsGitTag(t *testing.T) {
 			assert.NoError(t, err)
 
 			// write the modified melange config to our working temp folder
-			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0755)
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0o755)
 			assert.NoError(t, err)
 
 			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
@@ -156,7 +158,7 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// write the modified melange config to our working temp folder
-	err = os.WriteFile(filepath.Join(dir, filename), data, 0755)
+	err = os.WriteFile(filepath.Join(dir, filename), data, 0o755)
 	assert.NoError(t, err)
 
 	rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, filename)))
@@ -178,7 +180,7 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")
 }
 
-func setupTestServer(t *testing.T) (error, *httptest.Server) {
+func setupTestServer(t *testing.T) (*httptest.Server, error) {
 	packageData, err := os.ReadFile(filepath.Join("testdata", "cheese-7.0.1.tar.gz"))
 	assert.NoError(t, err)
 
@@ -191,5 +193,5 @@ func setupTestServer(t *testing.T) (error, *httptest.Server) {
 		_, err = rw.Write(packageData)
 		assert.NoError(t, err)
 	}))
-	return err, server
+	return server, err
 }

@@ -1,0 +1,100 @@
+name: Split shared library files
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  package:
+    description: |
+      The package to split shared library files from
+    required: false
+  patterns:
+    description: |
+      Optional newline-separated patterns to filter library files.
+      If provided, matches lib<pattern>.so.* for each pattern.
+      If not provided, matches all *.so.* files.
+      Example:
+        ssl
+        crypto
+      matches libssl.so.* and libcrypto.so.*
+    required: false
+  paths:
+    description: |
+      Optional newline-separated additional paths to search for shared libraries.
+      By default, searches lib/ and usr/lib/. This adds to those defaults.
+      Example:
+        usr/lib64
+        opt/lib
+      searches usr/lib64/ and opt/lib/ in addition to the defaults
+    required: false
+
+pipeline:
+  - runs: |
+      PACKAGE_DIR="${{targets.destdir}}"
+      if [ -n "${{inputs.package}}" ]; then
+        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
+      fi
+
+      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!" && exit 1
+      fi
+
+      cd "$PACKAGE_DIR" || exit 0
+
+      # Build the find patterns (newline-separated)
+      if [ -n "${{inputs.patterns}}" ]; then
+        PATTERNS="${{inputs.patterns}}"
+      else
+        PATTERNS="*"
+      fi
+
+      # Check default library directories
+      libdirs=""
+      [ -d lib/ ] && libdirs="lib/"
+      [ -d usr/lib/ ] && libdirs="$libdirs usr/lib/"
+
+      # Add custom paths if provided (newline-separated input)
+      if [ -n "${{inputs.paths}}" ]; then
+        # Convert newline-separated paths to space-separated and add to libdirs
+        custom_dirs=$(echo "${{inputs.paths}}" | while read -r custom_path; do
+          [ -z "$custom_path" ] && continue
+          [ -d "$custom_path" ] && echo -n "$custom_path "
+        done)
+        libdirs="$libdirs $custom_dirs"
+      fi
+
+      if [ -z "$libdirs" ]; then
+        echo "No library directories found in $PACKAGE_DIR"
+        exit 0
+      fi
+
+      # Find and move shared libraries matching the patterns
+      for libdir in $libdirs; do
+        echo "$PATTERNS" | while read -r pattern; do
+          [ -z "$pattern" ] && continue
+
+          if [ "$pattern" = "*" ]; then
+            MATCH_PATTERN="*.so.*"
+          else
+            MATCH_PATTERN="lib${pattern}.so.*"
+          fi
+
+          find "$libdir" -maxdepth 1 -name "$MATCH_PATTERN" \( -type f -o -type l \) 2>/dev/null | while read -r lib; do
+            if [ -e "$PACKAGE_DIR/$lib" ] || [ -h "$PACKAGE_DIR/$lib" ]; then
+              d="${{targets.contextdir}}/${lib%/*}"
+              mkdir -p "$d"
+              mv "$PACKAGE_DIR/$lib" "$d"
+              echo "Moved $lib to $d"
+            fi
+          done
+        done
+      done
+
+      # Only clean up directories if they are actually empty
+      # This is important since split might be used in multiple subpackages
+      for libdir in $libdirs; do
+        if [ -d "$PACKAGE_DIR/$libdir" ] && [ -z "$(ls -A "$PACKAGE_DIR/$libdir" 2>/dev/null)" ]; then
+          rmdir "$PACKAGE_DIR/$libdir" 2>/dev/null || :
+        fi
+      done

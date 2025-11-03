@@ -135,6 +135,23 @@ pipeline:
       cd ..
       rm -R branch-no-expected
 
+  - name: "branch with old expected"
+    working-directory: branch-old-expected
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      # 21cfbec is on the 1.x branch but is not current.
+      expected-commit: 21cfbec4b951b9a0ba0a3bd9365fbb4fe81fa78d
+
+  - name: "check branch with old expected"
+    working-directory: branch-old-expected
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 21cfbec4b951b9a0ba0a3bd9365fbb4fe81fa78d ]
+      cd ..
+      rm -R branch-old-expected
+
   # for an annotated tag you can point to either the commit
   # or the tag object hash object
   - name: "annotated hash"
@@ -189,3 +206,90 @@ pipeline:
       [ "$hash" != "$expected_hash" ]
       cd ..
       rm -R cherry-pick-test
+
+  # When ownership of files created inside and outside of the runner container do not
+  # match, if mode is restrictive on files like 0700 on the Melange workspace, if the git-checkout
+  # pipeline changes ownership on them, being that it runs inside the runner container, subsequent
+  # filesystem operations run outside of the runner fail because of missing permissions.
+  # This happens specifically with tar --extract without preserving ownership of existing files,
+  # like '.', which in case of the default input and standard usage of the pipeline, is the
+  # workspace directory.
+  # This results in subsequent operations like xattrs restore to fail as they are run outside of
+  # the runner container.
+  #
+  # Bubblewrap runner:
+  #   Since the user namespace is unshared and that the runner uid is mapped to the
+  #   uid of the user who runs Melange, ownership always match.
+  #   - Melange run by root -> runner user: root.
+  #     Owner of files created outside of the runner:
+  #       - host: root
+  #       - runner: root
+  #     Owner of files creted inside the runner:
+  #       - host: root
+  #       - runner: root
+  #   - Melange run by non-root -> runner user: build (1000 mapped to non-root).
+  #     Owner of files created outside of the runner:
+  #       - host: non-root
+  #       - runner: build (1000 -> host's non-root)
+  #     Owner of files creted inside the runner:
+  #       - host: non-root
+  #       - runner: build (1000 -> host's non-root)
+  #
+  # Docker runner:
+  #   Since the user namespace is shared, ownership between files created inside and
+  #   outside the runner, match only when the user who runs Melange is root.
+  #   - Melange run by root -> runner user: root.
+  #     Owner of files created outside of the runner:
+  #       - host: root
+  #       - runner: root
+  #     Owner of files creted inside the runner:
+  #       - host: root
+  #       - runner: root
+  #   - Melange run by non-root -> runner user: root.
+  #     Owner of files created outside of the runner:
+  #       - host: non-root
+  #       - runner: non-root
+  #     Owner of files creted inside the runner:
+  #       - host: root
+  #       - runner: root
+  #
+  # QEMU runner:
+  #   File ownership inside and outside of the runner VM always match.
+  #
+  - name: "check ownership of existing files"
+    runs: |
+      set -eu
+      runner_user=$(id -u)
+      melange_user=$(stat -c "%u" .)
+      expected_runner=""
+      expected_melange=""
+      if [[ $runner_user == $melange_user ]]; then
+        # Ownership of existing files match the ownership of files created within the runner
+        # (i.e. by the git-checkout pipeline tar --extract command).
+        expected_runner=48
+        expected_melange=2
+      else
+        # Ownership of existing files is not changed.
+        expected_runner=42
+        expected_melange=1
+      fi
+      exclude_args="! -regex ^\.\/\.ssh.*$ ! -regex ^./.gitconfig$"
+      found_runner=$(find . -user $runner_user $exclude_args | wc -l)
+      mismatch=""
+      if [[ $found_runner != $expected_runner ]]; then
+        echo "Expected $expected_runner files owned by the runner user $runner_user, found $found_runner"
+        find . -user $runner_user $exclude_args
+        echo "files owned by Melange user $melange_user:"
+        find . -user $melange_user $exclude_args
+        mismatch=true
+      fi
+      if [[ $melange_user != $runner_user ]]; then
+        found_melange=$(find . -user $melange_user $exclude_args | wc -l)
+        if [[ $found_runner != $expected_runner || $found_melange != $expected_melange ]]; then
+          echo "Expected $expected_melange files owned by $melange_user, found $found_melange"
+          find . -user $melange_user $exclude_args
+          mismatch=true
+        fi
+      fi
+      [[ $mismatch != "" ]] && exit 1
+

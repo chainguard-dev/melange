@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2023 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+#
+# This is a sample configuration file to demonstrate how to build a software
+# project using melange's built-in npm/install pipeline.
+package:
+  name: cowsay
+  version: 1.5.0
+  epoch: 0
+  description: "cowsay is a configurable talking cow, originally written in Perl by Tony Monroe"
+  checks:
+    disabled:
+      - usrlocal
+  dependencies:
+    runtime:
+      - nodejs
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+
+pipeline:
+  - uses: npm/install
+    with:
+      package: ${{package.name}}
+      version: ${{package.version}}
+      npm-package: pnpm
+      # TODO: pnpm with overrides seems to make the package non-reproducible
+      #overrides: |
+      #  yargs@^17.0.0       # If yargs had a CVE fixed in ^17.0.0
+      #  get-stdin@^9.0.0    # If get-stdin had a CVE fixed in ^9.0.0

@@ -26,17 +26,18 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/container"
-	"chainguard.dev/melange/pkg/container/dagger"
-	"chainguard.dev/melange/pkg/container/docker"
-	"chainguard.dev/melange/pkg/linter"
 	"github.com/chainguard-dev/clog"
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/container/docker"
+	"chainguard.dev/melange/pkg/linter"
 )
 
 const BuiltinPipelineDir = "/usr/share/melange/pipelines"
@@ -49,7 +50,6 @@ func buildCmd() *cobra.Command {
 	var cacheDir string
 	var cacheSource string
 	var apkCacheDir string
-	var guestDir string
 	var signingKey string
 	var generateIndex bool
 	var emptyWorkspace bool
@@ -59,23 +59,28 @@ func buildCmd() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var dependencyLog string
-	var overlayBinSh string
 	var envFile string
 	var varsFile string
 	var purlNamespace string
 	var buildOption []string
 	var createBuildLog bool
+	var persistLintResults bool
 	var debug bool
 	var debugRunner bool
 	var interactive bool
 	var remove bool
 	var runner string
-	var cpu, memory, disk string
+	var cpu, cpumodel, memory, disk string
 	var timeout time.Duration
 	var extraPackages []string
 	var libc string
 	var lintRequire, lintWarn []string
 	var ignoreSignatures bool
+	var cleanup bool
+	var configFileGitCommit string
+	var configFileGitRepoURL string
+	var configFileLicense string
+	var generateProvenance bool
 
 	var traceFile string
 
@@ -87,9 +92,15 @@ func buildCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			log := clog.FromContext(ctx)
+
+			var buildConfigFilePath string
+			if len(args) > 0 {
+				buildConfigFilePath = args[0] // e.g. "crane.yaml"
+			}
 
 			if traceFile != "" {
-				w, err := os.Create(traceFile)
+				w, err := os.Create(traceFile) // #nosec G304 - User-specified trace file output
 				if err != nil {
 					return fmt.Errorf("creating trace file: %w", err)
 				}
@@ -103,7 +114,7 @@ func buildCmd() *cobra.Command {
 
 				defer func() {
 					if err := tp.Shutdown(context.WithoutCancel(ctx)); err != nil {
-						clog.FromContext(ctx).Errorf("shutting down trace provider: %v", err)
+						log.Errorf("shutting down trace provider: %v", err)
 					}
 				}()
 
@@ -112,12 +123,32 @@ func buildCmd() *cobra.Command {
 				ctx = tctx
 			}
 
-			r, err := getRunner(ctx, runner)
+			r, err := getRunner(ctx, runner, remove)
 			if err != nil {
 				return err
 			}
 
+			// Favor explicit, user-provided information for the git provenance of the
+			// melange build definition. As a fallback, detect this from local git state.
+			// Git auto-detection should be "best effort" and not fail the build if it
+			// fails.
+			if configFileGitCommit == "" {
+				log.Debugf("git commit for build config not provided, attempting to detect automatically")
+				commit, err := detectGitHead(ctx, buildConfigFilePath)
+				if err != nil {
+					log.Warnf("unable to detect commit for build config file: %v", err)
+					configFileGitCommit = "unknown"
+				} else {
+					configFileGitCommit = commit
+				}
+			}
+			if configFileGitRepoURL == "" {
+				log.Warnf("git repository URL for build config not provided")
+				configFileGitRepoURL = "https://unknown/unknown/unknown"
+			}
+
 			archs := apko_types.ParseArchitectures(archstrs)
+			log.Infof("melange version %s with runner %s building %s at commit %s for arches %s", cmd.Version, r.Name(), buildConfigFilePath, configFileGitCommit, archs)
 			options := []build.Option{
 				build.WithBuildDate(buildDate),
 				build.WithWorkspaceDir(workspaceDir),
@@ -128,7 +159,6 @@ func buildCmd() *cobra.Command {
 				build.WithCacheDir(cacheDir),
 				build.WithCacheSource(cacheSource),
 				build.WithPackageCacheDir(apkCacheDir),
-				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
 				build.WithEmptyWorkspace(emptyWorkspace),
@@ -137,13 +167,13 @@ func buildCmd() *cobra.Command {
 				build.WithExtraRepos(extraRepos),
 				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
-				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
 				build.WithEnabledBuildOptions(buildOption),
 				build.WithCreateBuildLog(createBuildLog),
+				build.WithPersistLintResults(persistLintResults),
 				build.WithDebug(debug),
 				build.WithDebugRunner(debugRunner),
 				build.WithInteractive(interactive),
@@ -152,18 +182,23 @@ func buildCmd() *cobra.Command {
 				build.WithLintRequire(lintRequire),
 				build.WithLintWarn(lintWarn),
 				build.WithCPU(cpu),
+				build.WithCPUModel(cpumodel),
 				build.WithDisk(disk),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
 				build.WithLibcFlavorOverride(libc),
 				build.WithIgnoreSignatures(ignoreSignatures),
+				build.WithConfigFileRepositoryCommit(configFileGitCommit),
+				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
+				build.WithConfigFileLicense(configFileLicense),
+				build.WithGenerateProvenance(generateProvenance),
 			}
 
 			if len(args) > 0 {
-				options = append(options, build.WithConfig(args[0]))
+				options = append(options, build.WithConfig(buildConfigFilePath))
 
 				if sourceDir == "" {
-					sourceDir = filepath.Dir(args[0])
+					sourceDir = filepath.Dir(buildConfigFilePath)
 				}
 			}
 
@@ -193,7 +228,6 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
@@ -202,7 +236,6 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
-	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	cmd.Flags().StringVar(&libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")
@@ -212,11 +245,13 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	cmd.Flags().StringSliceVar(&extraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
 	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
+	cmd.Flags().BoolVar(&persistLintResults, "persist-lint-results", false, "persist lint results to JSON files in packages/{arch}/ directory")
 	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
 	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
+	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
+	cmd.Flags().StringVar(&cpumodel, "cpumodel", "", "default memory resources to use for builds")
 	cmd.Flags().StringVar(&disk, "disk", "", "disk size to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
@@ -224,6 +259,11 @@ func buildCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&lintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	cmd.Flags().StringSliceVar(&lintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	cmd.Flags().BoolVar(&cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
+	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
+	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
+	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
+	cmd.Flags().BoolVar(&generateProvenance, "generate-provenance", false, "generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)")
 
 	_ = cmd.Flags().Bool("fail-on-lint-warning", false, "DEPRECATED: DO NOT USE")
 	_ = cmd.Flags().MarkDeprecated("fail-on-lint-warning", "use --lint-require and --lint-warn instead")
@@ -231,17 +271,33 @@ func buildCmd() *cobra.Command {
 	return cmd
 }
 
-func getRunner(ctx context.Context, runner string) (container.Runner, error) {
+// Detect the git state from the build config file's parent directory.
+func detectGitHead(ctx context.Context, buildConfigFilePath string) (string, error) {
+	repoDir := filepath.Dir(buildConfigFilePath)
+	clog.FromContext(ctx).Debugf("detecting git state from %q", repoDir)
+
+	repo, err := git.PlainOpenWithOptions(repoDir, &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return "", fmt.Errorf("opening git repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("determining HEAD: %w", err)
+	}
+	commit := head.Hash().String()
+	return commit, nil
+}
+
+func getRunner(ctx context.Context, runner string, remove bool) (container.Runner, error) {
 	if runner != "" {
 		switch runner {
 		case "bubblewrap":
-			return container.BubblewrapRunner(), nil
+			return container.BubblewrapRunner(remove), nil
 		case "qemu":
 			return container.QemuRunner(), nil
 		case "docker":
 			return docker.NewRunner(ctx)
-		case "experimentaldagger":
-			return dagger.NewRunner(ctx)
 		default:
 			return nil, fmt.Errorf("unknown runner: %s", runner)
 		}
@@ -249,7 +305,7 @@ func getRunner(ctx context.Context, runner string) (container.Runner, error) {
 
 	switch runtime.GOOS {
 	case "linux":
-		return container.BubblewrapRunner(), nil
+		return container.BubblewrapRunner(remove), nil
 	case "darwin":
 		// darwin is the same as default, but we want to keep it explicit
 		fallthrough
@@ -275,7 +331,8 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Build{}
 	for _, arch := range archs {
-		opts := append(baseOpts, build.WithArch(arch))
+		opts := append([]build.Option{}, baseOpts...)
+		opts = append(opts, build.WithArch(arch))
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
@@ -284,6 +341,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		} else if err != nil {
 			return err
 		}
+
 		defer bc.Close(ctx)
 
 		bcs = append(bcs, bc)
@@ -302,8 +360,6 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	}
 
 	for _, bc := range bcs {
-		bc := bc
-
 		errg.Go(func() error {
 			lctx := ctx
 			if len(bcs) != 1 {

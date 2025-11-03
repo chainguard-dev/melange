@@ -55,9 +55,9 @@ func New() *cobra.Command {
 	cmd.AddCommand(bumpCmd())
 	cmd.AddCommand(completion())
 	cmd.AddCommand(compile())
-	cmd.AddCommand(convert())
 	cmd.AddCommand(indexCmd())
 	cmd.AddCommand(keygen())
+	cmd.AddCommand(licenseCheck())
 	cmd.AddCommand(lint())
 	cmd.AddCommand(packageVersion())
 	cmd.AddCommand(query())
@@ -67,6 +67,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(test())
 	cmd.AddCommand(updateCache())
 	cmd.AddCommand(version.Version())
+	cmd.AddCommand(rebuild())
 	return cmd
 }
 

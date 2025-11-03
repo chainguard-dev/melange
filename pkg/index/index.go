@@ -24,10 +24,11 @@ import (
 	"strings"
 
 	"chainguard.dev/apko/pkg/apk/apk"
-	sign "chainguard.dev/apko/pkg/apk/signature"
 	"github.com/chainguard-dev/clog"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/sign"
 )
 
 type Index struct {
@@ -122,7 +123,7 @@ func New(opts ...Option) (*Index, error) {
 
 func (idx *Index) LoadIndex(ctx context.Context, sourceFile string) error {
 	log := clog.FromContext(ctx)
-	f, err := os.Open(sourceFile)
+	f, err := os.Open(sourceFile) // #nosec G304 - User-specified APK index file
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -151,10 +152,9 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 	var g errgroup.Group
 	g.SetLimit(4)
 	for i, apkFile := range idx.PackageFiles {
-		i, apkFile := i, apkFile // capture the loop variables
 		g.Go(func() error {
 			log.Infof("processing package %s", apkFile)
-			f, err := os.Open(apkFile)
+			f, err := os.Open(apkFile) // #nosec G304 - User-specified APK package file
 			if err != nil {
 				return fmt.Errorf("failed to open package %s: %w", apkFile, err)
 			}
@@ -165,7 +165,12 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 				return err
 			}
 
-			pkg, err := apk.ParsePackage(ctx, f, uint64(stat.Size()))
+			// stat.Size() returns int64 but file sizes are always non-negative
+			size := uint64(0)
+			if stat.Size() > 0 {
+				size = uint64(stat.Size()) // #nosec G115 - file sizes are always positive
+			}
+			pkg, err := apk.ParsePackage(ctx, f, size)
 			if err != nil {
 				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
 			}
@@ -240,7 +245,7 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 	if err != nil {
 		return fmt.Errorf("failed to create archive from index object: %w", err)
 	}
-	outFile, err := os.Create(destinationFile)
+	outFile, err := os.Create(destinationFile) // #nosec G304 - Writing APK index to output directory
 	if err != nil {
 		return fmt.Errorf("failed to create archive file: %w", err)
 	}

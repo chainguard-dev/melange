@@ -16,57 +16,98 @@ package build
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
+	"text/template"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
-	"cloud.google.com/go/storage"
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/filesystem"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
-	"golang.org/x/exp/maps"
-	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
-	"k8s.io/kube-openapi/pkg/util/sets"
+	"golang.org/x/sys/unix"
+	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
+	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/linter"
 	"chainguard.dev/melange/pkg/sbom"
 )
 
+const melangeOutputDirName = "melange-out"
+
+var shellEmptyDir = []string{
+	"sh", "-c",
+	`d="$1";
+[ $# -eq 1 ] || { echo "must provide dir. got $# args."; exit 1; }
+cd "$d" || { echo "failed cd '$d'"; exit 1; }
+set --
+for e in * .*; do
+  [ "$e" = "." -o "$e" = ".." -o "$e" = "*" ] && continue
+  set -- "$@" "$e"
+done
+[ $# -gt 0 ] || { echo "nothing to cleanup. $d was empty."; exit 0; }
+echo "cleaning Workspace by removing $# file/directories in $d"
+rm -Rf "$@"`,
+	"shellEmptyDir",
+}
+
+var gccLinkTemplate = `*link:
++ --package-metadata={"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.Arch.ToAPK}}"}
+`
+
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
 type Build struct {
-	Configuration   config.Configuration
-	ConfigFile      string
+	Configuration *config.Configuration
+
+	// The name of the build configuration file, e.g. "crane.yaml".
+	ConfigFile string
+
+	// The URL of the git repository where the build configuration file is stored,
+	// e.g. "https://github.com/wolfi-dev/os".
+	ConfigFileRepositoryURL string
+
+	// The commit hash of the git repository corresponding to the current state of
+	// the build configuration file.
+	ConfigFileRepositoryCommit string
+
+	// The SPDX license string to use for the build configuration file.
+	ConfigFileLicense string
+
 	SourceDateEpoch time.Time
 	WorkspaceDir    string
+	WorkspaceDirFS  apkofs.FullFS
 	WorkspaceIgnore string
+	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs          []string
 	SourceDir             string
-	GuestDir              string
 	SigningKey            string
 	SigningPassphrase     string
 	Namespace             string
@@ -81,6 +122,7 @@ type Build struct {
 	DependencyLog         string
 	BinShOverlay          string
 	CreateBuildLog        bool
+	PersistLintResults    bool
 	CacheDir              string
 	ApkCacheDir           string
 	CacheSource           string
@@ -95,6 +137,7 @@ type Build struct {
 	Remove                bool
 	LintRequire, LintWarn []string
 	DefaultCPU            string
+	DefaultCPUModel       string
 	DefaultDisk           string
 	DefaultMemory         string
 	DefaultTimeout        time.Duration
@@ -103,8 +146,22 @@ type Build struct {
 
 	EnabledBuildOptions []string
 
-	// mutated by Compile
-	externalRefs []purl.PackageURL
+	// Initialized in New and mutated throughout the build process as we gain
+	// visibility into our packages' (including subpackages') composition. This is
+	// how we get "build-time" SBOMs!
+	SBOMGroup *SBOMGroup
+
+	Start time.Time
+	End   time.Time
+
+	// Opt-in SLSA provenance generation for initial rollout/testing
+	GenerateProvenance bool
+
+	// The package resolver associated with this build.
+	//
+	// This is only applicable when there's a build context.  It
+	// is filled by buildGuest.
+	PkgResolver *apk.PkgResolver
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {
@@ -114,6 +171,8 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		OutDir:          ".",
 		CacheDir:        "./melange-cache/",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
+		GuestFS:         tarfs.New(),
+		Start:           time.Now(),
 	}
 
 	for _, opt := range opts {
@@ -164,27 +223,40 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.ConfigFile == "" {
 		return nil, fmt.Errorf("melange.yaml is missing")
 	}
-
-	parsedCfg, err := config.ParseConfiguration(ctx,
-		b.ConfigFile,
-		config.WithEnvFileForParsing(b.EnvFile),
-		config.WithVarsFileForParsing(b.VarsFile),
-		config.WithDefaultCPU(b.DefaultCPU),
-		config.WithDefaultDisk(b.DefaultDisk),
-		config.WithDefaultMemory(b.DefaultMemory),
-		config.WithDefaultTimeout(b.DefaultTimeout),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	if b.ConfigFileRepositoryURL == "" {
+		return nil, fmt.Errorf("config file repository URL was not set")
+	}
+	if b.ConfigFileRepositoryCommit == "" {
+		return nil, fmt.Errorf("config file repository commit was not set")
 	}
 
-	b.Configuration = *parsedCfg
+	if b.Configuration == nil {
+		parsedCfg, err := config.ParseConfiguration(ctx,
+			b.ConfigFile,
+			config.WithEnvFileForParsing(b.EnvFile),
+			config.WithVarsFileForParsing(b.VarsFile),
+			config.WithDefaultCPU(b.DefaultCPU),
+			config.WithDefaultCPUModel(b.DefaultCPUModel),
+			config.WithDefaultDisk(b.DefaultDisk),
+			config.WithDefaultMemory(b.DefaultMemory),
+			config.WithDefaultTimeout(b.DefaultTimeout),
+			config.WithCommit(b.ConfigFileRepositoryCommit),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
+		}
+		b.Configuration = parsedCfg
+	}
+
+	// Now that we can find out the names of all the packages we'll be producing, we
+	// can start tracking SBOM data for each of them, using our SBOMGroup type.
+	b.SBOMGroup = NewSBOMGroup(slices.Collect(b.Configuration.AllPackageNames())...)
 
 	if len(b.Configuration.Package.TargetArchitecture) == 1 &&
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
 		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
 	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
-		!sets.NewString(b.Configuration.Package.TargetArchitecture...).Has(b.Arch.ToAPK()) {
+		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
 		return nil, ErrSkipThisArch
 	}
 
@@ -196,6 +268,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 		b.SourceDateEpoch = t
 	}
+	b.SBOMGroup.SetCreatedTime(b.SourceDateEpoch)
 
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
@@ -207,9 +280,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		log.Infof("applying configuration patches for build option %s", optName)
 
 		if opt, ok := b.Configuration.Options[optName]; ok {
-			if err := b.ApplyBuildOption(opt); err != nil {
-				return nil, err
-			}
+			b.applyBuildOption(opt)
 		}
 	}
 
@@ -220,9 +291,7 @@ func (b *Build) Close(ctx context.Context) error {
 	log := clog.FromContext(ctx)
 	errs := []error{}
 	if b.Remove {
-		log.Infof("deleting guest dir %s", b.GuestDir)
-		errs = append(errs, os.RemoveAll(b.GuestDir))
-		log.Infof("deleting workspace dir %s", b.WorkspaceDir)
+		log.Debugf("deleting workspace dir %s", b.WorkspaceDir)
 		errs = append(errs, os.RemoveAll(b.WorkspaceDir))
 		if b.containerConfig != nil && b.containerConfig.ImgRef != "" {
 			errs = append(errs, b.Runner.OCIImageLoader().RemoveImage(context.WithoutCancel(ctx), b.containerConfig.ImgRef))
@@ -236,11 +305,14 @@ func (b *Build) Close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// BuildGuest invokes apko to build the guest environment, returning a reference to the image
+// buildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
-func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
+//
+// NB: This has side effects! This mutates Build by overwriting Configuration.Environment with
+// a locked version (packages resolved to versions) so we can record which packages were used.
+func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
 	defer span.End()
 
 	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
@@ -249,27 +321,53 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.RemoveAll(tmp)
 
-	if b.Runner.Name() == container.QemuName {
-		b.ExtraPackages = append(b.ExtraPackages, []string{
-			"melange-microvm-init",
-		}...)
-	}
+	// Work around LockImageConfiguration assuming multi-arch.
+	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 
-	bc, err := apko_build.New(ctx, guestFS,
+	opts := []apko_build.Option{
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
 		apko_build.WithExtraBuildRepos(b.ExtraRepos),
 		apko_build.WithExtraPackages(b.ExtraPackages),
-		apko_build.WithCacheDir(b.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
-		apko_build.WithIgnoreSignatures(b.IgnoreSignatures))
+		apko_build.WithIgnoreSignatures(b.IgnoreSignatures),
+	}
+
+	configs, warn, err := apko_build.LockImageConfiguration(ctx, imgConfig, opts...)
+	if err != nil {
+		return "", fmt.Errorf("unable to lock image configuration: %w", err)
+	}
+
+	for k, v := range warn {
+		log.Warnf("Unable to lock package %s: %s", k, v)
+	}
+
+	locked, ok := configs["index"]
+	if !ok {
+		return "", errors.New("missing locked config")
+	}
+
+	// Overwrite the environment with the locked one.
+	b.Configuration.Environment = *locked
+
+	opts = append(opts, apko_build.WithImageConfiguration(*locked))
+
+	bc, err := apko_build.New(ctx, guestFS, opts...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
 
+	// Get the APK associated with our build, and then get a Resolver
+	namedIndexes, err := bc.APK().GetRepositoryIndexes(ctx, false)
+	if err != nil {
+		return "", fmt.Errorf("unable to obtain repository indexes: %w", err)
+	}
+	b.PkgResolver = apk.NewPkgResolver(ctx, namedIndexes)
+
 	bc.Summarize(ctx)
-	log.Infof("auth configured for: %s", maps.Keys(b.Auth)) // TODO: add this to Summarize
+	log.Infof("auth configured for: %v", maps.Keys(b.Auth)) // TODO: add this to summarize
 
 	// lay out the contents for the image in a directory.
 	if err := bc.BuildImage(ctx); err != nil {
@@ -286,7 +384,7 @@ func (b *Build) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	}
 	defer os.Remove(layerTarGZ)
 
-	log.Infof("using %s for image layer", layerTarGZ)
+	log.Debugf("using %s for image layer", layerTarGZ)
 
 	ref, err := loader.LoadImage(ctx, layer, b.Arch, bc)
 	if err != nil {
@@ -303,7 +401,7 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	destPath := filepath.Join(dest, src)
 	destDir := filepath.Dir(destPath)
 
-	inF, err := os.Open(basePath)
+	inF, err := os.Open(basePath) // #nosec G304 - Internal build workspace file operation
 	if err != nil {
 		return err
 	}
@@ -313,7 +411,7 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 		return fmt.Errorf("mkdir -p %s: %w", destDir, err)
 	}
 
-	outF, err := os.Create(destPath)
+	outF, err := os.Create(destPath) // #nosec G304 - Internal build workspace file operation
 	if err != nil {
 		return fmt.Errorf("create %s: %w", destPath, err)
 	}
@@ -330,16 +428,14 @@ func copyFile(base, src, dest string, perm fs.FileMode) error {
 	return nil
 }
 
-// ApplyBuildOption applies a patch described by a BuildOption to a package build.
-func (b *Build) ApplyBuildOption(bo config.BuildOption) error {
+// applyBuildOption applies a patch described by a BuildOption to a package build.
+func (b *Build) applyBuildOption(bo config.BuildOption) {
 	// Patch the variables block.
 	if b.Configuration.Vars == nil {
 		b.Configuration.Vars = make(map[string]string)
 	}
 
-	for k, v := range bo.Vars {
-		b.Configuration.Vars[k] = v
-	}
+	maps.Copy(b.Configuration.Vars, bo.Vars)
 
 	// Patch the build environment configuration.
 	lo := bo.Environment.Contents.Packages
@@ -357,8 +453,6 @@ func (b *Build) ApplyBuildOption(bo config.BuildOption) error {
 
 		b.Configuration.Environment.Contents.Packages = pkgList
 	}
-
-	return nil
 }
 
 func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error) {
@@ -377,7 +471,7 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 
 	log.Infof("loading ignore rules from %s", ignorePath)
 
-	inF, err := os.Open(ignorePath)
+	inF, err := os.Open(ignorePath) // #nosec G304 - Reading workspace ignore file from build configuration
 	if err != nil {
 		return nil, err
 	}
@@ -401,243 +495,37 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 	return ignorePatterns, nil
 }
 
-func (b *Build) OverlayBinSh() error {
-	if b.BinShOverlay == "" {
-		return nil
-	}
-
-	targetPath := filepath.Join(b.GuestDir, "bin", "sh")
-
-	inF, err := os.Open(b.BinShOverlay)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer inF.Close()
-
-	// We unlink the target first because it might be a symlink.
-	if err := os.Remove(targetPath); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	outF, err := os.Create(targetPath)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(outF, inF); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	if err := os.Chmod(targetPath, 0o755); err != nil {
-		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
-	}
-
-	return nil
-}
-
-func fetchBucket(ctx context.Context, cacheSource string, cmm CacheMembershipMap) (string, error) {
-	log := clog.FromContext(ctx)
-	tmp, err := os.MkdirTemp("", "melange-cache")
-	if err != nil {
-		return "", err
-	}
-	bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cacheSource, "gs://"), "/")
-
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		log.Infof("downgrading to anonymous mode: %s", err)
-
-		client, err = storage.NewClient(ctx, option.WithoutAuthentication())
-		if err != nil {
-			return "", fmt.Errorf("failed to get storage client: %w", err)
-		}
-	}
-
-	bh := client.Bucket(bucket)
-	it := bh.Objects(ctx, &storage.Query{Prefix: prefix})
-	for {
-		attrs, err := it.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			return tmp, fmt.Errorf("failed to get next remote cache object: %w", err)
-		}
-		on := attrs.Name
-		if !cmm[on] {
-			continue
-		}
-		rc, err := bh.Object(on).NewReader(ctx)
-		if err != nil {
-			return tmp, fmt.Errorf("failed to get reader for next remote cache object %s: %w", on, err)
-		}
-		w, err := os.Create(filepath.Join(tmp, on))
-		if err != nil {
-			return tmp, err
-		}
-		if _, err := io.Copy(w, rc); err != nil {
-			return tmp, fmt.Errorf("failed to copy remote cache object %s: %w", on, err)
-		}
-		if err := rc.Close(); err != nil {
-			return tmp, fmt.Errorf("failed to close remote cache object %s: %w", on, err)
-		}
-		log.Infof("cached gs://%s/%s -> %s", bucket, on, w.Name())
-	}
-
-	return tmp, nil
-}
-
-// IsBuildLess returns true if the build context does not actually do any building.
+// isBuildLess returns true if the build context does not actually do any building.
 // TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
 // in the pipeline.
-func (b *Build) IsBuildLess() bool {
+func (b *Build) isBuildLess() bool {
 	return len(b.Configuration.Pipeline) == 0
 }
 
-// ConfigFileExternalRef calculates ExternalRef for the melange config
-// file itself.
-func (b *Build) ConfigFileExternalRef() (*purl.PackageURL, error) {
-	// TODO(luhring): This is now the second implementation of finding the commit
-	//  for the config file (the first being the "detectedCommit" logic. We should
-	//  unify these.
-
-	// configFile must exist
-	configpath, err := filepath.Abs(b.ConfigFile)
-	if err != nil {
-		return nil, err
-	}
-	// If not a git repository, skip
-	opt := &git.PlainOpenOptions{DetectDotGit: true}
-	r, err := git.PlainOpenWithOptions(configpath, opt)
-	if err != nil {
-		return nil, nil
+// getBuildConfigPURL determines the package URL for the melange config file
+// itself.
+func (b Build) getBuildConfigPURL() (*purl.PackageURL, error) {
+	namespace, name, found := strings.Cut(strings.TrimPrefix(b.ConfigFileRepositoryURL, "https://github.com/"), "/")
+	if !found {
+		return nil, fmt.Errorf("extracting namespace and name from %s", b.ConfigFileRepositoryURL)
 	}
 
-	// TODO(luhring): This is brittle and assumes a specific git remote configuration.
-	//  We should consider a more general approach, and this may be moot when we
-	//  unify our git state detection mechanisms.
-
-	// If no remote origin, skip (local git repo)
-	remote, err := r.Remote("origin")
-	if err != nil {
-		return nil, nil
-	}
-	repository := remote.Config().URLs[0]
-	// Only supports github-actions style https github checkouts
-	if !strings.HasPrefix(repository, "https://github.com/") {
-		return nil, nil
-	}
-	namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
-
-	// Head must exist
-	ref, err := r.Head()
-	if err != nil {
-		return nil, err
-	}
-	version := ref.Hash()
-
-	// Try to get configfile as subpath in the repository
-	s, ok := r.Storer.(*filesystem.Storage)
-	if !ok {
-		return nil, errors.New("Repository storage is not filesystem.Storage")
-	}
-	base := filepath.Dir(s.Filesystem().Root())
-	subpath, err := filepath.Rel(base, configpath)
-	if err != nil {
-		return nil, err
-	}
-	newpurl := &purl.PackageURL{
-		Type:      "github",
+	u := &purl.PackageURL{
+		Type:      purl.TypeGithub,
 		Namespace: namespace,
 		Name:      name,
-		Version:   version.String(),
-		Subpath:   subpath,
+		Version:   b.ConfigFileRepositoryCommit,
+		Subpath:   b.ConfigFile,
 	}
-	if err := newpurl.Normalize(); err != nil {
-		return nil, err
+	if err := u.Normalize(); err != nil {
+		return nil, fmt.Errorf("normalizing PURL: %w", err)
 	}
-	return newpurl, nil
+	return u, nil
 }
 
-func (b *Build) PopulateCache(ctx context.Context) error {
+func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
-	defer span.End()
-
-	if b.CacheDir == "" {
-		return nil
-	}
-
-	cmm, err := cacheItemsForBuild(b.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("while determining which objects to fetch: %w", err)
-	}
-
-	if b.CacheSource != "" {
-		log.Debugf("populating cache from %s", b.CacheSource)
-	}
-
-	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
-	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(b.CacheSource, "gs://") {
-		tmp, err := fetchBucket(ctx, b.CacheSource, cmm)
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmp)
-		log.Infof("cache bucket copied to %s", tmp)
-
-		fsys := os.DirFS(tmp)
-
-		// mkdir /var/cache/melange
-		if err := os.MkdirAll(b.CacheDir, 0o755); err != nil {
-			return err
-		}
-
-		// --cache-dir doesn't exist, nothing to do.
-		if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			fi, err := d.Info()
-			if err != nil {
-				return err
-			}
-
-			mode := fi.Mode()
-			if !mode.IsRegular() {
-				return nil
-			}
-
-			// Skip files in the cache that aren't named like sha256:... or sha512:...
-			// This is likely a bug, and won't be matched by any fetch.
-			base := filepath.Base(fi.Name())
-			if !strings.HasPrefix(base, "sha256:") &&
-				!strings.HasPrefix(base, "sha512:") {
-				return nil
-			}
-
-			log.Debugf("  -> %s", path)
-
-			if err := copyFile(tmp, path, b.CacheDir, mode.Perm()); err != nil {
-				return err
-			}
-
-			return nil
-		})
-	}
-
-	return nil
-}
-
-func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
-	log := clog.FromContext(ctx)
-	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
 	defer span.End()
 
 	ignorePatterns, err := b.loadIgnoreRules(ctx)
@@ -645,6 +533,20 @@ func (b *Build) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 		return err
 	}
 
+	// Write out build settings into workspacedir
+	// For now, just the gcc spec file and just link settings.
+	// In the future can control debug symbol generation, march/mtune, etc.
+	specFile, err := os.Create(filepath.Join(b.WorkspaceDir, ".melange.gcc.spec"))
+	if err != nil {
+		return err
+	}
+	specTemplate := template.New("gccSpecFile")
+	if err := template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b); err != nil {
+		return err
+	}
+	if err := specFile.Close(); err != nil {
+		return err
+	}
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -686,7 +588,21 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
 	defer span.End()
 
-	b.Summarize(ctx)
+	if b.Runner == nil {
+		return fmt.Errorf("no runner was specified")
+	}
+
+	b.summarize(ctx)
+
+	ver := b.Configuration.Package.Version
+	if _, err := apk.ParseVersion(ver); err != nil {
+		return fmt.Errorf("unable to parse version '%s' for %s: %w", ver, b.ConfigFile, err)
+	}
+
+	namespace := b.Namespace
+	if namespace == "" {
+		namespace = "unknown"
+	}
 
 	if to := b.Configuration.Package.Timeout; to > 0 {
 		tctx, cancel := context.WithTimeoutCause(ctx, to,
@@ -696,18 +612,41 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	pkg := &b.Configuration.Package
+	arch := b.Arch.ToAPK()
 
-	if b.GuestDir == "" {
-		guestDir, err := os.MkdirTemp(b.Runner.TempDir(), "melange-guest-*")
-		if err != nil {
-			return fmt.Errorf("unable to make guest directory: %w", err)
+	// Add the APK package(s) to their respective SBOMs. We do this early in the
+	// build process so that we can later add more kinds of packages that relate to
+	// these packages, as we learn more during the build.
+	for _, sp := range b.Configuration.Subpackages {
+		spSBOM := b.SBOMGroup.Document(sp.Name)
+
+		apkSubPkg := &sbom.Package{
+			Name:            sp.Name,
+			Version:         pkg.FullVersion(),
+			Copyright:       pkg.FullCopyright(),
+			LicenseDeclared: pkg.LicenseExpression(),
+			Namespace:       namespace,
+			Arch:            arch,
+			PURL:            pkg.PackageURLForSubpackage(namespace, arch, sp.Name),
 		}
-		b.GuestDir = guestDir
+		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
 	}
 
-	log.Infof("evaluating pipelines for package requirements")
+	pSBOM := b.SBOMGroup.Document(pkg.Name)
+	apkPkg := &sbom.Package{
+		Name:            pkg.Name,
+		Version:         pkg.FullVersion(),
+		Copyright:       pkg.FullCopyright(),
+		LicenseDeclared: pkg.LicenseExpression(),
+		Namespace:       namespace,
+		Arch:            arch,
+		PURL:            pkg.PackageURL(namespace, arch),
+	}
+	pSBOM.AddPackageAndSetDescribed(apkPkg)
+
+	log.Debugf("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
-		return fmt.Errorf("compiling build: %w", err)
+		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
 	}
 
 	// Filter out any subpackages with false If conditions.
@@ -724,72 +663,49 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return !result
 	})
 
-	configFileRef, err := b.ConfigFileExternalRef()
-	if err != nil {
-		return fmt.Errorf("failed to create ExternalRef for configfile: %w", err)
-	}
-
-	if configFileRef != nil {
-		// In SPDX v3 there is dedicate field for this
-		// https://spdx.github.io/spdx-spec/v3.0/model/Build/Properties/configSourceUri/
-		log.Infof("adding external ref %s for ConfigFile", configFileRef)
-		b.externalRefs = append(b.externalRefs, *configFileRef)
+	if err := b.addSBOMPackageForBuildConfigFile(); err != nil {
+		return fmt.Errorf("adding SBOM package for build config file: %w", err)
 	}
 
 	pr := &pipelineRunner{
 		interactive: b.Interactive,
 		debug:       b.Debug,
-		config:      b.WorkspaceConfig(ctx),
+		config:      b.workspaceConfig(ctx),
 		runner:      b.Runner,
 	}
 
 	if b.EmptyWorkspace {
-		log.Infof("empty workspace requested")
+		log.Debugf("empty workspace requested")
 	} else {
 		// Prepare workspace directory
-		if err := os.MkdirAll(b.WorkspaceDir, 0755); err != nil {
+		if err := os.MkdirAll(b.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", b.WorkspaceDir, err)
 		}
 
-		log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
-		if err := b.PopulateWorkspace(ctx, os.DirFS(b.SourceDir)); err != nil {
-			return fmt.Errorf("unable to populate workspace: %w", err)
+		fs := apkofs.DirFS(ctx, b.SourceDir)
+		if fs != nil {
+			log.Infof("populating workspace %s from %s", b.WorkspaceDir, b.SourceDir)
+			if err := b.populateWorkspace(ctx, fs); err != nil {
+				return fmt.Errorf("unable to populate workspace: %w", err)
+			}
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, b.Configuration.Package.Name), 0o755); err != nil {
 		return err
 	}
 
 	linterQueue := []linterTarget{}
-	cfg := b.WorkspaceConfig(ctx)
+	cfg := b.workspaceConfig(ctx)
 
-	if !b.IsBuildLess() {
-		// Prepare guest directory
-		if err := os.MkdirAll(b.GuestDir, 0755); err != nil {
-			return fmt.Errorf("mkdir -p %s: %w", b.GuestDir, err)
-		}
-
-		log.Infof("building workspace in '%s' with apko", b.GuestDir)
-
-		guestFS := apkofs.DirFS(b.GuestDir, apkofs.WithCreateDir())
-		imgRef, err := b.BuildGuest(ctx, b.Configuration.Environment, guestFS)
+	if !b.isBuildLess() {
+		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
 
 		cfg.ImgRef = imgRef
-		log.Infof("ImgRef = %s", cfg.ImgRef)
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := b.OverlayBinSh(); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-
-		if err := b.PopulateCache(ctx); err != nil {
-			return fmt.Errorf("unable to populate cache: %w", err)
-		}
+		log.Debugf("ImgRef = %s", cfg.ImgRef)
 
 		if err := b.Runner.StartPod(ctx, cfg); err != nil {
 			return fmt.Errorf("unable to start pod: %w", err)
@@ -804,8 +720,24 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		// run the main pipeline
 		log.Debug("running the main pipeline")
-		if err := pr.runPipelines(ctx, b.Configuration.Pipeline); err != nil {
+		pipelines := b.Configuration.Pipeline
+		if err := pr.runPipelines(ctx, pipelines); err != nil {
 			return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
+		}
+
+		for i, p := range pipelines {
+			uniqueID := strconv.Itoa(i)
+			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
+			if err != nil {
+				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
+			}
+
+			if pkg == nil {
+				// This particular pipeline step doesn't tell us about the upstream source code.
+				continue
+			}
+
+			b.SBOMGroup.AddUpstreamSourcePackage(pkg)
 		}
 
 		// add the main package to the linter queue
@@ -816,15 +748,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
-	namespace := b.Namespace
-	if namespace == "" {
-		namespace = "unknown"
-	}
-
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
-		if !b.IsBuildLess() {
+		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
+			return err
+		}
+
+		if !b.isBuildLess() {
 			log.Infof("running pipeline for subpackage %s", sp.Name)
 
 			ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
@@ -834,11 +764,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			}
 		}
 
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, "melange-out", sp.Name), 0o755); err != nil {
-			return err
-		}
-
-		// add the main package to the linter queue
+		// add the subpackage to the linter queue
 		lintTarget := linterTarget{
 			pkgName:  sp.Name,
 			disabled: sp.Checks.Disabled,
@@ -846,10 +772,80 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		linterQueue = append(linterQueue, lintTarget)
 	}
 
+	// Store metadata for use after the workspace is loaded into memory
+	xattrs, modes, owners, err := storeMetadata(b.WorkspaceDir)
+	if err != nil {
+		return fmt.Errorf("failed to store workspace xattrs: %w", err)
+	}
+
 	// Retrieve the post build workspace from the runner
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
-	fs := apkofs.DirFS(b.WorkspaceDir)
-	if err := b.RetrieveWorkspace(ctx, fs); err != nil {
+	b.WorkspaceDirFS = apkofs.DirFS(ctx, b.WorkspaceDir)
+
+	// Retrieve the os-release information from the runner
+	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
+	if err != nil {
+		log.Warnf("failed to retrieve release data from runner, OS section will be unknown: %v", err)
+		// If we can't retrieve the release data, we will use a default 'unknown' one similar to apko.
+		releaseData = &apko_build.ReleaseData{
+			ID:        "unknown",
+			Name:      "melange-generated package",
+			VersionID: "unknown",
+		}
+	}
+
+	// Apply xattrs to files in the new in-memory filesystem
+	for path, attrs := range xattrs {
+		for attr, data := range attrs {
+			if err := b.WorkspaceDirFS.SetXattr(path, attr, data); err != nil {
+				log.Warnf("failed to restore xattr %s on %s: %v\n", attr, path, err)
+			}
+		}
+	}
+
+	for path, mode := range modes {
+		if err := b.WorkspaceDirFS.Chmod(path, mode); err != nil {
+			log.Warnf("failed to apply mode %04o (%s) to %s: %v", mode, mode, path, err)
+		}
+	}
+
+	for path, owner := range owners {
+		uid := owner["uid"]
+		gid := owner["gid"]
+		if err := b.WorkspaceDirFS.Chown(path, uid, gid); err != nil {
+			log.Warnf("failed to change ownership of %s to %d:%d: %v", path, uid, gid, err)
+		}
+	}
+
+	// For each `setcap` entry in the package/sub-package, pull out the capability and data and set the xattr
+	// For example:
+	// setcap:
+	//   - path: /usr/bin/scary
+	//     add:
+	//       cap_sys_admin: "+ep"
+	caps, err := config.ParseCapabilities(b.Configuration.Package.SetCap)
+	if err != nil {
+		log.Warnf("failed to collect encoded capabilities for %v: %v", b.Configuration.Package.SetCap, err)
+	}
+
+	for path, cap := range caps {
+		enc := config.EncodeCapability(cap.Effective, cap.Permitted, cap.Inheritable)
+		fullPath := filepath.Join(melangeOutputDirName, pkg.Name, path)
+		if b.Runner.Name() == container.QemuName {
+			fullPath := filepath.Join(WorkDir, melangeOutputDirName, pkg.Name, path)
+			hex := fmt.Sprintf("0x%s", hex.EncodeToString(enc))
+			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, fullPath)}
+			if err := b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...); err != nil {
+				return fmt.Errorf("failed to set capabilities within VM on %s: %w", path, err)
+			}
+		} else {
+			if err := b.WorkspaceDirFS.SetXattr(fullPath, "security.capability", enc); err != nil {
+				log.Warnf("failed to set capabilities on %s: %v", path, err)
+			}
+		}
+	}
+
+	if err := b.retrieveWorkspace(ctx, b.WorkspaceDirFS); err != nil {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
@@ -857,7 +853,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)
-		path := filepath.Join(b.WorkspaceDir, "melange-out", lt.pkgName)
+
+		// lint the in-memory filesystem which contains the correct mode bits, xattrs, etc.
+		fsys, err := apkofs.Sub(b.WorkspaceDirFS, filepath.Join(melangeOutputDirName, lt.pkgName))
+		if err != nil {
+			return fmt.Errorf("failed to return filesystem for workspace subtree: %w", err)
+		}
 
 		// Downgrade disabled checks from required to warn
 		require := slices.DeleteFunc(b.LintRequire, func(s string) bool {
@@ -867,53 +868,45 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return a == b
 		})
 
-		if err := linter.LintBuild(ctx, lt.pkgName, path, require, warn); err != nil {
+		// Conditionally persist lint results based on flag
+		outDir := ""
+		if b.PersistLintResults {
+			outDir = b.OutDir
+		}
+
+		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, require, warn, fsys, outDir, b.Arch.ToAPK()); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}
 
-	licensinginfos, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
-	if err != nil {
-		return err
+	// Perform all license related linting and analysis
+	if _, _, err := license.LicenseCheck(ctx, b.Configuration, b.WorkspaceDirFS); err != nil {
+		return fmt.Errorf("license check: %w", err)
 	}
 
-	// generate SBOMs for subpackages
+	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
+	if err != nil {
+		return fmt.Errorf("gathering licensing infos: %w", err)
+	}
+	b.SBOMGroup.SetLicensingInfos(li)
+
+	// Convert the SBOMs we've been working on to their SPDX representation, and
+	// write them to disk. We'll handle any subpackages first, and then the main
+	// package, but the order doesn't really matter.
+
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
-
-		log.Infof("generating SBOM for subpackage %s", sp.Name)
-
-		apkFSPath := filepath.Join(b.WorkspaceDir, "melange-out", sp.Name)
-		if err := sbom.GenerateAndWrite(ctx, apkFSPath, &sbom.Spec{
-			PackageName:     sp.Name,
-			PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-			License:         b.Configuration.Package.LicenseExpression(),
-			LicensingInfos:  licensinginfos,
-			ExternalRefs:    b.externalRefs,
-			Copyright:       b.Configuration.Package.FullCopyright(),
-			Namespace:       namespace,
-			Arch:            b.Arch.ToAPK(),
-			SourceDateEpoch: b.SourceDateEpoch,
-		}); err != nil {
-			return fmt.Errorf("writing SBOMs: %w", err)
+		spSBOM := b.SBOMGroup.Document(sp.Name)
+		spdxDoc := spSBOM.ToSPDX(ctx, releaseData)
+		log.Infof("writing SBOM for subpackage %s", sp.Name)
+		if err := b.writeSBOM(sp.Name, &spdxDoc); err != nil {
+			return fmt.Errorf("writing SBOM for %s: %w", sp.Name, err)
 		}
 	}
 
-	log.Infof("generating SBOM for %s", b.Configuration.Package.Name)
-
-	apkFSPath := filepath.Join(b.WorkspaceDir, "melange-out", b.Configuration.Package.Name)
-	if err := sbom.GenerateAndWrite(ctx, apkFSPath, &sbom.Spec{
-		PackageName:     b.Configuration.Package.Name,
-		PackageVersion:  fmt.Sprintf("%s-r%d", b.Configuration.Package.Version, b.Configuration.Package.Epoch),
-		License:         b.Configuration.Package.LicenseExpression(),
-		LicensingInfos:  licensinginfos,
-		ExternalRefs:    b.externalRefs,
-		Copyright:       b.Configuration.Package.FullCopyright(),
-		Namespace:       namespace,
-		Arch:            b.Arch.ToAPK(),
-		SourceDateEpoch: b.SourceDateEpoch,
-	}); err != nil {
-		return fmt.Errorf("writing SBOMs: %w", err)
+	spdxDoc := pSBOM.ToSPDX(ctx, releaseData)
+	log.Infof("writing SBOM for %s", pkg.Name)
+	if err := b.writeSBOM(pkg.Name, &spdxDoc); err != nil {
+		return fmt.Errorf("writing SBOM for %s: %w", pkg.Name, err)
 	}
 
 	// emit main package
@@ -923,24 +916,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// emit subpackages
 	for _, sp := range b.Configuration.Subpackages {
-		sp := sp
-
 		if err := b.Emit(ctx, pkgFromSub(&sp)); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
 		}
 	}
 
-	if !b.IsBuildLess() {
-		// clean build guest container
-		if err := os.RemoveAll(b.GuestDir); err != nil {
-			log.Warnf("unable to clean guest container: %s", err)
-		}
-	}
-
 	// clean build environment
-	// TODO(epsilon-phase): implement a way to clean up files that are not owned by the user
-	// that is running melange. files created inside the build not owned by the build user are
-	// not be possible to delete with this strategy.
+	log.Debugf("cleaning workspacedir")
+	cleanEnv := map[string]string{}
+	if err := pr.runner.Run(ctx, pr.config, cleanEnv, append(shellEmptyDir, WorkDir)...); err != nil {
+		log.Warnf("unable to clean workspace: %s", err)
+	}
+	// if the Runner used WorkspaceDir as WorkDir, then this will be empty already.
 	if err := os.RemoveAll(b.WorkspaceDir); err != nil {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
@@ -955,8 +942,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
 		for _, subpkg := range b.Configuration.Subpackages {
-			subpkg := subpkg
-
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
 		}
@@ -981,46 +966,154 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	return nil
 }
 
-func (b *Build) SummarizePaths(ctx context.Context) {
-	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: %s", b.WorkspaceDir)
-
-	if b.GuestDir != "" {
-		log.Infof("  guest dir: %s", b.GuestDir)
+// writeSBOM encodes the given SPDX document to JSON and writes it to the
+// filesystem in the directory `/var/lib/db/sbom`. The pkgName parameter should
+// be set to the name of the origin package or subpackage.
+func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
+	apkFSPath := filepath.Join(melangeOutputDirName, pkgName)
+	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
+	if err := b.WorkspaceDirFS.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
+		return fmt.Errorf("creating SBOM directory: %w", err)
 	}
+
+	pkgVersion := b.Configuration.Package.FullVersion()
+	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
+	f, err := b.WorkspaceDirFS.OpenFile(sbomPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
+	if err != nil {
+		return fmt.Errorf("opening SBOM file for writing: %w", err)
+	}
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(true)
+
+	if err := enc.Encode(doc); err != nil {
+		return fmt.Errorf("encoding SPDX SBOM: %w", err)
+	}
+
+	return nil
 }
 
-func (b *Build) Summarize(ctx context.Context) {
+func (b *Build) addSBOMPackageForBuildConfigFile() error {
+	buildConfigPURL, err := b.getBuildConfigPURL()
+	if err != nil {
+		return fmt.Errorf("getting PURL for build config: %w", err)
+	}
+
+	b.SBOMGroup.AddBuildConfigurationPackage(&sbom.Package{
+		Name:            b.ConfigFile,
+		Version:         b.ConfigFileRepositoryCommit,
+		LicenseDeclared: b.ConfigFileLicense,
+		Namespace:       b.Namespace,
+		Arch:            "", // This field doesn't make sense in this context
+		PURL:            buildConfigPURL,
+	})
+
+	return nil
+}
+
+func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
+	return filepath.Join(
+		sbomDirPath,
+		fmt.Sprintf("%s-%s.spdx.json", pkgName, pkgVersion),
+	)
+}
+
+func (b *Build) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange is building:")
-	log.Infof("  configuration file: %s", b.ConfigFile)
+	log.Debugf("  workspace dir: %s", b.WorkspaceDir)
+}
+
+func (b *Build) summarize(ctx context.Context) {
+	log := clog.FromContext(ctx)
+	log.Infof("melange %s with runner %s is building:", version.GetVersionInfo().GitVersion, b.Runner.Name())
+	log.Debugf("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
 }
 
-// BuildFlavor determines if a build context uses glibc or musl, it returns
+// buildFlavor determines if a build context uses glibc or musl, it returns
 // "gnu" for GNU systems, and "musl" for musl systems.
-func (b *Build) BuildFlavor() string {
+func (b *Build) buildFlavor() string {
 	if b.Libc == "" {
 		return "gnu"
 	}
 	return b.Libc
 }
 
-// BuildTripletGnu returns the GNU autoconf build triplet, for example
-// `x86_64-pc-linux-gnu`.
-func (b *Build) BuildTripletGnu() string {
-	return b.Arch.ToTriplet(b.BuildFlavor())
+func runAsUID(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "0"
+	default:
+	}
+	// If accts.RunAs is numeric, then return it.
+	if _, err := strconv.Atoi(accts.RunAs); err == nil {
+		return accts.RunAs
+	}
+	for _, u := range accts.Users {
+		if accts.RunAs == u.UserName {
+			return fmt.Sprint(u.UID)
+		}
+	}
+	panic(fmt.Sprintf("unable to find user with username %s", accts.RunAs))
 }
 
-// BuildTripletRust returns the Rust/Cargo build triplet, for example
-// `x86_64-unknown-linux-gnu`.
-func (b *Build) BuildTripletRust() string {
-	return b.Arch.ToRustTriplet(b.BuildFlavor())
+func runAs(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "root"
+	default:
+	}
+	// If accts.RunAs is numeric, then look up the username.
+	parsed, err := strconv.ParseUint(accts.RunAs, 10, 32)
+	if err != nil || parsed > math.MaxInt32 {
+		return accts.RunAs
+	}
+	uid := uint32(parsed)
+	for _, u := range accts.Users {
+		if u.UID == uid {
+			return u.UserName
+		}
+	}
+	panic(fmt.Sprintf("unable to find user with UID %d", uid))
+}
+
+func runAsGID(accts apko_types.ImageAccounts) string {
+	switch accts.RunAs {
+	case "":
+		return "" // Runner defaults
+	case "root", "0":
+		return "0"
+	default:
+	}
+	if parsed, err := strconv.ParseUint(accts.RunAs, 10, 32); err == nil {
+		uid := uint32(parsed)
+		for _, u := range accts.Users {
+			if u.UID == uid && u.GID != nil {
+				return fmt.Sprint(*u.GID)
+			}
+		}
+	} else {
+		for _, u := range accts.Users {
+			if accts.RunAs == u.UserName && u.GID != nil {
+				return fmt.Sprint(*u.GID)
+			}
+		}
+	}
+
+	// Couldn't find group membership, return empty string to use Runner defaults
+	// TODO(stevebeattie): we should probably log this fact, but we
+	// don't have the context to do so
+	return ""
 }
 
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
-	if b.IsBuildLess() {
+	if b.isBuildLess() {
 		return &container.Config{
 			Arch:         b.Arch,
 			WorkspaceDir: b.WorkspaceDir,
@@ -1036,12 +1129,12 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		if fi, err := os.Stat(b.CacheDir); err == nil && fi.IsDir() {
 			mountSource, err := realpath.Realpath(b.CacheDir)
 			if err != nil {
-				log.Infof("could not resolve path for --cache-dir: %s", err)
+				log.Errorf("could not resolve path for --cache-dir: %s", err)
 			}
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
-			log.Infof("--cache-dir %s not a dir; skipping", b.CacheDir)
+			log.Debugf("--cache-dir %s not a dir; skipping", b.CacheDir)
 		}
 	}
 
@@ -1059,24 +1152,32 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
 		},
 		WorkspaceDir: b.WorkspaceDir,
+		CacheDir:     b.CacheDir,
 		Timeout:      b.Configuration.Package.Timeout,
-		RunAs:        b.Configuration.Environment.Accounts.RunAs,
+		RunAsUID:     runAsUID(b.Configuration.Environment.Accounts),
+		RunAs:        runAs(b.Configuration.Environment.Accounts),
+		RunAsGID:     runAsGID(b.Configuration.Environment.Accounts),
 	}
 
 	if b.Configuration.Package.Resources != nil {
 		cfg.CPU = b.Configuration.Package.Resources.CPU
+		cfg.CPUModel = b.Configuration.Package.Resources.CPUModel
 		cfg.Memory = b.Configuration.Package.Resources.Memory
 		cfg.Disk = b.Configuration.Package.Resources.Disk
 	}
-
-	for k, v := range b.Configuration.Environment.Environment {
-		cfg.Environment[k] = v
+	if b.Configuration.Capabilities.Add != nil {
+		cfg.Capabilities.Add = b.Configuration.Capabilities.Add
 	}
+	if b.Configuration.Capabilities.Drop != nil {
+		cfg.Capabilities.Drop = b.Configuration.Capabilities.Drop
+	}
+
+	maps.Copy(cfg.Environment, b.Configuration.Environment.Environment)
 
 	return &cfg
 }
 
-func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
+func (b *Build) workspaceConfig(ctx context.Context) *container.Config {
 	if b.containerConfig == nil {
 		b.containerConfig = b.buildWorkspaceConfig(ctx)
 	}
@@ -1084,14 +1185,21 @@ func (b *Build) WorkspaceConfig(ctx context.Context) *container.Config {
 	return b.containerConfig
 }
 
-// RetrieveWorkspace retrieves the workspace from the container and unpacks it
+// retrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
-func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
-	ctx, span := otel.Tracer("melange").Start(ctx, "RetrieveWorkspace")
+func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
+	ctx, span := otel.Tracer("melange").Start(ctx, "retrieveWorkspace")
 	defer span.End()
 
-	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig)
+	extraFiles := []string{}
+	for _, v := range b.Configuration.Package.Copyright {
+		if v.LicensePath != "" {
+			extraFiles = append(extraFiles, v.LicensePath)
+		}
+	}
+
+	r, err := b.Runner.WorkspaceTar(ctx, b.containerConfig, extraFiles)
 	if err != nil {
 		return err
 	} else if r == nil {
@@ -1099,12 +1207,7 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 	}
 	defer r.Close()
 
-	gr, err := gzip.NewReader(r)
-	if err != nil {
-		return err
-	}
-	defer gr.Close()
-	tr := tar.NewReader(gr)
+	tr := tar.NewReader(r)
 
 	for {
 		hdr, err := tr.Next()
@@ -1113,6 +1216,16 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 		}
 		if err != nil {
 			return err
+		}
+
+		// Remove the leading "./" from LICENSE files in QEMU workspaces
+		hdr.Name = strings.TrimPrefix(hdr.Name, "./")
+
+		var uid, gid int
+		fi := hdr.FileInfo()
+		if stat, ok := fi.Sys().(*tar.Header); ok {
+			uid = stat.Uid
+			gid = stat.Gid
 		}
 
 		switch hdr.Typeflag {
@@ -1129,8 +1242,16 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
 			}
 
+			if err := fs.Chown(hdr.Name, uid, gid); err != nil {
+				return fmt.Errorf("unable to chown directory %s: %w", hdr.Name, err)
+			}
+
 		case tar.TypeReg:
-			f, err := fs.OpenFile(hdr.Name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, hdr.FileInfo().Mode())
+			parentDir := filepath.Dir(hdr.Name)
+			if err := fs.MkdirAll(parentDir, 0o755); err != nil {
+				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
+			}
+			f, err := fs.OpenFile(hdr.Name, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode())
 			if err != nil {
 				return fmt.Errorf("unable to open file %s: %w", hdr.Name, err)
 			}
@@ -1141,6 +1262,10 @@ func (b *Build) RetrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 			if err := f.Close(); err != nil {
 				return fmt.Errorf("unable to close file %s: %w", hdr.Name, err)
+			}
+
+			if err := fs.Chown(hdr.Name, uid, gid); err != nil {
+				return fmt.Errorf("unable to chown file %s: %w", hdr.Name, err)
 			}
 
 		case tar.TypeSymlink:
@@ -1201,4 +1326,112 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 	}
 
 	return time.Unix(sec, 0).UTC(), nil
+}
+
+// xattrIgnoreList contains a mapping of xattr names used by various
+// security features which leak their state into packages.  We need to
+// ignore these xattrs because they require special permissions to be
+// set when the underlying security features are in use.
+var xattrIgnoreList = map[string]bool{
+	"com.apple.provenance":          true,
+	"security.csm":                  true,
+	"security.selinux":              true,
+	"com.docker.grpcfuse.ownership": true,
+}
+
+// Record on-disk metadata set during package builds in order to apply them in the new in-memory filesystem
+// This will allow in-memory and bind mount runners to persist mode bits, ownership, and xattrs correctly
+func storeMetadata(dir string) (map[string]map[string][]byte, map[string]fs.FileMode, map[string]map[string]int, error) {
+	xattrs := make(map[string]map[string][]byte)
+	modes := make(map[string]fs.FileMode)
+	owners := make(map[string]map[string]int)
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() || d.Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		// store the file mode bits for every relative path in the provided directory
+		// some paths may not be related to or used by the package itself (i.e., they may be candidates for cleanup)
+		// but we may want to have them for future linting at the very least
+		modes[relPath] = fi.Mode()
+
+		// Store ownership info, defaulting to root when unavailable or invalid
+		owners[relPath] = map[string]int{
+			"uid": 0,
+			"gid": 0,
+		}
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+			if stat.Uid <= math.MaxInt32 {
+				owners[relPath]["uid"] = int(stat.Uid)
+			}
+			if stat.Gid <= math.MaxInt32 {
+				owners[relPath]["gid"] = int(stat.Gid)
+			}
+		}
+
+		size, err := unix.Listxattr(path, nil)
+		if err != nil || size == 0 {
+			return nil
+		}
+
+		buf := make([]byte, size)
+		read, err := unix.Listxattr(path, buf)
+		if err != nil {
+			return nil
+		}
+
+		attrs := stringsFromByteSlice(buf[:read])
+		result := make(map[string][]byte)
+		for _, attr := range attrs {
+			if _, ok := xattrIgnoreList[attr]; ok {
+				continue
+			}
+
+			s, err := unix.Getxattr(path, attr, nil)
+			if err != nil {
+				continue
+			}
+
+			data := make([]byte, s)
+			_, err = unix.Getxattr(path, attr, data)
+			if err != nil {
+				continue
+			}
+
+			result[attr] = data
+		}
+		xattrs[relPath] = result
+		return nil
+	})
+
+	return xattrs, modes, owners, err
+}
+
+// stringsFromByteSlice converts a sequence of attributes to a []string.
+// On Linux, each entry is a NULL-terminated string.
+// Taken from golang.org/x/sys/unix/syscall_linux_test.go.
+func stringsFromByteSlice(buf []byte) []string {
+	var result []string
+	off := 0
+	for i, b := range buf {
+		if b == 0 {
+			result = append(result, string(buf[off:i]))
+			off = i + 1
+		}
+	}
+	return result
 }

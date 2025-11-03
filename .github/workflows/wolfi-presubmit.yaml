@@ -2,9 +2,11 @@ name: ci
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+
+permissions: {}
 
 jobs:
   build-melange:
@@ -15,22 +17,22 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      - uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version-file: './go.mod'
+          go-version-file: "./go.mod"
           check-latest: true
 
       - name: build
         run: |
           make melange
 
-      - uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/melange
@@ -40,8 +42,7 @@ jobs:
     name: Build packages
     needs:
       - build-melange
-    # TODO: Set up a larger runner for this.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-core
 
     permissions:
       contents: read
@@ -58,31 +59,41 @@ jobs:
           - bubblewrap
           - qemu
         package:
-          - hello-wolfi
-          - glibc
-          - tini
-          - lzo
+          # - rust-1.86 # takes ~35-40 minutes to build; used for testing LICENSE file functionality
+          #- gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
+          #- glibc # takes ~35-40 minutes to build; not an all-encompassing signal of Melange functionality; TODO: replace with a smaller, related package
+          #- xmlto # TODO: https://github.com/wolfi-dev/os/issues/26442
           - bubblewrap
-#          - gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
+          - cadvisor # uses cgroups
+          - dpkg
+          - fixuid # uses a diff test user
+          - fping # uses get/setcaps
           - gitsign
+          - grafana-image-renderer
           - guac
+          - hello-wolfi
+          - lzo
           - mdbook
-          - s3cmd
-          - perl-yaml-syck
           - ncurses
-          # TODO: https://github.com/wolfi-dev/os/issues/26442
-          #- xmlto
+          - perl-yaml-syck
+          - postfix
+          - py3-pyelftools # Uses license-path
+          - py3-supported-python
+          - s3cmd
+          - subversion
+          - sudo
+          - tini
 
     steps:
-      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      - uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           repository: wolfi-dev/os
 
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/.melange-dir
@@ -93,13 +104,30 @@ jobs:
           sudo chmod a+x /usr/bin/melange
           melange version
 
-      - if: matrix.runner == 'bubblewrap'
-        run: |
-          sudo apt-get -y install bubblewrap
+      # needed to run tests for Bubblewrap packages
+      - uses: docker/setup-docker-action@3fb92d6d9c634363128c8cce4bc3b2826526370a # v4.4.0
+
+      # this need to point to main to always get the latest action
+      - uses: wolfi-dev/actions/install-wolfictl@main # main
+
+      - run: |
+          wolfictl bump ${{ matrix.package }}
 
       - if: matrix.runner == 'bubblewrap'
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" package/${{ matrix.package }}
+          sudo apt-get -y install bubblewrap
+      - if: matrix.runner == 'bubblewrap'
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: melange-src
+      - if: matrix.runner == 'bubblewrap'
+        uses: ./melange-src/.github/actions/setup-bubblewrap
+      - if: matrix.runner == 'bubblewrap'
+        run: |
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/${{ matrix.package }}
+      - if: matrix.runner == 'bubblewrap'
+        run: |
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="docker" test/${{ matrix.package }}
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
@@ -113,14 +141,14 @@ jobs:
         if: matrix.runner == 'qemu'
         run: |
           sudo apt-get update
-          sudo apt-get -y install qemu-system qemu-kvm
+          sudo apt-get -y install qemu-system-x86-64 qemu-kvm
 
       - name: Enable KVM group perms
         if: matrix.runner == 'qemu'
         run: |
-            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-            sudo udevadm control --reload-rules
-            sudo udevadm trigger --name-match=kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Make package ${{matrix.package}} with QEMU Runner
         if: matrix.runner == 'qemu'
@@ -130,27 +158,63 @@ jobs:
             QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
             QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
             MELANGE="/usr/bin/melange" \
-            MELANGE_EXTRA_OPTS="--runner qemu" \
+            MELANGE_EXTRA_OPTS="--runner qemu --generate-provenance" \
             package/${{ matrix.package }}
 
-      - name: "Retrieve Wolfi advisory data"
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          repository: "wolfi-dev/advisories"
-          path: "data/wolfi-advisories"
+      - name: Output SLSA provenance
+        run: |
+          for pkg in packages/x86_64/*.attest.tar.gz; do
+            dir="$(basename "${pkg}" .attest.tar.gz)"
+            sudo mkdir -p packages/x86_64/"${dir}"
+            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/"${dir}"
+            jq . packages/x86_64/"${dir}"/"${dir}.attestation"
+          done
 
-      # this need to point to main to always get the latest action
-      - uses: wolfi-dev/actions/install-wolfictl@main # main
+      - name: Run tests to verify xattrs with bubblewrap runner
+        if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'
+        run: |
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" test/${{ matrix.package }}
+
+      - name: Run tests with QEMU runner
+        if: matrix.runner == 'qemu'
+        run: |
+          make \
+            SHELL="/bin/bash" \
+            QEMU_KERNEL_IMAGE=/tmp/kernel/boot/vmlinuz-virt \
+            QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
+            MELANGE="/usr/bin/melange" \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            test/${{ matrix.package }}
+
+      - name: Check package ${{ matrix.package }} xattrs for QEMU-built package
+        if: matrix.runner == 'qemu' && matrix.package == 'fping'
+        run: |
+          for pkg in packages/x86_64/*.apk; do
+            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/
+          done
+          getcap packages/x86_64/usr/sbin/fping
+
+      - name: Check package ${{ matrix.package }} for mode bits
+        if: matrix.package == 'sudo'
+        run: |
+          for pkg in packages/x86_64/*.apk; do
+            sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/
+          done
+          ls -hal packages/x86_64/usr/bin/sudo
 
       - name: Test installable and Scan for CVEs
         run: |
-            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base apk add --allow-untrusted packages/x86_64/${{ matrix.package }}-*.apk
-
-            # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
-            # Do this outside of the loop in one invocation with every package.
-            wolfictl scan \
-            --advisories-repo-dir 'data/wolfi-advisories' \
-            --advisory-filter 'resolved' \
-            --require-zero \
-            packages/x86_64/${{ matrix.package }}-*.apk \
-            2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.
+          if [[ "${{ matrix.package }}" == "fping" ]]; then
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; apk add libcap-utils; getcap /usr/sbin/fping"
+          elif [[ "${{ matrix.package }}" == "sudo" ]]; then
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /usr/bin/sudo"
+          elif [[ "${{ matrix.package }}" == "postfix" ]]; then
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk; ls -hal /var/spool/postfix; ls -hal /var/lib/postfix"
+          else
+            docker run --rm -v $(pwd):/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${{ matrix.package }}-*.apk"
+          fi
+          # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
+          # Do this outside of the loop in one invocation with every package.
+          wolfictl scan \
+          packages/x86_64/${{ matrix.package }}-*.apk \
+          2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.

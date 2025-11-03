@@ -2,6 +2,7 @@ name: Compile an auditable rust binary with Cargo
 
 needs:
   packages:
+    - build-base
     - busybox
     - cargo-auditable
     - rust
@@ -13,7 +14,7 @@ inputs:
       the apk will be in prefix / install-dir / output
 
   opts:
-    default: "--release"
+    default: --release
     description: |
       Options to pass to cargo build. Defaults to release
 
@@ -25,6 +26,14 @@ inputs:
       Before building, the cargo pipeline wil cd into this directory. Defaults
       to current working directory
 
+  rustflags:
+    default: ""
+    required: false
+    description: |
+      Rustc flags to be passed to pass to all compiler invocations that Cargo performs.
+      In contrast with cargo rustc, this is useful for passing a flag to all compiler instances.
+      This string is split by whitespace.
+
   prefix:
     default: usr
     description: |
@@ -35,17 +44,31 @@ inputs:
       Directory where binaries will be installed
     default: bin
 
+  output-dir:
+    description: |
+      Directory where the binaris will be placed after building. Defaults to target/release
+    default: target/release
+
+  jobs:
+    description: |
+      Override the number of parallel jobs. It defaults to the number of CPUs.
+
 pipeline:
   - runs: |
       # Installation directory should always be bin as we are producing a binary
       INSTALL_PATH="${{targets.contextdir}}/${{inputs.prefix}}/${{inputs.install-dir}}"
-      OUTPUT_PATH="target/release"
+      OUTPUT_PATH="${{inputs.output-dir}}"
 
       # Enter target package directory
       cd "${{inputs.modroot}}"
 
+      jobs_flag=""
+      if [[ ! -z "${{inputs.jobs}}" ]]; then
+        jobs_flag="--jobs ${{inputs.jobs}}"
+      fi
+
       # Build and install package(s)
-      cargo auditable build "${{inputs.opts}}"
+      RUSTFLAGS="${{inputs.rustflags}}" cargo auditable build --target-dir target ${{inputs.opts}} $jobs_flag
       if [[ ! -z "${{inputs.output}}" ]]; then
         install -Dm755 "${OUTPUT_PATH}/${{inputs.output}}" "${INSTALL_PATH}/${{inputs.output}}"
       else

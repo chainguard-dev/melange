@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions: {}
+
 jobs:
   build-melange:
     name: Build melange and add to artifact cache
@@ -15,13 +17,13 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      - uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: './go.mod'
           check-latest: true
@@ -30,7 +32,7 @@ jobs:
         run: |
           make melange
 
-      - uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/melange
@@ -40,19 +42,20 @@ jobs:
     name: Test packages
     needs:
       - build-melange
-    # TODO: Set up a larger runner for this.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-core
 
     permissions:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      - uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
         with:
           egress-policy: audit
 
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
       # Grab the melange we uploaded above, and install it.
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/.melange-dir
@@ -65,12 +68,25 @@ jobs:
 
       - run: |
           sudo apt-get -y install bubblewrap
+      - uses: ./.github/actions/setup-bubblewrap
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: './go.mod'
           check-latest: true
+
+
+      - name: Install QEMU/KVM
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install qemu-system-x86-64 qemu-kvm
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Run e2e-tests
         run: |

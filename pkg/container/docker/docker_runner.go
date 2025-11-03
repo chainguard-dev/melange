@@ -15,6 +15,8 @@
 package docker
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -26,9 +28,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_oci "chainguard.dev/apko/pkg/build/oci"
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/internal/contextreader"
-	"chainguard.dev/melange/internal/logwriter"
-	mcontainer "chainguard.dev/melange/pkg/container"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/container"
@@ -39,6 +38,10 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"chainguard.dev/melange/internal/contextreader"
+	"chainguard.dev/melange/internal/logwriter"
+	mcontainer "chainguard.dev/melange/pkg/container"
 )
 
 var _ mcontainer.Debugger = (*docker)(nil)
@@ -99,6 +102,14 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
 	}
+	// Add process kernel capabilities to the container if configured.
+	if len(cfg.Capabilities.Add) > 0 {
+		hostConfig.CapAdd = cfg.Capabilities.Add
+	}
+	// Drop process kernel capabilities from the container if configured.
+	if len(cfg.Capabilities.Drop) > 0 {
+		hostConfig.CapDrop = cfg.Capabilities.Drop
+	}
 
 	platform := &image_spec.Platform{
 		Architecture: cfg.Arch.String(),
@@ -156,7 +167,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *mcontainer.Config) erro
 func (dk *docker) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
 	if _, err := dk.cli.Ping(ctx); err != nil {
-		log.Infof("cannot use docker for containers: %v", err)
+		log.Errorf("cannot use docker for containers: %v", err)
 		return false
 	}
 
@@ -212,7 +223,7 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 	}
 
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
-		User:         cfg.RunAs,
+		User:         cfg.RunAsUID,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -301,14 +312,14 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 
 	// Wire up stdin to into a tty into the Attach connection.
 	g.Go(func() error {
-		interm := streams.NewIn(os.Stdin)
-		if err := interm.SetRawTerminal(); err != nil {
+		interim := streams.NewIn(os.Stdin)
+		if err := interim.SetRawTerminal(); err != nil {
 			return fmt.Errorf("set raw in: %w", err)
 		}
-		defer interm.RestoreTerminal()
+		defer interim.RestoreTerminal()
 
 		// Allows us to cancel the Read().
-		ctxr := contextreader.New(inctx, interm)
+		ctxr := contextreader.New(inctx, interim)
 
 		if _, err := io.Copy(attachResp.Conn, ctxr); err != nil {
 			return fmt.Errorf("copy in : %w", err)
@@ -350,8 +361,66 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 
 // WorkspaceTar implements Runner
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
-func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config) (io.ReadCloser, error) {
+func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
+}
+
+// GetReleaseData returns the OS information (os-release contents) for the Docker runner.
+func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*apko_build.ReleaseData, error) {
+	if cfg.PodID == "" {
+		return nil, fmt.Errorf("pod not running")
+	}
+
+	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+		User:         cfg.RunAsUID,
+		Cmd:          []string{"cat", "/etc/os-release"},
+		WorkingDir:   runnerWorkdir,
+		Tty:          false,
+		AttachStderr: true,
+		AttachStdout: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create exec task to read os-release: %w", err)
+	}
+
+	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
+		Tty: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to exec task: %w", err)
+	}
+	defer attachResp.Close()
+
+	var buf bytes.Buffer
+	bufWriter := bufio.NewWriter(&buf)
+	defer bufWriter.Flush()
+
+	log := clog.FromContext(ctx)
+	stderr := logwriter.New(log.Warn)
+	defer stderr.Close()
+
+	_, err = stdcopy.StdCopy(bufWriter, stderr, attachResp.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read os-release output: %w", err)
+	}
+
+	// Flush the buffer to ensure all data is written
+	err = bufWriter.Flush()
+	if err != nil {
+		return nil, fmt.Errorf("failed to flush buffer: %w", err)
+	}
+
+	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exit code from os-release task: %w", err)
+	}
+
+	if inspectResp.ExitCode != 0 {
+		return nil, fmt.Errorf("os-release task exited with code %d", inspectResp.ExitCode)
+	}
+
+	// Parse the os-release contents
+	return apko_build.ParseReleaseData(&buf)
 }
 
 type dockerLoader struct {

@@ -1,0 +1,25 @@
+package:
+  name: fetch
+  version: 0.0.1
+  epoch: 0
+  description: "an example with the fetch pipeline"
+  copyright:
+    - license: Not-Applicable
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - busybox
+
+pipeline:
+  - runs: echo "steps before"
+
+  - uses: fetch
+    with:
+      uri: https://unofficial-builds.nodejs.org/download/release/v22.9.0/node-v22.9.0-linux-x64-glibc-217.tar.gz
+
+  - runs: echo "steps after"

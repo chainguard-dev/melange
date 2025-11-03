@@ -16,7 +16,7 @@ pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"
       if [ -n "${{inputs.package}}" ]; then
-        PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
+        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
       fi
 
       if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
@@ -29,7 +29,7 @@ pipeline:
         if [ "$type" != ET_DYN ]; then
           continue
         fi
-        dst=${{targets.contextdir}}/usr/lib/debug/${src#"$PACKAGE_DIR"/*/}.debug
+        dst=${{targets.contextdir}}/usr/lib/debug/${src#"$PACKAGE_DIR"/}.debug
         mkdir -p "${dst%/*}"
         ino=$(stat -c %i "$src")
         if ! [ -e "$PACKAGE_DIR/.dbg-tmp/$ino" ]; then

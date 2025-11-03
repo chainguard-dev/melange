@@ -26,15 +26,16 @@ import (
 	"strconv"
 	"strings"
 
+	apkoTypes "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
-	purl "github.com/package-url/packageurl-go"
 
-	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 )
+
+const WorkDir = "/home/build"
 
 func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
 	nw := maps.Clone(sm.Substitutions)
@@ -67,22 +68,27 @@ type SubstitutionMap struct {
 
 func (sm *SubstitutionMap) Subpackage(subpkg *config.Subpackage) *SubstitutionMap {
 	nw := maps.Clone(sm.Substitutions)
+	nw[config.SubstitutionSubPkgName] = subpkg.Name
+	nw[config.SubstitutionContextName] = subpkg.Name
 	nw[config.SubstitutionSubPkgDir] = fmt.Sprintf("/home/build/melange-out/%s", subpkg.Name)
 	nw[config.SubstitutionTargetsContextdir] = nw[config.SubstitutionSubPkgDir]
 
 	return &SubstitutionMap{nw}
 }
 
-func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
+func NewSubstitutionMap(cfg *config.Configuration, arch apkoTypes.Architecture, flavor string, buildOpts []string) (*SubstitutionMap, error) {
 	pkg := cfg.Package
 
 	nw := map[string]string{
 		config.SubstitutionPackageName:        pkg.Name,
 		config.SubstitutionPackageVersion:     pkg.Version,
 		config.SubstitutionPackageEpoch:       strconv.FormatUint(pkg.Epoch, 10),
-		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%s", config.SubstitutionPackageVersion, config.SubstitutionPackageEpoch),
+		config.SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%d", pkg.Version, pkg.Epoch),
+		config.SubstitutionPackageSrcdir:      "/home/build",
+		config.SubstitutionTargetsOutdir:      "/home/build/melange-out",
 		config.SubstitutionTargetsDestdir:     fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
 		config.SubstitutionTargetsContextdir:  fmt.Sprintf("/home/build/melange-out/%s", pkg.Name),
+		config.SubstitutionContextName:        pkg.Name,
 	}
 
 	nw[config.SubstitutionHostTripletGnu] = arch.ToTriplet(flavor)
@@ -100,9 +106,7 @@ func NewSubstitutionMap(cfg *config.Configuration, arch apko_types.Architecture,
 		return nil, err
 	}
 
-	for k, v := range subst_nw {
-		nw[k] = v
-	}
+	maps.Copy(nw, subst_nw)
 
 	// Perform substitutions on current map
 	if err := cfg.PerformVarSubstitutions(nw); err != nil {
@@ -136,12 +140,22 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	if data == nil {
 		data = make(map[string]string)
 	}
-
 	for k, v := range inputs {
 		if data[k] == "" {
 			data[k] = v.Default
 		}
-
+		if data[k] != "" {
+			switch k {
+			case "expected-sha256", "expected-sha512":
+				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
+					return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+				}
+			case "expected-commit":
+				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
+					return data, fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha length", k)
+				}
+			}
+		}
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
@@ -150,8 +164,18 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 	return data, nil
 }
 
+func matchValidShaChars(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+			return false
+		}
+	}
+	return true
+}
+
 // Build a script to run as part of evalRun
-func buildEvalRunCommand(pipeline *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
+func buildEvalRunCommand(_ *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
 	script := fmt.Sprintf(`set -e%c
 [ -d '%s' ] || mkdir -p '%s'
 cd '%s'
@@ -181,16 +205,19 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	// Pipelines can have their own environment variables, which override the global ones.
 	envOverride := map[string]string{
-		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		// NOTE: This does not currently override PATH in the qemu runner, that's set at openssh build time
+		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
 	}
 
-	for k, v := range pipeline.Environment {
-		envOverride[k] = v
-	}
+	maps.Copy(envOverride, pipeline.Environment)
 
-	workdir := "/home/build"
+	workdir := WorkDir
 	if pipeline.WorkDir != "" {
-		workdir = pipeline.WorkDir
+		if filepath.IsAbs(pipeline.WorkDir) {
+			workdir = pipeline.WorkDir
+		} else {
+			workdir = filepath.Join(WorkDir, pipeline.WorkDir)
+		}
 	}
 
 	// We might have called signal.Ignore(os.Interrupt) as part of a previous debug step,
@@ -201,19 +228,8 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		defer stop()
 	}
 
-	if id := identity(pipeline); id != "???" {
+	if id := identity(pipeline); id != unidentifiablePipeline {
 		log.Infof("running step %q", id)
-	}
-
-	slogs := []any{}
-	if pipeline.Name != "" {
-		slogs = append(slogs, "name", pipeline.Name)
-	}
-	if pipeline.Uses != "" {
-		slogs = append(slogs, "uses", pipeline.Uses)
-	}
-	if len(slogs) != 0 {
-		ctx = clog.WithLogger(ctx, log.With(slogs...))
 	}
 
 	command := buildEvalRunCommand(pipeline, debugOption, workdir, pipeline.Runs)
@@ -226,6 +242,10 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	steps := 0
 
 	for _, p := range pipeline.Pipeline {
+		// Merge nested pipeline environment with parent environment
+		mergedEnv := maps.Clone(envOverride)
+		maps.Copy(mergedEnv, p.Environment)
+		p.Environment = mergedEnv
 		if ran, err := r.runPipeline(ctx, &p); err != nil {
 			return false, fmt.Errorf("unable to run pipeline: %w", err)
 		} else if ran {
@@ -263,6 +283,13 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 		envOverride["HISTFILE"] = path.Join(home, ".ash_history")
 	}
 
+	// Required for many TUIs (emacs, make menuconfig, etc)
+	termType := os.Getenv("TERM")
+	if termType == "" {
+		termType = "xterm-256color"
+	}
+	envOverride["TERM"] = termType
+
 	log.Errorf("Step failed: %v\n%s", runErr, strings.Join(cmd, " "))
 	log.Info(fmt.Sprintf("Execing into pod %q to debug interactively.", r.config.PodID), "workdir", workdir)
 	log.Infof("Type 'exit 0' to continue the next pipeline step or 'exit 1' to abort.")
@@ -276,7 +303,8 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 	signal.Ignore(os.Interrupt)
 
 	// Populate $HOME/.ash_history with the current command so you can hit up arrow to repeat it.
-	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0644); err != nil {
+	// #nosec G306 - Shell history file in workspace directory
+	if err := os.WriteFile(filepath.Join(r.config.WorkspaceDir, ".ash_history"), []byte(fragment), 0o644); err != nil {
 		return fmt.Errorf("failed to write history file: %w", err)
 	}
 
@@ -287,7 +315,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 	// Reset to the default signal handling.
 	signal.Reset(os.Interrupt)
 
-	// If Debug() returns succesfully (via exit 0), it is a signal to continue execution.
+	// If Debug() returns successfully (via exit 0), it is a signal to continue execution.
 	return nil
 }
 
@@ -314,81 +342,17 @@ func shouldRun(ifs string) (bool, error) {
 	return result, nil
 }
 
-// computeExternalRefs generates PURLs for subpipelines
-func computeExternalRefs(uses string, with map[string]string) ([]purl.PackageURL, error) {
-	var purls []purl.PackageURL
-	var newpurl purl.PackageURL
-
-	switch uses {
-	case "fetch":
-		args := make(map[string]string)
-		args["download_url"] = with["${{inputs.uri}}"]
-		if len(with["${{inputs.expected-sha256}}"]) > 0 {
-			args["checksum"] = "sha256:" + with["${{inputs.expected-sha256}}"]
-		}
-		if len(with["${{inputs.expected-sha512}}"]) > 0 {
-			args["checksum"] = "sha512:" + with["${{inputs.expected-sha512}}"]
-		}
-		newpurl = purl.PackageURL{
-			Type:       "generic",
-			Name:       with["${{inputs.purl-name}}"],
-			Version:    with["${{inputs.purl-version}}"],
-			Qualifiers: purl.QualifiersFromMap(args),
-		}
-		if err := newpurl.Normalize(); err != nil {
-			return nil, err
-		}
-		purls = append(purls, newpurl)
-
-	case "git-checkout":
-		repository := with["${{inputs.repository}}"]
-		if strings.HasPrefix(repository, "https://github.com/") {
-			namespace, name, _ := strings.Cut(strings.TrimPrefix(repository, "https://github.com/"), "/")
-			versions := []string{
-				with["${{inputs.tag}}"],
-				with["${{inputs.expected-commit}}"],
-			}
-			for _, version := range versions {
-				if version != "" {
-					newpurl = purl.PackageURL{
-						Type:      "github",
-						Namespace: namespace,
-						Name:      name,
-						Version:   version,
-					}
-					if err := newpurl.Normalize(); err != nil {
-						return nil, err
-					}
-					purls = append(purls, newpurl)
-				}
-			}
-		} else {
-			// Create nice looking package name, last component of uri, without .git
-			name := strings.TrimSuffix(filepath.Base(repository), ".git")
-			// Encode vcs_url with git+ prefix and @commit suffix
-			vcsUrl := "git+" + repository
-			if len(with["${{inputs.expected-commit}}"]) > 0 {
-				vcsUrl = vcsUrl + "@" + with["${{inputs.expected-commit}}"]
-			}
-			// Use tag as version
-			version := ""
-			if len(with["${{inputs.tag}}"]) > 0 {
-				version = with["${{inputs.tag}}"]
-			}
-			newpurl = purl.PackageURL{
-				Type:       "generic",
-				Name:       name,
-				Version:    version,
-				Qualifiers: purl.QualifiersFromMap(map[string]string{"vcs_url": vcsUrl}),
-			}
-			if err := newpurl.Normalize(); err != nil {
-				return nil, err
-			}
-			purls = append(purls, newpurl)
-		}
+func expectedShaLength(shaType string) int {
+	switch shaType {
+	case "expected-sha256":
+		return 64
+	case "expected-sha512":
+		return 128
+	case "expected-commit":
+		return 40
 	}
-	return purls, nil
+	return 0
 }
 
 //go:embed pipelines/*
-var f embed.FS
+var PipelinesFS embed.FS

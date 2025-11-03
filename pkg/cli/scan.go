@@ -28,13 +28,15 @@ import (
 	"strings"
 	"time"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	"chainguard.dev/apko/pkg/apk/expandapk"
-	"chainguard.dev/melange/pkg/build"
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/sca"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+
+	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/sca"
 )
 
 type scanConfig struct {
@@ -44,6 +46,8 @@ type scanConfig struct {
 	archs    []string
 	diff     bool
 	comments bool
+
+	purlNamespace string
 }
 
 func scan() *cobra.Command {
@@ -67,6 +71,8 @@ func scan() *cobra.Command {
 	cmd.Flags().StringSliceVar(&sc.archs, "arch", []string{}, "architectures to scan (default is x86_64)")
 	cmd.Flags().BoolVar(&sc.diff, "diff", false, "show diff output")
 	cmd.Flags().BoolVar(&sc.comments, "comments", false, "include comments in .PKGINFO diff")
+
+	cmd.Flags().StringVar(&sc.purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 
 	return cmd
 }
@@ -99,16 +105,20 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 
 		var r io.Reader
 		if strings.HasPrefix(u, "http") {
+			// #nosec G107 - URL is constructed from trusted configuration values
 			resp, err := http.Get(u)
 			if err != nil {
 				return fmt.Errorf("get %s: %w", u, err)
 			}
+			defer resp.Body.Close()
 			r = resp.Body
 		} else {
-			r, err = os.Open(u)
+			f, err := os.Open(u) // #nosec G304 - User-specified APK or config file for scanning
 			if err != nil {
 				return err
 			}
+			defer f.Close()
+			r = f
 		}
 		exp, err := expandapk.ExpandApk(ctx, r, "")
 		if err != nil {
@@ -149,7 +159,8 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 		bb := &build.Build{
 			WorkspaceDir:    dir,
 			SourceDateEpoch: time.Unix(315532800, 0),
-			Configuration:   *cfg,
+			Configuration:   cfg,
+			Namespace:       sc.purlNamespace,
 		}
 
 		pb := build.PackageBuild{
@@ -185,20 +196,24 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 
 			var r io.Reader
 			if strings.HasPrefix(u, "http") {
+				// #nosec G107 - URL is constructed from trusted configuration values
 				resp, err := http.Get(u)
 				if err != nil {
 					return fmt.Errorf("get %s: %w", u, err)
 				}
+				defer resp.Body.Close()
 				if resp.StatusCode != http.StatusOK {
 					log.Errorf("Get %s: %d", u, resp.StatusCode)
 					continue
 				}
 				r = resp.Body
 			} else {
-				r, err = os.Open(u)
+				f, err := os.Open(u) // #nosec G304 - User-specified APK or config file for scanning
 				if err != nil {
 					return err
 				}
+				defer f.Close()
+				r = f
 			}
 
 			exp, err := expandapk.ExpandApk(ctx, r, "")
@@ -291,10 +306,14 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 				diff := Diff(old, b, file, generated, sc.comments)
 				if diff != nil {
 					sawDiff = true
-					os.Stdout.Write(diff)
+					if _, err := os.Stdout.Write(diff); err != nil {
+						return fmt.Errorf("failed to write diff: %w", err)
+					}
 				}
 			} else if sc.pkg == "" || sc.pkg == subpkg.Name {
-				os.Stdout.Write(generated)
+				if _, err := os.Stdout.Write(generated); err != nil {
+					return fmt.Errorf("failed to write output: %w", err)
+				}
 			}
 		}
 
@@ -319,15 +338,19 @@ func scanCmd(ctx context.Context, file string, sc *scanConfig) error {
 			diff := Diff(old, b, file, generated, sc.comments)
 			if diff != nil {
 				sawDiff = true
-				os.Stdout.Write(diff)
+				if _, err := os.Stdout.Write(diff); err != nil {
+					return fmt.Errorf("failed to write diff: %w", err)
+				}
 			}
 		} else if sc.pkg == "" || sc.pkg == pkg.Name {
-			os.Stdout.Write(generated)
+			if _, err := os.Stdout.Write(generated); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
 		}
 	}
 
 	if sawDiff {
-		os.Exit(1)
+		return fmt.Errorf("saw diff for %s", file)
 	}
 
 	return nil
@@ -442,6 +465,29 @@ func (s *scaImpl) Options() config.PackageOption {
 
 func (s *scaImpl) BaseDependencies() config.Dependencies {
 	return s.pb.Dependencies
+}
+
+func (s *scaImpl) InstalledPackages() map[string]string {
+	pkgVersionMap := make(map[string]string)
+
+	for _, fullpkg := range s.pb.Build.Configuration.Environment.Contents.Packages {
+		pkg, version, _ := strings.Cut(fullpkg, "=")
+		pkgVersionMap[pkg] = version
+	}
+
+	// We also include the packages being built.
+	for _, pkg := range s.RelativeNames() {
+		pkgVersionMap[pkg] = s.Version()
+	}
+
+	return pkgVersionMap
+}
+
+func (s *scaImpl) PkgResolver() *apk.PkgResolver {
+	if s.pb.Build == nil || s.pb.Build.PkgResolver == nil {
+		return nil
+	}
+	return s.pb.Build.PkgResolver
 }
 
 func isComment(b string) bool {
@@ -565,16 +611,12 @@ func Diff(oldName string, old []byte, newName string, new []byte, comments bool)
 
 		// End chunk with common lines for context.
 		if len(ctext) > 0 {
-			n := end.x - start.x
-			if n > C {
-				n = C
-			}
+			n := min(end.x-start.x, C)
 			for _, s := range x[start.x : start.x+n] {
 				ctext = append(ctext, " "+s)
 				count.x++
 				count.y++
 			}
-			done = pair{start.x + n, start.y + n}
 
 			// Format and emit chunk.
 			// Convert line numbers to 1-indexed.
@@ -683,7 +725,7 @@ func tgs(x, y []string) []pair {
 	for i := range T {
 		T[i] = n + 1
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := sort.Search(n, func(k int) bool {
 			return T[k] >= J[i]
 		})

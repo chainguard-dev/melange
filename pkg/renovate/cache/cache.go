@@ -18,19 +18,20 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
 
-	"cloud.google.com/go/storage"
 	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/renovate"
-	"chainguard.dev/melange/pkg/util"
 )
 
 // CacheConfig contains the configuration data for a bump
@@ -136,7 +137,7 @@ func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 	log.Infof("  uri: %s", uriNode.Value)
 	log.Infof("  evaluated: %s", evaluatedURI)
 
-	downloadedFile, err := util.DownloadFile(ctx, evaluatedURI)
+	downloadedFile, err := downloadFile(ctx, evaluatedURI)
 	if err != nil {
 		return err
 	}
@@ -144,13 +145,13 @@ func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 	log.Infof("  fetched-as: %s", downloadedFile)
 
 	// Calculate SHA2-256 and SHA2-512 hashes.
-	fileSHA256, err := util.HashFile(downloadedFile, sha256.New())
+	fileSHA256, err := hashFile(downloadedFile, sha256.New())
 	if err != nil {
 		return err
 	}
 	log.Infof("  actual-sha256: %s", fileSHA256)
 
-	fileSHA512, err := util.HashFile(downloadedFile, sha512.New())
+	fileSHA512, err := hashFile(downloadedFile, sha512.New())
 	if err != nil {
 		return err
 	}
@@ -184,24 +185,18 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 	filename := fmt.Sprintf("%s:%s", hashFamily, cfgHash)
 	destinationPath := path.Join(cfg.CacheDir, filename)
 
-	var destinationFile io.WriteCloser
+	// TODO: Remove this when callers stop passing --cache-dir=gs://...
 	if strings.HasPrefix(cfg.CacheDir, "gs://") {
-		bucket, prefix, _ := strings.Cut(strings.TrimPrefix(cfg.CacheDir, "gs://"), "/")
-		client, err := storage.NewClient(ctx)
-		if err != nil {
-			return err
-		}
-		destinationFile = client.Bucket(bucket).Object(path.Join(prefix, filename)).NewWriter(ctx)
-	} else {
-		var err error
-		destinationFile, err = os.Create(destinationPath)
-		if err != nil {
-			return err
-		}
+		log.Warnf("cache directory is a GCS bucket, not copying file: %s", cfg.CacheDir)
+		return nil
+	}
+	destinationFile, err := os.Create(destinationPath) // #nosec G304 - Creating cached file in download directory
+	if err != nil {
+		return err
 	}
 	defer destinationFile.Close()
 
-	sourceFile, err := os.Open(downloadedFile)
+	sourceFile, err := os.Open(downloadedFile) // #nosec G304 - Reading downloaded file from cache
 	if err != nil {
 		return err
 	}
@@ -214,4 +209,61 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 	log.Infof("  wrote: %s", destinationPath)
 
 	return nil
+}
+
+// downloadFile downloads a file and returns a path to it in temporary storage.
+func downloadFile(ctx context.Context, uri string) (string, error) {
+	targetFile, err := os.CreateTemp("", "melange-update-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer targetFile.Close()
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// delete the referer header else redirects with sourceforge do not work well.  See https://stackoverflow.com/questions/67203383/downloading-from-sourceforge-wait-and-redirect
+			req.Header.Del("Referer")
+			return nil
+		},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+
+	// Set accept header to match the expected MIME types and avoid 403's for some servers like https://www.netfilter.org
+	req.Header.Set("Accept", "text/html")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch URL %s: %w", uri, err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code %d (%s) when fetching %s", resp.StatusCode, resp.Status, uri)
+	}
+
+	if _, err := io.Copy(targetFile, resp.Body); err != nil {
+		return "", err
+	}
+
+	return targetFile.Name(), nil
+}
+
+// hashFile calculates the hash for a file and returns it as a hex string.
+func hashFile(downloadedFile string, digest hash.Hash) (string, error) {
+	hashedFile, err := os.Open(downloadedFile) // #nosec G304 - Reading downloaded file for hashing
+	if err != nil {
+		return "", err
+	}
+	defer hashedFile.Close()
+
+	if _, err := io.Copy(digest, hashedFile); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(digest.Sum(nil)), nil
 }

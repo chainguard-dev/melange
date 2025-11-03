@@ -1,0 +1,25 @@
+package:
+  name: ld-so-conf-d-test
+  version: 1
+  epoch: 1
+  description: ld.so.conf.d test
+  copyright:
+    - license: MIT
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - build-base
+      - busybox
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.destdir}}"/etc/ld.so.conf.d
+      echo "/my/lib/test" > "${{targets.destdir}}"/etc/ld.so.conf.d/ld-so-conf-d-test.conf
+
+update:
+  enabled: false

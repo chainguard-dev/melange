@@ -14,14 +14,21 @@ pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"
       if [ -n "${{inputs.package}}" ]; then
-        PACKAGE_DIR="/home/build/melange-out/${{inputs.package}}"
+        PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
       fi
 
-      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+      if [ "$PACKAGE_DIR" = "${{targets.contextdir}}" ]; then
         echo "ERROR: Package can not split files from itself!" && exit 1
       fi
 
-      if [ -d "$PACKAGE_DIR/usr/share/man" ]; then
-        mkdir -p "${{targets.contextdir}}/usr/share"
-        mv "$PACKAGE_DIR/usr/share/man" "${{targets.contextdir}}/usr/share"
-      fi
+      for mandir in \
+        "$PACKAGE_DIR/usr/share/man" \
+        "$PACKAGE_DIR/usr/local/share/man" \
+        "$PACKAGE_DIR/usr/man"; do
+
+        if [ -d "$mandir" ]; then
+          mkdir -p "${{targets.contextdir}}/usr/share/man"
+          mv "$mandir"/* "${{targets.contextdir}}/usr/share/man/"
+          rmdir --parents --ignore-fail-on-non-empty "$mandir"
+        fi
+      done

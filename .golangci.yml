@@ -1,0 +1,67 @@
+version: "2"
+run:
+  issues-exit-code: 1
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - errorlint
+    - forbidigo
+    - gocritic
+    - gosec
+    - importas
+    - misspell
+    - modernize
+    - prealloc
+    - staticcheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: ^fmt.print.*$
+    goheader:
+      values:
+        regexp:
+          ws: \s*
+      template-path: header.tmpl
+    gosec:
+      excludes:
+        - G115  # Integer overflow conversions - handled where needed
+        - G301  # Directory permissions (0o755) - directories may be accessed by non-melange users/processes in CI/CD environments
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - gosec
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - chainguard.dev/melange
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

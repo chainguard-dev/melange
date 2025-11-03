@@ -1,0 +1,26 @@
+name: Check environment variable propagation
+pipeline:
+  - name: "Verify environment variables"
+    environment:
+      INTERNAL_PIPELINE_VAR: "internal_pipeline_var"
+    runs: |
+      echo "Checking GLOBAL_VAR: $GLOBAL_VAR"
+      echo "Checking PIPELINE_VAR: $PIPELINE_VAR"
+
+      if [ "$GLOBAL_VAR" != "from_config" ]; then
+        echo "ERROR: GLOBAL_VAR not propagated correctly"
+        exit 1
+      fi
+
+      if [ "$PIPELINE_VAR" != "from_uses" ]; then
+        echo "ERROR: PIPELINE_VAR not propagated correctly"
+        exit 1
+      fi
+
+      if [ "$INTERNAL_PIPELINE_VAR" != "internal_pipeline_var" ]; then
+        echo "ERROR: PIPELINE_VAR not propagated correctly"
+        exit 1
+      fi
+
+      echo "SUCCESS: All environment variables propagated correctly"
+

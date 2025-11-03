@@ -35,6 +35,80 @@
       ],
       "description": "BuildOption describes an optional deviation to a package build."
     },
+    "CPE": {
+      "properties": {
+        "part": {
+          "type": "string"
+        },
+        "vendor": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string"
+        },
+        "edition": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "sw_edition": {
+          "type": "string"
+        },
+        "target_sw": {
+          "type": "string"
+        },
+        "target_hw": {
+          "type": "string"
+        },
+        "other": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "CPE stores values used to produce a CPE to describe the package, suitable for matching against NVD records."
+    },
+    "Capabilities": {
+      "properties": {
+        "add": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to add to the pipeline container."
+        },
+        "drop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to drop from the pipeline container."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capabilities is the configuration for Linux capabilities for the runner."
+    },
+    "Capability": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "add": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Capability stores paths and an associated map of capabilities and justification to include in a package."
+    },
     "Checks": {
       "properties": {
         "disabled": {
@@ -56,7 +130,11 @@
         },
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
-          "description": "The specification for the packages build environment"
+          "description": "The specification for the packages build environment\nOptional: environment variables to override apko"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities",
+          "description": "Optional: Linux capabilities configuration to apply to the melange runner."
         },
         "pipeline": {
           "items": {
@@ -113,9 +191,11 @@
       "type": "object",
       "required": [
         "package",
-        "environment"
+        "environment",
+        "capabilities",
+        "update"
       ],
-      "description": "The root melange configuration"
+      "description": "Configuration is the root melange configuration."
     },
     "ContentsOption": {
       "properties": {
@@ -150,6 +230,10 @@
         "license-path": {
           "type": "string",
           "description": "Optional: Path to text of the custom License Ref"
+        },
+        "detection-override": {
+          "type": "string",
+          "description": "Optional: License override"
         }
       },
       "additionalProperties": false,
@@ -228,7 +312,7 @@
         },
         "tag-filter": {
           "type": "string",
-          "description": "Filter to apply when searching tags on a GitHub repository\nDeprecated: Use TagFilterPrefix instead"
+          "description": "Filter to apply when searching tags on a GitHub repository\n\nDeprecated: Use TagFilterPrefix instead"
         },
         "tag-filter-prefix": {
           "type": "string",
@@ -367,6 +451,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "layering": {
+          "$ref": "#/$defs/Layering"
         }
       },
       "additionalProperties": false,
@@ -375,6 +462,12 @@
     "ImageContents": {
       "properties": {
         "build_repositories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "runtime_repositories": {
           "items": {
             "type": "string"
           },
@@ -430,7 +523,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "description": "Optional: The human readable description of the input"
+          "description": "Optional: The human-readable description of the input"
         },
         "default": {
           "type": "string",
@@ -439,6 +532,18 @@
         "required": {
           "type": "boolean",
           "description": "Optional: A toggle denoting whether the input is required or not"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Layering": {
+      "properties": {
+        "strategy": {
+          "type": "string"
+        },
+        "budget": {
+          "type": "integer"
         }
       },
       "additionalProperties": false,
@@ -499,7 +604,14 @@
         },
         "description": {
           "type": "string",
-          "description": "A human readable description of the package"
+          "description": "A human-readable description of the package"
+        },
+        "annotations": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Annotations for this package"
         },
         "url": {
           "type": "string",
@@ -539,6 +651,17 @@
           "$ref": "#/$defs/Checks",
           "description": "Optional: enabling, disabling, and configuration of build checks"
         },
+        "cpe": {
+          "$ref": "#/$defs/CPE",
+          "description": "The CPE field values to be used for matching against NVD vulnerability\nrecords, if known."
+        },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
+        },
         "timeout": {
           "type": "integer",
           "description": "Optional: The amount of time to allow this build to take before timing out."
@@ -553,7 +676,10 @@
       "required": [
         "name",
         "version",
-        "epoch"
+        "epoch",
+        "dependencies",
+        "checks",
+        "cpe"
       ]
     },
     "PackageOption": {
@@ -569,15 +695,14 @@
         "no-commands": {
           "type": "boolean",
           "description": "Optional: Mark this package as not providing any executables"
+        },
+        "no-versioned-shlib-deps": {
+          "type": "boolean",
+          "description": "Optional: Don't generate versioned depends for shared libraries"
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "no-provides",
-        "no-depends",
-        "no-commands"
-      ]
+      "type": "object"
     },
     "PathMutation": {
       "properties": {
@@ -608,6 +733,10 @@
     },
     "Pipeline": {
       "properties": {
+        "if": {
+          "type": "string",
+          "description": "Optional: A condition to evaluate before running the pipeline"
+        },
         "name": {
           "type": "string",
           "description": "Optional: A user defined name for the pipeline"
@@ -632,7 +761,7 @@
             "$ref": "#/$defs/Pipeline"
           },
           "type": "array",
-          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in it's own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
+          "description": "Optional: The list of pipelines to run.\n\nEach pipeline runs in its own context that is not shared between other\npipelines. To share context between pipelines, nest a pipeline within an\nexisting pipeline. This can be useful when you wish to share common\nconfiguration, such as an alternative `working-directory`."
         },
         "inputs": {
           "additionalProperties": {
@@ -649,10 +778,6 @@
           "type": "string",
           "description": "Optional: Labels to apply to the pipeline"
         },
-        "if": {
-          "type": "string",
-          "description": "Optional: A condition to evaluate before running the pipeline"
-        },
         "assertions": {
           "$ref": "#/$defs/PipelineAssertions",
           "description": "Optional: Assertions to evaluate whether the pipeline was successful"
@@ -666,7 +791,7 @@
             "type": "string"
           },
           "type": "object",
-          "description": "Optional: environment variables to override the apko environment"
+          "description": "Optional: environment variables to override apko"
         }
       },
       "additionalProperties": false,
@@ -711,6 +836,14 @@
         "strip-suffix": {
           "type": "string",
           "description": "If the version in release monitor contains a suffix which should be ignored"
+        },
+        "version-filter-contains": {
+          "type": "string",
+          "description": "Filter to apply when searching version on a Release Monitoring"
+        },
+        "version-filter-prefix": {
+          "type": "string",
+          "description": "Filter to apply when searching version Release Monitoring"
         }
       },
       "additionalProperties": false,
@@ -723,6 +856,9 @@
     "Resources": {
       "properties": {
         "cpu": {
+          "type": "string"
+        },
+        "cpumodel": {
           "type": "string"
         },
         "memory": {
@@ -781,7 +917,10 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "trigger"
+      ]
     },
     "Subpackage": {
       "properties": {
@@ -834,19 +973,28 @@
         "test": {
           "$ref": "#/$defs/Test",
           "description": "Test section for the subpackage."
+        },
+        "setcap": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array",
+          "description": "Capabilities to set after the pipeline completes."
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "dependencies",
+        "checks"
       ]
     },
     "Test": {
       "properties": {
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
-          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank."
+          "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank.\nOptional: Additional Environment the test needs to run"
         },
         "pipeline": {
           "items": {
@@ -890,6 +1038,10 @@
           "type": "boolean",
           "description": "Indicates that this package should be manually updated, usually taking\ncare over special version numbers"
         },
+        "require-sequential": {
+          "type": "boolean",
+          "description": "Indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs"
+        },
         "shared": {
           "type": "boolean",
           "description": "Indicate that an update to this package requires an epoch bump of\ndownstream dependencies, e.g. golang, java"
@@ -931,6 +1083,10 @@
         "schedule": {
           "$ref": "#/$defs/Schedule",
           "description": "Schedule defines the schedule for the update check to run"
+        },
+        "enable-prerelease-tags": {
+          "type": "boolean",
+          "description": "Optional: Disables filtering of common pre-release tags"
         }
       },
       "additionalProperties": false,

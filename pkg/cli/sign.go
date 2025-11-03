@@ -22,12 +22,12 @@ import (
 	"io"
 	"os"
 
-	sign "chainguard.dev/apko/pkg/apk/signature"
-	pkgsign "chainguard.dev/melange/pkg/sign"
 	"github.com/chainguard-dev/clog"
 	"github.com/klauspost/compress/gzip"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+
+	"chainguard.dev/melange/pkg/sign"
 )
 
 type signIndexOpts struct {
@@ -99,7 +99,7 @@ func (o signIndexOpts) SignIndex(ctx context.Context, indexFile string) error {
 
 // parseIndexWithoutSignature takes in an index file and returns the unsigned []byte representation of it
 func parseIndexWithoutSignature(_ context.Context, indexFile string) ([]byte, error) {
-	orig, err := os.Open(indexFile)
+	orig, err := os.Open(indexFile) // #nosec G304 - User-specified APK index file for signing
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +131,7 @@ func parseIndexWithoutSignature(_ context.Context, indexFile string) ([]byte, er
 			if err := tw.WriteHeader(hdr); err != nil {
 				return nil, err
 			}
+			// #nosec G110 - Copying specific known files from trusted APK index
 			if _, err := io.Copy(tw, tr); err != nil {
 				return nil, err
 			}
@@ -190,5 +191,5 @@ func (o signOpts) RunAllE(ctx context.Context, pkgs ...string) error {
 
 func (o signOpts) run(ctx context.Context, pkg string) error {
 	clog.FromContext(ctx).Infof("Processing apk %s", pkg)
-	return pkgsign.APK(ctx, pkg, o.Key)
+	return sign.APK(ctx, pkg, o.Key)
 }

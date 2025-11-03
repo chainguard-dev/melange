@@ -21,6 +21,8 @@ import (
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -30,6 +32,36 @@ type Option func(*Build) error
 func WithConfig(configFile string) Option {
 	return func(b *Build) error {
 		b.ConfigFile = configFile
+		return nil
+	}
+}
+
+// WithConfiguration sets the configuration used for the package build context, and the filename that should be reported for that.
+func WithConfiguration(config *config.Configuration, filename string) Option {
+	return func(b *Build) error {
+		b.ConfigFile = filename
+		b.Configuration = config
+		return nil
+	}
+}
+
+func WithConfigFileRepositoryURL(u string) Option {
+	return func(b *Build) error {
+		b.ConfigFileRepositoryURL = u
+		return nil
+	}
+}
+
+func WithConfigFileRepositoryCommit(hash string) Option {
+	return func(b *Build) error {
+		b.ConfigFileRepositoryCommit = hash
+		return nil
+	}
+}
+
+func WithConfigFileLicense(license string) Option {
+	return func(b *Build) error {
+		b.ConfigFileLicense = license
 		return nil
 	}
 }
@@ -76,14 +108,6 @@ func WithBuildDate(s string) Option {
 func WithWorkspaceDir(workspaceDir string) Option {
 	return func(b *Build) error {
 		b.WorkspaceDir = workspaceDir
-		return nil
-	}
-}
-
-// WithGuestDir sets the guest directory to use.
-func WithGuestDir(guestDir string) Option {
-	return func(b *Build) error {
-		b.GuestDir = guestDir
 		return nil
 	}
 }
@@ -274,6 +298,15 @@ func WithCreateBuildLog(createBuildLog bool) Option {
 	}
 }
 
+// WithPersistLintResults indicates whether to persist lint results to JSON files
+// in the packages/{arch} directory.
+func WithPersistLintResults(persistLintResults bool) Option {
+	return func(b *Build) error {
+		b.PersistLintResults = persistLintResults
+		return nil
+	}
+}
+
 // WithDebug indicates whether debug logging of pipelines should be enabled.
 func WithDebug(debug bool) Option {
 	return func(b *Build) error {
@@ -299,7 +332,7 @@ func WithInteractive(interactive bool) Option {
 }
 
 // WithRemove indicates whether the the build will clean up after itself.
-// This includes deleting any intermediate artifacts like container images.
+// This includes deleting any intermediate artifacts like container images and temp workspace and guest dirs.
 func WithRemove(remove bool) Option {
 	return func(b *Build) error {
 		b.Remove = remove
@@ -326,6 +359,13 @@ func WithPackageCacheDir(apkCacheDir string) Option {
 func WithCPU(cpu string) Option {
 	return func(b *Build) error {
 		b.DefaultCPU = cpu
+		return nil
+	}
+}
+
+func WithCPUModel(cpumodel string) Option {
+	return func(b *Build) error {
+		b.DefaultCPUModel = cpumodel
 		return nil
 	}
 }
@@ -381,6 +421,14 @@ func WithLibcFlavorOverride(libc string) Option {
 func WithIgnoreSignatures(ignore bool) Option {
 	return func(b *Build) error {
 		b.IgnoreSignatures = ignore
+		return nil
+	}
+}
+
+// WithGenerateProvenance sets whether to generate SLSA provenance during the build.
+func WithGenerateProvenance(provenance bool) Option {
+	return func(b *Build) error {
+		b.GenerateProvenance = provenance
 		return nil
 	}
 }

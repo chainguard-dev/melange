@@ -10,6 +10,11 @@ inputs:
       The number of path components to strip while extracting.
     default: 1
 
+  directory:
+    description: |
+      The directory to extract the artifact into (passed to `tar -C`)
+    default: .
+
   extract:
     description: |
       Whether to extract the downloaded artifact as a source tarball.
@@ -88,13 +93,23 @@ pipeline:
       fi
 
       if [ "${{inputs.expected-sha256}}" != "" ]; then
-        printf "%s  %s\n" '${{inputs.expected-sha256}}' $bn | sha256sum -c
+        printf "fetch: Expected sha256: ${{inputs.expected-sha256}}\n"
+        sum=$(sha256sum $bn | awk '{print $1}')
+        if [ "${{inputs.expected-sha256}}" != "$sum" ]; then
+          printf "fetch: Expected sha256 does not match found: $sum\n"
+          exit 1
+        fi
       else
-        printf "%s  %s\n" '${{inputs.expected-sha512}}' $bn | sha512sum -c
+        printf "fetch: Expected sha512: ${{inputs.expected-sha512}}\n"
+        sum=$(sha512sum $bn | awk '{print $1}')
+        if [ "${{inputs.expected-sha512}}" != "$sum" ]; then
+          printf "fetch: Expected sha512 does not match found: $sum\n"
+          exit 1
+        fi
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then
-        tar -x '--strip-components=${{inputs.strip-components}}' -f $bn
+        tar -x '--strip-components=${{inputs.strip-components}}' --no-same-owner -C '${{inputs.directory}}' -f $bn
       fi
 
       if [ "${{inputs.delete}}" = "true" ]; then

@@ -1,0 +1,133 @@
+package:
+  name: split-lib-build-test
+  version: "1.0"
+  epoch: 0
+  description: Test split/lib pipeline
+  copyright:
+    - license: BSD-3-Clause
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      # Create mock shared libraries
+      mkdir -p ${{targets.destdir}}/usr/lib
+
+      # Create various .so.* files (shared libraries)
+      echo "mock lib" > ${{targets.destdir}}/usr/lib/libtest.so.1.0.0
+      echo "mock lib" > ${{targets.destdir}}/usr/lib/libssl.so.3.0.0
+      echo "mock lib" > ${{targets.destdir}}/usr/lib/libcrypto.so.3.0.0
+
+      # Create versioned symlinks (SHOULD be moved by split/lib)
+      ln -s libtest.so.1.0.0 ${{targets.destdir}}/usr/lib/libtest.so.1
+      ln -s libssl.so.3.0.0 ${{targets.destdir}}/usr/lib/libssl.so.3
+
+      # Create unversioned .so symlink (should NOT be moved by split/lib)
+      ln -s libtest.so.1.0.0 ${{targets.destdir}}/usr/lib/libtest.so
+
+      # Create a static library (should NOT be moved by split/lib)
+      echo "static" > ${{targets.destdir}}/usr/lib/libstatic.a
+
+subpackages:
+  - name: split-lib-build-test-libs
+    description: Shared libraries split from main package
+    pipeline:
+      - uses: split/lib
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            # Subpackage should have all .so.* files
+            test -f /usr/lib/libtest.so.1.0.0 || exit 1
+            test -f /usr/lib/libssl.so.3.0.0 || exit 1
+            test -f /usr/lib/libcrypto.so.3.0.0 || exit 1
+
+            # Subpackage should also have versioned .so.* symlinks
+            test -L /usr/lib/libtest.so.1 || exit 1
+            test -L /usr/lib/libssl.so.3 || exit 1
+
+            echo "PASS: Subpackage has all .so.* files and versioned symlinks"
+
+  - name: split-lib-build-test-ssl
+    description: Test pattern-based splitting
+    pipeline:
+      # Recreate libraries for pattern test
+      - runs: |
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib
+          echo "ssl" > ${{targets.outdir}}/${{package.name}}/usr/lib/libssl.so.1
+          echo "crypto" > ${{targets.outdir}}/${{package.name}}/usr/lib/libcrypto.so.1
+          echo "other" > ${{targets.outdir}}/${{package.name}}/usr/lib/libother.so.1
+      - uses: split/lib
+        with:
+          package: ${{package.name}}
+          patterns: |
+            ssl
+            crypto
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            # Should only have ssl and crypto
+            test -f /usr/lib/libssl.so.1 || exit 1
+            test -f /usr/lib/libcrypto.so.1 || exit 1
+            test ! -f /usr/lib/libother.so.1 || exit 1
+            echo "PASS: Pattern-based split works correctly"
+
+  - name: split-lib-build-test-custom-paths
+    description: Test custom paths splitting
+    pipeline:
+      # Create libraries in custom paths
+      - runs: |
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib64
+          mkdir -p ${{targets.outdir}}/${{package.name}}/opt/lib
+          echo "lib64" > ${{targets.outdir}}/${{package.name}}/usr/lib64/libcustom64.so.1
+          echo "optlib" > ${{targets.outdir}}/${{package.name}}/opt/lib/liboptional.so.2.0
+          # Also create one in default location to verify defaults still work
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib
+          echo "default" > ${{targets.outdir}}/${{package.name}}/usr/lib/libdefault.so.1
+      - uses: split/lib
+        with:
+          package: ${{package.name}}
+          paths: |
+            usr/lib64
+            opt/lib
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            # Should have libraries from custom paths
+            test -f /usr/lib64/libcustom64.so.1 || exit 1
+            test -f /opt/lib/liboptional.so.2.0 || exit 1
+            # Should also have libraries from default paths
+            test -f /usr/lib/libdefault.so.1 || exit 1
+            echo "PASS: Custom paths split works correctly"
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        # Main package should still have unversioned .so symlinks and static libs
+        test -L /usr/lib/libtest.so || exit 1
+        test -f /usr/lib/libstatic.a || exit 1
+
+        # But should NOT have .so.* files or versioned .so.* symlinks (they were split)
+        test ! -f /usr/lib/libtest.so.1.0.0 || exit 1
+        test ! -L /usr/lib/libtest.so.1 || exit 1
+        test ! -L /usr/lib/libssl.so.3 || exit 1
+
+        echo "PASS: Main package correctly retains only unversioned .so symlinks and static libs"

@@ -1,0 +1,100 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-crane-0.20.2-r1",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "0001-01-01T00:00:00Z",
+    "creators": [
+      "Tool: melange (devel)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/be3c22f08feabeabd0f5c9cc9677dafc",
+  "documentDescribes": [
+    "SPDXRef-Package-crane-0.20.2-r1"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-crane-0.20.2-r1",
+      "name": "crane",
+      "versionInfo": "0.20.2-r1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/wolfi/crane@0.20.2-r1?arch=x86_64\u0026distro=wolfi",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-testdata-buildC95configs-crane.yaml-c0ffee",
+      "name": "testdata/build_configs/crane.yaml",
+      "versionInfo": "c0ffee",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/wolfi-dev/os@c0ffee#testdata/build_configs/crane.yaml",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-github.com-google-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128-0",
+      "name": "go-containerregistry",
+      "versionInfo": "v0.20.2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "https://github.com/google/go-containerregistry/archive/c195f151efe3369874c72662cd69ad43ee485128.tar.gz",
+      "originator": "Organization: Google",
+      "supplier": "Organization: Google",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/google/go-containerregistry@v0.20.2",
+          "referenceType": "purl"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-crane-0.20.2-r1",
+      "relationshipType": "DESCRIBED_BY",
+      "relatedSpdxElement": "SPDXRef-Package-testdata-buildC95configs-crane.yaml-c0ffee"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-crane-0.20.2-r1",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-Package-github.com-google-go-containerregistry-v0.20.2-c195f151efe3369874c72662cd69ad43ee485128-0"
+    }
+  ]
+}

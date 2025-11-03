@@ -22,15 +22,17 @@ melange lint [flags]
 ### Examples
 
 ```
-  melange lint [--enable=foo[,bar]] [--disable=baz] foo.apk
+  melange lint [--enable=foo[,bar]] [--disable=baz] [--persist-lint-results] [--out-dir=./output] foo.apk
 ```
 
 ### Options
 
 ```
   -h, --help                   help for lint
-      --lint-require strings   linters that must pass (default [dev,infodir,tempdir,varempty])
-      --lint-warn strings      linters that will generate warnings (default [object,opt,python/docs,python/multiple,python/test,setuidgid,srv,strip,usrlocal,worldwrite])
+      --lint-require strings   linters that must pass (default [dev,infodir,setuidgid,tempdir,usrmerge,varempty,worldwrite])
+      --lint-warn strings      linters that will generate warnings (default [binaryarch,cudaruntimelib,dll,duplicate,dylib,lddcheck,maninfo,nonlinux,object,opt,pkgconf,python/docs,python/multiple,python/test,sbom,srv,staticarchive,strip,unsupportedarch,usrlocal])
+      --out-dir string         directory where lint results JSON files will be saved (requires --persist-lint-results) (default "packages")
+      --persist-lint-results   persist lint results to JSON files in packages/{arch}/ directory
 ```
 
 ### Options inherited from parent commands

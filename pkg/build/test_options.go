@@ -17,6 +17,7 @@ package build
 import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+
 	"chainguard.dev/melange/pkg/container"
 )
 
@@ -34,14 +35,6 @@ func WithTestConfig(configFile string) TestOption {
 func WithTestWorkspaceDir(workspaceDir string) TestOption {
 	return func(t *Test) error {
 		t.WorkspaceDir = workspaceDir
-		return nil
-	}
-}
-
-// WithGuestDir sets the guest directory to use.
-func WithTestGuestDir(guestDir string) TestOption {
-	return func(t *Test) error {
-		t.GuestDir = guestDir
 		return nil
 	}
 }
@@ -193,6 +186,23 @@ func WithTestAuth(domain, user, pass string) TestOption {
 			t.Auth = make(map[string]options.Auth)
 		}
 		t.Auth[domain] = options.Auth{User: user, Pass: pass}
+		return nil
+	}
+}
+
+// If true, the test will clean up the test environment after the test is complete.
+func WithTestRemove(c bool) TestOption {
+	return func(t *Test) error {
+		t.Remove = c
+		return nil
+	}
+}
+
+// WithIgnoreSignatures indicates whether to ignore signatures when
+// installing packages.
+func WithTestIgnoreSignatures(ignore bool) TestOption {
+	return func(t *Test) error {
+		t.IgnoreSignatures = ignore
 		return nil
 	}
 }

@@ -7,10 +7,11 @@ import (
 	"path/filepath"
 
 	apkotypes "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/config"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 type GeneratedMelangeConfig struct {
@@ -40,20 +41,20 @@ func (m *GeneratedMelangeConfig) SetGeneratedFromComment(comment string) {
 
 func (m *GeneratedMelangeConfig) Write(ctx context.Context, dir string) error {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, os.ModePerm)
+		err = os.MkdirAll(dir, 0o755)
 		if err != nil {
 			return fmt.Errorf("creating output directory %s: %w", dir, err)
 		}
 	}
 
 	manifestPath := filepath.Join(dir, fmt.Sprintf("%s.yaml", m.Package.Name))
-	f, err := os.Create(manifestPath)
+	f, err := os.Create(manifestPath) // #nosec G304 - Writing manifest to output directory
 	if err != nil {
 		return fmt.Errorf("creating file %s: %w", manifestPath, err)
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(fmt.Sprintf("# Generated from %s\n", m.GeneratedFromComment)); err != nil {
+	if _, err := fmt.Fprintf(f, "# Generated from %s\n", m.GeneratedFromComment); err != nil {
 		return fmt.Errorf("creating writing to file %s: %w", manifestPath, err)
 	}
 

@@ -1,0 +1,43 @@
+name: Split executable files
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  package:
+    description: |
+      The package to split executable files from
+    required: false
+
+pipeline:
+  - runs: |
+      pkgname="${{context.name}}"
+      pkgnobin="${pkgname%%-bin}"
+      pkgnobindir="${{targets.outdir}}/$pkgnobin"
+
+      if [ -n "${{inputs.package}}" ]; then
+        srcdir="${{targets.outdir}}/${{inputs.package}}"
+      elif [ "$pkgname" != "$pkgnobin" ] && [ -d "$pkgnobindir" ]; then
+        srcdir="$pkgnobindir"
+      else
+        srcdir="${{targets.destdir}}"
+      fi
+
+      if [ "$srcdir" = "${{targets.contextdir}}" ]; then
+        echo "ERROR: Package can not split files from itself!"
+        exit 1
+      fi
+
+      dir=usr/bin
+      if [ ! -d "$srcdir/$dir" ]; then
+        echo "$srcdir/$dir: not a directory"
+        exit 1
+      fi
+
+      destdir="${{targets.contextdir}}/$dir"
+      mkdir -p "$destdir"
+      mv "$srcdir/$dir"/* "$destdir/"
+
+      # Remove now-empty directories from source
+      find "$srcdir/${dir%%/*}" -depth -type d -mindepth 1 -exec rmdir {} \;

@@ -4,6 +4,7 @@ needs:
   packages:
     - R
     - R-dev
+    - R-doc
     - busybox
 
 inputs:
@@ -25,11 +26,7 @@ inputs:
 pipeline:
   - runs: |
       # Use default R library path
-      mkdir -p /usr/lib/R/library
       mkdir -p ${{targets.contextdir}}/usr/lib/R/library
 
       # Build R package from source
-      Rscript -e 'install.packages("${{inputs.path}}", repos = NULL, type = "source")'
-
-      # Install package
-      mv /usr/lib/R/library/${{inputs.package}} ${{targets.contextdir}}/usr/lib/R/library/
+      Rscript -e 'install.packages("${{inputs.path}}", lib = "${{targets.contextdir}}/usr/lib/R/library/", repos = NULL, type = "source")'

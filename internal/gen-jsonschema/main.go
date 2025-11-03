@@ -7,13 +7,12 @@ import (
 	"log"
 	"os"
 
-	"chainguard.dev/melange/pkg/config"
 	"github.com/invopop/jsonschema"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
-var (
-	outputFlag = flag.String("o", "", "output path")
-)
+var outputFlag = flag.String("o", "", "output path")
 
 func main() {
 	flag.Parse()
@@ -33,7 +32,8 @@ func main() {
 	if err := enc.Encode(schema); err != nil {
 		log.Fatal(err)
 	}
-	if err := os.WriteFile(*outputFlag, b.Bytes(), 0644); err != nil {
+	// #nosec G306 - Generated schema file should be world-readable
+	if err := os.WriteFile(*outputFlag, b.Bytes(), 0o644); err != nil {
 		log.Fatal(err)
 	}
 }

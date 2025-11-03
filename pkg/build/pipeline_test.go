@@ -19,9 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/util"
-	"gopkg.in/yaml.v3"
 
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/stretchr/testify/require"
@@ -78,9 +79,10 @@ func Test_MutateWith(t *testing.T) {
 		version string
 		epoch   uint64
 		want    string
-	}{{version: "1.2.3",
-		epoch: 0,
-		want:  "1.2.3-r0",
+	}{{
+		version: "1.2.3",
+		epoch:   0,
+		want:    "1.2.3-r0",
 	}, {
 		version: "1.2.3",
 		epoch:   3,
@@ -169,6 +171,66 @@ func TestAllPipelines(t *testing.T) {
 			if err := yaml.Unmarshal(b, pipeline); err != nil {
 				t.Errorf("unexpected error unmarshalling pipeline: %v", err)
 			}
+		})
+	}
+}
+
+func Test_validateWith(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        map[string]string
+		inputs      map[string]config.Input
+		expected    map[string]string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid SHA256 checksum",
+			data: map[string]string{
+				"expected-sha256": "a3c2567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			},
+			inputs: map[string]config.Input{
+				"expected-sha256": {Default: "", Required: true},
+			},
+			expected: map[string]string{
+				"expected-sha256": "a3c2567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid SHA256 length",
+			data: map[string]string{
+				"expected-sha256": "abcdef",
+			},
+			inputs: map[string]config.Input{
+				"expected-sha256": {Default: "", Required: true},
+			},
+			expectError: true,
+			errorMsg:    "checksum input \"expected-sha256\" for pipeline, invalid length",
+		},
+		{
+			name: "Missing required input",
+			data: map[string]string{},
+			inputs: map[string]config.Input{
+				"expected-commit": {Default: "", Required: true},
+			},
+			expectError: true,
+			errorMsg:    "required input \"expected-commit\" for pipeline is missing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := validateWith(tt.data, tt.inputs)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.EqualError(t, err, tt.errorMsg)
+				return // Skip further checks if error is expected
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }

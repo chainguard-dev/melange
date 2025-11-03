@@ -10,8 +10,9 @@ import (
 	"strings"
 	"text/template"
 
-	"chainguard.dev/melange/pkg/config"
 	"sigs.k8s.io/yaml"
+
+	"chainguard.dev/melange/pkg/config"
 
 	_ "embed"
 )
@@ -97,7 +98,7 @@ func main() {
 }
 
 func parseFile(path string) (*config.Pipeline, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) // #nosec G304 - Reading pipeline definition for documentation
 	if err != nil {
 		return nil, err
 	}
@@ -110,9 +111,7 @@ func parseFile(path string) (*config.Pipeline, error) {
 	return out, nil
 }
 
-var (
-	regex = regexp.MustCompile(`(?s)<!-- start:pipeline-reference-gen -->\n(.*?)<!-- end:pipeline-reference-gen -->`)
-)
+var regex = regexp.MustCompile(`(?s)<!-- start:pipeline-reference-gen -->\n(.*?)<!-- end:pipeline-reference-gen -->`)
 
 func writeFile(path string, doc []*PipelineDoc) error {
 	out := new(bytes.Buffer)
@@ -121,14 +120,15 @@ func writeFile(path string, doc []*PipelineDoc) error {
 	}
 
 	path = filepath.Join(path, "README.md")
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 - Reading README for documentation generation
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
 	// File doesn't exist, write as-is.
 	if os.IsNotExist(err) {
-		return os.WriteFile(path, out.Bytes(), os.ModePerm)
+		// #nosec G306 - Documentation file should be world-readable
+		return os.WriteFile(path, out.Bytes(), 0o644)
 	}
 
 	// Remove existing content
@@ -139,5 +139,6 @@ func writeFile(path string, doc []*PipelineDoc) error {
 	// Append to the end
 	content = append(content, out.Bytes()...)
 	fmt.Println("Wrote", path)
-	return os.WriteFile(path, content, os.ModePerm)
+	// #nosec G306 - Documentation file should be world-readable
+	return os.WriteFile(path, content, 0o644)
 }

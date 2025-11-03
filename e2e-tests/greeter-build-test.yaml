@@ -1,0 +1,95 @@
+# 'greeter' is shell based 'hello world' with different output based on arg0.
+#
+# When executed with zero arguments, greeter will emit its greeting and exit.
+# When executed with 1 or more arguments it will emit "<greeting>, <argv[1]>"
+# 'greeting' is set to basename(argv[0]), unless basename(argv[0]) is 'greeter',
+# in which case the greeting is set to 'howdy'.
+#
+# The main package installs /usr/bin/greeter.
+# subpackages install symlinks to greeter (aloha, hello).
+#
+# The 'tester-blob' melange variable provides a function
+# 'testrun' that runs test.
+package:
+  name: greeter
+  version: 1.0
+  epoch: 0
+  dependencies:
+    runtime:
+      - busybox
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+data:
+  - name: greetings
+    items:
+      english: hello
+      hawaiian: aloha
+      latvian: sveiki
+
+pipeline:
+  - name: install greeter
+    runs: |
+      bdir=${{targets.destdir}}/usr/bin
+      mkdir -p "$bdir"
+      cat > "$bdir/greeter" <<"EOF"
+      #!/bin/sh
+      greeting=${0##*/}
+      [ "$greeting" = "greeter" ] && greeting="howdy"
+      echo "$greeting${1:+, $1}"
+      EOF
+      chmod 755 "$bdir/greeter"
+
+subpackages:
+  - range: greetings
+    name: ${{package.name}}-${{range.key}}
+    description: Greet in ${{range.key}}
+    dependencies:
+      runtime:
+        - ${{package.name}}
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}/usr/bin"
+          ln -s greeter ${{targets.contextdir}}/usr/bin/${{range.value}}
+    test:
+      pipeline:
+        - runs: |
+            ${{vars.tester-blob}}
+            testrun ${{range.value}}
+
+test:
+  pipeline:
+    - name: test-greeter
+      runs: |
+        ${{vars.tester-blob}}
+        testrun greeter howdy
+
+vars:
+  tester-blob: |
+    set +x
+    testfail() { echo "FAIL:" "$tname${1:+ - $*}" 1>&2; exit 1; }
+    testpass() { echo "PASS:" "$tname"; }
+    error() { echo "FATAL:" "$@" 1>&2; exit 1; }
+    testrun() {
+      local cmd="$1" greeting="${2:-$1}" tname="" expected="" out=""
+      [ -n "$cmd" ] || error "cmd must set cmd"
+
+      tname="'$cmd' is in PATH"
+      out=$(command -v $cmd) && testpass || testfail
+
+      expected="$greeting"
+      tname="'$cmd' outputs '$expected'"
+      out=$($cmd) || testfail "'$cmd' exited $?"
+      [ "$out" = "$expected" ] &&
+        testpass || testfail "found '$out'"
+
+      expected="$greeting, bob"
+      tname="'$cmd bob' outputs '$expected'"
+      out=$($cmd bob) || testfail "'$cmd bob' exited $?"
+      [ "$out" = "$expected" ] &&
+        testpass || testfail "found '$out'"
+      return 0
+    }

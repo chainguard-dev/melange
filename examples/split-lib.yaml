@@ -1,0 +1,89 @@
+package:
+  name: split-lib-test
+  version: "1.0"
+  epoch: 0
+  description: Test split/lib pipeline
+  copyright:
+    - license: BSD-3-Clause
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      # Create mock shared libraries in usr/lib
+      mkdir -p ${{targets.contextdir}}/usr/lib
+
+      # Create various shared library files
+      touch ${{targets.contextdir}}/usr/lib/libtest.so.1.0.0
+      touch ${{targets.contextdir}}/usr/lib/libssl.so.3.0.0
+      touch ${{targets.contextdir}}/usr/lib/libcrypto.so.3.0.0
+      touch ${{targets.contextdir}}/usr/lib/libfoo.so.1
+      touch ${{targets.contextdir}}/usr/lib/libbar.so.2.0
+
+      # Also create a .so symlink (should not be moved)
+      ln -s libtest.so.1.0.0 ${{targets.contextdir}}/usr/lib/libtest.so
+
+      # Create a static library (should not be moved)
+      touch ${{targets.contextdir}}/usr/lib/libtest.a
+
+      echo "Main package created with libraries"
+
+subpackages:
+  # Test 1: Split all shared libraries (no pattern)
+  - name: split-lib-test-libs
+    pipeline:
+      - uses: split/lib
+        with:
+          package: ${{package.name}}
+    test:
+      pipeline:
+        - runs: |
+            # All .so.* files should be here
+            test -f /usr/lib/libtest.so.1.0.0
+            test -f /usr/lib/libssl.so.3.0.0
+            test -f /usr/lib/libcrypto.so.3.0.0
+            test -f /usr/lib/libfoo.so.1
+            test -f /usr/lib/libbar.so.2.0
+            echo "All libraries found in split-lib-test-libs"
+
+  # Test 2: Create another package to test pattern matching
+  - name: split-lib-test-crypto
+    dependencies:
+      provides:
+        - split-lib-test-crypto=${{package.full-version}}
+    pipeline:
+      # First, recreate the libraries since the previous split removed them
+      - runs: |
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib
+          touch ${{targets.outdir}}/${{package.name}}/usr/lib/libssl.so.3.0.0
+          touch ${{targets.outdir}}/${{package.name}}/usr/lib/libcrypto.so.3.0.0
+          touch ${{targets.outdir}}/${{package.name}}/usr/lib/libother.so.1
+      # Now split only ssl and crypto libraries
+      - uses: split/lib
+        with:
+          package: ${{package.name}}
+          patterns: |
+            ssl
+            crypto
+    test:
+      pipeline:
+        - runs: |
+            # Only ssl and crypto libraries should be here
+            test -f /usr/lib/libssl.so.3.0.0
+            test -f /usr/lib/libcrypto.so.3.0.0
+            # Other library should NOT be here
+            test ! -f /usr/lib/libother.so.1
+            echo "Pattern matching works correctly"
+
+test:
+  pipeline:
+    - runs: |
+        # Main package should have the .so symlink and .a file
+        test -L /usr/lib/libtest.so
+        test -f /usr/lib/libtest.a
+        # But should NOT have any .so.* files (they were split)
+        test ! -f /usr/lib/libtest.so.1.0.0
+        echo "Main package correctly retains non-.so.* files"

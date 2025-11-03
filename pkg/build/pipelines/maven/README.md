@@ -28,6 +28,7 @@ Run pombump tool to update versions and properties in a Maven POM file
 | pom | false | Path to pom.xml  | pom.xml |
 | properties | false | Properties to update / add the POM file via command line flag  |  |
 | properties-file | false | Properties file to be used for updating the POM file  | ./pombump-properties.yaml |
+| show-dependency-tree | false | Display a dependency tree for the existing pom.xml file | false |
 
 
 <!-- end:pipeline-reference-gen -->

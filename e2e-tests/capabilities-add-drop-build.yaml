@@ -1,0 +1,37 @@
+package:
+  name: busybox
+  description: Capabilities add-drop feature test
+  version: 0.1.0
+  epoch: 0
+
+capabilities:
+  add:
+    - CAP_NET_ADMIN
+  drop:
+    - CAP_SYS_ADMIN
+    - CAP_SYS_CHROOT
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - cmd:capsh
+
+pipeline:
+  - name: Test default effective capability
+    runs: |
+      # Skip test if on QEMU runner, since the runner does not support process capabilities add/drop Melange feature.
+      grep "melange_qemu_runner=1" /proc/cmdline && { echo "SKIP - running inside melange runner"; exit 0; }
+      capsh --decode=$(grep CapEff /proc/self/status | cut -d ':' -f2 | xargs) | grep -i cap_dac_override
+
+  - name: Test added non-default effective capability
+    runs: |
+      # Skip test if on QEMU runner, since the runner does not support process capabilities add/drop Melange feature.
+      grep "melange_qemu_runner=1" /proc/cmdline && { echo "SKIP - running inside melange runner"; exit 0; }
+      capsh --decode=$(grep CapEff /proc/self/status | cut -d ':' -f2 | xargs) | grep -i cap_net_admin
+
+  - name: Test dropped default effective capability
+    runs: |
+      # Skip test if on QEMU runner, since the runner does not support process capabilities add/drop Melange feature.
+      grep "melange_qemu_runner=1" /proc/cmdline && { echo "SKIP - running inside melange runner"; exit 0; }
+      capsh --decode=$(grep CapEff /proc/self/status | cut -d ':' -f2 | xargs) | grep -vi cap_sys_chroot

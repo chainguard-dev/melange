@@ -35,13 +35,13 @@ melange test [flags]
       --debug                         enables debug logging of test pipelines (sets -x for steps)
       --debug-runner                  when enabled, the builder pod will persist after the build succeeds or fails
       --env-file string               file to use for preloaded environment variables
-      --guest-dir string              directory used for the build environment guest
   -h, --help                          help for test
+      --ignore-signatures             ignore repository signature verification
   -i, --interactive                   when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings        path to extra keys to include in the build environment keyring
-      --overlay-binsh string          use specified file as /bin/sh overlay in build environment
       --pipeline-dirs strings         directories used to extend defined built-in pipelines
   -r, --repository-append strings     path to extra repositories to include in the build environment
+      --rm                            clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
       --runner string                 which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --source-dir string             directory used for included sources
       --test-option strings           build options to enable

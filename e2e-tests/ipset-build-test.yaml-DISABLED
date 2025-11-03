@@ -1,0 +1,91 @@
+package:
+  name: ipset
+  version: "7.22"
+  epoch: 3
+  description: Manage Linux IP sets
+  copyright:
+    - license: GPL-2.0-only
+
+environment:
+  contents:
+    packages:
+      - autoconf
+      - automake
+      - build-base
+      - busybox
+      - ca-certificates-bundle
+      - libmnl-dev
+      - libtool
+      - linux-headers
+      - pkgconf-dev
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://git.netfilter.org/ipset
+      tag: v${{package.version}}
+      expected-commit: a50abde9c959be364782c01c61429a951454f5ef
+      depth: "-1"
+
+  - runs: |
+      ./autogen.sh
+
+  - uses: autoconf/configure
+    with:
+      opts: |
+        --build=${{host.triplet.gnu}} \
+        --host=${{host.triplet.gnu}} \
+        --with-kmod=no \
+        --prefix=/usr \
+        --sbindir=/usr/bin \
+
+  - uses: autoconf/make
+
+  - uses: autoconf/make-install
+
+  - uses: strip
+
+subpackages:
+  - name: ipset-dev
+    pipeline:
+      - uses: split/dev
+    dependencies:
+      runtime:
+        - ipset
+    description: ipset dev
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            test -e /usr/include/libipset/ipset.h
+            test -s /usr/include/libipset/ipset.h
+  - name: ipset-doc
+    pipeline:
+      - uses: split/manpages
+    description: ipset manpages
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            man ipset | head -n 10
+
+update:
+  enabled: true
+  release-monitor:
+    identifier: 1393
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        ipset --help
+        ipset-translate --help

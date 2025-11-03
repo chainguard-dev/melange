@@ -19,12 +19,8 @@ builds:
     - darwin
     - linux
   goarch:
-    - "386"
     - amd64
     - arm64
-  ignore:
-    - goos: darwin
-      goarch: "386"
   flags:
     - -trimpath
   mod_timestamp: '{{ .CommitTimestamp }}'
@@ -43,25 +39,6 @@ archives:
   - files:
       - LICENSE
     wrap_in_directory: true
-
-brews:
-  - name: melange
-    repository:
-      owner: chainguard-dev
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    url_template: "https://github.com/chainguard-dev/melange/releases/download/v{{ .Version }}/{{ .ArtifactName }}"
-    directory: Formula
-    commit_author:
-      name: guardian
-      email: guardian@chainguard.dev
-    homepage: "https://github.com/chainguard-dev/melange"
-    description: "Build apk packages using declarative pipelines"
-    install: |
-      bin.install "{{ .Binary }}" => "{{ .ProjectName }}"
-    test: |
-      system "#{bin}/{{ .ProjectName }}", "version"
 
 checksum:
   name_template: 'checksums.txt'

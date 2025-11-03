@@ -10,10 +10,17 @@ vrc() {
     return $rc
 }
 
+ARCH=${ARCH:-$(uname -m)}
+# macOS reports "arm64"
+if [ "arm64" = "${ARCH}" ]; then
+    ARCH="aarch64"
+fi
+
 MELANGE=${MELANGE:-melange}
 if [ "$MELANGE" = "melange" ]; then
     MELANGE=$(which melange)
 fi
+ARGS=${ARGS:-""}
 
 echo "Testing with melange from $MELANGE"
 $MELANGE version --json
@@ -22,23 +29,37 @@ if [ $# -eq 0 ]; then
     set -- *.yaml
 fi
 
+key="local-melange.rsa"
+if [ -f "$key" -a -f "$key.pub" ]; then
+    echo "using existing $key"
+else
+    $MELANGE keygen "$key" ||
+        { echo "failed to create local-melange signing key"; exit 1; }
+fi
+
 fails=""
 for yaml in "$@"; do
-  args=""
-  op=""
+  args="${ARGS}"
+  ops=""
   base=${yaml%.yaml}
   case "$base" in
+    *-build-test)
+      ops="build test"
+      args="$args --debug"
+      ;;
     *-nopkg-test)
-      op="test"
+      ops="test"
       args="$args --test-package-append busybox"
       args="$args --test-package-append=python-3"
+      args="$args --debug"
       ;;
     *-test)
-      op="test"
+      ops="test"
       args="${base%-test}"
+      args="$args --debug"
       ;;
     *-build)
-      op="build"
+      ops="build"
       ;;
     *)
       echo "ERROR: Unexpected input '$yaml'."
@@ -46,14 +67,28 @@ for yaml in "$@"; do
       ;;
   esac
 
-  vrc "Testing $base from $yaml" \
-    ${MELANGE} "$op" \
-      --arch=x86_64 --source-dir=./test-fixtures \
-      $yaml \
-      ${args} \
-      "--repository-append=https://packages.wolfi.dev/os" \
-      "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
-      fails="${fails} $yaml"
+  for op in $ops; do
+    opargs=""
+    case "$op" in
+        # For some reason build takes '--pipeline-dir' and test takes
+        # --pipeline-dirs. And we need to pass both to compile the
+        # melange file
+        "build") opargs="--signing-key=$PWD/$key --pipeline-dir $PWD/pipelines";;
+        "test") opargs="--pipeline-dirs $PWD/pipelines";;
+    esac
+
+    vrc "Testing $base from $yaml for $op" \
+      ${MELANGE} "$op" \
+        --arch=${ARCH} --source-dir=./test-fixtures \
+        --runner=qemu \
+        "$yaml" \
+        ${args} $opargs \
+        "--keyring-append=$PWD/$key.pub" \
+        "--repository-append=$PWD/packages" \
+        "--repository-append=https://packages.wolfi.dev/os" \
+        "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
+        fails="${fails} $yaml/$op"
+  done
 done
 
 if [ -z "$fails" ]; then

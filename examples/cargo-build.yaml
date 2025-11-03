@@ -8,7 +8,7 @@
 # https://github.com/chainguard-dev/melange/blob/main/docs/PIPELINES-CARGO.md
 package:
   name: eza
-  version: 0.18.6
+  version: 0.20.24
   epoch: 1
   description: "A modern, maintained replacement for ls"
   copyright:
@@ -20,9 +20,6 @@ environment:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     repositories:
       - https://packages.wolfi.dev/os
-
-environment:
-  contents:
     packages:
       - build-base
       - busybox
@@ -35,11 +32,12 @@ pipeline:
     with:
       repository: https://github.com/eza-community/eza
       tag: v${{package.version}}
-      expected-commit: 1918eb866840486f3ad00a2d89d45f051072b2a9
+      expected-commit: 3ad8132f874f66945eca3511491afa85c5f43ebe
 
   - uses: cargo/build
     with:
       output: ${{package.name}}
+      jobs: 2
 
   - uses: strip
 

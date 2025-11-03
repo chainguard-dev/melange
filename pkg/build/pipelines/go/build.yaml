@@ -14,7 +14,7 @@ inputs:
 
   packages:
     description: |
-      List of space-separated packages to compile. Files con also be specified.
+      List of space-separated packages to compile. Files can also be specified.
       This value is passed as an argument to go build. All paths are relative
       to inputs.modroot.
     required: true
@@ -76,6 +76,11 @@ inputs:
       when building the binary.
     default: ""
 
+  extra-args:
+    description: |
+      A space-separated list of extra arguments to pass to the go build command.
+    default: ""
+
   amd64:
     description: |
       GOAMD64 microarchitecture level to use
@@ -96,18 +101,37 @@ inputs:
       If true, "go mod tidy" will run before the build
     default: "false"
 
+  ignore-untracked-files:
+    description: |
+      If true, we will provide a gitignore that ignore all untracked files.
+    default: "true"
+
 pipeline:
   - runs: |
+
+      # We sometimes have stray files in our build environment
+      # That we don't neccesarily want surfaced in the build version
+      if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then
+        mkdir -p ~/.config/git/
+        echo '**' > ~/.config/git/ignore
+      fi
+
+      cd "${{inputs.modroot}}"
+
+      # check if modroot is set correctly by checking go.mod file exist
+      if [ ! -e go.mod ]; then
+        echo "go.mod not found in ${{inputs.modroot}}"
+        exit 1
+      fi
+
       "${{inputs.tidy}}" && go mod tidy
-      
+
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
 
       # Take advantage of melange's buid cache for downloaded modules
       export GOMODCACHE=/var/cache/melange/gomodcache
-
-      cd "${{inputs.modroot}}"
 
       # Install any specified dependencies
       if [ ! "${{inputs.deps}}" == "" ]; then
@@ -123,4 +147,9 @@ pipeline:
       [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
       [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
 
-      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.packages}}
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.extra-args}} ${{inputs.packages}}
+
+      # Clean up the gitignore file we created to avoid interfering with subsequent builds
+      if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then
+        rm -f ~/.config/git/ignore
+      fi

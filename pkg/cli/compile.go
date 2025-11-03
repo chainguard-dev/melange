@@ -24,9 +24,11 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
-	"chainguard.dev/melange/pkg/build"
+	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+
+	"chainguard.dev/melange/pkg/build"
 )
 
 func compile() *cobra.Command {
@@ -37,7 +39,6 @@ func compile() *cobra.Command {
 	var cacheDir string
 	var cacheSource string
 	var apkCacheDir string
-	var guestDir string
 	var signingKey string
 	var generateIndex bool
 	var emptyWorkspace bool
@@ -47,7 +48,6 @@ func compile() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var dependencyLog string
-	var overlayBinSh string
 	var envFile string
 	var varsFile string
 	var purlNamespace string
@@ -63,6 +63,10 @@ func compile() *cobra.Command {
 	var cpu, memory string
 	var timeout time.Duration
 	var extraPackages []string
+	var configFileGitCommit string
+	var configFileGitRepoURL string
+	var configFileLicense string
+	var generateProvenance bool
 
 	cmd := &cobra.Command{
 		Use:     "compile",
@@ -72,6 +76,31 @@ func compile() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			log := clog.FromContext(ctx)
+
+			var buildConfigFilePath string
+			if len(args) > 0 {
+				buildConfigFilePath = args[0] // e.g. "crane.yaml"
+			}
+
+			// Favor explicit, user-provided information for the git provenance of the
+			// melange build definition. As a fallback, detect this from local git state.
+			// Git auto-detection should be "best effort" and not fail the build if it
+			// fails.
+			if configFileGitCommit == "" {
+				log.Debugf("git commit for build config not provided, attempting to detect automatically")
+				commit, err := detectGitHead(ctx, buildConfigFilePath)
+				if err != nil {
+					log.Warnf("unable to detect commit for build config file: %v", err)
+					configFileGitCommit = "unknown"
+				} else {
+					configFileGitCommit = commit
+				}
+			}
+			if configFileGitRepoURL == "" {
+				log.Warnf("git repository URL for build config not provided")
+				configFileGitRepoURL = "https://unknown/unknown/unknown"
+			}
 
 			arch := apko_types.ParseArchitecture(archstr)
 			options := []build.Option{
@@ -85,7 +114,6 @@ func compile() *cobra.Command {
 				build.WithCacheDir(cacheDir),
 				build.WithCacheSource(cacheSource),
 				build.WithPackageCacheDir(apkCacheDir),
-				build.WithGuestDir(guestDir),
 				build.WithSigningKey(signingKey),
 				build.WithGenerateIndex(generateIndex),
 				build.WithEmptyWorkspace(emptyWorkspace),
@@ -94,7 +122,6 @@ func compile() *cobra.Command {
 				build.WithExtraRepos(extraRepos),
 				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
-				build.WithBinShOverlay(overlayBinSh),
 				build.WithStripOriginName(stripOriginName),
 				build.WithEnvFile(envFile),
 				build.WithVarsFile(varsFile),
@@ -108,6 +135,10 @@ func compile() *cobra.Command {
 				build.WithCPU(cpu),
 				build.WithMemory(memory),
 				build.WithTimeout(timeout),
+				build.WithConfigFileRepositoryCommit(configFileGitCommit),
+				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
+				build.WithConfigFileLicense(configFileLicense),
+				build.WithGenerateProvenance(generateProvenance),
 			}
 
 			if len(args) > 0 {
@@ -149,7 +180,6 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringVar(&guestDir, "guest-dir", "", "directory used for the build environment guest")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
 	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
@@ -158,7 +188,6 @@ func compile() *cobra.Command {
 	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
 	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
-	cmd.Flags().StringVar(&overlayBinSh, "overlay-binsh", "", "use specified file as /bin/sh overlay in build environment")
 	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
 	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
@@ -175,6 +204,11 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
 	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
+	cmd.Flags().BoolVar(&generateProvenance, "generate-provenance", false, "generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)")
+
+	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
+	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
+	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
 
 	return cmd
 }
@@ -191,7 +225,7 @@ func CompileCmd(ctx context.Context, opts ...build.Option) error {
 	defer bc.Close(ctx)
 
 	if err := bc.Compile(ctx); err != nil {
-		return fmt.Errorf("failed to compile package: %w", err)
+		return fmt.Errorf("failed to compile %s: %w", bc.ConfigFile, err)
 	}
 
 	return json.NewEncoder(os.Stdout).Encode(bc.Configuration)

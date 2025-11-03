@@ -16,25 +16,25 @@ package build
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 
+	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 	apko_build "chainguard.dev/apko/pkg/build"
-	"chainguard.dev/apko/pkg/build/types"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
+	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	"github.com/yookoala/realpath"
 	"go.opentelemetry.io/otel"
+	"sigs.k8s.io/release-utils/version"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
@@ -50,7 +50,7 @@ type Test struct {
 	// Ordered directories where to find 'uses' pipelines.
 	PipelineDirs      []string
 	SourceDir         string
-	GuestDir          string
+	Remove            bool
 	Arch              apko_types.Architecture
 	ExtraKeys         []string
 	ExtraRepos        []string
@@ -132,7 +132,7 @@ func (t *Test) Close() error {
 // Returns the imgRef for the created image, or error.
 func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfiguration, guestFS apkofs.FullFS) (string, error) {
 	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildGuest")
+	ctx, span := otel.Tracer("melange").Start(ctx, "buildGuest")
 	defer span.End()
 
 	tmp, err := os.MkdirTemp(os.TempDir(), "apko-temp-*")
@@ -147,12 +147,14 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		apko_build.WithExtraKeys(t.ExtraKeys),
 		apko_build.WithExtraBuildRepos(t.ExtraRepos),
 		apko_build.WithExtraPackages(t.ExtraTestPackages),
-		apko_build.WithCacheDir(t.ApkCacheDir, false), // TODO: Replace with real offline plumbing
+		apko_build.WithIgnoreSignatures(t.IgnoreSignatures),
+		apko_build.WithCache(t.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp))
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}
 
+	t.Summarize(ctx)
 	bc.Summarize(ctx)
 
 	// lay out the contents for the image in a directory.
@@ -170,7 +172,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	}
 	defer os.Remove(layerTarGZ)
 
-	log.Infof("using %s for image layer", layerTarGZ)
+	log.Debugf("using %s for image layer", layerTarGZ)
 
 	ref, err := loader.LoadImage(ctx, layer, t.Arch, bc)
 	if err != nil {
@@ -182,123 +184,15 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	return ref, nil
 }
 
-func (t *Test) OverlayBinSh(suffix string) error {
-	if t.BinShOverlay == "" {
-		return nil
-	}
-
-	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-
-	targetPath := filepath.Join(guestDir, "bin", "sh")
-
-	inF, err := os.Open(t.BinShOverlay)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer inF.Close()
-
-	// We unlink the target first because it might be a symlink.
-	if err := os.Remove(targetPath); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	outF, err := os.Create(targetPath)
-	if err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(outF, inF); err != nil {
-		return fmt.Errorf("copying overlay /bin/sh: %w", err)
-	}
-
-	if err := os.Chmod(targetPath, 0o755); err != nil {
-		return fmt.Errorf("setting overlay /bin/sh executable: %w", err)
-	}
-
-	return nil
-}
-
 // IsTestless returns true if the test context does not actually do any
 // testing.
 func (t *Test) IsTestless() bool {
 	return t.Configuration.Test == nil || len(t.Configuration.Test.Pipeline) == 0
 }
 
-func (t *Test) PopulateCache(ctx context.Context) error {
-	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "PopulateCache")
-	defer span.End()
-
-	if t.CacheDir == "" {
-		return nil
-	}
-
-	cmm, err := cacheItemsForBuild(t.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("while determining which objects to fetch: %w", err)
-	}
-
-	if t.CacheSource != "" {
-		log.Debugf("populating cache from %s", t.CacheSource)
-	}
-	// --cache-dir=gs://bucket/path/to/cache first pulls all found objects to a
-	// tmp dir which is subsequently used as the cache.
-	if strings.HasPrefix(t.CacheSource, "gs://") {
-		tmp, err := fetchBucket(ctx, t.CacheSource, cmm)
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmp)
-		log.Infof("cache bucket copied to %s", tmp)
-
-		fsys := os.DirFS(tmp)
-
-		// mkdir /var/cache/melange
-		if err := os.MkdirAll(t.CacheDir, 0o755); err != nil {
-			return err
-		}
-
-		// --cache-dir doesn't exist, nothing to do.
-		if _, err := fs.Stat(fsys, "."); errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			fi, err := d.Info()
-			if err != nil {
-				return err
-			}
-
-			mode := fi.Mode()
-			if !mode.IsRegular() {
-				return nil
-			}
-
-			// Skip files in the cache that aren't named like sha256:... or sha512:...
-			// This is likely a bug, and won't be matched by any fetch.
-			base := filepath.Base(fi.Name())
-			if !strings.HasPrefix(base, "sha256:") &&
-				!strings.HasPrefix(base, "sha512:") {
-				return nil
-			}
-
-			log.Debugf("  -> %s", path)
-
-			return copyFile(tmp, path, t.CacheDir, mode.Perm())
-		})
-	}
-
-	return nil
-}
-
 func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	log := clog.FromContext(ctx)
-	_, span := otel.Tracer("melange").Start(ctx, "PopulateWorkspace")
+	_, span := otel.Tracer("melange").Start(ctx, "populateWorkspace")
 	defer span.End()
 
 	if t.SourceDir == "" {
@@ -308,7 +202,11 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 
 	log.Infof("populating workspace %s from %s", t.WorkspaceDir, t.SourceDir)
 
-	fsys := os.DirFS(t.SourceDir)
+	fsys := apkofs.DirFS(ctx, t.SourceDir, apkofs.WithCreateDir())
+
+	if fsys == nil {
+		return fmt.Errorf("unable to create/use directory %s", t.SourceDir)
+	}
 
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -338,9 +236,9 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 	pkg := &t.Configuration.Package
 
-	log.Infof("evaluating pipelines for package requirements")
+	log.Debugf("evaluating pipelines for package requirements")
 	if err := t.Compile(ctx); err != nil {
-		return fmt.Errorf("compiling test pipelines: %w", err)
+		return fmt.Errorf("compiling %s tests: %w", t.ConfigFile, err)
 	}
 
 	// Filter out any subpackages with false If conditions.
@@ -360,7 +258,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	// Unless a specific architecture is requests, we run the test for all.
 	inarchs := len(pkg.TargetArchitecture) == 0
 	for _, ta := range pkg.TargetArchitecture {
-		if types.ParseArchitecture(ta) == t.Arch {
+		if apko_types.ParseArchitecture(ta) == t.Arch {
 			inarchs = true
 			break
 		}
@@ -370,21 +268,10 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return nil
 	}
 
-	if t.GuestDir == "" {
-		guestDir, err := os.MkdirTemp(t.Runner.TempDir(), "melange-guest-*")
-		if err != nil {
-			return fmt.Errorf("unable to make guest directory: %w", err)
-		}
-		t.GuestDir = guestDir
-	}
-
 	imgRef := ""
 	var err error
 
-	guestFS, err := t.guestFS(ctx, "main")
-	if err != nil {
-		return err
-	}
+	guestFS := t.guestFS(ctx)
 
 	// If there are no 'main' test pipelines, we can skip building the guest.
 	if !t.IsTestless() {
@@ -392,27 +279,17 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
-
-		// TODO(kaniini): Make overlay-binsh work with Docker and Kubernetes.
-		// Probably needs help from apko.
-		if err := t.OverlayBinSh(""); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-
-		if err := t.PopulateCache(ctx); err != nil {
-			return fmt.Errorf("unable to populate cache: %w", err)
-		}
 	}
 
 	if t.SourceDir == "" {
 		log.Info("No source directory specified, skipping workspace population")
 	} else {
 		// Prepare workspace directory
-		if err := os.MkdirAll(t.WorkspaceDir, 0755); err != nil {
+		if err := os.MkdirAll(t.WorkspaceDir, 0o755); err != nil {
 			return fmt.Errorf("mkdir -p %s: %w", t.WorkspaceDir, err)
 		}
 
-		if err := t.PopulateWorkspace(ctx, os.DirFS(t.SourceDir)); err != nil {
+		if err := t.PopulateWorkspace(ctx, apkofs.DirFS(ctx, t.SourceDir)); err != nil {
 			return fmt.Errorf("unable to populate workspace: %w", err)
 		}
 	}
@@ -434,22 +311,30 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	}
 
 	if !t.IsTestless() {
-		cfg.Arch = t.Arch
+		// use anonymous function so that deferring will actually run
+		// on this function's end
+		err = func() error {
+			cfg.Arch = t.Arch
 
-		if err := t.Runner.StartPod(ctx, cfg); err != nil {
-			return fmt.Errorf("unable to start pod: %w", err)
-		}
-		if !t.DebugRunner {
-			defer func() {
-				if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
-					log.Warnf("unable to terminate pod: %s", err)
-				}
-			}()
-		}
+			if err := t.Runner.StartPod(ctx, cfg); err != nil {
+				return fmt.Errorf("unable to start pod: %w", err)
+			}
+			if !t.DebugRunner {
+				defer func() {
+					if err := t.Runner.TerminatePod(ctx, cfg); err != nil {
+						log.Warnf("unable to terminate pod: %s", err)
+					}
+				}()
+			}
 
-		log.Infof("running the main test pipeline")
-		if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
+			log.Infof("running the main test pipeline")
+			if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
+			return nil
+		}()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -458,50 +343,53 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	// that we don't keep adding packages to tests and hence mask any missing
 	// dependencies.
 	for i := range t.Configuration.Subpackages {
-		sp := &t.Configuration.Subpackages[i]
-		if sp.Test == nil || len(sp.Test.Pipeline) == 0 {
-			continue
-		}
-		log.Infof("running test pipeline for subpackage %s", sp.Name)
+		// use anonymous function so that deferring will actually run
+		// on this function's end
+		err = func() error {
+			sp := &t.Configuration.Subpackages[i]
+			if sp.Test == nil || len(sp.Test.Pipeline) == 0 {
+				return nil
+			}
+			log.Infof("running test pipeline for subpackage %s", sp.Name)
 
-		guestFS, err := t.guestFS(ctx, sp.Name)
+			guestFS := t.guestFS(ctx)
+
+			spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
+			if err != nil {
+				return fmt.Errorf("unable to build guest: %w", err)
+			}
+			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
+			if err != nil {
+				return fmt.Errorf("unable to build workspace config: %w", err)
+			}
+			subCfg.Arch = t.Arch
+
+			pr := &pipelineRunner{
+				interactive: t.Interactive,
+				debug:       t.Debug,
+				config:      subCfg,
+				runner:      t.Runner,
+			}
+
+			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
+				return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
+			}
+			if !t.DebugRunner {
+				defer func() {
+					if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
+						log.Warnf("unable to terminate subpackage test pod: %s", err)
+					}
+				}()
+			}
+
+			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
+				return fmt.Errorf("unable to run pipeline: %w", err)
+			}
+
+			return nil
+		}()
 		if err != nil {
 			return err
-		}
-
-		spImgRef, err := t.BuildGuest(ctx, sp.Test.Environment, guestFS)
-		if err != nil {
-			return fmt.Errorf("unable to build guest: %w", err)
-		}
-		if err := t.OverlayBinSh(sp.Name); err != nil {
-			return fmt.Errorf("unable to install overlay /bin/sh: %w", err)
-		}
-		subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
-		if err != nil {
-			return fmt.Errorf("unable to build workspace config: %w", err)
-		}
-		subCfg.Arch = t.Arch
-
-		pr := &pipelineRunner{
-			interactive: t.Interactive,
-			debug:       t.Debug,
-			config:      subCfg,
-			runner:      t.Runner,
-		}
-
-		if err := t.Runner.StartPod(ctx, subCfg); err != nil {
-			return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
-		}
-		if !t.DebugRunner {
-			defer func() {
-				if err := t.Runner.TerminatePod(ctx, subCfg); err != nil {
-					log.Warnf("unable to terminate subpackage test pod: %s", err)
-				}
-			}()
-		}
-
-		if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
-			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
 
@@ -514,17 +402,13 @@ func (t *Test) TestPackage(ctx context.Context) error {
 
 func (t *Test) SummarizePaths(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("  workspace dir: %s", t.WorkspaceDir)
-
-	if t.GuestDir != "" {
-		log.Infof("  guest dir: %s", t.GuestDir)
-	}
+	log.Debugf("  workspace dir: %s", t.WorkspaceDir)
 }
 
 func (t *Test) Summarize(ctx context.Context) {
 	log := clog.FromContext(ctx)
-	log.Infof("melange is testing:")
-	log.Infof("  configuration file: %s", t.ConfigFile)
+	log.Infof("melange %s with runner %s is testing:", version.GetVersionInfo().GitVersion, t.Runner.Name())
+	log.Debugf("  configuration file: %s", t.ConfigFile)
 	t.SummarizePaths(ctx)
 }
 
@@ -544,7 +428,7 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 
 			mounts = append(mounts, container.BindMount{Source: mountSource, Destination: container.DefaultCacheDir})
 		} else {
-			return nil, fmt.Errorf("--cache-dir %s not a dir", t.CacheDir)
+			log.Debugf("--cache-dir %s not a dir; skipping", t.CacheDir)
 		}
 	}
 
@@ -557,35 +441,33 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		PackageName:  pkgName,
 		Mounts:       mounts,
 		Capabilities: caps,
+		WorkspaceDir: t.WorkspaceDir,
+		CacheDir:     t.CacheDir,
 		Environment:  map[string]string{},
-		RunAs:        imgcfg.Accounts.RunAs,
+		RunAsUID:     runAsUID(imgcfg.Accounts),
+		RunAs:        runAs(imgcfg.Accounts),
+		RunAsGID:     runAsGID(imgcfg.Accounts),
+	}
+	if t.Configuration.Capabilities.Add != nil {
+		cfg.Capabilities.Add = t.Configuration.Capabilities.Add
+	}
+	if t.Configuration.Capabilities.Drop != nil {
+		cfg.Capabilities.Drop = t.Configuration.Capabilities.Drop
 	}
 
-	for k, v := range imgcfg.Environment {
-		cfg.Environment[k] = v
-	}
+	maps.Copy(cfg.Environment, t.Configuration.Environment.Environment)
+	maps.Copy(cfg.Environment, imgcfg.Environment)
 
 	if _, ok := cfg.Environment["HOME"]; !ok {
 		cfg.Environment["HOME"] = "/root"
 	}
 
 	cfg.ImgRef = imgRef
-	log.Infof("ImgRef = %s", cfg.ImgRef)
+	log.Debugf("ImgRef = %s", cfg.ImgRef)
 
 	return &cfg, nil
 }
 
-func (t *Test) guestFS(ctx context.Context, suffix string) (apkofs.FullFS, error) {
-	log := clog.FromContext(ctx)
-	// Prepare guest directory. Note that we customize this for each unique
-	// Test by having a suffix, so we get a clean guest directory for each of
-	// them.
-	guestDir := fmt.Sprintf("%s-%s", t.GuestDir, suffix)
-	if err := os.MkdirAll(guestDir, 0755); err != nil {
-		return nil, fmt.Errorf("mkdir -p %s: %w", guestDir, err)
-	}
-
-	log.Infof("building test workspace in: '%s' with apko", guestDir)
-
-	return apkofs.DirFS(guestDir, apkofs.WithCreateDir()), nil
+func (t *Test) guestFS(_ context.Context) apkofs.FullFS {
+	return tarfs.New()
 }

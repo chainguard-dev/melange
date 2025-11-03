@@ -41,7 +41,7 @@ func MutateStringFromMap(with map[string]string, input string) (string, error) {
 
 // Given a string and a map, replace the variables in the string with quoted values in the map.
 // Currently, an "if" statement in a melange config can only have quoted strings or ${{variables}}
-// as comparision values with == and !=. If we want to be able to resolve an "if" that can be fed
+// as comparison values with == and !=. If we want to be able to resolve an "if" that can be fed
 // back into melange, we need to maintain that requirement, so all variables get quoted once replaced.
 func MutateAndQuoteStringFromMap(with map[string]string, input string) (string, error) {
 	lookupWith := func(key string) (string, error) {

@@ -1,0 +1,43 @@
+name: Check the expected users and groups this pipeline is running under.
+inputs:
+  expected_uid:
+    description: |
+      The expected uid the build or test is to run under
+  expected_username:
+    description: |
+      The expected user name the build or test is to run under
+  expected_gid:
+    description: |
+      The expected gid the build or test is to run under
+  expected_groupname:
+    description: |
+      The expected group name the build or test is to run under
+pipeline:
+  - name: check this pipeline is running as uid = expected_uid
+    runs: |
+      echo "checking uid is '${{inputs.expected_uid}}'"
+      test "$(id -u)" == "${{inputs.expected_uid}}"
+  - name: check this pipeline is running as user = expected_username
+    runs: |
+      echo "checking username is '${{inputs.expected_username}}'"
+      test "$(id -un)" == "${{inputs.expected_username}}"
+  - name: check this pipeline is running as gid = expected_gid
+    runs: |
+      echo "checking gid is '${{inputs.expected_gid}}'"
+      test "$(id -g)" == "${{inputs.expected_gid}}"
+  - name: check this pipeline is running with group = expected_groupname
+    runs: |
+      echo "checking groupname is '${{inputs.expected_groupname}}'"
+      test "$(id -gn)" == "${{inputs.expected_groupname}}"
+  - name: ensure we can write to the contents dir
+    runs: |
+      mkdir -p "${{targets.contextdir}}"
+      touch "${{targets.contextdir}}/foo.txt"
+  - name: ensure we can write to our home dir
+    runs: mktemp -p "${HOME}"
+  - name: ensure we can write to our default dir
+    runs: mktemp -p .
+  - name: ensure we can write to the melange cache overlay directory
+    # the melange cache overlay is only mounted in build pipelines. not
+    # test pipelines so only perform the test if the directory exists
+    runs: test ! -d /var/cache/melange || mktemp -p /var/cache/melange

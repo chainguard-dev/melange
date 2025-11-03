@@ -17,6 +17,10 @@ package build
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
+
+	"chainguard.dev/apko/pkg/apk/apk"
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
@@ -54,8 +58,10 @@ func (scabi *SCABuildInterface) Version() string {
 // FilesystemForRelative implements an abstract filesystem for any of the packages being
 // built.
 func (scabi *SCABuildInterface) FilesystemForRelative(pkgName string) (sca.SCAFS, error) {
-	pkgDir := filepath.Join(scabi.PackageBuild.Build.WorkspaceDir, "melange-out", pkgName)
-	rlFS := readlinkFS(pkgDir)
+	rlFS, err := apkofs.Sub(scabi.PackageBuild.Build.WorkspaceDirFS, filepath.Join(melangeOutputDirName, pkgName))
+	if err != nil {
+		return nil, fmt.Errorf("package build subFS: %w", err)
+	}
 	scaFS, ok := rlFS.(sca.SCAFS)
 	if !ok {
 		return nil, fmt.Errorf("SCAFS not implemented")
@@ -80,4 +86,29 @@ func (scabi *SCABuildInterface) Options() config.PackageOption {
 // BaseDependencies returns the base dependencies for the package being built.
 func (scabi *SCABuildInterface) BaseDependencies() config.Dependencies {
 	return scabi.PackageBuild.Dependencies
+}
+
+// InstalledPackages returns a map [package name] => [package version]
+// of the packages installed during build.
+func (scabi *SCABuildInterface) InstalledPackages() map[string]string {
+	pkgVersionMap := make(map[string]string)
+
+	for _, fullpkg := range scabi.PackageBuild.Build.Configuration.Environment.Contents.Packages {
+		pkg, version, _ := strings.Cut(fullpkg, "=")
+		pkgVersionMap[pkg] = version
+	}
+
+	// We also include the packages being built.  They have the
+	// special version string "@CURRENT@" to make it easier for
+	// the SCA to identify them.
+	for _, pkg := range scabi.RelativeNames() {
+		pkgVersionMap[pkg] = "@CURRENT@"
+	}
+
+	return pkgVersionMap
+}
+
+// PkgResolver returns the package resolver for the package/build being analyzed.
+func (scabi *SCABuildInterface) PkgResolver() *apk.PkgResolver {
+	return scabi.PackageBuild.Build.PkgResolver
 }

@@ -13,17 +13,16 @@
 // limitations under the License.
 
 //go:build e2e
-// +build e2e
 
 package sca
 
 import (
 	"testing"
 
-	"chainguard.dev/melange/pkg/config"
-	"chainguard.dev/melange/pkg/util"
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 func TestGoFipsBinDeps(t *testing.T) {
@@ -36,13 +35,12 @@ func TestGoFipsBinDeps(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := config.Dependencies{
-		Runtime: util.Dedup([]string{
+		Runtime: []string{
 			"openssl-config-fipshardened",
 			"so:ld-linux-x86-64.so.2",
 			"so:libc.so.6",
 			"so:libcrypto.so.3",
-			"so:libssl.so.3",
-		}),
+		},
 		Provides: []string{"cmd:go-fips-bin=0.0.1-r0"},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -95,6 +93,25 @@ func TestAnalyze(t *testing.T) {
 				"cmd:ttx=0.13.2-r0",
 			},
 			Vendored: []string{
+				"so-ver:libXau-154567c4.so.6.0.0=0.13.2-r0",
+				"so-ver:libbrotlicommon-3ecfe81c.so.1=0.13.2-r0",
+				"so-ver:libbrotlidec-ba690955.so.1=0.13.2-r0",
+				"so-ver:libfreetype-f154df84.so.6.20.1=0.13.2-r0",
+				"so-ver:libgfortran-040039e1.so.5.0.0=0.13.2-r0",
+				"so-ver:libharfbuzz-2093a78b.so.0.60830.0=0.13.2-r0",
+				"so-ver:libjpeg-e44fd0cd.so.62.4.0=0.13.2-r0",
+				"so-ver:liblcms2-e69eef39.so.2.0.16=0.13.2-r0",
+				"so-ver:liblzma-13fa198c.so.5.4.5=0.13.2-r0",
+				"so-ver:libopenblas64_p-r0-0cf96a72.3.23.dev.so=0.13.2-r0",
+				"so-ver:libopenjp2-eca49203.so.2.5.0=0.13.2-r0",
+				"so-ver:libpng16-78d422d5.so.16.40.0=0.13.2-r0",
+				"so-ver:libquadmath-96973f99.so.0.0.0=0.13.2-r0",
+				"so-ver:libsharpyuv-20f78091.so.0.0.1=0.13.2-r0",
+				"so-ver:libtiff-91af027d.so.6.0.2=0.13.2-r0",
+				"so-ver:libwebp-850e2bec.so.7.1.8=0.13.2-r0",
+				"so-ver:libwebpdemux-df9b36c7.so.2.0.14=0.13.2-r0",
+				"so-ver:libwebpmux-9fe05867.so.3.0.13=0.13.2-r0",
+				"so-ver:libxcb-f0538cc0.so.1.1.0=0.13.2-r0",
 				"so:libXau-154567c4.so.6.0.0=6.0.0",
 				"so:libbrotlicommon-3ecfe81c.so.1=1",
 				"so:libbrotlidec-ba690955.so.1=1",
@@ -182,6 +199,11 @@ func TestAnalyze(t *testing.T) {
 				"cmd:udevadm=256.2-r1",
 				"cmd:userdbctl=256.2-r1",
 				"cmd:varlinkctl=256.2-r1",
+				"so-ver:libnss_myhostname.so.2=256.2-r1",
+				"so-ver:libnss_mymachines.so.2=256.2-r1",
+				"so-ver:libnss_resolve.so.2=256.2-r1",
+				"so-ver:libnss_systemd.so.2=256.2-r1",
+				"so-ver:libudev.so.1=256.2-r1",
 				"so:libnss_myhostname.so.2=2",
 				"so:libnss_mymachines.so.2=2",
 				"so:libnss_resolve.so.2=2",
@@ -189,6 +211,8 @@ func TestAnalyze(t *testing.T) {
 				"so:libudev.so.1=1",
 			},
 			Vendored: []string{
+				"so-ver:libsystemd-core-256.so=256.2-r1",
+				"so-ver:libsystemd-shared-256.so=256.2-r1",
 				"so:libsystemd-core-256.so=0",
 				"so:libsystemd-shared-256.so=0",
 			},

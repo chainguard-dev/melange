@@ -15,3 +15,7 @@ pipeline:
       INSTALL_DIR=${{targets.contextdir}}/$(ruby -e 'puts Gem.default_dir')
       rm -rf ${INSTALL_DIR}/build_info \
              ${INSTALL_DIR}/cache
+      if [ -d "${INSTALL_DIR}" ]; then
+        find "${INSTALL_DIR}" -name 'gem_make.out' -exec rm {} \;
+        find "${INSTALL_DIR}" -name 'mkmf.log' -exec rm {} \;
+      fi

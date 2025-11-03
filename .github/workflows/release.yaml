@@ -65,7 +65,8 @@ jobs:
           check-latest: true
 
       # Cosign is used by goreleaser to sign release artifacts.
-      - uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1 # latest cosign v2.x release; v3.x has issues with GoReleaser
+      # The Action is pinned to v3.10.x (cosign binary v2.x) because v4 (cosign binary v3.x) has issues with GoReleaser
+      - uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
         if: steps.check.outputs.need_release == 'yes'
 
       - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0

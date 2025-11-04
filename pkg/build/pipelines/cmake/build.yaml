@@ -11,6 +11,11 @@ inputs:
       The output directory for the CMake build.
     default: output
 
+  opts:
+    description: |
+      Compile options for the CMake build.
+
 pipeline:
   - runs: |
-      VERBOSE=1 cmake --build ${{inputs.output-dir}}
+      VERBOSE=1 cmake --build ${{inputs.output-dir}} \
+        ${{inputs.opts}}

@@ -32,6 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/renovate"
+	"chainguard.dev/melange/pkg/util"
 )
 
 // CacheConfig contains the configuration data for a bump
@@ -107,7 +108,7 @@ func New(opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("fetch"))
 
 		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := visitFetch(ctx, fetchNode, cfg); err != nil {
+			if err := visitFetch(ctx, rc, fetchNode, cfg); err != nil {
 				return err
 			}
 		}
@@ -117,7 +118,7 @@ func New(opts ...Option) renovate.Renovator {
 }
 
 // visitFetch takes a "fetch" pipeline node
-func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
+func visitFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml.Node, cfg CacheConfig) error {
 	log := clog.FromContext(ctx)
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
@@ -131,9 +132,10 @@ func visitFetch(ctx context.Context, node *yaml.Node, cfg CacheConfig) error {
 
 	log.Infof("processing fetch node:")
 
-	// Fetch the new sources.
-	evaluatedURI := strings.ReplaceAll(uriNode.Value, "${{package.version}}", cfg.packageVersion)
-	evaluatedURI = strings.ReplaceAll(evaluatedURI, "${{package.name}}", cfg.packageName)
+	evaluatedURI, err := util.MutateStringFromMap(rc.Vars, uriNode.Value)
+	if err != nil {
+		return err
+	}
 	log.Infof("  uri: %s", uriNode.Value)
 	log.Infof("  evaluated: %s", evaluatedURI)
 

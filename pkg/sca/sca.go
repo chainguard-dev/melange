@@ -42,6 +42,10 @@ import (
 // This is exported so that callers can append to it as needed.
 var LibDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
 
+// BinDirs is the list of binary directories to search for commands.
+// This is exported so that callers can append to it as needed.
+var BinDirs = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
+
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
 type SCAFS interface {
@@ -239,7 +243,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		if mode.Perm()&0o555 == 0o555 {
-			if isInDir(path, []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}) {
+			if isInDir(path, BinDirs) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))

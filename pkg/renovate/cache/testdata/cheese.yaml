@@ -1,0 +1,20 @@
+package:
+  name: cheese
+  version: "7.0.1.0"
+  epoch: 0
+  description: "a cheesy library"
+
+var-transforms:
+  - from: ${{package.version}}
+    match: '(\d+\.\d+\.\d+)\.\d+'
+    replace: '$1'
+    to: mangled-package-version
+
+vars:
+  cheese: "cheese"
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: REPLACE_ME/wine/${{vars.cheese}}/cheese-${{vars.mangled-package-version}}.tar.gz
+      expected-sha256: cc2c52929ace57623ff517408a577e783e10042655963b2c8f0633e109337d7a

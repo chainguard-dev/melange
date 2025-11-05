@@ -38,7 +38,13 @@ import (
 	"chainguard.dev/melange/pkg/config"
 )
 
-var libDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
+// LibDirs is the list of library directories to search for shared objects.
+// This is exported so that callers can append to it as needed.
+var LibDirs = []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
+
+// BinDirs is the list of binary directories to search for commands.
+// This is exported so that callers can append to it as needed.
+var BinDirs = []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}
 
 // SCAFS represents the minimum required filesystem accessors which are needed by
 // the SCA engine.
@@ -85,7 +91,7 @@ type SCAHandle interface {
 }
 
 // DependencyGenerator takes an SCAHandle, config.Dependencies pointer
-// and a list of paths to be appended to libDirs and returns findings
+// and a list of paths to be appended to LibDirs and returns findings
 // based on analysis.
 type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies, []string) error
 
@@ -193,7 +199,7 @@ func getLdSoConfDLibPaths(ctx context.Context, hdl SCAHandle) ([]string, error) 
 					continue
 				}
 				// Strip the initial slash since
-				// libDirs paths need to be relative.
+				// LibDirs paths need to be relative.
 				line = line[1:]
 				log.Infof("    found extra lib path %s", line)
 				extraLibPaths = append(extraLibPaths, line)
@@ -237,7 +243,7 @@ func generateCmdProviders(ctx context.Context, hdl SCAHandle, generated *config.
 		}
 
 		if mode.Perm()&0o555 == 0o555 {
-			if isInDir(path, []string{"bin/", "sbin/", "usr/bin/", "usr/sbin/"}) {
+			if isInDir(path, BinDirs) {
 				basename := filepath.Base(path)
 				log.Infof("  found command %s", path)
 				generated.Provides = append(generated.Provides, fmt.Sprintf("cmd:%s=%s", basename, hdl.Version()))
@@ -290,7 +296,7 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 
 	realPath = filepath.Base(realPath)
 
-	expandedLibDirs := append([]string{}, libDirs...)
+	expandedLibDirs := append([]string{}, LibDirs...)
 	expandedLibDirs = append(expandedLibDirs, extraLibDirs...)
 
 	for _, pkgName := range targetPackageNames {
@@ -554,7 +560,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		return err
 	}
 
-	expandedLibDirs := append([]string{}, libDirs...)
+	expandedLibDirs := append([]string{}, LibDirs...)
 	expandedLibDirs = append(expandedLibDirs, extraLibDirs...)
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {

@@ -3,10 +3,11 @@ package build
 import (
 	"testing"
 
-	"chainguard.dev/melange/pkg/sbom"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	purl "github.com/package-url/packageurl-go"
+
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 func TestSBOMGroup_SubpackageUpstreamSource(t *testing.T) {

@@ -995,7 +995,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// now that we've copied files from the host filesystem into the
 	// guest's workspace, we can umount the filesystem, as nothing in
 	// the build should reference the original location and it reduces
-	// the ability of later build steps to possibly intteract with the
+	// the ability of later build steps to possibly interact with the
 	// host.
 	err = sendSSHCommand(ctx,
 		cfg.SSHControlClient,

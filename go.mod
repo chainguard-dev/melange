@@ -90,7 +90,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
-	github.com/containerd/containerd/v2 v2.1.1 // indirect
+	github.com/containerd/containerd/v2 v2.1.5 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.17.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect

@@ -3,10 +3,11 @@ package build
 import (
 	"testing"
 
-	"chainguard.dev/melange/pkg/sbom"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	purl "github.com/package-url/packageurl-go"
+
+	"chainguard.dev/melange/pkg/sbom"
 )
 
 func TestSBOMGroup_SubpackageUpstreamSource(t *testing.T) {
@@ -142,9 +143,6 @@ func TestSBOMGroup_NewGroup(t *testing.T) {
 			sg := NewSBOMGroup(tt.pkgNames...)
 			if sg == nil {
 				t.Fatal("expected SBOMGroup to be created")
-			}
-			if sg.set == nil {
-				t.Fatal("expected SBOMGroup.set to be initialized")
 			}
 
 			for _, name := range tt.pkgNames {

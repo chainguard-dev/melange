@@ -86,6 +86,12 @@ type Package struct {
 	// source locations; Leaving this empty will result in NOASSERTION being
 	// used as its value.
 	DownloadLocation string
+
+	// Additional ExternalRefs beyond the PURL. This is used to store cherry-pick
+	// commits and other additional references that should be included in the SBOM.
+	// These will be appended to the ExternalRefs in the SPDX package alongside
+	// the PURL reference.
+	AdditionalExternalRefs []spdx.ExternalRef
 }
 
 // ToSPDX returns the Package converted to its SPDX representation.
@@ -178,6 +184,9 @@ func (p Package) getExternalRefs() []spdx.ExternalRef {
 			Type:     spdx.ExtRefTypePurl,
 		})
 	}
+
+	// Append any additional external references (e.g., cherry-picks)
+	result = append(result, p.AdditionalExternalRefs...)
 
 	return result
 }

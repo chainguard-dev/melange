@@ -1,0 +1,34 @@
+package:
+  name: git-checkout-cherry-pick
+  version: 1.2
+  epoch: 1
+  description: Test package for cherry-pick SBOM generation
+  copyright:
+    - license: Apache-2.0
+  checks:
+    disabled:
+      - empty
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/chainguard-dev/hello-world-golang.git
+      tag: v${{package.version}}
+      expected-commit: bade10b96289e0c108ef6f7ea26be293c4946299
+      cherry-picks: |
+        main/618bb31108414cb031a29e6ca521e1192079c1af: Update README and add license
+        main/3918c15bbe67b08ccf7a3027b1fba3f1518cf328: Update clone url in readme
+
+  - runs: |
+      # Create a simple test file to make the package non-empty
+      mkdir -p ${{targets.destdir}}/usr/share/hello
+      cp README.md ${{targets.destdir}}/usr/share/hello/ || echo "README created from cherry-picks" > ${{targets.destdir}}/usr/share/hello/README.md

@@ -36,6 +36,7 @@ import (
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	purl "github.com/package-url/packageurl-go"
 
 	"chainguard.dev/melange/pkg/sbom"
@@ -543,10 +544,53 @@ func SHA256(text string) string {
 	return hex.EncodeToString(algorithm.Sum(nil))
 }
 
+// parseCherryPicksToExternalRefs parses cherry-pick entries and converts them
+// to SPDX ExternalRef entries with category "OTHER" and type "cherry-pick".
+// The format expected is: [branch/]commit-id: comment
+// Each cherry-pick is represented as an ExternalRef with the locator being the
+// branch/commit format
+func parseCherryPicksToExternalRefs(cherryPicks string) []spdx.ExternalRef {
+	var refs []spdx.ExternalRef
+
+	lines := strings.Split(cherryPicks, "\n")
+	for _, line := range lines {
+		line = strings.Split(line, "#")[0]
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			// Invalid format, skip this line
+			continue
+		}
+
+		locator := strings.TrimSpace(parts[0])
+		comment := strings.TrimSpace(parts[1])
+		if locator == "" || comment == "" {
+			continue
+		}
+
+		// Create an ExternalRef entry
+		// Note: The comment is currently not included as apko's ExternalRef
+		// struct doesn't have a Comment field yet. Once that's added, we should
+		// include it here.
+		refs = append(refs, spdx.ExternalRef{
+			Category: "OTHER",
+			Type:     "cherry-pick",
+			Locator:  locator,
+			// Comment: comment, // TODO: Uncomment once apko supports this field
+		})
+	}
+
+	return refs
+}
+
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
-func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
+func getGitSBOMPackage(repo, tag, expectedCommit, cherryPicks string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
 	var repoType, namespace, name, ref string
 	var downloadLocation string
 
@@ -636,14 +680,21 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 			return nil, err
 		}
 
+		// Parse cherry-picks and create ExternalRefs for them
+		var externalRefs []spdx.ExternalRef
+		if cherryPicks != "" {
+			externalRefs = parseCherryPicksToExternalRefs(cherryPicks)
+		}
+
 		return &sbom.Package{
-			IDComponents:     idComponents,
-			Name:             name,
-			Version:          v,
-			LicenseDeclared:  licenseDeclared,
-			Namespace:        namespace,
-			PURL:             pu,
-			DownloadLocation: downloadLocation,
+			IDComponents:           idComponents,
+			Name:                   name,
+			Version:                v,
+			LicenseDeclared:        licenseDeclared,
+			Namespace:              namespace,
+			PURL:                   pu,
+			DownloadLocation:       downloadLocation,
+			AdditionalExternalRefs: externalRefs,
 		}, nil
 	}
 
@@ -717,6 +768,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
 		hint := with["type-hint"]
+		cherryPicks := with["cherry-picks"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -735,7 +787,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint, supplier)
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, cherryPicks, idComponents, licenseDeclared, hint, supplier)
 		if err != nil {
 			return nil, err
 		} else if gitPackage != nil {

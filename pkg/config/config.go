@@ -550,9 +550,8 @@ func SHA256(text string) string {
 // Each cherry-pick is represented as an ExternalRef with the locator being the
 // branch/commit format
 func parseCherryPicksToExternalRefs(cherryPicks string) []spdx.ExternalRef {
-	var refs []spdx.ExternalRef
-
 	lines := strings.Split(cherryPicks, "\n")
+	refs := make([]spdx.ExternalRef, 0, len(lines))
 	for _, line := range lines {
 		line = strings.Split(line, "#")[0]
 		line = strings.TrimSpace(line)

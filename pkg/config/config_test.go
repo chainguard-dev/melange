@@ -916,8 +916,8 @@ func TestParseCherryPicksToExternalRefs(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name: "single cherry-pick",
-			input: "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032",
+			name:     "single cherry-pick",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032",
 			expected: 1,
 			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
 				require.Equal(t, "OTHER", refs[0].Category)
@@ -941,8 +941,8 @@ main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: Security fix`,
 			},
 		},
 		{
-			name: "with comments after hash",
-			input: "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032 # this is a comment",
+			name:     "with comments after hash",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032 # this is a comment",
 			expected: 1,
 			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
 				require.Equal(t, "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906", refs[0].Locator)
@@ -956,21 +956,21 @@ main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: Security fix`,
 			expected: 2,
 		},
 		{
-			name: "commit without branch prefix",
-			input: "c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032",
+			name:     "commit without branch prefix",
+			input:    "c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032",
 			expected: 1,
 			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
 				require.Equal(t, "c62c9e518b784fe44432a3f4fc265fb95b651906", refs[0].Locator)
 			},
 		},
 		{
-			name: "invalid format - missing colon",
-			input: "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906",
+			name:     "invalid format - missing colon",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906",
 			expected: 0,
 		},
 		{
-			name: "invalid format - missing comment",
-			input: "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906:",
+			name:     "invalid format - missing comment",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906:",
 			expected: 0,
 		},
 	}

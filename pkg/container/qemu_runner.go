@@ -46,7 +46,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"github.com/chainguard-dev/clog"
-	"github.com/charmbracelet/log"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/kballard/go-shellquote"
@@ -114,7 +113,8 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 }
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {
-	clog.FromContext(ctx).Debugf("running debug command: %v", args)
+	log := clog.FromContext(ctx)
+	log.Debugf("running debug command: %v", args)
 
 	// default to root user, unless a different user is specified
 	user := "root"
@@ -123,7 +123,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	}
 
 	log.Debug("qemu: ssh - get user ssh key pair")
-	pubKey, err := getUserSSHKey()
+	pubKey, err := getUserSSHKey(ctx)
 	if err != nil {
 		log.Warn("qemu: could not get user ssh key pair, using ephemeral ones")
 	}
@@ -1353,11 +1353,11 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	return nil
 }
 
-func getUserSSHKey() ([]byte, error) {
+func getUserSSHKey(ctx context.Context) ([]byte, error) {
 	socket := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", socket)
 	if err != nil {
-		log.Warnf("Failed to open SSH_AUTH_SOCK: %v, falling back to key search", err)
+		clog.FromContext(ctx).Warnf("Failed to open SSH_AUTH_SOCK: %v, falling back to key search", err)
 		currentUser, err := user.Current()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get current user: %w", err)
@@ -1751,7 +1751,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 	}
 	defer os.Remove(layerTarGZ)
 
-	log.Debugf("using %s for image layer", layerTarGZ)
+	clog.FromContext(ctx).Debugf("using %s for image layer", layerTarGZ)
 
 	// in case of some kernel images, we also need the /lib/modules directory to load
 	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.

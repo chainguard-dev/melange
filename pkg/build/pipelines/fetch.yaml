@@ -28,6 +28,10 @@ inputs:
     description: |
       The expected SHA512 of the downloaded artifact.
 
+  expected-none:
+    description: |
+      There is no expected checksum.
+
   purl-name:
     description: |
       package-URL (PURL) name for use in SPDX SBOM External References
@@ -67,7 +71,7 @@ inputs:
 
 pipeline:
   - runs: |
-      if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ]; then
+      if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ] && [ "${{inputs.expected-none}}" == "" ]; then
         printf "One of expected-sha256 or expected-sha512 is required"
         exit 1
       fi
@@ -92,7 +96,9 @@ pipeline:
         wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
       fi
 
-      if [ "${{inputs.expected-sha256}}" != "" ]; then
+      if [ "${{inputs.expected-none}}" != "" ]; then
+        printf "fetch: Checksum validation skipped\n"
+      elif [ "${{inputs.expected-sha256}}" != "" ]; then
         printf "fetch: Expected sha256: ${{inputs.expected-sha256}}\n"
         sum=$(sha256sum $bn | awk '{print $1}')
         if [ "${{inputs.expected-sha256}}" != "$sum" ]; then

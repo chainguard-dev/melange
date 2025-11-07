@@ -23,6 +23,7 @@ Fetch and extract external object into workspace
 | delete | false | Whether to delete the fetched artifact after unpacking.  | false |
 | directory | false | The directory to extract the artifact into (passed to `tar -C`)  | . |
 | dns-timeout | false | The timeout (in seconds) to use for DNS lookups. The fetch will fail if the timeout is hit.  | 20 |
+| expected-none | false | There is no expected checksum.  |  |
 | expected-sha256 | false | The expected SHA256 of the downloaded artifact.  |  |
 | expected-sha512 | false | The expected SHA512 of the downloaded artifact.  |  |
 | extract | false | Whether to extract the downloaded artifact as a source tarball.  | true |

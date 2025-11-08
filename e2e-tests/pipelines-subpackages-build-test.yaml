@@ -1,0 +1,27 @@
+# test that packages / subpackages build and test when there is no
+# main pipeline
+package:
+  name: pipelines-subpackages-build-test
+  description: Test that subpackages pipelines run
+  version: 0.1.0
+  epoch: 0
+environment:
+  contents:
+    packages:
+      - busybox
+
+subpackages:
+  - name: subpackage-pipelines-subpackages-build-test
+    description: test that subpackage pipeline runs without main one
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.contextdir}}/
+          touch ${{targets.contextdir}}/subpackage-pipeline
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            [ -e /subpackage-pipeline ]

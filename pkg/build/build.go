@@ -495,13 +495,6 @@ func (b *Build) loadIgnoreRules(ctx context.Context) ([]*xignore.Pattern, error)
 	return ignorePatterns, nil
 }
 
-// isBuildLess returns true if the build context does not actually do any building.
-// TODO(kaniini): Improve the heuristic for this by checking for uses/runs statements
-// in the pipeline.
-func (b *Build) isBuildLess() bool {
-	return len(b.Configuration.Pipeline) == 0
-}
-
 // getBuildConfigPURL determines the package URL for the melange config file
 // itself.
 func (b Build) getBuildConfigPURL() (*purl.PackageURL, error) {
@@ -698,55 +691,53 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	linterQueue := []linterTarget{}
 	cfg := b.workspaceConfig(ctx)
 
-	if !b.isBuildLess() {
-		imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
-		if err != nil {
-			return fmt.Errorf("unable to build guest: %w", err)
-		}
-
-		cfg.ImgRef = imgRef
-		log.Debugf("ImgRef = %s", cfg.ImgRef)
-
-		if err := b.Runner.StartPod(ctx, cfg); err != nil {
-			return fmt.Errorf("unable to start pod: %w", err)
-		}
-		if !b.DebugRunner {
-			defer func() {
-				if err := b.Runner.TerminatePod(context.WithoutCancel(ctx), cfg); err != nil {
-					log.Warnf("unable to terminate pod: %s", err)
-				}
-			}()
-		}
-
-		// run the main pipeline
-		log.Debug("running the main pipeline")
-		pipelines := b.Configuration.Pipeline
-		if err := pr.runPipelines(ctx, pipelines); err != nil {
-			return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
-		}
-
-		for i, p := range pipelines {
-			uniqueID := strconv.Itoa(i)
-			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-			if err != nil {
-				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-			}
-
-			if pkg == nil {
-				// This particular pipeline step doesn't tell us about the upstream source code.
-				continue
-			}
-
-			b.SBOMGroup.AddUpstreamSourcePackage(pkg)
-		}
-
-		// add the main package to the linter queue
-		lintTarget := linterTarget{
-			pkgName:  b.Configuration.Package.Name,
-			disabled: b.Configuration.Package.Checks.Disabled,
-		}
-		linterQueue = append(linterQueue, lintTarget)
+	imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
+	if err != nil {
+		return fmt.Errorf("unable to build guest: %w", err)
 	}
+
+	cfg.ImgRef = imgRef
+	log.Debugf("ImgRef = %s", cfg.ImgRef)
+
+	if err := b.Runner.StartPod(ctx, cfg); err != nil {
+		return fmt.Errorf("unable to start pod: %w", err)
+	}
+	if !b.DebugRunner {
+		defer func() {
+			if err := b.Runner.TerminatePod(context.WithoutCancel(ctx), cfg); err != nil {
+				log.Warnf("unable to terminate pod: %s", err)
+			}
+		}()
+	}
+
+	// run the main pipeline
+	log.Debug("running the main pipeline")
+	pipelines := b.Configuration.Pipeline
+	if err := pr.runPipelines(ctx, pipelines); err != nil {
+		return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
+	}
+
+	for i, p := range pipelines {
+		uniqueID := strconv.Itoa(i)
+		pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
+		if err != nil {
+			return fmt.Errorf("creating SBOM package for upstream source: %w", err)
+		}
+
+		if pkg == nil {
+			// This particular pipeline step doesn't tell us about the upstream source code.
+			continue
+		}
+
+		b.SBOMGroup.AddUpstreamSourcePackage(pkg)
+	}
+
+	// add the main package to the linter queue
+	lintTarget := linterTarget{
+		pkgName:  b.Configuration.Package.Name,
+		disabled: b.Configuration.Package.Checks.Disabled,
+	}
+	linterQueue = append(linterQueue, lintTarget)
 
 	// run any pipelines for subpackages
 	for _, sp := range b.Configuration.Subpackages {
@@ -754,28 +745,26 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return err
 		}
 
-		if !b.isBuildLess() {
-			log.Infof("running pipeline for subpackage %s", sp.Name)
+		log.Infof("running pipeline for subpackage %s", sp.Name)
 
-			ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
+		ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
 
-			if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
-				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
+		if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
+			return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
+		}
+
+		// Populate SBOM data for the subpackage.
+		for i, p := range sp.Pipeline {
+			uniqueID := strconv.Itoa(i)
+			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
+			if err != nil {
+				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
 			}
-
-			// Populate SBOM data for the subpackage.
-			for i, p := range sp.Pipeline {
-				uniqueID := strconv.Itoa(i)
-				pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-				if err != nil {
-					return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-				}
-				if pkg == nil {
-					// This particular pipeline step doesn't tell us about the upstream source code.
-					continue
-				}
-				b.SBOMGroup.Document(sp.Name).AddUpstreamSourcePackage(pkg)
+			if pkg == nil {
+				// This particular pipeline step doesn't tell us about the upstream source code.
+				continue
 			}
+			b.SBOMGroup.Document(sp.Name).AddUpstreamSourcePackage(pkg)
 		}
 
 		// add the subpackage to the linter queue
@@ -1127,12 +1116,6 @@ func runAsGID(accts apko_types.ImageAccounts) string {
 
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 	log := clog.FromContext(ctx)
-	if b.isBuildLess() {
-		return &container.Config{
-			Arch:         b.Arch,
-			WorkspaceDir: b.WorkspaceDir,
-		}
-	}
 
 	mounts := []container.BindMount{
 		{Source: b.WorkspaceDir, Destination: container.DefaultWorkspaceDir},

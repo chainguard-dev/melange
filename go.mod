@@ -3,13 +3,13 @@ module chainguard.dev/melange
 go 1.24.6
 
 require (
-	chainguard.dev/apko v0.30.20
+	chainguard.dev/apko v0.30.21
 	github.com/chainguard-dev/clog v1.7.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.38
+	github.com/chainguard-dev/yam v0.2.39
 	github.com/charmbracelet/log v0.4.2
-	github.com/docker/cli v28.5.1+incompatible
-	github.com/docker/docker v28.5.1+incompatible
+	github.com/docker/cli v28.5.2+incompatible
+	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.4
 	github.com/go-git/go-git/v5 v5.16.3
@@ -23,7 +23,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.18.1
 	github.com/klauspost/pgzip v1.2.6
-	github.com/moby/moby v28.5.1+incompatible
+	github.com/moby/moby v28.5.2+incompatible
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/package-url/packageurl-go v0.1.3
 	github.com/pkg/errors v0.9.1

@@ -98,7 +98,10 @@ type DependencyGenerator func(context.Context, SCAHandle, *config.Dependencies, 
 func isInDir(path string, dirs []string) bool {
 	mydir := filepath.Dir(path)
 	for _, d := range dirs {
-		if mydir == d || mydir+"/" == d {
+		// allow the /... suffix (i.e. "usr/...") to indicate recursive matching
+		if strings.HasSuffix(d, "/...") && strings.HasPrefix(mydir, strings.TrimSuffix(d, "/...")) {
+			return true
+		} else if mydir == d || mydir+"/" == d {
 			return true
 		}
 	}

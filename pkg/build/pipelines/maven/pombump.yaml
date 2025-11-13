@@ -1,10 +1,46 @@
-name: Run pombump tool to update versions and properties in a Maven POM file
+name: Run pombump tool to analyze and update versions and properties in a Maven POM file
 needs:
   packages:
     - busybox
     - pombump
+    - jq
 
 inputs:
+  # Mode selection
+  mode:
+    description: |
+      Mode of operation: 'patch' to apply changes, 'analyze' to analyze POM and get recommendations
+    default: patch
+  
+  # Analysis inputs
+  analyze-patches:
+    description: |
+      Space-separated list of patches to analyze (groupID@artifactID@version) for recommendations
+  analyze-patch-file:
+    description: |
+      Patch file to analyze for recommendations
+  output-format:
+    description: |
+      Output format for analysis: human, json, or yaml
+    default: human
+  search-properties:
+    description: |
+      Search for properties in parent POMs and modules (analyze mode only)
+    default: false
+  generate-patch-files:
+    description: |
+      Generate recommended patch files from analysis (creates pombump-deps.yaml and pombump-properties.yaml)
+    default: false
+  output-deps:
+    description: |
+      Output file for recommended dependency patches (analyze mode)
+    default: ./pombump-deps.yaml
+  output-properties:
+    description: |
+      Output file for recommended property patches (analyze mode)
+    default: ./pombump-properties.yaml
+  
+  # Patching inputs
   patch-file:
     description: |
       Patches file to use for updating the POM file
@@ -19,50 +55,109 @@ inputs:
   properties:
     description: |
       Properties to update / add the POM file via command line flag
+  
+  # Common inputs
   pom:
     description: |
       Path to pom.xml
     default: pom.xml
   debug:
     description: |
-      Enable debug mode, which will print out the diffs of the pom.xml file after running pombump
+      Enable debug mode, which will print out the diffs of the pom.xml file after running pombump (patch mode) or detailed analysis (analyze mode)
     default: false
   show-dependency-tree:
     default: false
     description: Display a dependency tree for the existing pom.xml file
+  
+  fail-on-bom-conflicts:
+    description: |
+      Fail if attempting to patch dependencies controlled by BOMs (analyze mode).
+      Only use for strict BOM enforcement.
+    default: false
+  json-output-file:
+    description: |
+      File to save JSON analysis output (analyze mode only)
 
 pipeline:
   - runs: |
-      PATCH_FILE_FLAG=""
-      PROPERTIES_FILE_FLAG=""
-      DEPENDENCIES_FLAG=""
-      PROPERTIES_FLAG=""
-
-      if [ -f "${{inputs.patch-file}}" ]; then
-        PATCH_FILE_FLAG="--patch-file ${{inputs.patch-file}}"
-      fi
-
-      if [ -f "${{inputs.properties-file}}" ]; then
-        PROPERTIES_FILE_FLAG="--properties-file ${{inputs.properties-file}}"
-      fi
-
-      if [ -n "${{inputs.dependencies}}" ]; then
-        DEPENDENCIES_FLAG="--dependencies ${{inputs.dependencies}}"
-      fi
-
-      if [ -n "${{inputs.properties}}" ]; then
-        PROPERTIES_FLAG="--properties ${{inputs.properties}}"
-      fi
-      
+      # Show dependency tree if requested
       if [ "${{inputs.show-dependency-tree}}" = "true" ]; then
-        mvn dependency:tree
+        mvn dependency:tree || echo "Note: Maven dependency tree failed, continuing..."
       fi
 
-      pombump ${{inputs.pom}} $PATCH_FILE_FLAG $PROPERTIES_FILE_FLAG $DEPENDENCIES_FLAG $PROPERTIES_FLAG > "${{inputs.pom}}.new"
+      if [ "${{inputs.mode}}" = "analyze" ]; then
+        echo "Running pombump in analyze mode..."
+        
+        # Build analyze command
+        CMD="pombump analyze ${{inputs.pom}}"
+        
+        [ -n "${{inputs.output-format}}" ] && CMD="$CMD --output ${{inputs.output-format}}"
+        [ "${{inputs.search-properties}}" = "true" ] && CMD="$CMD --search-properties"
+        [ -f "${{inputs.analyze-patch-file}}" ] && CMD="$CMD --patch-file ${{inputs.analyze-patch-file}}"
+        
+        if [ "${{inputs.generate-patch-files}}" = "true" ]; then
+          CMD="$CMD --output-deps ${{inputs.output-deps}} --output-properties ${{inputs.output-properties}}"
+        fi
+        
+        # Handle analyze-patches separately due to quoting needs
+        if [ -n "${{inputs.analyze-patches}}" ]; then
+          CMD="$CMD --patches \"${{inputs.analyze-patches}}\""
+        fi
+        
+        # Execute analyze command
+        if [ -n "${{inputs.json-output-file}}" ]; then
+          eval "$CMD" > "${{inputs.json-output-file}}"
+          echo "Analysis saved to ${{inputs.json-output-file}}"
+          
+          if [ "${{inputs.debug}}" = "true" ]; then
+            echo "=== Analysis Summary ==="
+            jq -r '
+              "Dependencies: \(.dependencies.total) total, \(.dependencies.direct) direct",
+              "Using properties: \(.dependencies.using_properties)",
+              "From BOMs: \(.dependencies.from_boms // 0)",
+              "BOMs detected: \(.boms | length // 0)",
+              "Recommended property updates: \(.property_updates | length // 0)",
+              "Recommended direct patches: \(.patches | length // 0)"
+            ' "${{inputs.json-output-file}}" || true
+          fi
+          
+          # Check for BOM conflicts
+          if [ "${{inputs.fail-on-bom-conflicts}}" = "true" ]; then
+            if jq -e '.warnings | map(select(contains("BOM"))) | length > 0' "${{inputs.json-output-file}}" > /dev/null 2>&1; then
+              echo "ERROR: BOM conflicts detected. Dependencies are controlled by imported BOMs."
+              echo "Please update the BOM version instead of individual dependencies."
+              jq -r '.warnings[]' "${{inputs.json-output-file}}" 2>/dev/null || true
+              exit 1
+            fi
+          fi
+        else
+          eval "$CMD"
+        fi
+        
+        # Show generated patch files
+        if [ "${{inputs.generate-patch-files}}" = "true" ] && [ "${{inputs.debug}}" = "true" ]; then
+          echo "=== Generated Patch Files ==="
+          [ -f "${{inputs.output-deps}}" ] && echo "Dependency patches: ${{inputs.output-deps}}" && cat "${{inputs.output-deps}}"
+          [ -f "${{inputs.output-properties}}" ] && echo "Property patches: ${{inputs.output-properties}}" && cat "${{inputs.output-properties}}"
+        fi
+        
+      else
+        echo "Running pombump in patch mode..."
+        
+        # Build patch command
+        CMD="pombump \"${{inputs.pom}}\""
+        
+        [ -f "${{inputs.patch-file}}" ] && CMD="$CMD --patch-file \"${{inputs.patch-file}}\""
+        [ -f "${{inputs.properties-file}}" ] && CMD="$CMD --properties-file \"${{inputs.properties-file}}\""
+        [ -n "${{inputs.dependencies}}" ] && CMD="$CMD --dependencies \"${{inputs.dependencies}}\""
+        [ -n "${{inputs.properties}}" ] && CMD="$CMD --properties \"${{inputs.properties}}\""
+        
+        eval "$CMD" > "${{inputs.pom}}.new"
 
-      if [ "${{inputs.debug}}" = "true" ]; then
-        # If there are any differences, it will return a non-zero exit code, so we use `|| true` to ignore that
-        diff -w "${{inputs.pom}}" "${{inputs.pom}}.new" || true
+        if [ "${{inputs.debug}}" = "true" ]; then
+          echo "=== POM Changes ==="
+          diff -w "${{inputs.pom}}" "${{inputs.pom}}.new" || true
+        fi
+
+        mv "${{inputs.pom}}.new" "${{inputs.pom}}"
       fi
-
-      mv "${{inputs.pom}}.new" ${{inputs.pom}} 

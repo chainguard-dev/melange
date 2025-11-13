@@ -1,0 +1,17 @@
+name: Create benchamark subpackage for redis/valkey
+
+inputs:
+  project:
+    description: |
+      The project name (redis or valkey)
+    required: true
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.subpkgdir}}"/usr/bin
+      mv "${{targets.destdir}}"/usr/bin/${{inputs.project}}-benchmark "${{targets.subpkgdir}}"/usr/bin/${{inputs.project}}-benchmark
+
+description: ${{inputs.project}}-benchmark utility that simulates running commands done by N clients while at the same time sending M total queries
+
+provides:
+  - ${{inputs.project}}-benchmark=${{package.full-version}}

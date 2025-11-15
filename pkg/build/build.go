@@ -686,21 +686,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
 	}
 
-	for i, p := range pipelines {
-		uniqueID := strconv.Itoa(i)
-		pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-		if err != nil {
-			return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-		}
-
-		if pkg == nil {
-			// This particular pipeline step doesn't tell us about the upstream source code.
-			continue
-		}
-
-		b.SBOMGroup.AddUpstreamSourcePackage(pkg)
-	}
-
 	// add the main package to the linter queue
 	lintTarget := linterTarget{
 		pkgName:  b.Configuration.Package.Name,
@@ -720,20 +705,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 			return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
-		}
-
-		// Populate SBOM data for the subpackage.
-		for i, p := range sp.Pipeline {
-			uniqueID := strconv.Itoa(i)
-			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-			if err != nil {
-				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-			}
-			if pkg == nil {
-				// This particular pipeline step doesn't tell us about the upstream source code.
-				continue
-			}
-			b.SBOMGroup.Document(sp.Name).AddUpstreamSourcePackage(pkg)
 		}
 
 		// add the subpackage to the linter queue

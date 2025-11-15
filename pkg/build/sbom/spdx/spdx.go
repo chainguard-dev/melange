@@ -125,6 +125,22 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 			PURL:            pkg.PackageURLForSubpackage(gc.Namespace, arch, sp.Name),
 		}
 		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
+
+		// Add upstream source packages from subpackage pipelines
+		for i, p := range sp.Pipeline {
+			uniqueID := strconv.Itoa(i)
+			upstreamPkg, err := p.SBOMPackageForUpstreamSource(pkg.LicenseExpression(), gc.Namespace, uniqueID)
+			if err != nil {
+				return fmt.Errorf("creating SBOM package for upstream source in subpackage %s: %w", sp.Name, err)
+			}
+
+			if upstreamPkg == nil {
+				// This particular pipeline step doesn't tell us about the upstream source code.
+				continue
+			}
+
+			spSBOM.AddUpstreamSourcePackage(upstreamPkg)
+		}
 	}
 
 	pSBOM := sg.Document(pkg.Name)
@@ -151,20 +167,20 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 		})
 	}
 
-	// Add upstream source packages from pipelines
+	// Add upstream source packages from main package pipelines
 	for i, p := range gc.Configuration.Pipeline {
 		uniqueID := strconv.Itoa(i)
-		pkg, err := p.SBOMPackageForUpstreamSource(gc.Configuration.Package.LicenseExpression(), gc.Namespace, uniqueID)
+		upstreamPkg, err := p.SBOMPackageForUpstreamSource(gc.Configuration.Package.LicenseExpression(), gc.Namespace, uniqueID)
 		if err != nil {
 			return fmt.Errorf("creating SBOM package for upstream source: %w", err)
 		}
 
-		if pkg == nil {
+		if upstreamPkg == nil {
 			// This particular pipeline step doesn't tell us about the upstream source code.
 			continue
 		}
 
-		sg.AddUpstreamSourcePackage(pkg)
+		pSBOM.AddUpstreamSourcePackage(upstreamPkg)
 	}
 
 	// Add licensing information

@@ -947,11 +947,17 @@ type GitHubMonitor struct {
 	TagFilter string `json:"tag-filter,omitempty" yaml:"tag-filter,omitempty"`
 	// Prefix filter to apply when searching tags on a GitHub repository
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
-	// Filter to apply when searching tags on a GitHub repository
+	// Substring filter to apply when searching tags on a GitHub repository
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
 	// Override the default of using a GitHub release to identify related tag to
 	// fetch.  Not all projects use GitHub releases but just use tags
 	UseTags bool `json:"use-tag,omitempty" yaml:"use-tag,omitempty"`
+	// Track branches for updates instead of GitHub releases
+	TrackBranches bool `json:"track-branches,omitempty" yaml:"track-branches,omitempty"`
+	// Prefix filter to apply when searching branches on a GitHub repository
+	BranchFilterPrefix string `json:"branch-filter-prefix,omitempty" yaml:"branch-filter-prefix,omitempty"`
+	// Substring filter to apply when searching branches on a GitHub repository
+	BranchFilterContains string `json:"branch-filter-contains,omitempty" yaml:"branch-filter-contains,omitempty"`
 }
 
 // GitMonitor indicates using Git
@@ -962,8 +968,14 @@ type GitMonitor struct {
 	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
 	// Prefix filter to apply when searching tags on a GitHub repository
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
-	// Filter to apply when searching tags on a GitHub repository
+	// Substring filter to apply when searching tags on a GitHub repository
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+	// Update the package version when a new branch is available
+	TrackBranches bool `json:"track-branches,omitempty" yaml:"track-branches,omitempty"`
+	// Prefix filter to apply when searching branches in a Git repository
+	BranchFilterPrefix string `json:"branch-filter-prefix,omitempty" yaml:"branch-filter-prefix,omitempty"`
+	// Substring filter to apply when searching branches in a Git repository
+	BranchFilterContains string `json:"branch-filter-contains,omitempty" yaml:"branch-filter-contains,omitempty"`
 }
 
 // GetStripPrefix returns the prefix that should be stripped from the GitMonitor version.
@@ -1746,6 +1758,10 @@ func (cfg Configuration) validate(ctx context.Context) error {
 		return ErrInvalidConfiguration{Problem: fmt.Errorf("CPE validation: %w", err)}
 	}
 
+	if err := validateUpdate(cfg.Update, cfg.Pipeline); err != nil {
+		return ErrInvalidConfiguration{Problem: fmt.Errorf("Update validation: %w", err)}
+	}
+
 	return nil
 }
 
@@ -1855,6 +1871,44 @@ func validateCPEField(val string) error {
 
 	if !cpeFieldRegex.MatchString(val) {
 		return fmt.Errorf("invalid CPE field value %q, must match regex %q", val, cpeFieldRegex.String())
+	}
+
+	return nil
+}
+
+func validateUpdate(update Update, pipeline []Pipeline) error {
+	// Return early if an update backend isn't enabled
+	// Skip ReleaseMonitor for now as we do not check its configuration
+	if update.GitMonitor == nil && update.GitHubMonitor == nil {
+		return nil
+	}
+
+	var (
+		githubTrackBranches bool
+		gitTrackBranches    bool
+	)
+
+	if update.GitHubMonitor != nil {
+		// Make sure GitHub backend isn't configured to track branches and use tags
+		if update.GitHubMonitor.TrackBranches && update.GitHubMonitor.UseTags {
+			return fmt.Errorf("cannot use both track-branches and use-tags")
+		}
+		githubTrackBranches = update.GitHubMonitor.TrackBranches
+	}
+
+	if update.GitMonitor != nil {
+		gitTrackBranches = update.GitMonitor.TrackBranches
+	}
+
+	// If branches are tracked, ensure git-checkout isn't using tags
+	if gitTrackBranches || githubTrackBranches {
+		for _, p := range pipeline {
+			if p.Uses == "git-checkout" && p.With != nil {
+				if tag, exists := p.With["tag"]; exists && tag != "" {
+					return fmt.Errorf("cannot use track-branches with tag-based monitoring")
+				}
+			}
+		}
 	}
 
 	return nil

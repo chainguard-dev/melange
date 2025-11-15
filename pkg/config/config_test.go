@@ -1387,3 +1387,134 @@ func TestPackageURL(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateTrackBranchesAndUseTags(t *testing.T) {
+	cases := []struct {
+		name     string
+		update   Update
+		pipeline []Pipeline
+		wantErr  bool
+		errMsg   string
+	}{
+		{
+			name: "track-branches and use-tags enabled should error",
+			update: Update{
+				GitHubMonitor: &GitHubMonitor{
+					Identifier:    "owner/repo",
+					TrackBranches: true,
+					UseTags:       true,
+				},
+			},
+			wantErr: true,
+			errMsg:  "cannot use both track-branches and use-tags",
+		},
+		{
+			name: "only track-branches enabled should pass",
+			update: Update{
+				GitHubMonitor: &GitHubMonitor{
+					Identifier:    "owner/repo",
+					TrackBranches: true,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "only use-tags enabled should pass",
+			update: Update{
+				GitHubMonitor: &GitHubMonitor{
+					Identifier: "owner/repo",
+					UseTags:    true,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "track-branches with tag in pipeline should error",
+			update: Update{
+				GitMonitor: &GitMonitor{
+					TrackBranches: true,
+				},
+			},
+			pipeline: []Pipeline{
+				{
+					Uses: "git-checkout",
+					With: map[string]string{
+						"repository": "https://github.com/owner/repo",
+						"tag":        "v1.0.0",
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "cannot use track-branches with tag-based monitoring",
+		},
+		{
+			name: "track-branches with branch in pipeline should pass",
+			update: Update{
+				GitMonitor: &GitMonitor{
+					TrackBranches: true,
+				},
+			},
+			pipeline: []Pipeline{
+				{
+					Uses: "git-checkout",
+					With: map[string]string{
+						"repository": "https://github.com/owner/repo",
+						"branch":     "main",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "github track-branches with tag in pipeline should error",
+			update: Update{
+				GitHubMonitor: &GitHubMonitor{
+					Identifier:    "owner/repo",
+					TrackBranches: true,
+				},
+			},
+			pipeline: []Pipeline{
+				{
+					Uses: "git-checkout",
+					With: map[string]string{
+						"repository": "https://github.com/owner/repo",
+						"tag":        "v1.0.0",
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "cannot use track-branches with tag-based monitoring",
+		},
+		{
+			name: "github track-branches with branch in pipeline should pass",
+			update: Update{
+				GitHubMonitor: &GitHubMonitor{
+					Identifier:    "owner/repo",
+					TrackBranches: true,
+				},
+			},
+			pipeline: []Pipeline{
+				{
+					Uses: "git-checkout",
+					With: map[string]string{
+						"repository": "https://github.com/owner/repo",
+						"branch":     "main",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateUpdate(tt.update, tt.pipeline)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

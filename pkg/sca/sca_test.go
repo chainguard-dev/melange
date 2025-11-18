@@ -368,3 +368,45 @@ func TestLdSoConfD(t *testing.T) {
 		t.Errorf("getLdSoConfDLibPaths: expected 'my/lib/test', got '%s'", extraLibPaths[0])
 	}
 }
+
+func TestIsInDir(t *testing.T) {
+	tests := []struct {
+		path     string
+		dirs     []string
+		expected bool
+	}{
+		// Test exact directory matches with and without trailing slash
+		{"/dir/file", []string{"/dir"}, true},
+		{"/dir/file", []string{"/dir/"}, true},
+		// Test that /dir does NOT match /otherdir
+		{"/dir/file", []string{"/otherdir"}, false},
+		// Test that /dir does NOT match /dir/subdir (without /... suffix)
+		{"/dir/subdir/file", []string{"/dir"}, false},
+		{"/dir/subdir/file", []string{"/dir/"}, false},
+		// Test /dir/... recursive matching
+		{"/dir/file", []string{"/dir/..."}, true},
+		{"/dir/subdir/file", []string{"/dir/..."}, true},
+		{"/dir/subdir/subdir/file", []string{"/dir/..."}, true},
+		{"/otherdir/file", []string{"/dir/..."}, false},
+		{"/dirother/file", []string{"/dir/..."}, false},
+		// Test with relative paths (no leading slash)
+		{"usr/lib/file", []string{"usr/lib"}, true},
+		{"usr/lib/file", []string{"usr/lib/"}, true},
+		{"usr/lib/subdir/file", []string{"usr/lib"}, false},
+		{"usr/lib/subdir/file", []string{"usr/lib/..."}, true},
+		{"usr/lib/subdir/subdir/file", []string{"usr/lib/..."}, true},
+		// Test multiple directories
+		{"/dir/file", []string{"/other", "/dir", "/another"}, true},
+		{"/dir/file", []string{"/other", "/another"}, false},
+		// Edge cases
+		{"/dir/file", []string{}, false},
+		{"/file", []string{"/"}, true},
+	}
+
+	for _, tt := range tests {
+		result := isInDir(tt.path, tt.dirs)
+		if result != tt.expected {
+			t.Errorf("isInDir(%q, %v) = %v, expected %v", tt.path, tt.dirs, result, tt.expected)
+		}
+	}
+}

@@ -99,8 +99,12 @@ func isInDir(path string, dirs []string) bool {
 	mydir := filepath.Dir(path)
 	for _, d := range dirs {
 		// allow the /... suffix (i.e. "usr/...") to indicate recursive matching
-		if strings.HasSuffix(d, "/...") && strings.HasPrefix(mydir, strings.TrimSuffix(d, "/...")) {
-			return true
+		if prefix, ok := strings.CutSuffix(d, "/..."); ok {
+			// Ensure we match the directory exactly or as a prefix followed by /
+			// This prevents /dir matching /dirother
+			if mydir == prefix || strings.HasPrefix(mydir, prefix+"/") {
+				return true
+			}
 		} else if mydir == d || mydir+"/" == d {
 			return true
 		}

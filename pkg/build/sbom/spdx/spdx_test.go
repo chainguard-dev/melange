@@ -485,11 +485,34 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 						},
 					},
 				},
+				{
+					ID:               "SPDXRef-Package-github.com-main-repo.git-v1.0.0-abc123def456-0",
+					Name:             "repo",
+					Version:          "v1.0.0",
+					FilesAnalyzed:    false,
+					LicenseConcluded: "NOASSERTION",
+					LicenseDeclared:  "MIT",
+					DownloadLocation: "https://github.com/main/repo/archive/abc123def456.tar.gz",
+					Originator:       "Organization: Main",
+					Supplier:         "Organization: Main",
+					ExternalRefs: []spdx.ExternalRef{
+						{
+							Category: "PACKAGE-MANAGER",
+							Locator:  "pkg:github/main/repo@v1.0.0",
+							Type:     "purl",
+						},
+					},
+				},
 			},
 			Relationships: []spdx.Relationship{
 				{
 					Element: "SPDXRef-Package-sub-pkg-1.0.0-r0",
 					Related: "SPDXRef-Package-github.com-sub-repo.git-v2.0.0-xyz789abc012-0",
+					Type:    "GENERATED_FROM",
+				},
+				{
+					Element: "SPDXRef-Package-sub-pkg-1.0.0-r0",
+					Related: "SPDXRef-Package-github.com-main-repo.git-v1.0.0-abc123def456-0",
 					Type:    "GENERATED_FROM",
 				},
 			},
@@ -538,6 +561,31 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 							Type:     "purl",
 						},
 					},
+				},
+				{
+					ID:               "SPDXRef-Package-github.com-main-repo.git-v1.0.0-abc123def456-0",
+					Name:             "repo",
+					Version:          "v1.0.0",
+					FilesAnalyzed:    false,
+					LicenseConcluded: "NOASSERTION",
+					LicenseDeclared:  "MIT",
+					DownloadLocation: "https://github.com/main/repo/archive/abc123def456.tar.gz",
+					Originator:       "Organization: Main",
+					Supplier:         "Organization: Main",
+					ExternalRefs: []spdx.ExternalRef{
+						{
+							Category: "PACKAGE-MANAGER",
+							Locator:  "pkg:github/main/repo@v1.0.0",
+							Type:     "purl",
+						},
+					},
+				},
+			},
+			Relationships: []spdx.Relationship{
+				{
+					Element: "SPDXRef-Package-sub-pkg-no-git-1.0.0-r0",
+					Related: "SPDXRef-Package-github.com-main-repo.git-v1.0.0-abc123def456-0",
+					Type:    "GENERATED_FROM",
 				},
 			},
 		},

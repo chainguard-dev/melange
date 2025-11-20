@@ -167,7 +167,8 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 		})
 	}
 
-	// Add upstream source packages from main package pipelines
+	// Add upstream source packages from main package pipelines to main package SBOM
+	// and to all subpackage SBOMs (since subpackages are derived from the main source)
 	for i, p := range gc.Configuration.Pipeline {
 		uniqueID := strconv.Itoa(i)
 		upstreamPkg, err := p.SBOMPackageForUpstreamSource(gc.Configuration.Package.LicenseExpression(), gc.Namespace, uniqueID)
@@ -180,7 +181,13 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 			continue
 		}
 
+		// Add to main package SBOM
 		pSBOM.AddUpstreamSourcePackage(upstreamPkg)
+
+		// Add to all subpackage SBOMs as well
+		for _, sp := range gc.Configuration.Subpackages {
+			sg.Document(sp.Name).AddUpstreamSourcePackage(upstreamPkg)
+		}
 	}
 
 	// Add licensing information

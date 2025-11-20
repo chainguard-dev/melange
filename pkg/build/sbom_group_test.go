@@ -144,9 +144,6 @@ func TestSBOMGroup_NewGroup(t *testing.T) {
 			if sg == nil {
 				t.Fatal("expected SBOMGroup to be created")
 			}
-			if sg.set == nil {
-				t.Fatal("expected SBOMGroup.set to be initialized")
-			}
 
 			for _, name := range tt.pkgNames {
 				doc := sg.Document(name)

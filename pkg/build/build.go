@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -41,7 +40,6 @@ import (
 	apko_build "chainguard.dev/apko/pkg/build"
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
-	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"chainguard.dev/apko/pkg/tarfs"
 	"github.com/chainguard-dev/clog"
 	purl "github.com/package-url/packageurl-go"
@@ -51,12 +49,13 @@ import (
 	"golang.org/x/sys/unix"
 	"sigs.k8s.io/release-utils/version"
 
+	"chainguard.dev/melange/pkg/build/sbom"
+	"chainguard.dev/melange/pkg/build/sbom/spdx"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/linter"
-	"chainguard.dev/melange/pkg/sbom"
 )
 
 const melangeOutputDirName = "melange-out"
@@ -146,9 +145,11 @@ type Build struct {
 
 	EnabledBuildOptions []string
 
-	// Initialized in New and mutated throughout the build process as we gain
-	// visibility into our packages' (including subpackages') composition. This is
-	// how we get "build-time" SBOMs!
+	// SBOMGenerator is the generator used to create SBOMs for this build.
+	// If not set, defaults to DefaultSBOMGenerator.
+	SBOMGenerator sbom.Generator
+
+	// SBOMGroup stores SBOMs for the main package and all subpackages.
 	SBOMGroup *SBOMGroup
 
 	Start time.Time
@@ -173,6 +174,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
 		GuestFS:         tarfs.New(),
 		Start:           time.Now(),
+		SBOMGenerator:   &spdx.Generator{},
 	}
 
 	for _, opt := range opts {
@@ -248,10 +250,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		b.Configuration = parsedCfg
 	}
 
-	// Now that we can find out the names of all the packages we'll be producing, we
-	// can start tracking SBOM data for each of them, using our SBOMGroup type.
-	b.SBOMGroup = NewSBOMGroup(slices.Collect(b.Configuration.AllPackageNames())...)
-
 	if len(b.Configuration.Package.TargetArchitecture) == 1 &&
 		b.Configuration.Package.TargetArchitecture[0] == "all" {
 		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
@@ -268,7 +266,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 		b.SourceDateEpoch = t
 	}
-	b.SBOMGroup.SetCreatedTime(b.SourceDateEpoch)
 
 	// Check that we actually can run things in containers.
 	if b.Runner != nil && !b.Runner.TestUsability(ctx) {
@@ -605,37 +602,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	pkg := &b.Configuration.Package
-	arch := b.Arch.ToAPK()
-
-	// Add the APK package(s) to their respective SBOMs. We do this early in the
-	// build process so that we can later add more kinds of packages that relate to
-	// these packages, as we learn more during the build.
-	for _, sp := range b.Configuration.Subpackages {
-		spSBOM := b.SBOMGroup.Document(sp.Name)
-
-		apkSubPkg := &sbom.Package{
-			Name:            sp.Name,
-			Version:         pkg.FullVersion(),
-			Copyright:       pkg.FullCopyright(),
-			LicenseDeclared: pkg.LicenseExpression(),
-			Namespace:       namespace,
-			Arch:            arch,
-			PURL:            pkg.PackageURLForSubpackage(namespace, arch, sp.Name),
-		}
-		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
-	}
-
-	pSBOM := b.SBOMGroup.Document(pkg.Name)
-	apkPkg := &sbom.Package{
-		Name:            pkg.Name,
-		Version:         pkg.FullVersion(),
-		Copyright:       pkg.FullCopyright(),
-		LicenseDeclared: pkg.LicenseExpression(),
-		Namespace:       namespace,
-		Arch:            arch,
-		PURL:            pkg.PackageURL(namespace, arch),
-	}
-	pSBOM.AddPackageAndSetDescribed(apkPkg)
 
 	log.Debugf("evaluating pipelines for package requirements")
 	if err := b.Compile(ctx); err != nil {
@@ -656,9 +622,12 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return !result
 	})
 
-	if err := b.addSBOMPackageForBuildConfigFile(); err != nil {
-		return fmt.Errorf("adding SBOM package for build config file: %w", err)
+	// Initialize SBOMGroup for the main package and all subpackages
+	pkgNames := []string{b.Configuration.Package.Name}
+	for _, sp := range b.Configuration.Subpackages {
+		pkgNames = append(pkgNames, sp.Name)
 	}
+	b.SBOMGroup = NewSBOMGroup(pkgNames...)
 
 	pr := &pipelineRunner{
 		interactive: b.Interactive,
@@ -717,21 +686,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
 	}
 
-	for i, p := range pipelines {
-		uniqueID := strconv.Itoa(i)
-		pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-		if err != nil {
-			return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-		}
-
-		if pkg == nil {
-			// This particular pipeline step doesn't tell us about the upstream source code.
-			continue
-		}
-
-		b.SBOMGroup.AddUpstreamSourcePackage(pkg)
-	}
-
 	// add the main package to the linter queue
 	lintTarget := linterTarget{
 		pkgName:  b.Configuration.Package.Name,
@@ -751,20 +705,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 		if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 			return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
-		}
-
-		// Populate SBOM data for the subpackage.
-		for i, p := range sp.Pipeline {
-			uniqueID := strconv.Itoa(i)
-			pkg, err := p.SBOMPackageForUpstreamSource(b.Configuration.Package.LicenseExpression(), namespace, uniqueID)
-			if err != nil {
-				return fmt.Errorf("creating SBOM package for upstream source: %w", err)
-			}
-			if pkg == nil {
-				// This particular pipeline step doesn't tell us about the upstream source code.
-				continue
-			}
-			b.SBOMGroup.Document(sp.Name).AddUpstreamSourcePackage(pkg)
 		}
 
 		// add the subpackage to the linter queue
@@ -887,29 +827,38 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("license check: %w", err)
 	}
 
-	li, err := b.Configuration.Package.LicensingInfos(b.WorkspaceDir)
+	// Get build config PURL for SBOM generation
+	buildConfigPURL, err := b.getBuildConfigPURL()
 	if err != nil {
-		return fmt.Errorf("gathering licensing infos: %w", err)
-	}
-	b.SBOMGroup.SetLicensingInfos(li)
-
-	// Convert the SBOMs we've been working on to their SPDX representation, and
-	// write them to disk. We'll handle any subpackages first, and then the main
-	// package, but the order doesn't really matter.
-
-	for _, sp := range b.Configuration.Subpackages {
-		spSBOM := b.SBOMGroup.Document(sp.Name)
-		spdxDoc := spSBOM.ToSPDX(ctx, releaseData)
-		log.Infof("writing SBOM for subpackage %s", sp.Name)
-		if err := b.writeSBOM(sp.Name, &spdxDoc); err != nil {
-			return fmt.Errorf("writing SBOM for %s: %w", sp.Name, err)
-		}
+		return fmt.Errorf("getting PURL for build config: %w", err)
 	}
 
-	spdxDoc := pSBOM.ToSPDX(ctx, releaseData)
-	log.Infof("writing SBOM for %s", pkg.Name)
-	if err := b.writeSBOM(pkg.Name, &spdxDoc); err != nil {
-		return fmt.Errorf("writing SBOM for %s: %w", pkg.Name, err)
+	// Create a filesystem rooted at the melange-out directory for SBOM generation
+	outfs, err := apkofs.Sub(b.WorkspaceDirFS, melangeOutputDirName)
+	if err != nil {
+		return fmt.Errorf("creating SBOM filesystem: %w", err)
+	}
+
+	// Generate SBOMs post-build using the configured generator
+	genCtx := &sbom.GeneratorContext{
+		Configuration:   b.Configuration,
+		WorkspaceDir:    b.WorkspaceDir,
+		OutputFS:        outfs,
+		SourceDateEpoch: b.SourceDateEpoch,
+		Namespace:       namespace,
+		Arch:            b.Arch.ToAPK(),
+		ConfigFile: &sbom.ConfigFile{
+			Path:          b.ConfigFile,
+			RepositoryURL: b.ConfigFileRepositoryURL,
+			Commit:        b.ConfigFileRepositoryCommit,
+			License:       b.ConfigFileLicense,
+			PURL:          buildConfigPURL,
+		},
+		ReleaseData: releaseData,
+	}
+
+	if err := b.SBOMGenerator.GenerateSBOM(ctx, genCtx); err != nil {
+		return fmt.Errorf("generating SBOMs: %w", err)
 	}
 
 	// emit main package
@@ -967,59 +916,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// writeSBOM encodes the given SPDX document to JSON and writes it to the
-// filesystem in the directory `/var/lib/db/sbom`. The pkgName parameter should
-// be set to the name of the origin package or subpackage.
-func (b Build) writeSBOM(pkgName string, doc *spdx.Document) error {
-	apkFSPath := filepath.Join(melangeOutputDirName, pkgName)
-	sbomDirPath := filepath.Join(apkFSPath, "/var/lib/db/sbom")
-	if err := b.WorkspaceDirFS.MkdirAll(sbomDirPath, os.FileMode(0o755)); err != nil {
-		return fmt.Errorf("creating SBOM directory: %w", err)
-	}
-
-	pkgVersion := b.Configuration.Package.FullVersion()
-	sbomPath := getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion)
-	f, err := b.WorkspaceDirFS.OpenFile(sbomPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
-	if err != nil {
-		return fmt.Errorf("opening SBOM file for writing: %w", err)
-	}
-
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	enc.SetEscapeHTML(true)
-
-	if err := enc.Encode(doc); err != nil {
-		return fmt.Errorf("encoding SPDX SBOM: %w", err)
-	}
-
-	return nil
-}
-
-func (b *Build) addSBOMPackageForBuildConfigFile() error {
-	buildConfigPURL, err := b.getBuildConfigPURL()
-	if err != nil {
-		return fmt.Errorf("getting PURL for build config: %w", err)
-	}
-
-	b.SBOMGroup.AddBuildConfigurationPackage(&sbom.Package{
-		Name:            b.ConfigFile,
-		Version:         b.ConfigFileRepositoryCommit,
-		LicenseDeclared: b.ConfigFileLicense,
-		Namespace:       b.Namespace,
-		Arch:            "", // This field doesn't make sense in this context
-		PURL:            buildConfigPURL,
-	})
-
-	return nil
-}
-
-func getPathForPackageSBOM(sbomDirPath, pkgName, pkgVersion string) string {
-	return filepath.Join(
-		sbomDirPath,
-		fmt.Sprintf("%s-%s.spdx.json", pkgName, pkgVersion),
-	)
 }
 
 func (b *Build) SummarizePaths(ctx context.Context) {

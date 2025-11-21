@@ -29,7 +29,7 @@ func DylibLinter(ctx context.Context, _ *config.Configuration, pkgname string, f
 		return nil
 	}
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return filepath.Ext(path) == ".dylib" },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && filepath.Ext(path) == ".dylib" },
 		func(pkgname string, paths []string) string {
 			fileWord := "file"
 			if len(paths) > 1 {

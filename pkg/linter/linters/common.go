@@ -37,7 +37,7 @@ var (
 
 // AllPaths walks the filesystem and collects all paths matching the predicate,
 // returning a structured error if any paths are found.
-func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(path string) bool, messageFunc func(pkgname string, paths []string) string) error {
+func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(path string, d fs.DirEntry) bool, messageFunc func(pkgname string, paths []string) string) error {
 	var matchedPaths []string
 
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
@@ -47,10 +47,7 @@ func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(pa
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if predicate(path) {
+		if predicate(path, d) {
 			matchedPaths = append(matchedPaths, path)
 		}
 		return nil

@@ -25,7 +25,7 @@ import (
 
 func ObjectLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return filepath.Ext(path) == ".o" },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && filepath.Ext(path) == ".o" },
 		func(pkgname string, paths []string) string {
 			fileWord := "file"
 			if len(paths) > 1 {

@@ -29,7 +29,7 @@ func DllLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsy
 		return nil
 	}
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return filepath.Ext(path) == ".dll" },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && filepath.Ext(path) == ".dll" },
 		func(pkgname string, paths []string) string {
 			fileWord := "file"
 			if len(paths) > 1 {

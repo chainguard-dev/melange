@@ -28,7 +28,7 @@ func SrvLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsy
 		return nil
 	}
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return strings.HasPrefix(path, "srv/") },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && strings.HasPrefix(path, "srv/") },
 		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to /srv", pkgname) },
 	)
 }

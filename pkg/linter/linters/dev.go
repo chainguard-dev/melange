@@ -25,7 +25,7 @@ import (
 
 func DevLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return strings.HasPrefix(path, "dev/") },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && strings.HasPrefix(path, "dev/") },
 		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to /dev", pkgname) },
 	)
 }

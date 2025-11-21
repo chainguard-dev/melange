@@ -30,7 +30,7 @@ func StaticArchiveLinter(ctx context.Context, _ *config.Configuration, pkgname s
 		return nil
 	}
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return filepath.Ext(path) == ".a" },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && filepath.Ext(path) == ".a" },
 		func(pkgname string, paths []string) string {
 			fileWord := "archive"
 			if len(paths) > 1 {

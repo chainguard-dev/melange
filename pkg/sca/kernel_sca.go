@@ -28,20 +28,24 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/chainguard-dev/clog"
-
 	"chainguard.dev/melange/pkg/config"
+
+	"github.com/chainguard-dev/clog"
+	"github.com/klauspost/compress/zstd"
+	"github.com/ulikunitz/xz"
 )
 
 // BootDirs is the list of directories to search for kernels.
 // This is exported so that callers can append to it as needed.
 // Scanning lib/modules and usr/lib/modules is done to make this work
 // well for bootc, which suggests sticking kernel images at
-// /usr/lib/modules/`uname -r`/vmlinuz
+// /usr/lib/modules/`uname -r`/vmlinuz.
 var BootDirs = []string{"boot/...", "lib/modules/...", "usr/lib/modules/..."}
 
-// TODO: a-crate: scan kernel modules for vermagic and depend on linux:version
-// TODO: a-crate: maybe also parse modules.dep for module dependencies
+// ModuleDirs is the list of directories to search for kernel modules.
+// This is exported so that callers can append to it as needed.
+var ModuleDirs = []string{"usr/lib/modules/...", "lib/modules/..."}
+
 func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("scanning for kernel dependencies...")
@@ -50,6 +54,12 @@ func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	if err != nil {
 		return err
 	}
+
+	var allKernelDirs []string
+	allKernelDirs = append(allKernelDirs, BootDirs...)
+	allKernelDirs = append(allKernelDirs, ModuleDirs...)
+
+	kernelVersionRe := regexp.MustCompile(`^[0-9.\-_A-Za-z]+`)
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -67,31 +77,45 @@ func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 			return nil
 		}
 
+		if !isInDir(path, allKernelDirs) {
+			return nil
+		}
+
+		file, err := fsys.Open(path)
+		if err != nil {
+			log.Warnf("file open err: %v", err)
+			return nil
+		}
+		defer file.Close()
+
+		seekableFile, ok := file.(io.ReadSeeker)
+		if !ok {
+			log.Warnf("file %s can't be made seekable, not scanning it", path)
+			return nil
+		}
+
 		if isInDir(path, BootDirs) {
-			file, err := fsys.Open(path)
-			if err != nil {
-				log.Debugf("file open err: %v", err)
-				return nil
-			}
-			defer file.Close()
-
-			seekableFile, ok := file.(io.ReadSeeker)
-			if !ok {
-				log.Debugf("file %s can't be made seekable", path)
-				return nil
-			}
-
 			ver, err := kernelVersion(ctx, seekableFile)
 			if err != nil {
 				log.Debugf("%s has no kernel version: %v", path, err)
-				return nil
+			} else {
+				// 6.12.57-example (amelia-crate@framework-16) (gcc (GCC) 14.3.0, GNU ld (GNU Binutils) 2.44) # SMP
+				// -> 6.12.57-example
+				ver = kernelVersionRe.FindString(ver)
+				generated.Provides = append(generated.Provides, "linux:"+ver)
 			}
+		}
 
-			// 6.12.57-example (amelia-crate@framework-16) (gcc (GCC) 14.3.0, GNU ld (GNU Binutils) 2.44) # SMP
-			// -> 6.12.57-example
-			ver = regexp.MustCompile(`^[0-9.\-_A-Za-z]+`).FindString(ver)
-
-			generated.Provides = append(generated.Provides, "linux:"+ver)
+		if isInDir(path, ModuleDirs) {
+			ver, err := moduleVermagic(ctx, seekableFile)
+			if err != nil {
+				log.Debugf("%s has no vermagic: %v", path, err)
+			} else {
+				// 6.12.57-example SMP
+				// -> 6.12.57-example
+				ver = kernelVersionRe.FindString(ver)
+				generated.Runtime = append(generated.Runtime, "linux:"+ver)
+			}
 		}
 
 		return nil
@@ -100,6 +124,91 @@ func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 	}
 
 	return nil
+}
+
+// moduleVermagic inspects data for a kernel version string
+func moduleVermagic(ctx context.Context, r io.ReadSeeker) (string, error) {
+	log := clog.FromContext(ctx)
+
+	var err error
+	r, err = tryDecompressModule(ctx, r)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+	if v, err := scanStreamForPrefix(r, "vermagic="); err == nil {
+		return v, nil
+	} else {
+		log.Debugf("%v", err)
+	}
+
+	return "", errors.New("could not locate vermagic")
+}
+
+// tryDecompressModule attempts to extract a module, or returns
+// the original data if it's not a supported format.
+func tryDecompressModule(ctx context.Context, r io.ReadSeeker) (io.ReadSeeker, error) {
+	log := clog.FromContext(ctx)
+	// We have to move the offset around to try to read compression headers,
+	// so restore it at the end.
+	originalOffset, err := r.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_, err := r.Seek(originalOffset, io.SeekStart)
+		if err != nil {
+			log.Errorf("failed to restore file offset: %v", err)
+		}
+	}()
+
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	// Reader header on NewReader() and returns err if it's not a valid
+	// gzip header
+	gzr, err := gzip.NewReader(r)
+	if err == nil {
+		b, err := io.ReadAll(gzr)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("found gzipped module")
+		return bytes.NewReader(b), nil
+	}
+
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	xzr, err := xz.NewReader(r)
+	if err == nil {
+		b, err := io.ReadAll(xzr)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("found xz module")
+		return bytes.NewReader(b), nil
+	}
+
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	// This doesn't read data, we don't know if it's valid zstd data until we read it.
+	zstr, err := zstd.NewReader(r)
+	if err == nil {
+		defer zstr.Close()
+		b, err := io.ReadAll(zstr)
+		if err == nil {
+			log.Debugf("found zstd module")
+			return bytes.NewReader(b), nil
+		}
+	}
+
+	log.Debugf("treating module as uncompressed")
+	return r, nil
 }
 
 // kernelVersion inspects data for a kernel version string
@@ -129,7 +238,7 @@ func kernelVersion(ctx context.Context, r io.ReadSeeker) (string, error) {
 	if _, err := r.Seek(0, io.SeekStart); err != nil {
 		return "", err
 	}
-	if v, err := scanStreamForVersion(r); err == nil {
+	if v, err := scanStreamForPrefix(r, "Linux version "); err == nil {
 		log.Debugf("found kernel version from fallback search of uncompressed data")
 		return v, nil
 	} else {
@@ -274,10 +383,9 @@ func versionFromBootHeader(r io.ReadSeeker) (string, error) {
 	return s, nil
 }
 
-// scanStreamForVersion scans a data stream for "Linux version " and returns
-// the version.
-func scanStreamForVersion(r io.Reader) (string, error) {
-	const prefix = "Linux version "
+// scanStreamForPrefix scans a data stream for the prefix and returns
+// the rest of the string, terminated by \n or EOF.
+func scanStreamForPrefix(r io.Reader, prefix string) (string, error) {
 	br := bufio.NewReader(r)
 
 	var window []byte

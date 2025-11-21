@@ -21,7 +21,7 @@ require (
 	github.com/invopop/jsonschema v0.13.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/klauspost/compress v1.18.1
+	github.com/klauspost/compress v1.18.2
 	github.com/klauspost/pgzip v1.2.6
 	github.com/moby/moby v28.5.2+incompatible
 	github.com/opencontainers/image-spec v1.1.1
@@ -31,6 +31,7 @@ require (
 	github.com/spdx/tools-golang v0.5.5
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
+	github.com/ulikunitz/xz v0.5.15
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
 	go.opentelemetry.io/otel v1.38.0

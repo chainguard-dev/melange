@@ -1130,6 +1130,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generatePythonDeps,
 		generateRubyDeps,
 		generateShbangDeps,
+		generateKernelDeps,
 	}
 
 	for _, gen := range generators {

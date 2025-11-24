@@ -24,31 +24,74 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
 	"chainguard.dev/melange/pkg/build"
 )
 
+// addTestFlags registers all test command flags to the provided FlagSet using the TestFlags struct
+func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
+	fs.StringVar(&flags.WorkspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
+	fs.StringSliceVar(&flags.PipelineDirs, "pipeline-dirs", []string{}, "directories used to extend defined built-in pipelines")
+	fs.StringVar(&flags.SourceDir, "source-dir", "", "directory used for included sources")
+	fs.StringVar(&flags.CacheDir, "cache-dir", "", "directory used for cached inputs")
+	fs.StringVar(&flags.CacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
+	fs.StringVar(&flags.ApkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
+	fs.StringSliceVar(&flags.Archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	fs.StringSliceVar(&flags.TestOption, "test-option", []string{}, "build options to enable")
+	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
+	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	fs.StringVar(&flags.EnvFile, "env-file", "", "file to use for preloaded environment variables")
+	fs.BoolVar(&flags.Debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
+	fs.BoolVar(&flags.DebugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
+	fs.BoolVarP(&flags.Interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
+	fs.StringSliceVarP(&flags.ExtraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
+	fs.StringSliceVar(&flags.ExtraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
+	fs.BoolVar(&flags.Remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
+	fs.BoolVar(&flags.IgnoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+}
+
+// TestFlags holds all parsed test command flags
+type TestFlags struct {
+	WorkspaceDir      string
+	SourceDir         string
+	CacheDir          string
+	CacheSource       string
+	ApkCacheDir       string
+	Archstrs          []string
+	PipelineDirs      []string
+	ExtraKeys         []string
+	ExtraRepos        []string
+	EnvFile           string
+	TestOption        []string
+	Debug             bool
+	DebugRunner       bool
+	Interactive       bool
+	Runner            string
+	ExtraTestPackages []string
+	Remove            bool
+	IgnoreSignatures  bool
+}
+
+// ParseTestFlags parses test flags from the provided args and returns a TestFlags struct
+func ParseTestFlags(args []string) (*TestFlags, []string, error) {
+	flags := &TestFlags{}
+
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	addTestFlags(fs, flags)
+
+	if err := fs.Parse(args); err != nil {
+		return nil, nil, err
+	}
+
+	return flags, fs.Args(), nil
+}
+
 func test() *cobra.Command {
-	var workspaceDir string
-	var sourceDir string
-	var cacheDir string
-	var cacheSource string
-	var apkCacheDir string
-	var archstrs []string
-	var pipelineDirs []string
-	var extraKeys []string
-	var extraRepos []string
-	var envFile string
-	var testOption []string
-	var debug bool
-	var debugRunner bool
-	var interactive bool
-	var runner string
-	var extraTestPackages []string
-	var remove bool
-	var ignoreSignatures bool
+	// Create TestFlags struct (defaults are set in addTestFlags)
+	flags := &TestFlags{}
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -58,27 +101,27 @@ func test() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			r, err := getRunner(ctx, runner, remove)
+			r, err := getRunner(ctx, flags.Runner, flags.Remove)
 			if err != nil {
 				return err
 			}
 
-			archs := apko_types.ParseArchitectures(archstrs)
+			archs := apko_types.ParseArchitectures(flags.Archstrs)
 			options := []build.TestOption{
-				build.WithTestWorkspaceDir(workspaceDir),
-				build.WithTestCacheDir(cacheDir),
-				build.WithTestCacheSource(cacheSource),
-				build.WithTestPackageCacheDir(apkCacheDir),
-				build.WithTestExtraKeys(extraKeys),
-				build.WithTestExtraRepos(extraRepos),
-				build.WithExtraTestPackages(extraTestPackages),
+				build.WithTestWorkspaceDir(flags.WorkspaceDir),
+				build.WithTestCacheDir(flags.CacheDir),
+				build.WithTestCacheSource(flags.CacheSource),
+				build.WithTestPackageCacheDir(flags.ApkCacheDir),
+				build.WithTestExtraKeys(flags.ExtraKeys),
+				build.WithTestExtraRepos(flags.ExtraRepos),
+				build.WithExtraTestPackages(flags.ExtraTestPackages),
 				build.WithTestRunner(r),
-				build.WithTestEnvFile(envFile),
-				build.WithTestDebug(debug),
-				build.WithTestDebugRunner(debugRunner),
-				build.WithTestInteractive(interactive),
-				build.WithTestRemove(remove),
-				build.WithTestIgnoreSignatures(ignoreSignatures),
+				build.WithTestEnvFile(flags.EnvFile),
+				build.WithTestDebug(flags.Debug),
+				build.WithTestDebugRunner(flags.DebugRunner),
+				build.WithTestInteractive(flags.Interactive),
+				build.WithTestRemove(flags.Remove),
+				build.WithTestIgnoreSignatures(flags.IgnoreSignatures),
 			}
 
 			if len(args) > 0 {
@@ -88,12 +131,12 @@ func test() *cobra.Command {
 				options = append(options, build.WithTestPackage(args[1]))
 			}
 
-			if sourceDir != "" {
-				options = append(options, build.WithTestSourceDir(sourceDir))
+			if flags.SourceDir != "" {
+				options = append(options, build.WithTestSourceDir(flags.SourceDir))
 			}
 
-			for i := range pipelineDirs {
-				options = append(options, build.WithTestPipelineDir(pipelineDirs[i]))
+			for i := range flags.PipelineDirs {
+				options = append(options, build.WithTestPipelineDir(flags.PipelineDirs[i]))
 			}
 			options = append(options, build.WithTestPipelineDir(BuiltinPipelineDir))
 
@@ -112,24 +155,8 @@ func test() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
-	cmd.Flags().StringSliceVar(&pipelineDirs, "pipeline-dirs", []string{}, "directories used to extend defined built-in pipelines")
-	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
-	cmd.Flags().StringVar(&cacheDir, "cache-dir", "", "directory used for cached inputs")
-	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
-	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringSliceVar(&archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
-	cmd.Flags().StringSliceVar(&testOption, "test-option", []string{}, "build options to enable")
-	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
-	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
-	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
-	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
-	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
-	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
-	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
-	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	// Register all flags using the helper function
+	addTestFlags(cmd.Flags(), flags)
 
 	return cmd
 }

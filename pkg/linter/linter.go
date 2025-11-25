@@ -101,7 +101,7 @@ var linterMap = map[string]linter{
 	},
 	"tempdir": {
 		LinterFunc:      linters.TempDirLinter,
-		Explain:         "Remove any offending files in temporary dirs in the pipeline",
+		Explain:         "Remove any offending files in temporary dirs in the pipeline, or add a /usr/lib/tmpfiles.d/ snippet in the case of dirs under /run/",
 		defaultBehavior: Require,
 	},
 	"usrlocal": {

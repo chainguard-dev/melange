@@ -30,7 +30,7 @@ var (
 	IsDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 	IsObjectFileRegex        = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 	IsSharedObjectFileRegex  = regexp.MustCompile(`\.so(?:\.[0-9]+)*$`)
-	IsTempDirRegex           = regexp.MustCompile("^(var/)?(tmp|run)/")
+	IsTempDirRegex           = regexp.MustCompile("^(var/)?tmp/")
 	ManRegex                 = regexp.MustCompile(`^usr/(?:local/)?share/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$|^usr/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$`)
 	PkgconfDirRegex          = regexp.MustCompile("^usr/(lib|share)/pkgconfig/")
 )

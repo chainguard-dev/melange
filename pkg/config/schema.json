@@ -668,11 +668,11 @@
         },
         "resources": {
           "$ref": "#/$defs/Resources",
-          "description": "Optional: Resources to allocate to the build. Used by external schedulers (like elastic build) to provision appropriately-sized build pods/VMs."
+          "description": "Optional: Resources to allocate to the build."
         },
         "test-resources": {
           "$ref": "#/$defs/Resources",
-          "description": "Optional: Resources to allocate for test execution. Used by external schedulers (like elastic build) to provision appropriately-sized test pods/VMs. If not specified, external schedulers should fall back to the resources configuration."
+          "description": "Optional: Resources to allocate for test execution.\nUsed by external schedulers (like elastic build) to provision\nappropriately-sized test pods/VMs. If not specified, falls back\nto Resources."
         }
       },
       "additionalProperties": false,

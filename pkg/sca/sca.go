@@ -1036,6 +1036,10 @@ func getShbang(fp io.Reader) (string, error) {
 		line1 = line1[:endl]
 	}
 	toks := strings.Fields(line1)
+	if len(toks) == 0 {
+		// Empty shebang line (just "#!" with whitespace)
+		return "", nil
+	}
 	bin := toks[0]
 
 	// if #! is '/usr/bin/env foo', then use next arg as the dep

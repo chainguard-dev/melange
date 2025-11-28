@@ -332,6 +332,10 @@ func TestGetShbang(t *testing.T) {
 		{"cs101 assignment", "", ""},
 		// no carriage return in file
 		{"#!/usr/bin/perl", "/usr/bin/perl", ""},
+		// empty shebang (just "#!" with whitespace) - regression test for index out of range panic
+		{"#!   \n", "", ""},
+		{"#!\t\n", "", ""},
+		{"#!\n", "", ""},
 	} {
 		got, gotErr := getShbang(bytes.NewReader([]byte(td.content)))
 		if td.wantErr != "" {

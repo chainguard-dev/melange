@@ -3,30 +3,31 @@ package:
   version: 1.24.0
   epoch: 0
   description: NGINX GeoIP module - simple build, needs resources for integration tests
-
-  test-resources:         # Only test resources specified
+  # Only test resources specified
+  test-resources:
     cpu: "4"
     memory: "8Gi"
-
 environment:
   contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
       - build-base
+      - busybox
       - nginx-dev
       - geoip-dev
-
 pipeline:
   - uses: fetch
     with:
       uri: https://github.com/leev/ngx_http_geoip2_module/archive/${{package.version}}.tar.gz
       expected-sha256: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-
   - runs: |
       ./configure --add-dynamic-module=.
       make modules
       install -Dm755 objs/ngx_http_geoip2_module.so \
         "${{targets.destdir}}/usr/lib/nginx/modules/ngx_http_geoip2_module.so"
-
 test:
   environment:
     contents:
@@ -41,7 +42,6 @@ test:
         # In real scenario, would download actual GeoIP database
         # For this example, create a minimal test database
         echo "Creating test GeoIP database..."
-
     - name: Test module loading
       runs: |
         cat > /tmp/nginx.conf << 'EOF'
@@ -57,7 +57,6 @@ test:
         }
         EOF
         nginx -t -c /tmp/nginx.conf
-
     - name: Integration test with requests
       runs: |
         # Start nginx in background

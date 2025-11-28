@@ -3,31 +3,33 @@ package:
   version: 13.2.0
   epoch: 0
   description: GNU Compiler Collection - requires significant resources to build
-
-  resources:              # Build resources - compilation is resource-intensive
+  # Build resources - compilation is resource-intensive
+  resources:
     cpu: "8"
     memory: "16Gi"
     disk: "100Gi"
-
-  test-resources:         # Test resources - unit tests need less
+  # Test resources - unit tests need less
+  test-resources:
     cpu: "4"
     memory: "8Gi"
     disk: "50Gi"
-
 environment:
   contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     packages:
       - build-base
+      - busybox
       - gmp-dev
       - mpfr-dev
       - mpc-dev
-
 pipeline:
   - uses: fetch
     with:
       uri: https://ftp.gnu.org/gnu/gcc/gcc-${{package.version}}/gcc-${{package.version}}.tar.xz
       expected-sha256: e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da
-
   - runs: |
       ./configure \
         --prefix=/usr \
@@ -35,7 +37,6 @@ pipeline:
         --disable-multilib
       make -j$(nproc)
       make install DESTDIR="${{targets.destdir}}"
-
 test:
   environment:
     contents:
@@ -53,7 +54,6 @@ test:
         EOF
         gcc hello.c -o hello
         ./hello | grep "Hello, World"
-
     - name: Test C++ compilation
       runs: |
         cat > hello.cpp << 'EOF'

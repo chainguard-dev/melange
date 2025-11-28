@@ -36,6 +36,10 @@ func TestBuild_BuildPackage(t *testing.T) {
 			expectedVersion: "2301-r3",
 		},
 		{
+			name:            "git-checkout-cherry-pick",
+			expectedVersion: "1.2-r1",
+		},
+		{
 			name:            "bogus-version",
 			expectedVersion: "1.0.0_b6",
 			buildErrMatch:   regexp.MustCompile("parse version"),

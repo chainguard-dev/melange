@@ -270,7 +270,7 @@ package:
 ```
 
 ### resources
-Optional resource specifications for the build. Used by external schedulers (like elastic build) to provision appropriately-sized build pods/VMs.
+Optional resource specifications for the build. Used by external schedulers (like elastic build) to provision appropriately-sized build pods/VMs. For local builds with the QEMU runner, these can be used as resource limits via CLI flags.
 
 **Resource Fields:**
 
@@ -283,6 +283,13 @@ Optional resource specifications for the build. Used by external schedulers (lik
 - CPU values are typically whole numbers as strings: `"1"`, `"2"`, `"4"`, `"8"`, etc.
 - Memory and disk use Kubernetes resource quantities: `Mi` (mebibytes), `Gi` (gibibytes), `Ti` (tebibytes)
 - All fields are optional and interpretation depends on the scheduler/runner
+
+**How resources are interpreted:**
+- **External schedulers**: Use these values to provision build pods/VMs
+- **QEMU runner** (via CLI flags like `--cpu`, `--memory`): Treats values as **maximum limits**
+  - CPU: Defaults to all available cores, capped at the specified value if lower
+  - Memory: Defaults to 85% of available memory, capped at the specified value if lower
+- **Docker/Bubblewrap runners**: Resource fields are not enforced
 
 ```yaml
 package:
@@ -299,19 +306,24 @@ Optional resource specifications for test execution. Used by external schedulers
 - Tests require significantly different resources than builds
 - Integration tests need more CPU/memory than unit tests
 - Tests can run with fewer resources to optimize costs
+- External schedulers need separate test and build resource specifications
 
-**Resource Precedence:**
-For external schedulers reading the configuration:
-1. `test-resources` - If specified, used for test pod/VM provisioning
-2. `resources` - Fallback if `test-resources` not specified
-3. For builds: Only `resources` is used
+**How test-resources are interpreted:**
 
-For local testing with `melange test`:
-1. CLI flags (`--cpu`, `--memory`, etc.) - Highest priority
-2. `test-resources` from configuration - If CLI flags not provided
-3. `resources` from configuration - If neither CLI nor test-resources specified
+The `test-resources` field is primarily **informational** for external schedulers:
 
-**Resource fields** are identical to `resources` (see above for formats).
+**For external schedulers** (reading the YAML):
+- Use `test-resources` if specified, otherwise fall back to `resources`
+- This determines test pod/VM sizing
+
+**For local testing with `melange test`:**
+- The `test-resources` field in the YAML is **NOT automatically used** by melange
+- Resources must be explicitly specified via CLI flags: `--cpu`, `--memory`, `--disk`, `--cpumodel`, `--timeout`
+- Resource enforcement depends on the runner (same as `resources` field):
+  - **QEMU runner**: Enforces CPU and memory as **maximum limits** (caps at specified value)
+  - **Docker/Bubblewrap runners**: Do not enforce resource limits
+
+**Resource fields** are identical to `resources` (see above for formats and interpretation).
 
 Example where tests need less resources than build:
 ```yaml

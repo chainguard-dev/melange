@@ -1387,3 +1387,266 @@ func TestPackageURL(t *testing.T) {
 		})
 	}
 }
+
+func TestTestResources(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	tests := []struct {
+		name                string
+		yaml                string
+		expectResources     *Resources
+		expectTestResources *Resources
+		expectParseError    bool
+	}{
+		{
+			name: "both resources and test-resources specified",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+  resources:
+    cpu: "8"
+    memory: 16Gi
+    disk: 100Gi
+  test-resources:
+    cpu: "4"
+    memory: 8Gi
+    disk: 50Gi
+`,
+			expectResources: &Resources{
+				CPU:    "8",
+				Memory: "16Gi",
+				Disk:   "100Gi",
+			},
+			expectTestResources: &Resources{
+				CPU:    "4",
+				Memory: "8Gi",
+				Disk:   "50Gi",
+			},
+			expectParseError: false,
+		},
+		{
+			name: "only test-resources specified",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+  test-resources:
+    cpu: "4"
+    memory: 8Gi
+`,
+			expectResources: &Resources{
+				CPU:    "",
+				Memory: "",
+			},
+			expectTestResources: &Resources{
+				CPU:    "4",
+				Memory: "8Gi",
+			},
+			expectParseError: false,
+		},
+		{
+			name: "only resources specified (backward compatible)",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+  resources:
+    cpu: "4"
+    memory: 8Gi
+`,
+			expectResources: &Resources{
+				CPU:    "4",
+				Memory: "8Gi",
+			},
+			expectTestResources: nil,
+			expectParseError:    false,
+		},
+		{
+			name: "neither resources nor test-resources specified",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+`,
+			expectResources: &Resources{
+				CPU:    "",
+				Memory: "",
+			},
+			expectTestResources: nil,
+			expectParseError:    false,
+		},
+		{
+			name: "test-resources needs more resources than build",
+			yaml: `
+package:
+  name: ml-pkg
+  version: 2.0.0
+  epoch: 0
+  resources:
+    cpu: "2"
+    memory: 4Gi
+  test-resources:
+    cpu: "32"
+    memory: 128Gi
+    disk: 500Gi
+`,
+			expectResources: &Resources{
+				CPU:    "2",
+				Memory: "4Gi",
+			},
+			expectTestResources: &Resources{
+				CPU:    "32",
+				Memory: "128Gi",
+				Disk:   "500Gi",
+			},
+			expectParseError: false,
+		},
+		{
+			name: "cpumodel in test-resources",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+  test-resources:
+    cpu: "4"
+    cpumodel: "intel-xeon"
+    memory: 8Gi
+`,
+			expectResources: &Resources{
+				CPU:    "",
+				Memory: "",
+			},
+			expectTestResources: &Resources{
+				CPU:      "4",
+				CPUModel: "intel-xeon",
+				Memory:   "8Gi",
+			},
+			expectParseError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fp := filepath.Join(os.TempDir(), "melange-test-resources-"+tt.name)
+			if err := os.WriteFile(fp, []byte(tt.yaml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(fp)
+
+			cfg, err := ParseConfiguration(ctx, fp)
+			if tt.expectParseError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if tt.expectResources != nil {
+				require.NotNil(t, cfg.Package.Resources)
+				require.Equal(t, tt.expectResources.CPU, cfg.Package.Resources.CPU)
+				require.Equal(t, tt.expectResources.Memory, cfg.Package.Resources.Memory)
+				require.Equal(t, tt.expectResources.Disk, cfg.Package.Resources.Disk)
+				require.Equal(t, tt.expectResources.CPUModel, cfg.Package.Resources.CPUModel)
+			} else {
+				require.Nil(t, cfg.Package.Resources)
+			}
+
+			if tt.expectTestResources != nil {
+				require.NotNil(t, cfg.Package.TestResources)
+				require.Equal(t, tt.expectTestResources.CPU, cfg.Package.TestResources.CPU)
+				require.Equal(t, tt.expectTestResources.Memory, cfg.Package.TestResources.Memory)
+				require.Equal(t, tt.expectTestResources.Disk, cfg.Package.TestResources.Disk)
+				require.Equal(t, tt.expectTestResources.CPUModel, cfg.Package.TestResources.CPUModel)
+			} else {
+				require.Nil(t, cfg.Package.TestResources)
+			}
+		})
+	}
+}
+
+func TestTestResourcesEdgeCases(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	tests := []struct {
+		name             string
+		yaml             string
+		expectParseError bool
+		checkFunc        func(*testing.T, *Configuration)
+	}{
+		{
+			name: "empty test-resources object",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+  test-resources: {}
+`,
+			expectParseError: false,
+			checkFunc: func(t *testing.T, cfg *Configuration) {
+				require.NotNil(t, cfg.Package.TestResources)
+				require.Empty(t, cfg.Package.TestResources.CPU)
+				require.Empty(t, cfg.Package.TestResources.Memory)
+			},
+		},
+		{
+			name: "malformed yaml - invalid indentation",
+			yaml: `
+package:
+  name: test-pkg
+version: 1.0.0
+  epoch: 0
+`,
+			expectParseError: true,
+		},
+		{
+			name: "test-resources with all fields specified",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+  test-resources:
+    cpu: "16"
+    cpumodel: "intel-xeon-platinum"
+    memory: "256Gi"
+    disk: "2Ti"
+`,
+			expectParseError: false,
+			checkFunc: func(t *testing.T, cfg *Configuration) {
+				require.NotNil(t, cfg.Package.TestResources)
+				require.Equal(t, "16", cfg.Package.TestResources.CPU)
+				require.Equal(t, "intel-xeon-platinum", cfg.Package.TestResources.CPUModel)
+				require.Equal(t, "256Gi", cfg.Package.TestResources.Memory)
+				require.Equal(t, "2Ti", cfg.Package.TestResources.Disk)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fp := filepath.Join(os.TempDir(), "melange-test-resources-edge-"+tt.name)
+			if err := os.WriteFile(fp, []byte(tt.yaml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(fp)
+
+			cfg, err := ParseConfiguration(ctx, fp)
+			if tt.expectParseError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.checkFunc != nil {
+				tt.checkFunc(t, cfg)
+			}
+		})
+	}
+}

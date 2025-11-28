@@ -261,6 +261,92 @@ scriptlets:
 TODO(vaikas): What does it mean to monitor, when new files are added/removed to
 those directories? Something else??
 
+### timeout
+Optional timeout duration for the build. Specifies the maximum amount of time the build is allowed to take before timing out. The value is specified in seconds as an integer.
+
+```yaml
+package:
+  timeout: 3600  # 1 hour in seconds
+```
+
+### resources
+Optional resource specifications for the build. Used by external schedulers (like elastic build) to provision appropriately-sized build pods/VMs.
+
+**Resource Fields:**
+
+- `cpu`: CPU resource count as a quoted string (e.g., `"4"`, `"8"`, `"16"`)
+- `cpumodel`: Specific CPU model requirements (e.g., `"intel-xeon"`, `"amd-epyc"`)
+- `memory`: Memory size in Kubernetes format (e.g., `"8Gi"`, `"16Gi"`, `"128Mi"`)
+- `disk`: Disk space in Kubernetes format (e.g., `"50Gi"`, `"100Gi"`, `"1Ti"`)
+
+**Value Formats:**
+- CPU values are typically whole numbers as strings: `"1"`, `"2"`, `"4"`, `"8"`, etc.
+- Memory and disk use Kubernetes resource quantities: `Mi` (mebibytes), `Gi` (gibibytes), `Ti` (tebibytes)
+- All fields are optional and interpretation depends on the scheduler/runner
+
+```yaml
+package:
+  resources:
+    cpu: "8"
+    memory: "16Gi"
+    disk: "100Gi"
+```
+
+### test-resources
+Optional resource specifications for test execution. Used by external schedulers to provision test pods/VMs with different resource constraints than the build phase.
+
+**When to use test-resources:**
+- Tests require significantly different resources than builds
+- Integration tests need more CPU/memory than unit tests
+- Tests can run with fewer resources to optimize costs
+
+**Resource Precedence:**
+For external schedulers reading the configuration:
+1. `test-resources` - If specified, used for test pod/VM provisioning
+2. `resources` - Fallback if `test-resources` not specified
+3. For builds: Only `resources` is used
+
+For local testing with `melange test`:
+1. CLI flags (`--cpu`, `--memory`, etc.) - Highest priority
+2. `test-resources` from configuration - If CLI flags not provided
+3. `resources` from configuration - If neither CLI nor test-resources specified
+
+**Resource fields** are identical to `resources` (see above for formats).
+
+Example where tests need less resources than build:
+```yaml
+package:
+  resources:
+    cpu: "8"
+    memory: "16Gi"
+    disk: "100Gi"
+  test-resources:
+    cpu: "4"
+    memory: "8Gi"
+    disk: "50Gi"
+```
+
+Example where tests need more resources than build:
+```yaml
+package:
+  resources:
+    cpu: "2"
+    memory: "4Gi"
+  test-resources:
+    cpu: "32"
+    memory: "128Gi"
+    disk: "500Gi"
+```
+
+Example with only test-resources specified:
+```yaml
+package:
+  test-resources:
+    cpu: "4"
+    memory: "8Gi"
+  # No build resources specified - scheduler uses defaults
+```
+
 # environment
 Environment defines the build environment, including what the dependencies are,
 including repositories, packages, etc.

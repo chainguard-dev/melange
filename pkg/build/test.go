@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -66,6 +67,11 @@ type Test struct {
 	Interactive       bool
 	Auth              map[string]options.Auth
 	IgnoreSignatures  bool
+	DefaultCPU        string
+	DefaultCPUModel   string
+	DefaultDisk       string
+	DefaultMemory     string
+	DefaultTimeout    time.Duration
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -107,6 +113,11 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 
 	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
 		config.WithEnvFileForParsing(t.EnvFile),
+		config.WithDefaultCPU(t.DefaultCPU),
+		config.WithDefaultCPUModel(t.DefaultCPUModel),
+		config.WithDefaultDisk(t.DefaultDisk),
+		config.WithDefaultMemory(t.DefaultMemory),
+		config.WithDefaultTimeout(t.DefaultTimeout),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
@@ -447,6 +458,13 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		RunAsUID:     runAsUID(imgcfg.Accounts),
 		RunAs:        runAs(imgcfg.Accounts),
 		RunAsGID:     runAsGID(imgcfg.Accounts),
+	}
+
+	if t.Configuration.Package.Resources != nil {
+		cfg.CPU = t.Configuration.Package.Resources.CPU
+		cfg.CPUModel = t.Configuration.Package.Resources.CPUModel
+		cfg.Memory = t.Configuration.Package.Resources.Memory
+		cfg.Disk = t.Configuration.Package.Resources.Disk
 	}
 	if t.Configuration.Capabilities.Add != nil {
 		cfg.Capabilities.Add = t.Configuration.Capabilities.Add

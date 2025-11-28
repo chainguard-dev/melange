@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
@@ -49,6 +50,8 @@ func test() *cobra.Command {
 	var extraTestPackages []string
 	var remove bool
 	var ignoreSignatures bool
+	var cpu, cpumodel, memory, disk string
+	var timeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:     "test",
@@ -79,6 +82,11 @@ func test() *cobra.Command {
 				build.WithTestInteractive(interactive),
 				build.WithTestRemove(remove),
 				build.WithTestIgnoreSignatures(ignoreSignatures),
+				build.WithTestCPU(cpu),
+				build.WithTestCPUModel(cpumodel),
+				build.WithTestMemory(memory),
+				build.WithTestDisk(disk),
+				build.WithTestTimeout(timeout),
 			}
 
 			if len(args) > 0 {
@@ -130,6 +138,11 @@ func test() *cobra.Command {
 	cmd.Flags().StringSliceVar(&extraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	cmd.Flags().BoolVar(&remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 	cmd.Flags().BoolVar(&ignoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for tests")
+	cmd.Flags().StringVar(&cpumodel, "cpumodel", "", "default CPU model to use for tests")
+	cmd.Flags().StringVar(&disk, "disk", "", "disk size to use for tests")
+	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for tests")
+	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for tests")
 
 	return cmd
 }

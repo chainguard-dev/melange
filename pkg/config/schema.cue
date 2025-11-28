@@ -329,7 +329,15 @@
 	timeout?: int
 
 	// Optional: Resources to allocate to the build.
+	// Used by external schedulers (like elastic build) to provision
+	// appropriately-sized build pods/VMs.
 	resources?: #Resources
+
+	// Optional: Resources to allocate for test execution.
+	// Used by external schedulers (like elastic build) to provision
+	// appropriately-sized test pods/VMs. If not specified, external
+	// schedulers should fall back to the resources configuration.
+	"test-resources"?: #Resources
 })
 
 #PackageOption: close({

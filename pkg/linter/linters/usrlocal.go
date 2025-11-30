@@ -28,7 +28,7 @@ func UsrLocalLinter(ctx context.Context, _ *config.Configuration, pkgname string
 		return nil
 	}
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return strings.HasPrefix(path, "usr/local/") },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && strings.HasPrefix(path, "usr/local/") },
 		func(pkgname string, paths []string) string {
 			return fmt.Sprintf("%s contains /usr/local path in non-compat package", pkgname)
 		},

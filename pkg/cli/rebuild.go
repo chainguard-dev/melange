@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -61,6 +62,32 @@ func ParseRebuildFlags(args []string) (*RebuildFlags, []string, error) {
 	return flags, fs.Args(), nil
 }
 
+// RebuildOptions converts RebuildFlags into a slice of build.Option
+// This includes all options needed for rebuilding a package from its embedded metadata.
+func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.PackageInfo, cfg *config.Configuration, cfgpkg *spdx.Package, cfgpurl purl.PackageURL) ([]build.Option, error) {
+	runner, err := getRunner(ctx, flags.Runner, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create runner: %w", err)
+	}
+
+	opts := []build.Option{
+		build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
+		build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
+		build.WithConfigFileRepositoryCommit(cfgpkg.Version),
+		build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
+		build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
+		build.WithRunner(runner),
+		build.WithOutDir(flags.OutDir),
+		build.WithConfiguration(cfg, cfgpurl.Subpath),
+		build.WithSigningKey(flags.SigningKey),
+	}
+	if flags.SourceDir != "" {
+		opts = append(opts, build.WithSourceDir(flags.SourceDir))
+	}
+
+	return opts, nil
+}
+
 func rebuild() *cobra.Command {
 	// Create RebuildFlags struct (defaults are set in addRebuildFlags)
 	flags := &RebuildFlags{}
@@ -75,11 +102,6 @@ func rebuild() *cobra.Command {
 		Hidden:            true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-
-			r, err := getRunner(ctx, flags.Runner, true)
-			if err != nil {
-				return fmt.Errorf("failed to create runner: %w", err)
-			}
 
 			origins := make(map[string]bool)
 
@@ -100,19 +122,9 @@ func rebuild() *cobra.Command {
 					clog.Warnf("not rebuilding %q because was already rebuilt", a)
 				} else {
 					clog.Infof("rebuilding %q", a)
-					opts := []build.Option{
-						build.WithConfigFileRepositoryURL(fmt.Sprintf("https://github.com/%s/%s", cfgpurl.Namespace, cfgpurl.Name)),
-						build.WithNamespace(strings.ToLower(strings.TrimPrefix(cfgpkg.Originator, "Organization: "))),
-						build.WithConfigFileRepositoryCommit(cfgpkg.Version),
-						build.WithConfigFileLicense(cfgpkg.LicenseDeclared),
-						build.WithBuildDate(time.Unix(pkginfo.BuildDate, 0).UTC().Format(time.RFC3339)),
-						build.WithRunner(r),
-						build.WithOutDir(flags.OutDir),
-						build.WithConfiguration(cfg, cfgpurl.Subpath),
-						build.WithSigningKey(flags.SigningKey),
-					}
-					if flags.SourceDir != "" {
-						opts = append(opts, build.WithSourceDir(flags.SourceDir))
+					opts, err := flags.RebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl)
+					if err != nil {
+						return fmt.Errorf("getting rebuild options from flags: %w", err)
 					}
 
 					if err := BuildCmd(ctx,

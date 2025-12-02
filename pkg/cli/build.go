@@ -154,6 +154,111 @@ func ParseBuildFlags(args []string) (*BuildFlags, []string, error) {
 	return flags, fs.Args(), nil
 }
 
+// BuildOptions converts BuildFlags into a slice of build.Option
+// This includes all core build options that are directly derived from the flags.
+func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]build.Option, error) {
+	log := clog.FromContext(ctx)
+
+	// Determine the runner to use
+	runner, err := getRunner(context.Background(), flags.Runner, flags.Remove)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get runner: %w", err)
+	}
+
+	// Favor explicit, user-provided information for the git provenance of the
+	// melange build definition. As a fallback, detect this from local git state.
+	// Git auto-detection should be "best effort" and not fail the build if it
+	// fails.
+	var buildConfigFilePath string
+	if len(args) > 0 {
+		buildConfigFilePath = args[0] // e.g. "crane.yaml"
+	}
+	if flags.ConfigFileGitCommit == "" {
+		log.Debugf("git commit for build config not provided, attempting to detect automatically")
+		commit, err := detectGitHead(ctx, buildConfigFilePath)
+		if err != nil {
+			log.Warnf("unable to detect commit for build config file: %v", err)
+			flags.ConfigFileGitCommit = "unknown"
+		} else {
+			flags.ConfigFileGitCommit = commit
+		}
+	}
+	if flags.ConfigFileGitRepoURL == "" {
+		log.Warnf("git repository URL for build config not provided")
+		flags.ConfigFileGitRepoURL = "https://unknown/unknown/unknown"
+	}
+
+	opts := []build.Option{
+		build.WithBuildDate(flags.BuildDate),
+		build.WithWorkspaceDir(flags.WorkspaceDir),
+		// Order matters, so add any specified pipelineDir before
+		// builtin pipelines.
+		build.WithPipelineDir(flags.PipelineDir),
+		build.WithPipelineDir(BuiltinPipelineDir),
+		build.WithCacheDir(flags.CacheDir),
+		build.WithCacheSource(flags.CacheSource),
+		build.WithPackageCacheDir(flags.ApkCacheDir),
+		build.WithRunner(runner),
+		build.WithSigningKey(flags.SigningKey),
+		build.WithGenerateIndex(flags.GenerateIndex),
+		build.WithEmptyWorkspace(flags.EmptyWorkspace),
+		build.WithOutDir(flags.OutDir),
+		build.WithExtraKeys(flags.ExtraKeys),
+		build.WithExtraRepos(flags.ExtraRepos),
+		build.WithExtraPackages(flags.ExtraPackages),
+		build.WithDependencyLog(flags.DependencyLog),
+		build.WithStripOriginName(flags.StripOriginName),
+		build.WithEnvFile(flags.EnvFile),
+		build.WithVarsFile(flags.VarsFile),
+		build.WithNamespace(flags.PurlNamespace),
+		build.WithEnabledBuildOptions(flags.BuildOption),
+		build.WithCreateBuildLog(flags.CreateBuildLog),
+		build.WithPersistLintResults(flags.PersistLintResults),
+		build.WithDebug(flags.Debug),
+		build.WithDebugRunner(flags.DebugRunner),
+		build.WithInteractive(flags.Interactive),
+		build.WithRemove(flags.Remove),
+		build.WithLintRequire(flags.LintRequire),
+		build.WithLintWarn(flags.LintWarn),
+		build.WithCPU(flags.CPU),
+		build.WithCPUModel(flags.CPUModel),
+		build.WithDisk(flags.Disk),
+		build.WithMemory(flags.Memory),
+		build.WithTimeout(flags.Timeout),
+		build.WithLibcFlavorOverride(flags.Libc),
+		build.WithIgnoreSignatures(flags.IgnoreSignatures),
+		build.WithConfigFileRepositoryCommit(flags.ConfigFileGitCommit),
+		build.WithConfigFileRepositoryURL(flags.ConfigFileGitRepoURL),
+		build.WithConfigFileLicense(flags.ConfigFileLicense),
+		build.WithGenerateProvenance(flags.GenerateProvenance),
+	}
+
+	if len(args) > 0 {
+		opts = append(opts, build.WithConfig(buildConfigFilePath))
+
+		if flags.SourceDir == "" {
+			flags.SourceDir = filepath.Dir(buildConfigFilePath)
+		}
+	}
+
+	if flags.SourceDir != "" {
+		opts = append(opts, build.WithSourceDir(flags.SourceDir))
+	}
+
+	if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
+		// Fine, no auth.
+	} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
+		return nil, fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
+	} else if parts[0] != "basic" {
+		return nil, fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
+	} else {
+		domain, user, pass := parts[1], parts[2], parts[3]
+		opts = append(opts, build.WithAuth(domain, user, pass))
+	}
+
+	return opts, nil
+}
+
 func buildCmd() *cobra.Command {
 	// Create BuildFlags struct (defaults are set in addBuildFlags)
 	flags := &BuildFlags{}
@@ -167,11 +272,6 @@ func buildCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
-
-			var buildConfigFilePath string
-			if len(args) > 0 {
-				buildConfigFilePath = args[0] // e.g. "crane.yaml"
-			}
 
 			if flags.TraceFile != "" {
 				w, err := os.Create(flags.TraceFile) // #nosec G304 - User-specified trace file output
@@ -197,98 +297,11 @@ func buildCmd() *cobra.Command {
 				ctx = tctx
 			}
 
-			r, err := getRunner(ctx, flags.Runner, flags.Remove)
-			if err != nil {
-				return err
-			}
-
-			// Favor explicit, user-provided information for the git provenance of the
-			// melange build definition. As a fallback, detect this from local git state.
-			// Git auto-detection should be "best effort" and not fail the build if it
-			// fails.
-			if flags.ConfigFileGitCommit == "" {
-				log.Debugf("git commit for build config not provided, attempting to detect automatically")
-				commit, err := detectGitHead(ctx, buildConfigFilePath)
-				if err != nil {
-					log.Warnf("unable to detect commit for build config file: %v", err)
-					flags.ConfigFileGitCommit = "unknown"
-				} else {
-					flags.ConfigFileGitCommit = commit
-				}
-			}
-			if flags.ConfigFileGitRepoURL == "" {
-				log.Warnf("git repository URL for build config not provided")
-				flags.ConfigFileGitRepoURL = "https://unknown/unknown/unknown"
-			}
-
 			archs := apko_types.ParseArchitectures(flags.Archstrs)
-			log.Infof("melange version %s with runner %s building %s at commit %s for arches %s", cmd.Version, r.Name(), buildConfigFilePath, flags.ConfigFileGitCommit, archs)
-			options := []build.Option{
-				build.WithBuildDate(flags.BuildDate),
-				build.WithWorkspaceDir(flags.WorkspaceDir),
-				// Order matters, so add any specified pipelineDir before
-				// builtin pipelines.
-				build.WithPipelineDir(flags.PipelineDir),
-				build.WithPipelineDir(BuiltinPipelineDir),
-				build.WithCacheDir(flags.CacheDir),
-				build.WithCacheSource(flags.CacheSource),
-				build.WithPackageCacheDir(flags.ApkCacheDir),
-				build.WithSigningKey(flags.SigningKey),
-				build.WithGenerateIndex(flags.GenerateIndex),
-				build.WithEmptyWorkspace(flags.EmptyWorkspace),
-				build.WithOutDir(flags.OutDir),
-				build.WithExtraKeys(flags.ExtraKeys),
-				build.WithExtraRepos(flags.ExtraRepos),
-				build.WithExtraPackages(flags.ExtraPackages),
-				build.WithDependencyLog(flags.DependencyLog),
-				build.WithStripOriginName(flags.StripOriginName),
-				build.WithEnvFile(flags.EnvFile),
-				build.WithVarsFile(flags.VarsFile),
-				build.WithNamespace(flags.PurlNamespace),
-				build.WithEnabledBuildOptions(flags.BuildOption),
-				build.WithCreateBuildLog(flags.CreateBuildLog),
-				build.WithPersistLintResults(flags.PersistLintResults),
-				build.WithDebug(flags.Debug),
-				build.WithDebugRunner(flags.DebugRunner),
-				build.WithInteractive(flags.Interactive),
-				build.WithRemove(flags.Remove),
-				build.WithRunner(r),
-				build.WithLintRequire(flags.LintRequire),
-				build.WithLintWarn(flags.LintWarn),
-				build.WithCPU(flags.CPU),
-				build.WithCPUModel(flags.CPUModel),
-				build.WithDisk(flags.Disk),
-				build.WithMemory(flags.Memory),
-				build.WithTimeout(flags.Timeout),
-				build.WithLibcFlavorOverride(flags.Libc),
-				build.WithIgnoreSignatures(flags.IgnoreSignatures),
-				build.WithConfigFileRepositoryCommit(flags.ConfigFileGitCommit),
-				build.WithConfigFileRepositoryURL(flags.ConfigFileGitRepoURL),
-				build.WithConfigFileLicense(flags.ConfigFileLicense),
-				build.WithGenerateProvenance(flags.GenerateProvenance),
-			}
-
-			if len(args) > 0 {
-				options = append(options, build.WithConfig(buildConfigFilePath))
-
-				if flags.SourceDir == "" {
-					flags.SourceDir = filepath.Dir(buildConfigFilePath)
-				}
-			}
-
-			if flags.SourceDir != "" {
-				options = append(options, build.WithSourceDir(flags.SourceDir))
-			}
-
-			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
-				// Fine, no auth.
-			} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
-				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
-			} else if parts[0] != "basic" {
-				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
-			} else {
-				domain, user, pass := parts[1], parts[2], parts[3]
-				options = append(options, build.WithAuth(domain, user, pass))
+			log.Infof("melange version %s with runner %s building %s at commit %s for arches %s", cmd.Version, flags.Runner, args, flags.ConfigFileGitCommit, archs)
+			options, err := flags.BuildOptions(ctx, args...)
+			if err != nil {
+				return fmt.Errorf("getting build options from flags: %w", err)
 			}
 
 			return BuildCmd(ctx, archs, options...)

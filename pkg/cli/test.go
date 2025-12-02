@@ -89,6 +89,61 @@ func ParseTestFlags(args []string) (*TestFlags, []string, error) {
 	return flags, fs.Args(), nil
 }
 
+// TestOptions converts TestFlags into a slice of build.TestOption
+// This includes all core test options that are directly derived from the flags.
+func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]build.TestOption, error) {
+	r, err := getRunner(ctx, flags.Runner, flags.Remove)
+	if err != nil {
+		return nil, err
+	}
+
+	options := []build.TestOption{
+		build.WithTestWorkspaceDir(flags.WorkspaceDir),
+		build.WithTestCacheDir(flags.CacheDir),
+		build.WithTestCacheSource(flags.CacheSource),
+		build.WithTestPackageCacheDir(flags.ApkCacheDir),
+		build.WithTestExtraKeys(flags.ExtraKeys),
+		build.WithTestExtraRepos(flags.ExtraRepos),
+		build.WithExtraTestPackages(flags.ExtraTestPackages),
+		build.WithTestRunner(r),
+		build.WithTestEnvFile(flags.EnvFile),
+		build.WithTestDebug(flags.Debug),
+		build.WithTestDebugRunner(flags.DebugRunner),
+		build.WithTestInteractive(flags.Interactive),
+		build.WithTestRemove(flags.Remove),
+		build.WithTestIgnoreSignatures(flags.IgnoreSignatures),
+	}
+
+	if len(args) > 0 {
+		options = append(options, build.WithTestConfig(args[0]))
+	}
+	if len(args) > 1 {
+		options = append(options, build.WithTestPackage(args[1]))
+	}
+
+	if flags.SourceDir != "" {
+		options = append(options, build.WithTestSourceDir(flags.SourceDir))
+	}
+
+	for i := range flags.PipelineDirs {
+		options = append(options, build.WithTestPipelineDir(flags.PipelineDirs[i]))
+	}
+	options = append(options, build.WithTestPipelineDir(BuiltinPipelineDir))
+
+	if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
+		// Fine, no auth.
+	} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
+		return nil, fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
+	} else if parts[0] != "basic" {
+		return nil, fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
+	} else {
+		domain, user, pass := parts[1], parts[2], parts[3]
+		options = append(options, build.WithTestAuth(domain, user, pass))
+	}
+
+	return options, nil
+}
+
 func test() *cobra.Command {
 	// Create TestFlags struct (defaults are set in addTestFlags)
 	flags := &TestFlags{}
@@ -101,54 +156,10 @@ func test() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			r, err := getRunner(ctx, flags.Runner, flags.Remove)
-			if err != nil {
-				return err
-			}
-
 			archs := apko_types.ParseArchitectures(flags.Archstrs)
-			options := []build.TestOption{
-				build.WithTestWorkspaceDir(flags.WorkspaceDir),
-				build.WithTestCacheDir(flags.CacheDir),
-				build.WithTestCacheSource(flags.CacheSource),
-				build.WithTestPackageCacheDir(flags.ApkCacheDir),
-				build.WithTestExtraKeys(flags.ExtraKeys),
-				build.WithTestExtraRepos(flags.ExtraRepos),
-				build.WithExtraTestPackages(flags.ExtraTestPackages),
-				build.WithTestRunner(r),
-				build.WithTestEnvFile(flags.EnvFile),
-				build.WithTestDebug(flags.Debug),
-				build.WithTestDebugRunner(flags.DebugRunner),
-				build.WithTestInteractive(flags.Interactive),
-				build.WithTestRemove(flags.Remove),
-				build.WithTestIgnoreSignatures(flags.IgnoreSignatures),
-			}
-
-			if len(args) > 0 {
-				options = append(options, build.WithTestConfig(args[0]))
-			}
-			if len(args) > 1 {
-				options = append(options, build.WithTestPackage(args[1]))
-			}
-
-			if flags.SourceDir != "" {
-				options = append(options, build.WithTestSourceDir(flags.SourceDir))
-			}
-
-			for i := range flags.PipelineDirs {
-				options = append(options, build.WithTestPipelineDir(flags.PipelineDirs[i]))
-			}
-			options = append(options, build.WithTestPipelineDir(BuiltinPipelineDir))
-
-			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
-				// Fine, no auth.
-			} else if parts := strings.SplitN(auth, ":", 4); len(parts) != 4 {
-				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %d parts)", len(parts))
-			} else if parts[0] != "basic" {
-				return fmt.Errorf("HTTP_AUTH must be in the form 'basic:REALM:USERNAME:PASSWORD' (got %q for first part)", parts[0])
-			} else {
-				domain, user, pass := parts[1], parts[2], parts[3]
-				options = append(options, build.WithTestAuth(domain, user, pass))
+			options, err := flags.TestOptions(ctx, args...)
+			if err != nil {
+				return fmt.Errorf("getting test options from flags: %w", err)
 			}
 
 			return TestCmd(cmd.Context(), archs, options...)

@@ -172,6 +172,7 @@ func tryDecompressModule(ctx context.Context, r io.ReadSeeker) (io.ReadSeeker, e
 	// gzip header
 	gzr, err := gzip.NewReader(r)
 	if err == nil {
+		defer gzr.Close()
 		b, err := io.ReadAll(gzr)
 		if err != nil {
 			return nil, err

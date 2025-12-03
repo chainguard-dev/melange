@@ -57,6 +57,16 @@ inputs:
       git repository. This is primarily used to identify Gitlab
       based sources which are not heuristically identifiable as
       Gitlab.  Supported hints: gitlab.
+  sparse-paths:
+    description: |
+      List of directory paths to checkout when using sparse-checkout (cone mode).
+      This is useful for monorepos where you only need specific subdirectories.
+      When specified, only these directories will be checked out from the repository.
+      Uses cone mode for optimal performance.
+      Example:
+        sparse-paths:
+          - omnibump
+          - shared/lib
 
 
 pipeline:
@@ -139,9 +149,10 @@ pipeline:
       main() {
           local repo=$1 dest=${2:-.} depth=${3:-"unset"} branch=$4
           local tag=$5 expcommit=$6 recurse=${7:-false}
-          local cherry_pick="$8"
+          local cherry_pick="$8" sparse_paths="$9"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
-              "tag='$tag' expcommit='$expcommit' recurse='$recurse'"
+              "tag='$tag' expcommit='$expcommit' recurse='$recurse'" \
+              "sparse_paths='$sparse_paths'"
 
           case "$recurse" in
               true|false) :;;
@@ -165,6 +176,7 @@ pipeline:
           [ -n "$branch" ] && flags="$flags --branch=$branch"
           [ -n "$tag" ] && flags="$flags --branch=$tag"
           [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
+          [ -n "$sparse_paths" ] && flags="$flags --sparse --filter=blob:none"
 
           if [ "$depth" = "unset" ]; then
             depth=1
@@ -193,6 +205,14 @@ pipeline:
               ${depthflag:+"$depthflag"} "$repo" "$workdir"
 
           vr cd "$workdir"
+
+          # Configure sparse-checkout if paths were provided
+          if [ -n "$sparse_paths" ]; then
+              msg "Configuring sparse-checkout with paths: $sparse_paths"
+              vr git sparse-checkout set --cone $sparse_paths ||
+                  fail "failed to configure sparse-checkout --filter=blob:none"
+          fi
+
           msg "tar -c . | tar -C \"$dest_fullpath\" -x"
           ( tar -c . ; echo $? > "$rcfile") | tar -C "$dest_fullpath" -x --no-same-owner
           read rc < "$rcfile" || fail "failed to read rc file"
@@ -269,6 +289,7 @@ pipeline:
           "${{inputs.repository}}" "${{inputs.destination}}" \
           "${{inputs.depth}}" "${{inputs.branch}}" \
           "${{inputs.tag}}" "${{inputs.expected-commit}}" \
-          "${{inputs.recurse-submodules}}" "$cpickf"
+          "${{inputs.recurse-submodules}}" "$cpickf" \
+          "${{inputs.sparse-paths}}"
 
       rm -f "$cpickf"

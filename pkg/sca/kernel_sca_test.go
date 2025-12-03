@@ -31,32 +31,56 @@ func TestKernelSca(t *testing.T) {
 	for _, tc := range []struct {
 		apk    string
 		yaml   string
-		expect string
+		expect config.Dependencies
 		name   string
 	}{
 		{
 			name:   "bzimage",
 			yaml:   "linux.yaml",
 			apk:    "generated/x86_64/linux-bzimage-6.17.7-r0.apk",
-			expect: "linux:6.17.7-test",
+			expect: config.Dependencies{Provides: []string{"linux:6.17.7-test"}},
 		},
 		{
 			name:   "vmlinux",
 			yaml:   "linux.yaml",
 			apk:    "generated/x86_64/linux-vmlinux-6.17.7-r0.apk",
-			expect: "linux:6.17.7-test",
+			expect: config.Dependencies{Provides: []string{"linux:6.17.7-test"}},
 		},
 		{
 			name:   "gzipped-vmlinux",
 			yaml:   "linux.yaml",
 			apk:    "generated/x86_64/linux-gzipped-vmlinux-6.17.7-r0.apk",
-			expect: "linux:6.17.7-test",
+			expect: config.Dependencies{Provides: []string{"linux:6.17.7-test"}},
 		},
 		{
 			name:   "uki",
 			yaml:   "linux.yaml",
 			apk:    "generated/x86_64/linux-uki-6.17.7-r0.apk",
-			expect: "linux:6.17.7-test",
+			expect: config.Dependencies{Provides: []string{"linux:6.17.7-test"}},
+		},
+		{
+			name:   "modules",
+			yaml:   "linux.yaml",
+			apk:    "generated/x86_64/linux-modules-6.17.7-r0.apk",
+			expect: config.Dependencies{Runtime: []string{"linux:6.17.7-test"}},
+		},
+		{
+			name:   "modules-gzipped",
+			yaml:   "linux.yaml",
+			apk:    "generated/x86_64/linux-modules-gzip-6.17.7-r0.apk",
+			expect: config.Dependencies{Runtime: []string{"linux:6.17.7-test"}},
+		},
+		{
+			name:   "modules-zstd",
+			yaml:   "linux.yaml",
+			apk:    "generated/x86_64/linux-modules-zstd-6.17.7-r0.apk",
+			expect: config.Dependencies{Runtime: []string{"linux:6.17.7-test"}},
+		},
+		{
+			name:   "modules-xz",
+			yaml:   "linux.yaml",
+			apk:    "generated/x86_64/linux-modules-xz-6.17.7-r0.apk",
+			expect: config.Dependencies{Runtime: []string{"linux:6.17.7-test"}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -68,9 +92,7 @@ func TestKernelSca(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			want := config.Dependencies{Provides: []string{tc.expect}}
-
-			if diff := cmp.Diff(want, got); diff != "" {
+			if diff := cmp.Diff(tc.expect, got); diff != "" {
 				t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 			}
 		})

@@ -1533,11 +1533,10 @@ package:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fp := filepath.Join(os.TempDir(), "melange-test-resources-"+tt.name)
+			fp := filepath.Join(t.TempDir(), "melange-test-resources-"+tt.name)
 			if err := os.WriteFile(fp, []byte(tt.yaml), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			defer os.Remove(fp)
 
 			cfg, err := ParseConfiguration(ctx, fp)
 			if tt.expectParseError {
@@ -1631,11 +1630,10 @@ package:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fp := filepath.Join(os.TempDir(), "melange-test-resources-edge-"+tt.name)
+			fp := filepath.Join(t.TempDir(), "melange-test-resources-edge-"+tt.name)
 			if err := os.WriteFile(fp, []byte(tt.yaml), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			defer os.Remove(fp)
 
 			cfg, err := ParseConfiguration(ctx, fp)
 			if tt.expectParseError {

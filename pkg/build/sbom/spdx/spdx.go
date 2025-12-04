@@ -95,9 +95,9 @@ func (sg *SBOMGroup) AddUpstreamSourcePackage(p *sbom.Package) {
 // it with all the standard SBOM information.
 type Generator struct{}
 
-// GenerateSBOM implements the Generator interface by creating and populating
-// SBOMs for all packages based on the build context.
-func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext) error {
+// GenerateSPDX creates an SPDX SBOM document containing all packages based on the build context.
+// It returns a map of package names to their corresponding SPDX documents.
+func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext) (map[string]spdx.Document, error) {
 	// Collect all package names
 	pkgNames := []string{gc.Configuration.Package.Name}
 	for _, sp := range gc.Configuration.Subpackages {
@@ -131,7 +131,7 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 			uniqueID := strconv.Itoa(i)
 			upstreamPkg, err := p.SBOMPackageForUpstreamSource(pkg.LicenseExpression(), gc.Namespace, uniqueID)
 			if err != nil {
-				return fmt.Errorf("creating SBOM package for upstream source in subpackage %s: %w", sp.Name, err)
+				return nil, fmt.Errorf("creating SBOM package for upstream source in subpackage %s: %w", sp.Name, err)
 			}
 
 			if upstreamPkg == nil {
@@ -173,7 +173,7 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 		uniqueID := strconv.Itoa(i)
 		upstreamPkg, err := p.SBOMPackageForUpstreamSource(gc.Configuration.Package.LicenseExpression(), gc.Namespace, uniqueID)
 		if err != nil {
-			return fmt.Errorf("creating SBOM package for upstream source: %w", err)
+			return nil, fmt.Errorf("creating SBOM package for upstream source: %w", err)
 		}
 
 		if upstreamPkg == nil {
@@ -193,22 +193,33 @@ func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext
 	// Add licensing information
 	li, err := gc.Configuration.Package.LicensingInfos(gc.WorkspaceDir)
 	if err != nil {
-		return fmt.Errorf("gathering licensing infos: %w", err)
+		return nil, fmt.Errorf("gathering licensing infos: %w", err)
 	}
 	sg.SetLicensingInfos(li)
 
+	out := make(map[string]spdx.Document)
+
 	// Convert the SBOMs to SPDX and write them
 	for _, sp := range gc.Configuration.Subpackages {
-		spSBOM := sg.Document(sp.Name)
-		spdxDoc := spSBOM.ToSPDX(ctx, gc.ReleaseData)
-		if err := writeSBOM(gc, sp.Name, &spdxDoc); err != nil {
-			return fmt.Errorf("writing SBOM for %s: %w", sp.Name, err)
-		}
+		out[sp.Name] = sg.Document(sp.Name).ToSPDX(ctx, gc.ReleaseData)
 	}
 
-	spdxDoc := pSBOM.ToSPDX(ctx, gc.ReleaseData)
-	if err := writeSBOM(gc, pkg.Name, &spdxDoc); err != nil {
-		return fmt.Errorf("writing SBOM for %s: %w", pkg.Name, err)
+	out[pkg.Name] = pSBOM.ToSPDX(ctx, gc.ReleaseData)
+	return out, nil
+}
+
+// GenerateSBOM generates and writes SPDX SBOM documents for the main package and
+// all subpackages based on the build context.
+func (g *Generator) GenerateSBOM(ctx context.Context, gc *build.GeneratorContext) error {
+	sboms, err := g.GenerateSPDX(ctx, gc)
+	if err != nil {
+		return fmt.Errorf("generating SPDX SBOMs: %w", err)
+	}
+
+	for name, sbom := range sboms {
+		if err := writeSBOM(gc, name, &sbom); err != nil {
+			return fmt.Errorf("writing SBOM for %s: %w", name, err)
+		}
 	}
 
 	return nil

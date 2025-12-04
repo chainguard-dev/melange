@@ -1,0 +1,134 @@
+package:
+  name: linux-bzimage
+  version: "6.17.7"
+  epoch: 0
+  description: "the linux kernel"
+  copyright:
+    - license: GPL-2.0
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - bison
+      - build-base
+      - bash
+      - busybox
+      - ca-certificates-bundle
+      - coreutils
+      - diffutils
+      - elfutils
+      - elfutils-dev
+      - findutils
+      - flex
+      - gawk
+      - gnutar
+      - openssl
+      - openssl-dev
+      - perl
+      - python3
+      - wolfi-base
+      - gmp
+      - gmp-dev
+      - mpc
+      - mpc-dev
+      - mpfr
+      - mpfr-dev
+      - systemd-ukify
+      - xz
+      - zstd
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/gregkh/linux
+      tag: v${{package.version}}
+      expected-commit: 7660ce69123ea73b22930fcf20d995ad310049ef
+
+  - runs: |
+      make allnoconfig
+      sed -i 's/^.*CONFIG_LOCALVERSION=.*$/CONFIG_LOCALVERSION="-test"/' .config
+      cat > localsnippet.config << EOF
+      CONFIG_MODULES=y
+      CONFIG_UIO=m
+      EOF
+
+      scripts/kconfig/merge_config.sh -r -m .config ./localsnippet.config
+
+      make -j$(nproc) bzImage
+      make -j$(nproc) modules
+
+      karch="${{build.arch}}"
+      if [ "${{build.arch}}" = 'aarch64' ]; then
+        karch="arm64"
+      fi
+      if [ "${{build.arch}}" = 'x86_64' ]; then
+        karch="x86"
+      fi
+
+      install -Dm0644 arch/"$karch"/boot/bzImage ${{targets.destdir}}/boot/vmlinuz
+
+subpackages:
+  - name: linux-gzipped-vmlinux
+    pipeline:
+      - runs: |
+          gzip -c vmlinux > vmlinux.gz
+          install -Dm0644 vmlinux.gz ${{targets.subpkgdir}}/boot/vmlinux
+
+  - name: linux-vmlinux
+    pipeline:
+      - runs: install -Dm0644 vmlinux ${{targets.subpkgdir}}/boot/vmlinux
+
+  - name: linux-uki
+    pipeline:
+      - runs: |
+          ukify build --linux=${{targets.destdir}}/boot/vmlinuz --output uki
+
+          install -Dm0644 uki ${{targets.subpkgdir}}/boot/vmlinuz
+
+  - name: linux-modules
+    pipeline:
+      - runs: |
+          module=$(find . -name uio.ko -print -quit)
+          install -Dm0644 "$module" -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
+
+  - name: linux-modules-gzip
+    pipeline:
+      - runs: |
+          module=$(find . -name uio.ko -print -quit)
+          gzip -9 -c "$module" > "$module".gz
+          install -Dm0644 "$module".gz -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
+
+  - name: linux-modules-zstd
+    pipeline:
+      - runs: |
+          module=$(find . -name uio.ko -print -quit)
+          zstd -19 "$module"
+          install -Dm0644 "$module".zst -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
+
+  - name: linux-modules-xz
+    pipeline:
+      - runs: |
+          module=$(find . -name uio.ko -print -quit)
+          xz -c -9 "$module" > "$module".xz
+          install -Dm0644 "$module".xz -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
+
+test:
+  pipeline:
+    - runs: test -f /boot/vmlinuz
+
+update:
+  enabled: true
+  github:
+    identifier: gregkh/linux
+    use-tag: true
+    strip-prefix: v
+    tag-filter: v
+  ignore-regex-patterns:
+    - ^\d+[.]\d+$
+  version-transform:
+    - match: ^(\d+[.]\d+)$
+      replace: $1.0

@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -80,7 +79,7 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		}
 	}
 
-	log := clog.New(slog.Default().Handler()).With("arch", t.Arch)
+	log := clog.FromContext(ctx).With("arch", t.Arch)
 	ctx = clog.WithLogger(ctx, log)
 
 	// If no workspace directory is explicitly requested, create a

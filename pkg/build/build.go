@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log/slog"
 	"maps"
 	"math"
 	"os"
@@ -183,7 +182,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		}
 	}
 
-	log := clog.New(slog.Default().Handler()).With("arch", b.Arch.ToAPK())
+	log := clog.FromContext(ctx).With("arch", b.Arch.ToAPK())
 	ctx = clog.WithLogger(ctx, log)
 
 	// If no workspace directory is explicitly requested, create a

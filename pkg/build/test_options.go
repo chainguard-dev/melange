@@ -15,6 +15,8 @@
 package build
 
 import (
+	"time"
+
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"chainguard.dev/apko/pkg/options"
 
@@ -203,6 +205,41 @@ func WithTestRemove(c bool) TestOption {
 func WithTestIgnoreSignatures(ignore bool) TestOption {
 	return func(t *Test) error {
 		t.IgnoreSignatures = ignore
+		return nil
+	}
+}
+
+func WithTestCPU(cpu string) TestOption {
+	return func(t *Test) error {
+		t.DefaultCPU = cpu
+		return nil
+	}
+}
+
+func WithTestCPUModel(cpumodel string) TestOption {
+	return func(t *Test) error {
+		t.DefaultCPUModel = cpumodel
+		return nil
+	}
+}
+
+func WithTestDisk(disk string) TestOption {
+	return func(t *Test) error {
+		t.DefaultDisk = disk
+		return nil
+	}
+}
+
+func WithTestMemory(memory string) TestOption {
+	return func(t *Test) error {
+		t.DefaultMemory = memory
+		return nil
+	}
+}
+
+func WithTestTimeout(dur time.Duration) TestOption {
+	return func(t *Test) error {
+		t.DefaultTimeout = dur
 		return nil
 	}
 }

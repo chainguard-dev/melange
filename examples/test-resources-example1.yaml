@@ -1,0 +1,67 @@
+package:
+  name: gcc-13
+  version: 13.2.0
+  epoch: 0
+  description: GNU Compiler Collection - requires significant resources to build
+  # Build resources - compilation is resource-intensive
+  resources:
+    cpu: "8"
+    memory: "16Gi"
+    disk: "100Gi"
+  # Test resources - unit tests need less
+  test-resources:
+    cpu: "4"
+    memory: "8Gi"
+    disk: "50Gi"
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - build-base
+      - busybox
+      - gmp-dev
+      - mpfr-dev
+      - mpc-dev
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://ftp.gnu.org/gnu/gcc/gcc-${{package.version}}/gcc-${{package.version}}.tar.xz
+      expected-sha256: e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da
+  - runs: |
+      ./configure \
+        --prefix=/usr \
+        --enable-languages=c,c++,fortran \
+        --disable-multilib
+      make -j$(nproc)
+      make install DESTDIR="${{targets.destdir}}"
+test:
+  environment:
+    contents:
+      packages:
+        - build-base
+  pipeline:
+    - name: Test C compilation
+      runs: |
+        cat > hello.c << 'EOF'
+        #include <stdio.h>
+        int main() {
+            printf("Hello, World!\n");
+            return 0;
+        }
+        EOF
+        gcc hello.c -o hello
+        ./hello | grep "Hello, World"
+    - name: Test C++ compilation
+      runs: |
+        cat > hello.cpp << 'EOF'
+        #include <iostream>
+        int main() {
+            std::cout << "Hello, C++!" << std::endl;
+            return 0;
+        }
+        EOF
+        g++ hello.cpp -o hello-cpp
+        ./hello-cpp | grep "Hello, C++"

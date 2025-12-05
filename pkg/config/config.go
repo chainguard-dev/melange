@@ -138,6 +138,11 @@ type Package struct {
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	// Optional: Resources to allocate to the build.
 	Resources *Resources `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// Optional: Resources to allocate for test execution.
+	// Used by external schedulers (like elastic build) to provision
+	// appropriately-sized test pods/VMs. If not specified, falls back
+	// to Resources.
+	TestResources *Resources `json:"test-resources,omitempty" yaml:"test-resources,omitempty"`
 }
 
 // CPE stores values used to produce a CPE to describe the package, suitable for
@@ -1358,6 +1363,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		CPE:                in.CPE,
 		Timeout:            in.Timeout,
 		Resources:          in.Resources,
+		TestResources:      in.TestResources,
 		SetCap:             in.SetCap,
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
@@ -51,6 +52,11 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 	fs.StringSliceVar(&flags.ExtraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
 	fs.BoolVar(&flags.Remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
 	fs.BoolVar(&flags.IgnoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
+	fs.StringVar(&flags.CPU, "cpu", "", "default CPU resources to use for tests")
+	fs.StringVar(&flags.CPUModel, "cpumodel", "", "default CPU model to use for tests")
+	fs.StringVar(&flags.Disk, "disk", "", "disk size to use for tests")
+	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for tests")
+	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for tests")
 }
 
 // TestFlags holds all parsed test command flags
@@ -73,6 +79,11 @@ type TestFlags struct {
 	ExtraTestPackages []string
 	Remove            bool
 	IgnoreSignatures  bool
+	CPU               string
+	CPUModel          string
+	Memory            string
+	Disk              string
+	Timeout           time.Duration
 }
 
 // ParseTestFlags parses test flags from the provided args and returns a TestFlags struct
@@ -112,6 +123,11 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestInteractive(flags.Interactive),
 		build.WithTestRemove(flags.Remove),
 		build.WithTestIgnoreSignatures(flags.IgnoreSignatures),
+		build.WithTestCPU(flags.CPU),
+		build.WithTestCPUModel(flags.CPUModel),
+		build.WithTestMemory(flags.Memory),
+		build.WithTestDisk(flags.Disk),
+		build.WithTestTimeout(flags.Timeout),
 	}
 
 	if len(args) > 0 {

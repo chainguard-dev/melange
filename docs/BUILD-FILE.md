@@ -261,6 +261,104 @@ scriptlets:
 TODO(vaikas): What does it mean to monitor, when new files are added/removed to
 those directories? Something else??
 
+### timeout
+Optional timeout duration for the build. Specifies the maximum amount of time the build is allowed to take before timing out. The value is specified in seconds as an integer.
+
+```yaml
+package:
+  timeout: 3600  # 1 hour in seconds
+```
+
+### resources
+Optional resource specifications for the build. Used by external schedulers (like elastic build) to provision appropriately-sized build pods/VMs. For local builds with the QEMU runner, these can be used as resource limits via CLI flags.
+
+**Resource Fields:**
+
+- `cpu`: CPU resource count as a quoted string (e.g., `"4"`, `"8"`, `"16"`)
+- `cpumodel`: Specific CPU model requirements (e.g., `"intel-xeon"`, `"amd-epyc"`)
+- `memory`: Memory size in Kubernetes format (e.g., `"8Gi"`, `"16Gi"`, `"128Mi"`)
+- `disk`: Disk space in Kubernetes format (e.g., `"50Gi"`, `"100Gi"`, `"1Ti"`)
+
+**Value Formats:**
+- CPU values are typically whole numbers as strings: `"1"`, `"2"`, `"4"`, `"8"`, etc.
+- Memory and disk use Kubernetes resource quantities: `Mi` (mebibytes), `Gi` (gibibytes), `Ti` (tebibytes)
+- All fields are optional and interpretation depends on the scheduler/runner
+
+**How resources are interpreted:**
+- **External schedulers**: Use these values to provision build pods/VMs
+- **QEMU runner** (via CLI flags like `--cpu`, `--memory`): Treats values as **maximum limits**
+  - CPU: Defaults to all available cores, capped at the specified value if lower
+  - Memory: Defaults to 85% of available memory, capped at the specified value if lower
+- **Docker/Bubblewrap runners**: Resource fields are not enforced
+
+```yaml
+package:
+  resources:
+    cpu: "8"
+    memory: "16Gi"
+    disk: "100Gi"
+```
+
+### test-resources
+Optional resource specifications for test execution. Used by external schedulers to provision test pods/VMs with different resource constraints than the build phase.
+
+**When to use test-resources:**
+- Tests require significantly different resources than builds
+- Integration tests need more CPU/memory than unit tests
+- Tests can run with fewer resources to optimize costs
+- External schedulers need separate test and build resource specifications
+
+**How test-resources are interpreted:**
+
+The `test-resources` field is primarily **informational** for external schedulers:
+
+**For external schedulers** (reading the YAML):
+- Use `test-resources` if specified, otherwise fall back to `resources`
+- This determines test pod/VM sizing
+
+**For local testing with `melange test`:**
+- The `test-resources` field in the YAML is **NOT automatically used** by melange
+- Resources must be explicitly specified via CLI flags: `--cpu`, `--memory`, `--disk`, `--cpumodel`, `--timeout`
+- Resource enforcement depends on the runner (same as `resources` field):
+  - **QEMU runner**: Enforces CPU and memory as **maximum limits** (caps at specified value)
+  - **Docker/Bubblewrap runners**: Do not enforce resource limits
+
+**Resource fields** are identical to `resources` (see above for formats and interpretation).
+
+Example where tests need less resources than build:
+```yaml
+package:
+  resources:
+    cpu: "8"
+    memory: "16Gi"
+    disk: "100Gi"
+  test-resources:
+    cpu: "4"
+    memory: "8Gi"
+    disk: "50Gi"
+```
+
+Example where tests need more resources than build:
+```yaml
+package:
+  resources:
+    cpu: "2"
+    memory: "4Gi"
+  test-resources:
+    cpu: "32"
+    memory: "128Gi"
+    disk: "500Gi"
+```
+
+Example with only test-resources specified:
+```yaml
+package:
+  test-resources:
+    cpu: "4"
+    memory: "8Gi"
+  # No build resources specified - scheduler uses defaults
+```
+
 # environment
 Environment defines the build environment, including what the dependencies are,
 including repositories, packages, etc.

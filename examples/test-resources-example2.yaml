@@ -1,0 +1,97 @@
+package:
+  name: tensorflow-lite
+  version: 2.14.0
+  epoch: 0
+  description: TensorFlow Lite - tests require more resources than build
+  # Build is straightforward
+  resources:
+    cpu: "4"
+    memory: "8Gi"
+  # Integration tests with models need significant resources
+  test-resources:
+    cpu: "32"
+    memory: "128Gi"
+    disk: "500Gi"
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - build-base
+      - busybox
+      - cmake
+      - python-3
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://github.com/tensorflow/tensorflow/archive/v${{package.version}}.tar.gz
+      expected-sha256: abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab
+  - runs: |
+      cd tensorflow/lite
+      cmake -B build \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_BUILD_TYPE=Release
+      cmake --build build -j$(nproc)
+      cmake --install build --prefix "${{targets.destdir}}/usr"
+test:
+  environment:
+    contents:
+      packages:
+        - python-3
+        - py3-numpy
+        - wget
+  pipeline:
+    - name: Download test models
+      runs: |
+        mkdir -p models
+        wget -O models/mobilenet_v1.tflite \
+          https://storage.googleapis.com/download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224_quant.tflite
+    - name: Run inference benchmark
+      runs: |
+        python3 << 'EOF'
+        import tensorflow as tf
+        import numpy as np
+        import time
+
+        # Load model
+        interpreter = tf.lite.Interpreter(model_path="models/mobilenet_v1.tflite")
+        interpreter.allocate_tensors()
+
+        # Get input/output details
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        # Run benchmark with multiple iterations
+        iterations = 1000
+        input_data = np.random.random_sample(input_details[0]['shape']).astype(np.float32)
+
+        start = time.time()
+        for i in range(iterations):
+            interpreter.set_tensor(input_details[0]['index'], input_data)
+            interpreter.invoke()
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+
+        elapsed = time.time() - start
+        print(f"Completed {iterations} iterations in {elapsed:.2f}s")
+        print(f"Average inference time: {elapsed/iterations*1000:.2f}ms")
+        EOF
+    - name: Run stress test
+      runs: |
+        # Simulate heavy load testing with multiple parallel inferences
+        for i in {1..32}; do
+          python3 -c "
+        import tensorflow as tf
+        import numpy as np
+        interpreter = tf.lite.Interpreter(model_path='models/mobilenet_v1.tflite')
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        for _ in range(100):
+            interpreter.set_tensor(input_details[0]['index'],
+                                 np.random.random_sample(input_details[0]['shape']).astype(np.float32))
+            interpreter.invoke()
+        " &
+        done
+        wait
+        echo "Stress test completed"

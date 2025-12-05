@@ -23,6 +23,7 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	_ "embed"
 	"encoding/base64"
 	"encoding/pem"
@@ -387,7 +388,46 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer os.Remove(cfg.ImgRef)
 	defer os.Remove(cfg.Disk)
 	defer os.Remove(cfg.SSHHostKey)
+	defer os.Remove(cfg.SSHKeyPath) // Clean up ephemeral SSH client key
 	defer secureDelete(ctx, cfg.InitramfsPath)
+
+	// Verify tetragon events were captured (if tetragon was enabled)
+	if os.Getenv("TETRAGON_TEST") != "" || os.Getenv("TESTING") != "" {
+		clog.FromContext(ctx).Info("qemu: verifying tetragon events captured")
+
+		// Check if events exist in workspace
+		// Files are in /mount/home/build/melange-out/mnt/tetragon/ and will be included in workspace tar
+		verifyCmd := `
+			if [ -f /mount/home/build/melange-out/mnt/tetragon/events.json ]; then
+				echo "✓ Tetragon events captured successfully"
+				ls -lh /mount/home/build/melange-out/mnt/tetragon/
+				EVENT_COUNT=$(grep -c '"process_exec"' /mount/home/build/melange-out/mnt/tetragon/events.json 2>/dev/null || echo "0")
+				echo "Process execution events captured: $EVENT_COUNT"
+			else
+				echo "✗ WARNING: No tetragon events found in workspace"
+				echo "Checking directory state:"
+				ls -la /mount/home/build/melange-out/mnt/tetragon/ 2>&1 || echo "Directory does not exist"
+			fi
+		`
+		var verifyBuf bytes.Buffer
+		verifyWriter := bufio.NewWriter(&verifyBuf)
+		defer verifyWriter.Flush()
+
+		err := sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, verifyWriter, false,
+			[]string{"sh", "-c", verifyCmd})
+		verifyWriter.Flush()
+
+		if verifyOutput := verifyBuf.String(); verifyOutput != "" {
+			for _, line := range strings.Split(strings.TrimSpace(verifyOutput), "\n") {
+				clog.FromContext(ctx).Info("qemu: " + line)
+			}
+		}
+
+		if err != nil {
+			clog.FromContext(ctx).Warnf("qemu: failed to verify tetragon events: %v", err)
+			// Don't fail shutdown just because verification failed
+		}
+	}
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -414,6 +454,10 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	if cfg.SSHKey == nil {
 		return nil, nil
 	}
+
+	// Note: Tetragon events are written to melange-out/mnt/tetragon/ and are
+	// automatically included in the melange-out tar, so no need to add them
+	// to extraFiles separately
 
 	// For qemu, we also want to get all the detected license files for the
 	// license checking that will be done later.
@@ -456,7 +500,8 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	// we append also all the necessary files that we might need, for example Licenses
 	// for license checks
 	if len(extraFiles) > 0 {
-		retrieveCommand += " -T extrafiles.txt"
+		// Add extrafiles to tar using -T option with --ignore-failed-read to handle missing files
+		retrieveCommand = "cd /mount/home/build && find melange-out -type p -delete > /dev/null 2>&1 || true && tar cvpf - --xattrs --acls --ignore-failed-read melange-out -T extrafiles.txt"
 	}
 
 	log := clog.FromContext(ctx)
@@ -1015,6 +1060,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		// don't fail the build because of this.
 	}
 
+	// Start tetragon for build observability
+	if err := startTetragon(ctx, cfg); err != nil {
+		clog.FromContext(ctx).Warnf("qemu: tetragon startup encountered error: %v", err)
+		// Don't fail the build, just log the warning
+	}
+
 	cfg.QemuPID = qemuCmd.Process.Pid
 	return nil
 }
@@ -1077,7 +1128,425 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// Log SSH connection details for manual access (especially useful for debugging)
+	if os.Getenv("TETRAGON_TEST") != "" || os.Getenv("TESTING") != "" {
+		controlPort := strings.Split(cfg.SSHControlAddress, ":")[1]
+		buildPort := strings.Split(cfg.SSHAddress, ":")[1]
+
+		clog.FromContext(ctx).Info("")
+		clog.FromContext(ctx).Info("╔═══════════════════════════════════════════════════════════════")
+		clog.FromContext(ctx).Info("║ SSH Connection Details for Manual Access")
+		clog.FromContext(ctx).Info("╠═══════════════════════════════════════════════════════════════")
+		clog.FromContext(ctx).Infof("║ Control Port (unchrooted, sees VM root): %s", cfg.SSHControlAddress)
+		clog.FromContext(ctx).Infof("║ Build Port (chrooted to /mount/):        %s", cfg.SSHAddress)
+		clog.FromContext(ctx).Info("║")
+		clog.FromContext(ctx).Infof("║ SSH Private Key: %s", cfg.SSHKeyPath)
+		clog.FromContext(ctx).Infof("║ Known Hosts:     %s", cfg.SSHHostKey)
+		clog.FromContext(ctx).Info("╠═══════════════════════════════════════════════════════════════")
+		clog.FromContext(ctx).Info("║ To connect to VM root (for tetragon debugging):")
+		clog.FromContext(ctx).Infof("║   ssh -i %s \\", cfg.SSHKeyPath)
+		clog.FromContext(ctx).Infof("║       -o UserKnownHostsFile=%s \\", cfg.SSHHostKey)
+		clog.FromContext(ctx).Infof("║       -o StrictHostKeyChecking=yes \\")
+		clog.FromContext(ctx).Infof("║       -p %s root@127.0.0.1", controlPort)
+		clog.FromContext(ctx).Info("║")
+		clog.FromContext(ctx).Info("║ To connect to build environment (chrooted):")
+		clog.FromContext(ctx).Infof("║   ssh -i %s \\", cfg.SSHKeyPath)
+		clog.FromContext(ctx).Infof("║       -o UserKnownHostsFile=%s \\", cfg.SSHHostKey)
+		clog.FromContext(ctx).Infof("║       -o StrictHostKeyChecking=yes \\")
+		clog.FromContext(ctx).Infof("║       -p %s root@127.0.0.1", buildPort)
+		clog.FromContext(ctx).Info("╚═══════════════════════════════════════════════════════════════")
+		clog.FromContext(ctx).Info("")
+	}
+
 	return nil
+}
+
+// startTetragon starts the tetragon daemon inside the QEMU VM for build observability
+func startTetragon(ctx context.Context, cfg *Config) error {
+	clog.FromContext(ctx).Info("qemu: starting tetragon daemon")
+
+	// Check if running in test/debug mode
+	isTestMode := os.Getenv("TETRAGON_TEST") != "" || os.Getenv("TESTING") != ""
+
+	if isTestMode {
+		clog.FromContext(ctx).Info("qemu: tetragon TEST mode enabled - loading extended policies")
+	} else {
+		clog.FromContext(ctx).Info("qemu: tetragon PRODUCTION mode - loading standard policies")
+	}
+
+	// 1. Pre-flight checks - verify binary and kernel support
+	var diagBuf bytes.Buffer
+	diagWriter := bufio.NewWriter(&diagBuf)
+	defer diagWriter.Flush()
+
+	preFlightCmd := `
+		echo "=== Tetragon Pre-flight Diagnostics ==="
+		echo "1. Checking tetragon binary:"
+		if [ -f /usr/bin/tetragon ]; then
+			ls -lh /usr/bin/tetragon
+			echo "Binary exists ✓"
+		else
+			echo "ERROR: /usr/bin/tetragon not found ✗"
+			exit 1
+		fi
+		echo ""
+		echo "2. Checking kernel BTF support:"
+		if [ -f /sys/kernel/btf/vmlinux ]; then
+			ls -lh /sys/kernel/btf/vmlinux
+			echo "BTF support available ✓"
+		else
+			echo "ERROR: /sys/kernel/btf/vmlinux not found - kernel lacks BTF support ✗"
+			exit 1
+		fi
+		echo ""
+		echo "3. Checking BPF filesystem:"
+		mount | grep bpf || echo "WARNING: BPF filesystem not mounted"
+		echo ""
+		echo "4. Checking kernel version:"
+		uname -r
+		echo "=== End Pre-flight Diagnostics ==="
+	`
+
+	clog.FromContext(ctx).Info("qemu: running tetragon pre-flight checks")
+	err := sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, diagWriter, false,
+		[]string{"sh", "-c", preFlightCmd})
+	diagWriter.Flush()
+
+	// Log all diagnostic output
+	if diagOutput := diagBuf.String(); diagOutput != "" {
+		for _, line := range strings.Split(strings.TrimSpace(diagOutput), "\n") {
+			clog.FromContext(ctx).Info("qemu: " + line)
+		}
+	}
+
+	if err != nil {
+		clog.FromContext(ctx).Warnf("qemu: pre-flight checks failed: %v", err)
+		clog.FromContext(ctx).Warn("qemu: tetragon cannot start - missing kernel or binary requirements")
+		return nil // Don't fail build
+	}
+
+	// 2. Mount BPF filesystem if not already mounted
+	clog.FromContext(ctx).Info("qemu: mounting BPF filesystem")
+	mountBPFCmd := `
+		# Check if BPF filesystem is already mounted
+		if ! mount | grep -q "bpf on /sys/fs/bpf"; then
+			mkdir -p /sys/fs/bpf
+			mount -t bpf bpf /sys/fs/bpf
+			echo "BPF filesystem mounted at /sys/fs/bpf"
+		else
+			echo "BPF filesystem already mounted"
+		fi
+		mount | grep bpf
+	`
+
+	var mountBuf bytes.Buffer
+	mountWriter := bufio.NewWriter(&mountBuf)
+	defer mountWriter.Flush()
+
+	err = sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, mountWriter, false,
+		[]string{"sh", "-c", mountBPFCmd})
+	mountWriter.Flush()
+
+	if mountOutput := mountBuf.String(); mountOutput != "" {
+		for _, line := range strings.Split(strings.TrimSpace(mountOutput), "\n") {
+			clog.FromContext(ctx).Info("qemu: " + line)
+		}
+	}
+
+	if err != nil {
+		clog.FromContext(ctx).Warnf("qemu: failed to mount BPF filesystem: %v", err)
+		return nil // Don't fail build
+	}
+
+	// Mount debugfs and tracefs for tetragon
+	clog.FromContext(ctx).Info("qemu: mounting debugfs and tracefs for tetragon")
+	mountDebugFSCmd := `
+		# Mount debugfs if not already mounted
+		if ! mount | grep -q "debugfs on /sys/kernel/debug"; then
+			mkdir -p /sys/kernel/debug
+			mount -t debugfs none /sys/kernel/debug && echo "✓ debugfs mounted at /sys/kernel/debug"
+		else
+			echo "✓ debugfs already mounted"
+		fi
+
+		# Mount tracefs if not already mounted
+		if ! mount | grep -q "tracefs on /sys/kernel/tracing"; then
+			mkdir -p /sys/kernel/tracing
+			mount -t tracefs none /sys/kernel/tracing && echo "✓ tracefs mounted at /sys/kernel/tracing"
+		else
+			echo "✓ tracefs already mounted"
+		fi
+	`
+
+	var debugMountBuf bytes.Buffer
+	debugMountWriter := bufio.NewWriter(&debugMountBuf)
+	defer debugMountWriter.Flush()
+
+	err = sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, debugMountWriter, false,
+		[]string{"sh", "-c", mountDebugFSCmd})
+	debugMountWriter.Flush()
+
+	if debugMountOutput := debugMountBuf.String(); debugMountOutput != "" {
+		for _, line := range strings.Split(strings.TrimSpace(debugMountOutput), "\n") {
+			clog.FromContext(ctx).Info("qemu: " + line)
+		}
+	}
+
+	if err != nil {
+		clog.FromContext(ctx).Warnf("qemu: failed to mount debugfs/tracefs: %v", err)
+		// Don't fail build, tetragon might still work
+	}
+
+	// 3. Setup directories
+	setupDirs := `
+		# Create policy directory
+		mkdir -p /etc/tetragon/tetragon.tp.d
+	`
+
+	// 4. Create policies based on mode
+	var policyCommands string
+	if isTestMode {
+		policyCommands = getTestModePolicies()
+	} else {
+		policyCommands = getProductionPolicies()
+	}
+
+	// 5. Start tetragon daemon with detailed error capture
+	// Note: SSHControlClient runs from VM root (no chroot)
+	// Binary is at /usr/bin/tetragon (installed in initramfs)
+	// Write to melange-out directory which gets tar'd and extracted to host
+	startCmd := `
+		echo "Starting tetragon daemon..."
+
+		# Set umask to create world-readable files (644 for files, 755 for dirs)
+		umask 022
+
+		# Verify workspace exists
+		echo "Checking workspace..."
+		ls -ld /mount/home/build/ || echo "ERROR: Workspace /mount/home/build/ does not exist!"
+
+		# Create tetragon directory in melange-out (which gets tar'd)
+		# Note: /mount/home/build/melange-out is what gets extracted to host
+		echo "Creating tetragon directory in melange-out..."
+		mkdir -p /mount/home/build/melange-out/mnt/tetragon
+		chmod 777 /mount/home/build/melange-out/mnt/tetragon
+
+		# Verify directory was created successfully
+		if [ -d /mount/home/build/melange-out/mnt/tetragon ]; then
+			echo "✓ Tetragon directory created successfully"
+			ls -ld /mount/home/build/melange-out/mnt/tetragon
+		else
+			echo "✗ ERROR: Failed to create tetragon directory!"
+			exit 1
+		fi
+
+		/usr/bin/tetragon \
+			--export-filename=/mount/home/build/melange-out/mnt/tetragon/events.json \
+			--export-file-max-size-mb=100 \
+			--log-level=info \
+			--enable-k8s-api=false \
+			> /mount/home/build/melange-out/mnt/tetragon/tetragon.log 2>&1 &
+		TETRAGON_PID=$!
+		echo $TETRAGON_PID > /tmp/tetragon.pid
+		echo "Tetragon started with PID: $TETRAGON_PID"
+		sleep 3
+
+		# Check if process is still running
+		if kill -0 $TETRAGON_PID 2>/dev/null; then
+			echo "Tetragon is running ✓"
+			echo "Events exported to: /mount/home/build/melange-out/mnt/tetragon/events.json"
+			echo "Daemon log at: /mount/home/build/melange-out/mnt/tetragon/tetragon.log"
+
+			# Wait for events file to be created and fix permissions
+			# Tetragon creates events.json with 600, we need 644 for build user to read
+			echo "Waiting for events.json to be created..."
+			for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+				if [ -f /mount/home/build/melange-out/mnt/tetragon/events.json ]; then
+					chmod 644 /mount/home/build/melange-out/mnt/tetragon/events.json
+					echo "Set events.json permissions to 644 ✓"
+					break
+				fi
+				sleep 1
+			done
+
+			# Check final status
+			if [ -f /mount/home/build/melange-out/mnt/tetragon/events.json ]; then
+				echo "events.json successfully created and configured"
+				ls -lh /mount/home/build/melange-out/mnt/tetragon/events.json
+			else
+				echo "WARNING: events.json was not created after 15 seconds"
+				echo "Checking tetragon log for errors:"
+				if [ -f /mount/home/build/melange-out/mnt/tetragon/tetragon.log ]; then
+					tail -30 /mount/home/build/melange-out/mnt/tetragon/tetragon.log
+				else
+					echo "Tetragon log file also missing!"
+				fi
+			fi
+		else
+			echo "ERROR: Tetragon process died after start"
+			echo "Last 50 lines of tetragon log:"
+			tail -50 /mount/home/build/melange-out/mnt/tetragon/tetragon.log 2>/dev/null || echo "No log file found"
+			exit 1
+		fi
+	`
+
+	// Execute setup and start commands
+	fullCmd := setupDirs + "\n" + policyCommands + "\n" + startCmd
+	var startBuf bytes.Buffer
+	startWriter := bufio.NewWriter(&startBuf)
+	defer startWriter.Flush()
+
+	err = sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, startWriter, false,
+		[]string{"sh", "-c", fullCmd})
+	startWriter.Flush()
+
+	// Log all startup output
+	if startOutput := startBuf.String(); startOutput != "" {
+		for _, line := range strings.Split(strings.TrimSpace(startOutput), "\n") {
+			clog.FromContext(ctx).Info("qemu: " + line)
+		}
+	}
+
+	if err != nil {
+		clog.FromContext(ctx).Warnf("qemu: tetragon startup command failed: %v", err)
+
+		// Try to get the log file to show what went wrong
+		var logBuf bytes.Buffer
+		logWriter := bufio.NewWriter(&logBuf)
+		defer logWriter.Flush()
+
+		logCmd := "cat /mount/mnt/tetragon/tetragon.log 2>/dev/null || echo 'No log file available'"
+		sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, logWriter, false,
+			[]string{"sh", "-c", logCmd})
+		logWriter.Flush()
+
+		if logOutput := logBuf.String(); logOutput != "" && logOutput != "No log file available" {
+			clog.FromContext(ctx).Warn("qemu: tetragon error log:")
+			for _, line := range strings.Split(strings.TrimSpace(logOutput), "\n") {
+				clog.FromContext(ctx).Warn("qemu:   " + line)
+			}
+		}
+
+		return nil // Don't fail build
+	}
+
+	// 5. Final verification
+	time.Sleep(2 * time.Second)
+	var verifyBuf bytes.Buffer
+	verifyWriter := bufio.NewWriter(&verifyBuf)
+	defer verifyWriter.Flush()
+
+	verifyCmd := "ps aux | grep -E 'tetragon.*export-filename' | grep -v grep || echo 'not_running'"
+	err = sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, verifyWriter, false,
+		[]string{"sh", "-c", verifyCmd})
+
+	verifyWriter.Flush()
+	if err == nil && !strings.Contains(verifyBuf.String(), "not_running") {
+		clog.FromContext(ctx).Info("qemu: tetragon daemon verified running")
+		// Show the process info
+		if processInfo := verifyBuf.String(); processInfo != "" && processInfo != "not_running" {
+			clog.FromContext(ctx).Info("qemu: " + strings.TrimSpace(processInfo))
+		}
+
+		// Start streaming tetragon events in a separate goroutine
+		// This runs tail -f in its own SSH session, streaming output directly to our logger
+		go func() {
+			streamCmd := `
+				# Wait for events file to exist
+				while [ ! -f /mount/home/build/melange-out/mnt/tetragon/events.json ]; do
+					sleep 1
+				done
+				# Stream events with prefix
+				tail -f /mount/home/build/melange-out/mnt/tetragon/events.json 2>/dev/null | awk '{print "[TETRAGON] " $0; fflush()}'
+			`
+
+			// Create a custom writer that logs each line
+			pr, pw := io.Pipe()
+			go func() {
+				scanner := bufio.NewScanner(pr)
+				for scanner.Scan() {
+					clog.FromContext(ctx).Info(scanner.Text())
+				}
+			}()
+
+			// Run tail in its own SSH session - this will block until VM shuts down
+			sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, pw, false,
+				[]string{"sh", "-c", streamCmd})
+			pw.Close()
+		}()
+
+		clog.FromContext(ctx).Info("qemu: started streaming tetragon events to logs")
+	} else {
+		clog.FromContext(ctx).Warn("qemu: tetragon process not found in process list")
+	}
+
+	return nil
+}
+
+// getProductionPolicies returns minimal, low-overhead policy for production builds
+func getProductionPolicies() string {
+	return `cat > /etc/tetragon/tetragon.tp.d/production.yaml <<'POLICY_EOF'
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "production-monitoring"
+spec:
+  kprobes:
+  - call: "sys_execve"
+    syscall: true
+    selectors:
+    - matchActions:
+      - action: Post
+POLICY_EOF`
+}
+
+// getTestModePolicies returns extended policies for testing/debugging builds
+func getTestModePolicies() string {
+	return `cat > /etc/tetragon/tetragon.tp.d/test-exec.yaml <<'POLICY_EOF'
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "test-exec-monitoring"
+spec:
+  kprobes:
+  - call: "sys_execve"
+    syscall: true
+    selectors:
+    - matchActions:
+      - action: Post
+POLICY_EOF
+
+cat > /etc/tetragon/tetragon.tp.d/test-network.yaml <<'POLICY_EOF'
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "test-network-monitoring"
+spec:
+  kprobes:
+  - call: "tcp_connect"
+    syscall: false
+    args:
+    - index: 0
+      type: "sock"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Protocol"
+        values:
+        - "IPPROTO_TCP"
+      matchActions:
+      - action: Post
+  - call: "sys_connect"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "sockaddr"
+    selectors:
+    - matchActions:
+      - action: Post
+POLICY_EOF`
 }
 
 // getWorkspaceLicenseFiles returns a list of possible license files from the
@@ -1471,6 +1940,39 @@ func generateSSHKeys(ctx context.Context, cfg *Config) ([]byte, error) {
 		return nil, err
 	}
 
+	// Save private key to temp file for manual access (only in test/debug mode)
+	if os.Getenv("TETRAGON_TEST") != "" || os.Getenv("TESTING") != "" {
+		// Marshal private key to PEM format
+		privKeyBytes, err := x509.MarshalECPrivateKey(privateKey)
+		if err != nil {
+			clog.FromContext(ctx).Warnf("qemu: failed to marshal private key: %v", err)
+		} else {
+			privKeyPEM := pem.EncodeToMemory(&pem.Block{
+				Type:  "EC PRIVATE KEY",
+				Bytes: privKeyBytes,
+			})
+
+			// Write to temp file
+			tmpFile, err := os.CreateTemp("", "melange-ssh-key-*")
+			if err != nil {
+				clog.FromContext(ctx).Warnf("qemu: failed to create temp key file: %v", err)
+			} else {
+				if _, err := tmpFile.Write(privKeyPEM); err != nil {
+					clog.FromContext(ctx).Warnf("qemu: failed to write private key: %v", err)
+					tmpFile.Close()
+					os.Remove(tmpFile.Name())
+				} else {
+					tmpFile.Close()
+					if err := os.Chmod(tmpFile.Name(), 0600); err != nil {
+						clog.FromContext(ctx).Warnf("qemu: failed to chmod key file: %v", err)
+					}
+					cfg.SSHKeyPath = tmpFile.Name()
+					clog.FromContext(ctx).Infof("qemu: saved SSH private key to %s", cfg.SSHKeyPath)
+				}
+			}
+		}
+	}
+
 	return ssh.MarshalAuthorizedKey(publicKey), nil
 }
 
@@ -1769,14 +2271,26 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 		return fmt.Errorf("unable to create dest directory: %w", err)
 	}
 
+	// Build package list for initramfs
+	packages := []string{"microvm-init"}
+
+	// Only include tetragon if TETRAGON_TEST or TESTING environment variable is set
+	if os.Getenv("TETRAGON_TEST") != "" || os.Getenv("TESTING") != "" {
+		packages = append(packages, "tetragon")
+		clog.FromContext(ctx).Info("qemu: including tetragon in initramfs (test mode enabled)")
+	}
+
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
 			BuildRepositories: []string{
+				"/home/mark-manning/projects/wolfi-dev/os/packages",
 				"https://apk.cgr.dev/chainguard",
 			},
-			Packages: []string{
-				"microvm-init",
+			Keyring: []string{
+				"/home/mark-manning/projects/wolfi-dev/os/local-melange.rsa.pub",
+				"/home/mark-manning/projects/wolfi-dev/os/chainguard-keys/chainguard-enterprise.rsa.pub",
 			},
+			Packages: packages,
 		},
 	}
 	opts := []apko_build.Option{

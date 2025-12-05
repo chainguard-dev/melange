@@ -60,6 +60,7 @@ type Config struct {
 	CacheDir                 string
 	CPU, CPUModel, Memory    string
 	SSHKey                   ssh.Signer
+	SSHKeyPath               string             // Path to temp file containing client private key (for manual access)
 	SSHAddress               string             // SSH address for the build / chrooted environment
 	SSHControlAddress        string             // SSH address for the control / management environment
 	SSHHostKey               string             // Path to known_hosts file containing the VM's host key

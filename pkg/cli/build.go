@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -406,8 +405,8 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		errg.Go(func() error {
 			lctx := ctx
 			if len(bcs) != 1 {
-				log := clog.New(slog.Default().Handler()).With("arch", bc.Arch.ToAPK())
-				lctx = clog.WithLogger(ctx, log)
+				alog := log.With("arch", bc.Arch.ToAPK())
+				lctx = clog.WithLogger(ctx, alog)
 			}
 
 			if err := bc.BuildPackage(lctx); err != nil {

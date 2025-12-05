@@ -88,6 +88,55 @@ func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.Pa
 	return opts, nil
 }
 
+// RebuildCmd is the implementation of the rebuild command.
+// It rebuilds the provided APK packages using their embedded metadata.
+func RebuildCmd(ctx context.Context, flags *RebuildFlags, args []string) error {
+	origins := make(map[string]bool)
+
+	for _, a := range args {
+		cfg, pkginfo, cfgpkg, err := getConfig(a)
+		if err != nil {
+			return fmt.Errorf("failed to get config for %s: %w", a, err)
+		}
+
+		cfgpurl, err := purl.FromString(cfgpkg.ExternalRefs[0].Locator)
+		if err != nil {
+			return fmt.Errorf("failed to parse package URL %q: %w", cfgpkg.ExternalRefs[0].Locator, err)
+		}
+
+		arch := pkginfo.Arch
+
+		if origins[pkginfo.Origin] {
+			clog.Warnf("not rebuilding %q because was already rebuilt", a)
+		} else {
+			clog.Infof("rebuilding %q", a)
+			opts, err := flags.RebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl)
+			if err != nil {
+				return fmt.Errorf("getting rebuild options from flags: %w", err)
+			}
+
+			if err := BuildCmd(ctx,
+				[]apko_types.Architecture{apko_types.ParseArchitecture(pkginfo.Arch)},
+				opts...); err != nil {
+				return fmt.Errorf("failed to rebuild %q: %w", a, err)
+			}
+
+			origins[pkginfo.Origin] = true
+		}
+
+		if flags.Diff {
+			old := a
+			new := filepath.Join(flags.OutDir, arch, fmt.Sprintf("%s-%s.apk", pkginfo.Name, pkginfo.Version))
+			clog.Infof("diffing %s and %s", old, new)
+			if err := diffAPKs(old, new); err != nil {
+				return fmt.Errorf("failed to diff APKs %s and %s: %w", old, new, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func rebuild() *cobra.Command {
 	// Create RebuildFlags struct (defaults are set in addRebuildFlags)
 	flags := &RebuildFlags{}
@@ -103,50 +152,7 @@ func rebuild() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			origins := make(map[string]bool)
-
-			for _, a := range args {
-				cfg, pkginfo, cfgpkg, err := getConfig(a)
-				if err != nil {
-					return fmt.Errorf("failed to get config for %s: %w", a, err)
-				}
-
-				cfgpurl, err := purl.FromString(cfgpkg.ExternalRefs[0].Locator)
-				if err != nil {
-					return fmt.Errorf("failed to parse package URL %q: %w", cfgpkg.ExternalRefs[0].Locator, err)
-				}
-
-				arch := pkginfo.Arch
-
-				if origins[pkginfo.Origin] {
-					clog.Warnf("not rebuilding %q because was already rebuilt", a)
-				} else {
-					clog.Infof("rebuilding %q", a)
-					opts, err := flags.RebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl)
-					if err != nil {
-						return fmt.Errorf("getting rebuild options from flags: %w", err)
-					}
-
-					if err := BuildCmd(ctx,
-						[]apko_types.Architecture{apko_types.ParseArchitecture(arch)},
-						opts...); err != nil {
-						return fmt.Errorf("failed to rebuild %q: %w", a, err)
-					}
-
-					origins[pkginfo.Origin] = true
-				}
-
-				if flags.Diff {
-					old := a
-					new := filepath.Join(flags.OutDir, arch, fmt.Sprintf("%s-%s.apk", pkginfo.Name, pkginfo.Version))
-					clog.Infof("diffing %s and %s", old, new)
-					if err := diffAPKs(old, new); err != nil {
-						return fmt.Errorf("failed to diff APKs %s and %s: %w", old, new, err)
-					}
-				}
-			}
-
-			return nil
+			return RebuildCmd(ctx, flags, args)
 		},
 	}
 

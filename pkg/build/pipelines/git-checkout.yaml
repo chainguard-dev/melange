@@ -121,7 +121,7 @@ pipeline:
             if [ -n "$branch" ]; then
                 case " $fetched_branches " in
                     *" $branch "*) ;;
-                    *) vr git fetch origin $branch:$branch || {
+                    *) vr git fetch --unshallow origin $branch:$branch || {
                         msg "failed to fetch branch $branch"
                         return 1
                         }

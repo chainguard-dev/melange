@@ -24,7 +24,7 @@ import (
 
 func CudaDriverLibLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return IsCudaDriverLibRegex.MatchString(path) },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && IsCudaDriverLibRegex.MatchString(path) },
 		func(pkgname string, paths []string) string {
 			return fmt.Sprintf("%s contains CUDA driver-specific libraries", pkgname)
 		},

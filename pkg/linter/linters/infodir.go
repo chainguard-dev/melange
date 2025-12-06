@@ -25,7 +25,9 @@ import (
 
 func InfodirLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return strings.HasPrefix(path, "usr/share/info/dir/") },
+		func(path string, d fs.DirEntry) bool {
+			return !d.IsDir() && strings.HasPrefix(path, "usr/share/info/dir/")
+		},
 		func(pkgname string, paths []string) string {
 			return fmt.Sprintf("%s writes to /usr/share/info/dir/", pkgname)
 		},

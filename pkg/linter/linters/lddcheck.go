@@ -59,7 +59,7 @@ func LddcheckTestLinter(ctx context.Context, cfg *config.Configuration, pkgname 
 
 	// Collect all shared object files
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return IsSharedObjectFileRegex.MatchString(path) },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && IsSharedObjectFileRegex.MatchString(path) },
 		func(pkgname string, paths []string) string {
 			if cfg == nil {
 				return fmt.Sprintf("%s contains shared objects but missing .melange.yaml", pkgname)

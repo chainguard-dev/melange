@@ -1217,6 +1217,9 @@ func sourceDateEpoch(defaultTime time.Time) (time.Time, error) {
 		// SHOULD exit with a non-zero error code.
 		return defaultTime, fmt.Errorf("failed to parse SOURCE_DATE_EPOCH: %w", err)
 	}
+	if sec < 315532800 {
+		return defaultTime, fmt.Errorf("SOURCE_DATE_EPOCH prior to 1980-01-01 12:00:00 not supported: %v", sec)
+	}
 
 	return time.Unix(sec, 0).UTC(), nil
 }

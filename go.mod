@@ -40,7 +40,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3
 	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/sync v0.18.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.37.0
 	golang.org/x/text v0.31.0

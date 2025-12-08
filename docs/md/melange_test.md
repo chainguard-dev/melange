@@ -32,13 +32,17 @@ melange test [flags]
       --arch strings                  architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
       --cache-dir string              directory used for cached inputs
       --cache-source string           directory or bucket used for preloading the cache
+      --cpu string                    default CPU resources to use for tests
+      --cpumodel string               default CPU model to use for tests
       --debug                         enables debug logging of test pipelines (sets -x for steps)
       --debug-runner                  when enabled, the builder pod will persist after the build succeeds or fails
+      --disk string                   disk size to use for tests
       --env-file string               file to use for preloaded environment variables
   -h, --help                          help for test
       --ignore-signatures             ignore repository signature verification
   -i, --interactive                   when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings        path to extra keys to include in the build environment keyring
+      --memory string                 default memory resources to use for tests
       --pipeline-dirs strings         directories used to extend defined built-in pipelines
   -r, --repository-append strings     path to extra repositories to include in the build environment
       --rm                            clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
@@ -46,6 +50,7 @@ melange test [flags]
       --source-dir string             directory used for included sources
       --test-option strings           build options to enable
       --test-package-append strings   extra packages to install for each of the test environments
+      --timeout duration              default timeout for tests
       --workspace-dir string          directory used for the workspace at /home/build
 ```
 

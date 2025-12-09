@@ -120,6 +120,12 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 		// Find our main pipeline YAML node.
 		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")
 		if err != nil {
+			// The main pipeline doesn't exist. This is valid for empty virtual and metapackages so
+			// we will just return early instead of throwing an error
+			if strings.Contains(err.Error(), "not found in mapping") {
+				log.Infof("no main pipeline found, will not update expected commits or checksums")
+				return nil
+			}
 			return err
 		}
 

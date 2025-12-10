@@ -722,13 +722,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on panic=-1 sshkey=" + sshkey + " melange_qemu_runner=1"
 
 	// Check for TESTING environment variable and pass it to microvm-init
-	// TESTING must be a number (or empty string)
+	// TESTING must be a number (0 for disabled, non-zero for enabled)
 	if testingValue, ok := os.LookupEnv("TESTING"); ok {
-		if testingValue == "" {
-			log.Debugf("qemu: TESTING env set to empty string, passing to microvm-init via kernel cmdline")
-			kernelArgs += " melange.testing="
-		} else if _, err := strconv.Atoi(testingValue); err == nil {
-			log.Debugf("qemu: TESTING env set to %s, passing to microvm-init via kernel cmdline", testingValue)
+		if _, err := strconv.Atoi(testingValue); err == nil {
+			log.Infof("qemu: TESTING env set to %s, passing to microvm-init via kernel cmdline", testingValue)
 			kernelArgs += " melange.testing=" + testingValue
 		} else {
 			log.Warnf("qemu: TESTING env must be a number, ignoring invalid value: %s", testingValue)

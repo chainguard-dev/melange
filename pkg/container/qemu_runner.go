@@ -1793,7 +1793,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_,.-]+$`, additionalPkgs); matched {
 			clog.FromContext(ctx).Infof("qemu: QEMU_ADDITIONAL_PACKAGES env set to %s, adding to initramfs", additionalPkgs)
 			// Split comma-separated list and append to packages
-			for _, pkg := range strings.Split(additionalPkgs, ",") {
+			for pkg := range strings.SplitSeq(additionalPkgs, ",") {
 				pkg = strings.TrimSpace(pkg)
 				if pkg != "" {
 					packages = append(packages, pkg)

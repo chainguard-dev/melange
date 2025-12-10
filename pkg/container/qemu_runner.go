@@ -717,7 +717,22 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
 	// Add default SSH keys to the VM
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
-	baseargs = append(baseargs, "-append", kernelConsole+" nomodeset random.trust_cpu=on panic=-1 sshkey="+sshkey+" melange_qemu_runner=1")
+
+	// Build kernel command line arguments
+	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on panic=-1 sshkey=" + sshkey + " melange_qemu_runner=1"
+
+	// Check for TESTING environment variable and pass it to microvm-init
+	// TESTING must be a number (0 for disabled, non-zero for enabled)
+	if testingValue, ok := os.LookupEnv("TESTING"); ok {
+		if _, err := strconv.Atoi(testingValue); err == nil {
+			log.Infof("qemu: TESTING env set to %s, passing to microvm-init via kernel cmdline", testingValue)
+			kernelArgs += " melange.testing=" + testingValue
+		} else {
+			log.Warnf("qemu: TESTING env must be a number, ignoring invalid value: %s", testingValue)
+		}
+	}
+
+	baseargs = append(baseargs, "-append", kernelArgs)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
 	// instead we will copy back the finished workspace artifacts when done.

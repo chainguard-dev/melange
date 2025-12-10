@@ -35,6 +35,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -1741,9 +1742,21 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 
 	cacheDir = filepath.Join(cacheDir, "melange-cpio")
 
+	// Include additional packages in cache filename to invalidate cache when they change
+	additionalPkgs := os.Getenv("QEMU_ADDITIONAL_PACKAGES")
+	cacheSuffix := ""
+	if additionalPkgs != "" {
+		// Use sanitized package list as cache key (replace commas and dots with dashes)
+		sanitized := strings.NewReplacer(",", "-", ".", "-").Replace(additionalPkgs)
+		if len(sanitized) > 32 {
+			sanitized = sanitized[:32] // Limit length for reasonable filenames
+		}
+		cacheSuffix = "-" + sanitized
+	}
+
 	baseInitramfs := filepath.Join(
 		cacheDir,
-		"melange-guest.initramfs.cpio")
+		fmt.Sprintf("melange-guest%s.initramfs.cpio", cacheSuffix))
 	initramfsInfo, err := os.Stat(baseInitramfs)
 
 	// Check if we can use the cached base initramfs (less than 24h old)
@@ -1769,14 +1782,34 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 		return fmt.Errorf("unable to create dest directory: %w", err)
 	}
 
+	// Start with base packages
+	packages := []string{"microvm-init"}
+
+	// Check for QEMU_ADDITIONAL_PACKAGES environment variable
+	// Add packages to the initramfs image so they're available during boot
+	if additionalPkgs, ok := os.LookupEnv("QEMU_ADDITIONAL_PACKAGES"); ok && additionalPkgs != "" {
+		// Basic validation: check for suspicious characters that could cause injection
+		// Allow: alphanumeric, hyphens, underscores, commas, dots
+		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_,.-]+$`, additionalPkgs); matched {
+			clog.FromContext(ctx).Infof("qemu: QEMU_ADDITIONAL_PACKAGES env set to %s, adding to initramfs", additionalPkgs)
+			// Split comma-separated list and append to packages
+			for _, pkg := range strings.Split(additionalPkgs, ",") {
+				pkg = strings.TrimSpace(pkg)
+				if pkg != "" {
+					packages = append(packages, pkg)
+				}
+			}
+		} else {
+			clog.FromContext(ctx).Warnf("qemu: QEMU_ADDITIONAL_PACKAGES contains invalid characters, ignoring: %s", additionalPkgs)
+		}
+	}
+
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
 			BuildRepositories: []string{
 				"https://apk.cgr.dev/chainguard",
 			},
-			Packages: []string{
-				"microvm-init",
-			},
+			Packages: packages,
 		},
 	}
 	opts := []apko_build.Option{

@@ -990,7 +990,7 @@ pipeline:
 		t.Run(tt.name, func(t *testing.T) {
 			// Write YAML to temp file
 			tmpFile := filepath.Join(t.TempDir(), "test.yaml")
-			assert.NoError(t, os.WriteFile(tmpFile, []byte(tt.yaml), 0644))
+			assert.NoError(t, os.WriteFile(tmpFile, []byte(tt.yaml), 0o644))
 
 			cfg, err := config.ParseConfiguration(ctx, tmpFile)
 			assert.NoError(t, err)

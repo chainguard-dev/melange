@@ -21,8 +21,9 @@ import (
 	"regexp"
 	"strings"
 
-	"chainguard.dev/melange/pkg/config"
 	"gopkg.in/yaml.v3"
+
+	"chainguard.dev/melange/pkg/config"
 )
 
 /*
@@ -201,14 +202,15 @@ func FetchTemplatingLinter(_ context.Context, cfg *config.Configuration, _ strin
 
 		if ruleAFails {
 			var message string
-			if versionBearingSources == 1 && len(untemplatedSources) > 0 {
+			switch {
+			case versionBearingSources == 1 && len(untemplatedSources) > 0:
 				message = fmt.Sprintf("source lacks templated variables: %s\nConsider using ${{package.version}} to ensure URL updates with version changes", untemplatedSources[0])
-			} else if len(untemplatedSources) > 0 {
+			case len(untemplatedSources) > 0:
 				message = fmt.Sprintf("no templated variables found in any sources:\n- %s\nAt least one origin should use templates like ${{package.version}} to avoid version drift", strings.Join(untemplatedSources, "\n- "))
-			} else {
+			default:
 				message = "no templated variables found in any fetch URLs or git tags; at least one origin should be parameterized (preferably on version) to avoid drift"
 			}
-			return fmt.Errorf(message)
+			return fmt.Errorf("%s", message)
 		}
 	}
 
@@ -318,7 +320,7 @@ func FetchTemplatingLinter(_ context.Context, cfg *config.Configuration, _ strin
 		if hasVersionIssues {
 			message += "\nFor version issues: check whether these should be derived from ${{package.version}} (or a transform)"
 		}
-		return fmt.Errorf(message)
+		return fmt.Errorf("%s", message)
 	}
 
 	return nil

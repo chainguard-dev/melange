@@ -1,0 +1,110 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "apk-git-checkout-cherry-pick-1.2-r1",
+  "spdxVersion": "SPDX-2.3",
+  "creationInfo": {
+    "created": "0001-01-01T00:00:00Z",
+    "creators": [
+      "Tool: melange (devel)",
+      "Organization: Chainguard, Inc"
+    ],
+    "licenseListVersion": "3.22"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/db5631710be34672aba80a8b7f2c4f4d",
+  "documentDescribes": [
+    "SPDXRef-Package-git-checkout-cherry-pick-1.2-r1"
+  ],
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-OperatingSystem",
+      "name": "wolfi",
+      "versionInfo": "20230201",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "description": "Operating System",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "primaryPackagePurpose": "OPERATING-SYSTEM"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-git-checkout-cherry-pick-1.2-r1",
+      "name": "git-checkout-cherry-pick",
+      "versionInfo": "1.2-r1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:apk/wolfi/git-checkout-cherry-pick@1.2-r1?arch=x86_64\u0026distro=wolfi",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-testdata-buildC95configs-git-checkout-cherry-pick.yaml-c0ffee",
+      "name": "testdata/build_configs/git-checkout-cherry-pick.yaml",
+      "versionInfo": "c0ffee",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "originator": "Organization: Wolfi",
+      "supplier": "Organization: Wolfi",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/wolfi-dev/os@c0ffee#testdata/build_configs/git-checkout-cherry-pick.yaml",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-github.com-chainguard-dev-hello-world-golang.git-v1.2-bade10b96289e0c108ef6f7ea26be293c4946299-0",
+      "name": "hello-world-golang",
+      "versionInfo": "v1.2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "downloadLocation": "https://github.com/chainguard-dev/hello-world-golang/archive/bade10b96289e0c108ef6f7ea26be293c4946299.tar.gz",
+      "originator": "Organization: Chainguard-Dev",
+      "supplier": "Organization: Chainguard-Dev",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:github/chainguard-dev/hello-world-golang@v1.2",
+          "referenceType": "purl"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceLocator": "main/618bb31108414cb031a29e6ca521e1192079c1af",
+          "referenceType": "cherry-pick"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceLocator": "main/3918c15bbe67b08ccf7a3027b1fba3f1518cf328",
+          "referenceType": "cherry-pick"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Package-git-checkout-cherry-pick-1.2-r1",
+      "relationshipType": "DESCRIBED_BY",
+      "relatedSpdxElement": "SPDXRef-Package-testdata-buildC95configs-git-checkout-cherry-pick.yaml-c0ffee"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-git-checkout-cherry-pick-1.2-r1",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-Package-github.com-chainguard-dev-hello-world-golang.git-v1.2-bade10b96289e0c108ef6f7ea26be293c4946299-0"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/chainguard-dev/clog/slogtest"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/stretchr/testify/require"
@@ -875,7 +876,7 @@ func TestGetGitSBOMPackage(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, tc.idComponents, tc.licenseDeclared, tc.typeHint, tc.supplier)
+			pkg, err := getGitSBOMPackage(tc.repo, tc.tag, tc.expectedCommit, "", tc.idComponents, tc.licenseDeclared, tc.typeHint, tc.supplier)
 			if tc.expectError {
 				require.Error(t, err)
 				return
@@ -898,6 +899,90 @@ func TestGetGitSBOMPackage(t *testing.T) {
 			require.Equal(t, tc.expected.LicenseDeclared, pkg.LicenseDeclared)
 			require.Equal(t, tc.expected.Namespace, pkg.Namespace)
 			require.Equal(t, tc.expected.DownloadLocation, pkg.DownloadLocation)
+		})
+	}
+}
+
+func TestParseCherryPicksToExternalRefs(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected int // number of expected refs
+		checkRef func(*testing.T, []spdx.ExternalRef)
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			expected: 0,
+		},
+		{
+			name:     "single cherry-pick",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032",
+			expected: 1,
+			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
+				require.Equal(t, "OTHER", refs[0].Category)
+				require.Equal(t, "cherry-pick", refs[0].Type)
+				require.Equal(t, "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906", refs[0].Locator)
+			},
+		},
+		{
+			name: "multiple cherry-picks",
+			input: `3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032
+main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: Security fix`,
+			expected: 2,
+			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
+				require.Equal(t, "OTHER", refs[0].Category)
+				require.Equal(t, "cherry-pick", refs[0].Type)
+				require.Equal(t, "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906", refs[0].Locator)
+
+				require.Equal(t, "OTHER", refs[1].Category)
+				require.Equal(t, "cherry-pick", refs[1].Type)
+				require.Equal(t, "main/582b4d7d62f1c512568649ce8b6db085a3d85a9f", refs[1].Locator)
+			},
+		},
+		{
+			name:     "with comments after hash",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032 # this is a comment",
+			expected: 1,
+			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
+				require.Equal(t, "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906", refs[0].Locator)
+			},
+		},
+		{
+			name: "with empty lines",
+			input: `3.10/c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032
+
+main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: Security fix`,
+			expected: 2,
+		},
+		{
+			name:     "commit without branch prefix",
+			input:    "c62c9e518b784fe44432a3f4fc265fb95b651906: CVE-2024-4032",
+			expected: 1,
+			checkRef: func(t *testing.T, refs []spdx.ExternalRef) {
+				require.Equal(t, "c62c9e518b784fe44432a3f4fc265fb95b651906", refs[0].Locator)
+			},
+		},
+		{
+			name:     "invalid format - missing colon",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906",
+			expected: 0,
+		},
+		{
+			name:     "invalid format - missing comment",
+			input:    "3.10/c62c9e518b784fe44432a3f4fc265fb95b651906:",
+			expected: 0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			refs := parseCherryPicksToExternalRefs(tc.input)
+			require.Len(t, refs, tc.expected)
+
+			if tc.checkRef != nil {
+				tc.checkRef(t, refs)
+			}
 		})
 	}
 }

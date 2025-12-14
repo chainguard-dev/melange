@@ -76,23 +76,23 @@ pipeline:
         exit 1
       fi
 
-      bn=$(basename ${{inputs.uri}})
+      bn="$(basename "${{inputs.uri}}")"
 
       if [ ! "${{inputs.expected-sha256}}" == "" ]; then
         fn="/var/cache/melange/sha256:${{inputs.expected-sha256}}"
-        if [ -f $fn ]; then
+        if [ -f "$fn" ]; then
           printf "fetch: found $fn in cache\n"
-          cp $fn $bn
+          cp "$fn" "$bn"
         fi
       else
         fn="/var/cache/melange/sha512:${{inputs.expected-sha512}}"
-        if [ -f $fn ]; then
+        if [ -f "$fn" ]; then
           printf "fetch: found $fn in cache\n"
-          cp $fn $bn
+          cp "$fn" "$bn"
         fi
       fi
 
-      if [ ! -f $bn ]; then
+      if [ ! -f "$bn" ]; then
         wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
       fi
 
@@ -100,14 +100,14 @@ pipeline:
         printf "fetch: Checksum validation skipped\n"
       elif [ "${{inputs.expected-sha256}}" != "" ]; then
         printf "fetch: Expected sha256: ${{inputs.expected-sha256}}\n"
-        sum=$(sha256sum $bn | awk '{print $1}')
+        sum="$(sha256sum "$bn" | awk '{print $1}')"
         if [ "${{inputs.expected-sha256}}" != "$sum" ]; then
           printf "fetch: Expected sha256 does not match found: $sum\n"
           exit 1
         fi
       else
         printf "fetch: Expected sha512: ${{inputs.expected-sha512}}\n"
-        sum=$(sha512sum $bn | awk '{print $1}')
+        sum="$(sha512sum "$bn" | awk '{print $1}')"
         if [ "${{inputs.expected-sha512}}" != "$sum" ]; then
           printf "fetch: Expected sha512 does not match found: $sum\n"
           exit 1
@@ -115,9 +115,9 @@ pipeline:
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then
-        tar -x '--strip-components=${{inputs.strip-components}}' --no-same-owner -C '${{inputs.directory}}' -f $bn
+        tar -x '--strip-components=${{inputs.strip-components}}' --no-same-owner -C '${{inputs.directory}}' -f "$bn"
       fi
 
       if [ "${{inputs.delete}}" = "true" ]; then
-        rm $bn
+        rm "$bn"
       fi

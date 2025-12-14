@@ -92,7 +92,7 @@ pipeline:
       if [ -n "$hashsize" ]; then
         fn="${CACHEDIR}/sha${hashsize}:${expected}"
         if [ -f "$fn" ]; then
-          printf "fetch: found ${fn} in cache\n"
+          printf "fetch: found %s in cache\n" "${fn}"
           cp "${fn}" "${bn}"
         fi
       fi
@@ -102,17 +102,17 @@ pipeline:
       fi
 
       if [ -n "$hashsize" ]; then
-        printf "fetch: Expected sha${hashsize}: ${expected}\n"
+        printf "fetch: Expected sha%s: %s\n" "${hashsize}" "${expected}"
         sum="$(sha${hashsize}sum "${bn}" | awk '{print $1}')"
         if [ "${expected}" != "${sum}" ]; then
-          printf "fetch: Expected sha${hashsize} does not match found: ${sum}\n"
+          printf "fetch: Expected sha%s does not match found: %s\n" "${hashsize}" "${sum}"
           exit 1
         fi
         if [ -d "${CACHEDIR}" ]; then
-          printf "fetch: Caching ${bn} in ${fn}\n"
+          printf "fetch: Caching %s in %s\n" "${bn}" "${fn}"
           cp "${bn}" "${fn}" || { rm -f "${fn}"; printf "fetch: Caching failed\n"; }
         else
-          printf "fetch: ${CACHEDIR} not available, will not cache ${bn}\n"
+          printf "fetch: %s not available, will not cache %s\n" "${CACHEDIR}" "${bn}"
         fi
       else
         printf "fetch: Checksum validation skipped\n"

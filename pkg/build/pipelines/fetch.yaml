@@ -73,22 +73,25 @@ pipeline:
   - runs: |
       CACHEDIR="/var/cache/melange"
 
-      if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ] && [ "${{inputs.expected-none}}" == "" ]; then
+      if [ -n "${{inputs.expected-sha512}}" ]; then
+        hashsize=512
+        expected="${{inputs.expected-sha512}}"
+      elif [ -n "${{inputs.expected-sha256}}" ]; then
+        hashsize=256
+        expected="${{inputs.expected-sha256}}"
+      elif [ -z "${{inputs.expected-none}}" ]; then
         printf "One of expected-sha256 or expected-sha512 is required"
         exit 1
+      else
+        hashsize=""
       fi
 
       bn="$(basename "${{inputs.uri}}")"
 
-      if [ ! "${{inputs.expected-sha256}}" == "" ]; then
-        fn="${CACHEDIR}/sha256:${{inputs.expected-sha256}}"
-        if [ -f "${fn}" ]; then
-          printf "fetch: found ${fn} in cache\n"
-          cp "${fn}" "${bn}"
-        fi
-      else
-        fn="${CACHEDIR}/sha512:${{inputs.expected-sha512}}"
-        if [ -f "${fn}" ]; then
+      fn=""
+      if [ -n "$hashsize" ]; then
+        fn="${CACHEDIR}/sha${hashsize}:${expected}"
+        if [ -f "$fn" ]; then
           printf "fetch: found ${fn} in cache\n"
           cp "${fn}" "${bn}"
         fi
@@ -98,22 +101,15 @@ pipeline:
         wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
       fi
 
-      if [ "${{inputs.expected-none}}" != "" ]; then
-        printf "fetch: Checksum validation skipped\n"
-      elif [ "${{inputs.expected-sha256}}" != "" ]; then
-        printf "fetch: Expected sha256: ${{inputs.expected-sha256}}\n"
-        sum="$(sha256sum "${bn}" | awk '{print $1}')"
-        if [ "${{inputs.expected-sha256}}" != "${sum}" ]; then
-          printf "fetch: Expected sha256 does not match found: ${sum}\n"
+      if [ -n "$hashsize" ]; then
+        printf "fetch: Expected sha${hashsize}: ${expected}\n"
+        sum="$(sha${hashsize}sum "${bn}" | awk '{print $1}')"
+        if [ "${expected}" != "${sum}" ]; then
+          printf "fetch: Expected sha${hashsize} does not match found: ${sum}\n"
           exit 1
         fi
       else
-        printf "fetch: Expected sha512: ${{inputs.expected-sha512}}\n"
-        sum="$(sha512sum "${bn}" | awk '{print $1}')"
-        if [ "${{inputs.expected-sha512}}" != "${sum}" ]; then
-          printf "fetch: Expected sha512 does not match found: ${sum}\n"
-          exit 1
-        fi
+        printf "fetch: Checksum validation skipped\n"
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then

@@ -71,6 +71,8 @@ inputs:
 
 pipeline:
   - runs: |
+      CACHEDIR="/var/cache/melange"
+
       if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ] && [ "${{inputs.expected-none}}" == "" ]; then
         printf "One of expected-sha256 or expected-sha512 is required"
         exit 1
@@ -79,13 +81,13 @@ pipeline:
       bn="$(basename "${{inputs.uri}}")"
 
       if [ ! "${{inputs.expected-sha256}}" == "" ]; then
-        fn="/var/cache/melange/sha256:${{inputs.expected-sha256}}"
+        fn="${CACHEDIR}/sha256:${{inputs.expected-sha256}}"
         if [ -f "${fn}" ]; then
           printf "fetch: found ${fn} in cache\n"
           cp "${fn}" "${bn}"
         fi
       else
-        fn="/var/cache/melange/sha512:${{inputs.expected-sha512}}"
+        fn="${CACHEDIR}/sha512:${{inputs.expected-sha512}}"
         if [ -f "${fn}" ]; then
           printf "fetch: found ${fn} in cache\n"
           cp "${fn}" "${bn}"

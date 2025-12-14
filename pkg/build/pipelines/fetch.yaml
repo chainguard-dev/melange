@@ -108,6 +108,12 @@ pipeline:
           printf "fetch: Expected sha${hashsize} does not match found: ${sum}\n"
           exit 1
         fi
+        if [ -d "${CACHEDIR}" ]; then
+          printf "fetch: Caching ${bn} in ${fn}\n"
+          cp "${bn}" "${fn}" || { rm -f "${fn}"; printf "fetch: Caching failed\n"; }
+        else
+          printf "fetch: ${CACHEDIR} not available, will not cache ${bn}\n"
+        fi
       else
         printf "fetch: Checksum validation skipped\n"
       fi

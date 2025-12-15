@@ -71,7 +71,8 @@ inputs:
 
 pipeline:
   - runs: |
-      CACHEDIR="/var/cache/melange"
+      MELANGE_CACHE_DIR="/var/cache/melange"
+      FETCH_CACHE_DIR="${MELANGE_CACHE_DIR}/fetch"
 
       if [ -n "${{inputs.expected-sha512}}" ]; then
         hashsize=512
@@ -90,7 +91,7 @@ pipeline:
 
       fn=""
       if [ -n "$hashsize" ]; then
-        fn="${CACHEDIR}/sha${hashsize}:${expected}"
+        fn="${FETCH_CACHE_DIR}/sha${hashsize}:${expected}"
         if [ -f "$fn" ]; then
           printf "fetch: found %s in cache\n" "${fn}"
           cp "${fn}" "${bn}"
@@ -108,11 +109,12 @@ pipeline:
           printf "fetch: Expected sha%s does not match found: %s\n" "${hashsize}" "${sum}"
           exit 1
         fi
-        if [ -d "${CACHEDIR}" ]; then
+        if [ -d "${MELANGE_CACHE_DIR}" ]; then
           printf "fetch: Caching %s in %s\n" "${bn}" "${fn}"
+          mkdir -p "${FETCH_CACHE_DIR}"
           cp "${bn}" "${fn}" || { rm -f "${fn}"; printf "fetch: Caching failed\n"; }
         else
-          printf "fetch: %s not available, will not cache %s\n" "${CACHEDIR}" "${bn}"
+          printf "fetch: %s not available, will not cache %s\n" "${MELANGE_CACHE_DIR}" "${bn}"
         fi
       else
         printf "fetch: Checksum validation skipped\n"

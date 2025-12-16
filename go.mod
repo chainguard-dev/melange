@@ -3,12 +3,12 @@ module chainguard.dev/melange
 go 1.24.6
 
 require (
-	chainguard.dev/apko v0.30.29
-	github.com/chainguard-dev/clog v1.7.0
+	chainguard.dev/apko v0.30.31
+	github.com/chainguard-dev/clog v1.8.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.43
+	github.com/chainguard-dev/yam v0.2.44
 	github.com/charmbracelet/log v0.4.2
-	github.com/docker/cli v29.1.2+incompatible
+	github.com/docker/cli v29.1.3+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.5
@@ -72,7 +72,7 @@ require (
 
 require (
 	chainguard.dev/go-grpc-kit v0.17.15 // indirect
-	chainguard.dev/sdk v0.1.44 // indirect
+	chainguard.dev/sdk v0.1.45 // indirect
 	cloud.google.com/go/auth v0.17.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -165,12 +165,12 @@ require (
 	go.step.sm/crypto v0.75.0 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/oauth2 v0.33.0 // indirect
+	golang.org/x/oauth2 v0.34.0 // indirect
 	google.golang.org/api v0.257.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251124214823-79d6a2a48846 // indirect
 	google.golang.org/grpc v1.77.0 // indirect
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.34.2 // indirect
+	k8s.io/apimachinery v0.34.3 // indirect
 )

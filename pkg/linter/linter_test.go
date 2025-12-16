@@ -759,3 +759,249 @@ func Test_lintApkWithOutput(t *testing.T) {
 	assert.NotEmpty(t, manInfoFindings[0].Message)
 	assert.NotEmpty(t, manInfoFindings[0].Explain)
 }
+
+func TestFetchTemplatingLinter(t *testing.T) {
+	ctx := slogtest.Context(t)
+	dir := t.TempDir()
+	fsys := apkofs.DirFS(ctx, dir)
+
+	tests := []struct {
+		name string
+		yaml string
+		pass bool
+	}{
+		{
+			name: "no fetch operations",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - runs: echo hello`,
+			pass: true,
+		},
+		{
+			name: "non-versioned URL should fail Rule A",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/static-file.txt`,
+			pass: false,
+		},
+		{
+			name: "fetch with package.version template",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/test-${{package.version}}.tar.gz`,
+			pass: true,
+		},
+		{
+			name: "fetch with package.full-version template",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/test-${{package.full-version}}.tar.gz`,
+			pass: true,
+		},
+		{
+			name: "git tag with version template",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      tag: v${{package.version}}`,
+			pass: true,
+		},
+		{
+			name: "fetch with literal version",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/test-1.0.0.tar.gz`,
+			pass: false,
+		},
+		{
+			name: "git tag with literal version",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      tag: v1.0.0`,
+			pass: false,
+		},
+		{
+			name: "mixed operations - flags untemplated",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/test-1.0.0.tar.gz
+  - uses: fetch
+    with:
+      uri: https://example.com/patch-${{package.version}}.patch`,
+			pass: false,
+		},
+		{
+			name: "commit-pinned git without tag should pass",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      branch: main
+      expected-commit: abc123456789`,
+			pass: true,
+		},
+		{
+			name: "branch without expected-commit should fail",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      branch: main`,
+			pass: false,
+		},
+		{
+			name: "subpackage pipeline check",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - runs: echo main
+subpackages:
+  - name: test-dev
+    pipeline:
+      - uses: fetch
+        with:
+          uri: https://example.com/dev-${{package.version}}.tar.gz`,
+			pass: true,
+		},
+
+		// Additional edge cases
+		{
+			name: "ref with commit SHA should pass",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      ref: abc123456789abcdef123456789012345678`,
+			pass: true,
+		},
+		{
+			name: "templated ref should pass",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      ref: refs/tags/v${{package.version}}
+      expected-commit: abc123456789`,
+			pass: true,
+		},
+		{
+			name: "fetch with hardcoded full-version should fail",
+			yaml: `
+package:
+  name: test
+  version: 1.2.3
+  epoch: 4
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/test-1.2.3-r4.tar.gz`,
+			pass: false,
+		},
+		{
+			name: "mixed templated and static sources should pass",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.com/test-${{package.version}}.tar.gz
+  - uses: fetch
+    with:
+      uri: https://example.com/static-patch.patch`,
+			pass: true,
+		},
+		{
+			name: "git branch with templated tag should pass",
+			yaml: `
+package:
+  name: test
+  version: 1.0.0
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/test.git
+      branch: main
+      tag: v${{package.version}}
+      expected-commit: abc123456789`,
+			pass: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Write YAML to temp file
+			tmpFile := filepath.Join(t.TempDir(), "test.yaml")
+			assert.NoError(t, os.WriteFile(tmpFile, []byte(tt.yaml), 0o644))
+
+			cfg, err := config.ParseConfiguration(ctx, tmpFile)
+			assert.NoError(t, err)
+
+			err = LintBuild(ctx, cfg, "test-package", []string{"fetch/templating"}, nil, fsys, t.TempDir(), "x86_64")
+
+			if tt.pass {
+				assert.NoError(t, err, "Expected linter to pass for %s", tt.name)
+			} else {
+				assert.Error(t, err, "Expected linter to fail for %s", tt.name)
+			}
+		})
+	}
+}

@@ -204,6 +204,11 @@ var linterMap = map[string]linter{
 		Explain:         "This package contains files with the same name and content in different directories (consider symlinking)",
 		defaultBehavior: Warn,
 	},
+	"fetch/templating": {
+		LinterFunc:      linters.FetchTemplatingLinter,
+		Explain:         "At least one fetch URL should use version-related template variables (like ${{package.version}}) to ensure source URLs are updated when package versions change",
+		defaultBehavior: Warn,
+	},
 }
 
 func checkLinters(linters []string) error {

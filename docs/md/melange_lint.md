@@ -30,7 +30,7 @@ melange lint [flags]
 ```
   -h, --help                   help for lint
       --lint-require strings   linters that must pass (default [dev,infodir,setuidgid,tempdir,usrmerge,varempty,worldwrite])
-      --lint-warn strings      linters that will generate warnings (default [binaryarch,cudaruntimelib,dll,duplicate,dylib,lddcheck,maninfo,nonlinux,object,opt,pkgconf,python/docs,python/multiple,python/test,sbom,srv,staticarchive,strip,unsupportedarch,usrlocal])
+      --lint-warn strings      linters that will generate warnings (default [binaryarch,cudaruntimelib,dll,duplicate,dylib,fetch/templating,lddcheck,maninfo,nonlinux,object,opt,pkgconf,python/docs,python/multiple,python/test,sbom,srv,staticarchive,strip,unsupportedarch,usrlocal])
       --out-dir string         directory where lint results JSON files will be saved (requires --persist-lint-results) (default "packages")
       --persist-lint-results   persist lint results to JSON files in packages/{arch}/ directory
 ```

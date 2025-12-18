@@ -192,8 +192,9 @@ type Resources struct {
 // against NVD records.
 func (p Package) CPEString() (string, error) {
 	const anyValue = "*"
+	const partApplication = "a"
 
-	part := anyValue
+	part := partApplication
 	if p.CPE.Part != "" {
 		part = p.CPE.Part
 	}
@@ -231,6 +232,9 @@ func (p Package) CPEString() (string, error) {
 	}
 
 	// Last-mile validation to avoid headaches downstream of this.
+	if !slices.Contains([]string{"a", "h", "o"}, part) {
+		return "", fmt.Errorf("part value must be a, h or o")
+	}
 	if vendor == anyValue {
 		return "", fmt.Errorf("vendor value must be exactly specified")
 	}

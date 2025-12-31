@@ -44,6 +44,7 @@ import (
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 
+	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -1186,6 +1187,7 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 		SubstitutionPackageDescription: cfg.Package.Description,
 		SubstitutionPackageEpoch:       strconv.FormatUint(cfg.Package.Epoch, 10),
 		SubstitutionPackageFullVersion: fmt.Sprintf("%s-r%d", cfg.Package.Version, cfg.Package.Epoch),
+		SubstitutionPackageSrcdir:      container.DefaultWorkspaceDir,
 	}
 
 	for k, v := range cfg.Vars {
@@ -1622,8 +1624,8 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 
 	const (
-		defaultEnvVarHOME       = "/home/build"
-		defaultEnvVarGOPATH     = "/home/build/.cache/go"
+		defaultEnvVarHOME       = container.DefaultWorkspaceDir
+		defaultEnvVarGOPATH     = container.DefaultWorkspaceDir + "/.cache/go"
 		defaultEnvVarGOMODCACHE = "/var/cache/melange/gomodcache"
 	)
 

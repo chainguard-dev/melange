@@ -197,13 +197,19 @@ pipeline:
       branch: 1.x
       cherry-picks: |
         main/582b4d7d62f1c512568649ce8b6db085a3d85a9f: here comment
+        cpick/16138cad5f7729c79eca69b4cf808247d5eed76c: second cherry-pick
 
   - name: "check cherry-picks"
     working-directory: cherry-pick-test
     runs: |
       hash=$(git rev-parse --verify HEAD)
+      status=$(git status -b --porcelain)
       expected_hash="225e712ae452645acbd8f137b13d6b1ded8a96a1"
       [ "$hash" != "$expected_hash" ]
+      # git status should show being two commits head
+      [ "$status" == "## 1.x...origin/1.x [ahead 2]" ]
+      # for-cherry-pick.txt should exist as a file
+      [ -f for-cherry-pick.txt ]
       cd ..
       rm -R cherry-pick-test
 

@@ -85,6 +85,13 @@ v gtag dev HEAD
 v wfile README "more stuff on dev"
 v gcommit -m "more stuff on dev" README
 
+v git checkout --quiet -b cpick main
+v wfile README "cherry-pick source branch stuff"
+v gcommit -m "cherry-pick source branch stuff" README
+v wfile for-cherry-pick.txt "cherry-pickable file"
+v git add for-cherry-pick.txt
+v gcommit -m "add second cherry-pick source" for-cherry-pick.txt
+
 v git checkout --quiet main
 v wfile README "mainline stuff"
 v gcommit -m "mainline stuff" README

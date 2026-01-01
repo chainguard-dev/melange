@@ -94,7 +94,7 @@ pipeline:
             return 1
         fi
 
-        local line="" branch="" hash="" comment=""
+        local line="" branch="" hash="" comment="" unshallow_arg is_shallow
         while IFS= read -r line; do
             # Drop anything after #
             line=${line%%#*}
@@ -118,10 +118,16 @@ pipeline:
             # If branch information exists, strip it off to just leave the branch name
             [ "$branch" != "$hash" ] && branch=${branch%/*} || branch=""
 
+            unshallow_arg=""
+            is_shallow=$(git rev-parse --is-shallow-repository)
+            if [ "$is_shallow" == "true" ] ; then
+                unshallow_arg="--unshallow"
+            fi
+
             if [ -n "$branch" ]; then
                 case " $fetched_branches " in
                     *" $branch "*) ;;
-                    *) vr git fetch --unshallow origin $branch:$branch || {
+                    *) vr git fetch $unshallow_arg origin $branch:$branch || {
                         msg "failed to fetch branch $branch"
                         return 1
                         }

@@ -59,7 +59,7 @@ func PkgconfTestLinter(ctx context.Context, cfg *config.Configuration, pkgname s
 
 	// Collect all pkgconfig files
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return PkgconfDirRegex.MatchString(path) },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && PkgconfDirRegex.MatchString(path) },
 		func(pkgname string, paths []string) string {
 			if cfg == nil {
 				return fmt.Sprintf("%s contains pkgconfig files but missing .melange.yaml", pkgname)

@@ -191,7 +191,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 	}
 
 	// Add licensing information
-	li, err := gc.Configuration.Package.LicensingInfos(gc.WorkspaceDir)
+	li, err := gc.Configuration.Package.LicensingInfos(ctx, gc.WorkspaceDir)
 	if err != nil {
 		return nil, fmt.Errorf("gathering licensing infos: %w", err)
 	}

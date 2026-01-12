@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/chainguard-dev/clog/slogtest"
+	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
 	"github.com/stretchr/testify/require"
 
@@ -1644,6 +1645,375 @@ package:
 			require.NoError(t, err)
 			if tt.checkFunc != nil {
 				tt.checkFunc(t, cfg)
+			}
+		})
+	}
+}
+
+func TestNormalizeLicenseID(t *testing.T) {
+	tests := []struct {
+		name     string
+		license  string
+		expected string
+	}{
+		{
+			name:     "valid SPDX license MIT",
+			license:  "MIT",
+			expected: "MIT",
+		},
+		{
+			name:     "valid SPDX license Apache-2.0",
+			license:  "Apache-2.0",
+			expected: "Apache-2.0",
+		},
+		{
+			name:     "valid SPDX license GPL-3.0-only",
+			license:  "GPL-3.0-only",
+			expected: "GPL-3.0-only",
+		},
+		{
+			name:     "invalid SPDX license - custom",
+			license:  "MyCustomLicense",
+			expected: "LicenseRef-MyCustomLicense",
+		},
+		{
+			name:     "invalid SPDX license - with spaces",
+			license:  "My Custom License",
+			expected: "LicenseRef-My-Custom-License",
+		},
+		{
+			name:     "invalid SPDX license - GPL typo",
+			license:  "GPL",
+			expected: "LicenseRef-GPL",
+		},
+		{
+			name:     "empty license",
+			license:  "",
+			expected: "",
+		},
+		{
+			name:     "invalid license with special chars",
+			license:  "Custom@License!v2",
+			expected: "LicenseRef-CustomLicensev2",
+		},
+		{
+			name:     "PROPRIETARY license",
+			license:  "PROPRIETARY",
+			expected: "LicenseRef-PROPRIETARY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeLicenseID(tt.license)
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("normalizeLicenseID() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestToLicenseRef(t *testing.T) {
+	tests := []struct {
+		name     string
+		license  string
+		expected string
+	}{
+		{
+			name:     "simple name",
+			license:  "CustomLicense",
+			expected: "LicenseRef-CustomLicense",
+		},
+		{
+			name:     "name with spaces",
+			license:  "Custom License v2",
+			expected: "LicenseRef-Custom-License-v2",
+		},
+		{
+			name:     "name with underscores",
+			license:  "Custom_License_v2",
+			expected: "LicenseRef-Custom-License-v2",
+		},
+		{
+			name:     "name with dots and hyphens",
+			license:  "Custom-License.v2",
+			expected: "LicenseRef-Custom-License.v2",
+		},
+		{
+			name:     "name with special chars",
+			license:  "License@#$%^&*()",
+			expected: "LicenseRef-License",
+		},
+		{
+			name:     "only special chars - uses hash",
+			license:  "@#$%^&*()",
+			expected: "LicenseRef-a821cf5c9ba958c4", // SHA256 hash prefix
+		},
+		{
+			name:     "numbers only",
+			license:  "12345",
+			expected: "LicenseRef-12345",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := toLicenseRef(tt.license)
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("toLicenseRef() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestIsValidSPDXLicense(t *testing.T) {
+	tests := []struct {
+		name     string
+		license  string
+		expected bool
+	}{
+		{
+			name:     "valid MIT",
+			license:  "MIT",
+			expected: true,
+		},
+		{
+			name:     "valid Apache-2.0",
+			license:  "Apache-2.0",
+			expected: true,
+		},
+		{
+			name:     "valid GPL-3.0-or-later",
+			license:  "GPL-3.0-or-later",
+			expected: true,
+		},
+		{
+			name:     "valid BSD-3-Clause",
+			license:  "BSD-3-Clause",
+			expected: true,
+		},
+		{
+			name:     "invalid - custom license",
+			license:  "MyLicense",
+			expected: false,
+		},
+		{
+			name:     "invalid - GPL without version",
+			license:  "GPL",
+			expected: false,
+		},
+		{
+			name:     "empty string",
+			license:  "",
+			expected: false,
+		},
+		{
+			name:     "valid SPDX expression",
+			license:  "MIT AND Apache-2.0",
+			expected: true,
+		},
+		{
+			name:     "invalid - PROPRIETARY",
+			license:  "PROPRIETARY",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isValidSPDXLicense(tt.license)
+			if result != tt.expected {
+				t.Errorf("isValidSPDXLicense(%q) = %v, want %v", tt.license, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestLicenseExpressionWithValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		copyright []Copyright
+		expected  string
+	}{
+		{
+			name:      "nil copyright",
+			copyright: nil,
+			expected:  "",
+		},
+		{
+			name:      "empty copyright",
+			copyright: []Copyright{},
+			expected:  "",
+		},
+		{
+			name: "single valid license",
+			copyright: []Copyright{
+				{License: "MIT"},
+			},
+			expected: "MIT",
+		},
+		{
+			name: "multiple valid licenses",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{License: "Apache-2.0"},
+			},
+			expected: "MIT AND Apache-2.0",
+		},
+		{
+			name: "single invalid license",
+			copyright: []Copyright{
+				{License: "CustomLicense"},
+			},
+			expected: "LicenseRef-CustomLicense",
+		},
+		{
+			name: "mixed valid and invalid licenses",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{License: "CustomLicense"},
+				{License: "Apache-2.0"},
+			},
+			expected: "MIT AND LicenseRef-CustomLicense AND Apache-2.0",
+		},
+		{
+			name: "invalid license with spaces",
+			copyright: []Copyright{
+				{License: "My Custom License"},
+			},
+			expected: "LicenseRef-My-Custom-License",
+		},
+		{
+			name: "PROPRIETARY license",
+			copyright: []Copyright{
+				{License: "PROPRIETARY"},
+			},
+			expected: "LicenseRef-PROPRIETARY",
+		},
+		{
+			name: "mixed with PROPRIETARY",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{License: "PROPRIETARY"},
+			},
+			expected: "MIT AND LicenseRef-PROPRIETARY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg := Package{
+				Copyright: tt.copyright,
+			}
+			result := pkg.LicenseExpression()
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("LicenseExpression() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestLicensingInfosWithValidation(t *testing.T) {
+	// Create a temp directory with a license file
+	tmpDir := t.TempDir()
+	licenseContent := "This is my custom license text"
+	if err := os.WriteFile(filepath.Join(tmpDir, "LICENSE.custom"), []byte(licenseContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name      string
+		copyright []Copyright
+		expected  map[string]string
+	}{
+		{
+			name:      "nil copyright",
+			copyright: nil,
+			expected:  map[string]string{},
+		},
+		{
+			name:      "empty copyright",
+			copyright: []Copyright{},
+			expected:  map[string]string{},
+		},
+		{
+			name: "valid SPDX license without license path - no entry",
+			copyright: []Copyright{
+				{License: "MIT"},
+			},
+			expected: map[string]string{},
+		},
+		{
+			name: "invalid SPDX license without license path - has entry",
+			copyright: []Copyright{
+				{License: "CustomLicense"},
+			},
+			expected: map[string]string{
+				"LicenseRef-CustomLicense": "Non-SPDX License: CustomLicense",
+			},
+		},
+		{
+			name: "invalid SPDX license with license path - uses file content",
+			copyright: []Copyright{
+				{License: "CustomLicense", LicensePath: "LICENSE.custom"},
+			},
+			expected: map[string]string{
+				"LicenseRef-CustomLicense": licenseContent,
+			},
+		},
+		{
+			name: "valid SPDX license with license path - uses file content",
+			copyright: []Copyright{
+				{License: "MIT", LicensePath: "LICENSE.custom"},
+			},
+			expected: map[string]string{
+				"MIT": licenseContent,
+			},
+		},
+		{
+			name: "mixed valid and invalid licenses",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{License: "CustomLicense"},
+				{License: "Apache-2.0", LicensePath: "LICENSE.custom"},
+			},
+			expected: map[string]string{
+				"LicenseRef-CustomLicense": "Non-SPDX License: CustomLicense",
+				"Apache-2.0":               licenseContent,
+			},
+		},
+		{
+			name: "PROPRIETARY license without license path",
+			copyright: []Copyright{
+				{License: "PROPRIETARY"},
+			},
+			expected: map[string]string{
+				"LicenseRef-PROPRIETARY": "Non-SPDX License: PROPRIETARY",
+			},
+		},
+		{
+			name: "PROPRIETARY license with license path",
+			copyright: []Copyright{
+				{License: "PROPRIETARY", LicensePath: "LICENSE.custom"},
+			},
+			expected: map[string]string{
+				"LicenseRef-PROPRIETARY": licenseContent,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := slogtest.Context(t)
+			pkg := Package{
+				Copyright: tt.copyright,
+			}
+			result, err := pkg.LicensingInfos(ctx, tmpDir)
+			if err != nil {
+				t.Fatalf("LicensingInfos() error = %v", err)
+			}
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("LicensingInfos() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

@@ -446,6 +446,13 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 	}
 	defer outFile.Close()
 
+	errFile_path := filepath.Join(cfg.WorkspaceDir, ".error-file")
+	errFile, err := os.Create(errFile_path)
+	if err != nil {
+		return nil, err
+	}
+	defer errFile.Close()
+
 	clog.FromContext(ctx).Infof("fetching remote workspace")
 	// work around missing scp (needs openssh-sftp package), we just tar the file
 	// and pipe the output to our local file. It is potentially slower, but being
@@ -461,26 +468,25 @@ func (bw *qemu) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []stri
 		retrieveCommand += " -T extrafiles.txt"
 	}
 
-	log := clog.FromContext(ctx)
-	stderr := logwriter.New(log.Debug)
 	err = sendSSHCommand(ctx,
 		cfg.SSHControlClient,
 		cfg,
 		nil,
-		stderr,
+		errFile,
 		outFile,
 		false,
 		[]string{"sh", "-c", retrieveCommand},
 	)
 	if err != nil {
-		var buf bytes.Buffer
-		_, cerr := io.Copy(&buf, outFile)
-		if cerr != nil {
-			clog.FromContext(ctx).Errorf("failed to tar workspace: %v", cerr)
-			return nil, cerr
+		savederr := err
+		outErr, err := os.ReadFile(errFile_path)
+		if err == nil {
+			clog.FromContext(ctx).Errorf("failed to tar workspace:\n%s", string(outErr))
+		} else {
+			clog.FromContext(ctx).Errorf("failed to tar workspace; failed to obtain error output")
 		}
-		clog.FromContext(ctx).Errorf("failed to tar workspace: %v", buf.String())
-		return nil, err
+
+		return nil, savederr
 	}
 
 	return os.Open(outFile.Name())

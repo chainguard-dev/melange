@@ -28,7 +28,7 @@ func DocumentationLinter(ctx context.Context, _ *config.Configuration, pkgname s
 		return nil
 	}
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return IsDocumentationFileRegex.MatchString(path) },
+		func(path string, d fs.DirEntry) bool { return !d.IsDir() && IsDocumentationFileRegex.MatchString(path) },
 		func(pkgname string, paths []string) string {
 			fileWord := "file"
 			if len(paths) > 1 {

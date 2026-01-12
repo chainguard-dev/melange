@@ -17,7 +17,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+      - uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
         with:
           egress-policy: audit
 
@@ -32,7 +32,7 @@ jobs:
         run: |
           make melange
 
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/melange
@@ -85,7 +85,7 @@ jobs:
           - tini
 
     steps:
-      - uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+      - uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
         with:
           egress-policy: audit
 
@@ -93,7 +93,7 @@ jobs:
         with:
           repository: wolfi-dev/os
 
-      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: melange-${{ github.run_id }}
           path: ${{ github.workspace }}/.melange-dir
@@ -105,7 +105,7 @@ jobs:
           melange version
 
       # needed to run tests for Bubblewrap packages
-      - uses: docker/setup-docker-action@e61617a16c407a86262fb923c35a616ddbe070b3 # v4.6.0
+      - uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 # v4.7.0
 
       # this need to point to main to always get the latest action
       - uses: wolfi-dev/actions/install-wolfictl@main # main

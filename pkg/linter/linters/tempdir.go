@@ -18,13 +18,50 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"strings"
 
 	"chainguard.dev/melange/pkg/config"
 )
 
 func TempDirLinter(ctx context.Context, _ *config.Configuration, pkgname string, fsys fs.FS) error {
+	hasTmpFilesSnippet := false
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(path, "usr/lib/tmpfiles.d/") {
+			hasTmpFilesSnippet = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	return AllPaths(ctx, pkgname, fsys,
-		func(path string) bool { return IsTempDirRegex.MatchString(path) },
+		func(path string, d fs.DirEntry) bool {
+			// Non-directories in /tmp/ or /var/tmp/ are errors.
+			if !d.IsDir() && IsTempDirRegex.MatchString(path) {
+				return true
+			}
+			// Anything in /var/run/ is an error.
+			if strings.HasPrefix(path, "var/run/") {
+				return true
+			}
+			if strings.HasPrefix(path, "run/") {
+				// Non-directories in /run/ are an error.
+				if !d.IsDir() {
+					return true
+				}
+				// Directories in /run/ are an error if there are no tmpfiles.d snippets.
+				return !hasTmpFilesSnippet
+			}
+			return false
+		},
 		func(pkgname string, paths []string) string { return fmt.Sprintf("%s writes to a temp dir", pkgname) },
 	)
 }

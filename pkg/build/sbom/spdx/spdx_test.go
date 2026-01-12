@@ -263,6 +263,233 @@ func TestSBOMGeneration(t *testing.T) {
 	}
 }
 
+func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	outputFS := apkofs.DirFS(ctx, tmpDir)
+
+	// Create a custom license file
+	licenseContent := "This is a proprietary license. All rights reserved."
+	if err := os.WriteFile(filepath.Join(tmpDir, "LICENSE.proprietary"), []byte(licenseContent), 0o644); err != nil {
+		t.Fatalf("failed to write license file: %v", err)
+	}
+
+	// Build configuration with non-SPDX license
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Name:        "proprietary-pkg",
+			Version:     "1.0.0",
+			Epoch:       0,
+			Description: "Package with proprietary license",
+			Copyright: []config.Copyright{
+				{License: "PROPRIETARY", LicensePath: "LICENSE.proprietary"},
+			},
+		},
+	}
+
+	testTime := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	genCtx := &build.GeneratorContext{
+		Configuration:   cfg,
+		WorkspaceDir:    tmpDir,
+		OutputFS:        outputFS,
+		SourceDateEpoch: testTime,
+		Namespace:       "test-ns",
+		Arch:            "x86_64",
+		ReleaseData: &apko_build.ReleaseData{
+			ID:        "test-os",
+			VersionID: "1.0",
+		},
+	}
+
+	gen := &Generator{}
+	if err := gen.GenerateSBOM(ctx, genCtx); err != nil {
+		t.Fatalf("GenerateSBOM failed: %v", err)
+	}
+
+	// Read the generated SBOM
+	sbomPath := filepath.Join(tmpDir, "proprietary-pkg", build.SBOMDir,
+		fmt.Sprintf("proprietary-pkg-%s.spdx.json", cfg.Package.FullVersion()))
+
+	var actual spdx.Document
+	data, err := os.ReadFile(sbomPath)
+	if err != nil {
+		t.Fatalf("failed to read SBOM: %v", err)
+	}
+	if err := json.Unmarshal(data, &actual); err != nil {
+		t.Fatalf("failed to unmarshal SBOM: %v", err)
+	}
+
+	expected := &spdx.Document{
+		ID:      "SPDXRef-DOCUMENT",
+		Name:    "apk-proprietary-pkg-1.0.0-r0",
+		Version: "SPDX-2.3",
+		CreationInfo: spdx.CreationInfo{
+			Created:            "2024-06-01T00:00:00Z",
+			Creators:           []string{"Tool: melange (devel)", "Organization: Chainguard, Inc"},
+			LicenseListVersion: "3.22",
+		},
+		DataLicense:       "CC0-1.0",
+		Namespace:         actual.Namespace, // Use actual namespace since it's dynamically generated
+		DocumentDescribes: []string{"SPDXRef-Package-proprietary-pkg-1.0.0-r0"},
+		Packages: []spdx.Package{
+			{
+				ID:               "SPDXRef-OperatingSystem",
+				Name:             "test-os",
+				Version:          "1.0",
+				FilesAnalyzed:    false,
+				LicenseConcluded: "NOASSERTION",
+				LicenseDeclared:  "NOASSERTION",
+				Description:      "Operating System",
+				DownloadLocation: "NOASSERTION",
+				Originator:       "Organization: Test-Ns",
+				Supplier:         "Organization: Test-Ns",
+				PrimaryPurpose:   "OPERATING-SYSTEM",
+			},
+			{
+				ID:               "SPDXRef-Package-proprietary-pkg-1.0.0-r0",
+				Name:             "proprietary-pkg",
+				Version:          "1.0.0-r0",
+				FilesAnalyzed:    false,
+				LicenseConcluded: "NOASSERTION",
+				LicenseDeclared:  "LicenseRef-PROPRIETARY",
+				DownloadLocation: "NOASSERTION",
+				Originator:       "Organization: Test-Ns",
+				Supplier:         "Organization: Test-Ns",
+				CopyrightText:    "NOASSERTION",
+				ExternalRefs: []spdx.ExternalRef{
+					{
+						Category: "PACKAGE-MANAGER",
+						Locator:  "pkg:apk/test-ns/proprietary-pkg@1.0.0-r0?arch=x86_64&distro=test-ns",
+						Type:     "purl",
+					},
+				},
+			},
+		},
+		LicensingInfos: []spdx.LicensingInfo{
+			{
+				LicenseID:     "LicenseRef-PROPRIETARY",
+				ExtractedText: licenseContent,
+			},
+		},
+	}
+
+	if diff := cmp.Diff(expected, &actual); diff != "" {
+		t.Errorf("SBOM mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	outputFS := apkofs.DirFS(ctx, tmpDir)
+
+	// Build configuration with mixed valid and invalid SPDX licenses
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Name:        "mixed-license-pkg",
+			Version:     "2.0.0",
+			Epoch:       1,
+			Description: "Package with mixed licenses",
+			Copyright: []config.Copyright{
+				{License: "MIT"},
+				{License: "CustomLicense"},
+			},
+		},
+	}
+
+	testTime := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	genCtx := &build.GeneratorContext{
+		Configuration:   cfg,
+		WorkspaceDir:    tmpDir,
+		OutputFS:        outputFS,
+		SourceDateEpoch: testTime,
+		Namespace:       "test-ns",
+		Arch:            "x86_64",
+		ReleaseData: &apko_build.ReleaseData{
+			ID:        "test-os",
+			VersionID: "1.0",
+		},
+	}
+
+	gen := &Generator{}
+	if err := gen.GenerateSBOM(ctx, genCtx); err != nil {
+		t.Fatalf("GenerateSBOM failed: %v", err)
+	}
+
+	// Read the generated SBOM
+	sbomPath := filepath.Join(tmpDir, "mixed-license-pkg", build.SBOMDir,
+		fmt.Sprintf("mixed-license-pkg-%s.spdx.json", cfg.Package.FullVersion()))
+
+	var actual spdx.Document
+	data, err := os.ReadFile(sbomPath)
+	if err != nil {
+		t.Fatalf("failed to read SBOM: %v", err)
+	}
+	if err := json.Unmarshal(data, &actual); err != nil {
+		t.Fatalf("failed to unmarshal SBOM: %v", err)
+	}
+
+	expected := &spdx.Document{
+		ID:      "SPDXRef-DOCUMENT",
+		Name:    "apk-mixed-license-pkg-2.0.0-r1",
+		Version: "SPDX-2.3",
+		CreationInfo: spdx.CreationInfo{
+			Created:            "2024-06-01T00:00:00Z",
+			Creators:           []string{"Tool: melange (devel)", "Organization: Chainguard, Inc"},
+			LicenseListVersion: "3.22",
+		},
+		DataLicense:       "CC0-1.0",
+		Namespace:         actual.Namespace, // Use actual namespace since it's dynamically generated
+		DocumentDescribes: []string{"SPDXRef-Package-mixed-license-pkg-2.0.0-r1"},
+		Packages: []spdx.Package{
+			{
+				ID:               "SPDXRef-OperatingSystem",
+				Name:             "test-os",
+				Version:          "1.0",
+				FilesAnalyzed:    false,
+				LicenseConcluded: "NOASSERTION",
+				LicenseDeclared:  "NOASSERTION",
+				Description:      "Operating System",
+				DownloadLocation: "NOASSERTION",
+				Originator:       "Organization: Test-Ns",
+				Supplier:         "Organization: Test-Ns",
+				PrimaryPurpose:   "OPERATING-SYSTEM",
+			},
+			{
+				ID:               "SPDXRef-Package-mixed-license-pkg-2.0.0-r1",
+				Name:             "mixed-license-pkg",
+				Version:          "2.0.0-r1",
+				FilesAnalyzed:    false,
+				LicenseConcluded: "NOASSERTION",
+				LicenseDeclared:  "MIT AND LicenseRef-CustomLicense",
+				DownloadLocation: "NOASSERTION",
+				Originator:       "Organization: Test-Ns",
+				Supplier:         "Organization: Test-Ns",
+				CopyrightText:    "NOASSERTION",
+				ExternalRefs: []spdx.ExternalRef{
+					{
+						Category: "PACKAGE-MANAGER",
+						Locator:  "pkg:apk/test-ns/mixed-license-pkg@2.0.0-r1?arch=x86_64&distro=test-ns",
+						Type:     "purl",
+					},
+				},
+			},
+		},
+		LicensingInfos: []spdx.LicensingInfo{
+			{
+				LicenseID:     "LicenseRef-CustomLicense",
+				ExtractedText: "Non-SPDX License: CustomLicense",
+			},
+		},
+	}
+
+	if diff := cmp.Diff(expected, &actual); diff != "" {
+		t.Errorf("SBOM mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()

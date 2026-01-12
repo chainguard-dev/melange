@@ -30,14 +30,14 @@ var (
 	IsDocumentationFileRegex = regexp.MustCompile(`(?:READ(?:\.?ME)?|TODO|CREDITS|\.(?:md|docx?|rst|[0-9][a-z]))$`)
 	IsObjectFileRegex        = regexp.MustCompile(`\.(a|so|dylib)(\..*)?`)
 	IsSharedObjectFileRegex  = regexp.MustCompile(`\.so(?:\.[0-9]+)*$`)
-	IsTempDirRegex           = regexp.MustCompile("^(var/)?(tmp|run)/")
+	IsTempDirRegex           = regexp.MustCompile("^(var/)?tmp/")
 	ManRegex                 = regexp.MustCompile(`^usr/(?:local/)?share/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$|^usr/man(?:/man[0-9][^/]*)?(?:/[^/]+\.[0-9][^/]*(?:\.(?:gz|bz2|xz|lzma|Z))?)?$`)
 	PkgconfDirRegex          = regexp.MustCompile("^usr/(lib|share)/pkgconfig/")
 )
 
 // AllPaths walks the filesystem and collects all paths matching the predicate,
 // returning a structured error if any paths are found.
-func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(path string) bool, messageFunc func(pkgname string, paths []string) string) error {
+func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(path string, d fs.DirEntry) bool, messageFunc func(pkgname string, paths []string) string) error {
 	var matchedPaths []string
 
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
@@ -47,10 +47,7 @@ func AllPaths(ctx context.Context, pkgname string, fsys fs.FS, predicate func(pa
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if predicate(path) {
+		if predicate(path, d) {
 			matchedPaths = append(matchedPaths, path)
 		}
 		return nil

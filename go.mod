@@ -8,7 +8,7 @@ require (
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.44
 	github.com/charmbracelet/log v0.4.2
-	github.com/docker/cli v29.1.3+incompatible
+	github.com/docker/cli v29.1.4+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.3.5
@@ -45,7 +45,7 @@ require (
 	golang.org/x/term v0.39.0
 	golang.org/x/text v0.32.0
 	golang.org/x/time v0.14.0
-	gopkg.in/ini.v1 v1.67.0
+	gopkg.in/ini.v1 v1.67.1
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.12.0
 	sigs.k8s.io/release-utils v0.12.2

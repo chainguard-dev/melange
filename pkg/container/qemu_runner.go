@@ -23,6 +23,7 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	_ "embed"
 	"encoding/base64"
 	"encoding/pem"
@@ -35,6 +36,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -1762,16 +1764,20 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 
 	cacheDir = filepath.Join(cacheDir, "melange-cpio")
 
+	// Include additional packages in cache filename to invalidate cache when they change
+	additionalPkgs := getAdditionalPackages(ctx)
+	cacheSuffix := getPackageCacheSuffix(additionalPkgs)
+
 	baseInitramfs := filepath.Join(
 		cacheDir,
-		"melange-guest.initramfs.cpio")
+		fmt.Sprintf("melange-guest%s.initramfs.cpio", cacheSuffix))
 	initramfsInfo, err := os.Stat(baseInitramfs)
 
 	// Check if we can use the cached base initramfs (less than 24h old)
 	useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
 
 	if !useCache {
-		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir)
+		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir, additionalPkgs)
 		if err != nil {
 			return "", err
 		}
@@ -1782,7 +1788,7 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 
 // generateBaseInitramfs creates the base initramfs with microvm-init.
 // This is cached for performance as it doesn't change often.
-func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string) error {
+func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string, additionalPkgs []string) error {
 	clog.FromContext(ctx).Info("qemu: generating base initramfs")
 
 	err := os.MkdirAll(cacheDir, 0o755)
@@ -1790,14 +1796,16 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 		return fmt.Errorf("unable to create dest directory: %w", err)
 	}
 
+	// Start with base packages and add any additional packages from environment
+	packages := []string{"microvm-init"}
+	packages = append(packages, additionalPkgs...)
+
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
 			BuildRepositories: []string{
 				"https://apk.cgr.dev/chainguard",
 			},
-			Packages: []string{
-				"microvm-init",
-			},
+			Packages: packages,
 		},
 	}
 	opts := []apko_build.Option{
@@ -1855,6 +1863,53 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 	}
 
 	return nil
+}
+
+// getAdditionalPackages parses and validates the QEMU_ADDITIONAL_PACKAGES environment variable.
+// Returns a list of package names to add to the initramfs, or empty slice if none/invalid.
+func getAdditionalPackages(ctx context.Context) []string {
+	pkgEnv := os.Getenv("QEMU_ADDITIONAL_PACKAGES")
+	if pkgEnv == "" {
+		return nil
+	}
+
+	// Basic validation: check for suspicious characters that could cause injection
+	// Allow: alphanumeric, hyphens, underscores, commas, dots
+	if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_,.-]+$`, pkgEnv); !matched {
+		clog.FromContext(ctx).Warnf("qemu: QEMU_ADDITIONAL_PACKAGES contains invalid characters, ignoring: %s", pkgEnv)
+		return nil
+	}
+
+	clog.FromContext(ctx).Infof("qemu: QEMU_ADDITIONAL_PACKAGES env set to %s, adding to initramfs", pkgEnv)
+
+	// Split comma-separated list and filter empty entries
+	var packages []string
+	for pkg := range strings.SplitSeq(pkgEnv, ",") {
+		pkg = strings.TrimSpace(pkg)
+		if pkg != "" {
+			packages = append(packages, pkg)
+		}
+	}
+
+	return packages
+}
+
+// getPackageCacheSuffix generates a deterministic cache suffix based on the package list.
+// Uses SHA256 hash (first 12 chars) to avoid collisions and keep filenames reasonable.
+// Returns empty string if packages list is empty.
+func getPackageCacheSuffix(packages []string) string {
+	if len(packages) == 0 {
+		return ""
+	}
+
+	// Join packages with commas to create a stable input string
+	pkgString := strings.Join(packages, ",")
+
+	// Generate SHA256 hash
+	hash := sha256.Sum256([]byte(pkgString))
+
+	// Use first 12 characters of hex encoding (like git short SHA)
+	return fmt.Sprintf("-%x", hash[:6])
 }
 
 // injectHostKeyIntoCpio creates a new initramfs by concatenating the base

@@ -15,8 +15,13 @@
 package container
 
 import (
+	"context"
+	"os"
 	"runtime"
 	"testing"
+
+	"github.com/chainguard-dev/clog"
+	"github.com/chainguard-dev/clog/slogtest"
 )
 
 func TestGetAvailableMemoryKB(t *testing.T) {
@@ -104,5 +109,185 @@ func TestGetAvailableMemoryKB_Fallback(t *testing.T) {
 	// Ensure fallback is reasonable
 	if expectedFallback < 1024*1024 { // Less than 1GB
 		t.Errorf("Fallback value %d KB seems too low", expectedFallback)
+	}
+}
+
+func TestGetAdditionalPackages(t *testing.T) {
+	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
+
+	tests := []struct {
+		name     string
+		envValue string
+		expected []string
+	}{
+		{
+			name:     "empty environment variable",
+			envValue: "",
+			expected: nil,
+		},
+		{
+			name:     "single package",
+			envValue: "hello-wolfi",
+			expected: []string{"hello-wolfi"},
+		},
+		{
+			name:     "multiple packages",
+			envValue: "hello-wolfi,nginx-stable,strace",
+			expected: []string{"hello-wolfi", "nginx-stable", "strace"},
+		},
+		{
+			name:     "packages with spaces around commas rejected",
+			envValue: "hello-wolfi, nginx-stable , strace",
+			expected: nil,
+		},
+		{
+			name:     "packages with dots and underscores",
+			envValue: "python-3.11,gcc_musl,nginx-1.25.0",
+			expected: []string{"python-3.11", "gcc_musl", "nginx-1.25.0"},
+		},
+		{
+			name:     "empty entries filtered out",
+			envValue: "hello-wolfi,,nginx-stable",
+			expected: []string{"hello-wolfi", "nginx-stable"},
+		},
+		{
+			name:     "invalid characters rejected",
+			envValue: "hello-wolfi;rm -rf /",
+			expected: nil,
+		},
+		{
+			name:     "shell injection attempt",
+			envValue: "package$(evil_command)",
+			expected: nil,
+		},
+		{
+			name:     "quotes rejected",
+			envValue: "\"hello-wolfi\"",
+			expected: nil,
+		},
+		{
+			name:     "spaces in package name rejected",
+			envValue: "hello wolfi",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set environment variable
+			if tt.envValue == "" {
+				os.Unsetenv("QEMU_ADDITIONAL_PACKAGES")
+			} else {
+				os.Setenv("QEMU_ADDITIONAL_PACKAGES", tt.envValue)
+			}
+			defer os.Unsetenv("QEMU_ADDITIONAL_PACKAGES")
+
+			result := getAdditionalPackages(ctx)
+
+			// Compare results
+			if len(result) != len(tt.expected) {
+				t.Errorf("getAdditionalPackages() returned %d packages, expected %d: got %v, want %v",
+					len(result), len(tt.expected), result, tt.expected)
+				return
+			}
+
+			for i, pkg := range result {
+				if pkg != tt.expected[i] {
+					t.Errorf("getAdditionalPackages()[%d] = %q, expected %q", i, pkg, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestGetPackageCacheSuffix(t *testing.T) {
+	tests := []struct {
+		name     string
+		packages []string
+		expected string
+	}{
+		{
+			name:     "empty package list",
+			packages: []string{},
+			expected: "",
+		},
+		{
+			name:     "nil package list",
+			packages: nil,
+			expected: "",
+		},
+		{
+			name:     "single package",
+			packages: []string{"hello-wolfi"},
+			expected: "-f5c4369d6487",
+		},
+		{
+			name:     "multiple packages deterministic",
+			packages: []string{"hello-wolfi", "nginx-stable", "strace"},
+			expected: "-8315f3ef029a",
+		},
+		{
+			name:     "same packages different order produces different hash",
+			packages: []string{"strace", "hello-wolfi", "nginx-stable"},
+			expected: "-5236a484f919",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getPackageCacheSuffix(tt.packages)
+
+			if result != tt.expected {
+				t.Errorf("getPackageCacheSuffix(%v) = %q, expected %q", tt.packages, result, tt.expected)
+			}
+
+			// Additional validation: check format
+			if len(tt.packages) > 0 {
+				// Should start with dash and have 12 hex characters
+				if len(result) != 13 { // "-" + 12 hex chars
+					t.Errorf("getPackageCacheSuffix(%v) = %q, expected 13 characters (dash + 12 hex)", tt.packages, result)
+				}
+				if result[0] != '-' {
+					t.Errorf("getPackageCacheSuffix(%v) = %q, expected to start with '-'", tt.packages, result)
+				}
+			}
+		})
+	}
+}
+
+func TestGetPackageCacheSuffix_Deterministic(t *testing.T) {
+	// Test that the same packages always produce the same hash
+	packages := []string{"hello-wolfi", "nginx-stable", "strace"}
+
+	result1 := getPackageCacheSuffix(packages)
+	result2 := getPackageCacheSuffix(packages)
+
+	if result1 != result2 {
+		t.Errorf("getPackageCacheSuffix is not deterministic: first call returned %q, second call returned %q", result1, result2)
+	}
+}
+
+func TestGetPackageCacheSuffix_NoCollisions(t *testing.T) {
+	// Test that different package lists produce different hashes
+	testCases := [][]string{
+		{"package-a", "package-b", "package-c", "package-d", "package-e"},
+		{"package-a", "package-b", "package-c", "package-d", "package-f"},
+		{"hello-wolfi"},
+		{"hello-wolfi", "nginx-stable"},
+		{"nginx-stable", "hello-wolfi"}, // Order matters
+	}
+
+	hashes := make(map[string][]string)
+	for _, packages := range testCases {
+		hash := getPackageCacheSuffix(packages)
+		hashes[hash] = packages
+	}
+
+	// Should have unique hashes for each unique package list
+	if len(hashes) != len(testCases) {
+		t.Errorf("getPackageCacheSuffix produced collisions: %d unique hashes for %d test cases", len(hashes), len(testCases))
+		for hash, packages := range hashes {
+			t.Logf("Hash %q: %v", hash, packages)
+		}
 	}
 }

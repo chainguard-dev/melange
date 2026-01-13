@@ -1798,7 +1798,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 
 	// Start with base packages and add any additional packages from environment
 	packages := []string{"microvm-init"}
-	packages = append(packages, getAdditionalPackages(ctx)...)
+	packages = append(packages, additionalPkgs...)
 
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{

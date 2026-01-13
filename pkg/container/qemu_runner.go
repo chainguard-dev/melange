@@ -1795,6 +1795,9 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 	if err != nil {
 		return fmt.Errorf("unable to create dest directory: %w", err)
 	}
+	
+	// Get existing additional packages from context
+	additionalPkgs := getAdditionalPackages(ctx)
 
 	// Start with base packages and add any additional packages from environment
 	packages := []string{"microvm-init"}

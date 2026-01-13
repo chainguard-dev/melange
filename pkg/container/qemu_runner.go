@@ -1777,7 +1777,7 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 	useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
 
 	if !useCache {
-		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir)
+		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir, additionalPkgs)
 		if err != nil {
 			return "", err
 		}
@@ -1788,7 +1788,7 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 
 // generateBaseInitramfs creates the base initramfs with microvm-init.
 // This is cached for performance as it doesn't change often.
-func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string) error {
+func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string, additionalPkgs []string) error {
 	clog.FromContext(ctx).Info("qemu: generating base initramfs")
 
 	err := os.MkdirAll(cacheDir, 0o755)

@@ -1375,6 +1375,7 @@ func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 		Assertions:  in.Assertions,
 		WorkDir:     r.Replace(in.WorkDir),
 		Environment: replaceMap(r, in.Environment),
+		Retry:       in.Retry,
 	}
 }
 

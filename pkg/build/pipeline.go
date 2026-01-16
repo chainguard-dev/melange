@@ -406,7 +406,7 @@ func (r *pipelineRunner) runPipelineWithRetry(ctx context.Context, pipeline *con
 
 	// Execute pipeline with retry logic
 	var lastErr error
-	for attempt := 0; attempt < attempts; attempt++ {
+	for attempt := range attempts {
 		if attempt > 0 {
 			// Calculate backoff delay
 			delay := calculateBackoff(backoff, attempt-1, initialDelay, maxDelay)

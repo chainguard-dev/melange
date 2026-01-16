@@ -374,11 +374,7 @@ func calculateBackoff(strategy string, attemptNum int, initialDelay, maxDelay ti
 		delay = time.Duration(multiplier) * initialDelay
 	}
 
-	if delay > maxDelay {
-		delay = maxDelay
-	}
-
-	return delay
+	return min(delay, maxDelay)
 }
 
 // runPipelineWithRetry wraps runPipeline with retry logic based on the pipeline's retry configuration.
@@ -391,10 +387,7 @@ func (r *pipelineRunner) runPipelineWithRetry(ctx context.Context, pipeline *con
 	}
 
 	// Parse and apply defaults to retry configuration
-	attempts := pipeline.Retry.Attempts
-	if attempts < 1 {
-		attempts = 1
-	}
+	attempts := max(pipeline.Retry.Attempts, 1)
 
 	backoff := pipeline.Retry.Backoff
 	if backoff == "" {

@@ -343,6 +343,11 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	// We don't care about the documented inputs.
 	pipeline.Inputs = nil
 
+	// Validate retry configuration if present
+	if err := validateRetryConfig(pipeline.Retry); err != nil {
+		return fmt.Errorf("invalid retry configuration: %w", err)
+	}
+
 	return nil
 }
 
@@ -355,6 +360,43 @@ func identity(p *config.Pipeline) string {
 	}
 
 	return unidentifiablePipeline
+}
+
+func validateRetryConfig(retry *config.RetryConfig) error {
+	if retry == nil {
+		return nil
+	}
+
+	// Validate attempts
+	if retry.Attempts < 1 {
+		return fmt.Errorf("attempts must be at least 1, got %d", retry.Attempts)
+	}
+
+	if retry.Attempts > 10 {
+		// This is just a warning logged to the user
+		clog.Warnf("retry attempts set to %d, which may cause long build times", retry.Attempts)
+	}
+
+	// Validate backoff strategy
+	validBackoffs := []string{"constant", "linear", "exponential"}
+	if retry.Backoff != "" && !slices.Contains(validBackoffs, retry.Backoff) {
+		return fmt.Errorf("backoff must be one of %v, got %q", validBackoffs, retry.Backoff)
+	}
+
+	// Validate duration strings
+	if retry.InitialDelay != "" {
+		if _, err := parseDuration(retry.InitialDelay, 0); err != nil {
+			return fmt.Errorf("invalid initial-delay: %w", err)
+		}
+	}
+
+	if retry.MaxDelay != "" {
+		if _, err := parseDuration(retry.MaxDelay, 0); err != nil {
+			return fmt.Errorf("invalid max-delay: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) error {

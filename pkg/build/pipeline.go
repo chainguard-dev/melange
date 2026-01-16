@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	apkoTypes "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
@@ -246,7 +247,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		mergedEnv := maps.Clone(envOverride)
 		maps.Copy(mergedEnv, p.Environment)
 		p.Environment = mergedEnv
-		if ran, err := r.runPipeline(ctx, &p); err != nil {
+		if ran, err := r.runPipelineWithRetry(ctx, &p); err != nil {
 			return false, fmt.Errorf("unable to run pipeline: %w", err)
 		} else if ran {
 			steps++
@@ -321,7 +322,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 
 func (r *pipelineRunner) runPipelines(ctx context.Context, pipelines []config.Pipeline) error {
 	for _, p := range pipelines {
-		if _, err := r.runPipeline(ctx, &p); err != nil {
+		if _, err := r.runPipelineWithRetry(ctx, &p); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}
@@ -340,6 +341,120 @@ func shouldRun(ifs string) (bool, error) {
 	}
 
 	return result, nil
+}
+
+// parseDuration parses a duration string, returning the default if parsing fails or string is empty.
+func parseDuration(s string, defaultDuration time.Duration) (time.Duration, error) {
+	if s == "" {
+		return defaultDuration, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q: %w", s, err)
+	}
+	return d, nil
+}
+
+// calculateBackoff calculates the backoff delay for a given retry attempt.
+func calculateBackoff(strategy string, attemptNum int, initialDelay, maxDelay time.Duration) time.Duration {
+	var delay time.Duration
+
+	switch strategy {
+	case "constant":
+		delay = initialDelay
+	case "linear":
+		delay = time.Duration(attemptNum+1) * initialDelay
+	case "exponential":
+		// 2^attemptNum * initialDelay
+		multiplier := 1 << attemptNum
+		delay = time.Duration(multiplier) * initialDelay
+	default:
+		// Default to exponential
+		multiplier := 1 << attemptNum
+		delay = time.Duration(multiplier) * initialDelay
+	}
+
+	if delay > maxDelay {
+		delay = maxDelay
+	}
+
+	return delay
+}
+
+// runPipelineWithRetry wraps runPipeline with retry logic based on the pipeline's retry configuration.
+func (r *pipelineRunner) runPipelineWithRetry(ctx context.Context, pipeline *config.Pipeline) (bool, error) {
+	log := clog.FromContext(ctx)
+
+	// If no retry config, just run the pipeline once
+	if pipeline.Retry == nil {
+		return r.runPipeline(ctx, pipeline)
+	}
+
+	// Parse and apply defaults to retry configuration
+	attempts := pipeline.Retry.Attempts
+	if attempts < 1 {
+		attempts = 1
+	}
+
+	backoff := pipeline.Retry.Backoff
+	if backoff == "" {
+		backoff = "exponential"
+	}
+
+	initialDelay, err := parseDuration(pipeline.Retry.InitialDelay, 1*time.Second)
+	if err != nil {
+		return false, fmt.Errorf("invalid initial-delay: %w", err)
+	}
+
+	maxDelay, err := parseDuration(pipeline.Retry.MaxDelay, 60*time.Second)
+	if err != nil {
+		return false, fmt.Errorf("invalid max-delay: %w", err)
+	}
+
+	// Execute pipeline with retry logic
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			// Calculate backoff delay
+			delay := calculateBackoff(backoff, attempt-1, initialDelay, maxDelay)
+
+			if id := identity(pipeline); id != unidentifiablePipeline {
+				log.Infof("retrying step %q (attempt %d/%d) after %v", id, attempt+1, attempts, delay)
+			} else {
+				log.Infof("retrying pipeline (attempt %d/%d) after %v", attempt+1, attempts, delay)
+			}
+
+			// Wait for backoff delay, respecting context cancellation
+			select {
+			case <-ctx.Done():
+				return false, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		ran, err := r.runPipeline(ctx, pipeline)
+		if err == nil {
+			// Success
+			return ran, nil
+		}
+
+		lastErr = err
+
+		// If this is not the last attempt, continue to retry
+		if attempt < attempts-1 {
+			if id := identity(pipeline); id != unidentifiablePipeline {
+				log.Warnf("step %q failed (attempt %d/%d): %v", id, attempt+1, attempts, err)
+			} else {
+				log.Warnf("pipeline failed (attempt %d/%d): %v", attempt+1, attempts, err)
+			}
+		}
+	}
+
+	// All attempts exhausted
+	if id := identity(pipeline); id != unidentifiablePipeline {
+		return false, fmt.Errorf("step %q failed after %d attempts: %w", id, attempts, lastErr)
+	}
+	return false, fmt.Errorf("pipeline failed after %d attempts: %w", attempts, lastErr)
 }
 
 func expectedShaLength(shaType string) int {

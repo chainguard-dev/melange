@@ -500,3 +500,72 @@ TODO(vaikas): melange config points to apko here:
 # pipeline
 Pipeline defines the ordered steps to build the package.
 
+## Pipeline Fields
+
+Each pipeline entry can include the following fields:
+
+### name
+Optional: A user-defined name for the pipeline step. Used in logs and error messages to identify the step.
+
+### uses
+Optional: A named reusable pipeline to run. Can be either a builtin melange pipeline or a user-defined named pipeline. See [PIPELINES.md](PIPELINES.md) for more information.
+
+### with
+Optional: Arguments passed to the reusable pipelines defined in `uses`.
+
+### runs
+Optional: The command to run using the builder's shell (`/bin/sh`).
+
+### pipeline
+Optional: A list of nested pipelines to run. Each pipeline runs in its own context that is not shared between other pipelines.
+
+### if
+Optional: A condition to evaluate before running the pipeline. If the condition evaluates to false, the pipeline is skipped.
+
+### inputs
+Optional: A map of inputs to the pipeline.
+
+### needs
+Optional: Configuration to determine any explicit dependencies this pipeline may have.
+
+### label
+Optional: Labels to apply to the pipeline.
+
+### assertions
+Optional: Assertions to evaluate whether the pipeline was successful.
+
+### working-directory
+Optional: The working directory for the pipeline. Defaults to the guest's build workspace (`/home/build`).
+
+### environment
+Optional: Environment variables to override for this pipeline.
+
+### retry
+Optional: Retry configuration for this pipeline. Allows the pipeline to automatically retry on failure with configurable backoff strategies.
+
+#### Retry Configuration
+
+The `retry` field accepts the following sub-fields:
+
+- **attempts** (integer, default: 1): The number of times to attempt the pipeline execution. Must be at least 1.
+- **backoff** (string, default: "exponential"): The backoff strategy to use between retry attempts. Valid values: "constant", "linear", "exponential".
+- **initial-delay** (duration string, default: "1s"): The initial delay before the first retry attempt. Format: duration string (e.g., "1s", "500ms", "2m").
+- **max-delay** (duration string, default: "60s"): The maximum delay between retries. Prevents exponential backoff from growing too large.
+
+**Example:**
+```yaml
+pipeline:
+  - name: fetch-source
+    retry:
+      attempts: 5
+      backoff: exponential
+      initial-delay: 2s
+      max-delay: 30s
+    uses: fetch
+    with:
+      uri: https://example.com/source.tar.gz
+      expected-sha256: abc123...
+```
+
+For detailed information about retry functionality, backoff strategies, best practices, and usage examples, see [PIPELINES-RETRY.md](PIPELINES-RETRY.md).
+

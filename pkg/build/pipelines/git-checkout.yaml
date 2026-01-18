@@ -67,7 +67,18 @@ inputs:
         sparse-paths:
           - omnibump
           - shared/lib
-
+  max-retries:
+    description: |
+      Maximum number of retry attempts for git clone operation on failure.
+    default: "3"
+  initial-backoff:
+    description: |
+      Initial backoff duration in seconds before first retry.
+    default: "2"
+  max-backoff:
+    description: |
+      Maximum backoff duration in seconds between retries.
+    default: "60"
 
 pipeline:
   - runs: |
@@ -77,6 +88,54 @@ pipeline:
       msg() { echo "[git checkout]" "$@"; }
       fail() { msg FAIL "$@"; exit 1; }
       vr() { msg "execute:" "$@"; "$@"; }
+
+      # Retry function with exponential backoff and jitter
+      retry_with_backoff() {
+          local max_retries=$1
+          local initial_backoff=$2
+          local max_backoff=$3
+          shift 3
+          local attempt=0
+          local backoff=$initial_backoff
+
+          while [ $attempt -le $max_retries ]; do
+              if [ $attempt -gt 0 ]; then
+                  msg "Retry attempt $attempt/$max_retries after ${backoff}s backoff..."
+              fi
+
+              if "$@"; then
+                  return 0
+              fi
+
+              attempt=$((attempt + 1))
+              if [ $attempt -gt $max_retries ]; then
+                  msg "All $max_retries retry attempts exhausted"
+                  return 1
+              fi
+
+              # Calculate jitter: random value between 0 and backoff
+              # Using $RANDOM (bash built-in) or fallback to basic arithmetic
+              local jitter=0
+              if [ -n "$RANDOM" ]; then
+                  jitter=$((RANDOM % (backoff + 1)))
+              else
+                  # Fallback: use process ID as pseudo-random seed
+                  jitter=$((($$ * attempt) % (backoff + 1)))
+              fi
+
+              local sleep_time=$((backoff + jitter))
+              msg "Waiting ${sleep_time}s before retry (backoff: ${backoff}s, jitter: ${jitter}s)..."
+              sleep $sleep_time
+
+              # Exponential backoff: double the backoff time
+              backoff=$((backoff * 2))
+              if [ $backoff -gt $max_backoff ]; then
+                  backoff=$max_backoff
+              fi
+          done
+
+          return 1
+      }
 
       process_cherry_picks() {
         local cpicksf="$1" oifs="$IFS" count=0
@@ -156,9 +215,11 @@ pipeline:
           local repo=$1 dest=${2:-.} depth=${3:-"unset"} branch=$4
           local tag=$5 expcommit=$6 recurse=${7:-false}
           local cherry_pick="$8" sparse_paths="$9"
+          local max_retries="${10:-3}" initial_backoff="${11:-2}" max_backoff="${12:-60}"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
               "tag='$tag' expcommit='$expcommit' recurse='$recurse'" \
-              "sparse_paths='$sparse_paths'"
+              "sparse_paths='$sparse_paths' max_retries='$max_retries'" \
+              "initial_backoff='$initial_backoff' max_backoff='$max_backoff'"
 
           case "$recurse" in
               true|false) :;;
@@ -204,11 +265,14 @@ pipeline:
           vr git config --global --add safe.directory "$workdir"
           vr git config --global --add safe.directory "$dest_fullpath"
 
-          vr git clone $quiet "--origin=$remote" \
+          msg "Attempting git clone with retry (max_retries=$max_retries, initial_backoff=${initial_backoff}s, max_backoff=${max_backoff}s)"
+          retry_with_backoff "$max_retries" "$initial_backoff" "$max_backoff" \
+              git clone $quiet "--origin=$remote" \
               "--config=user.name=Melange Build" \
               "--config=user.email=melange-build@cgr.dev" \
               $flags \
-              ${depthflag:+"$depthflag"} "$repo" "$workdir"
+              ${depthflag:+"$depthflag"} "$repo" "$workdir" ||
+              fail "git clone failed after $max_retries retries"
 
           vr cd "$workdir"
 
@@ -296,6 +360,8 @@ pipeline:
           "${{inputs.depth}}" "${{inputs.branch}}" \
           "${{inputs.tag}}" "${{inputs.expected-commit}}" \
           "${{inputs.recurse-submodules}}" "$cpickf" \
-          "${{inputs.sparse-paths}}"
+          "${{inputs.sparse-paths}}" \
+          "${{inputs.max-retries}}" "${{inputs.initial-backoff}}" \
+          "${{inputs.max-backoff}}"
 
       rm -f "$cpickf"

@@ -47,6 +47,9 @@ Check out sources from git
 | depth | false | The depth to use when cloning. Use -1 to get full branch history. If 'branch' and 'expected-commit' are provided the default is -1. Otherwise, default is to use '1' (shallow clone).  | unset |
 | destination | false | The path to check out the sources to.  | . |
 | expected-commit | false | The expected commit hash  |  |
+| initial-backoff | false | Initial backoff duration in seconds before first retry.  | 2 |
+| max-backoff | false | Maximum backoff duration in seconds between retries.  | 60 |
+| max-retries | false | Maximum number of retry attempts for git clone operation on failure.  | 3 |
 | recurse-submodules | false | Indicates whether --recurse-submodules should be passed to git clone.  | false |
 | repository | true | The repository to check out sources from.  |  |
 | sparse-paths | false | List of directory paths to checkout when using sparse-checkout (cone mode). This is useful for monorepos where you only need specific subdirectories. When specified, only these directories will be checked out from the repository. Uses cone mode for optimal performance. Example:   sparse-paths:     - omnibump     - shared/lib  |  |

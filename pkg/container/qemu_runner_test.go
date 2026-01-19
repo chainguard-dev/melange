@@ -291,3 +291,265 @@ func TestGetPackageCacheSuffix_NoCollisions(t *testing.T) {
 		}
 	}
 }
+
+func TestVirtiofsdSearchPaths(t *testing.T) {
+	// Verify search paths are defined and non-empty
+	if len(virtiofsdSearchPaths) == 0 {
+		t.Error("virtiofsdSearchPaths is empty")
+	}
+
+	// Verify expected paths are present
+	expectedPaths := map[string]bool{
+		"/usr/libexec/virtiofsd":  false,
+		"/usr/lib/qemu/virtiofsd": false,
+		"virtiofsd":               false,
+	}
+
+	for _, path := range virtiofsdSearchPaths {
+		if _, ok := expectedPaths[path]; ok {
+			expectedPaths[path] = true
+		}
+	}
+
+	for path, found := range expectedPaths {
+		if !found {
+			t.Errorf("expected path %q not found in virtiofsdSearchPaths", path)
+		}
+	}
+
+	t.Logf("virtiofsdSearchPaths: %v", virtiofsdSearchPaths)
+}
+
+func TestIsVirtiofsdAvailable(t *testing.T) {
+	path, available := isVirtiofsdAvailable()
+
+	if available {
+		// If available, path should be non-empty
+		if path == "" {
+			t.Error("isVirtiofsdAvailable() returned available=true but empty path")
+		}
+		t.Logf("virtiofsd found at: %s", path)
+	} else {
+		// If not available, path should be empty
+		if path != "" {
+			t.Errorf("isVirtiofsdAvailable() returned available=false but non-empty path: %s", path)
+		}
+		t.Log("virtiofsd not found on this system")
+	}
+}
+
+func TestUseVirtiofs(t *testing.T) {
+	// Save original env and restore after test
+	originalEnv, hadEnv := os.LookupEnv("QEMU_USE_VIRTIOFS")
+	defer func() {
+		if hadEnv {
+			os.Setenv("QEMU_USE_VIRTIOFS", originalEnv)
+		} else {
+			os.Unsetenv("QEMU_USE_VIRTIOFS")
+		}
+	}()
+
+	tests := []struct {
+		name        string
+		envValue    string
+		envSet      bool
+		expectUse   bool
+		expectError bool
+	}{
+		{
+			name:        "env not set",
+			envSet:      false,
+			expectUse:   false,
+			expectError: false,
+		},
+		{
+			name:        "env set to false",
+			envValue:    "false",
+			envSet:      true,
+			expectUse:   false,
+			expectError: false,
+		},
+		{
+			name:        "env set to 0",
+			envValue:    "0",
+			envSet:      true,
+			expectUse:   false,
+			expectError: false,
+		},
+		{
+			name:        "env set to invalid value",
+			envValue:    "invalid",
+			envSet:      true,
+			expectUse:   false,
+			expectError: false,
+		},
+		{
+			name:        "env set to empty string",
+			envValue:    "",
+			envSet:      true,
+			expectUse:   false,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envSet {
+				os.Setenv("QEMU_USE_VIRTIOFS", tt.envValue)
+			} else {
+				os.Unsetenv("QEMU_USE_VIRTIOFS")
+			}
+
+			use, err := useVirtiofs()
+
+			if tt.expectError && err == nil {
+				t.Error("expected error but got nil")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if use != tt.expectUse {
+				t.Errorf("useVirtiofs() = %v, expected %v", use, tt.expectUse)
+			}
+		})
+	}
+}
+
+func TestUseVirtiofs_EnabledWithAvailability(t *testing.T) {
+	// Save original env and restore after test
+	originalEnv, hadEnv := os.LookupEnv("QEMU_USE_VIRTIOFS")
+	defer func() {
+		if hadEnv {
+			os.Setenv("QEMU_USE_VIRTIOFS", originalEnv)
+		} else {
+			os.Unsetenv("QEMU_USE_VIRTIOFS")
+		}
+	}()
+
+	// Test with QEMU_USE_VIRTIOFS=1
+	os.Setenv("QEMU_USE_VIRTIOFS", "1")
+
+	_, available := isVirtiofsdAvailable()
+	use, err := useVirtiofs()
+
+	if available {
+		// virtiofsd is available, should return true with no error
+		if err != nil {
+			t.Errorf("unexpected error when virtiofsd is available: %v", err)
+		}
+		if !use {
+			t.Error("useVirtiofs() = false when virtiofsd is available and QEMU_USE_VIRTIOFS=1")
+		}
+		t.Log("virtiofsd available: useVirtiofs returned true")
+	} else {
+		// virtiofsd is not available, should return error
+		if err == nil {
+			t.Error("expected error when virtiofsd not available but QEMU_USE_VIRTIOFS=1")
+		}
+		if use {
+			t.Error("useVirtiofs() = true when virtiofsd is not available")
+		}
+		t.Logf("virtiofsd not available: useVirtiofs returned error: %v", err)
+	}
+}
+
+func TestUseVirtiofs_ErrorMessageContainsPaths(t *testing.T) {
+	// Skip if virtiofsd is available (can't test error path)
+	if _, available := isVirtiofsdAvailable(); available {
+		t.Skip("virtiofsd is available, cannot test error message")
+	}
+
+	// Save original env and restore after test
+	originalEnv, hadEnv := os.LookupEnv("QEMU_USE_VIRTIOFS")
+	defer func() {
+		if hadEnv {
+			os.Setenv("QEMU_USE_VIRTIOFS", originalEnv)
+		} else {
+			os.Unsetenv("QEMU_USE_VIRTIOFS")
+		}
+	}()
+
+	os.Setenv("QEMU_USE_VIRTIOFS", "1")
+	_, err := useVirtiofs()
+
+	if err == nil {
+		t.Fatal("expected error but got nil")
+	}
+
+	errMsg := err.Error()
+
+	// Error message should mention the search paths
+	for _, path := range virtiofsdSearchPaths {
+		if !contains(errMsg, path) {
+			t.Errorf("error message should contain path %q: %s", path, errMsg)
+		}
+	}
+
+	t.Logf("error message: %s", errMsg)
+}
+
+func TestStopVirtiofsd_NoOp(t *testing.T) {
+	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
+
+	// Test that stopVirtiofsd doesn't panic with zero values
+	cfg := &Config{}
+	stopVirtiofsd(ctx, cfg)
+
+	// Test with already-zeroed PID
+	cfg.VirtiofsdPID = 0
+	cfg.VirtiofsdSocketPath = ""
+	stopVirtiofsd(ctx, cfg)
+
+	// Should not panic or error
+	t.Log("stopVirtiofsd handled zero-value config correctly")
+}
+
+func TestStopVirtiofsd_CleansUpSocket(t *testing.T) {
+	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
+
+	// Create a temporary file to simulate a socket
+	tmpFile, err := os.CreateTemp("", "test-virtiofsd-*.sock")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+
+	// Verify file exists
+	if _, err := os.Stat(tmpPath); os.IsNotExist(err) {
+		t.Fatal("temp file should exist")
+	}
+
+	cfg := &Config{
+		VirtiofsdPID:        0, // No process to kill
+		VirtiofsdSocketPath: tmpPath,
+	}
+
+	stopVirtiofsd(ctx, cfg)
+
+	// Socket path should be cleared
+	if cfg.VirtiofsdSocketPath != "" {
+		t.Errorf("VirtiofsdSocketPath should be cleared, got %q", cfg.VirtiofsdSocketPath)
+	}
+
+	// File should be removed
+	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
+		t.Error("socket file should be removed")
+		os.Remove(tmpPath) // Clean up
+	}
+}
+
+// contains checks if substr is in s
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

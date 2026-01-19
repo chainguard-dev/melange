@@ -75,4 +75,9 @@ type Config struct {
 	SSHControlClient         *ssh.Client // SSH client for unrestricted control environment, has privileges
 	QemuPID                  int
 	RunAsGID                 string
+
+	// Virtiofs-related fields for cache directory
+	VirtiofsEnabled     bool   // Whether virtiofs is enabled for cache
+	VirtiofsdPID        int    // PID of virtiofsd daemon for cleanup
+	VirtiofsdSocketPath string // Path to Unix socket for virtiofsd
 }

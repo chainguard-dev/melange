@@ -390,6 +390,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer os.Remove(cfg.Disk)
 	defer os.Remove(cfg.SSHHostKey)
 	defer secureDelete(ctx, cfg.InitramfsPath)
+	defer stopVirtiofsd(ctx, cfg)
 
 	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
@@ -596,6 +597,35 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	// Set up virtiofs for cache directory if enabled and available
+	if cfg.CacheDir != "" {
+		// Ensure the cachedir exists
+		if err := os.MkdirAll(cfg.CacheDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create shared cachedir: %w", err)
+		}
+
+		var err error
+		cfg.VirtiofsEnabled, err = useVirtiofs()
+		if err != nil {
+			return err
+		}
+
+		if cfg.VirtiofsEnabled {
+			// Generate a random socket path
+			var randBytes [8]byte
+			if _, err := rand.Read(randBytes[:]); err != nil {
+				return fmt.Errorf("failed to generate random bytes for socket path: %w", err)
+			}
+			cfg.VirtiofsdSocketPath = filepath.Join(os.TempDir(), fmt.Sprintf("melange-virtiofsd-%x.sock", randBytes))
+
+			virtiofsdCmd, err := startVirtiofsd(ctx, cfg)
+			if err != nil {
+				return fmt.Errorf("failed to start virtiofsd: %w", err)
+			}
+			cfg.VirtiofsdPID = virtiofsdCmd.Process.Pid
+		}
+	}
+
 	baseargs := []string{}
 	bios := false
 	useVM := false
@@ -620,6 +650,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		"-chardev", "stdio,id=charconsole0",
 		"-device", "virtconsole,chardev=charconsole0,id=console0",
 	}
+	// Helper to add memory-backend suffix for virtiofs shared memory
+	machineMemorySuffix := ""
+	if cfg.VirtiofsEnabled {
+		machineMemorySuffix = ",memory-backend=mem"
+	}
+
 	if useVM {
 		// load microvm profile and bios, shave some milliseconds from boot
 		// using this will make a complete boot->initrd (with working network) In ~700ms
@@ -630,7 +666,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} {
 			if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
 				// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=on")
+				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=on"+machineMemorySuffix)
 				baseargs = append(baseargs, "-bios", p)
 				// microvm in qemu any version tested will not send hvc0/virtconsole to stdout
 				kernelConsole = "console=ttyS0"
@@ -647,9 +683,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		// if we're on x86 arch, but without microvm machine type, let's go to q35
 		switch cfg.Arch.ToAPK() {
 		case "aarch64":
-			baseargs = append(baseargs, "-machine", "virt")
+			baseargs = append(baseargs, "-machine", "virt"+machineMemorySuffix)
 		case "x86_64":
-			baseargs = append(baseargs, "-machine", "q35")
+			baseargs = append(baseargs, "-machine", "q35"+machineMemorySuffix)
 		default:
 			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 		}
@@ -667,7 +703,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			mem = memKb
 		}
 	}
-	baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
+	// Memory configuration - virtiofs requires shared memory backend
+	if cfg.VirtiofsEnabled {
+		// Round up memory to MiB boundary for memory-backend-memfd alignment
+		memMiB := (mem + 1023) / 1024 * 1024
+		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", memMiB))
+		baseargs = append(baseargs, "-object", fmt.Sprintf("memory-backend-memfd,id=mem,size=%dM,share=on", memMiB/1024))
+	} else {
+		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
+	}
 
 	// default to use all CPUs, if a cpu limit is set, respect it.
 	nproc := runtime.NumCPU()
@@ -757,12 +801,19 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs100,fsdev=fsdev100,mount_tag=defaultshare")
 
 	if cfg.CacheDir != "" {
-		baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,readonly=on,path="+cfg.CacheDir)
-		baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
-
-		// ensure the cachedir exists
-		if err := os.MkdirAll(cfg.CacheDir, 0o755); err != nil {
-			return fmt.Errorf("failed to create shared cachedir: %w", err)
+		if cfg.VirtiofsEnabled {
+			log.Info("qemu: using virtiofs for cache directory (read-write)")
+			// Chardev for socket communication
+			baseargs = append(baseargs,
+				"-chardev",
+				fmt.Sprintf("socket,id=char_cache,path=%s", cfg.VirtiofsdSocketPath))
+			// vhost-user-fs-pci device
+			baseargs = append(baseargs, "-device",
+				"vhost-user-fs-pci,queue-size=1024,chardev=char_cache,tag=melange_cache")
+		} else {
+			log.Info("qemu: using 9p for cache directory (read-only with overlay)")
+			baseargs = append(baseargs, "-fsdev", "local,security_model=mapped,id=fsdev101,readonly=on,path="+cfg.CacheDir)
+			baseargs = append(baseargs, "-device", "virtio-9p-pci,id=fs101,fsdev=fsdev101,mount_tag=melange_cache")
 		}
 	}
 
@@ -836,6 +887,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	if err := qemuCmd.Start(); err != nil {
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
+		defer stopVirtiofsd(ctx, cfg)
 		return fmt.Errorf("qemu: failed to start qemu command: %w", err)
 	}
 
@@ -908,10 +960,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
+		defer stopVirtiofsd(ctx, cfg)
 		return fmt.Errorf("qemu: VM exited unexpectedly: %w", err)
 	case <-ctx.Done():
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
+		defer stopVirtiofsd(ctx, cfg)
 		return fmt.Errorf("qemu: context canceled while waiting for VM to start")
 	}
 
@@ -940,33 +994,52 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	clog.FromContext(ctx).Infof("qemu: running kernel version: %s", kv)
 
 	if cfg.CacheDir != "" {
-		clog.FromContext(ctx).Infof("qemu: setting up melange cachedir: %s", cfg.CacheDir)
-		setupMountCommand := fmt.Sprintf(
-			"mkdir -p %s %s /mount/upper /mount/work && "+
-				"chmod 1777 /mount/upper && "+
-				"mount -t 9p -o ro melange_cache %s && "+
-				"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
-			DefaultCacheDir,
-			filepath.Join("/mount", DefaultCacheDir),
-			DefaultCacheDir,
-			DefaultCacheDir,
-			filepath.Join("/mount", DefaultCacheDir),
-		)
-		if setupMountCommand != ": " {
-			err = sendSSHCommand(ctx,
-				cfg.SSHControlClient,
-				cfg,
-				nil,
-				stderr,
-				stdout,
-				false,
-				[]string{"sh", "-c", setupMountCommand},
+		var setupMountCommand string
+
+		if cfg.VirtiofsEnabled {
+			// Virtiofs: read-write mount at the chroot path
+			// The build runs chrooted at /mount/, so we mount at /mount/var/cache/melange
+			// which appears as /var/cache/melange inside the chroot
+			chrootCacheDir := filepath.Join("/mount", DefaultCacheDir)
+			clog.FromContext(ctx).Infof("qemu: setting up virtiofs cache mount (read-write): %s -> %s", cfg.CacheDir, chrootCacheDir)
+			setupMountCommand = fmt.Sprintf(
+				"mkdir -p %s && mount -t virtiofs melange_cache %s",
+				chrootCacheDir,
+				chrootCacheDir,
 			)
+		} else {
+			// 9p: readonly with overlay for write support
+			clog.FromContext(ctx).Infof("qemu: setting up 9p cache mount (read-only with overlay): %s", cfg.CacheDir)
+			setupMountCommand = fmt.Sprintf(
+				"mkdir -p %s %s /mount/upper /mount/work && "+
+					"chmod 1777 /mount/upper && "+
+					"mount -t 9p -o ro melange_cache %s && "+
+					"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
+				DefaultCacheDir,
+				filepath.Join("/mount", DefaultCacheDir),
+				DefaultCacheDir,
+				DefaultCacheDir,
+				filepath.Join("/mount", DefaultCacheDir),
+			)
+		}
+
+		err = sendSSHCommand(ctx,
+			cfg.SSHControlClient,
+			cfg,
+			nil,
+			stderr,
+			stdout,
+			false,
+			[]string{"sh", "-c", setupMountCommand},
+		)
+		if err != nil {
+			// Clean up virtiofsd on failure
+			if cfg.VirtiofsEnabled {
+				stopVirtiofsd(ctx, cfg)
+			}
+			err = qemuCmd.Process.Kill()
 			if err != nil {
-				err = qemuCmd.Process.Kill()
-				if err != nil {
-					return err
-				}
+				return err
 			}
 		}
 	}
@@ -1673,6 +1746,133 @@ func randomPortN() (int, error) {
 	defer l.Close()
 
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+// virtiofsdSearchPaths defines where to look for the virtiofsd binary.
+var virtiofsdSearchPaths = []string{
+	"/usr/libexec/virtiofsd",  // Fedora, RHEL
+	"/usr/lib/qemu/virtiofsd", // Debian, Ubuntu
+	"virtiofsd",               // In PATH
+}
+
+// isVirtiofsdAvailable checks if virtiofsd is installed and returns its path.
+// If QEMU_VIRTIOFS_PATH is set, it will look for virtiofsd in that directory.
+func isVirtiofsdAvailable() (string, bool) {
+	// Check for user-specified directory first (useful for macOS/brew or custom installs)
+	if customDir, ok := os.LookupEnv("QEMU_VIRTIOFS_PATH"); ok && customDir != "" {
+		customPath := filepath.Join(customDir, "virtiofsd")
+		if _, err := os.Stat(customPath); err == nil {
+			return customPath, true
+		}
+	}
+	for _, path := range virtiofsdSearchPaths {
+		if p, err := exec.LookPath(path); err == nil {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// useVirtiofs checks if virtiofs should be used based on environment variable.
+// Returns (true, nil) if virtiofs is enabled and available.
+// Returns (false, nil) if virtiofs is not requested.
+// Returns (false, error) if virtiofs is explicitly requested but not available.
+func useVirtiofs() (bool, error) {
+	if envVal, ok := os.LookupEnv("QEMU_USE_VIRTIOFS"); ok {
+		if val, err := strconv.ParseBool(envVal); err == nil && val {
+			if _, available := isVirtiofsdAvailable(); available {
+				return true, nil
+			}
+			return false, fmt.Errorf("QEMU_USE_VIRTIOFS=1 but virtiofsd not found (checked %v, or set QEMU_VIRTIOFS_PATH)", virtiofsdSearchPaths)
+		}
+	}
+	return false, nil
+}
+
+// startVirtiofsd starts the virtiofsd daemon and returns its process.
+func startVirtiofsd(ctx context.Context, cfg *Config) (*exec.Cmd, error) {
+	log := clog.FromContext(ctx)
+
+	virtiofsdPath, ok := isVirtiofsdAvailable()
+	if !ok {
+		return nil, fmt.Errorf("virtiofsd not found")
+	}
+
+	// Remove stale socket if exists
+	os.Remove(cfg.VirtiofsdSocketPath)
+
+	args := []string{
+		"--socket-path=" + cfg.VirtiofsdSocketPath,
+		fmt.Sprintf("--thread-pool-size=%d", runtime.NumCPU()*2), // Parallel I/O
+		"-o", "source=" + cfg.CacheDir,
+		"-o", "cache=always", // Balance coherency and performance
+		"-o", "sandbox=namespace", // Use namespace sandbox (works without root)
+		"-o", "xattr", // Enable xattr support
+		"-o", "writeback", // Enable writeback caching for better write performance
+		"-o", "no_posix_lock",
+	}
+
+	log.Debugf("starting virtiofsd: %s %v", virtiofsdPath, args)
+
+	// #nosec G204 - virtiofsdPath is from known paths checked by isVirtiofsdAvailable
+	cmd := exec.CommandContext(ctx, virtiofsdPath, args...)
+
+	// Capture stderr for debugging
+	errPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start virtiofsd: %w", err)
+	}
+
+	// Log virtiofsd output in background
+	go func() {
+		scanner := bufio.NewScanner(errPipe)
+		for scanner.Scan() {
+			log.Debugf("virtiofsd: %s", scanner.Text())
+		}
+	}()
+
+	// Wait for socket to be created (max 5 seconds)
+	for range 50 {
+		if _, err := os.Stat(cfg.VirtiofsdSocketPath); err == nil {
+			log.Infof("virtiofsd started successfully, socket: %s", cfg.VirtiofsdSocketPath)
+			return cmd, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Socket not created, kill process and return error
+	_ = cmd.Process.Kill()
+	return nil, fmt.Errorf("virtiofsd socket not created within timeout")
+}
+
+// stopVirtiofsd gracefully stops the virtiofsd daemon.
+func stopVirtiofsd(ctx context.Context, cfg *Config) {
+	log := clog.FromContext(ctx)
+
+	if cfg.VirtiofsdPID > 0 {
+		log.Debugf("stopping virtiofsd (PID %d)", cfg.VirtiofsdPID)
+
+		// Send SIGTERM for graceful shutdown
+		if err := syscall.Kill(cfg.VirtiofsdPID, syscall.SIGTERM); err != nil {
+			log.Warnf("failed to send SIGTERM to virtiofsd: %v", err)
+			// Force kill if SIGTERM fails
+			_ = syscall.Kill(cfg.VirtiofsdPID, syscall.SIGKILL)
+		}
+
+		cfg.VirtiofsdPID = 0
+	}
+
+	// Clean up socket file
+	if cfg.VirtiofsdSocketPath != "" {
+		if err := os.Remove(cfg.VirtiofsdSocketPath); err != nil && !os.IsNotExist(err) {
+			log.Warnf("failed to remove virtiofsd socket: %v", err)
+		}
+		cfg.VirtiofsdSocketPath = ""
+	}
 }
 
 // zeroSensitiveFields zeros out sensitive cryptographic material from memory after it's no longer needed.

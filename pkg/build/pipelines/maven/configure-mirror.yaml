@@ -4,10 +4,19 @@ needs:
     - busybox
 pipeline:
   - runs: |
+      # Use melange's build cache for downloaded dependencies if mounted from host
+      MAVEN_LOCAL_REPO="/var/cache/melange/m2repository"
+      LOCAL_REPO_CONFIG=""
+      if [ -d "/var/cache/melange" ]; then
+        mkdir -p "$MAVEN_LOCAL_REPO"
+        LOCAL_REPO_CONFIG="<localRepository>${MAVEN_LOCAL_REPO}</localRepository>"
+      fi
+
       # Maven checks $USER/.m2, we set $HOME to /home/build but it hardcodes $USER somehow
       mkdir -p /root/.m2
       cat > /root/.m2/settings.xml <<EOF
         <settings>
+          ${LOCAL_REPO_CONFIG}
           <mirrors>
             <mirror>
               <id>google-maven-central</id>

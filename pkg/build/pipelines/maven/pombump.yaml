@@ -33,6 +33,18 @@ inputs:
 
 pipeline:
   - runs: |
+      # Use melange's build cache for downloaded dependencies if mounted from host
+      MAVEN_LOCAL_REPO="/var/cache/melange/m2repository"
+      if [ -d "/var/cache/melange" ]; then
+        mkdir -p "$MAVEN_LOCAL_REPO"
+        mkdir -p /root/.m2
+        cat > /root/.m2/settings.xml <<EOF
+      <settings>
+        <localRepository>${MAVEN_LOCAL_REPO}</localRepository>
+      </settings>
+      EOF
+      fi
+
       PATCH_FILE_FLAG=""
       PROPERTIES_FILE_FLAG=""
       DEPENDENCIES_FLAG=""

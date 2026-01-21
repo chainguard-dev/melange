@@ -1691,11 +1691,12 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 
 	const (
-		defaultEnvVarHOME        = "/home/build"
-		defaultEnvVarGOPATH      = "/home/build/.cache/go"
-		defaultEnvVarGOMODCACHE  = "/var/cache/melange/gomodcache"
-		defaultEnvVarUVCACHEDIR  = "/var/cache/melange/uv"
-		defaultEnvVarPIPCACHEDIR = "/var/cache/melange/pip"
+		defaultEnvVarHOME             = "/home/build"
+		defaultEnvVarGOPATH           = "/home/build/.cache/go"
+		defaultEnvVarGOMODCACHE       = "/var/cache/melange/gomodcache"
+		defaultEnvVarUVCACHEDIR       = "/var/cache/melange/uv"
+		defaultEnvVarPIPCACHEDIR      = "/var/cache/melange/pip"
+		defaultEnvVarCOMPOSERCACHEDIR = "/var/cache/melange/composer"
 	)
 
 	setIfEmpty := func(key, value string) {
@@ -1709,6 +1710,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	setIfEmpty("GOMODCACHE", defaultEnvVarGOMODCACHE)
 	setIfEmpty("UV_CACHE_DIR", defaultEnvVarUVCACHEDIR)
 	setIfEmpty("PIP_CACHE_DIR", defaultEnvVarPIPCACHEDIR)
+	setIfEmpty("COMPOSER_CACHE_DIR", defaultEnvVarCOMPOSERCACHEDIR)
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err

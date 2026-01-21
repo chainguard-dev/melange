@@ -125,6 +125,45 @@ pipeline:
 
 This caching support helps significantly speed up Python builds by avoiding repeated downloads of packages across builds.
 
+### Example: PHP Composer
+
+If you're using Melange to build a PHP project with [Composer](https://getcomposer.org/), you can take advantage of melange's built-in Composer cache support to speed up your builds.
+
+Melange automatically sets the `COMPOSER_CACHE_DIR` environment variable to `/var/cache/melange/composer` by default. This means you can use the `--cache-dir` flag to mount a local directory that will be used as the Composer cache:
+
+```shell
+melange build --cache-dir /path/to/your/cache ...
+```
+
+When using a dedicated Composer cache directory on your host, you can mount it directly:
+
+```shell
+# Create a cache directory
+mkdir -p ~/.cache/melange
+
+# Run melange with the cache directory
+melange build --cache-dir ~/.cache/melange ...
+```
+
+The Composer cache will be stored under `/var/cache/melange/composer` inside the build environment. If you want to customize this path, you can override it in your Melange config:
+
+```yaml
+environment:
+  environment:
+    COMPOSER_CACHE_DIR: '/var/cache/melange/composer'   # This is the default
+```
+
+Or set it within a pipeline step:
+
+```yaml
+pipeline:
+  - runs: |
+      COMPOSER_CACHE_DIR="/var/cache/melange/composer"
+      composer install
+```
+
+This caching support helps significantly speed up PHP builds by avoiding repeated downloads of packages across builds.
+
 ### Example: Maven Dependencies
 
 Maven caching is automatically enabled when using the `maven/configure-mirror` or `maven/pombump` pipelines. When a cache directory is mounted at `/var/cache/melange`, the pipelines automatically configure Maven to use `/var/cache/melange/m2repository` as the local repository.

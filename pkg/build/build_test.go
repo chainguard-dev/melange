@@ -203,11 +203,12 @@ func TestConfiguration_Load(t *testing.T) {
 				},
 				Environment: apko_types.ImageConfiguration{
 					Environment: map[string]string{
-						"GOMODCACHE":    "/var/cache/melange/gomodcache",
-						"HOME":          "/home/build/special-case",
-						"GOPATH":        "/var/cache/melange/go",
-						"UV_CACHE_DIR":  "/var/cache/melange/uv",
-						"PIP_CACHE_DIR": "/var/cache/melange/pip",
+						"GOMODCACHE":         "/var/cache/melange/gomodcache",
+						"HOME":               "/home/build/special-case",
+						"GOPATH":             "/var/cache/melange/go",
+						"UV_CACHE_DIR":       "/var/cache/melange/uv",
+						"PIP_CACHE_DIR":      "/var/cache/melange/pip",
+						"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 					},
 					Accounts: apko_types.ImageAccounts{
 						Users:  []apko_types.User{{UserName: buildUser, UID: 1000, GID: apko_types.GID(&gid1000)}},
@@ -296,11 +297,12 @@ package:
 		Members:   []string{buildUser},
 	}}
 	expected.Environment.Environment = map[string]string{
-		"HOME":          "/home/build",
-		"GOPATH":        "/home/build/.cache/go",
-		"GOMODCACHE":    "/var/cache/melange/gomodcache",
-		"UV_CACHE_DIR":  "/var/cache/melange/uv",
-		"PIP_CACHE_DIR": "/var/cache/melange/pip",
+		"HOME":               "/home/build",
+		"GOPATH":             "/home/build/.cache/go",
+		"GOMODCACHE":         "/var/cache/melange/gomodcache",
+		"UV_CACHE_DIR":       "/var/cache/melange/uv",
+		"PIP_CACHE_DIR":      "/var/cache/melange/pip",
+		"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 	}
 
 	f := filepath.Join(t.TempDir(), "config")

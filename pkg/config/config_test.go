@@ -1931,11 +1931,12 @@ package:
   epoch: 0
 `,
 			expectedEnv: map[string]string{
-				"HOME":          "/home/build",
-				"GOPATH":        "/home/build/.cache/go",
-				"GOMODCACHE":    "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR":  "/var/cache/melange/uv",
-				"PIP_CACHE_DIR": "/var/cache/melange/pip",
+				"HOME":               "/home/build",
+				"GOPATH":             "/home/build/.cache/go",
+				"GOMODCACHE":         "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":       "/var/cache/melange/uv",
+				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
+				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 			},
 		},
 		{
@@ -1950,11 +1951,12 @@ environment:
     UV_CACHE_DIR: '/custom/uv/cache'
 `,
 			expectedEnv: map[string]string{
-				"HOME":          "/home/build",
-				"GOPATH":        "/home/build/.cache/go",
-				"GOMODCACHE":    "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR":  "/custom/uv/cache",
-				"PIP_CACHE_DIR": "/var/cache/melange/pip",
+				"HOME":               "/home/build",
+				"GOPATH":             "/home/build/.cache/go",
+				"GOMODCACHE":         "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":       "/custom/uv/cache",
+				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
+				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 			},
 		},
 		{
@@ -1971,13 +1973,15 @@ environment:
     GOMODCACHE: '/custom/gomodcache'
     UV_CACHE_DIR: '/custom/uv'
     PIP_CACHE_DIR: '/custom/pip'
+    COMPOSER_CACHE_DIR: '/custom/composer'
 `,
 			expectedEnv: map[string]string{
-				"HOME":          "/custom/home",
-				"GOPATH":        "/custom/gopath",
-				"GOMODCACHE":    "/custom/gomodcache",
-				"UV_CACHE_DIR":  "/custom/uv",
-				"PIP_CACHE_DIR": "/custom/pip",
+				"HOME":               "/custom/home",
+				"GOPATH":             "/custom/gopath",
+				"GOMODCACHE":         "/custom/gomodcache",
+				"UV_CACHE_DIR":       "/custom/uv",
+				"PIP_CACHE_DIR":      "/custom/pip",
+				"COMPOSER_CACHE_DIR": "/custom/composer",
 			},
 		},
 		{
@@ -1992,12 +1996,13 @@ environment:
     MY_CUSTOM_VAR: 'custom_value'
 `,
 			expectedEnv: map[string]string{
-				"HOME":          "/home/build",
-				"GOPATH":        "/home/build/.cache/go",
-				"GOMODCACHE":    "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR":  "/var/cache/melange/uv",
-				"PIP_CACHE_DIR": "/var/cache/melange/pip",
-				"MY_CUSTOM_VAR": "custom_value",
+				"HOME":               "/home/build",
+				"GOPATH":             "/home/build/.cache/go",
+				"GOMODCACHE":         "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":       "/var/cache/melange/uv",
+				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
+				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
+				"MY_CUSTOM_VAR":      "custom_value",
 			},
 		},
 	}

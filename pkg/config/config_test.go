@@ -1913,6 +1913,123 @@ func TestLicenseExpressionWithValidation(t *testing.T) {
 	}
 }
 
+func TestDefaultEnvironmentVariables(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	tests := []struct {
+		name          string
+		yaml          string
+		expectedEnv   map[string]string
+		unexpectedEnv []string
+	}{
+		{
+			name: "defaults are set when no environment specified",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+`,
+			expectedEnv: map[string]string{
+				"HOME":          "/home/build",
+				"GOPATH":        "/home/build/.cache/go",
+				"GOMODCACHE":    "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":  "/var/cache/melange/uv",
+				"PIP_CACHE_DIR": "/var/cache/melange/pip",
+			},
+		},
+		{
+			name: "UV_CACHE_DIR can be overridden",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+environment:
+  environment:
+    UV_CACHE_DIR: '/custom/uv/cache'
+`,
+			expectedEnv: map[string]string{
+				"HOME":          "/home/build",
+				"GOPATH":        "/home/build/.cache/go",
+				"GOMODCACHE":    "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":  "/custom/uv/cache",
+				"PIP_CACHE_DIR": "/var/cache/melange/pip",
+			},
+		},
+		{
+			name: "all cache env vars can be overridden",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+environment:
+  environment:
+    HOME: '/custom/home'
+    GOPATH: '/custom/gopath'
+    GOMODCACHE: '/custom/gomodcache'
+    UV_CACHE_DIR: '/custom/uv'
+    PIP_CACHE_DIR: '/custom/pip'
+`,
+			expectedEnv: map[string]string{
+				"HOME":          "/custom/home",
+				"GOPATH":        "/custom/gopath",
+				"GOMODCACHE":    "/custom/gomodcache",
+				"UV_CACHE_DIR":  "/custom/uv",
+				"PIP_CACHE_DIR": "/custom/pip",
+			},
+		},
+		{
+			name: "additional env vars do not affect defaults",
+			yaml: `
+package:
+  name: test-pkg
+  version: 1.0.0
+  epoch: 0
+environment:
+  environment:
+    MY_CUSTOM_VAR: 'custom_value'
+`,
+			expectedEnv: map[string]string{
+				"HOME":          "/home/build",
+				"GOPATH":        "/home/build/.cache/go",
+				"GOMODCACHE":    "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":  "/var/cache/melange/uv",
+				"PIP_CACHE_DIR": "/var/cache/melange/pip",
+				"MY_CUSTOM_VAR": "custom_value",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fp := filepath.Join(t.TempDir(), "test-config.yaml")
+			if err := os.WriteFile(fp, []byte(tt.yaml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			cfg, err := ParseConfiguration(ctx, fp)
+			require.NoError(t, err)
+
+			for key, expectedValue := range tt.expectedEnv {
+				actualValue, exists := cfg.Environment.Environment[key]
+				if !exists {
+					t.Errorf("expected environment variable %q to be set", key)
+					continue
+				}
+				require.Equal(t, expectedValue, actualValue, "environment variable %q mismatch", key)
+			}
+
+			for _, key := range tt.unexpectedEnv {
+				if _, exists := cfg.Environment.Environment[key]; exists {
+					t.Errorf("unexpected environment variable %q is set", key)
+				}
+			}
+		})
+	}
+}
+
 func TestLicensingInfosWithValidation(t *testing.T) {
 	// Create a temp directory with a license file
 	tmpDir := t.TempDir()

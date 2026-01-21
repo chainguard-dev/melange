@@ -43,6 +43,45 @@ pipeline:
       # ...
 ```
 
-Now you're all set! If you've already downloaded the Go modules you need for your Go project to your local filesystem, you'll no longer need to wait for Melange to download those Go modules during every build. This can significantly speed up builds! 
+Now you're all set! If you've already downloaded the Go modules you need for your Go project to your local filesystem, you'll no longer need to wait for Melange to download those Go modules during every build. This can significantly speed up builds!
 
 Keep in mind that because the build cache is a read/write-able mount, modifications to data in this directory during a Melange build **will affect** your local filesystem.
+
+### Example: Python UV
+
+If you're using Melange to build a Python project with [uv](https://docs.astral.sh/uv/), you can take advantage of melange's built-in UV cache support to speed up your builds.
+
+Melange automatically sets the `UV_CACHE_DIR` environment variable to `/var/cache/melange/uv` by default. This means you can use the `--cache-dir` flag to mount a local directory that will be used as the UV cache:
+
+```shell
+melange build --cache-dir /path/to/your/cache ...
+```
+
+When using a dedicated UV cache directory on your host, you can mount it directly:
+
+```shell
+# Create a cache directory for UV
+mkdir -p ~/.cache/melange/uv
+
+# Run melange with the cache directory
+melange build --cache-dir ~/.cache/melange ...
+```
+
+The UV cache will be stored under `/var/cache/melange/uv` inside the build environment. If you want to customize this path, you can override it in your Melange config:
+
+```yaml
+environment:
+  environment:
+    UV_CACHE_DIR: '/var/cache/melange/uv'   # This is the default
+```
+
+Or set it within a pipeline step:
+
+```yaml
+pipeline:
+  - runs: |
+      UV_CACHE_DIR="/var/cache/melange/uv"
+      uv pip install -r requirements.txt
+```
+
+This caching support helps significantly speed up Python builds that use UV by avoiding repeated downloads of packages across builds.

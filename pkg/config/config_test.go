@@ -1931,10 +1931,11 @@ package:
   epoch: 0
 `,
 			expectedEnv: map[string]string{
-				"HOME":         "/home/build",
-				"GOPATH":       "/home/build/.cache/go",
-				"GOMODCACHE":   "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR": "/var/cache/melange/uv",
+				"HOME":          "/home/build",
+				"GOPATH":        "/home/build/.cache/go",
+				"GOMODCACHE":    "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":  "/var/cache/melange/uv",
+				"PIP_CACHE_DIR": "/var/cache/melange/pip",
 			},
 		},
 		{
@@ -1949,10 +1950,11 @@ environment:
     UV_CACHE_DIR: '/custom/uv/cache'
 `,
 			expectedEnv: map[string]string{
-				"HOME":         "/home/build",
-				"GOPATH":       "/home/build/.cache/go",
-				"GOMODCACHE":   "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR": "/custom/uv/cache",
+				"HOME":          "/home/build",
+				"GOPATH":        "/home/build/.cache/go",
+				"GOMODCACHE":    "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":  "/custom/uv/cache",
+				"PIP_CACHE_DIR": "/var/cache/melange/pip",
 			},
 		},
 		{
@@ -1968,12 +1970,14 @@ environment:
     GOPATH: '/custom/gopath'
     GOMODCACHE: '/custom/gomodcache'
     UV_CACHE_DIR: '/custom/uv'
+    PIP_CACHE_DIR: '/custom/pip'
 `,
 			expectedEnv: map[string]string{
-				"HOME":         "/custom/home",
-				"GOPATH":       "/custom/gopath",
-				"GOMODCACHE":   "/custom/gomodcache",
-				"UV_CACHE_DIR": "/custom/uv",
+				"HOME":          "/custom/home",
+				"GOPATH":        "/custom/gopath",
+				"GOMODCACHE":    "/custom/gomodcache",
+				"UV_CACHE_DIR":  "/custom/uv",
+				"PIP_CACHE_DIR": "/custom/pip",
 			},
 		},
 		{
@@ -1992,6 +1996,7 @@ environment:
 				"GOPATH":        "/home/build/.cache/go",
 				"GOMODCACHE":    "/var/cache/melange/gomodcache",
 				"UV_CACHE_DIR":  "/var/cache/melange/uv",
+				"PIP_CACHE_DIR": "/var/cache/melange/pip",
 				"MY_CUSTOM_VAR": "custom_value",
 			},
 		},

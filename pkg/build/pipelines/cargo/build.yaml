@@ -9,6 +9,7 @@ needs:
 
 inputs:
   output:
+    required: true
     description: |
       Filename to use when writing the binary. The final install location inside
       the apk will be in prefix / install-dir / output

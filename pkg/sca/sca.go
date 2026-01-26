@@ -931,8 +931,8 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		}
 	}
 
-	log.Infof("  found ruby gem, generating ruby-%s dependency", rubyGemVer)
-	generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s", rubyGemVer))
+	log.Infof("  found ruby gem, generating ruby-%s-base dependency", rubyGemVer)
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("ruby-%s-base", rubyGemVer))
 
 	return nil
 }

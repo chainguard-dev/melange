@@ -38,6 +38,6 @@ pipeline:
       fi
 
       grep -v -E '^(#|$)' $series | (while read patchfile; do
-        echo "INFO: patching file $patchfile"
+        echo "INFO: applying patch file $patchfile"
         patch '-p${{inputs.strip-components}}' --fuzz=${{inputs.fuzz}} --verbose < $patchfile
       done)

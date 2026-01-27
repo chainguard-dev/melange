@@ -27,6 +27,7 @@ import (
 	"io/fs"
 	"regexp"
 	"strings"
+	"sync"
 
 	"chainguard.dev/melange/pkg/config"
 
@@ -45,6 +46,8 @@ var BootDirs = []string{"boot/...", "lib/modules/...", "usr/lib/modules/..."}
 // ModuleDirs is the list of directories to search for kernel modules.
 // This is exported so that callers can append to it as needed.
 var ModuleDirs = []string{"usr/lib/modules/...", "lib/modules/..."}
+
+var logAboutXZOnce = new(sync.Once)
 
 func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
@@ -191,6 +194,10 @@ func tryDecompressModule(ctx context.Context, r io.ReadSeeker) (io.ReadSeeker, e
 			return nil, err
 		}
 		log.Debugf("found xz module")
+		// I tried to optimize this and I just made it slower. Just warn for now.
+		logAboutXZOnce.Do(func() {
+			log.Warnf("decompressing modules with xz is /very/ slow, you should disable scanning or switch compression formats if possible")
+		})
 		return bytes.NewReader(b), nil
 	}
 

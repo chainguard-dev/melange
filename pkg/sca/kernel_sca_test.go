@@ -13,6 +13,10 @@
 // limitations under the License.
 
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/linux.yaml --arch=x86_64
+//go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/linux-rpi.yaml --arch=x86_64
+
+// linux-rpi actually produces aarch64 binaries regardless of arch but it's just
+// testdata and works either way so I don't think that detail matters.
 
 package sca
 
@@ -81,6 +85,18 @@ func TestKernelSca(t *testing.T) {
 			yaml:   "linux.yaml",
 			apk:    "generated/x86_64/linux-modules-xz-6.17.7-r0.apk",
 			expect: config.Dependencies{Runtime: []string{"linux:6.17.7-test"}},
+		},
+		{
+			name:   "rpi-kernel",
+			yaml:   "linux-rpi.yaml",
+			apk:    "generated/x86_64/linux-rpi-1.20250915-r0.apk",
+			expect: config.Dependencies{Provides: []string{"linux:6.12.25", "linux:6.12.25-v7", "linux:6.12.25-v7l", "linux:6.12.25-v8", "linux:6.12.25-v8-16k"}},
+		},
+		{
+			name:   "rpi-modules",
+			yaml:   "linux-rpi.yaml",
+			apk:    "generated/x86_64/linux-rpi-modules-1.20250915-r0.apk",
+			expect: config.Dependencies{Runtime: []string{"linux:6.12.25", "linux:6.12.25-v7", "linux:6.12.25-v7l", "linux:6.12.25-v8", "linux:6.12.25-v8-16k"}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

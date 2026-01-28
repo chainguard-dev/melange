@@ -859,7 +859,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append raw disk, init will take care of formatting it if present.
 	baseargs = append(baseargs, "-object", "iothread,id=io1")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", max(1, nproc/2)))
 	if runtime.GOOS == "linux" {
 		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,cache.direct=on,format=raw,aio=native,file="+diskFile)
 	}
@@ -869,7 +869,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	// append the rootfs tar.gz, init will take care of populating the disk with it
 	baseargs = append(baseargs, "-object", "iothread,id=io2")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", nproc/2))
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", max(1, nproc/2)))
 	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
 
 	// qemu-system-x86_64 or qemu-system-aarch64...

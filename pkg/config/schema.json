@@ -3,6 +3,18 @@
   "$id": "https://chainguard.dev/melange/pkg/config/configuration",
   "$ref": "#/$defs/Configuration",
   "$defs": {
+    "AdditionalCertificateEntry": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "BaseImageDescriptor": {
       "properties": {
         "image": {
@@ -396,6 +408,18 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "ImageCertificates": {
+      "properties": {
+        "additional": {
+          "items": {
+            "$ref": "#/$defs/AdditionalCertificateEntry"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "ImageConfiguration": {
       "properties": {
         "contents": {
@@ -454,6 +478,9 @@
         },
         "layering": {
           "$ref": "#/$defs/Layering"
+        },
+        "certificates": {
+          "$ref": "#/$defs/ImageCertificates"
         }
       },
       "additionalProperties": false,

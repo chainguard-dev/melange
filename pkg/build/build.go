@@ -1206,12 +1206,9 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 		case tar.TypeSymlink:
-			// Validate symlink target to prevent symlink attacks (CVE-PENDING: GHSA-qxx2-7h4c-83f4)
-			// Note: hdr.Name was already validated above; this validates the symlink destination
-			if err := isValidPath(hdr.Linkname, b.WorkspaceDir); err != nil {
-				return fmt.Errorf("invalid symlink target %q -> %q: %w", hdr.Name, hdr.Linkname, err)
-			}
-
+			// Note: We only validate hdr.Name (above), not hdr.Linkname for symlinks.
+			// Symlinks can legitimately point to paths outside the workspace
+			// (e.g., melange-out/foo/var/run -> ../arbitrary/path is valid).
 			if target, err := fs.Readlink(hdr.Name); err == nil && target == hdr.Linkname {
 				continue
 			}
@@ -1221,12 +1218,9 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 		case tar.TypeLink:
-			// Validate hardlink target to prevent link attacks (CVE-PENDING: GHSA-qxx2-7h4c-83f4)
-			// Note: hdr.Name was already validated above; this validates the hardlink destination
-			if err := isValidPath(hdr.Linkname, b.WorkspaceDir); err != nil {
-				return fmt.Errorf("invalid hardlink target %q -> %q: %w", hdr.Name, hdr.Linkname, err)
-			}
-
+			// Note: We only validate hdr.Name (above), not hdr.Linkname for hardlinks.
+			// Hardlinks can reference absolute paths or paths outside the workspace,
+			// which is common in container environments.
 			if err := fs.Link(hdr.Linkname, hdr.Name); err != nil {
 				return err
 			}

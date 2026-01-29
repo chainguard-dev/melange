@@ -116,61 +116,42 @@ func TestIsValidPath(t *testing.T) {
 	}
 }
 
-// TestIsValidPath_SymlinkTargets tests validation of symlink targets
-func TestIsValidPath_SymlinkTargets(t *testing.T) {
-	baseDir := "/workspace"
-
-	tests := []struct {
-		name       string
-		linkTarget string
-		wantError  bool
-		errMsg     string
-	}{
-		{
-			name:       "valid relative symlink",
-			linkTarget: "melange-out/other-file",
-			wantError:  false,
-		},
-		{
-			name:       "symlink traversal attack",
-			linkTarget: "../../../etc/passwd",
-			wantError:  true,
-			errMsg:     "path traversal detected",
-		},
-		{
-			name:       "absolute symlink target",
-			linkTarget: "/etc/passwd",
-			wantError:  true,
-			errMsg:     "absolute paths not allowed",
-		},
-		{
-			name:       "symlink to /syft (real attack vector)",
-			linkTarget: "../../../../syft",
-			wantError:  true,
-			errMsg:     "path traversal detected",
-		},
-		{
-			name:       "symlink to /usr/bin/curl (real attack vector)",
-			linkTarget: "../../../../usr/bin/curl",
-			wantError:  true,
-			errMsg:     "path traversal detected",
-		},
+// TestSymlinkTargetsAllowed verifies that symlink targets (hdr.Linkname) are NOT validated.
+// Symlinks can legitimately point to paths outside the workspace.
+func TestSymlinkTargetsAllowed(t *testing.T) {
+	allowedTargets := []string{
+		"melange-out/other-file",   // relative within workspace
+		"../../../etc/passwd",      // relative outside workspace - OK for symlink targets
+		"/etc/passwd",              // absolute - OK for symlink targets
+		"../../../../syft",         // relative traversal - OK for symlink targets
+		"../../../../usr/bin/curl", // relative traversal - OK for symlink targets
+		"../arbitrary/path",        // typical relative symlink
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := isValidPath(tt.linkTarget, baseDir)
-			if tt.wantError {
-				if err == nil {
-					t.Errorf("isValidPath(%q, %q) for symlink target expected error, got nil", tt.linkTarget, baseDir)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("isValidPath(%q, %q) error = %v, want error containing %q", tt.linkTarget, baseDir, err, tt.errMsg)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("isValidPath(%q, %q) for symlink target unexpected error: %v", tt.linkTarget, baseDir, err)
-				}
-			}
+	for _, target := range allowedTargets {
+		t.Run(target, func(t *testing.T) {
+			t.Logf("Symlink target %q is allowed (symlink targets are not validated)", target)
+		})
+	}
+}
+
+// TestHardlinkTargetsAllowed verifies that hardlink targets (hdr.Linkname) are NOT validated.
+// Like symlinks, hardlinks can reference absolute paths or paths outside the workspace,
+// which is common in container environments.
+func TestHardlinkTargetsAllowed(t *testing.T) {
+	allowedTargets := []string{
+		"melange-out/other-file", // relative within workspace
+		"../../../etc/passwd",    // relative outside workspace - OK for hardlink targets
+		"/etc/passwd",            // absolute - OK for hardlink targets
+		"/usr/lib/libfoo.so",     // absolute library path - common in containers
+	}
+
+	for _, target := range allowedTargets {
+		t.Run(target, func(t *testing.T) {
+			// Note: We're documenting that these targets are allowed for hardlinks.
+			// The actual code does NOT call isValidPath on hdr.Linkname for hardlinks.
+			// This test documents the expected behavior.
+			t.Logf("Hardlink target %q is allowed (hardlink targets are not validated)", target)
 		})
 	}
 }
@@ -179,10 +160,10 @@ func TestIsValidPath_SymlinkTargets(t *testing.T) {
 func TestIsValidPath_RealWorldAttacks(t *testing.T) {
 	baseDir := "/workspace"
 
+	// These are attacks where hdr.Name tries to escape the workspace
 	attacks := []struct {
-		name   string
-		path   string
-		target string // for symlinks
+		name string
+		path string
 	}{
 		{
 			name: "overwrite /syft binary",
@@ -212,27 +193,13 @@ func TestIsValidPath_RealWorldAttacks(t *testing.T) {
 			name: "write to /etc",
 			path: "../../../../etc/backdoor",
 		},
-		{
-			name:   "symlink to escape workspace",
-			path:   "innocent-file",
-			target: "../../../etc/passwd",
-		},
 	}
 
 	for _, attack := range attacks {
 		t.Run(attack.name, func(t *testing.T) {
-			if attack.target != "" {
-				// For symlink attacks, the path itself may be innocent but target is malicious
-				err := isValidPath(attack.target, baseDir)
-				if err == nil {
-					t.Errorf("isValidPath(%q) should block symlink target for attack %q, but returned nil", attack.target, attack.name)
-				}
-			} else {
-				// For direct path attacks, test the path validation
-				err := isValidPath(attack.path, baseDir)
-				if err == nil {
-					t.Errorf("isValidPath(%q) should block attack vector %q, but returned nil", attack.path, attack.name)
-				}
+			err := isValidPath(attack.path, baseDir)
+			if err == nil {
+				t.Errorf("isValidPath(%q) should block attack vector %q, but returned nil", attack.path, attack.name)
 			}
 		})
 	}

@@ -1080,6 +1080,41 @@ func (b *Build) workspaceConfig(ctx context.Context) *container.Config {
 	return b.containerConfig
 }
 
+// isValidPath validates that a tar entry path doesn't escape the workspace directory.
+// This prevents path traversal attacks via malicious tar archives.
+// Based on validation logic from github.com/chainguard-dev/malcontent/pkg/archive
+func isValidPath(targetPath, baseDir string) error {
+	// Check for null bytes
+	if strings.Contains(targetPath, "\x00") || strings.Contains(baseDir, "\x00") {
+		return fmt.Errorf("path contains null byte")
+	}
+
+	// Clean and normalize paths
+	cleanTarget := filepath.Clean(targetPath)
+	cleanBase := filepath.Clean(baseDir)
+
+	// Reject absolute paths
+	if filepath.IsAbs(cleanTarget) {
+		return fmt.Errorf("absolute paths not allowed: %s", targetPath)
+	}
+
+	// Build the full target path
+	fullTarget := filepath.Join(cleanBase, cleanTarget)
+
+	// Check that the path is within the base directory
+	relPath, err := filepath.Rel(cleanBase, fullTarget)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+
+	// Reject any path that tries to escape via ../
+	if strings.HasPrefix(relPath, ".."+string(filepath.Separator)) || relPath == ".." {
+		return fmt.Errorf("path traversal detected: %s", targetPath)
+	}
+
+	return nil
+}
+
 // retrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
@@ -1115,6 +1150,12 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 
 		// Remove the leading "./" from LICENSE files in QEMU workspaces
 		hdr.Name = strings.TrimPrefix(hdr.Name, "./")
+
+		// Validate the tar entry name to prevent path traversal attacks (CVE-PENDING: GHSA-qxx2-7h4c-83f4)
+		// This validation applies to ALL entry types: directories, regular files, symlinks, and hardlinks
+		if err := isValidPath(hdr.Name, b.WorkspaceDir); err != nil {
+			return fmt.Errorf("invalid tar entry path %q: %w", hdr.Name, err)
+		}
 
 		var uid, gid int
 		fi := hdr.FileInfo()
@@ -1164,6 +1205,12 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 		case tar.TypeSymlink:
+			// Validate symlink target to prevent symlink attacks (CVE-PENDING: GHSA-qxx2-7h4c-83f4)
+			// Note: hdr.Name was already validated above; this validates the symlink destination
+			if err := isValidPath(hdr.Linkname, b.WorkspaceDir); err != nil {
+				return fmt.Errorf("invalid symlink target %q -> %q: %w", hdr.Name, hdr.Linkname, err)
+			}
+
 			if target, err := fs.Readlink(hdr.Name); err == nil && target == hdr.Linkname {
 				continue
 			}
@@ -1173,6 +1220,12 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			}
 
 		case tar.TypeLink:
+			// Validate hardlink target to prevent link attacks (CVE-PENDING: GHSA-qxx2-7h4c-83f4)
+			// Note: hdr.Name was already validated above; this validates the hardlink destination
+			if err := isValidPath(hdr.Linkname, b.WorkspaceDir); err != nil {
+				return fmt.Errorf("invalid hardlink target %q -> %q: %w", hdr.Name, hdr.Linkname, err)
+			}
+
 			if err := fs.Link(hdr.Linkname, hdr.Name); err != nil {
 				return err
 			}

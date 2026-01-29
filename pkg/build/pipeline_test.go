@@ -147,12 +147,14 @@ func Test_buildEvalRunCommand(t *testing.T) {
 	workdir := "/bar"
 	fragment := "baz"
 	command := buildEvalRunCommand(p, debugOption, workdir, fragment)
+	// Note: shellquote.Join() only adds quotes when necessary
+	// Simple paths like /bar don't need quotes, so they're returned unquoted
 	expected := []string{"/bin/sh", "-c", `set -ex
-[ -d '/bar' ] || mkdir -p '/bar'
-cd '/bar'
+[ -d /bar ] || mkdir -p /bar
+cd /bar
 baz
 exit 0`}
-	require.Equal(t, command, expected)
+	require.Equal(t, expected, command)
 }
 
 func TestAllPipelines(t *testing.T) {

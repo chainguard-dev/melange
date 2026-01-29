@@ -776,7 +776,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		if b.Runner.Name() == container.QemuName {
 			fullPath := filepath.Join(WorkDir, melangeOutputDirName, pkg.Name, path)
 			hex := fmt.Sprintf("0x%s", hex.EncodeToString(enc))
-			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, fullPath)}
+			// Quote path to prevent shell injection (GHSA-vqqr-rmpc-hhg2)
+			// Using go-shellquote library for robust shell escaping
+			safePath := quoteShellArg(fullPath)
+			cmd := []string{"/bin/sh", "-c", fmt.Sprintf("setfattr -n security.capability -v %s %s", hex, safePath)}
 			if err := b.Runner.Run(ctx, pr.config, map[string]string{}, cmd...); err != nil {
 				return fmt.Errorf("failed to set capabilities within VM on %s: %w", path, err)
 			}

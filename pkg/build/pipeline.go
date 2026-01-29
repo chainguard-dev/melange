@@ -176,11 +176,16 @@ func matchValidShaChars(s string) bool {
 
 // Build a script to run as part of evalRun
 func buildEvalRunCommand(_ *config.Pipeline, debugOption rune, workdir string, fragment string) []string {
+	// Quote workdir to prevent shell injection (GHSA-vqqr-rmpc-hhg2)
+	// This is critical when workdir contains substituted variables from user input
+	// Using go-shellquote library for robust shell escaping
+	safeWorkdir := quoteShellArg(workdir)
+
 	script := fmt.Sprintf(`set -e%c
-[ -d '%s' ] || mkdir -p '%s'
-cd '%s'
+[ -d %s ] || mkdir -p %s
+cd %s
 %s
-exit 0`, debugOption, workdir, workdir, workdir, fragment)
+exit 0`, debugOption, safeWorkdir, safeWorkdir, safeWorkdir, fragment)
 	return []string{"/bin/sh", "-c", script}
 }
 
@@ -308,7 +313,10 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 		return fmt.Errorf("failed to write history file: %w", err)
 	}
 
-	if dbgErr := dbg.Debug(ctx, r.config, envOverride, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", workdir)}...); dbgErr != nil {
+	// Quote workdir to prevent shell injection (GHSA-vqqr-rmpc-hhg2)
+	// Using go-shellquote library for robust shell escaping
+	safeWorkdir := quoteShellArg(workdir)
+	if dbgErr := dbg.Debug(ctx, r.config, envOverride, []string{"/bin/sh", "-c", fmt.Sprintf("cd %s && exec /bin/sh", safeWorkdir)}...); dbgErr != nil {
 		return fmt.Errorf("failed to debug: %w; original error: %w", dbgErr, runErr)
 	}
 

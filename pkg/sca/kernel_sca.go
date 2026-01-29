@@ -27,6 +27,7 @@ import (
 	"io/fs"
 	"regexp"
 	"strings"
+	"sync"
 
 	"chainguard.dev/melange/pkg/config"
 
@@ -45,6 +46,8 @@ var BootDirs = []string{"boot/...", "lib/modules/...", "usr/lib/modules/..."}
 // ModuleDirs is the list of directories to search for kernel modules.
 // This is exported so that callers can append to it as needed.
 var ModuleDirs = []string{"usr/lib/modules/...", "lib/modules/..."}
+
+var logAboutXZOnce = new(sync.Once)
 
 func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
 	log := clog.FromContext(ctx)
@@ -191,6 +194,10 @@ func tryDecompressModule(ctx context.Context, r io.ReadSeeker) (io.ReadSeeker, e
 			return nil, err
 		}
 		log.Debugf("found xz module")
+		// I tried to optimize this and I just made it slower. Just warn for now.
+		logAboutXZOnce.Do(func() {
+			log.Warnf("decompressing modules with xz is /very/ slow, you should disable scanning or switch compression formats if possible")
+		})
 		return bytes.NewReader(b), nil
 	}
 
@@ -234,7 +241,31 @@ func kernelVersion(ctx context.Context, r io.ReadSeeker) (string, error) {
 		}
 	}
 
-	// 2. Fallback: scan stream for "Linux version ".
+	// 2. ARM zImage
+	// Look for embedded gzip data
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+	gzipOffset, err := hasGzipMagic(r)
+	if err == nil {
+		if _, err := r.Seek(gzipOffset, io.SeekStart); err != nil {
+			return "", err
+		}
+		gzr, err := gzip.NewReader(r)
+		// Don't io.ReadAll here, we skipped the zImage header and jumped straight to the gzipped data
+		// but there's a footer that will trip up the gzip reader. Just scan the stream and return
+		// if we find something.
+		if err == nil {
+			if v, err := scanStreamForPrefix(gzr, "Linux version "); err == nil {
+				log.Debugf("found kernel version from ARM zImage")
+				return v, nil
+			} else {
+				log.Debugf("ARM zImage scanStreamForPrefix error: %v", err)
+			}
+		}
+	}
+
+	// 3. Fallback: scan stream for "Linux version ".
 	// works for pretty much anything else
 	if _, err := r.Seek(0, io.SeekStart); err != nil {
 		return "", err
@@ -326,6 +357,40 @@ func hasHdrS(r io.ReadSeeker) (bool, error) {
 		return false, nil
 	}
 	return bytes.Equal(buf, []byte("HdrS")), nil
+}
+
+// hasGzipMagic scans the reader for gzip magic bytes (0x1F 0x8B 0x08)
+// and returns the offset.
+func hasGzipMagic(r io.ReadSeeker) (int64, error) {
+	gzipMagic := []byte{0x1F, 0x8B, 0x08}
+	br := bufio.NewReader(r)
+	var window []byte
+
+	for {
+		// Read byte.
+		b, err := br.ReadByte()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+
+		// Shift window to the right if it's greater than magic.
+		window = append(window, b)
+		if len(window) > len(gzipMagic) {
+			window = window[1:]
+		}
+
+		if bytes.Equal(window, gzipMagic) {
+			offset, err := r.Seek(0, io.SeekCurrent)
+			if err != nil {
+				return 0, err
+			}
+			return offset - int64(len(gzipMagic)) - int64(br.Buffered()), nil
+		}
+	}
+	return 0, fmt.Errorf("gzip magic not found")
 }
 
 // versionFromBootHeader implements the libmagic logic:

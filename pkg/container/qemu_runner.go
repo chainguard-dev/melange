@@ -891,8 +891,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("qemu: failed to start qemu command: %w", err)
 	}
 
-	logCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	logCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(fmt.Errorf("normal cleanup"))
 
 	go func() {
 		defer outRead.Close()
@@ -950,6 +950,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				log.Info(err.Error())
 			}
 		}
+
+		cancel(fmt.Errorf("ssh server never came up"))
 	}()
 
 	select {
@@ -966,7 +968,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
 		defer stopVirtiofsd(ctx, cfg)
-		return fmt.Errorf("qemu: context canceled while waiting for VM to start")
+		return fmt.Errorf("qemu: context canceled while waiting for VM to start: %w", context.Cause(ctx))
 	}
 
 	err = getHostKey(ctx, cfg)

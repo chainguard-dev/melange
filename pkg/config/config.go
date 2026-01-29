@@ -529,8 +529,15 @@ func (p Package) LicensingInfos(ctx context.Context, workspaceDir string) (map[s
 		id := normalizeLicenseID(license)
 
 		if cp.LicensePath != "" {
-			// Read license content from file
-			content, err := os.ReadFile(filepath.Join(workspaceDir, cp.LicensePath)) // #nosec G304 - Reading license file from build workspace
+			// Clean and localize the path
+			cleanPath := filepath.Clean(cp.LicensePath)
+			localPath, err := filepath.Localize(cleanPath)
+			if err != nil {
+				return nil, fmt.Errorf("invalid license-path %q: %w", cp.LicensePath, err)
+			}
+			fullPath := filepath.Join(workspaceDir, localPath)
+
+			content, err := os.ReadFile(fullPath) // #nosec G304 - Reading license file from build workspace
 			if err != nil {
 				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
 			}

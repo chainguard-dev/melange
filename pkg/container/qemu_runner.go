@@ -58,6 +58,7 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/term"
 
+	"chainguard.dev/melange/internal/capacity"
 	"chainguard.dev/melange/internal/logwriter"
 	"chainguard.dev/melange/pkg/license"
 )
@@ -2006,7 +2007,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 	}
 
 	// Start with base packages and add any additional packages from environment
-	packages := make([]string, 0, len(additionalPkgs)+1)
+	packages := make([]string, 0, capacity.Add(len(additionalPkgs), 1))
 	packages = append(packages, "microvm-init")
 	packages = append(packages, additionalPkgs...)
 

@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
+	"chainguard.dev/melange/internal/capacity"
 	"chainguard.dev/melange/pkg/build"
 )
 
@@ -205,7 +206,7 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Test{}
 	for _, arch := range archs {
-		opts := make([]build.TestOption, 0, len(baseOpts)+1)
+		opts := make([]build.TestOption, 0, capacity.Add(len(baseOpts), 1))
 		opts = append(opts, build.WithTestArch(arch))
 		opts = append(opts, baseOpts...)
 

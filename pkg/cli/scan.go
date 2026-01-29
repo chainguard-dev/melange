@@ -34,6 +34,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 
+	"chainguard.dev/melange/internal/capacity"
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
@@ -430,7 +431,7 @@ func (s *scaImpl) PackageName() string {
 }
 
 func (s *scaImpl) RelativeNames() []string {
-	targets := make([]string, 0, len(s.pb.Build.Configuration.Subpackages)+1)
+	targets := make([]string, 0, capacity.Add(len(s.pb.Build.Configuration.Subpackages), 1))
 	targets = append(targets, s.pb.Origin.Name)
 
 	for _, target := range s.pb.Build.Configuration.Subpackages {

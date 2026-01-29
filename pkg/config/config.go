@@ -39,13 +39,13 @@ import (
 	"github.com/github/go-spdx/v2/spdxexp"
 	purl "github.com/package-url/packageurl-go"
 
+	"chainguard.dev/melange/internal/capacity"
 	"chainguard.dev/melange/pkg/sbom"
+	"chainguard.dev/melange/pkg/util"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
-
-	"chainguard.dev/melange/pkg/util"
 )
 
 const (
@@ -1273,7 +1273,7 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 }
 
 func replacerFromMap(with map[string]string) *strings.Replacer {
-	replacements := make([]string, 0, len(with)*2)
+	replacements := make([]string, 0, capacity.Mul(len(with), 2))
 	for k, v := range with {
 		replacements = append(replacements, k, v)
 	}

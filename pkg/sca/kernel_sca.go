@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 
+	"chainguard.dev/melange/internal/capacity"
 	"chainguard.dev/melange/pkg/config"
 
 	"github.com/chainguard-dev/clog"
@@ -58,7 +59,7 @@ func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 		return err
 	}
 
-	allKernelDirs := make([]string, 0, len(BootDirs)+len(ModuleDirs))
+	allKernelDirs := make([]string, 0, capacity.Add(len(BootDirs), len(ModuleDirs)))
 	allKernelDirs = append(allKernelDirs, BootDirs...)
 	allKernelDirs = append(allKernelDirs, ModuleDirs...)
 

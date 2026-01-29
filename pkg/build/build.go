@@ -320,7 +320,8 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	// Work around LockImageConfiguration assuming multi-arch.
 	imgConfig.Archs = []apko_types.Architecture{b.Arch}
 
-	opts := []apko_build.Option{
+	opts := make([]apko_build.Option, 0, 9)
+	opts = append(opts,
 		apko_build.WithImageConfiguration(imgConfig),
 		apko_build.WithArch(b.Arch),
 		apko_build.WithExtraKeys(b.ExtraKeys),
@@ -329,7 +330,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		apko_build.WithCache(b.ApkCacheDir, false, apk.NewCache(true)),
 		apko_build.WithTempDir(tmp),
 		apko_build.WithIgnoreSignatures(b.IgnoreSignatures),
-	}
+	)
 
 	configs, warn, err := apko_build.LockImageConfiguration(ctx, imgConfig, opts...)
 	if err != nil {

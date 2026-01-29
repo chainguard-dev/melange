@@ -47,7 +47,7 @@ func Subst(inputExpr string, lookupFns ...VariableLookupFunction) (string, error
 	node := goparsify.Any(text, variable)
 
 	document := goparsify.Many(node).Map(func(n *goparsify.Result) {
-		tokens := []string{}
+		tokens := make([]string, 0, len(n.Child))
 		for _, tok := range n.Child {
 			tokens = append(tokens, tok.Token)
 		}

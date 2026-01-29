@@ -99,7 +99,8 @@ type Generator struct{}
 // It returns a map of package names to their corresponding SPDX documents.
 func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext) (map[string]spdx.Document, error) {
 	// Collect all package names
-	pkgNames := []string{gc.Configuration.Package.Name}
+	pkgNames := make([]string, 0, len(gc.Configuration.Subpackages)+1)
+	pkgNames = append(pkgNames, gc.Configuration.Package.Name)
 	for _, sp := range gc.Configuration.Subpackages {
 		pkgNames = append(pkgNames, sp.Name)
 	}

@@ -205,7 +205,8 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Test{}
 	for _, arch := range archs {
-		opts := []build.TestOption{build.WithTestArch(arch)}
+		opts := make([]build.TestOption, 0, len(baseOpts)+1)
+		opts = append(opts, build.WithTestArch(arch))
 		opts = append(opts, baseOpts...)
 
 		bc, err := build.NewTest(ctx, opts...)

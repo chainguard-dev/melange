@@ -430,7 +430,8 @@ func (s *scaImpl) PackageName() string {
 }
 
 func (s *scaImpl) RelativeNames() []string {
-	targets := []string{s.pb.Origin.Name}
+	targets := make([]string, 0, len(s.pb.Build.Configuration.Subpackages)+1)
+	targets = append(targets, s.pb.Origin.Name)
 
 	for _, target := range s.pb.Build.Configuration.Subpackages {
 		targets = append(targets, target.Name)

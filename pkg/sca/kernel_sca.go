@@ -55,7 +55,7 @@ func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 		return err
 	}
 
-	var allKernelDirs []string
+	allKernelDirs := make([]string, 0, len(BootDirs)+len(ModuleDirs))
 	allKernelDirs = append(allKernelDirs, BootDirs...)
 	allKernelDirs = append(allKernelDirs, ModuleDirs...)
 

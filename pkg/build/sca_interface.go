@@ -41,7 +41,8 @@ func (scabi *SCABuildInterface) PackageName() string {
 // RelativeNames returns all the package names relating to the package being
 // built.
 func (scabi *SCABuildInterface) RelativeNames() []string {
-	targets := []string{scabi.PackageBuild.Origin.Name}
+	targets := make([]string, 0, len(scabi.PackageBuild.Build.Configuration.Subpackages)+1)
+	targets = append(targets, scabi.PackageBuild.Origin.Name)
 
 	for _, target := range scabi.PackageBuild.Build.Configuration.Subpackages {
 		targets = append(targets, target.Name)

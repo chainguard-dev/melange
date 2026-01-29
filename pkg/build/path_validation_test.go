@@ -315,8 +315,7 @@ func BenchmarkIsValidPath(b *testing.B) {
 		"./relative/path",
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, path := range testPaths {
 			_ = isValidPath(path, baseDir)
 		}

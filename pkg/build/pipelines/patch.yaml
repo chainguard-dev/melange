@@ -25,19 +25,74 @@ inputs:
 
 pipeline:
   - runs: |
-      series='${{inputs.series}}'
+      strip_components=$(cat <<'MELANGE_STRIP_EOF'
+      ${{inputs.strip-components}}
+      MELANGE_STRIP_EOF
+      )
+      strip_components=$(printf '%s' "$strip_components" | sed 's/^[[:space:]]*//' | tr -d '\n')
 
-      if [ -z $series ]; then
-        if [ -n '${{inputs.patches}}' ]; then
+      fuzz=$(cat <<'MELANGE_FUZZ_EOF'
+      ${{inputs.fuzz}}
+      MELANGE_FUZZ_EOF
+      )
+      fuzz=$(printf '%s' "$fuzz" | sed 's/^[[:space:]]*//' | tr -d '\n')
+
+      case "$strip_components" in
+        ''|*[!0-9]*)
+          printf 'ERROR: strip-components must be a non-negative integer, got: %s\n' "$strip_components" >&2
+          exit 1
+          ;;
+      esac
+      case "$fuzz" in
+        ''|*[!0-9]*)
+          printf 'ERROR: fuzz must be a non-negative integer, got: %s\n' "$fuzz" >&2
+          exit 1
+          ;;
+      esac
+
+      series=$(cat <<'MELANGE_SERIES_EOF'
+      ${{inputs.series}}
+      MELANGE_SERIES_EOF
+      )
+      series=$(printf '%s' "$series" | sed 's/^[[:space:]]*//' | tr -d '\n')
+
+      # Ensure that the series path doesn't contain shell metacharacters
+      case "$series" in
+        *"'"*|*'`'*|*'$('*|*'${'*|*';'*|*'|'*|*'&'*|*'>'*|*'<'*)
+          printf 'ERROR: series path contains invalid characters\n' >&2
+          exit 1
+          ;;
+      esac
+
+      if [ -z "$series" ]; then
+        patches_input=$(cat <<'MELANGE_PATCHES_EOF'
+      ${{inputs.patches}}
+      MELANGE_PATCHES_EOF
+        )
+        patches_input=$(printf '%s' "$patches_input" | sed 's/^[[:space:]]*//')
+        if [ -n "$patches_input" ]; then
           series=$(mktemp)
-          echo '${{inputs.patches}}' | awk '{ for(i = 1; i <= NF; i++) { print $i; } }' > $series
+          printf '%s\n' "$patches_input" | awk '{ for(i = 1; i <= NF; i++) { print $i; } }' > "$series"
         else
-          echo "ERROR: Neither patches or series was set."
+          printf 'ERROR: Neither patches or series was set.\n' >&2
+          exit 1
+        fi
+      else
+        # Verify the series file exists
+        if [ ! -f "$series" ]; then
+          printf 'ERROR: series file does not exist: %s\n' "$series" >&2
           exit 1
         fi
       fi
 
-      grep -v -E '^(#|$)' $series | (while read patchfile; do
-        echo "INFO: applying patch file $patchfile"
-        patch '-p${{inputs.strip-components}}' --fuzz=${{inputs.fuzz}} --verbose < $patchfile
-      done)
+      grep -v -E '^(#|$)' "$series" | while IFS= read -r patchfile || [ -n "$patchfile" ]; do
+        # Ensure that the patchfile path doesn't contain shell metacharacters
+        case "$patchfile" in
+          *"'"*|*'`'*|*'$('*|*'${'*|*';'*|*'|'*|*'&'*|*'>'*|*'<'*)
+            printf 'ERROR: patch file path contains invalid characters: %s\n' "$patchfile" >&2
+            exit 1
+            ;;
+        esac
+        printf 'applying patch file %s\n' "$patchfile"
+        patch "-p${strip_components}" "--fuzz=${fuzz}" --verbose < "$patchfile"
+      done

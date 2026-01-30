@@ -27,7 +27,6 @@ import (
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/spdx/tools-golang/spdx/v2/common"
 
-	"chainguard.dev/melange/internal/capacity"
 	build "chainguard.dev/melange/pkg/build/sbom"
 	"chainguard.dev/melange/pkg/sbom"
 )
@@ -100,7 +99,7 @@ type Generator struct{}
 // It returns a map of package names to their corresponding SPDX documents.
 func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext) (map[string]spdx.Document, error) {
 	// Collect all package names
-	pkgNames := make([]string, 0, capacity.Add(len(gc.Configuration.Subpackages), 1))
+	pkgNames := make([]string, 0, len(gc.Configuration.Subpackages)+1)
 	pkgNames = append(pkgNames, gc.Configuration.Package.Name)
 	for _, sp := range gc.Configuration.Subpackages {
 		pkgNames = append(pkgNames, sp.Name)

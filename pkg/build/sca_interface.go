@@ -22,7 +22,6 @@ import (
 	"chainguard.dev/apko/pkg/apk/apk"
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
 
-	"chainguard.dev/melange/internal/capacity"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sca"
 )
@@ -42,7 +41,7 @@ func (scabi *SCABuildInterface) PackageName() string {
 // RelativeNames returns all the package names relating to the package being
 // built.
 func (scabi *SCABuildInterface) RelativeNames() []string {
-	targets := make([]string, 0, capacity.Add(len(scabi.PackageBuild.Build.Configuration.Subpackages), 1))
+	targets := make([]string, 0, len(scabi.PackageBuild.Build.Configuration.Subpackages)+1)
 	targets = append(targets, scabi.PackageBuild.Origin.Name)
 
 	for _, target := range scabi.PackageBuild.Build.Configuration.Subpackages {

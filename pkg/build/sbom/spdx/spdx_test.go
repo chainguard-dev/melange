@@ -636,6 +636,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "https://github.com/main/repo/archive/abc123def456.tar.gz",
 					Originator:       "Organization: Main",
 					Supplier:         "Organization: Main",
+					PrimaryPurpose:   "SOURCE",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -708,6 +709,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "https://github.com/sub/repo/archive/xyz789abc012.tar.gz",
 					Originator:       "Organization: Sub",
 					Supplier:         "Organization: Sub",
+					PrimaryPurpose:   "SOURCE",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -726,6 +728,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "https://github.com/main/repo/archive/abc123def456.tar.gz",
 					Originator:       "Organization: Main",
 					Supplier:         "Organization: Main",
+					PrimaryPurpose:   "SOURCE",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -803,6 +806,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "https://github.com/main/repo/archive/abc123def456.tar.gz",
 					Originator:       "Organization: Main",
 					Supplier:         "Organization: Main",
+					PrimaryPurpose:   "SOURCE",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",

@@ -729,6 +729,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 			Namespace:        namespace,
 			PURL:             pu,
 			DownloadLocation: downloadLocation,
+			PrimaryPurpose:   "SOURCE",
 		}, nil
 	}
 
@@ -794,6 +795,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			Checksums:        checksums,
 			PURL:             pu,
 			DownloadLocation: args["download_url"],
+			PrimaryPurpose:   "SOURCE",
 		}, nil
 
 	case "git-checkout":

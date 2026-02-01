@@ -173,7 +173,7 @@ func TestSBOMGeneration(t *testing.T) {
 			},
 			DataLicense:       "CC0-1.0",
 			Namespace:         "https://spdx.org/spdxdocs/chainguard/melange/e43c05eed89f57b011808279db234a08",
-			DocumentDescribes: []string{"SPDXRef-Package-test-pkg-dev-1.2.3-r2"},
+			DocumentDescribes: []string{"SPDXRef-Package-apk-test-pkg-dev-1.2.3-r2"},
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
@@ -189,7 +189,7 @@ func TestSBOMGeneration(t *testing.T) {
 					PrimaryPurpose:   "OPERATING-SYSTEM",
 				},
 				{
-					ID:               "SPDXRef-Package-test-pkg-dev-1.2.3-r2",
+					ID:               "SPDXRef-Package-apk-test-pkg-dev-1.2.3-r2",
 					Name:             "test-pkg-dev",
 					Version:          "1.2.3-r2",
 					FilesAnalyzed:    false,
@@ -199,6 +199,7 @@ func TestSBOMGeneration(t *testing.T) {
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
 					CopyrightText:    "NOASSERTION",
+					PrimaryPurpose:   "APPLICATION",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -228,7 +229,7 @@ func TestSBOMGeneration(t *testing.T) {
 			},
 			Relationships: []spdx.Relationship{
 				{
-					Element: "SPDXRef-Package-test-pkg-dev-1.2.3-r2",
+					Element: "SPDXRef-Package-apk-test-pkg-dev-1.2.3-r2",
 					Related: "SPDXRef-Package-test-pkg.yaml-commit123",
 					Type:    "DESCRIBED_BY",
 				},
@@ -665,7 +666,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			},
 			DataLicense:       "CC0-1.0",
 			Namespace:         actualMainDoc.Namespace, // Use the same dynamically generated namespace
-			DocumentDescribes: []string{"SPDXRef-Package-sub-pkg-1.0.0-r0"},
+			DocumentDescribes: []string{"SPDXRef-Package-apk-sub-pkg-1.0.0-r0"},
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
@@ -681,7 +682,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					PrimaryPurpose:   "OPERATING-SYSTEM",
 				},
 				{
-					ID:               "SPDXRef-Package-sub-pkg-1.0.0-r0",
+					ID:               "SPDXRef-Package-apk-sub-pkg-1.0.0-r0",
 					Name:             "sub-pkg",
 					Version:          "1.0.0-r0",
 					FilesAnalyzed:    false,
@@ -691,6 +692,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
 					CopyrightText:    "NOASSERTION",
+					PrimaryPurpose:   "APPLICATION",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -740,12 +742,12 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			},
 			Relationships: []spdx.Relationship{
 				{
-					Element: "SPDXRef-Package-sub-pkg-1.0.0-r0",
+					Element: "SPDXRef-Package-apk-sub-pkg-1.0.0-r0",
 					Related: "SPDXRef-Package-Source-github.com-sub-repo.git-v2.0.0-xyz789abc012-0",
 					Type:    "GENERATED_FROM",
 				},
 				{
-					Element: "SPDXRef-Package-sub-pkg-1.0.0-r0",
+					Element: "SPDXRef-Package-apk-sub-pkg-1.0.0-r0",
 					Related: "SPDXRef-Package-Source-github.com-main-repo.git-v1.0.0-abc123def456-0",
 					Type:    "GENERATED_FROM",
 				},
@@ -762,7 +764,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			},
 			DataLicense:       "CC0-1.0",
 			Namespace:         actualMainDoc.Namespace, // Use the same dynamically generated namespace
-			DocumentDescribes: []string{"SPDXRef-Package-sub-pkg-no-git-1.0.0-r0"},
+			DocumentDescribes: []string{"SPDXRef-Package-apk-sub-pkg-no-git-1.0.0-r0"},
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
@@ -778,7 +780,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					PrimaryPurpose:   "OPERATING-SYSTEM",
 				},
 				{
-					ID:               "SPDXRef-Package-sub-pkg-no-git-1.0.0-r0",
+					ID:               "SPDXRef-Package-apk-sub-pkg-no-git-1.0.0-r0",
 					Name:             "sub-pkg-no-git",
 					Version:          "1.0.0-r0",
 					FilesAnalyzed:    false,
@@ -788,6 +790,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
 					CopyrightText:    "NOASSERTION",
+					PrimaryPurpose:   "APPLICATION",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -818,7 +821,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			},
 			Relationships: []spdx.Relationship{
 				{
-					Element: "SPDXRef-Package-sub-pkg-no-git-1.0.0-r0",
+					Element: "SPDXRef-Package-apk-sub-pkg-no-git-1.0.0-r0",
 					Related: "SPDXRef-Package-Source-github.com-main-repo.git-v1.0.0-abc123def456-0",
 					Type:    "GENERATED_FROM",
 				},

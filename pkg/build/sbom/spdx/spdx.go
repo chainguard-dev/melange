@@ -117,6 +117,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		spSBOM := sg.Document(sp.Name)
 
 		apkSubPkg := &sbom.Package{
+			IDComponents:    []string{"apk", sp.Name, pkg.FullVersion()},
 			Name:            sp.Name,
 			Version:         pkg.FullVersion(),
 			Copyright:       pkg.FullCopyright(),
@@ -124,6 +125,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 			Namespace:       gc.Namespace,
 			Arch:            arch,
 			PURL:            pkg.PackageURLForSubpackage(gc.Namespace, arch, sp.Name),
+			PrimaryPurpose:  "APPLICATION",
 		}
 		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
 

@@ -126,6 +126,7 @@ func TestSBOMGeneration(t *testing.T) {
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
 					CopyrightText:    "NOASSERTION",
+					PrimaryPurpose:   "APPLICATION",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -357,6 +358,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 				Originator:       "Organization: Test-Ns",
 				Supplier:         "Organization: Test-Ns",
 				CopyrightText:    "NOASSERTION",
+				PrimaryPurpose:   "APPLICATION",
 				ExternalRefs: []spdx.ExternalRef{
 					{
 						Category: "PACKAGE-MANAGER",
@@ -468,6 +470,7 @@ func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
 				Originator:       "Organization: Test-Ns",
 				Supplier:         "Organization: Test-Ns",
 				CopyrightText:    "NOASSERTION",
+				PrimaryPurpose:   "APPLICATION",
 				ExternalRefs: []spdx.ExternalRef{
 					{
 						Category: "PACKAGE-MANAGER",
@@ -614,6 +617,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
 					CopyrightText:    "NOASSERTION",
+					PrimaryPurpose:   "APPLICATION",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",

@@ -153,6 +153,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		Namespace:       gc.Namespace,
 		Arch:            arch,
 		PURL:            pkg.PackageURL(gc.Namespace, arch),
+		PrimaryPurpose:  "APPLICATION",
 	}
 	pSBOM.AddPackageAndSetDescribed(apkPkg)
 

@@ -163,12 +163,14 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 	// Add build configuration package
 	if gc.ConfigFile != nil {
 		sg.AddBuildConfigurationPackage(&sbom.Package{
+			IDComponents:    []string{"Melange", gc.ConfigFile.Path, gc.ConfigFile.Commit},
 			Name:            gc.ConfigFile.Path,
 			Version:         gc.ConfigFile.Commit,
 			LicenseDeclared: gc.ConfigFile.License,
 			Namespace:       gc.Namespace,
 			Arch:            "", // This field doesn't make sense in this context
 			PURL:            gc.ConfigFile.PURL,
+			PrimaryPurpose:  "INSTALL",
 		})
 	}
 

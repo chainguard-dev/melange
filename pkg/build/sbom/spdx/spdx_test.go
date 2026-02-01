@@ -136,7 +136,7 @@ func TestSBOMGeneration(t *testing.T) {
 					},
 				},
 				{
-					ID:               "SPDXRef-Package-test-pkg.yaml-commit123",
+					ID:               "SPDXRef-Package-Melange-test-pkg.yaml-commit123",
 					Name:             "test-pkg.yaml",
 					Version:          "commit123",
 					FilesAnalyzed:    false,
@@ -145,6 +145,7 @@ func TestSBOMGeneration(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
+					PrimaryPurpose:   "INSTALL",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -157,7 +158,7 @@ func TestSBOMGeneration(t *testing.T) {
 			Relationships: []spdx.Relationship{
 				{
 					Element: "SPDXRef-Package-apk-test-pkg-1.2.3-r2",
-					Related: "SPDXRef-Package-test-pkg.yaml-commit123",
+					Related: "SPDXRef-Package-Melange-test-pkg.yaml-commit123",
 					Type:    "DESCRIBED_BY",
 				},
 			},
@@ -209,7 +210,7 @@ func TestSBOMGeneration(t *testing.T) {
 					},
 				},
 				{
-					ID:               "SPDXRef-Package-test-pkg.yaml-commit123",
+					ID:               "SPDXRef-Package-Melange-test-pkg.yaml-commit123",
 					Name:             "test-pkg.yaml",
 					Version:          "commit123",
 					FilesAnalyzed:    false,
@@ -218,6 +219,7 @@ func TestSBOMGeneration(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
+					PrimaryPurpose:   "INSTALL",
 					ExternalRefs: []spdx.ExternalRef{
 						{
 							Category: "PACKAGE-MANAGER",
@@ -230,7 +232,7 @@ func TestSBOMGeneration(t *testing.T) {
 			Relationships: []spdx.Relationship{
 				{
 					Element: "SPDXRef-Package-apk-test-pkg-dev-1.2.3-r2",
-					Related: "SPDXRef-Package-test-pkg.yaml-commit123",
+					Related: "SPDXRef-Package-Melange-test-pkg.yaml-commit123",
 					Type:    "DESCRIBED_BY",
 				},
 			},

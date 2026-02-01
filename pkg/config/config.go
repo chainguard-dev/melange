@@ -782,7 +782,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			return nil, err
 		}
 
-		idComponents := []string{pkgName, pkgVersion}
+		idComponents := []string{"Source", pkgName, pkgVersion}
 		if uniqueID != "" {
 			idComponents = append(idComponents, uniqueID)
 		}
@@ -813,7 +813,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			s = strings.TrimPrefix(s, "http://")
 			return s
 		}()
-		for _, component := range []string{repoCleaned, branch, tag, expectedCommit} {
+		for _, component := range []string{"Source", repoCleaned, branch, tag, expectedCommit} {
 			if component != "" {
 				idComponents = append(idComponents, component)
 			}

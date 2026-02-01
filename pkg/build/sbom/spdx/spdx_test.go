@@ -100,7 +100,7 @@ func TestSBOMGeneration(t *testing.T) {
 			},
 			DataLicense:       "CC0-1.0",
 			Namespace:         "https://spdx.org/spdxdocs/chainguard/melange/e43c05eed89f57b011808279db234a08",
-			DocumentDescribes: []string{"SPDXRef-Package-test-pkg-1.2.3-r2"},
+			DocumentDescribes: []string{"SPDXRef-Package-apk-test-pkg-1.2.3-r2"},
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
@@ -116,7 +116,7 @@ func TestSBOMGeneration(t *testing.T) {
 					PrimaryPurpose:   "OPERATING-SYSTEM",
 				},
 				{
-					ID:               "SPDXRef-Package-test-pkg-1.2.3-r2",
+					ID:               "SPDXRef-Package-apk-test-pkg-1.2.3-r2",
 					Name:             "test-pkg",
 					Version:          "1.2.3-r2",
 					FilesAnalyzed:    false,
@@ -156,7 +156,7 @@ func TestSBOMGeneration(t *testing.T) {
 			},
 			Relationships: []spdx.Relationship{
 				{
-					Element: "SPDXRef-Package-test-pkg-1.2.3-r2",
+					Element: "SPDXRef-Package-apk-test-pkg-1.2.3-r2",
 					Related: "SPDXRef-Package-test-pkg.yaml-commit123",
 					Type:    "DESCRIBED_BY",
 				},
@@ -332,7 +332,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 		},
 		DataLicense:       "CC0-1.0",
 		Namespace:         actual.Namespace, // Use actual namespace since it's dynamically generated
-		DocumentDescribes: []string{"SPDXRef-Package-proprietary-pkg-1.0.0-r0"},
+		DocumentDescribes: []string{"SPDXRef-Package-apk-proprietary-pkg-1.0.0-r0"},
 		Packages: []spdx.Package{
 			{
 				ID:               "SPDXRef-OperatingSystem",
@@ -348,7 +348,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 				PrimaryPurpose:   "OPERATING-SYSTEM",
 			},
 			{
-				ID:               "SPDXRef-Package-proprietary-pkg-1.0.0-r0",
+				ID:               "SPDXRef-Package-apk-proprietary-pkg-1.0.0-r0",
 				Name:             "proprietary-pkg",
 				Version:          "1.0.0-r0",
 				FilesAnalyzed:    false,
@@ -444,7 +444,7 @@ func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
 		},
 		DataLicense:       "CC0-1.0",
 		Namespace:         actual.Namespace, // Use actual namespace since it's dynamically generated
-		DocumentDescribes: []string{"SPDXRef-Package-mixed-license-pkg-2.0.0-r1"},
+		DocumentDescribes: []string{"SPDXRef-Package-apk-mixed-license-pkg-2.0.0-r1"},
 		Packages: []spdx.Package{
 			{
 				ID:               "SPDXRef-OperatingSystem",
@@ -460,7 +460,7 @@ func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
 				PrimaryPurpose:   "OPERATING-SYSTEM",
 			},
 			{
-				ID:               "SPDXRef-Package-mixed-license-pkg-2.0.0-r1",
+				ID:               "SPDXRef-Package-apk-mixed-license-pkg-2.0.0-r1",
 				Name:             "mixed-license-pkg",
 				Version:          "2.0.0-r1",
 				FilesAnalyzed:    false,
@@ -591,7 +591,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			},
 			DataLicense:       "CC0-1.0",
 			Namespace:         actualMainDoc.Namespace, // Use the dynamically generated namespace
-			DocumentDescribes: []string{"SPDXRef-Package-main-pkg-1.0.0-r0"},
+			DocumentDescribes: []string{"SPDXRef-Package-apk-main-pkg-1.0.0-r0"},
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
@@ -607,7 +607,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					PrimaryPurpose:   "OPERATING-SYSTEM",
 				},
 				{
-					ID:               "SPDXRef-Package-main-pkg-1.0.0-r0",
+					ID:               "SPDXRef-Package-apk-main-pkg-1.0.0-r0",
 					Name:             "main-pkg",
 					Version:          "1.0.0-r0",
 					FilesAnalyzed:    false,
@@ -647,7 +647,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			},
 			Relationships: []spdx.Relationship{
 				{
-					Element: "SPDXRef-Package-main-pkg-1.0.0-r0",
+					Element: "SPDXRef-Package-apk-main-pkg-1.0.0-r0",
 					Related: "SPDXRef-Package-github.com-main-repo.git-v1.0.0-abc123def456-0",
 					Type:    "GENERATED_FROM",
 				},

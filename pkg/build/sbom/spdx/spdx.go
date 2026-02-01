@@ -146,6 +146,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 
 	pSBOM := sg.Document(pkg.Name)
 	apkPkg := &sbom.Package{
+		IDComponents:    []string{"apk", pkg.Name, pkg.FullVersion()},
 		Name:            pkg.Name,
 		Version:         pkg.FullVersion(),
 		Copyright:       pkg.FullCopyright(),

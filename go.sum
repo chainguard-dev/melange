@@ -1,5 +1,5 @@
-chainguard.dev/apko v1.1.1 h1:jl2gScXKDegYbhd0hVTWODk35AFDlLx8HzS+Kk7aHqM=
-chainguard.dev/apko v1.1.1/go.mod h1:jBoyxON09VaMNQ3WOuuE8NwCIfSkdwkIH4v6I3TR5eQ=
+chainguard.dev/apko v1.1.2 h1:gS4Ss03294u15KE1SfApEHFtC7wvQwOWA89itqOj1co=
+chainguard.dev/apko v1.1.2/go.mod h1:jBoyxON09VaMNQ3WOuuE8NwCIfSkdwkIH4v6I3TR5eQ=
 chainguard.dev/go-grpc-kit v0.17.15 h1:y+FBjta2lsC0XxlkG+W5P1VxYl0zG74GRvoYN2o+p7s=
 chainguard.dev/go-grpc-kit v0.17.15/go.mod h1:1wAVAX2CCamtFlfMs9PFzfgQQxX1/TQyF6cbWApbJ2U=
 chainguard.dev/sdk v0.1.49 h1:U9290jR9GHSaFsxSTb5st3t/JqoTwhODFEA6BnybXBc=
@@ -44,8 +44,8 @@ github.com/chainguard-dev/clog v1.8.0 h1:frlTMEdg3XQR+ioQ6O9i92uigY8GTUcWKpuCFkh
 github.com/chainguard-dev/clog v1.8.0/go.mod h1:5MQOZi+Iu7fV7GcJG8ag8rCB5elEOpqRMKEASgnGVdo=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2vgQC024I9/boh9r1ihVv8Z14+pbvWqXeYMCnZJpc=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10/go.mod h1:1p6+MesLcjKeON5BRWa7I87mvAY0QmKjgginIM3w6BI=
-github.com/chainguard-dev/yam v0.2.46 h1:DDgOPW9GUlmH634TaeCnEyyFk7IAQ2+p/RDU22DqeCo=
-github.com/chainguard-dev/yam v0.2.46/go.mod h1:Dwk2i+W3mifDxxM5nILZrvUs9GYZsIjVjEONgKMtBrI=
+github.com/chainguard-dev/yam v0.2.47 h1:6kWW5c/Q60IIZ2t4Xn//NYDcZfLy393Y7K47AIqML2o=
+github.com/chainguard-dev/yam v0.2.47/go.mod h1:Dwk2i+W3mifDxxM5nILZrvUs9GYZsIjVjEONgKMtBrI=
 github.com/charmbracelet/colorprofile v0.3.2 h1:9J27WdztfJQVAQKX2WOlSSRB+5gaKqqITmrvb1uTIiI=
 github.com/charmbracelet/colorprofile v0.3.2/go.mod h1:mTD5XzNeWHj8oqHb+S1bssQb7vIHbepiebQ2kPKVKbI=
 github.com/charmbracelet/lipgloss v1.1.0 h1:vYXsiLHVkK7fp74RkV7b2kq9+zDLoEU4MZoFqR/noCY=

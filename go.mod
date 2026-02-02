@@ -3,10 +3,10 @@ module chainguard.dev/melange
 go 1.25.0
 
 require (
-	chainguard.dev/apko v1.1.1
+	chainguard.dev/apko v1.1.2
 	github.com/chainguard-dev/clog v1.8.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.46
+	github.com/chainguard-dev/yam v0.2.47
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v29.2.0+incompatible
 	github.com/docker/docker v28.5.2+incompatible

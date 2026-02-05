@@ -1650,69 +1650,6 @@ package:
 	}
 }
 
-func TestNormalizeLicenseID(t *testing.T) {
-	tests := []struct {
-		name     string
-		license  string
-		expected string
-	}{
-		{
-			name:     "valid SPDX license MIT",
-			license:  "MIT",
-			expected: "MIT",
-		},
-		{
-			name:     "valid SPDX license Apache-2.0",
-			license:  "Apache-2.0",
-			expected: "Apache-2.0",
-		},
-		{
-			name:     "valid SPDX license GPL-3.0-only",
-			license:  "GPL-3.0-only",
-			expected: "GPL-3.0-only",
-		},
-		{
-			name:     "invalid SPDX license - custom",
-			license:  "MyCustomLicense",
-			expected: "LicenseRef-MyCustomLicense",
-		},
-		{
-			name:     "invalid SPDX license - with spaces",
-			license:  "My Custom License",
-			expected: "LicenseRef-My-Custom-License",
-		},
-		{
-			name:     "invalid SPDX license - GPL typo",
-			license:  "GPL",
-			expected: "LicenseRef-GPL",
-		},
-		{
-			name:     "empty license",
-			license:  "",
-			expected: "",
-		},
-		{
-			name:     "invalid license with special chars",
-			license:  "Custom@License!v2",
-			expected: "LicenseRef-CustomLicensev2",
-		},
-		{
-			name:     "PROPRIETARY license",
-			license:  "PROPRIETARY",
-			expected: "LicenseRef-PROPRIETARY",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := normalizeLicenseID(tt.license)
-			if diff := cmp.Diff(tt.expected, result); diff != "" {
-				t.Errorf("normalizeLicenseID() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
 func TestToLicenseRef(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1758,9 +1695,192 @@ func TestToLicenseRef(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := toLicenseRef(tt.license)
+			result := toLicenseRef(tt.license, nil)
 			if diff := cmp.Diff(tt.expected, result); diff != "" {
 				t.Errorf("toLicenseRef() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestToLicenseRefWithContent(t *testing.T) {
+	tests := []struct {
+		name           string
+		license        string
+		licenseContent []byte
+		expected       string
+	}{
+		{
+			name:           "simple name with content",
+			license:        "CustomLicense",
+			licenseContent: []byte("This is my custom license text"),
+			expected:       "LicenseRef-CustomLicense-429617c68fc119f7",
+		},
+		{
+			name:           "name with spaces and content",
+			license:        "Custom License v2",
+			licenseContent: []byte("Version 2 of the license"),
+			expected:       "LicenseRef-Custom-License-v2-9b441cf830989f0d",
+		},
+		{
+			name:           "nil content - no digest",
+			license:        "CustomLicense",
+			licenseContent: nil,
+			expected:       "LicenseRef-CustomLicense",
+		},
+		{
+			name:           "empty content still produces digest",
+			license:        "CustomLicense",
+			licenseContent: []byte(""),
+			expected:       "LicenseRef-CustomLicense-e3b0c44298fc1c14",
+		},
+		{
+			name:           "special chars in name with content",
+			license:        "License@#$%",
+			licenseContent: []byte("Special license"),
+			expected:       "LicenseRef-License-54a45af597f247da",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := toLicenseRef(tt.license, tt.licenseContent)
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("toLicenseRef() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestCopyrightLicenseID(t *testing.T) {
+	// Create a temp directory with a license file
+	tmpDir := t.TempDir()
+	licenseContent := "This is my custom license text"
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE.custom"), []byte(licenseContent), 0o644))
+
+	tests := []struct {
+		name        string
+		copyright   Copyright
+		expected    string
+		expectError bool
+	}{
+		{
+			name:      "valid SPDX license",
+			copyright: Copyright{License: "MIT"},
+			expected:  "MIT",
+		},
+		{
+			name:      "valid SPDX license with license path",
+			copyright: Copyright{License: "Apache-2.0", LicensePath: "LICENSE.custom"},
+			expected:  "Apache-2.0",
+		},
+		{
+			name:      "non-SPDX license without license path",
+			copyright: Copyright{License: "CustomLicense"},
+			expected:  "LicenseRef-CustomLicense",
+		},
+		{
+			name:      "non-SPDX license with license path - includes digest",
+			copyright: Copyright{License: "CustomLicense", LicensePath: "LICENSE.custom"},
+			expected:  "LicenseRef-CustomLicense-429617c68fc119f7",
+		},
+		{
+			name:      "PROPRIETARY license with license path - includes digest",
+			copyright: Copyright{License: "PROPRIETARY", LicensePath: "LICENSE.custom"},
+			expected:  "LicenseRef-PROPRIETARY-429617c68fc119f7",
+		},
+		{
+			name:        "non-existent license file",
+			copyright:   Copyright{License: "CustomLicense", LicensePath: "NONEXISTENT"},
+			expectError: true,
+		},
+		{
+			name:        "path traversal attack",
+			copyright:   Copyright{License: "CustomLicense", LicensePath: "../../../etc/passwd"},
+			expectError: true,
+		},
+		{
+			name:      "empty license",
+			copyright: Copyright{License: ""},
+			expected:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.copyright.LicenseID(tmpDir)
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("LicenseID() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestLicenseExpressionWithLicensePath(t *testing.T) {
+	// Create a temp directory with license files
+	tmpDir := t.TempDir()
+	license1Content := "This is my custom license text"
+	license2Content := "Another custom license"
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE.custom1"), []byte(license1Content), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE.custom2"), []byte(license2Content), 0o644))
+
+	tests := []struct {
+		name        string
+		copyright   []Copyright
+		expected    string
+		expectError bool
+	}{
+		{
+			name: "single non-SPDX license with path - includes digest",
+			copyright: []Copyright{
+				{License: "CustomLicense", LicensePath: "LICENSE.custom1"},
+			},
+			expected: "LicenseRef-CustomLicense-429617c68fc119f7",
+		},
+		{
+			name: "multiple licenses - mixed with and without digests",
+			copyright: []Copyright{
+				{License: "MIT"},
+				{License: "CustomLicense", LicensePath: "LICENSE.custom1"},
+				{License: "Apache-2.0"},
+			},
+			expected: "MIT AND LicenseRef-CustomLicense-429617c68fc119f7 AND Apache-2.0",
+		},
+		{
+			name: "multiple non-SPDX licenses with different content",
+			copyright: []Copyright{
+				{License: "License1", LicensePath: "LICENSE.custom1"},
+				{License: "License2", LicensePath: "LICENSE.custom2"},
+			},
+			expected: "LicenseRef-License1-429617c68fc119f7 AND LicenseRef-License2-a7b9e316508b7dbe",
+		},
+		{
+			name: "non-existent license file",
+			copyright: []Copyright{
+				{License: "CustomLicense", LicensePath: "NONEXISTENT"},
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg := Package{
+				Copyright: tt.copyright,
+			}
+			result, err := pkg.LicenseExpression(tmpDir)
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if diff := cmp.Diff(tt.expected, result); diff != "" {
+				t.Errorf("LicenseExpression() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -1830,6 +1950,9 @@ func TestIsValidSPDXLicense(t *testing.T) {
 }
 
 func TestLicenseExpressionWithValidation(t *testing.T) {
+	// Create a temp directory for tests (needed even though these tests don't use LicensePath)
+	tmpDir := t.TempDir()
+
 	tests := []struct {
 		name      string
 		copyright []Copyright
@@ -1905,7 +2028,8 @@ func TestLicenseExpressionWithValidation(t *testing.T) {
 			pkg := Package{
 				Copyright: tt.copyright,
 			}
-			result := pkg.LicenseExpression()
+			result, err := pkg.LicenseExpression(tmpDir)
+			require.NoError(t, err)
 			if diff := cmp.Diff(tt.expected, result); diff != "" {
 				t.Errorf("LicenseExpression() mismatch (-want +got):\n%s", diff)
 			}
@@ -2080,12 +2204,13 @@ func TestLicensingInfosWithValidation(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid SPDX license with license path - uses file content",
+			name: "invalid SPDX license with license path - uses file content with digest",
 			copyright: []Copyright{
 				{License: "CustomLicense", LicensePath: "LICENSE.custom"},
 			},
 			expected: map[string]string{
-				"LicenseRef-CustomLicense": licenseContent,
+				// LicenseRef includes digest of license content (first 16 hex chars of SHA256)
+				"LicenseRef-CustomLicense-429617c68fc119f7": licenseContent,
 			},
 		},
 		{
@@ -2119,12 +2244,13 @@ func TestLicensingInfosWithValidation(t *testing.T) {
 			},
 		},
 		{
-			name: "PROPRIETARY license with license path",
+			name: "PROPRIETARY license with license path - includes digest",
 			copyright: []Copyright{
 				{License: "PROPRIETARY", LicensePath: "LICENSE.custom"},
 			},
 			expected: map[string]string{
-				"LicenseRef-PROPRIETARY": licenseContent,
+				// LicenseRef includes digest of license content (first 16 hex chars of SHA256)
+				"LicenseRef-PROPRIETARY-429617c68fc119f7": licenseContent,
 			},
 		},
 	}
@@ -2253,7 +2379,8 @@ func TestLicensingInfosPathTraversal(t *testing.T) {
 
 				// For successful cases, verify the content if a file was read
 				if tt.copyright[0].LicensePath != "" {
-					id := normalizeLicenseID(tt.copyright[0].License)
+					id, err := tt.copyright[0].LicenseID(workspaceDir)
+					require.NoError(t, err)
 					content, exists := result[id]
 					require.True(t, exists, "Expected license info to be present")
 					require.Equal(t, legitimateLicense, content, "Content should match legitimate license")

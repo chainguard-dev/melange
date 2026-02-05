@@ -352,7 +352,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 				Version:          "1.0.0-r0",
 				FilesAnalyzed:    false,
 				LicenseConcluded: "NOASSERTION",
-				LicenseDeclared:  "LicenseRef-PROPRIETARY",
+				LicenseDeclared:  "LicenseRef-PROPRIETARY-39e07780af77f5dd",
 				DownloadLocation: "NOASSERTION",
 				Originator:       "Organization: Test-Ns",
 				Supplier:         "Organization: Test-Ns",
@@ -368,7 +368,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 		},
 		LicensingInfos: []spdx.LicensingInfo{
 			{
-				LicenseID:     "LicenseRef-PROPRIETARY",
+				LicenseID:     "LicenseRef-PROPRIETARY-39e07780af77f5dd",
 				ExtractedText: licenseContent,
 			},
 		},

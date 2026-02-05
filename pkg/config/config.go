@@ -444,41 +444,32 @@ type Copyright struct {
 // LicenseExpression returns an SPDX license expression formed from the data in
 // the copyright structs found in the conf. It's a simple AND for now.
 // Invalid SPDX license identifiers are converted to LicenseRef-<sanitized-name>
-// format for SPDX compliance.
-func (p Package) LicenseExpression() string {
-	licenseExpression := ""
+// format for SPDX compliance. For non-SPDX licenses with a LicensePath, a digest
+// of the license file content is appended to make the identifier content-addressable.
+func (p Package) LicenseExpression(workspaceDir string) (string, error) {
+	var licenseExpression string
 	if p.Copyright == nil {
-		return licenseExpression
+		return licenseExpression, nil
 	}
+
 	for _, cp := range p.Copyright {
 		if licenseExpression != "" {
 			licenseExpression += " AND "
 		}
-		license := normalizeLicenseID(cp.License)
-		licenseExpression += license
+		id, err := cp.LicenseID(workspaceDir)
+		if err != nil {
+			return "", fmt.Errorf("getting license ID for %q: %w", cp.License, err)
+		}
+		licenseExpression += id
 	}
-	return licenseExpression
-}
-
-// normalizeLicenseID checks if a license identifier is a valid SPDX license.
-// If valid, it returns the license as-is. If invalid, it returns a LicenseRef-
-// formatted identifier that is SPDX compliant.
-func normalizeLicenseID(license string) string {
-	if license == "" {
-		return ""
-	}
-
-	if isValidSPDXLicense(license) {
-		return license
-	}
-
-	// Convert invalid license to LicenseRef format
-	return toLicenseRef(license)
+	return licenseExpression, nil
 }
 
 // toLicenseRef converts a license name to a valid SPDX LicenseRef identifier.
 // SPDX LicenseRef identifiers must match the pattern: LicenseRef-[a-zA-Z0-9.-]+
-func toLicenseRef(license string) string {
+// If licenseContent is provided (non-nil), a digest of the content is appended
+// to make the identifier content-addressable.
+func toLicenseRef(license string, licenseContent []byte) string {
 	// Sanitize the license name to only contain valid characters
 	var sb strings.Builder
 	for _, r := range license {
@@ -499,7 +490,52 @@ func toLicenseRef(license string) string {
 		sanitized = hex.EncodeToString(h[:8])
 	}
 
-	return "LicenseRef-" + sanitized
+	ref := "LicenseRef-" + sanitized
+
+	// Append content digest if license content is provided
+	if licenseContent != nil {
+		h := sha256.Sum256(licenseContent)
+		digest := hex.EncodeToString(h[:8])
+		ref += "-" + digest
+	}
+
+	return ref
+}
+
+// LicenseID returns the SPDX license identifier for this copyright entry.
+// For valid SPDX licenses, it returns the license as-is.
+// For non-SPDX licenses with a LicensePath, it returns a LicenseRef with a digest
+// computed from the license file content, making the identifier uniquely identify
+// both the license name and its actual content.
+// For non-SPDX licenses without a LicensePath, it returns a regular LicenseRef.
+func (c Copyright) LicenseID(workspaceDir string) (string, error) {
+	if c.License == "" {
+		return "", nil
+	}
+
+	if isValidSPDXLicense(c.License) {
+		return c.License, nil
+	}
+
+	// Non-SPDX license - check if we have a license path
+	if c.LicensePath == "" {
+		return toLicenseRef(c.License, nil), nil
+	}
+
+	// Read license content and generate LicenseRef with digest
+	cleanPath := filepath.Clean(c.LicensePath)
+	localPath, err := filepath.Localize(cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid license-path %q: %w", c.LicensePath, err)
+	}
+	fullPath := filepath.Join(workspaceDir, localPath)
+
+	content, err := os.ReadFile(fullPath) // #nosec G304 - Reading license file from build workspace
+	if err != nil {
+		return "", fmt.Errorf("failed to read license-path %q: %w", c.LicensePath, err)
+	}
+
+	return toLicenseRef(c.License, content), nil
 }
 
 // isValidSPDXLicense checks if a license identifier is a valid SPDX license.
@@ -518,6 +554,10 @@ func isValidSPDXLicense(license string) bool {
 // map of the license identifier (using LicenseRef format for non-SPDX licenses)
 // to the string content of the file from `.LicensePath`.
 //
+// For non-SPDX licenses with a LicensePath, the LicenseRef identifier includes
+// a digest of the license content, making it content-addressable. This ensures
+// the identifier matches what LicenseExpression returns.
+//
 // For licenses that are not valid SPDX identifiers, the extracted text will
 // include the original license name if no LicensePath is specified. A warning
 // is logged in this case to encourage providing the full license text.
@@ -526,7 +566,6 @@ func (p Package) LicensingInfos(ctx context.Context, workspaceDir string) (map[s
 	licenseInfos := make(map[string]string)
 	for _, cp := range p.Copyright {
 		license := cp.License
-		id := normalizeLicenseID(license)
 
 		if cp.LicensePath != "" {
 			// Clean and localize the path
@@ -541,12 +580,26 @@ func (p Package) LicensingInfos(ctx context.Context, workspaceDir string) (map[s
 			if err != nil {
 				return nil, fmt.Errorf("failed to read licensepath %q: %w", cp.LicensePath, err)
 			}
+
+			// Determine the license ID - for non-SPDX licenses, include content digest
+			var id string
+			if isValidSPDXLicense(license) {
+				id = license
+			} else {
+				id = toLicenseRef(license, content)
+			}
 			licenseInfos[id] = string(content)
-		} else if strings.HasPrefix(id, "LicenseRef-") {
-			// For non-SPDX licenses without a license path, include the original
-			// license name as the extracted text so consumers know what it refers to
-			log.Warnf("non-SPDX license %q used without license-path; consider adding license-path with full license text for SBOM compliance", license)
-			licenseInfos[id] = fmt.Sprintf("Non-SPDX License: %s", license)
+		} else {
+			id, err := cp.LicenseID(workspaceDir)
+			if err != nil {
+				return nil, fmt.Errorf("getting license ID for %q: %w", cp.License, err)
+			}
+			if strings.HasPrefix(id, "LicenseRef-") {
+				// For non-SPDX licenses without a license path, include the original
+				// license name as the extracted text so consumers know what it refers to
+				log.Warnf("non-SPDX license %q used without license-path; consider adding license-path with full license text for SBOM compliance", license)
+				licenseInfos[id] = fmt.Sprintf("Non-SPDX License: %s", license)
+			}
 		}
 	}
 	return licenseInfos, nil

@@ -108,7 +108,7 @@ jobs:
       - uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 # v4.7.0
 
       # this need to point to main to always get the latest action
-      - uses: wolfi-dev/actions/install-wolfictl@main # main
+      - uses: wolfi-dev/actions/install-wolfictl@d8faf0b2bf2a7c6eefc571567ef370faae5baed2 # last commit that had the scan command
 
       - run: |
           wolfictl bump ${{ matrix.package }}

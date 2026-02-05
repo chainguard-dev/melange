@@ -47,6 +47,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringVar(&flags.BuildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	fs.StringVar(&flags.WorkspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	fs.StringVar(&flags.PipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
+	fs.StringSliceVar(&flags.PipelineDirs, "pipeline-dirs", []string{}, "directories used to extend defined built-in pipelines")
 	fs.StringVar(&flags.SourceDir, "source-dir", "", "directory used for included sources")
 	fs.StringVar(&flags.CacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	fs.StringVar(&flags.CacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
@@ -97,6 +98,7 @@ type BuildFlags struct {
 	BuildDate            string
 	WorkspaceDir         string
 	PipelineDir          string
+	PipelineDirs         []string
 	SourceDir            string
 	CacheDir             string
 	CacheSource          string
@@ -191,9 +193,9 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithBuildDate(flags.BuildDate),
 		build.WithWorkspaceDir(flags.WorkspaceDir),
 		// Order matters, so add any specified pipelineDir before
-		// builtin pipelines.
+		// builtin pipelines. Support both --pipeline-dir (singular, deprecated)
+		// and --pipeline-dirs (plural, new). --pipeline-dir is processed first.
 		build.WithPipelineDir(flags.PipelineDir),
-		build.WithPipelineDir(BuiltinPipelineDir),
 		build.WithCacheDir(flags.CacheDir),
 		build.WithCacheSource(flags.CacheSource),
 		build.WithPackageCacheDir(flags.ApkCacheDir),
@@ -243,6 +245,13 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 	if flags.SourceDir != "" {
 		opts = append(opts, build.WithSourceDir(flags.SourceDir))
 	}
+
+	// Add multiple pipeline directories from --pipeline-dirs
+	for i := range flags.PipelineDirs {
+		opts = append(opts, build.WithPipelineDir(flags.PipelineDirs[i]))
+	}
+	// Always append built-in pipeline directory as fallback
+	opts = append(opts, build.WithPipelineDir(BuiltinPipelineDir))
 
 	if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
 		// Fine, no auth.

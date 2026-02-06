@@ -365,6 +365,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	if err := bc.BuildImage(ctx); err != nil {
 		return "", fmt.Errorf("unable to generate image: %w", err)
 	}
+
 	// if the runner needs an image, create an OCI image from the directory and load it.
 	loader := b.Runner.OCIImageLoader()
 	if loader == nil {
@@ -519,9 +520,7 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	}
 
 	// Write out build settings into workspacedir
-	// For now, just the gcc spec file and just link settings.
-	// In the future can control debug symbol generation, march/mtune, etc.
-	if err := b.createGccSpecFile(); err != nil {
+	if err := b.createCompilerConfigFiles(ctx); err != nil {
 		return err
 	}
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {

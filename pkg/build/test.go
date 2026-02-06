@@ -159,14 +159,7 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		apko_build.WithExtraPackages(t.ExtraTestPackages),
 		apko_build.WithIgnoreSignatures(t.IgnoreSignatures),
 		apko_build.WithCache(t.ApkCacheDir, false, apk.NewCache(true)),
-		apko_build.WithTempDir(tmp),
-		apko_build.WithSizeLimits(options.SizeLimits{
-			APKIndexDecompressedMaxSize: -1,
-			APKControlMaxSize:           -1,
-			APKDataMaxSize:              -1,
-			HTTPResponseMaxSize:         -1,
-		}),
-	)
+		apko_build.WithTempDir(tmp))
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
 	}

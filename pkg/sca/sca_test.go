@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/nvidia-driver.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/ld-so-conf-d-test.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/shbang-test.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin.yaml --arch=x86_64
@@ -285,6 +286,31 @@ func TestUnstableSonames(t *testing.T) {
 		},
 	}
 
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestNvidiaLibrarySca(t *testing.T) {
+	ctx := slogtest.Context(t)
+	th := handleFromApk(ctx, t, "generated/x86_64/nvidia-driver-590.48.01-r0.apk", "nvidia-driver.yaml")
+	defer th.exp.Close()
+
+	got := config.Dependencies{}
+	if err := Analyze(ctx, th, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	want := config.Dependencies{
+		Runtime: []string{
+			"so:libc.so.6",
+			"so:libdl.so.2",
+			"so:libm.so.6",
+			"so:libpthread.so.0",
+			"so:librt.so.1",
+		},
+		Provides: nil,
+	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}

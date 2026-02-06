@@ -541,6 +541,9 @@ func processSymlinkSo(ctx context.Context, hdl SCAHandle, path string, generated
 		}
 
 		for _, soname := range sonames {
+			if isHostProvidedLibrary(soname) {
+				continue
+			}
 			log.Infof("  found soname %s for %s", soname, path)
 
 			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", soname))

@@ -289,7 +289,6 @@ func TestUnstableSonames(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 	}
-
 }
 
 func TestNvidiaLibrarySca(t *testing.T) {

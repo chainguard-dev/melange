@@ -786,7 +786,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
 
 	// Build kernel command line arguments
-	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on tsc=reliable no_timer_check cryptomgr.notests rcupdate.rcu_expedited=1 panic=-1 " + cmdlineVar + " sshkey=" + sshkey + " melange_qemu_runner=1"
+	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on no_timer_check cryptomgr.notests rcupdate.rcu_expedited=1 panic=-1 " + cmdlineVar + " sshkey=" + sshkey + " melange_qemu_runner=1"
 
 	// Check for TESTING environment variable and pass it to microvm-init
 	// TESTING must be a number (0 for disabled, non-zero for enabled)

@@ -86,6 +86,9 @@ type Package struct {
 	// source locations; Leaving this empty will result in NOASSERTION being
 	// used as its value.
 	DownloadLocation string
+
+	// PrimaryPurpose is SPDX v2.3 Purpose https://spdx.github.io/spdx-spec/v2.3/package-information/#724-primary-package-purpose-field
+	PrimaryPurpose string
 }
 
 // ToSPDX returns the Package converted to its SPDX representation.
@@ -119,6 +122,9 @@ func (p Package) ToSPDX(ctx context.Context) spdx.Package {
 		ExternalRefs:     p.getExternalRefs(),
 		Originator:       p.getSupplier(), // yes, we use this value for both fields (for now)
 		Supplier:         p.getSupplier(),
+	}
+	if p.PrimaryPurpose != "" {
+		sp.PrimaryPurpose = p.PrimaryPurpose
 	}
 
 	return sp

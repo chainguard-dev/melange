@@ -38,11 +38,11 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.40.0
 	go.opentelemetry.io/otel/sdk v1.40.0
 	go.yaml.in/yaml/v2 v2.4.3
-	golang.org/x/crypto v0.47.0
+	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
-	golang.org/x/term v0.39.0
+	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
 	golang.org/x/time v0.14.0
 	gopkg.in/ini.v1 v1.67.1

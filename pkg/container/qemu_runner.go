@@ -635,8 +635,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
-	kernelConsole := "console=hvc0"
-
+	kernelConsole := ""
 	// If the log level is debug, then crank up the logging.
 	// Otherwise, use quiet mode.
 	if log.Enabled(ctx, slog.LevelDebug) {
@@ -645,11 +644,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		kernelConsole += " quiet"
 	}
 
-	serialArgs := []string{
-		"-device", "virtio-serial-pci,id=virtio-serial0",
-		"-chardev", "stdio,id=charconsole0",
-		"-device", "virtconsole,chardev=charconsole0,id=console0",
+	// Only enable console on debug runs.
+	// Spare some boot time and memory
+	serialArgs := []string{}
+	if log.Enabled(ctx, slog.LevelDebug) {
+		kernelConsole = "console=hvc0"
+		serialArgs = []string{
+			"-device", "virtio-serial-pci,id=virtio-serial0,max_ports=2",
+			"-chardev", "stdio,id=charconsole0",
+			"-device", "virtconsole,chardev=charconsole0,id=console0",
+		}
 	}
+
 	// Helper to add memory-backend suffix for virtiofs shared memory
 	machineMemorySuffix := ""
 	if cfg.VirtiofsEnabled {
@@ -666,11 +672,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} {
 			if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
 				// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-				baseargs = append(baseargs, "-machine", "microvm,rtc=on,pcie=on,pit=off,pic=off,isa-serial=on"+machineMemorySuffix)
+				baseargs = append(baseargs, "-machine", "microvm,x-option-roms=off,rtc=on,pcie=on,pit=off,pic=off,isa-serial=on"+machineMemorySuffix)
 				baseargs = append(baseargs, "-bios", p)
 				// microvm in qemu any version tested will not send hvc0/virtconsole to stdout
-				kernelConsole = "console=ttyS0"
-				serialArgs = []string{"-serial", "stdio"}
+				if log.Enabled(ctx, slog.LevelDebug) {
+					kernelConsole = "console=ttyS0"
+					serialArgs = []string{"-serial", "stdio"}
+				}
 				bios = true
 				break
 			}
@@ -778,7 +786,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
 
 	// Build kernel command line arguments
-	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on panic=-1 " + cmdlineVar + " sshkey=" + sshkey + " melange_qemu_runner=1"
+	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on tsc=reliable no_timer_check cryptomgr.notests rcupdate.rcu_expedited=1 panic=-1 " + cmdlineVar + " sshkey=" + sshkey + " melange_qemu_runner=1"
 
 	// Check for TESTING environment variable and pass it to microvm-init
 	// TESTING must be a number (0 for disabled, non-zero for enabled)
@@ -860,12 +868,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// append raw disk, init will take care of formatting it if present.
 	baseargs = append(baseargs, "-object", "iothread,id=io1")
 	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", max(1, nproc/2)))
-	if runtime.GOOS == "linux" {
-		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,cache.direct=on,format=raw,aio=native,file="+diskFile)
-	}
-	if runtime.GOOS == "darwin" {
-		baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,file="+diskFile)
-	}
+	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,file="+diskFile)
 
 	// append the rootfs tar.gz, init will take care of populating the disk with it
 	baseargs = append(baseargs, "-object", "iothread,id=io2")

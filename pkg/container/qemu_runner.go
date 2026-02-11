@@ -627,13 +627,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	}
 
 	baseargs := []string{}
-	bios := false
-	useVM := false
-	if qemuVM, ok := os.LookupEnv("QEMU_USE_MICROVM"); ok {
-		if val, err := strconv.ParseBool(qemuVM); err == nil {
-			useVM = val
-		}
-	}
 
 	kernelConsole := ""
 	// If the log level is debug, then crank up the logging.
@@ -662,41 +655,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		machineMemorySuffix = ",memory-backend=mem"
 	}
 
-	if useVM {
-		// load microvm profile and bios, shave some milliseconds from boot
-		// using this will make a complete boot->initrd (with working network) In ~700ms
-		// instead of ~900ms.
-		for _, p := range []string{
-			"/usr/share/qemu/bios-microvm.bin",
-			"/usr/share/seabios/bios-microvm.bin",
-		} {
-			if _, err := os.Stat(p); err == nil && cfg.Arch.ToAPK() != "aarch64" {
-				// only enable pcie for network, enable RTC for kernel, disable i8254PIT, i8259PIC and serial port
-				baseargs = append(baseargs, "-machine", "microvm,x-option-roms=off,rtc=on,pcie=on,pit=off,pic=off,isa-serial=on"+machineMemorySuffix)
-				baseargs = append(baseargs, "-bios", p)
-				// microvm in qemu any version tested will not send hvc0/virtconsole to stdout
-				if log.Enabled(ctx, slog.LevelDebug) {
-					kernelConsole = "console=ttyS0"
-					serialArgs = []string{"-serial", "stdio"}
-				}
-				bios = true
-				break
-			}
-		}
-	}
-
-	// we need to fall back to -machine virt if no microVM BIOS was found (or QEMU_USE_MICROVM is false)
-	if !bios {
-		// aarch64 supports virt machine type, let's use that if we're on it, else
-		// if we're on x86 arch, but without microvm machine type, let's go to q35
-		switch cfg.Arch.ToAPK() {
-		case "aarch64":
-			baseargs = append(baseargs, "-machine", "virt"+machineMemorySuffix)
-		case "x86_64":
-			baseargs = append(baseargs, "-machine", "q35"+machineMemorySuffix)
-		default:
-			return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
-		}
+	// aarch64 supports virt machine type, let's use that if we're on it, else
+	// if we're on x86 arch, but without microvm machine type, let's go to q35
+	switch cfg.Arch.ToAPK() {
+	case "aarch64":
+		baseargs = append(baseargs, "-machine", "virt"+machineMemorySuffix)
+	case "x86_64":
+		baseargs = append(baseargs, "-machine", "q35,hpet=off,smm=off,pit=off,i8042=off,sata=off,smbus=off,usb=off,vmport=off,graphics=off"+machineMemorySuffix)
+	default:
+		return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 	}
 
 	// default to use 85% of available memory, if a mem limit is set, respect it.
@@ -771,14 +738,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-display", "none")
 	baseargs = append(baseargs, "-no-reboot")
 	baseargs = append(baseargs, "-no-user-config")
-	baseargs = append(baseargs, "-nographic")
 	baseargs = append(baseargs, "-nodefaults")
-	baseargs = append(baseargs, "-parallel", "none")
 	baseargs = append(baseargs, serialArgs...)
-	baseargs = append(baseargs, "-vga", "none")
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHControlAddress+"-:2223")
-	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1")
+	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1,romfile=")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
@@ -786,7 +750,14 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	sshkey := base64.StdEncoding.EncodeToString(pubKey)
 
 	// Build kernel command line arguments
-	kernelArgs := kernelConsole + " nomodeset random.trust_cpu=on no_timer_check cryptomgr.notests rcupdate.rcu_expedited=1 panic=-1 " + cmdlineVar + " sshkey=" + sshkey + " melange_qemu_runner=1"
+	kernelArgs := kernelConsole +
+		" nomodeset random.trust_cpu=on" +
+		" noapic nomodules 8250.nr_uarts=0 tsc=reliable" +
+		" no_timer_check cryptomgr.notests" +
+		" rcupdate.rcu_expedited=1 panic=-1" +
+		" pci=lastbus=0 ftrace=off swiotlb=noforce edd=off " +
+		cmdlineVar + " sshkey=" + sshkey +
+		" melange_qemu_runner=1"
 
 	// Check for TESTING environment variable and pass it to microvm-init
 	// TESTING must be a number (0 for disabled, non-zero for enabled)
@@ -933,7 +904,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	clog.FromContext(ctx).Info("qemu: waiting for SSH")
 	go func() {
-		// one-min timeout with a 500ms sleep
+		// 100ms timeout with a 100ms sleep
 		retries := 60
 		try := 0
 		for try < retries {
@@ -942,7 +913,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			}
 
 			try++
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * 100)
 
 			log.Debugf("qemu: waiting for ssh to come up, try %d of %d", try, retries)
 			err = checkSSHServer(cfg.SSHAddress)

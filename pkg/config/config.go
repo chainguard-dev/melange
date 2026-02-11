@@ -582,6 +582,23 @@ type PipelineAssertions struct {
 	RequiredSteps int `json:"required-steps,omitempty" yaml:"required-steps,omitempty"`
 }
 
+type RetryConfig struct {
+	// The number of attempts to execute the pipeline (minimum 1, default 1).
+	// If set to 1, no retries will occur.
+	Attempts int `json:"attempts,omitempty" yaml:"attempts,omitempty"`
+	// The backoff strategy to use between retries.
+	// Valid values: "constant", "linear", "exponential" (default: "exponential")
+	Backoff string `json:"backoff,omitempty" yaml:"backoff,omitempty"`
+	// The initial delay before the first retry.
+	// Format: duration string (e.g., "1s", "500ms", "2m")
+	// Default: "1s"
+	InitialDelay string `json:"initial-delay,omitempty" yaml:"initial-delay,omitempty"`
+	// The maximum delay between retries.
+	// Format: duration string (e.g., "60s", "5m")
+	// Default: "60s"
+	MaxDelay string `json:"max-delay,omitempty" yaml:"max-delay,omitempty"`
+}
+
 type Pipeline struct {
 	// Optional: A condition to evaluate before running the pipeline
 	If string `json:"if,omitempty" yaml:"if,omitempty"`
@@ -618,6 +635,8 @@ type Pipeline struct {
 	WorkDir string `json:"working-directory,omitempty" yaml:"working-directory,omitempty"`
 	// Optional: environment variables to override apko
 	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+	// Optional: Retry configuration for this pipeline
+	Retry *RetryConfig `json:"retry,omitempty" yaml:"retry,omitempty"`
 }
 
 // SHA256 generates a digest based on the text provided
@@ -1363,6 +1382,7 @@ func replacePipeline(r *strings.Replacer, in Pipeline) Pipeline {
 		Assertions:  in.Assertions,
 		WorkDir:     r.Replace(in.WorkDir),
 		Environment: replaceMap(r, in.Environment),
+		Retry:       in.Retry,
 	}
 }
 

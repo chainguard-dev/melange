@@ -24,7 +24,6 @@ import (
 	"time"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
-	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/google/go-cmp/cmp"
 	purl "github.com/package-url/packageurl-go"
@@ -76,10 +75,6 @@ func TestSBOMGeneration(t *testing.T) {
 			License: "Apache-2.0",
 			PURL:    &testPURL,
 		},
-		ReleaseData: &apko_build.ReleaseData{
-			ID:        "test-os",
-			VersionID: "1.0",
-		},
 	}
 
 	gen := &Generator{}
@@ -104,8 +99,7 @@ func TestSBOMGeneration(t *testing.T) {
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
-					Name:             "test-os",
-					Version:          "1.0",
+					Name:             "test-ns",
 					FilesAnalyzed:    false,
 					LicenseConcluded: "NOASSERTION",
 					LicenseDeclared:  "NOASSERTION",
@@ -176,8 +170,7 @@ func TestSBOMGeneration(t *testing.T) {
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
-					Name:             "test-os",
-					Version:          "1.0",
+					Name:             "test-ns",
 					FilesAnalyzed:    false,
 					LicenseConcluded: "NOASSERTION",
 					LicenseDeclared:  "NOASSERTION",
@@ -296,10 +289,6 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 		SourceDateEpoch: testTime,
 		Namespace:       "test-ns",
 		Arch:            "x86_64",
-		ReleaseData: &apko_build.ReleaseData{
-			ID:        "test-os",
-			VersionID: "1.0",
-		},
 	}
 
 	gen := &Generator{}
@@ -335,8 +324,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 		Packages: []spdx.Package{
 			{
 				ID:               "SPDXRef-OperatingSystem",
-				Name:             "test-os",
-				Version:          "1.0",
+				Name:             "test-ns",
 				FilesAnalyzed:    false,
 				LicenseConcluded: "NOASSERTION",
 				LicenseDeclared:  "NOASSERTION",
@@ -407,10 +395,6 @@ func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
 		SourceDateEpoch: testTime,
 		Namespace:       "test-ns",
 		Arch:            "x86_64",
-		ReleaseData: &apko_build.ReleaseData{
-			ID:        "test-os",
-			VersionID: "1.0",
-		},
 	}
 
 	gen := &Generator{}
@@ -446,8 +430,7 @@ func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
 		Packages: []spdx.Package{
 			{
 				ID:               "SPDXRef-OperatingSystem",
-				Name:             "test-os",
-				Version:          "1.0",
+				Name:             "test-ns",
 				FilesAnalyzed:    false,
 				LicenseConcluded: "NOASSERTION",
 				LicenseDeclared:  "NOASSERTION",
@@ -552,10 +535,6 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 		SourceDateEpoch: testTime,
 		Namespace:       "test-ns",
 		Arch:            "x86_64",
-		ReleaseData: &apko_build.ReleaseData{
-			ID:        "test-os",
-			VersionID: "1.0",
-		},
 	}
 
 	gen := &Generator{}
@@ -592,8 +571,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
-					Name:             "test-os",
-					Version:          "1.0",
+					Name:             "test-ns",
 					FilesAnalyzed:    false,
 					LicenseConcluded: "NOASSERTION",
 					LicenseDeclared:  "NOASSERTION",
@@ -664,8 +642,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
-					Name:             "test-os",
-					Version:          "1.0",
+					Name:             "test-ns",
 					FilesAnalyzed:    false,
 					LicenseConcluded: "NOASSERTION",
 					LicenseDeclared:  "NOASSERTION",
@@ -759,8 +736,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 			Packages: []spdx.Package{
 				{
 					ID:               "SPDXRef-OperatingSystem",
-					Name:             "test-os",
-					Version:          "1.0",
+					Name:             "test-ns",
 					FilesAnalyzed:    false,
 					LicenseConcluded: "NOASSERTION",
 					LicenseDeclared:  "NOASSERTION",

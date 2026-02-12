@@ -20,7 +20,6 @@ import (
 	"time"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
-	apko_build "chainguard.dev/apko/pkg/build"
 	purl "github.com/package-url/packageurl-go"
 
 	"chainguard.dev/melange/pkg/config"
@@ -54,9 +53,6 @@ type GeneratorContext struct {
 
 	// Information about the build configuration file
 	ConfigFile *ConfigFile
-
-	// OS release data from the build container
-	ReleaseData *apko_build.ReleaseData
 }
 
 type ConfigFile struct {

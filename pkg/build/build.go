@@ -725,18 +725,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	log.Infof("retrieving workspace from builder: %s", cfg.PodID)
 	b.WorkspaceDirFS = apkofs.DirFS(ctx, b.WorkspaceDir)
 
-	// Retrieve the os-release information from the runner
-	releaseData, err := b.Runner.GetReleaseData(ctx, cfg)
-	if err != nil {
-		log.Warnf("failed to retrieve release data from runner, OS section will be unknown: %v", err)
-		// If we can't retrieve the release data, we will use a default 'unknown' one similar to apko.
-		releaseData = &apko_build.ReleaseData{
-			ID:        "unknown",
-			Name:      "melange-generated package",
-			VersionID: "unknown",
-		}
-	}
-
 	// Apply xattrs to files in the new in-memory filesystem
 	for path, attrs := range xattrs {
 		for attr, data := range attrs {
@@ -857,7 +845,6 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			License:       b.ConfigFileLicense,
 			PURL:          buildConfigPURL,
 		},
-		ReleaseData: releaseData,
 	}
 
 	if err := b.SBOMGenerator.GenerateSBOM(ctx, genCtx); err != nil {

@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
 	"github.com/spdx/tools-golang/spdx/v2/common"
 
@@ -200,12 +201,16 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 
 	out := make(map[string]spdx.Document)
 
-	// Convert the SBOMs to SPDX and write them
-	for _, sp := range gc.Configuration.Subpackages {
-		out[sp.Name] = sg.Document(sp.Name).ToSPDX(ctx, gc.ReleaseData)
+	releaseData := &apko_build.ReleaseData{
+		ID: gc.Namespace,
 	}
 
-	out[pkg.Name] = pSBOM.ToSPDX(ctx, gc.ReleaseData)
+	// Convert the SBOMs to SPDX and write them
+	for _, sp := range gc.Configuration.Subpackages {
+		out[sp.Name] = sg.Document(sp.Name).ToSPDX(ctx, releaseData)
+	}
+
+	out[pkg.Name] = pSBOM.ToSPDX(ctx, releaseData)
 	return out, nil
 }
 

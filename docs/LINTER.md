@@ -47,7 +47,7 @@ package:
   version: 1.0.0
   epoch: 42
   checks:
-    disable:
+    disabled:
       - setuidgid  # Package is meant to have setuid binaries
       - debug      # Toolchain problems require we keep debug info
         ...

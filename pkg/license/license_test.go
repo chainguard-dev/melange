@@ -212,6 +212,7 @@ func TestLicenseCheck(t *testing.T) {
 			Copyright: []config.Copyright{
 				{License: "Apache-2.0", LicensePath: "LICENSE-APACHE"},
 				{License: "MIT", LicensePath: "LICENSE-BSD"},
+				{License: "Apache-2.0", LicensePath: "ATYPICAL-FILENAME"},
 				{License: "GPL-2.0 OR GPL-3.0"},
 			},
 		},

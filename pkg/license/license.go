@@ -142,10 +142,8 @@ func FindLicenseFiles(fsys fs.FS, deep bool) ([]LicenseFile, error) {
 		if !deep {
 			pathParts := strings.Split(filePath, string(filepath.Separator))
 			depth := len(pathParts)
-			for _, part := range pathParts {
-				if part == "vendor" {
-					return nil
-				}
+			if slices.Contains(pathParts, "vendor") {
+				return nil
 			}
 			if depth > 2 {
 				return nil

@@ -67,6 +67,9 @@ pipeline:
         jobs_flag="--jobs ${{inputs.jobs}}"
       fi
 
+      # Ensure Cargo uses the melange cache directory
+      export CARGO_HOME="${CARGO_HOME:-/var/cache/melange/cargo}"
+
       # Build and install package(s)
       RUSTFLAGS="${{inputs.rustflags}}" cargo auditable build --target-dir target ${{inputs.opts}} $jobs_flag
       if [[ ! -z "${{inputs.output}}" ]]; then

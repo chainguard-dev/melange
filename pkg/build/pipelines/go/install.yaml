@@ -4,6 +4,7 @@ needs:
   packages:
     - ${{inputs.go-package}}
     - busybox
+    - build-base
     - ca-certificates-bundle
     - git
 

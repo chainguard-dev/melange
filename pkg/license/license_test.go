@@ -63,7 +63,7 @@ func TestFindLicenseFiles(t *testing.T) {
 	tmpFS := apkofs.DirFS(t.Context(), tmpDir)
 
 	// Call function under test
-	licenseFiles, err := FindLicenseFiles(tmpFS)
+	licenseFiles, err := FindLicenseFiles(tmpFS, true)
 	if err != nil {
 		t.Fatalf("FindLicenseFiles returned an error: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestFindLicenseFiles(t *testing.T) {
 	tmpFS = apkofs.DirFS(t.Context(), tmpDir)
 
 	// Call function under test
-	licenseFiles, err = FindLicenseFiles(tmpFS)
+	licenseFiles, err = FindLicenseFiles(tmpFS, true)
 	if len(licenseFiles) > 0 {
 		t.Fatalf("Failed to test ignored files")
 	}
@@ -229,7 +229,7 @@ func TestLicenseCheck(t *testing.T) {
 	ctx := clog.WithLogger(context.Background(), logger)
 
 	// Call function under test
-	_, diffs, err := LicenseCheck(ctx, cfg, dataFS)
+	_, diffs, err := LicenseCheck(ctx, cfg, dataFS, true)
 	if err != nil {
 		t.Fatalf("LicenseCheck returned an error: %v", err)
 	}
@@ -279,6 +279,118 @@ func TestLicenseCheck(t *testing.T) {
 	}
 }
 
+func TestFindLicenseFiles_shallow(t *testing.T) {
+	// Create a temporary directory for testing with nested structure
+	tmpDir := t.TempDir()
+
+	testFiles := []struct {
+		path          string
+		shouldBeFound bool
+	}{
+		{"LICENSE", true},                      // top level
+		{"subdir/LICENSE", true},               // one level down
+		{"subdir/nested/LICENSE", false},       // two levels down (should be skipped in shallow)
+		{"vendor/LICENSE", false},              // vendor directory (should be skipped)
+		{"subdir/vendor/LICENSE", false},       // vendor in subdir (should be skipped)
+		{"another/LICENSE", true},              // one level down in different dir
+		{"another/deep/nested/LICENSE", false}, // deep nested (should be skipped)
+	}
+
+	for _, tf := range testFiles {
+		filePath := filepath.Join(tmpDir, tf.path)
+		err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
+		if err != nil {
+			t.Fatalf("Failed to create directory for %s: %v", tf.path, err)
+		}
+		fp, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0o666)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", tf.path, err)
+		}
+		fp.Close()
+	}
+
+	tmpFS := apkofs.DirFS(t.Context(), tmpDir)
+
+	// Test shallow scan (deep=false)
+	licenseFiles, err := FindLicenseFiles(tmpFS, false)
+	if err != nil {
+		t.Fatalf("FindLicenseFiles returned an error: %v", err)
+	}
+
+	t.Logf("Shallow scan found %d files", len(licenseFiles))
+	for _, lf := range licenseFiles {
+		t.Logf("  Found: %s", lf.Path)
+	}
+
+	// Verify we found the expected files
+	expectedFiles := []string{"LICENSE", "subdir/LICENSE", "another/LICENSE"}
+	if len(licenseFiles) != len(expectedFiles) {
+		t.Errorf("Expected %d license files in shallow scan, got %d", len(expectedFiles), len(licenseFiles))
+	}
+
+	for _, expected := range expectedFiles {
+		found := false
+		for _, lf := range licenseFiles {
+			if lf.Path == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected license file %s not found in shallow scan", expected)
+		}
+	}
+
+	// Test deep scan (deep=true)
+	licenseFilesDeep, err := FindLicenseFiles(tmpFS, true)
+	if err != nil {
+		t.Fatalf("FindLicenseFiles returned an error: %v", err)
+	}
+
+	t.Logf("Deep scan found %d files", len(licenseFilesDeep))
+	for _, lf := range licenseFilesDeep {
+		t.Logf("  Found: %s", lf.Path)
+	}
+
+	// Deep scan should find all files
+	expectedDeepFiles := []string{
+		"LICENSE",
+		"subdir/LICENSE",
+		"subdir/nested/LICENSE",
+		"another/LICENSE",
+		"another/deep/nested/LICENSE",
+		"vendor/LICENSE",
+		"subdir/vendor/LICENSE",
+	}
+	if len(licenseFilesDeep) != len(expectedDeepFiles) {
+		t.Errorf("Expected %d license files in deep scan, got %d", len(expectedDeepFiles), len(licenseFilesDeep))
+	}
+
+	for _, expected := range expectedDeepFiles {
+		found := false
+		for _, lf := range licenseFilesDeep {
+			if lf.Path == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected license file %s not found in deep scan", expected)
+		}
+	}
+
+	// Verify vendor files ARE found in deep scan (only skipped in shallow)
+	vendorFilesFound := 0
+	for _, lf := range licenseFilesDeep {
+		if strings.Contains(lf.Path, "vendor") {
+			vendorFilesFound++
+		}
+	}
+	if vendorFilesFound != 2 {
+		t.Errorf("Expected 2 vendor files in deep scan, got %d", vendorFilesFound)
+	}
+}
+
 func TestLicenseCheck_withOverrides(t *testing.T) {
 	// Create a mock configuration with detection overrides
 	// There is one correct override (BSD -> MIT) and one incorrect, where we say we expected MIT and overriding it to GPL-3.0
@@ -297,7 +409,7 @@ func TestLicenseCheck_withOverrides(t *testing.T) {
 	dataFS := apkofs.DirFS(t.Context(), testDataDir)
 
 	// Call function under test
-	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS)
+	_, diffs, err := LicenseCheck(context.Background(), cfg, dataFS, true)
 	if err != nil {
 		t.Fatalf("LicenseCheck returned an error: %v", err)
 	}

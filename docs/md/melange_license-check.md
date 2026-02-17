@@ -28,10 +28,11 @@ melange license-check file [flags]
 ### Options
 
 ```
-      --fix              fix license issues in the melange yaml file
-      --format string    license fix strategy format: 'simple' or 'flat' (default "flat")
-  -h, --help             help for license-check
-      --workdir string   path to the working directory, e.g. where the source will be extracted to
+      --fix                fix license issues in the melange yaml file
+      --format string      license fix strategy format: 'simple' or 'flat' (default "flat")
+  -h, --help               help for license-check
+      --scan-type string   scan type: 'shallow' (top directory + one level) or 'deep' (entire tree) (default "shallow")
+      --workdir string     path to the working directory, e.g. where the source will be extracted to
 ```
 
 ### Options inherited from parent commands

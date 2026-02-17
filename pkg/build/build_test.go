@@ -231,7 +231,7 @@ func TestConfiguration_Load(t *testing.T) {
 
 			cfg, err := config.ParseConfiguration(ctx,
 				bctx.ConfigFile,
-				config.WithEnvFileForParsing(bctx.EnvFile),
+				config.WithEnvFilesForParsing(bctx.EnvFiles),
 				config.WithVarsFileForParsing(bctx.VarsFile))
 			tt.requireErr(t, err)
 
@@ -319,7 +319,7 @@ package:
 	}
 	cfg, err := config.ParseConfiguration(ctx,
 		bctx.ConfigFile,
-		config.WithEnvFileForParsing(bctx.EnvFile),
+		config.WithEnvFilesForParsing(bctx.EnvFiles),
 		config.WithVarsFileForParsing(bctx.VarsFile))
 	if err != nil {
 		t.Fatal(err)

@@ -1180,7 +1180,7 @@ type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
 	filesystem                  fs.FS
-	envFilePath                 string
+	envFilePaths                []string
 	cpu, cpumodel, memory, disk string
 	timeout                     time.Duration
 	commit                      string
@@ -1241,10 +1241,14 @@ func WithCommit(hash string) ConfigurationParsingOption {
 	}
 }
 
-// WithEnvFileForParsing set the paths from which to read an environment file.
-func WithEnvFileForParsing(path string) ConfigurationParsingOption {
+// WithEnvFilesForParsing set the paths from which to read environment files.
+func WithEnvFilesForParsing(paths []string) ConfigurationParsingOption {
 	return func(options *configOptions) {
-		options.envFilePath = path
+		for _, path := range paths {
+			if path != "" {
+				options.envFilePaths = append(options.envFilePaths, path)
+			}
+		}
 	}
 }
 
@@ -1681,7 +1685,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 
 	// Merge environment file if needed.
-	if envFile := options.envFilePath; envFile != "" {
+	for _, envFile := range options.envFilePaths {
 		envMap, err := godotenv.Read(envFile)
 		if err != nil {
 			return nil, fmt.Errorf("loading environment file: %w", err)

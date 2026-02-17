@@ -48,7 +48,7 @@ func compile() *cobra.Command {
 	var extraKeys []string
 	var extraRepos []string
 	var dependencyLog string
-	var envFile string
+	var envFiles []string
 	var varsFile string
 	var purlNamespace string
 	var buildOption []string
@@ -123,7 +123,7 @@ func compile() *cobra.Command {
 				build.WithExtraPackages(extraPackages),
 				build.WithDependencyLog(dependencyLog),
 				build.WithStripOriginName(stripOriginName),
-				build.WithEnvFile(envFile),
+				build.WithEnvFiles(envFiles),
 				build.WithVarsFile(varsFile),
 				build.WithNamespace(purlNamespace),
 				build.WithEnabledBuildOptions(buildOption),
@@ -181,7 +181,7 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
 	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
-	cmd.Flags().StringVar(&envFile, "env-file", "", "file to use for preloaded environment variables")
+	cmd.Flags().StringSliceVar(&envFiles, "env-file", []string{}, "files to use for preloaded environment variables")
 	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")

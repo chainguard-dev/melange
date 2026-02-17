@@ -3,6 +3,7 @@ name: Run a build using the go compiler
 needs:
   packages:
     - ${{inputs.go-package}}
+    - build-base
     - busybox
     - ca-certificates-bundle
 

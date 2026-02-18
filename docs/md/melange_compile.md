@@ -40,7 +40,7 @@ melange compile [flags]
       --debug-runner                when enabled, the builder pod will persist after the build succeeds or fails
       --dependency-log string       log dependencies to a specified file
       --empty-workspace             whether the build workspace should be empty
-      --env-file string             file to use for preloaded environment variables
+      --env-file strings            files to use for preloaded environment variables
       --fail-on-lint-warning        turns linter warnings into failures
       --generate-index              whether to generate APKINDEX.tar.gz (default true)
       --generate-provenance         generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)

@@ -59,7 +59,7 @@ type Test struct {
 	CacheDir          string
 	ApkCacheDir       string
 	CacheSource       string
-	EnvFile           string
+	EnvFiles          []string
 	Runner            container.Runner
 	Debug             bool
 	DebugRunner       bool
@@ -111,7 +111,7 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	}
 
 	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
-		config.WithEnvFileForParsing(t.EnvFile),
+		config.WithEnvFilesForParsing(t.EnvFiles),
 		config.WithDefaultCPU(t.DefaultCPU),
 		config.WithDefaultCPUModel(t.DefaultCPUModel),
 		config.WithDefaultDisk(t.DefaultDisk),

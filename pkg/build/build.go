@@ -125,7 +125,7 @@ type Build struct {
 	ApkCacheDir           string
 	CacheSource           string
 	StripOriginName       bool
-	EnvFile               string
+	EnvFiles              []string
 	VarsFile              string
 	Runner                container.Runner
 	containerConfig       *container.Config
@@ -234,7 +234,7 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	if b.Configuration == nil {
 		parsedCfg, err := config.ParseConfiguration(ctx,
 			b.ConfigFile,
-			config.WithEnvFileForParsing(b.EnvFile),
+			config.WithEnvFilesForParsing(b.EnvFiles),
 			config.WithVarsFileForParsing(b.VarsFile),
 			config.WithDefaultCPU(b.DefaultCPU),
 			config.WithDefaultCPUModel(b.DefaultCPUModel),

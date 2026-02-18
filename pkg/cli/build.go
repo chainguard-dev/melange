@@ -53,7 +53,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringVar(&flags.CacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	fs.StringVar(&flags.ApkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
 	fs.StringVar(&flags.SigningKey, "signing-key", "", "key to use for signing")
-	fs.StringVar(&flags.EnvFile, "env-file", "", "file to use for preloaded environment variables")
+	fs.StringSliceVar(&flags.EnvFiles, "env-file", []string{}, "files to use for preloaded environment variables")
 	fs.StringVar(&flags.VarsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	fs.BoolVar(&flags.GenerateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	fs.BoolVar(&flags.EmptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
@@ -112,7 +112,7 @@ type BuildFlags struct {
 	ExtraKeys            []string
 	ExtraRepos           []string
 	DependencyLog        string
-	EnvFile              string
+	EnvFiles             []string
 	VarsFile             string
 	PurlNamespace        string
 	BuildOption          []string
@@ -209,7 +209,7 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithExtraPackages(flags.ExtraPackages),
 		build.WithDependencyLog(flags.DependencyLog),
 		build.WithStripOriginName(flags.StripOriginName),
-		build.WithEnvFile(flags.EnvFile),
+		build.WithEnvFiles(flags.EnvFiles),
 		build.WithVarsFile(flags.VarsFile),
 		build.WithNamespace(flags.PurlNamespace),
 		build.WithEnabledBuildOptions(flags.BuildOption),

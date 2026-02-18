@@ -37,7 +37,7 @@ melange test [flags]
       --debug                         enables debug logging of test pipelines (sets -x for steps)
       --debug-runner                  when enabled, the builder pod will persist after the build succeeds or fails
       --disk string                   disk size to use for tests
-      --env-file string               file to use for preloaded environment variables
+      --env-file strings              files to use for preloaded environment variables
   -h, --help                          help for test
       --ignore-signatures             ignore repository signature verification
   -i, --interactive                   when enabled, attaches stdin with a tty to the pod on failure

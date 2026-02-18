@@ -1707,6 +1707,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		defaultEnvVarPIPCACHEDIR      = "/var/cache/melange/pip"
 		defaultEnvVarCOMPOSERCACHEDIR = "/var/cache/melange/composer"
 		defaultEnvVarNPMCACHE         = "/var/cache/melange/npm"
+		defaultEnvVarCARGOHOME        = "/var/cache/melange/cargo"
 	)
 
 	setIfEmpty := func(key, value string) {
@@ -1722,6 +1723,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	setIfEmpty("PIP_CACHE_DIR", defaultEnvVarPIPCACHEDIR)
 	setIfEmpty("COMPOSER_CACHE_DIR", defaultEnvVarCOMPOSERCACHEDIR)
 	setIfEmpty("npm_config_cache", defaultEnvVarNPMCACHE)
+	setIfEmpty("CARGO_HOME", defaultEnvVarCARGOHOME)
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err

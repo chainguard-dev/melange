@@ -210,6 +210,7 @@ func TestConfiguration_Load(t *testing.T) {
 						"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 						"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 						"npm_config_cache":   "/var/cache/melange/npm",
+						"CARGO_HOME":         "/var/cache/melange/cargo",
 					},
 					Accounts: apko_types.ImageAccounts{
 						Users:  []apko_types.User{{UserName: buildUser, UID: 1000, GID: apko_types.GID(&gid1000)}},
@@ -305,6 +306,7 @@ package:
 		"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 		"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 		"npm_config_cache":   "/var/cache/melange/npm",
+		"CARGO_HOME":         "/var/cache/melange/cargo",
 	}
 
 	f := filepath.Join(t.TempDir(), "config")

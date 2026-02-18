@@ -826,7 +826,8 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// Perform all license related linting and analysis
-	if _, _, err := license.LicenseCheck(ctx, b.Configuration, b.WorkspaceDirFS); err != nil {
+	// Use shallow scan (deep=false) to check only the package's main license
+	if _, _, err := license.LicenseCheck(ctx, b.Configuration, b.WorkspaceDirFS, false); err != nil {
 		return fmt.Errorf("license check: %w", err)
 	}
 

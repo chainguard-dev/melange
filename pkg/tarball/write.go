@@ -18,12 +18,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
-
-	// SHA1 is required by the APK package format specification for file checksums.
-	// This is not used for cryptographic security but for integrity verification
-	// as mandated by apk-tools. Cannot be replaced with stronger algorithms without
-	// breaking APK package compatibility.
-	"crypto/sha1" // #nosec G505 - Required by APK format specification
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -36,6 +30,12 @@ import (
 
 	apkfs "chainguard.dev/apko/pkg/apk/fs"
 	"chainguard.dev/apko/pkg/passwd"
+
+	// SHA1 is required by the APK package format specification for file checksums.
+	// This is not used for cryptographic security but for integrity verification
+	// as mandated by apk-tools. Cannot be replaced with stronger algorithms without
+	// breaking APK package compatibility. Integrify is verified with a sha256 datahash.
+	"github.com/pjbgf/sha1cd"
 )
 
 const xattrTarPAXRecordsPrefix = "SCHILY.xattr."
@@ -232,7 +232,10 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 		if c.UseChecksums {
 			if link != "" {
 				// SHA1 required by APK format (apk-tools expects this specific algorithm)
-				linkDigest := sha1.Sum([]byte(link)) // #nosec G401 - APK format requirement
+				linkDigest, collision := sha1cd.Sum([]byte(link))
+				if collision {
+					return fmt.Errorf("sha1cd collision detected")
+				}
 				linkChecksum := hex.EncodeToString(linkDigest[:])
 				header.PAXRecords["APK-TOOLS.checksum.SHA1"] = linkChecksum
 			} else if info.Mode().IsRegular() {
@@ -243,12 +246,16 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 				defer data.Close()
 
 				// SHA1 required by APK format (apk-tools expects this specific algorithm)
-				fileDigest := sha1.New() // #nosec G401 - APK format requirement
+				fileDigest := sha1cd.New().(sha1cd.CollisionResistantHash)
 				if _, err := io.CopyBuffer(fileDigest, data, buf); err != nil {
 					return err
 				}
 
-				fileChecksum := hex.EncodeToString(fileDigest.Sum(nil))
+				fileSum, collision := fileDigest.CollisionResistantSum(nil)
+				if collision {
+					return fmt.Errorf("sha1cd collision detected")
+				}
+				fileChecksum := hex.EncodeToString(fileSum)
 				header.PAXRecords["APK-TOOLS.checksum.SHA1"] = fileChecksum
 			}
 		}

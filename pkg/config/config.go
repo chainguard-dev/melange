@@ -729,6 +729,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 			Namespace:        namespace,
 			PURL:             pu,
 			DownloadLocation: downloadLocation,
+			PrimaryPurpose:   "SOURCE",
 		}, nil
 	}
 
@@ -781,7 +782,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			return nil, err
 		}
 
-		idComponents := []string{pkgName, pkgVersion}
+		idComponents := []string{"Source", pkgName, pkgVersion}
 		if uniqueID != "" {
 			idComponents = append(idComponents, uniqueID)
 		}
@@ -794,6 +795,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			Checksums:        checksums,
 			PURL:             pu,
 			DownloadLocation: args["download_url"],
+			PrimaryPurpose:   "SOURCE",
 		}, nil
 
 	case "git-checkout":
@@ -811,7 +813,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			s = strings.TrimPrefix(s, "http://")
 			return s
 		}()
-		for _, component := range []string{repoCleaned, branch, tag, expectedCommit} {
+		for _, component := range []string{"Source", repoCleaned, branch, tag, expectedCommit} {
 			if component != "" {
 				idComponents = append(idComponents, component)
 			}
@@ -1178,7 +1180,7 @@ type ConfigurationParsingOption func(*configOptions)
 
 type configOptions struct {
 	filesystem                  fs.FS
-	envFilePath                 string
+	envFilePaths                []string
 	cpu, cpumodel, memory, disk string
 	timeout                     time.Duration
 	commit                      string
@@ -1239,10 +1241,14 @@ func WithCommit(hash string) ConfigurationParsingOption {
 	}
 }
 
-// WithEnvFileForParsing set the paths from which to read an environment file.
-func WithEnvFileForParsing(path string) ConfigurationParsingOption {
+// WithEnvFilesForParsing set the paths from which to read environment files.
+func WithEnvFilesForParsing(paths []string) ConfigurationParsingOption {
 	return func(options *configOptions) {
-		options.envFilePath = path
+		for _, path := range paths {
+			if path != "" {
+				options.envFilePaths = append(options.envFilePaths, path)
+			}
+		}
 	}
 }
 
@@ -1679,7 +1685,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 
 	// Merge environment file if needed.
-	if envFile := options.envFilePath; envFile != "" {
+	for _, envFile := range options.envFilePaths {
 		envMap, err := godotenv.Read(envFile)
 		if err != nil {
 			return nil, fmt.Errorf("loading environment file: %w", err)
@@ -1705,6 +1711,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		defaultEnvVarPIPCACHEDIR      = "/var/cache/melange/pip"
 		defaultEnvVarCOMPOSERCACHEDIR = "/var/cache/melange/composer"
 		defaultEnvVarNPMCACHE         = "/var/cache/melange/npm"
+		defaultEnvVarCARGOHOME        = "/var/cache/melange/cargo"
 	)
 
 	setIfEmpty := func(key, value string) {
@@ -1720,6 +1727,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	setIfEmpty("PIP_CACHE_DIR", defaultEnvVarPIPCACHEDIR)
 	setIfEmpty("COMPOSER_CACHE_DIR", defaultEnvVarCOMPOSERCACHEDIR)
 	setIfEmpty("npm_config_cache", defaultEnvVarNPMCACHE)
+	setIfEmpty("CARGO_HOME", defaultEnvVarCARGOHOME)
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err

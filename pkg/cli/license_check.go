@@ -34,6 +34,7 @@ func licenseCheck() *cobra.Command {
 	var workDir string
 	var fix bool
 	var format string
+	var scanType string
 	cmd := &cobra.Command{
 		Use:     "license-check file",
 		Short:   "Gather and check licensing data",
@@ -42,6 +43,11 @@ func licenseCheck() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			if scanType != "shallow" && scanType != "deep" {
+				return fmt.Errorf("invalid scan-type: %s (must be 'shallow' or 'deep')", scanType)
+			}
+			deep := scanType == "deep"
 
 			if workDir == "" {
 				// Create a temporary directory for the workdir if no workdir given
@@ -71,7 +77,7 @@ func licenseCheck() *cobra.Command {
 				return fmt.Errorf("failed to get absolute path for source directory: %w", err)
 			}
 			sourceFS := apkofs.DirFS(ctx, sourceDir)
-			detectedLicenses, diffs, err := license.LicenseCheck(ctx, cfg, sourceFS)
+			detectedLicenses, diffs, err := license.LicenseCheck(ctx, cfg, sourceFS, deep)
 			if err != nil {
 				return err
 			}
@@ -100,6 +106,7 @@ func licenseCheck() *cobra.Command {
 	cmd.Flags().StringVar(&workDir, "workdir", "", "path to the working directory, e.g. where the source will be extracted to")
 	cmd.Flags().BoolVar(&fix, "fix", false, "fix license issues in the melange yaml file")
 	cmd.Flags().StringVar(&format, "format", "flat", "license fix strategy format: 'simple' or 'flat'")
+	cmd.Flags().StringVar(&scanType, "scan-type", "shallow", "scan type: 'shallow' (top directory + one level) or 'deep' (entire tree)")
 
 	return cmd
 }

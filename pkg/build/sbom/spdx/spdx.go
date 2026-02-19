@@ -117,6 +117,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		spSBOM := sg.Document(sp.Name)
 
 		apkSubPkg := &sbom.Package{
+			IDComponents:    []string{"apk", sp.Name, pkg.FullVersion()},
 			Name:            sp.Name,
 			Version:         pkg.FullVersion(),
 			Copyright:       pkg.FullCopyright(),
@@ -124,6 +125,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 			Namespace:       gc.Namespace,
 			Arch:            arch,
 			PURL:            pkg.PackageURLForSubpackage(gc.Namespace, arch, sp.Name),
+			PrimaryPurpose:  "APPLICATION",
 		}
 		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
 
@@ -146,6 +148,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 
 	pSBOM := sg.Document(pkg.Name)
 	apkPkg := &sbom.Package{
+		IDComponents:    []string{"apk", pkg.Name, pkg.FullVersion()},
 		Name:            pkg.Name,
 		Version:         pkg.FullVersion(),
 		Copyright:       pkg.FullCopyright(),
@@ -153,18 +156,21 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		Namespace:       gc.Namespace,
 		Arch:            arch,
 		PURL:            pkg.PackageURL(gc.Namespace, arch),
+		PrimaryPurpose:  "APPLICATION",
 	}
 	pSBOM.AddPackageAndSetDescribed(apkPkg)
 
 	// Add build configuration package
 	if gc.ConfigFile != nil {
 		sg.AddBuildConfigurationPackage(&sbom.Package{
+			IDComponents:    []string{"Melange", gc.ConfigFile.Path, gc.ConfigFile.Commit},
 			Name:            gc.ConfigFile.Path,
 			Version:         gc.ConfigFile.Commit,
 			LicenseDeclared: gc.ConfigFile.License,
 			Namespace:       gc.Namespace,
 			Arch:            "", // This field doesn't make sense in this context
 			PURL:            gc.ConfigFile.PURL,
+			PrimaryPurpose:  "INSTALL",
 		})
 	}
 

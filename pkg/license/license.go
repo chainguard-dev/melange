@@ -128,13 +128,28 @@ func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License,
 }
 
 // FindLicenseFiles returns a list of license files in a directory, sorted by their relevance score.
-func FindLicenseFiles(fsys fs.FS) ([]LicenseFile, error) {
+// If deep is true, the entire tree is scanned. If deep is false, only the top directory and one level down are scanned,
+// returning the list of most likely licenses of the project itself (not vendored dependencies)
+func FindLicenseFiles(fsys fs.FS, deep bool) ([]LicenseFile, error) {
 	// This file is using regular expressions defined in the regexp.go file
 	var licenseFiles []LicenseFile
 	err := fs.WalkDir(fsys, ".", func(filePath string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+
+		// If shallow scan, limit depth and skip vendor directories
+		if !deep {
+			pathParts := strings.Split(filePath, string(filepath.Separator))
+			depth := len(pathParts)
+			if slices.Contains(pathParts, "vendor") {
+				return nil
+			}
+			if depth > 2 {
+				return nil
+			}
+		}
+
 		// Skip directories and non-regular files, like symlinks
 		if !info.Type().IsRegular() {
 			return nil
@@ -223,12 +238,12 @@ func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
 }
 
 // CollectLicenseInfo collects license information from the given filesystem.
-// If cfg is not nil, it will also include license paths specified in the configuration.
-func CollectLicenseInfo(ctx context.Context, fsys fs.FS, cfg *config.Configuration) ([]License, error) {
+// If deep is true, the entire tree is scanned. If deep is false, only the top directory and one level down are scanned.
+func CollectLicenseInfo(ctx context.Context, fsys fs.FS, deep bool, cfg *config.Configuration) ([]License, error) {
 	log := clog.FromContext(ctx)
 
 	// Find all license-text files
-	licenseFiles, err := FindLicenseFiles(fsys)
+	licenseFiles, err := FindLicenseFiles(fsys, deep)
 	if err != nil {
 		return nil, fmt.Errorf("finding license files: %w", err)
 	}
@@ -290,11 +305,12 @@ func IsLicenseMatchConfident(dl License) bool {
 }
 
 // LicenseCheck checks the licenses of the files in the given filesystem against the melange configuration.
-func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS) ([]License, []LicenseDiff, error) {
+// If deep is true, the entire tree is scanned. If deep is false, only the top directory and one level down are scanned.
+func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS, deep bool) ([]License, []LicenseDiff, error) {
 	log := clog.FromContext(ctx)
 	log.Infof("checking license information")
 
-	detectedLicenses, err := CollectLicenseInfo(ctx, fsys, cfg)
+	detectedLicenses, err := CollectLicenseInfo(ctx, fsys, deep, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("collecting license info: %w", err)
 	}

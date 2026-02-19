@@ -171,13 +171,17 @@ func WithExtraTestPackages(extraTestPackages []string) TestOption {
 	}
 }
 
-// WithTestEnvFile specifies an environment file to use to preload the build
+// WithTestEnvFiles specifies environment files to use to preload the build
 // environment.  It should contain the CFLAGS and LDFLAGS used by the C
 // toolchain as well as any other desired environment settings for the
 // build environment.
-func WithTestEnvFile(envFile string) TestOption {
+func WithTestEnvFiles(envFiles []string) TestOption {
 	return func(t *Test) error {
-		t.EnvFile = envFile
+		for _, envFile := range envFiles {
+			if envFile != "" {
+				t.EnvFiles = append(t.EnvFiles, envFile)
+			}
+		}
 		return nil
 	}
 }

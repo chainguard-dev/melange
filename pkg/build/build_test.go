@@ -210,6 +210,7 @@ func TestConfiguration_Load(t *testing.T) {
 						"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 						"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 						"npm_config_cache":   "/var/cache/melange/npm",
+						"CARGO_HOME":         "/var/cache/melange/cargo",
 					},
 					Accounts: apko_types.ImageAccounts{
 						Users:  []apko_types.User{{UserName: buildUser, UID: 1000, GID: apko_types.GID(&gid1000)}},
@@ -230,7 +231,7 @@ func TestConfiguration_Load(t *testing.T) {
 
 			cfg, err := config.ParseConfiguration(ctx,
 				bctx.ConfigFile,
-				config.WithEnvFileForParsing(bctx.EnvFile),
+				config.WithEnvFilesForParsing(bctx.EnvFiles),
 				config.WithVarsFileForParsing(bctx.VarsFile))
 			tt.requireErr(t, err)
 
@@ -305,6 +306,7 @@ package:
 		"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 		"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 		"npm_config_cache":   "/var/cache/melange/npm",
+		"CARGO_HOME":         "/var/cache/melange/cargo",
 	}
 
 	f := filepath.Join(t.TempDir(), "config")
@@ -317,7 +319,7 @@ package:
 	}
 	cfg, err := config.ParseConfiguration(ctx,
 		bctx.ConfigFile,
-		config.WithEnvFileForParsing(bctx.EnvFile),
+		config.WithEnvFilesForParsing(bctx.EnvFiles),
 		config.WithVarsFileForParsing(bctx.VarsFile))
 	if err != nil {
 		t.Fatal(err)

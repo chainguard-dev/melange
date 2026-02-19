@@ -1938,6 +1938,7 @@ package:
 				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 				"npm_config_cache":   "/var/cache/melange/npm",
+				"CARGO_HOME":         "/var/cache/melange/cargo",
 			},
 		},
 		{
@@ -1959,6 +1960,7 @@ environment:
 				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 				"npm_config_cache":   "/var/cache/melange/npm",
+				"CARGO_HOME":         "/var/cache/melange/cargo",
 			},
 		},
 		{
@@ -1977,6 +1979,7 @@ environment:
     PIP_CACHE_DIR: '/custom/pip'
     COMPOSER_CACHE_DIR: '/custom/composer'
     npm_config_cache: '/custom/npm'
+    CARGO_HOME: '/custom/cargo'
 `,
 			expectedEnv: map[string]string{
 				"HOME":               "/custom/home",
@@ -1986,6 +1989,7 @@ environment:
 				"PIP_CACHE_DIR":      "/custom/pip",
 				"COMPOSER_CACHE_DIR": "/custom/composer",
 				"npm_config_cache":   "/custom/npm",
+				"CARGO_HOME":         "/custom/cargo",
 			},
 		},
 		{
@@ -2007,6 +2011,7 @@ environment:
 				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 				"npm_config_cache":   "/var/cache/melange/npm",
+				"CARGO_HOME":         "/var/cache/melange/cargo",
 				"MY_CUSTOM_VAR":      "custom_value",
 			},
 		},

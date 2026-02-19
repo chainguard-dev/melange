@@ -1,0 +1,15 @@
+name: Apply patches with git am
+
+needs:
+  packages:
+    - git
+
+inputs:
+  patches:
+    description: |
+      A list of patches to apply with git am, as a whitespace delimited string.
+    required: true
+
+pipeline:
+  - runs: |
+      git am ${{inputs.patches}}

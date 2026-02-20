@@ -244,7 +244,7 @@ This caching support helps significantly speed up Rust builds by avoiding repeat
 
 ### Example: Maven Dependencies
 
-Maven caching is automatically enabled when using the `maven/configure-mirror` or `maven/pombump` pipelines. When a cache directory is mounted at `/var/cache/melange`, the pipelines automatically configure Maven to use `/var/cache/melange/m2repository` as the local repository.
+Maven caching is automatically enabled when using the `maven/configure-mirror` or `maven/pombump` pipelines. When a cache directory is mounted at `/var/cache/melange`, the pipelines automatically symlink `~/.m2/repository` to `/var/cache/melange/m2repository` so that Maven's default local repository is backed by the cache.
 
 To use Maven caching, simply provide a cache directory:
 
@@ -252,7 +252,7 @@ To use Maven caching, simply provide a cache directory:
 melange build --cache-dir /path/to/my/cache ...
 ```
 
-No additional configuration is required in your Melange config. The Maven pipelines detect the mounted cache directory and configure the local repository path automatically. This is useful for Java projects with many dependencies (e.g., apicurio-registry requires over 1 GB of dependencies).
+No additional configuration is required in your Melange config. The Maven pipelines detect the mounted cache directory and set up the symlink automatically. This is useful for Java projects with many dependencies (e.g., apicurio-registry requires over 1 GB of dependencies).
 
 On subsequent builds, Maven will reuse the downloaded dependencies from the cache, avoiding redundant downloads.
 

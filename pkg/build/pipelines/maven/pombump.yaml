@@ -33,16 +33,22 @@ inputs:
 
 pipeline:
   - runs: |
-      # Use melange's build cache for downloaded dependencies if mounted from host
-      MAVEN_LOCAL_REPO="/var/cache/melange/m2repository"
+      # Point Maven's default local repository to the melange cache so
+      # downloaded dependencies can be reused across builds.  Uses a symlink
+      # instead of settings.xml <localRepository> so that builds which
+      # hardcode ~/.m2/repository paths (e.g. Cassandra's build-resolver.xml)
+      # keep working.
+      # Symlink both /root/.m2/repository (used by qemu runner where the
+      # build user is root) and $HOME/.m2/repository (used by bubblewrap/
+      # docker where HOME=/home/build).
       if [ -d "/var/cache/melange" ]; then
-        mkdir -p "$MAVEN_LOCAL_REPO"
-        mkdir -p /root/.m2
-        cat > /root/.m2/settings.xml <<EOF
-      <settings>
-        <localRepository>${MAVEN_LOCAL_REPO}</localRepository>
-      </settings>
-      EOF
+        mkdir -p /var/cache/melange/m2repository
+        for m2dir in /root/.m2 "$HOME/.m2"; do
+          mkdir -p "$m2dir"
+          if [ ! -e "$m2dir/repository" ]; then
+            ln -s /var/cache/melange/m2repository "$m2dir/repository"
+          fi
+        done
       fi
 
       PATCH_FILE_FLAG=""

@@ -25,7 +25,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/moby/moby v28.5.2+incompatible
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/package-url/packageurl-go v0.1.3
+	github.com/package-url/packageurl-go v0.1.4
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20241019191636-4ef911798f9b
 	github.com/spdx/tools-golang v0.5.7

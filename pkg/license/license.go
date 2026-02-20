@@ -239,13 +239,36 @@ func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
 
 // CollectLicenseInfo collects license information from the given filesystem.
 // If deep is true, the entire tree is scanned. If deep is false, only the top directory and one level down are scanned.
-func CollectLicenseInfo(ctx context.Context, fsys fs.FS, deep bool) ([]License, error) {
+func CollectLicenseInfo(ctx context.Context, fsys fs.FS, deep bool, cfg *config.Configuration) ([]License, error) {
 	log := clog.FromContext(ctx)
 
 	// Find all license-text files
 	licenseFiles, err := FindLicenseFiles(fsys, deep)
 	if err != nil {
 		return nil, fmt.Errorf("finding license files: %w", err)
+	}
+
+	// If configuration is provided, add any license-paths from the config
+	if cfg != nil {
+		// Build a set of existing paths to avoid duplicates
+		existingPaths := make(map[string]struct{})
+		for _, lf := range licenseFiles {
+			existingPaths[lf.Path] = struct{}{}
+		}
+
+		// Add license paths from the configuration
+		for _, cp := range cfg.Package.Copyright {
+			if cp.LicensePath != "" {
+				if _, exists := existingPaths[cp.LicensePath]; !exists {
+					licenseFiles = append(licenseFiles, LicenseFile{
+						Name:   filepath.Base(cp.LicensePath),
+						Path:   cp.LicensePath,
+						Weight: 1.0, // Neutral weight
+					})
+					existingPaths[cp.LicensePath] = struct{}{}
+				}
+			}
+		}
 	}
 
 	if len(licenseFiles) == 0 {
@@ -287,7 +310,7 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS, de
 	log := clog.FromContext(ctx)
 	log.Infof("checking license information")
 
-	detectedLicenses, err := CollectLicenseInfo(ctx, fsys, deep)
+	detectedLicenses, err := CollectLicenseInfo(ctx, fsys, deep, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("collecting license info: %w", err)
 	}

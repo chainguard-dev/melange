@@ -11,7 +11,7 @@ require (
 	github.com/docker/cli v29.2.1+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
-	github.com/github/go-spdx/v2 v2.3.6
+	github.com/github/go-spdx/v2 v2.4.0
 	github.com/go-git/go-git/v5 v5.16.5
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.7

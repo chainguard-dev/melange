@@ -19,7 +19,6 @@
     {
       "SPDXID": "SPDXRef-OperatingSystem",
       "name": "wolfi",
-      "versionInfo": "20230201",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",

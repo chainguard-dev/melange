@@ -203,9 +203,48 @@ pipeline:
 
 This caching support helps significantly speed up Node.js builds by avoiding repeated downloads of packages across builds.
 
+### Example: Rust/Cargo
+
+If you're using Melange to build a Rust project with [Cargo](https://doc.rust-lang.org/cargo/), you can take advantage of melange's built-in Cargo cache support to speed up your builds.
+
+Melange automatically sets the `CARGO_HOME` environment variable to `/var/cache/melange/cargo` by default. This tells Cargo to store its registry index, downloaded crates, and git checkouts under the melange cache mount. You can use the `--cache-dir` flag to mount a local directory that will be used as the Cargo cache:
+
+```shell
+melange build --cache-dir /path/to/your/cache ...
+```
+
+When using a dedicated Cargo cache directory on your host, you can mount it directly:
+
+```shell
+# Create a cache directory
+mkdir -p ~/.cache/melange
+
+# Run melange with the cache directory
+melange build --cache-dir ~/.cache/melange ...
+```
+
+The Cargo cache will be stored under `/var/cache/melange/cargo` inside the build environment. If you want to customize this path, you can override it in your Melange config:
+
+```yaml
+environment:
+  environment:
+    CARGO_HOME: '/var/cache/melange/cargo'   # This is the default
+```
+
+Or set it within a pipeline step:
+
+```yaml
+pipeline:
+  - runs: |
+      CARGO_HOME="/var/cache/melange/cargo"
+      cargo build --release
+```
+
+This caching support helps significantly speed up Rust builds by avoiding repeated downloads of crate dependencies across builds.
+
 ### Example: Maven Dependencies
 
-Maven caching is automatically enabled when using the `maven/configure-mirror` or `maven/pombump` pipelines. When a cache directory is mounted at `/var/cache/melange`, the pipelines automatically configure Maven to use `/var/cache/melange/m2repository` as the local repository.
+Maven caching is automatically enabled when using the `maven/configure-mirror` or `maven/pombump` pipelines. When a cache directory is mounted at `/var/cache/melange`, the pipelines automatically symlink `~/.m2/repository` to `/var/cache/melange/m2repository` so that Maven's default local repository is backed by the cache.
 
 To use Maven caching, simply provide a cache directory:
 
@@ -213,7 +252,7 @@ To use Maven caching, simply provide a cache directory:
 melange build --cache-dir /path/to/my/cache ...
 ```
 
-No additional configuration is required in your Melange config. The Maven pipelines detect the mounted cache directory and configure the local repository path automatically. This is useful for Java projects with many dependencies (e.g., apicurio-registry requires over 1 GB of dependencies).
+No additional configuration is required in your Melange config. The Maven pipelines detect the mounted cache directory and set up the symlink automatically. This is useful for Java projects with many dependencies (e.g., apicurio-registry requires over 1 GB of dependencies).
 
 On subsequent builds, Maven will reuse the downloaded dependencies from the cache, avoiding redundant downloads.
 

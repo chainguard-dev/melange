@@ -9,7 +9,6 @@ import (
 
 	apko_build "chainguard.dev/apko/pkg/build"
 	"chainguard.dev/apko/pkg/sbom/generator/spdx"
-	"github.com/chainguard-dev/clog"
 	"github.com/spdx/tools-golang/spdx/v2/common"
 	"sigs.k8s.io/release-utils/version"
 )
@@ -44,13 +43,8 @@ func NewDocument() *Document {
 func (d Document) ToSPDX(ctx context.Context, releaseData *apko_build.ReleaseData) spdx.Document {
 	spdxPkgs := make([]spdx.Package, 0, len(d.Packages))
 
-	// Start off by adding the OperatingSystem package to the list of packages.
-	if releaseData != nil {
-		spdxPkgs = append(spdxPkgs, d.createOperatingSystemPackage(releaseData))
-	} else {
-		log := clog.FromContext(ctx)
-		log.Warn("No release data provided, not adding OperatingSystem package to SPDX document")
-	}
+	// Add the OperatingSystem package to the list of packages.
+	spdxPkgs = append(spdxPkgs, d.createOperatingSystemPackage(releaseData))
 
 	for _, p := range d.Packages {
 		spdxPkgs = append(spdxPkgs, p.ToSPDX(ctx))

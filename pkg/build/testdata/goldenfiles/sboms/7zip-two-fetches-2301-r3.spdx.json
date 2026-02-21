@@ -13,13 +13,12 @@
   "dataLicense": "CC0-1.0",
   "documentNamespace": "https://spdx.org/spdxdocs/chainguard/melange/35a84e53c8a7af192be547e9f8c6eac6",
   "documentDescribes": [
-    "SPDXRef-Package-7zip-two-fetches-2301-r3"
+    "SPDXRef-Package-apk-7zip-two-fetches-2301-r3"
   ],
   "packages": [
     {
       "SPDXID": "SPDXRef-OperatingSystem",
       "name": "wolfi",
-      "versionInfo": "20230201",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
@@ -30,7 +29,7 @@
       "primaryPackagePurpose": "OPERATING-SYSTEM"
     },
     {
-      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "SPDXID": "SPDXRef-Package-apk-7zip-two-fetches-2301-r3",
       "name": "7zip-two-fetches",
       "versionInfo": "2301-r3",
       "filesAnalyzed": false,
@@ -40,6 +39,7 @@
       "originator": "Organization: Wolfi",
       "supplier": "Organization: Wolfi",
       "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "APPLICATION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-testdata-buildC95configs-7zip-two-fetches.yaml-c0ffee",
+      "SPDXID": "SPDXRef-Package-Melange-testdata-buildC95configs-7zip-two-fetches.yaml-c0ffee",
       "name": "testdata/build_configs/7zip-two-fetches.yaml",
       "versionInfo": "c0ffee",
       "filesAnalyzed": false,
@@ -58,6 +58,7 @@
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: Wolfi",
       "supplier": "Organization: Wolfi",
+      "primaryPackagePurpose": "INSTALL",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -67,7 +68,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-0",
+      "SPDXID": "SPDXRef-Package-Source-7zip-two-fetches-2301-0",
       "name": "7zip-two-fetches",
       "versionInfo": "2301",
       "filesAnalyzed": false,
@@ -76,6 +77,7 @@
       "downloadLocation": "https://7-zip.org/a/7z2301-src.tar.xz",
       "originator": "Organization: Wolfi",
       "supplier": "Organization: Wolfi",
+      "primaryPackagePurpose": "SOURCE",
       "checksums": [
         {
           "algorithm": "SHA512",
@@ -91,7 +93,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-7zip-two-fetches-2301-1",
+      "SPDXID": "SPDXRef-Package-Source-7zip-two-fetches-2301-1",
       "name": "7zip-two-fetches",
       "versionInfo": "2301",
       "filesAnalyzed": false,
@@ -100,6 +102,7 @@
       "downloadLocation": "https://7-zip.org/a/7z2301-src.tar.xz",
       "originator": "Organization: Wolfi",
       "supplier": "Organization: Wolfi",
+      "primaryPackagePurpose": "SOURCE",
       "checksums": [
         {
           "algorithm": "SHA512",
@@ -117,19 +120,19 @@
   ],
   "relationships": [
     {
-      "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "spdxElementId": "SPDXRef-Package-apk-7zip-two-fetches-2301-r3",
       "relationshipType": "DESCRIBED_BY",
-      "relatedSpdxElement": "SPDXRef-Package-testdata-buildC95configs-7zip-two-fetches.yaml-c0ffee"
+      "relatedSpdxElement": "SPDXRef-Package-Melange-testdata-buildC95configs-7zip-two-fetches.yaml-c0ffee"
     },
     {
-      "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "spdxElementId": "SPDXRef-Package-apk-7zip-two-fetches-2301-r3",
       "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301-0"
+      "relatedSpdxElement": "SPDXRef-Package-Source-7zip-two-fetches-2301-0"
     },
     {
-      "spdxElementId": "SPDXRef-Package-7zip-two-fetches-2301-r3",
+      "spdxElementId": "SPDXRef-Package-apk-7zip-two-fetches-2301-r3",
       "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-Package-7zip-two-fetches-2301-1"
+      "relatedSpdxElement": "SPDXRef-Package-Source-7zip-two-fetches-2301-1"
     }
   ]
 }

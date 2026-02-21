@@ -4,19 +4,27 @@ needs:
     - busybox
 pipeline:
   - runs: |
-      # Use melange's build cache for downloaded dependencies if mounted from host
-      MAVEN_LOCAL_REPO="/var/cache/melange/m2repository"
-      LOCAL_REPO_CONFIG=""
+      # Point Maven's default local repository to the melange cache so
+      # downloaded dependencies can be reused across builds.  Uses a symlink
+      # instead of settings.xml <localRepository> so that builds which
+      # hardcode ~/.m2/repository paths keep working.
+      # Symlink both /root/.m2/repository (used by qemu runner where the
+      # build user is root) and $HOME/.m2/repository (used by bubblewrap/
+      # docker where HOME=/home/build).
       if [ -d "/var/cache/melange" ]; then
-        mkdir -p "$MAVEN_LOCAL_REPO"
-        LOCAL_REPO_CONFIG="<localRepository>${MAVEN_LOCAL_REPO}</localRepository>"
+        mkdir -p /var/cache/melange/m2repository
+        for m2dir in /root/.m2 "$HOME/.m2"; do
+          mkdir -p "$m2dir"
+          if [ ! -e "$m2dir/repository" ]; then
+            ln -s /var/cache/melange/m2repository "$m2dir/repository"
+          fi
+        done
       fi
 
       # Maven checks $USER/.m2, we set $HOME to /home/build but it hardcodes $USER somehow
       mkdir -p /root/.m2
       cat > /root/.m2/settings.xml <<EOF
         <settings>
-          ${LOCAL_REPO_CONFIG}
           <mirrors>
             <mirror>
               <id>google-maven-central</id>

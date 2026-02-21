@@ -248,13 +248,17 @@ func WithStripOriginName(stripOriginName bool) Option {
 	}
 }
 
-// WithEnvFile specifies an environment file to use to preload the build
+// WithEnvFiles specifies environment files to use to preload the build
 // environment.  It should contain the CFLAGS and LDFLAGS used by the C
 // toolchain as well as any other desired environment settings for the
 // build environment.
-func WithEnvFile(envFile string) Option {
+func WithEnvFiles(envFiles []string) Option {
 	return func(b *Build) error {
-		b.EnvFile = envFile
+		for _, envFile := range envFiles {
+			if envFile != "" {
+				b.EnvFiles = append(b.EnvFiles, envFile)
+			}
+		}
 		return nil
 	}
 }

@@ -34,6 +34,16 @@ inputs:
     description: |
       Indicates whether --recurse-submodules should be passed to git clone.
     default: false
+  shallow-submodules:
+    description: |
+      Whether to use --shallow-submodules when recurse-submodules is true.
+      Ignored if recurse-submodules is false.
+    default: false
+  submodule-jobs:
+    description: |
+      The number of concurrent jobs to use when recurse-submodules is true.
+      Ignored if recurse-submodules is false.
+    default: 1
   cherry-picks:
     description: |
       List of cherry picks to apply.
@@ -216,14 +226,20 @@ pipeline:
           local tag=$5 expcommit=$6 recurse=${7:-false}
           local cherry_pick="$8" sparse_paths="$9"
           local max_retries="${10:-3}" initial_backoff="${11:-2}" max_backoff="${12:-60}"
+          local shallow_submodules="${13:-false}" submodule_jobs="${14:-1}"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
               "tag='$tag' expcommit='$expcommit' recurse='$recurse'" \
               "sparse_paths='$sparse_paths' max_retries='$max_retries'" \
-              "initial_backoff='$initial_backoff' max_backoff='$max_backoff'"
+              "initial_backoff='$initial_backoff' max_backoff='$max_backoff'" \
+              "shallow_submodules='$shallow_submodules' submodule_job='$submodule_jobs'"
 
           case "$recurse" in
               true|false) :;;
               *) fail "recurse must be true or false, not '$recurse'"
+          esac
+          case "$shallow_submodules" in
+              true|false) :;;
+              *) fail "shallow_submodules must be true or false, not '$shallow_submodules'"
           esac
 
           [ -n "$repo" ] || fail "repository not provided"
@@ -242,7 +258,10 @@ pipeline:
           flags="--config=advice.detachedHead=false"
           [ -n "$branch" ] && flags="$flags --branch=$branch"
           [ -n "$tag" ] && flags="$flags --branch=$tag"
-          [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
+          if [ "$recurse" = "true" ] ; then
+              flags="$flags --recurse-submodules --jobs=$submodule_jobs"
+              [ "$shallow_submodules" = "true" ] && flags="$flags --shallow-submodules"
+          fi
           [ -n "$sparse_paths" ] && flags="$flags --sparse --filter=blob:none"
 
           if [ "$depth" = "unset" ]; then
@@ -270,7 +289,7 @@ pipeline:
               git clone $quiet "--origin=$remote" \
               "--config=user.name=Melange Build" \
               "--config=user.email=melange-build@cgr.dev" \
-              $flags \
+              "$flags" \
               ${depthflag:+"$depthflag"} "$repo" "$workdir" ||
               fail "git clone failed after $max_retries retries"
 
@@ -362,6 +381,7 @@ pipeline:
           "${{inputs.recurse-submodules}}" "$cpickf" \
           "${{inputs.sparse-paths}}" \
           "${{inputs.max-retries}}" "${{inputs.initial-backoff}}" \
-          "${{inputs.max-backoff}}"
+          "${{inputs.max-backoff}}" \
+          "${{inputs.shallow-submodules}} ${{inputs.submodule-jobs}}"
 
       rm -f "$cpickf"

@@ -72,8 +72,9 @@ func TestCreateGccSpecFile(t *testing.T) {
 			// Should start with *link:
 			assert.True(t, strings.HasPrefix(string(content), "*link:\n"))
 
-			// Should contain the package-metadata flag
-			assert.Contains(t, string(content), "+ --package-metadata=")
+			// Should contain the package-metadata flag, guarded so it is
+			// not emitted for relocatable (-r) links.
+			assert.Contains(t, string(content), "+ %{!r:--package-metadata=")
 		})
 	}
 }

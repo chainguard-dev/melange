@@ -23,8 +23,8 @@ import (
 	purl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"go.yaml.in/yaml/v4"
 	"gopkg.in/ini.v1"
-	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"

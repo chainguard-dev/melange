@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 
-	"sigs.k8s.io/yaml"
+	"go.yaml.in/yaml/v4"
 
 	"chainguard.dev/melange/pkg/config"
 

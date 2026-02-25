@@ -29,7 +29,7 @@ import (
 	"chainguard.dev/apko/pkg/apk/expandapk"
 	"github.com/chainguard-dev/clog"
 	"github.com/dustin/go-humanize"
-	"go.yaml.in/yaml/v2"
+	"go.yaml.in/yaml/v4"
 	"gopkg.in/ini.v1"
 
 	"chainguard.dev/melange/pkg/config"

@@ -382,6 +382,6 @@ pipeline:
           "${{inputs.sparse-paths}}" \
           "${{inputs.max-retries}}" "${{inputs.initial-backoff}}" \
           "${{inputs.max-backoff}}" \
-          "${{inputs.shallow-submodules}} ${{inputs.submodule-jobs}}"
+          "${{inputs.shallow-submodules}}" "${{inputs.submodule-jobs}}"
 
       rm -f "$cpickf"

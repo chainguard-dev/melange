@@ -113,6 +113,11 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 	pkg := &gc.Configuration.Package
 	arch := gc.Arch
 
+	// Calculate Security CPE
+	cpe, err := pkg.CPEString()
+	if !pkg.CPE.IsZero() && err != nil {
+		return nil, fmt.Errorf("invalid package CPE %s: %w", pkg.Name, err)
+	}
 	// Add APK packages to their respective SBOMs
 	for _, sp := range gc.Configuration.Subpackages {
 		spSBOM := sg.Document(sp.Name)
@@ -126,6 +131,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 			Namespace:       gc.Namespace,
 			Arch:            arch,
 			PURL:            pkg.PackageURLForSubpackage(gc.Namespace, arch, sp.Name),
+			CPE:             cpe,
 			PrimaryPurpose:  "APPLICATION",
 		}
 		spSBOM.AddPackageAndSetDescribed(apkSubPkg)
@@ -157,6 +163,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		Namespace:       gc.Namespace,
 		Arch:            arch,
 		PURL:            pkg.PackageURL(gc.Namespace, arch),
+		CPE:             cpe,
 		PrimaryPurpose:  "APPLICATION",
 	}
 	pSBOM.AddPackageAndSetDescribed(apkPkg)

@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"iter"
 	"maps"
@@ -1568,24 +1569,23 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 	defer f.Close()
 
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", configurationFilePath, err)
+	}
+
 	root := yaml.Node{}
 
 	cfg := Configuration{root: &root}
 
-	// Unmarshal into a node first
-	decoderNode := yaml.NewDecoder(f)
+	// Unmarshal into a node first, so renovate can operate on its AST.
+	decoderNode := yaml.NewDecoder(bytes.NewReader(data))
 	err = decoderNode.Decode(&root)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
 
-	// XXX(Elizafox) - Node.Decode doesn't allow setting of KnownFields, so we do this cheesy hack below
-	data, err := yaml.Marshal(&root)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
-	}
-
-	// Now unmarshal it into the struct, part of said cheesy hack
+	// Also unmarshal it into the struct.
 	reader := bytes.NewReader(data)
 	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)

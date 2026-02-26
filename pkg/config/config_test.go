@@ -2311,3 +2311,32 @@ func TestLicensingInfosMultipleLicenses(t *testing.T) {
 		require.Equal(t, goodLicense, result["Apache-2.0"])
 	})
 }
+
+func TestLineNumbersInError(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(os.TempDir(), "melange-test-applySubstitutionsInProvides")
+	if err := os.WriteFile(fp, []byte(`# line 1 is blank so that it's easier to read below
+package:
+  name: replacement-provides
+  version: 0.0.1
+  epoch: 7
+  description: example using a replacement in provides
+
+environment:
+  # this is a typo for "contents"
+  content:
+    packages:
+      - dep~${{package.version}}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseConfiguration(ctx, fp)
+	if err == nil {
+		t.Fatal("wanted err, got nil")
+	}
+
+	// This is a bit brittle and will break if we change yaml parsers,
+	// but what we use doesn't expose the line number in a structured way.
+	require.Contains(t, err.Error(), "line 10")
+}

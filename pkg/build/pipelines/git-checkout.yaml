@@ -231,7 +231,7 @@ pipeline:
               "tag='$tag' expcommit='$expcommit' recurse='$recurse'" \
               "sparse_paths='$sparse_paths' max_retries='$max_retries'" \
               "initial_backoff='$initial_backoff' max_backoff='$max_backoff'" \
-              "shallow_submodules='$shallow_submodules' submodule_job='$submodule_jobs'"
+              "shallow_submodules='$shallow_submodules' submodule_jobs='$submodule_jobs'"
 
           case "$recurse" in
               true|false) :;;

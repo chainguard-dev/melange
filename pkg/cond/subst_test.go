@@ -47,6 +47,15 @@ func TestSubstVarWhitespace(t *testing.T) {
 	require.Equal(t, expected, result, "result does not match expected result")
 }
 
+func TestSubstVarWhitespaceTabsNewlines(t *testing.T) {
+	doc := "Hello ${{\tfoo.bar\t}} ${{\nfoo.bar\n}}!"
+	expected := "Hello baz baz!"
+	result, err := Subst(doc, placeholderLookup)
+
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, expected, result, "result does not match expected result")
+}
+
 func TestSubstVarUnderscore(t *testing.T) {
 	doc := "Hello ${{foo.BAR_BAZ}}!"
 	expected := "Hello bar-baz!"
@@ -88,6 +97,30 @@ func TestSubstVarWhitespaceExactWhitespace(t *testing.T) {
 
 	require.NoErrorf(t, err, "got error: %v", err)
 	require.Equal(t, expected, result, "result does not match expected result")
+}
+
+func TestSubstMissingClosingBraces(t *testing.T) {
+	doc := "Hello ${{foo.bar}!"
+	_, err := Subst(doc, placeholderLookup)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unterminated variable reference")
+}
+
+func TestSubstEmptyVarName(t *testing.T) {
+	doc := "Hello ${{ }}!"
+	_, err := Subst(doc, placeholderLookup)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "empty variable name")
+}
+
+func TestSubstTrailingMarker(t *testing.T) {
+	_, err := Subst("hello ${{", placeholderLookup)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "empty variable name")
+
+	_, err = Subst("hello ${{foo", placeholderLookup)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unterminated variable reference")
 }
 
 func TestSubstVarShellFragment(t *testing.T) {

@@ -76,6 +76,80 @@ func TestVariableLookup(t *testing.T) {
 	require.Equal(t, true, result, "${{foo.bar}} definitely equals baz")
 }
 
+func TestEvaluateUnterminatedVariable(t *testing.T) {
+	_, err := Evaluate("${{foo.bar} == 'baz'", placeholderLookup)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unterminated variable reference")
+	require.Contains(t, err.Error(), "foo.bar")
+}
+
+func TestStringLiteralEscapes(t *testing.T) {
+	// Escaped double quote inside double-quoted string.
+	result, err := Evaluate(`"hello \"world\"" == "hello \"world\""`)
+	require.NoError(t, err)
+	require.True(t, result)
+
+	// Escaped backslash.
+	result, err = Evaluate(`"a\\b" == "a\\b"`)
+	require.NoError(t, err)
+	require.True(t, result)
+
+	// Escaped single quote inside single-quoted string.
+	result, err = Evaluate(`'it\'s' == 'it\'s'`)
+	require.NoError(t, err)
+	require.True(t, result)
+
+	// Newline and tab escapes.
+	result, err = Evaluate(`"line1\nline2" == "line1\nline2"`)
+	require.NoError(t, err)
+	require.True(t, result)
+
+	// Mismatch: escaped vs literal.
+	result, err = Evaluate(`"a\\b" == "ab"`)
+	require.NoError(t, err)
+	require.False(t, result)
+}
+
+func FuzzEvaluate(f *testing.F) {
+	// Seed with valid and interesting expressions.
+	f.Add("'foo' == 'foo'")
+	f.Add("'foo' != 'bar'")
+	f.Add("${{foo.bar}} == 'baz'")
+	f.Add("${{ foo.bar }} == 'baz'")
+	f.Add(`"hello \"world\"" == "hello \"world\""`)
+	f.Add(`"a\\b" == "a\\b"`)
+	f.Add("('a' == 'a' && 'b' == 'b') || 'c' == 'd'")
+	f.Add("${{")
+	f.Add("${{ }}")
+	f.Add("'unterminated")
+	f.Add("")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		// Evaluate must never panic regardless of input.
+		Evaluate(input, func(key string) (string, error) { //nolint:errcheck
+			return "x", nil
+		})
+	})
+}
+
+func FuzzSubst(f *testing.F) {
+	f.Add("Hello ${{foo.bar}}!")
+	f.Add("${{foo}} ${{bar}}")
+	f.Add("${{ foo.bar }}")
+	f.Add("no variables here")
+	f.Add("${{")
+	f.Add("${{ }}")
+	f.Add("${{foo.bar}")
+	f.Add("")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		// Subst must never panic regardless of input.
+		Subst(input, func(key string) (string, error) { //nolint:errcheck
+			return "x", nil
+		})
+	})
+}
+
 func TestVariableLookupWhitespace(t *testing.T) {
 	result, err := Evaluate("${{ foo.bar }} == 'baz'", placeholderLookup)
 	require.NoErrorf(t, err, "got error: %v", err)
@@ -84,4 +158,13 @@ func TestVariableLookupWhitespace(t *testing.T) {
 	result, err = Evaluate("'baz' == ${{ foo.bar }}", placeholderLookup)
 	require.NoErrorf(t, err, "got error: %v", err)
 	require.Equal(t, true, result, "${{ foo.bar }} definitely equals baz")
+
+	// Tabs and newlines inside braces.
+	result, err = Evaluate("${{\tfoo.bar\t}} == 'baz'", placeholderLookup)
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, true, result, "tabs inside variable braces should be accepted")
+
+	result, err = Evaluate("${{\n foo.bar \n}} == 'baz'", placeholderLookup)
+	require.NoErrorf(t, err, "got error: %v", err)
+	require.Equal(t, true, result, "newlines inside variable braces should be accepted")
 }

@@ -286,11 +286,12 @@ pipeline:
           vr git config --global --add safe.directory "$dest_fullpath"
 
           msg "Attempting git clone with retry (max_retries=$max_retries, initial_backoff=${initial_backoff}s, max_backoff=${max_backoff}s)"
+          # shellcheck disable=SC2086
           retry_with_backoff "$max_retries" "$initial_backoff" "$max_backoff" \
               git clone $quiet "--origin=$remote" \
               "--config=user.name=Melange Build" \
               "--config=user.email=melange-build@cgr.dev" \
-              "$flags" \
+              $flags \
               ${depthflag:+"$depthflag"} "$repo" "$workdir" ||
               fail "git clone failed after $max_retries retries"
 

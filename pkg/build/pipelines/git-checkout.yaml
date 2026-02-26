@@ -93,7 +93,8 @@ inputs:
 pipeline:
   - runs: |
       #!/bin/sh
-      set -e
+      # shellcheck shell=busybox
+      set -eu
 
       msg() { echo "[git checkout]" "$@"; }
       fail() { msg FAIL "$@"; exit 1; }
@@ -108,7 +109,7 @@ pipeline:
           local attempt=0
           local backoff=$initial_backoff
 
-          while [ $attempt -le $max_retries ]; do
+          while [ $attempt -le "$max_retries" ]; do
               if [ $attempt -gt 0 ]; then
                   msg "Retry attempt $attempt/$max_retries after ${backoff}s backoff..."
               fi
@@ -118,7 +119,7 @@ pipeline:
               fi
 
               attempt=$((attempt + 1))
-              if [ $attempt -gt $max_retries ]; then
+              if [ $attempt -gt "$max_retries" ]; then
                   msg "All $max_retries retry attempts exhausted"
                   return 1
               fi
@@ -139,7 +140,7 @@ pipeline:
 
               # Exponential backoff: double the backoff time
               backoff=$((backoff * 2))
-              if [ $backoff -gt $max_backoff ]; then
+              if [ $backoff -gt "$max_backoff" ]; then
                   backoff=$max_backoff
               fi
           done
@@ -148,7 +149,7 @@ pipeline:
       }
 
       process_cherry_picks() {
-        local cpicksf="$1" oifs="$IFS" count=0
+        local cpicksf="$1" count=0
         local fetched_branches=""
         local sdate=${SOURCE_DATE_EPOCH:-0}
         if [ "$sdate" -lt 315532800 ]; then
@@ -176,7 +177,7 @@ pipeline:
             # Split the line into branch/hash and comment parts
             branch=${line%%:*}
             comment=${line#*:}
-            comment=$(set -f; echo $comment) # Strip leading/trailing whitespace
+            comment=$(set -f; echo "$comment") # Strip leading/trailing whitespace
 
             if [ -z "$comment" ]; then
                 msg "Empty comment for cherry-pick: $line"
@@ -196,7 +197,7 @@ pipeline:
             if [ -n "$branch" ]; then
                 case " $fetched_branches " in
                     *" $branch "*) ;;
-                    *) vr git fetch $unshallow_arg origin $branch:$branch || {
+                    *) vr git fetch $unshallow_arg origin "$branch:$branch" || {
                         msg "failed to fetch branch $branch"
                         return 1
                         }
@@ -266,7 +267,7 @@ pipeline:
 
           if [ "$depth" = "unset" ]; then
             depth=1
-            if [ -n "$branch" -a -n "$expcommit" ]; then
+            if [ -n "$branch" ] && [ -n "$expcommit" ]; then
               # if we're just checking out a specific commit on a branch
               # then we need to get history, otherwise it will break
               # if the expected commit is not tip of the branch.
@@ -298,14 +299,15 @@ pipeline:
           # Configure sparse-checkout if paths were provided
           if [ -n "$sparse_paths" ]; then
               msg "Configuring sparse-checkout with paths: $sparse_paths"
-              vr git sparse-checkout set --cone $sparse_paths ||
+              vr git sparse-checkout set --cone "$sparse_paths" ||
                   fail "failed to configure sparse-checkout --filter=blob:none"
           fi
 
           msg "tar -c . | tar -C \"$dest_fullpath\" -x"
           ( tar -c . ; echo $? > "$rcfile") | tar -C "$dest_fullpath" -x --no-same-owner
+          # shellcheck disable=SC2162 # ash doesn't support read -f
           read rc < "$rcfile" || fail "failed to read rc file"
-          [ $rc -eq 0 ] || fail "tar creation in $workdir failed"
+          [ "$rc" -eq 0 ] || fail "tar creation in $workdir failed"
 
           rm -rf "$workdir"
           vr cd "$dest_fullpath"
@@ -332,7 +334,7 @@ pipeline:
           # git clone --branch=X will pick the branch X if there
           # exists both a tag and a branch by that name.
           # since a tag was given, we want the tag.
-          vr git fetch $quiet $remote ${depthflag:-"$depthflag"} --no-tags \
+          vr git fetch $quiet $remote "${depthflag:-"$depthflag"}" --no-tags \
               "+refs/tags/$tag:refs/$remote/tags/$tag"
           vr git checkout $quiet "$remote/tags/$tag"
 

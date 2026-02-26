@@ -52,7 +52,9 @@ Check out sources from git
 | max-retries | false | Maximum number of retry attempts for git clone operation on failure.  | 3 |
 | recurse-submodules | false | Indicates whether --recurse-submodules should be passed to git clone.  | false |
 | repository | true | The repository to check out sources from.  |  |
+| shallow-submodules | false | Whether to use --shallow-submodules when recurse-submodules is true. Ignored if recurse-submodules is false.  | false |
 | sparse-paths | false | List of directory paths to checkout when using sparse-checkout (cone mode). This is useful for monorepos where you only need specific subdirectories. When specified, only these directories will be checked out from the repository. Uses cone mode for optimal performance. Example:   sparse-paths:     - omnibump     - shared/lib  |  |
+| submodule-jobs | false | The number of concurrent jobs to use when recurse-submodules is true. Ignored if recurse-submodules is false.  | 1 |
 | tag | false | The tag to check out.  Branch and tag are mutually exclusive.  |  |
 | type-hint | false | Type hint to use during SBOM generation for the provided git repository. This is primarily used to identify Gitlab based sources which are not heuristically identifiable as Gitlab.  Supported hints: gitlab.  |  |
 

@@ -1645,11 +1645,47 @@ func convertHumanToKB(memory string) (int64, error) {
 	return num * multiplier / 1024, nil
 }
 
+// getCgroupMemoryLimitKB reads the cgroup memory limit for the current process.
+// It checks cgroup v2 first, then falls back to cgroup v1. Returns 0 if no
+// cgroup limit is found or the limit is effectively unlimited.
+func getCgroupMemoryLimitKB() int {
+	// cgroup v2: /sys/fs/cgroup/memory.max
+	if data, err := os.ReadFile("/sys/fs/cgroup/memory.max"); err == nil {
+		s := strings.TrimSpace(string(data))
+		if s != "max" {
+			if bytes, err := strconv.ParseInt(s, 10, 64); err == nil && bytes > 0 {
+				return int(bytes / 1024)
+			}
+		}
+	}
+
+	// cgroup v1: /sys/fs/cgroup/memory/memory.limit_in_bytes
+	if data, err := os.ReadFile("/sys/fs/cgroup/memory/memory.limit_in_bytes"); err == nil {
+		s := strings.TrimSpace(string(data))
+		if bytes, err := strconv.ParseInt(s, 10, 64); err == nil && bytes > 0 {
+			// cgroup v1 reports a very large number (close to max int64) when unlimited
+			const unlimitedThreshold = 1 << 50 // ~1 PiB, well above any real limit
+			if bytes < unlimitedThreshold {
+				return int(bytes / 1024)
+			}
+		}
+	}
+
+	return 0
+}
+
 func getAvailableMemoryKB() int {
 	mem := 16000000
 
 	switch runtime.GOOS {
 	case "linux":
+		// Check cgroup limits first — in a container (e.g. Kubernetes pod),
+		// /proc/meminfo reports the entire node's memory, not the pod's allocation.
+		// The cgroup limit reflects the actual memory available to this process.
+		if cgroupMem := getCgroupMemoryLimitKB(); cgroupMem > 0 {
+			return cgroupMem
+		}
+
 		f, e := os.Open("/proc/meminfo")
 		if e != nil {
 			return mem

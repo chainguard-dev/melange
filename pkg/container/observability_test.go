@@ -485,7 +485,7 @@ func TestLogObservabilityEvents_EmptyRawData(t *testing.T) {
 // parseObservabilityEvents parses NDJSON event data.
 // Returns all events and a filtered list of network-related kprobe events.
 func parseObservabilityEvents(data []byte) ([]ObservabilityEvent, []ObservabilityEvent, error) {
-	var allEvents []ObservabilityEvent
+	allEvents := make([]ObservabilityEvent, 0)
 	var networkEvents []ObservabilityEvent
 
 	for line := range bytes.SplitSeq(data, []byte("\n")) {

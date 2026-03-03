@@ -162,7 +162,7 @@ func LogObservabilityEvents(ctx context.Context, events *ObservabilityEvents) {
 // extractNetworkConnections parses NDJSON observability events and extracts
 // network connection information from kprobe events.
 func extractNetworkConnections(data []byte) ([]NetworkConnection, int) {
-	var connections []NetworkConnection
+	connections := make([]NetworkConnection, 0)
 	eventCount := 0
 
 	for line := range bytes.SplitSeq(data, []byte("\n")) {

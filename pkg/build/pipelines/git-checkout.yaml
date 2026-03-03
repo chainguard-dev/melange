@@ -153,7 +153,7 @@ pipeline:
         local fetched_branches=""
         local sdate=${SOURCE_DATE_EPOCH:-0}
         if [ "$sdate" -lt 315532800 ]; then
-            msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
+            msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH:-(not set)})"
             sdate=315532800
         fi
         if [ -z "$cpicksf" ]; then

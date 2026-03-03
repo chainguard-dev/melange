@@ -9,7 +9,7 @@ import (
 	apkotypes "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"chainguard.dev/melange/pkg/config"
 )

@@ -23,7 +23,7 @@ import (
 
 	"github.com/chainguard-dev/clog"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/renovate"

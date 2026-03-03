@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v29.2.1+incompatible
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
+	github.com/dprotaso/go-yit v0.0.0-20260209000607-dfb86291624d
 	github.com/github/go-spdx/v2 v2.4.0
 	github.com/go-git/go-git/v5 v5.17.0
 	github.com/google/go-cmp v0.7.0
@@ -37,7 +37,7 @@ require (
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.40.0
 	go.opentelemetry.io/otel/sdk v1.40.0
-	go.yaml.in/yaml/v2 v2.4.3
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/sync v0.19.0
@@ -46,10 +46,8 @@ require (
 	golang.org/x/text v0.34.0
 	golang.org/x/time v0.14.0
 	gopkg.in/ini.v1 v1.67.1
-	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.12.0
 	sigs.k8s.io/release-utils v0.12.3
-	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
@@ -64,8 +62,10 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/tools v0.42.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )
 

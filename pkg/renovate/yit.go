@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dprotaso/go-yit"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // NodeFromMapping takes a yaml.Node (a mapping) and uses yit

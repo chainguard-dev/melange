@@ -30,7 +30,7 @@ import (
 
 	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"chainguard.dev/melange/pkg/renovate"
 	"chainguard.dev/melange/pkg/util"

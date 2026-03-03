@@ -45,7 +45,7 @@ import (
 	"github.com/chainguard-dev/clog"
 	"github.com/psanford/memfs"
 	"go.opentelemetry.io/otel"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // pgzip's default is GOMAXPROCS(0)

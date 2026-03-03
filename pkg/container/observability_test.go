@@ -459,55 +459,34 @@ func TestExtractNetworkConnections_MalformedLines(t *testing.T) {
 	}
 }
 
-func TestSaveObservabilityEvents(t *testing.T) {
+func TestLogObservabilityEvents(t *testing.T) {
 	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
-	tmpDir := t.TempDir()
 
 	events := &ObservabilityEvents{
-		RawData:    []byte(`{"process_exec":{"process":{"binary":"/bin/sh"}}}`),
-		EventCount: 1,
+		RawData: []byte(strings.Join([]string{
+			`{"process_exec":{"process":{"binary":"/bin/sh","pid":1}},"time":"2025-01-01T00:00:00Z"}`,
+			`{"process_kprobe":{"process":{"binary":"/usr/bin/wget"},"function_name":"tcp_connect","args":[{"sock_arg":{"daddr":"1.2.3.4","dport":80,"family":"AF_INET","protocol":"IPPROTO_TCP","saddr":"10.0.2.15","sport":54321}}]},"time":"2025-01-01T00:00:01Z"}`,
+		}, "\n")),
+		EventCount: 2,
 		NetworkConnections: []NetworkConnection{
-			{Process: "/usr/bin/wget", Protocol: "IPPROTO_TCP", DstAddr: "1.2.3.4", DstPort: 80, Family: "AF_INET", Function: "tcp_connect"},
+			{Process: "/usr/bin/wget", Protocol: "IPPROTO_TCP", SrcAddr: "10.0.2.15", SrcPort: 54321, DstAddr: "1.2.3.4", DstPort: 80, Family: "AF_INET", Function: "tcp_connect"},
 		},
 	}
 
-	err := SaveObservabilityEvents(ctx, events, tmpDir)
-	if err != nil {
-		t.Fatalf("SaveObservabilityEvents() error: %v", err)
-	}
-
-	eventsPath := filepath.Join(tmpDir, "observability", "events.json")
-	if _, err := os.Stat(eventsPath); os.IsNotExist(err) {
-		t.Error("events.json was not created")
-	}
-
-	summaryPath := filepath.Join(tmpDir, "observability", "network-connections.json")
-	if _, err := os.Stat(summaryPath); os.IsNotExist(err) {
-		t.Error("network-connections.json was not created")
-	}
-
-	summaryData, err := os.ReadFile(summaryPath)
-	if err != nil {
-		t.Fatalf("failed to read summary: %v", err)
-	}
-	var connections []NetworkConnection
-	if err := json.Unmarshal(summaryData, &connections); err != nil {
-		t.Fatalf("failed to parse summary: %v", err)
-	}
-	if len(connections) != 1 {
-		t.Errorf("len(connections) = %d, want 1", len(connections))
-	}
-	if len(connections) > 0 && connections[0].DstAddr != "1.2.3.4" {
-		t.Errorf("connection.DstAddr = %q, want 1.2.3.4", connections[0].DstAddr)
-	}
+	// Should not panic or error — just logs to the test logger
+	LogObservabilityEvents(ctx, events)
 }
 
-func TestSaveObservabilityEvents_NilEvents(t *testing.T) {
+func TestLogObservabilityEvents_NilEvents(t *testing.T) {
 	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
-	err := SaveObservabilityEvents(ctx, nil, t.TempDir())
-	if err != nil {
-		t.Fatalf("SaveObservabilityEvents(nil) error: %v", err)
-	}
+	// Should be a no-op
+	LogObservabilityEvents(ctx, nil)
+}
+
+func TestLogObservabilityEvents_EmptyRawData(t *testing.T) {
+	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
+	// Should be a no-op
+	LogObservabilityEvents(ctx, &ObservabilityEvents{})
 }
 
 // --- Helper Functions ---

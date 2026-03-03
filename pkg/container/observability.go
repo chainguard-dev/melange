@@ -111,11 +111,7 @@ func RetrieveObservabilityEvents(ctx context.Context, cfg *Config) (*Observabili
 	}
 
 	// Parse events to extract network connections
-	connections, eventCount, err := extractNetworkConnections(rawData)
-	if err != nil {
-		log.Warnf("qemu: failed to parse observability events: %v", err)
-		return &ObservabilityEvents{RawData: rawData}, nil
-	}
+	connections, eventCount := extractNetworkConnections(rawData)
 
 	log.Infof("qemu: retrieved %d observability events (%d network connections)", eventCount, len(connections))
 
@@ -152,8 +148,7 @@ func LogObservabilityEvents(ctx context.Context, events *ObservabilityEvents) {
 	}
 
 	// Log every raw event line (for Cloud Logging ingestion)
-	lines := bytes.Split(events.RawData, []byte("\n"))
-	for _, line := range lines {
+	for line := range bytes.SplitSeq(events.RawData, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
@@ -166,12 +161,11 @@ func LogObservabilityEvents(ctx context.Context, events *ObservabilityEvents) {
 
 // extractNetworkConnections parses NDJSON observability events and extracts
 // network connection information from kprobe events.
-func extractNetworkConnections(data []byte) ([]NetworkConnection, int, error) {
+func extractNetworkConnections(data []byte) ([]NetworkConnection, int) {
 	var connections []NetworkConnection
 	eventCount := 0
 
-	lines := bytes.Split(data, []byte("\n"))
-	for _, line := range lines {
+	for line := range bytes.SplitSeq(data, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
@@ -222,7 +216,7 @@ func extractNetworkConnections(data []byte) ([]NetworkConnection, int, error) {
 		sock := kprobe.Args[0].SockArg
 		timestamp := ""
 		if t, ok := raw["time"]; ok {
-			json.Unmarshal(t, &timestamp)
+			_ = json.Unmarshal(t, &timestamp)
 		}
 
 		connections = append(connections, NetworkConnection{
@@ -238,5 +232,5 @@ func extractNetworkConnections(data []byte) ([]NetworkConnection, int, error) {
 		})
 	}
 
-	return connections, eventCount, nil
+	return connections, eventCount
 }

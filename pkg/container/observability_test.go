@@ -411,10 +411,7 @@ func TestExtractNetworkConnections(t *testing.T) {
 		`{"process_exit":{"process":{"binary":"/bin/sh","pid":1}},"time":"2025-01-01T00:00:04Z"}`,
 	}, "\n")
 
-	connections, eventCount, err := extractNetworkConnections([]byte(eventsData))
-	if err != nil {
-		t.Fatalf("extractNetworkConnections() error: %v", err)
-	}
+	connections, eventCount := extractNetworkConnections([]byte(eventsData))
 	if eventCount != 5 {
 		t.Errorf("eventCount = %d, want 5", eventCount)
 	}
@@ -433,10 +430,7 @@ func TestExtractNetworkConnections(t *testing.T) {
 }
 
 func TestExtractNetworkConnections_EmptyData(t *testing.T) {
-	connections, eventCount, err := extractNetworkConnections([]byte(""))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	connections, eventCount := extractNetworkConnections([]byte(""))
 	if eventCount != 0 {
 		t.Errorf("eventCount = %d, want 0", eventCount)
 	}
@@ -447,10 +441,7 @@ func TestExtractNetworkConnections_EmptyData(t *testing.T) {
 
 func TestExtractNetworkConnections_MalformedLines(t *testing.T) {
 	eventsData := "not json\n{\"process_exec\":{\"process\":{\"binary\":\"/bin/sh\"}}}\n{broken\n"
-	connections, eventCount, err := extractNetworkConnections([]byte(eventsData))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	connections, eventCount := extractNetworkConnections([]byte(eventsData))
 	if eventCount != 1 {
 		t.Errorf("eventCount = %d, want 1 (only the valid line)", eventCount)
 	}
@@ -497,8 +488,7 @@ func parseObservabilityEvents(data []byte) ([]ObservabilityEvent, []Observabilit
 	var allEvents []ObservabilityEvent
 	var networkEvents []ObservabilityEvent
 
-	lines := bytes.Split(data, []byte("\n"))
-	for _, line := range lines {
+	for line := range bytes.SplitSeq(data, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue

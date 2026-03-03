@@ -770,15 +770,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
-	// Retrieve build observability events if the observability hook is installed.
-	// This is fully optional — if the hook package is not in the VM, the probe
-	// finds no events file and returns nil with no overhead beyond one SSH command.
+	// Retrieve and log build observability events if the observability hook
+	// is installed. Fully optional — if the hook is not in the VM, the probe
+	// finds no events file and returns nil with no impact on the build.
 	if obsEvents, err := container.RetrieveObservabilityEvents(ctx, cfg); err != nil {
 		log.Warnf("failed to retrieve observability events: %v", err)
 	} else if obsEvents != nil {
-		if err := container.SaveObservabilityEvents(ctx, obsEvents, b.WorkspaceDir); err != nil {
-			log.Warnf("failed to save observability events: %v", err)
-		}
+		container.LogObservabilityEvents(ctx, obsEvents)
 	}
 
 	// perform package linting

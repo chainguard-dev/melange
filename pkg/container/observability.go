@@ -19,8 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/chainguard-dev/clog"
@@ -128,42 +126,42 @@ func RetrieveObservabilityEvents(ctx context.Context, cfg *Config) (*Observabili
 	}, nil
 }
 
-// SaveObservabilityEvents writes the observability events to a file in the
-// workspace. The events are saved as NDJSON alongside the build artifacts.
-func SaveObservabilityEvents(ctx context.Context, events *ObservabilityEvents, workspaceDir string) error {
+// LogObservabilityEvents writes all observability events to melange's stdout
+// via the structured logger. Each raw event is logged as a separate line with
+// an [OBSERVABILITY] prefix for filtering. Network connections get a dedicated
+// summary section. In the elastic build environment, these log lines flow to
+// Cloud Logging via GKE pod stdout and are individually searchable.
+func LogObservabilityEvents(ctx context.Context, events *ObservabilityEvents) {
 	if events == nil || len(events.RawData) == 0 {
-		return nil
+		return
 	}
 
 	log := clog.FromContext(ctx)
 
-	eventsDir := filepath.Join(workspaceDir, "observability")
-	if err := os.MkdirAll(eventsDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create observability events directory: %w", err)
+	// Summary header
+	log.Infof("[OBSERVABILITY] === Build Observability Report: %d events, %d network connections ===",
+		events.EventCount, len(events.NetworkConnections))
+
+	// Log each network connection (high-value, low-volume)
+	for _, conn := range events.NetworkConnections {
+		log.Infof("[OBSERVABILITY] network: %s %s %s:%d -> %s:%d (%s)",
+			conn.Function, conn.Process,
+			conn.SrcAddr, conn.SrcPort,
+			conn.DstAddr, conn.DstPort,
+			conn.Protocol)
 	}
 
-	eventsPath := filepath.Join(eventsDir, "events.json")
-	if err := os.WriteFile(eventsPath, events.RawData, 0o644); err != nil {
-		return fmt.Errorf("failed to write observability events: %w", err)
-	}
-
-	log.Infof("qemu: saved observability events to %s (%d bytes)", eventsPath, len(events.RawData))
-
-	if len(events.NetworkConnections) > 0 {
-		summaryPath := filepath.Join(eventsDir, "network-connections.json")
-		summaryData, err := json.MarshalIndent(events.NetworkConnections, "", "  ")
-		if err != nil {
-			log.Warnf("qemu: failed to marshal network connections summary: %v", err)
-		} else {
-			if err := os.WriteFile(summaryPath, summaryData, 0o644); err != nil {
-				log.Warnf("qemu: failed to write network connections summary: %v", err)
-			} else {
-				log.Infof("qemu: saved %d network connections to %s", len(events.NetworkConnections), summaryPath)
-			}
+	// Log every raw event line (for Cloud Logging ingestion)
+	lines := bytes.Split(events.RawData, []byte("\n"))
+	for _, line := range lines {
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
 		}
+		log.Infof("[OBSERVABILITY] %s", string(line))
 	}
 
-	return nil
+	log.Infof("[OBSERVABILITY] === End of observability report ===")
 }
 
 // extractNetworkConnections parses NDJSON observability events and extracts

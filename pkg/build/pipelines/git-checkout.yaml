@@ -177,7 +177,8 @@ pipeline:
             # Split the line into branch/hash and comment parts
             branch=${line%%:*}
             comment=${line#*:}
-            comment=$(set -f; echo "$comment") # Strip leading/trailing whitespace
+            # shellcheck disable=SC2086
+            comment=$(set -f; echo $comment) # Strip leading/trailing whitespace
 
             if [ -z "$comment" ]; then
                 msg "Empty comment for cherry-pick: $line"
@@ -300,7 +301,8 @@ pipeline:
           # Configure sparse-checkout if paths were provided
           if [ -n "$sparse_paths" ]; then
               msg "Configuring sparse-checkout with paths: $sparse_paths"
-              vr git sparse-checkout set --cone "$sparse_paths" ||
+              # shellcheck disable=SC2086
+              vr git sparse-checkout set --cone $sparse_paths ||
                   fail "failed to configure sparse-checkout --filter=blob:none"
           fi
 

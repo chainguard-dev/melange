@@ -293,7 +293,7 @@ pipeline:
               "--config=user.name=Melange Build" \
               "--config=user.email=melange-build@cgr.dev" \
               $flags \
-              ${depthflag:+"$depthflag"} "$repo" "$workdir" ||
+              "$depthflag" "$repo" "$workdir" ||
               fail "git clone failed after $max_retries retries"
 
           vr cd "$workdir"
@@ -337,7 +337,7 @@ pipeline:
           # git clone --branch=X will pick the branch X if there
           # exists both a tag and a branch by that name.
           # since a tag was given, we want the tag.
-          vr git fetch $quiet $remote "${depthflag:-"$depthflag"}" --no-tags \
+          vr git fetch $quiet $remote "$depthflag" --no-tags \
               "+refs/tags/$tag:refs/$remote/tags/$tag"
           vr git checkout $quiet "$remote/tags/$tag"
 

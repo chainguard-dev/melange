@@ -177,7 +177,8 @@ pipeline:
             # Split the line into branch/hash and comment parts
             branch=${line%%:*}
             comment=${line#*:}
-            comment=$(set -f; echo "$comment") # Strip leading/trailing whitespace
+            # shellcheck disable=SC2086
+            comment=$(set -f; echo $comment) # Strip leading/trailing whitespace
 
             if [ -z "$comment" ]; then
                 msg "Empty comment for cherry-pick: $line"
@@ -292,7 +293,7 @@ pipeline:
               "--config=user.name=Melange Build" \
               "--config=user.email=melange-build@cgr.dev" \
               $flags \
-              ${depthflag:+"$depthflag"} "$repo" "$workdir" ||
+              ${depthflag:+"${depthflag}"} "$repo" "$workdir" ||
               fail "git clone failed after $max_retries retries"
 
           vr cd "$workdir"
@@ -300,7 +301,8 @@ pipeline:
           # Configure sparse-checkout if paths were provided
           if [ -n "$sparse_paths" ]; then
               msg "Configuring sparse-checkout with paths: $sparse_paths"
-              vr git sparse-checkout set --cone "$sparse_paths" ||
+              # shellcheck disable=SC2086
+              vr git sparse-checkout set --cone $sparse_paths ||
                   fail "failed to configure sparse-checkout --filter=blob:none"
           fi
 
@@ -335,7 +337,7 @@ pipeline:
           # git clone --branch=X will pick the branch X if there
           # exists both a tag and a branch by that name.
           # since a tag was given, we want the tag.
-          vr git fetch $quiet $remote "${depthflag:-"$depthflag"}" --no-tags \
+          vr git fetch $quiet $remote ${depthflag:+"${depthflag}"} --no-tags \
               "+refs/tags/$tag:refs/$remote/tags/$tag"
           vr git checkout $quiet "$remote/tags/$tag"
 

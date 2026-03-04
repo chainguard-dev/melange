@@ -94,7 +94,7 @@ pipeline:
   - runs: |
       #!/bin/sh
       # shellcheck shell=busybox
-      set -e
+      set -eu
 
       msg() { echo "[git checkout]" "$@"; }
       fail() { msg FAIL "$@"; exit 1; }

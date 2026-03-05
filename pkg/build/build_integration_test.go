@@ -40,6 +40,10 @@ func TestBuild_BuildPackage(t *testing.T) {
 			expectedVersion: "1.0.0_b6",
 			buildErrMatch:   regexp.MustCompile("parse version"),
 		},
+		{
+			name:            "sed",
+			expectedVersion: "4.9-r8",
+		},
 	}
 
 	const arch = "x86_64"

@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/chainguard-dev/clog"
 )
@@ -76,13 +75,9 @@ func RetrieveObservabilityEvents(ctx context.Context, cfg *Config) (*Observabili
 	// hook is not installed and we silently return nil.
 	eventsPath := ""
 	for _, path := range observabilityEventPaths {
-		var checkBuf bytes.Buffer
-		err := sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, &checkBuf, false,
-			[]string{"sh", "-c", fmt.Sprintf("test -f %s && echo exists || echo missing", path)})
-		if err != nil {
-			continue
-		}
-		if strings.TrimSpace(checkBuf.String()) == "exists" {
+		err := sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, nil, false,
+			[]string{"test", "-f", path})
+		if err == nil {
 			eventsPath = path
 			break
 		}
@@ -96,10 +91,12 @@ func RetrieveObservabilityEvents(ctx context.Context, cfg *Config) (*Observabili
 
 	log.Infof("qemu: found observability events at %s", eventsPath)
 
-	// Retrieve the events file
+	// Cap retrieval to prevent a pathological VM from exhausting host memory.
+	// 50 MiB is well above normal builds (9-17k events ≈ a few MiB).
+	const maxEventsBytes = 50 << 20 // 50 MiB
 	var eventsBuf bytes.Buffer
 	err := sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, &eventsBuf, false,
-		[]string{"cat", eventsPath})
+		[]string{"head", "-c", fmt.Sprintf("%d", maxEventsBytes), eventsPath})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve observability events: %w", err)
 	}

@@ -321,10 +321,7 @@ func TestParseObservabilityEventsFile(t *testing.T) {
 func TestTracingPolicyYAMLValid(t *testing.T) {
 	policyPath := filepath.Join("..", "..", "..", "..", "stereo", "os", "microvm-observability-hook", "network-monitor.yaml")
 	if _, err := os.Stat(policyPath); os.IsNotExist(err) {
-		policyPath = "/home/mark-manning/projects/stereo/os/microvm-observability-hook/network-monitor.yaml"
-		if _, err := os.Stat(policyPath); os.IsNotExist(err) {
-			t.Skip("TracingPolicy file not found, skipping validation")
-		}
+		t.Skip("TracingPolicy file not found, skipping validation")
 	}
 
 	data, err := os.ReadFile(policyPath)
@@ -349,10 +346,7 @@ func TestTracingPolicyYAMLValid(t *testing.T) {
 func TestSystemdUnitFileValid(t *testing.T) {
 	unitPath := filepath.Join("..", "..", "..", "..", "stereo", "os", "microvm-observability-hook", "tetragon.service")
 	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
-		unitPath = "/home/mark-manning/projects/stereo/os/microvm-observability-hook/tetragon.service"
-		if _, err := os.Stat(unitPath); os.IsNotExist(err) {
-			t.Skip("systemd unit file not found, skipping validation")
-		}
+		t.Skip("systemd unit file not found, skipping validation")
 	}
 
 	data, err := os.ReadFile(unitPath)

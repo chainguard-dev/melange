@@ -16,7 +16,6 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.2
 	github.com/google/licenseclassifier/v2 v2.0.0
-	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d
 	github.com/in-toto/attestation v1.1.2
 	github.com/invopop/jsonschema v0.13.0
 	github.com/joho/godotenv v1.5.1
@@ -61,6 +60,7 @@ require (
 	github.com/google/martian/v3 v3.3.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
+	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0 // indirect
 	go.opencensus.io v0.24.0 // indirect

@@ -16,41 +16,8 @@ package cond
 
 import (
 	"fmt"
-
-	"github.com/ijt/goparsify"
+	"strings"
 )
-
-func combineOp(n *goparsify.Result) {
-	switch n.Child[1].Token {
-	case "&&":
-		n.Result = n.Child[0].Result == true && n.Child[2].Result == true
-	case "||":
-		n.Result = n.Child[0].Result == true || n.Child[2].Result == true
-	default:
-		panic(fmt.Errorf("unrecognized op"))
-	}
-}
-
-func collapseOp(n *goparsify.Result) {
-	n.Result = true
-	for _, child := range n.Child {
-		if child.Result != true {
-			n.Result = false
-			return
-		}
-	}
-}
-
-func comparisonOp(n *goparsify.Result) {
-	switch n.Child[1].Token {
-	case "==":
-		n.Result = n.Child[0].Token == n.Child[2].Token
-	case "!=":
-		n.Result = n.Child[0].Token != n.Child[2].Token
-	default:
-		panic(fmt.Errorf("unrecognized op"))
-	}
-}
 
 // A VariableLookupFunction designates how variables should be
 // resolved when evaluating expressions.
@@ -61,6 +28,186 @@ type VariableLookupFunction func(key string) (string, error)
 // function used by Evaluate.
 func NullLookup(key string) (string, error) {
 	return "", nil
+}
+
+// parser is a simple recursive descent parser for condition expressions.
+type parser struct {
+	input    string
+	pos      int
+	lookupFn VariableLookupFunction
+}
+
+func isWhitespace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
+}
+
+func (p *parser) skipWhitespace() {
+	for p.pos < len(p.input) && isWhitespace(p.input[p.pos]) {
+		p.pos++
+	}
+}
+
+func (p *parser) peek(s string) bool {
+	p.skipWhitespace()
+	return p.pos+len(s) <= len(p.input) && p.input[p.pos:p.pos+len(s)] == s
+}
+
+func (p *parser) expect(s string) error {
+	p.skipWhitespace()
+	if p.pos+len(s) > len(p.input) || p.input[p.pos:p.pos+len(s)] != s {
+		return fmt.Errorf("expected %q at position %d", s, p.pos)
+	}
+	p.pos += len(s)
+	return nil
+}
+
+func isVarChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_'
+}
+
+// parseValue parses a string literal ('...' or "...") or a variable (${{...}}).
+func (p *parser) parseValue() (string, error) {
+	p.skipWhitespace()
+	if p.pos >= len(p.input) {
+		return "", fmt.Errorf("unexpected end of input at position %d", p.pos)
+	}
+
+	// String literal
+	if p.input[p.pos] == '\'' || p.input[p.pos] == '"' {
+		quote := p.input[p.pos]
+		p.pos++
+		var b strings.Builder
+		for p.pos < len(p.input) && p.input[p.pos] != quote {
+			if p.input[p.pos] == '\\' && p.pos+1 < len(p.input) {
+				p.pos++ // skip backslash
+				switch p.input[p.pos] {
+				case '\\', '\'', '"':
+					b.WriteByte(p.input[p.pos])
+				case 'n':
+					b.WriteByte('\n')
+				case 't':
+					b.WriteByte('\t')
+				default:
+					// Preserve unknown escapes as-is.
+					b.WriteByte('\\')
+					b.WriteByte(p.input[p.pos])
+				}
+			} else {
+				b.WriteByte(p.input[p.pos])
+			}
+			p.pos++
+		}
+		if p.pos >= len(p.input) {
+			return "", fmt.Errorf("unterminated string literal at position %d", p.pos)
+		}
+		p.pos++ // consume closing quote
+		return b.String(), nil
+	}
+
+	// Variable: ${{name}}
+	if p.peek("${{") {
+		p.pos += 3 // consume ${{
+		p.skipWhitespace()
+		start := p.pos
+		for p.pos < len(p.input) && isVarChar(p.input[p.pos]) {
+			p.pos++
+		}
+		if p.pos == start {
+			return "", fmt.Errorf("empty variable name at position %d", p.pos)
+		}
+		name := p.input[start:p.pos]
+		p.skipWhitespace()
+		if err := p.expect("}}"); err != nil {
+			return "", fmt.Errorf("unterminated variable reference %q at position %d: %w", name, start, err)
+		}
+		resolved, err := p.lookupFn(name)
+		if err != nil {
+			return "", fmt.Errorf("error resolving variable %q at position %d: %w", name, start, err)
+		}
+		return resolved, nil
+	}
+
+	return "", fmt.Errorf("unexpected character %q at position %d", p.input[p.pos], p.pos)
+}
+
+// parseComparison parses: value ('==' | '!=') value
+func (p *parser) parseComparison() (bool, error) {
+	lhs, err := p.parseValue()
+	if err != nil {
+		return false, err
+	}
+
+	p.skipWhitespace()
+	if p.pos+2 > len(p.input) {
+		return false, fmt.Errorf("expected comparison operator at position %d", p.pos)
+	}
+
+	op := p.input[p.pos : p.pos+2]
+	if op != "==" && op != "!=" {
+		return false, fmt.Errorf("expected '==' or '!=' at position %d, got %q", p.pos, op)
+	}
+	p.pos += 2
+
+	rhs, err := p.parseValue()
+	if err != nil {
+		return false, err
+	}
+
+	if op == "==" {
+		return lhs == rhs, nil
+	}
+	return lhs != rhs, nil
+}
+
+// parseAtom parses a grouped expression or a comparison.
+func (p *parser) parseAtom() (bool, error) {
+	p.skipWhitespace()
+	if p.pos < len(p.input) && p.input[p.pos] == '(' {
+		p.pos++ // consume '('
+		result, err := p.parseExpr()
+		if err != nil {
+			return false, err
+		}
+		if err := p.expect(")"); err != nil {
+			return false, fmt.Errorf("expected ')' at position %d: %w", p.pos, err)
+		}
+		return result, nil
+	}
+	return p.parseComparison()
+}
+
+// parseExpr parses atoms chained with && and ||.
+func (p *parser) parseExpr() (bool, error) {
+	result, err := p.parseAtom()
+	if err != nil {
+		return false, err
+	}
+
+	for {
+		p.skipWhitespace()
+		if p.pos+2 > len(p.input) {
+			break
+		}
+		op := p.input[p.pos : p.pos+2]
+		if op != "&&" && op != "||" {
+			break
+		}
+		p.pos += 2
+
+		rhs, err := p.parseAtom()
+		if err != nil {
+			return false, err
+		}
+
+		switch op {
+		case "&&":
+			result = result && rhs
+		case "||":
+			result = result || rhs
+		}
+	}
+
+	return result, nil
 }
 
 // Evaluate evaluates an input expression.
@@ -76,44 +223,21 @@ func Evaluate(inputExpr string, lookupFns ...VariableLookupFunction) (bool, erro
 		lookupFn = lookupFns[0]
 	}
 
-	equal := goparsify.Exact("==")
-	unequal := goparsify.Exact("!=")
-	comps := goparsify.Any(equal, unequal)
+	p := &parser{
+		input:    inputExpr,
+		pos:      0,
+		lookupFn: lookupFn,
+	}
 
-	variableName := goparsify.Chars("a-zA-Z0-9.\\-_")
-	variable := goparsify.Seq("${{", variableName, "}}").Map(func(n *goparsify.Result) {
-		if resolved, err := lookupFn(n.Child[1].Token); err == nil {
-			n.Token = resolved
-			n.Result = resolved
-		}
-	})
-
-	value := goparsify.Any(goparsify.StringLit("'\""), variable)
-	expr := goparsify.Seq(value, comps, value).Map(comparisonOp)
-
-	and := goparsify.Exact("&&")
-	or := goparsify.Exact("||")
-	chain := goparsify.Any(and, or)
-	combinedExpr := goparsify.Seq(expr, chain, expr).Map(combineOp)
-
-	exprChain := goparsify.Some(goparsify.Any(combinedExpr, expr), chain).Map(collapseOp)
-
-	group := goparsify.Seq("(", goparsify.Cut(), exprChain, ")").Map(func(n *goparsify.Result) {
-		n.Result = n.Child[2].Result
-	})
-	groupOrExpr := goparsify.Any(group, exprChain)
-	combinedGroup := goparsify.Seq(groupOrExpr, chain, groupOrExpr).Map(combineOp)
-
-	groupChain := goparsify.Some(goparsify.Any(combinedGroup, groupOrExpr), chain).Map(collapseOp)
-
-	result, _, err := goparsify.Run(groupChain, inputExpr, goparsify.UnicodeWhitespace)
+	result, err := p.parseExpr()
 	if err != nil {
 		return false, err
 	}
 
-	if rbool, ok := result.(bool); ok {
-		return rbool, nil
+	p.skipWhitespace()
+	if p.pos != len(p.input) {
+		return false, fmt.Errorf("unexpected trailing input at position %d: %q", p.pos, p.input[p.pos:])
 	}
 
-	return false, fmt.Errorf("got non-boolean result from parser")
+	return result, nil
 }

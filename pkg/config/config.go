@@ -988,6 +988,8 @@ type Update struct {
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for updates tracked via Git
 	GitMonitor *GitMonitor `json:"git,omitempty" yaml:"git,omitempty"`
+	// The configuration block for updates tracked via chainguard version data
+	VersionDataMonitor *VersionDataMonitor `json:"version_data,omitempty" yaml:"version_data,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
 	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
@@ -1052,6 +1054,24 @@ type GitMonitor struct {
 	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
 	// Filter to apply when searching tags on a GitHub repository
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+}
+
+// VersionDataMonitor indicates using chainguard version data
+type VersionDataMonitor struct {
+	// Format string for composing the version, using ${{source_name.field}} placeholders
+	Format string `json:"version_format" yaml:"version_format"`
+	// The list of upstream sources to fetch version data from
+	Sources []VersionDataSource `json:"sources" yaml:"sources"`
+}
+
+// VersionDataSource defines an individual upstream source for version data
+type VersionDataSource struct {
+	// The name of the source, used to reference it in the format string
+	Name string `json:"name" yaml:"name"`
+	// The stream to track for updates (e.g. "12.6", "9")
+	Stream string `json:"stream" yaml:"stream"`
+	// A list of regex patterns to ignore when matching upstream versions
+	Ignore []string `json:"ignore,omitempty" yaml:"ignore,omitempty"`
 }
 
 // GetStripPrefix returns the prefix that should be stripped from the GitMonitor version.

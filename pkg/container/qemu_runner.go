@@ -938,6 +938,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		defer os.Remove(cfg.Disk)
 		defer stopVirtiofsd(ctx, cfg)
 		return fmt.Errorf("qemu: VM exited unexpectedly: %w", err)
+	case <-logCtx.Done():
+		defer os.Remove(cfg.ImgRef)
+		defer os.Remove(cfg.Disk)
+		defer stopVirtiofsd(ctx, cfg)
+		return fmt.Errorf("qemu: %w", context.Cause(logCtx))
 	case <-ctx.Done():
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)

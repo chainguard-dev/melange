@@ -1072,6 +1072,10 @@ type VersionDataSource struct {
 	Stream string `json:"stream" yaml:"stream"`
 	// A list of regex patterns to ignore when matching upstream versions
 	Ignore []string `json:"ignore,omitempty" yaml:"ignore,omitempty"`
+	// The source whose commits to use when multiple sources are configured
+	CommitSource string `json:"commit_source,omitempty" yaml:"commit_source,omitempty"`
+	// Whether to use GitHub releases as the tag source instead of git tags
+	UseRelease bool `json:"use_release,omitempty" yaml:"use_release,omitempty"`
 }
 
 // GetStripPrefix returns the prefix that should be stripped from the GitMonitor version.

@@ -27,7 +27,6 @@ import (
 // The hook package determines which path is used; we probe all of them.
 var observabilityEventPaths = []string{
 	"/var/log/observability/events.json",
-	"/var/log/tetragon/events.json",
 	"/opt/observability-logs/events.log",
 	"/tmp/observability/events.log",
 }

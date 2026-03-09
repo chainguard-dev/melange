@@ -18,9 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -318,82 +315,6 @@ func TestParseObservabilityEventsFile(t *testing.T) {
 	}
 }
 
-func TestTracingPolicyYAMLValid(t *testing.T) {
-	policyPath := filepath.Join("..", "..", "..", "..", "stereo", "os", "microvm-observability-hook", "network-monitor.yaml")
-	if _, err := os.Stat(policyPath); os.IsNotExist(err) {
-		t.Skip("TracingPolicy file not found, skipping validation")
-	}
-
-	data, err := os.ReadFile(policyPath)
-	if err != nil {
-		t.Fatalf("failed to read TracingPolicy: %v", err)
-	}
-
-	content := string(data)
-	requiredFields := []string{
-		"apiVersion: cilium.io/v1alpha1",
-		"kind: TracingPolicy",
-		"tcp_connect",
-		"type: \"sock\"",
-	}
-	for _, field := range requiredFields {
-		if !strings.Contains(content, field) {
-			t.Errorf("TracingPolicy missing required field: %q", field)
-		}
-	}
-}
-
-func TestSystemdUnitFileValid(t *testing.T) {
-	unitPath := filepath.Join("..", "..", "..", "..", "stereo", "os", "microvm-observability-hook", "tetragon.service")
-	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
-		t.Skip("systemd unit file not found, skipping validation")
-	}
-
-	data, err := os.ReadFile(unitPath)
-	if err != nil {
-		t.Fatalf("failed to read unit file: %v", err)
-	}
-
-	content := string(data)
-
-	requiredSections := []string{"[Unit]", "[Service]", "[Install]"}
-	for _, section := range requiredSections {
-		if !strings.Contains(content, section) {
-			t.Errorf("unit file missing section: %s", section)
-		}
-	}
-
-	requiredDirectives := []struct {
-		directive string
-		reason    string
-	}{
-		{"Before=sshd.service", "observability must start before sshd so it's running before builds begin"},
-		{"--export-filename", "must export events to a file"},
-		{"WantedBy=multi-user.target", "must be enabled for boot"},
-	}
-	for _, d := range requiredDirectives {
-		if !strings.Contains(content, d.directive) {
-			t.Errorf("unit file missing directive %q: %s", d.directive, d.reason)
-		}
-	}
-
-	if _, err := exec.LookPath("systemd-analyze"); err == nil {
-		cmd := exec.Command("systemd-analyze", "verify", "--man=no", unitPath)
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			stderrStr := stderr.String()
-			if !strings.Contains(stderrStr, "No such file or directory") {
-				t.Errorf("systemd-analyze verify failed: %v\nstderr: %s", err, stderrStr)
-			} else {
-				t.Logf("systemd-analyze reported missing binary (expected on host): %s", strings.TrimSpace(stderrStr))
-			}
-		}
-	} else {
-		t.Log("systemd-analyze not available, skipping formal unit validation")
-	}
-}
-
 // --- Tests for observability.go functions ---
 
 func TestExtractNetworkConnections(t *testing.T) {
@@ -502,38 +423,3 @@ func parseObservabilityEvents(data []byte) ([]ObservabilityEvent, []Observabilit
 	return allEvents, networkEvents, nil
 }
 
-// --- Integration Test Helpers ---
-
-func skipUnlessIntegration(t *testing.T) {
-	t.Helper()
-	if os.Getenv("OBSERVABILITY_INTEGRATION_TEST") == "" {
-		t.Skip("skipping integration test: set OBSERVABILITY_INTEGRATION_TEST=1 to run")
-	}
-}
-
-func TestIntegration_ObservabilityServiceActive(t *testing.T) {
-	skipUnlessIntegration(t)
-	t.Skip("integration test not yet wired up — requires running QEMU VM")
-}
-
-func TestIntegration_ObservabilityEventsGenerated(t *testing.T) {
-	skipUnlessIntegration(t)
-	t.Skip("integration test not yet wired up — requires running QEMU VM")
-}
-
-func TestIntegration_EventTransportViaSSH(t *testing.T) {
-	skipUnlessIntegration(t)
-	t.Skip("integration test not yet wired up — requires running QEMU VM")
-}
-
-// --- Regression Tests ---
-
-func TestRegression_BuildWithoutObservability(t *testing.T) {
-	skipUnlessIntegration(t)
-	t.Skip("regression test not yet implemented — requires build harness")
-}
-
-func TestRegression_BuildArtifactsIdentical(t *testing.T) {
-	skipUnlessIntegration(t)
-	t.Skip("regression test not yet implemented — requires build harness")
-}

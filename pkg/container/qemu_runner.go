@@ -931,8 +931,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	select {
 	case <-started:
 		log.Info("qemu: VM started successfully, SSH server is up")
-		secureDelete(ctx, cfg.InitramfsPath)
-		cfg.InitramfsPath = ""
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
@@ -959,6 +957,9 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		return fmt.Errorf("qemu: could not setup SSH client")
 	}
+
+	secureDelete(ctx, cfg.InitramfsPath)
+	cfg.InitramfsPath = ""
 
 	// Zero out sensitive private key material now that all SSH connections are established
 	// The public key is retained for verification in setupSSHClients

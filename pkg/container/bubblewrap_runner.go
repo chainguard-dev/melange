@@ -34,7 +34,7 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	moby "github.com/moby/moby/oci/caps"
+	moby "github.com/moby/moby/v2/daemon/pkg/oci/caps"
 	"go.opentelemetry.io/otel"
 )
 

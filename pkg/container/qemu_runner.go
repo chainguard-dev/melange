@@ -68,6 +68,20 @@ const QemuName = "qemu"
 
 const (
 	defaultDiskSize = "50Gi"
+
+	// sshDialTimeout is the maximum time allowed for TCP connect + SSH handshake.
+	sshDialTimeout = 30 * time.Second
+
+	// sshKeepaliveInterval is how often keepalive requests are sent.
+	sshKeepaliveInterval = 30 * time.Second
+
+	// sshKeepaliveMaxMissed is the number of consecutive missed keepalives
+	// before the connection is closed (equivalent to ServerAliveCountMax).
+	sshKeepaliveMaxMissed = 3
+
+	// sshKeepaliveRequestTimeout is how long to wait for a single keepalive
+	// response before counting it as missed.
+	sshKeepaliveRequestTimeout = 10 * time.Second
 )
 
 type qemu struct{}
@@ -185,7 +199,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	}
 
 	// Connect to the SSH server
-	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	client, err := sshDialWithTimeout(cfg.SSHAddress, config, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
@@ -948,14 +962,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("qemu: context canceled while waiting for VM to start: %w", context.Cause(ctx))
 	}
 
-	err = getHostKey(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("qemu: could not get VM host key")
+	if err := getHostKey(ctx, cfg); err != nil {
+		return fmt.Errorf("qemu: could not get VM host key: %w", err)
 	}
 
-	err = setupSSHClients(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("qemu: could not setup SSH client")
+	if err := setupSSHClients(ctx, cfg); err != nil {
+		return fmt.Errorf("qemu: could not setup SSH client: %w", err)
 	}
 
 	secureDelete(ctx, cfg.InitramfsPath)
@@ -971,7 +983,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	kv, err := getGuestKernelVersion(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("qemu: unable to query guest kernel version")
+		return fmt.Errorf("qemu: unable to query guest kernel version: %w", err)
 	}
 	clog.FromContext(ctx).Infof("qemu: running kernel version: %s", kv)
 
@@ -1142,27 +1154,123 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 	}
 
 	// Connect to the SSH server
-	cfg.SSHBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, buildConfig)
+	cfg.SSHBuildClient, err = sshDialWithTimeout(cfg.SSHAddress, buildConfig, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server on the control (unchrooted) port
-	cfg.SSHControlClient, err = ssh.Dial("tcp", cfg.SSHControlAddress, controlConfig)
+	cfg.SSHControlClient, err = sshDialWithTimeout(cfg.SSHControlAddress, controlConfig, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server on the chrooted port with privilege
-	cfg.SSHControlBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, controlConfig)
+	cfg.SSHControlBuildClient, err = sshDialWithTimeout(cfg.SSHAddress, controlConfig, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
+	// Start SSH keepalives for all clients to prevent idle disconnects
+	startSSHKeepalive(ctx, cfg.SSHBuildClient, "build")
+	startSSHKeepalive(ctx, cfg.SSHControlClient, "control")
+	startSSHKeepalive(ctx, cfg.SSHControlBuildClient, "control-build")
+
 	return nil
+}
+
+// sshDialWithTimeout dials an SSH connection with a deadline covering both the
+// TCP connect and the SSH handshake. This prevents hangs when the remote end
+// accepts the TCP connection but stalls during the handshake (golang/go#19338).
+func sshDialWithTimeout(addr string, config *ssh.ClientConfig, timeout time.Duration) (*ssh.Client, error) {
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set a deadline covering the entire SSH handshake
+	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	// Clear the deadline so it doesn't affect future operations
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return ssh.NewClient(c, chans, reqs), nil
+}
+
+// sshKeepaliveClient is the interface needed for SSH keepalive operations.
+type sshKeepaliveClient interface {
+	SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error)
+	Close() error
+}
+
+// startSSHKeepalive sends periodic keepalive requests to an SSH client to
+// prevent idle connection timeouts. After sshKeepaliveMaxMissed consecutive
+// missed keepalives (equivalent to ServerAliveCountMax), the client connection
+// is closed. The goroutine stops when the context is canceled or the connection
+// is closed.
+func startSSHKeepalive(ctx context.Context, client sshKeepaliveClient, name string) {
+	go runSSHKeepalive(ctx, client, name)
+}
+
+// runSSHKeepalive is the keepalive loop, separated from startSSHKeepalive for
+// testability (synctest requires the goroutine to be started inside the bubble).
+func runSSHKeepalive(ctx context.Context, client sshKeepaliveClient, name string) {
+	t := time.NewTicker(sshKeepaliveInterval)
+	defer t.Stop()
+
+	missed := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if err := sshSendKeepalive(ctx, client); err != nil {
+				missed++
+				clog.FromContext(ctx).Debugf("ssh keepalive missed for %s client (%d/%d): %v", name, missed, sshKeepaliveMaxMissed, err)
+				if missed >= sshKeepaliveMaxMissed {
+					clog.FromContext(ctx).Warnf("ssh keepalive: closing %s client after %d consecutive missed keepalives", name, missed)
+					client.Close()
+					return
+				}
+				continue
+			}
+			missed = 0
+		}
+	}
+}
+
+// sshSendKeepalive sends a single keepalive request with a timeout to prevent
+// blocking indefinitely on a hung connection.
+func sshSendKeepalive(ctx context.Context, client sshKeepaliveClient) error {
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(sshKeepaliveRequestTimeout):
+		return fmt.Errorf("keepalive request timed out after %s", sshKeepaliveRequestTimeout)
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // getWorkspaceLicenseFiles returns a list of possible license files from the
@@ -1286,7 +1394,7 @@ func getKernelPath(ctx context.Context) (string, error) {
 			kernel = kernelVar
 		}
 	} else if _, err := os.Stat(kernel); err != nil {
-		return "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE")
+		return "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE: %w", err)
 	}
 
 	return kernel, nil
@@ -1391,7 +1499,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 		HostKeyCallback: ssh.FixedHostKey(cfg.VMHostKeyPublic),
 	}
 
-	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	client, err := sshDialWithTimeout(cfg.SSHAddress, config, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to verify and connect to VM: %s", err)
 		return fmt.Errorf("vm host key verification failed (possible security issue): %w", err)
@@ -1759,7 +1867,7 @@ func getAvailableMemoryKB() int {
 func randomPortN() (int, error) {
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return 0, fmt.Errorf("no open port found")
+		return 0, fmt.Errorf("no open port found: %w", err)
 	}
 	defer l.Close()
 

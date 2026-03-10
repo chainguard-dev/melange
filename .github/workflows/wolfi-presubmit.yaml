@@ -71,7 +71,6 @@ jobs:
           - gitsign
           - grafana-image-renderer
           - guac
-          - hello-wolfi
           - lzo
           - mdbook
           - ncurses

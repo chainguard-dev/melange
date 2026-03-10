@@ -742,7 +742,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHControlAddress+"-:2223")
-	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1,romfile=")
+	// Set host_mtu to avoid silent packet drops in nested environments (e.g.,
+	// QEMU inside GKE pods). SLIRP defaults to 1500 MTU but the host path MTU
+	// may be lower due to encapsulation (GCP VPC uses 1460, pod networks can be
+	// lower). The guest kernel picks up host_mtu via virtio feature negotiation
+	// and configures the interface MTU automatically at boot.
+	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1,romfile=,host_mtu=1400")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
 	// panic=-1 ensures that if the init fails, we immediately exit the machine

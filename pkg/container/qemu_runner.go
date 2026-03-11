@@ -642,25 +642,21 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	baseargs := []string{}
 
-	kernelConsole := ""
-	// If the log level is debug, then crank up the logging.
-	// Otherwise, use quiet mode.
+	// Always attach the serial console so guest kernel and init output is
+	// captured through QEMU's stdout, giving visibility into boot failures
+	// (e.g. when SSH never comes up). Kernel verbosity is still gated on
+	// the log level.
+	kernelConsole := "console=hvc0"
 	if log.Enabled(ctx, slog.LevelDebug) {
 		kernelConsole += " debug loglevel=7"
 	} else {
 		kernelConsole += " quiet"
 	}
 
-	// Only enable console on debug runs.
-	// Spare some boot time and memory
-	serialArgs := []string{}
-	if log.Enabled(ctx, slog.LevelDebug) {
-		kernelConsole = "console=hvc0"
-		serialArgs = []string{
-			"-device", "virtio-serial-pci,id=virtio-serial0,max_ports=2",
-			"-chardev", "stdio,id=charconsole0",
-			"-device", "virtconsole,chardev=charconsole0,id=console0",
-		}
+	serialArgs := []string{
+		"-device", "virtio-serial-pci,id=virtio-serial0,max_ports=2",
+		"-chardev", "stdio,id=charconsole0",
+		"-device", "virtconsole,chardev=charconsole0,id=console0",
 	}
 
 	// Helper to add memory-backend suffix for virtiofs shared memory

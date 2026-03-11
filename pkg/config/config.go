@@ -1419,6 +1419,43 @@ func replaceTest(r *strings.Replacer, in *Test) *Test {
 	}
 }
 
+func replaceUpdate(r *strings.Replacer, in Update) Update {
+	out := in
+
+	if in.ReleaseMonitor != nil {
+		out.ReleaseMonitor = &ReleaseMonitor{
+			Identifier:            in.ReleaseMonitor.Identifier,
+			StripPrefix:           in.ReleaseMonitor.StripPrefix,
+			StripSuffix:           in.ReleaseMonitor.StripSuffix,
+			VersionFilterContains: r.Replace(in.ReleaseMonitor.VersionFilterContains),
+			VersionFilterPrefix:   r.Replace(in.ReleaseMonitor.VersionFilterPrefix),
+		}
+	}
+
+	if in.GitHubMonitor != nil {
+		out.GitHubMonitor = &GitHubMonitor{
+			Identifier:        r.Replace(in.GitHubMonitor.Identifier),
+			StripPrefix:       in.GitHubMonitor.StripPrefix,
+			StripSuffix:       in.GitHubMonitor.StripSuffix,
+			TagFilter:         r.Replace(in.GitHubMonitor.TagFilter),
+			TagFilterPrefix:   r.Replace(in.GitHubMonitor.TagFilterPrefix),
+			TagFilterContains: r.Replace(in.GitHubMonitor.TagFilterContains),
+			UseTags:           in.GitHubMonitor.UseTags,
+		}
+	}
+
+	if in.GitMonitor != nil {
+		out.GitMonitor = &GitMonitor{
+			StripPrefix:       in.GitMonitor.StripPrefix,
+			StripSuffix:       in.GitMonitor.StripSuffix,
+			TagFilterPrefix:   r.Replace(in.GitMonitor.TagFilterPrefix),
+			TagFilterContains: r.Replace(in.GitMonitor.TagFilterContains),
+		}
+	}
+
+	return out
+}
+
 func replaceScriptlets(r *strings.Replacer, in *Scriptlets) *Scriptlets {
 	if in == nil {
 		return nil
@@ -1659,6 +1696,8 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	cfg.Environment = replaceImageConfig(replacer, cfg.Environment)
 
 	cfg.Test = replaceTest(replacer, cfg.Test)
+
+	cfg.Update = replaceUpdate(replacer, cfg.Update)
 
 	cfg.Data = nil // TODO: zero this out or not?
 

@@ -185,6 +185,71 @@ test:
 	require.Equal(t, "/usr/local/FOO", cfg.Test.Environment.Environment["LD_LIBRARY_PATH"])
 }
 
+func Test_updateBlockVarSubstitution(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(os.TempDir(), "melange-test-updateBlockVarSubstitution")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: test-update-vars
+  version: 1.2.3
+  epoch: 0
+  description: test variable substitution in update block
+
+vars:
+  stream: "1.2"
+
+update:
+  enabled: true
+  github:
+    identifier: myorg/${{package.name}}
+    tag-filter-prefix: v${{vars.stream}}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.True(t, cfg.Update.Enabled)
+
+	// GitHub monitor fields should have vars resolved
+	require.NotNil(t, cfg.Update.GitHubMonitor)
+	require.Equal(t, "myorg/test-update-vars", cfg.Update.GitHubMonitor.Identifier)
+	require.Equal(t, "v1.2", cfg.Update.GitHubMonitor.TagFilterPrefix)
+}
+
+func Test_updateBlockVarSubstitutionGitMonitor(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(os.TempDir(), "melange-test-updateBlockVarSubstitutionGit")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: test-update-vars-git
+  version: 5.0.0
+  epoch: 0
+  description: test variable substitution in update block with git monitor
+
+vars:
+  prefix: release-
+
+update:
+  enabled: true
+  git:
+    tag-filter-prefix: ${{vars.prefix}}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.NotNil(t, cfg.Update.GitMonitor)
+	require.Equal(t, "release-", cfg.Update.GitMonitor.TagFilterPrefix)
+}
+
 func Test_rangeSubstitutions(t *testing.T) {
 	ctx := slogtest.Context(t)
 

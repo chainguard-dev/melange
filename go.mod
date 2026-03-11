@@ -3,10 +3,10 @@ module chainguard.dev/melange
 go 1.25.6
 
 require (
-	chainguard.dev/apko v1.1.12
+	chainguard.dev/apko v1.1.14
 	github.com/chainguard-dev/clog v1.8.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.51
+	github.com/chainguard-dev/yam v0.2.52
 	github.com/charmbracelet/log v0.4.2
 	github.com/docker/cli v29.3.0+incompatible
 	github.com/docker/docker v28.5.2+incompatible
@@ -24,7 +24,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/moby/moby/v2 v2.0.0-beta.7
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/package-url/packageurl-go v0.1.4
+	github.com/package-url/packageurl-go v0.1.5
 	github.com/pkg/errors v0.9.1
 	github.com/psanford/memfs v0.0.0-20241019191636-4ef911798f9b
 	github.com/spdx/tools-golang v0.5.7
@@ -33,20 +33,20 @@ require (
 	github.com/ulikunitz/xz v0.5.15
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
-	go.opentelemetry.io/otel v1.41.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.41.0
-	go.opentelemetry.io/otel/sdk v1.41.0
-	go.yaml.in/yaml/v2 v2.4.3
+	go.opentelemetry.io/otel v1.42.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.42.0
+	go.opentelemetry.io/otel/sdk v1.42.0
+	go.yaml.in/yaml/v2 v2.4.4
 	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
-	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.41.0
-	golang.org/x/term v0.40.0
-	golang.org/x/text v0.34.0
-	golang.org/x/time v0.14.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/sys v0.42.0
+	golang.org/x/term v0.41.0
+	golang.org/x/text v0.35.0
+	golang.org/x/time v0.15.0
 	gopkg.in/ini.v1 v1.67.1
 	gopkg.in/yaml.v3 v3.0.1
-	mvdan.cc/sh/v3 v3.12.0
+	mvdan.cc/sh/v3 v3.13.0
 	sigs.k8s.io/release-utils v0.12.3
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -164,8 +164,8 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
-	go.opentelemetry.io/otel/metric v1.41.0 // indirect
-	go.opentelemetry.io/otel/trace v1.41.0 // indirect
+	go.opentelemetry.io/otel/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.step.sm/crypto v0.76.2 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.51.0 // indirect

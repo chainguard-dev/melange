@@ -15,7 +15,6 @@
 package container
 
 import (
-	"archive/tar"
 	"bufio"
 	"bytes"
 	"context"
@@ -29,6 +28,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"os"
@@ -49,7 +49,6 @@ import (
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/kballard/go-shellquote"
 	"github.com/u-root/u-root/pkg/cpio"
 	"go.opentelemetry.io/otel"
@@ -2088,65 +2087,100 @@ func secureDelete(ctx context.Context, path string) {
 }
 
 func generateCpio(ctx context.Context, cfg *Config) (string, error) {
-	/*
-	 * we only build once, useful for local development, we
-	 * cache it.
-	 * if present, we nop and return, else we build it.
-	 */
-	cacheDir := filepath.Join(
-		"kernel",
-		cfg.Arch.ToAPK())
+	var baseInitramfs string
 
-	cacheDir = filepath.Join(cacheDir, "melange-cpio")
+	// Check for prebuilt initramfs via environment variable
+	if prebuiltPath := os.Getenv("QEMU_BASE_INITRAMFS"); prebuiltPath != "" {
+		// Validate file exists and is readable
+		if _, err := os.Stat(prebuiltPath); err != nil {
+			return "", fmt.Errorf("QEMU_BASE_INITRAMFS file not accessible: %w", err)
+		}
+		clog.FromContext(ctx).Infof("qemu: using prebuilt base initramfs from QEMU_BASE_INITRAMFS: %s", prebuiltPath)
+		baseInitramfs = prebuiltPath
+	} else {
+		// Fall back to generating or using cached initramfs
 
-	// Include additional packages in cache filename to invalidate cache when they change
-	additionalPkgs := getAdditionalPackages(ctx)
-	cacheSuffix := getPackageCacheSuffix(additionalPkgs)
+		/*
+		 * we only build once, useful for local development, we
+		 * cache it.
+		 * if present, we nop and return, else we build it.
+		 */
+		cacheDir := filepath.Join(
+			"kernel",
+			cfg.Arch.ToAPK(),
+			"melange-cpio")
 
-	baseInitramfs := filepath.Join(
-		cacheDir,
-		fmt.Sprintf("melange-guest%s.initramfs.cpio", cacheSuffix))
-	initramfsInfo, err := os.Stat(baseInitramfs)
+		if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+			return "", fmt.Errorf("unable to create dest directory: %w", err)
+		}
 
-	// Check if we can use the cached base initramfs (less than 24h old)
-	useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
+		additionalPkgs := getAdditionalPackages(ctx)
+		cacheSuffix := getPackageCacheSuffix(additionalPkgs)
 
-	if !useCache {
-		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir, additionalPkgs)
-		if err != nil {
-			return "", err
+		baseInitramfs = filepath.Join(
+			cacheDir,
+			fmt.Sprintf("melange-guest%s.initramfs.cpio", cacheSuffix))
+		initramfsInfo, err := os.Stat(baseInitramfs)
+
+		// Check if we can use the cached base initramfs (less than 24h old)
+		useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
+
+		if !useCache {
+			microvmCfg := DefaultMicrovmConfig()
+			microvmCfg.AdditionalPackages = additionalPkgs
+			err = GenerateBaseInitramfs(ctx, cfg.Arch, microvmCfg, baseInitramfs)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 
-	return injectHostKeyIntoCpio(ctx, cfg, baseInitramfs)
+	// Inject SSH host keys and modules
+	return injectRuntimeData(ctx, cfg, os.Getenv("QEMU_KERNEL_MODULES"), baseInitramfs)
 }
 
-// generateBaseInitramfs creates the base initramfs with microvm-init.
-// This is cached for performance as it doesn't change often.
-func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string, additionalPkgs []string) error {
+// MicrovmConfig configures how the microvm initramfs is built.
+// This is used by both the QEMU runner's auto-generation and the
+// `melange build-qemu-initramfs` command.
+type MicrovmConfig struct {
+	Package            string   // Main init package (default: "microvm-init")
+	Repositories       []string // APK repositories
+	AdditionalPackages []string // Extra packages to include
+	ExtraKeys          []string // Extra keys for APK signature verification
+}
+
+// DefaultMicrovmConfig returns the default microvm configuration.
+// This uses the "microvm-init" package from the Chainguard APK repository.
+func DefaultMicrovmConfig() MicrovmConfig {
+	return MicrovmConfig{
+		Package:      "microvm-init",
+		Repositories: []string{"https://apk.cgr.dev/chainguard"},
+	}
+}
+
+// GenerateBaseInitramfs generates a base initramfs suitable for the QEMU runner.
+// This can be reused via QEMU_BASE_INITRAMFS, but is cached if not.
+//
+// The generated initramfs does NOT contain SSH host keys or kernel modules,
+// those are injected at runtime by the QEMU runner.
+func GenerateBaseInitramfs(ctx context.Context, arch apko_types.Architecture, cfg MicrovmConfig, outputPath string) error {
 	clog.FromContext(ctx).Info("qemu: generating base initramfs")
 
-	err := os.MkdirAll(cacheDir, 0o755)
-	if err != nil {
-		return fmt.Errorf("unable to create dest directory: %w", err)
-	}
-
-	// Start with base packages and add any additional packages from environment
-	packages := make([]string, 0, len(additionalPkgs)+1)
-	packages = append(packages, "microvm-init")
-	packages = append(packages, additionalPkgs...)
+	// Start with base packages and add any additional packages from configuration
+	packages := make([]string, 0, len(cfg.AdditionalPackages)+1)
+	packages = append(packages, cfg.Package)
+	packages = append(packages, cfg.AdditionalPackages...)
 
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
-			BuildRepositories: []string{
-				"https://apk.cgr.dev/chainguard",
-			},
-			Packages: packages,
+			BuildRepositories: cfg.Repositories,
+			Packages:          packages,
 		},
 	}
 	opts := []apko_build.Option{
 		apko_build.WithImageConfiguration(spec),
-		apko_build.WithArch(cfg.Arch),
+		apko_build.WithArch(arch),
+		apko_build.WithExtraKeys(cfg.ExtraKeys),
 	}
 
 	tmpDir, err := os.MkdirTemp("", "melange-guest-*.initramfs")
@@ -2172,21 +2206,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 
 	clog.FromContext(ctx).Debugf("using %s for image layer", layerTarGZ)
 
-	// in case of some kernel images, we also need the /lib/modules directory to load
-	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
-	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
-		clog.FromContext(ctx).Debugf("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
-		if _, err := os.Stat(qemuModule); err == nil {
-			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
-			layer, err = injectKernelModules(ctx, layer, qemuModule)
-			if err != nil {
-				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
-				return err
-			}
-		}
-	}
-
-	guestInitramfs, err := os.Create(initramfsPath) // #nosec G304 - Creating initramfs in build output
+	guestInitramfs, err := os.Create(outputPath) // #nosec G304 - Creating initramfs in build output
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
 		return err
@@ -2248,17 +2268,16 @@ func getPackageCacheSuffix(packages []string) string {
 	return fmt.Sprintf("-%x", hash[:6])
 }
 
-// injectHostKeyIntoCpio creates a new initramfs by concatenating the base
-// initramfs with a secondary cpio containing the VM's SSH host key.
-// This allows us to use cached base initramfs while injecting fresh keys each time.
-//
+// injectRuntimeData injects SSH host keys and kernel modules in a base initramfs.
+// This allows us to use cached base initramfs while injecting fresh keys and latest modules
+// each time.
 // The file exists only briefly until QEMU reads it into memory, at which point it should be deleted.
-func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs string) (string, error) {
+func injectRuntimeData(ctx context.Context, cfg *Config, modulesDir, baseInitramfs string) (string, error) {
 	if cfg.VMHostKeySigner == nil || cfg.VMHostKeyPrivateKeyBytes == nil {
 		return "", fmt.Errorf("VM host key not generated")
 	}
 
-	clog.FromContext(ctx).Debug("qemu: injecting SSH host key into initramfs")
+	clog.FromContext(ctx).Debug("qemu: injecting SSH host key and kernel modules into initramfs")
 
 	combinedInitramfs, err := os.CreateTemp("", "melange-initramfs-*.cpio")
 	if err != nil {
@@ -2301,6 +2320,40 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 		return "", fmt.Errorf("failed to write host public key: %w", err)
 	}
 
+	if modulesDir != "" {
+		var moduleRecords []cpio.Record
+		modfs := os.DirFS(modulesDir)
+		archivePrefix := filepath.Join("lib", filepath.Base(filepath.Clean(modulesDir)))
+
+		walkModules := func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			archivePath := filepath.Join(archivePrefix, path)
+			if d.IsDir() {
+				moduleRecords = append(moduleRecords, cpio.Directory(archivePath, 0o755))
+			} else {
+				f, err := modfs.Open(path)
+				if err != nil {
+					return err
+				}
+				contents, err := io.ReadAll(f)
+				f.Close()
+				if err != nil {
+					return err
+				}
+				moduleRecords = append(moduleRecords, cpio.StaticFile(archivePath, string(contents), 0o755))
+			}
+			return nil
+		}
+		if err := fs.WalkDir(modfs, ".", walkModules); err != nil {
+			return "", fmt.Errorf("failed to generate module cpio records: %w", err)
+		}
+		if err := cpio.WriteRecordsAndDirs(cpioWriter, moduleRecords); err != nil {
+			return "", fmt.Errorf("failed to write modules: %w", err)
+		}
+	}
+
 	// Write CPIO trailer to finalize the archive
 	if err := cpioWriter.WriteRecord(cpio.TrailerRecord); err != nil {
 		return "", fmt.Errorf("failed to finalize cpio: %w", err)
@@ -2317,81 +2370,4 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 	clog.FromContext(ctx).Debugf("qemu: created initramfs with injected host key at %s", initramfsPath)
 	success = true
 	return initramfsPath, nil
-}
-
-// in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
-// we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
-func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
-	clog.FromContext(ctx).Info("qemu: appending modules to initramfs")
-
-	// get tar layer, we will need to inject new files into it
-	uncompressed, err := rootfs.Uncompressed()
-	if err != nil {
-		return nil, err
-	}
-	defer uncompressed.Close()
-
-	// copy old tar layer into new tar
-	buf := new(bytes.Buffer)
-	tarWriter := tar.NewWriter(buf)
-	tartReader := tar.NewReader(uncompressed)
-
-	for {
-		header, err := tartReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return nil, err
-		}
-		// #nosec G110 - Copying trusted tar content in controlled build environment
-		if _, err := io.Copy(tarWriter, tartReader); err != nil {
-			return nil, err
-		}
-	}
-
-	// Walk through the input directory and add files to the tar archive
-	err = filepath.Walk(modulesPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		data, err := os.ReadFile(path) // #nosec G304 - Reading guest file for verification
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", path, err)
-		}
-
-		header, err := tar.FileInfoHeader(info, path)
-		if err != nil {
-			return fmt.Errorf("failed to create tar header for %s: %w", path, err)
-		}
-
-		header.Name = "/lib/modules/" + filepath.ToSlash(path[len(modulesPath):])
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return fmt.Errorf("failed to write tar header for %s: %w", path, err)
-		}
-
-		if _, err := tarWriter.Write(data); err != nil {
-			return fmt.Errorf("failed to write file %s to tar: %w", path, err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	opener := func() (io.ReadCloser, error) {
-		// Return a ReadCloser from the buffer
-		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
-	}
-
-	// Create a layer from the Opener
-	return tarball.LayerFromOpener(opener)
 }

@@ -25,6 +25,7 @@ toc: true
 * [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
 * [melange completion](/docs/md/melange_completion.md)	 - Generate completion script
 * [melange index](/docs/md/melange_index.md)	 - Creates a repository index from a list of package files
+* [melange initramfs](/docs/md/melange_initramfs.md)	 - Build a base initramfs for the QEMU runner
 * [melange keygen](/docs/md/melange_keygen.md)	 - Generate a key for package signing
 * [melange license-check](/docs/md/melange_license-check.md)	 - Gather and check licensing data
 * [melange lint](/docs/md/melange_lint.md)	 - EXPERIMENTAL COMMAND - Lints an APK, checking for problems and errors

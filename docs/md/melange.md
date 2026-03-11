@@ -21,6 +21,7 @@ toc: true
 ### SEE ALSO
 
 * [melange build](/docs/md/melange_build.md)	 - Build a package from a YAML configuration file
+* [melange build-qemu-initramfs](/docs/md/melange_build-qemu-initramfs.md)	 - Build a base initramfs for the QEMU runner
 * [melange bump](/docs/md/melange_bump.md)	 - Update a Melange YAML file to reflect a new package version
 * [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
 * [melange completion](/docs/md/melange_completion.md)	 - Generate completion script

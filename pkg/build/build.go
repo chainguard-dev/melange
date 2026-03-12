@@ -784,6 +784,16 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
+	// Retrieve and log build observability events if the observability hook
+	// is installed. Only applicable to QEMU builds which run in a full VM.
+	if b.Runner.Name() == container.QemuName {
+		if obsEvents, err := container.RetrieveObservabilityEvents(ctx, cfg); err != nil {
+			log.Warnf("failed to retrieve observability events: %v", err)
+		} else if obsEvents != nil {
+			container.LogObservabilityEvents(ctx, obsEvents)
+		}
+	}
+
 	// perform package linting
 	for _, lt := range linterQueue {
 		log.Infof("running package linters for %s", lt.pkgName)

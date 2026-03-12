@@ -864,6 +864,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	// #nosec G204 - Architecture is from validated configuration, not user input
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
+	clog.FromContext(ctx).Infof("qemu: VM resources: arch=%s cpus=%d memory=%dMiB", cfg.Arch.ToAPK(), nproc, mem/1024)
 	clog.FromContext(ctx).Info("qemu: starting VM")
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 

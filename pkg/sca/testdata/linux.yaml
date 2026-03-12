@@ -42,13 +42,15 @@ environment:
       - zstd
 
 pipeline:
-  - uses: git-checkout
+  - working-directory: build
+    uses: git-checkout
     with:
       repository: https://github.com/gregkh/linux
       tag: v${{package.version}}
       expected-commit: 7660ce69123ea73b22930fcf20d995ad310049ef
 
-  - runs: |
+  - working-directory: build
+    runs: |
       make allnoconfig
       sed -i 's/^.*CONFIG_LOCALVERSION=.*$/CONFIG_LOCALVERSION="-test"/' .config
       cat > localsnippet.config << EOF
@@ -74,44 +76,51 @@ pipeline:
 subpackages:
   - name: linux-gzipped-vmlinux
     pipeline:
-      - runs: |
+      - working-directory: build
+        runs: |
           gzip -c vmlinux > vmlinux.gz
           install -Dm0644 vmlinux.gz ${{targets.subpkgdir}}/boot/vmlinux
 
   - name: linux-vmlinux
     pipeline:
-      - runs: install -Dm0644 vmlinux ${{targets.subpkgdir}}/boot/vmlinux
+      - working-directory: build
+        runs: install -Dm0644 vmlinux ${{targets.subpkgdir}}/boot/vmlinux
 
   - name: linux-uki
     pipeline:
-      - runs: |
+      - working-directory: build
+        runs: |
           ukify build --linux=${{targets.destdir}}/boot/vmlinuz --output uki
 
           install -Dm0644 uki ${{targets.subpkgdir}}/boot/vmlinuz
 
   - name: linux-modules
     pipeline:
-      - runs: |
+      - working-directory: build
+        runs: |
           module=$(find . -name uio.ko -print -quit)
           install -Dm0644 "$module" -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
 
   - name: linux-modules-gzip
     pipeline:
-      - runs: |
+      - working-directory: build
+        runs: |
           module=$(find . -name uio.ko -print -quit)
           gzip -9 -c "$module" > "$module".gz
           install -Dm0644 "$module".gz -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
 
   - name: linux-modules-zstd
     pipeline:
-      - runs: |
+      - working-directory: build
+        runs: |
           module=$(find . -name uio.ko -print -quit)
           zstd -19 "$module"
           install -Dm0644 "$module".zst -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/
 
   - name: linux-modules-xz
     pipeline:
-      - runs: |
+      - working-directory: build
+        runs: |
           module=$(find . -name uio.ko -print -quit)
           xz -c -9 "$module" > "$module".xz
           install -Dm0644 "$module".xz -t ${{targets.subpkgdir}}/usr/lib/modules/kernel/

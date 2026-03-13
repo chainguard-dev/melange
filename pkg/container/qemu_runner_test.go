@@ -16,13 +16,44 @@ package container
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
+	"errors"
+	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/clog/slogtest"
+	"github.com/u-root/u-root/pkg/cpio"
+	"golang.org/x/crypto/ssh"
 )
+
+// testConfigWithSSHKeys creates a minimal Config with SSH host keys for testing.
+func testConfigWithSSHKeys(t *testing.T) *Config {
+	t.Helper()
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate test SSH key: %v", err)
+	}
+	signer, err := ssh.NewSignerFromKey(privateKey)
+	if err != nil {
+		t.Fatalf("failed to create signer from test key: %v", err)
+	}
+	privateKeyPEM, err := ssh.MarshalPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatalf("failed to marshal test private key: %v", err)
+	}
+	return &Config{
+		VMHostKeySigner:          signer,
+		VMHostKeyPublic:          signer.PublicKey(),
+		VMHostKeyPrivate:         privateKey,
+		VMHostKeyPrivateKeyBytes: pem.EncodeToMemory(privateKeyPEM),
+	}
+}
 
 func TestGetAvailableMemoryKB(t *testing.T) {
 	// This test ensures the function works correctly on both Linux and macOS
@@ -536,6 +567,85 @@ func TestStopVirtiofsd_CleansUpSocket(t *testing.T) {
 	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 		t.Error("socket file should be removed")
 		os.Remove(tmpPath) // Clean up
+	}
+}
+
+func TestInjectRuntimeData(t *testing.T) {
+	ctx := clog.WithLogger(context.Background(), slogtest.TestLogger(t))
+	cfg := testConfigWithSSHKeys(t)
+
+	tmpDir := t.TempDir()
+	modulesDir := filepath.Join(tmpDir, "lib/modules")
+	testModuleDir := "lib/modules/6.12.0-fakever/test"
+	testModulePath := filepath.Join(testModuleDir, "test.ko")
+	if err := os.MkdirAll(filepath.Join(tmpDir, testModuleDir), 0o755); err != nil {
+		t.Fatalf("failed to create test module dir: %v", err)
+	}
+
+	moduleContent := []byte("fake kernel module content")
+	if err := os.WriteFile(filepath.Join(tmpDir, testModulePath), moduleContent, 0o644); err != nil {
+		t.Fatalf("failed to write test module: %v", err)
+	}
+
+	// Create a minimal CPIO file to use as base
+	baseCpio := filepath.Join(tmpDir, "base.cpio")
+	if err := os.WriteFile(baseCpio, []byte{}, 0o644); err != nil {
+		t.Fatalf("failed to create base cpio: %v", err)
+	}
+
+	// Test injecting SSH keys and modules into initramfs.
+	result, err := injectRuntimeData(ctx, cfg, modulesDir, baseCpio)
+	if err != nil {
+		t.Fatalf("injectRuntimeData failed: %v", err)
+	}
+	defer os.Remove(result)
+
+	info, err := os.Stat(result)
+	if err != nil {
+		t.Fatalf("result file not found: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Fatal("result file is empty")
+	}
+
+	resultFile, err := os.Open(result)
+	if err != nil {
+		t.Fatalf("failed to open result cpio: %v", err)
+	}
+	defer resultFile.Close()
+
+	cpioReader := cpio.Newc.Reader(resultFile)
+	foundModule := false
+	var foundContent []byte
+
+	for {
+		rec, err := cpioReader.ReadRecord()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatalf("failed to read cpio record: %v", err)
+		}
+		if rec.Name == cpio.Trailer {
+			break
+		}
+
+		if rec.Name == testModulePath {
+			foundModule = true
+			reader := io.NewSectionReader(rec.ReaderAt, 0, int64(rec.FileSize))
+			foundContent, err = io.ReadAll(reader)
+			if err != nil {
+				t.Fatalf("failed to read module content from cpio: %v", err)
+			}
+			break
+		}
+	}
+
+	if !foundModule {
+		t.Errorf("module not found at expected path %q in cpio archive", testModulePath)
+	}
+	if string(foundContent) != string(moduleContent) {
+		t.Errorf("module content mismatch: got %q, want %q", string(foundContent), string(moduleContent))
 	}
 }
 

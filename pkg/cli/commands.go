@@ -52,6 +52,7 @@ func New() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("gcplog")
 
 	cmd.AddCommand(buildCmd())
+	cmd.AddCommand(buildQemuInitramfs())
 	cmd.AddCommand(bumpCmd())
 	cmd.AddCommand(completion())
 	cmd.AddCommand(compile())

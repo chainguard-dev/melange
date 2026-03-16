@@ -149,7 +149,7 @@ func Test_buildEvalRunCommand(t *testing.T) {
 	command := buildEvalRunCommand(p, debugOption, workdir, fragment)
 	// Note: shellquote.Join() only adds quotes when necessary
 	// Simple paths like /bar don't need quotes, so they're returned unquoted
-	expected := []string{"/bin/sh", "-c", `set -ex
+	expected := []string{"/bin/sh", "-c", `set -exo pipefail
 [ -d /bar ] || mkdir -p /bar
 cd /bar
 baz

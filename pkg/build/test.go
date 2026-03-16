@@ -102,7 +102,7 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		}
 
 		t.WorkspaceDir = absdir
-	} else {
+	} else if t.Runner != nil {
 		tmpdir, err := os.MkdirTemp(t.Runner.TempDir(), "melange-workspace-*")
 		if err != nil {
 			return nil, fmt.Errorf("unable to create workspace dir: %w", err)
@@ -125,7 +125,7 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t.Configuration = *parsedCfg
 
 	// Check that we actually can run things in containers.
-	if !t.Runner.TestUsability(ctx) {
+	if t.Runner != nil && !t.Runner.TestUsability(ctx) {
 		return nil, fmt.Errorf("unable to run containers using %s, specify --runner and one of %s", t.Runner.Name(), GetAllRunners())
 	}
 

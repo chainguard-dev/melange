@@ -145,7 +145,7 @@ func applyCherryPicks(ctx context.Context, repoPath string, commits []string) er
 	for _, commit := range commits {
 		log.Infof("Cherry-picking %s", commit)
 
-		cmd := exec.CommandContext(ctx, "git", "cherry-pick", "-x", commit)
+		cmd := exec.CommandContext(ctx, "git", "cherry-pick", "--no-gpg-sign", "-x", commit)
 		cmd.Dir = repoPath
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -175,7 +175,7 @@ func applyPatches(ctx context.Context, repoPath string, workspaceDir string, pat
 		log.Infof("Applying patch %s", patchPath)
 
 		// Try git am first (preserves commit metadata if present)
-		amCmd := exec.CommandContext(ctx, "git", "am", patchPath)
+		amCmd := exec.CommandContext(ctx, "git", "am", "--no-gpg-sign", patchPath)
 		amCmd.Dir = repoPath
 		amCmd.Stdout = os.Stdout
 		amCmd.Stderr = os.Stderr
@@ -194,16 +194,31 @@ func applyPatches(ctx context.Context, repoPath string, workspaceDir string, pat
 			checkCmd.Stderr = os.Stderr
 
 			if err := checkCmd.Run(); err != nil {
-				return fmt.Errorf("patch %s cannot be applied: %w", patchPath, err)
-			}
-
-			// Apply the patch
-			applyCmd := exec.CommandContext(ctx, "git", "apply", patchPath)
-			applyCmd.Dir = repoPath
-			applyCmd.Stdout = os.Stdout
-			applyCmd.Stderr = os.Stderr
-			if err := applyCmd.Run(); err != nil {
-				return fmt.Errorf("failed to apply patch %s: %w", patchPath, err)
+				// git apply failed too, fall back to patch command (supports fuzz matching)
+				log.Infof("git apply failed, falling back to patch -p1")
+				patchCmd := exec.CommandContext(ctx, "patch", "-p1", "--fuzz=2")
+				patchCmd.Dir = repoPath
+				patchCmd.Stdout = os.Stdout
+				patchCmd.Stderr = os.Stderr
+				patchFile, err := os.Open(patchPath)
+				if err != nil {
+					return fmt.Errorf("failed to open patch file %s: %w", patchPath, err)
+				}
+				patchCmd.Stdin = patchFile
+				if err := patchCmd.Run(); err != nil {
+					patchFile.Close()
+					return fmt.Errorf("patch %s cannot be applied (tried git am, git apply, and patch -p1): %w", patchPath, err)
+				}
+				patchFile.Close()
+			} else {
+				// Apply the patch with git apply
+				applyCmd := exec.CommandContext(ctx, "git", "apply", patchPath)
+				applyCmd.Dir = repoPath
+				applyCmd.Stdout = os.Stdout
+				applyCmd.Stderr = os.Stderr
+				if err := applyCmd.Run(); err != nil {
+					return fmt.Errorf("failed to apply patch %s: %w", patchPath, err)
+				}
 			}
 
 			// Stage all changes
@@ -215,7 +230,7 @@ func applyPatches(ctx context.Context, repoPath string, workspaceDir string, pat
 
 			// Commit with patch filename
 			commitMsg := fmt.Sprintf("Apply patch: %s", patch)
-			commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", commitMsg)
+			commitCmd := exec.CommandContext(ctx, "git", "commit", "--no-gpg-sign", "-m", commitMsg)
 			commitCmd.Dir = repoPath
 			commitCmd.Stdout = os.Stdout
 			commitCmd.Stderr = os.Stderr

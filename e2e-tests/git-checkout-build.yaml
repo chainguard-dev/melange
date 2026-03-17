@@ -273,8 +273,8 @@ pipeline:
       find . -user "$runner_user" $exclude_args | sort > /tmp/runner-owned.lst
 
       if [ "${runner_user}" = "${melange_user}" ]; then
-        cat melange-created.lst runner-created.lst | \
-          sort -u > /tmp/expected-melange-owned.lst
+        sort -u melange-created.lst runner-created.lst > \
+          /tmp/expected-melange-owned.lst
         cp /tmp/expected-melange-owned.lst /tmp/expected-runner-owned.lst
       else
         cp melange-created.lst /tmp/expected-melange-owned.lst

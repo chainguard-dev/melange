@@ -436,13 +436,15 @@ func stripComments(runs string) (string, error) {
 		}
 	}
 
-	var perr error
-	if err := parser.Stmts(strings.NewReader(runs), func(stmt *syntax.Stmt) bool {
-		perr = printer.Print(&builder, stmt)
+	for stmt, err := range parser.StmtsSeq(strings.NewReader(runs)) {
+		if err != nil {
+			return "", maybeIncludeSyntaxError(runs, err)
+		}
+		perr := printer.Print(&builder, stmt)
+		if perr != nil {
+			return "", maybeIncludeSyntaxError(runs, perr)
+		}
 		builder.WriteRune('\n')
-		return perr == nil
-	}); err != nil || perr != nil {
-		return "", maybeIncludeSyntaxError(runs, errors.Join(err, perr))
 	}
 
 	return builder.String(), nil

@@ -1,6 +1,6 @@
 module chainguard.dev/melange
 
-go 1.25.6
+go 1.25.7
 
 require (
 	chainguard.dev/apko v1.1.15
@@ -14,7 +14,7 @@ require (
 	github.com/github/go-spdx/v2 v2.4.0
 	github.com/go-git/go-git/v5 v5.17.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.21.2
+	github.com/google/go-containerregistry v0.21.3
 	github.com/google/licenseclassifier/v2 v2.0.0
 	github.com/in-toto/attestation v1.1.2
 	github.com/invopop/jsonschema v0.13.0
@@ -62,10 +62,12 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/ijt/goparsify v0.0.0-20221203142333-3a5276334b8d // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/moby/moby/api v1.54.0 // indirect
+	github.com/moby/moby/client v0.3.0 // indirect
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/tools v0.42.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )
 
@@ -167,8 +169,8 @@ require (
 	go.opentelemetry.io/otel/metric v1.42.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.step.sm/crypto v0.76.2 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	google.golang.org/api v0.271.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409 // indirect

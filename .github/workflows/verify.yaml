@@ -36,6 +36,9 @@ jobs:
 
       - run: |
           make docs-repo
+          git diff --exit-code
+
+      - run: |
           make docs-pipeline
           git diff --exit-code
 

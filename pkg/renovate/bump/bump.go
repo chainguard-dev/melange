@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -33,6 +34,9 @@ import (
 	"chainguard.dev/melange/pkg/renovate"
 	"chainguard.dev/melange/pkg/util"
 )
+
+// varsRefRe matches ${{vars.some-name}} references in template strings.
+var varsRefRe = regexp.MustCompile(`\$\{\{vars\.([^}]+)\}\}`)
 
 // BumpConfig contains the configuration data for a bump
 // renovator.
@@ -146,7 +150,7 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 			Filter(yit.WithMapValue("git-checkout"))
 
 		for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
-			if err := updateGitCheckout(ctx, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
+			if err := updateGitCheckout(ctx, rc.Configuration, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
 				return err
 			}
 		}
@@ -217,7 +221,7 @@ func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml
 }
 
 // updateGitCheckout takes a "git-checkout" pipeline node and updates the parameters of it.
-func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha string) error {
+func updateGitCheckout(ctx context.Context, cfg *config.Configuration, node *yaml.Node, expectedGitSha string) error {
 	log := clog.FromContext(ctx)
 
 	withNode, err := renovate.NodeFromMapping(node, "with")
@@ -225,12 +229,21 @@ func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha stri
 		return err
 	}
 
-	// If the tag does not contain a version substitution then we assume it is not the main checkout so we skip updating the expected-commit sha.
-	tag, err := renovate.NodeFromMapping(withNode, "tag")
-	if err != nil {
-		log.Infof("git-checkout node does not contain a tag, assume we need to update the expected-commit sha")
-	} else if !strings.Contains(tag.Value, "${{package.version}}") && !strings.Contains(tag.Value, "${{vars.mangled-package-version}}") {
-		log.Infof("Skipping git-checkout node as it does not contain a version substitution so assuming it is not the main checkout")
+	// Check if the tag or branch contains a version substitution.
+	// If neither depends on package.version, we assume this is not the main
+	// checkout and skip updating the expected-commit sha.
+	tag, tagErr := renovate.NodeFromMapping(withNode, "tag")
+	branch, branchErr := renovate.NodeFromMapping(withNode, "branch")
+
+	switch {
+	case tagErr != nil && branchErr != nil:
+		log.Infof("git-checkout node does not contain a tag or branch, assume we need to update the expected-commit sha")
+	case tagErr == nil && dependsOnVersion(tag.Value, cfg):
+		// tag is version-derived, proceed to update
+	case branchErr == nil && dependsOnVersion(branch.Value, cfg):
+		// branch is version-derived, proceed to update
+	default:
+		log.Infof("Skipping git-checkout node as neither tag nor branch is derived from package.version")
 		return nil
 	}
 
@@ -246,4 +259,35 @@ func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha stri
 	}
 
 	return nil
+}
+
+// dependsOnVersion checks whether a template value is derived from
+// ${{package.version}}, either directly or through vars/var-transforms
+// that reference package.version.
+func dependsOnVersion(value string, cfg *config.Configuration) bool {
+	if strings.Contains(value, "${{package.version}}") {
+		return true
+	}
+
+	// Extract all ${{vars.X}} references from the value.
+	matches := varsRefRe.FindAllStringSubmatch(value, -1)
+	for _, m := range matches {
+		varName := m[1]
+
+		// Check if the var is defined in vars and its value references package.version.
+		if val, ok := cfg.Vars[varName]; ok {
+			if strings.Contains(val, "${{package.version}}") {
+				return true
+			}
+		}
+
+		// Check if a var-transform produces this var from package.version.
+		for _, vt := range cfg.VarTransforms {
+			if vt.To == varName && strings.Contains(vt.From, "${{package.version}}") {
+				return true
+			}
+		}
+	}
+
+	return false
 }

@@ -72,14 +72,18 @@ Currently only supports git-checkout.
 				return fmt.Errorf("failed to parse melange config: %w", err)
 			}
 
-			// Look for git-checkout and patch pipelines
+			// Look for git-checkout and patch/git-am pipelines
 			gitCheckoutIndex := -1
 			var patches string
+			var recurseSubmodules bool
 
 			// First pass: find git-checkout step
 			for i, step := range cfg.Pipeline {
 				if step.Uses == "git-checkout" {
 					gitCheckoutIndex = i
+					if step.With["recurse-submodules"] == "true" {
+						recurseSubmodules = true
+					}
 					break
 				}
 			}
@@ -88,13 +92,16 @@ Currently only supports git-checkout.
 				return fmt.Errorf("no git-checkout pipeline found in configuration")
 			}
 
-			// Second pass: find patch steps that come after git-checkout
+			// Second pass: find patch or git-am steps that come after git-checkout.
+			// We check for both: 'patch' is the original melange pipeline, 'git-am'
+			// is what 'source pop' writes back. Supporting both means 'source get'
+			// can be re-run after 'source pop' has already converted the YAML.
 			for i := gitCheckoutIndex + 1; i < len(cfg.Pipeline); i++ {
 				step := cfg.Pipeline[i]
-				if step.Uses == "patch" {
+				if step.Uses == "patch" || step.Uses == "git-am" {
 					if patchList := step.With["patches"]; patchList != "" {
 						patches = patchList
-						break // Only process first patch step
+						break
 					}
 				}
 			}
@@ -104,10 +111,10 @@ Currently only supports git-checkout.
 			log.Infof("Found git-checkout step")
 
 			// Construct destination: outputDir/packageName
-			destination := fmt.Sprintf("%s/%s", *outputDir, cfg.Package.Name)
+			destination := filepath.Join(*outputDir, cfg.Package.Name)
 
-			// Default sourceDir to package-name subdirectory in config file's directory
-			// This matches melange build behavior: --source-dir ./package-name/
+			// Default sourceDir to package-name subdirectory in config file's directory.
+			// This matches the melange build convention: --source-dir ./package-name/
 			srcDir := *sourceDir
 			if srcDir == "" {
 				srcDir = filepath.Join(filepath.Dir(buildConfigPath), cfg.Package.Name)
@@ -120,12 +127,13 @@ Currently only supports git-checkout.
 			}
 
 			opts := &source.GitCheckoutOptions{
-				Repository:     step.With["repository"],
-				Destination:    destination,
-				ExpectedCommit: step.With["expected-commit"],
-				CherryPicks:    step.With["cherry-picks"],
-				Patches:        patches,
-				WorkspaceDir:   absSourceDir,
+				Repository:        step.With["repository"],
+				Destination:       destination,
+				ExpectedCommit:    step.With["expected-commit"],
+				CherryPicks:       step.With["cherry-picks"],
+				Patches:           patches,
+				WorkspaceDir:      absSourceDir,
+				RecurseSubmodules: recurseSubmodules,
 			}
 
 			if err := source.GitCheckout(ctx, opts); err != nil {
@@ -192,8 +200,7 @@ This command:
 			}
 
 			// Cloned source location
-			clonedSource := filepath.Join(*outputDir, cfg.Package.Name)
-			absClonedSource, err := filepath.Abs(clonedSource)
+			absClonedSource, err := filepath.Abs(filepath.Join(*outputDir, cfg.Package.Name))
 			if err != nil {
 				return fmt.Errorf("failed to get absolute path for cloned source: %w", err)
 			}
@@ -236,7 +243,7 @@ This command:
 				return fmt.Errorf("failed to parse YAML: %w", err)
 			}
 
-			// Update the pipeline: remove 'patch' steps and add 'git-am' step
+			// Update the pipeline: replace all 'patch' steps with a single 'git-am' step
 			if err := updatePipelineWithGitAm(&doc, patchFiles); err != nil {
 				return fmt.Errorf("failed to update pipeline: %w", err)
 			}
@@ -268,14 +275,11 @@ This command:
 	return cmd
 }
 
-// updatePipelineWithGitAm finds the pipeline array in the YAML node tree,
-// and replaces any 'patch' pipeline step with a 'git-am' step with the given patches.
-// If no patch step exists, inserts git-am after git-checkout.
+// updatePipelineWithGitAm finds the pipeline array in the YAML node tree and
+// replaces all 'patch' pipeline steps with a single 'git-am' step using the
+// given patch files. If no 'patch' step exists, a 'git-am' step is inserted
+// immediately after the 'git-checkout' step.
 func updatePipelineWithGitAm(doc *yaml.Node, patchFiles []string) error {
-	// Navigate to the pipeline array
-	// doc.Content[0] is the document node
-	// doc.Content[0].Content contains key-value pairs of the root map
-
 	if len(doc.Content) == 0 || len(doc.Content[0].Content) == 0 {
 		return fmt.Errorf("invalid YAML structure")
 	}
@@ -312,36 +316,53 @@ func updatePipelineWithGitAm(doc *yaml.Node, patchFiles []string) error {
 		},
 	}
 
-	// Try to replace 'uses: patch' step with 'uses: git-am' step in place
-	replacedAny := false
-	for i, step := range pipelineNode.Content {
-		// Check if this step has 'uses: patch'
-		for j := 0; j < len(step.Content); j += 2 {
-			if step.Content[j].Value == "uses" && step.Content[j+1].Value == "patch" {
-				// Replace this step with git-am step
-				pipelineNode.Content[i] = gitAmStep
-				replacedAny = true
-				break
+	// Build new content: replace the first 'patch' step with 'git-am' and
+	// drop any additional 'patch' steps (all patches are now in the single
+	// git-am step produced by format-patch).
+	newContent := make([]*yaml.Node, 0, len(pipelineNode.Content))
+	insertedGitAm := false
+	foundPatch := false
+
+	for _, step := range pipelineNode.Content {
+		isPatchStep := isPipelineStep(step, "patch")
+
+		if isPatchStep {
+			foundPatch = true
+			if !insertedGitAm {
+				newContent = append(newContent, gitAmStep)
+				insertedGitAm = true
 			}
+			// Drop additional 'patch' steps — their patches are now in git-am
+			continue
 		}
+		newContent = append(newContent, step)
 	}
 
-	// If no patch step found, insert git-am after git-checkout
-	if !replacedAny {
-		var newContent []*yaml.Node
-		for _, step := range pipelineNode.Content {
-			newContent = append(newContent, step)
-			// Check if this is git-checkout step
-			for j := 0; j < len(step.Content); j += 2 {
-				if step.Content[j].Value == "uses" && step.Content[j+1].Value == "git-checkout" {
-					// Insert git-am step right after
-					newContent = append(newContent, gitAmStep)
-					break
-				}
-			}
-		}
+	if foundPatch {
 		pipelineNode.Content = newContent
+		return nil
 	}
+
+	// No 'patch' step found — insert git-am immediately after git-checkout
+	newContent = make([]*yaml.Node, 0, len(pipelineNode.Content)+1)
+	for _, step := range pipelineNode.Content {
+		newContent = append(newContent, step)
+		if isPipelineStep(step, "git-checkout") {
+			newContent = append(newContent, gitAmStep)
+		}
+	}
+	pipelineNode.Content = newContent
 
 	return nil
+}
+
+// isPipelineStep reports whether the given YAML mapping node represents a
+// pipeline step with the given 'uses' value.
+func isPipelineStep(node *yaml.Node, uses string) bool {
+	for j := 0; j < len(node.Content)-1; j += 2 {
+		if node.Content[j].Value == "uses" && node.Content[j+1].Value == uses {
+			return true
+		}
+	}
+	return false
 }

@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/chainguard-dev/clog"
@@ -28,12 +29,13 @@ import (
 )
 
 type GitCheckoutOptions struct {
-	Repository     string
-	Destination    string
-	ExpectedCommit string
-	CherryPicks    string
-	Patches        string
-	WorkspaceDir   string // Directory where patch files are located (usually config dir)
+	Repository        string
+	Destination       string
+	ExpectedCommit    string
+	CherryPicks       string
+	Patches           string
+	WorkspaceDir      string // Directory where patch files are located (usually config dir)
+	RecurseSubmodules bool
 }
 
 func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
@@ -83,6 +85,17 @@ func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
 
 	log.Infof("Checked out commit %s", head.Hash().String())
 
+	if opts.RecurseSubmodules {
+		log.Infof("Initializing submodules")
+		subCmd := exec.CommandContext(ctx, "git", "submodule", "update", "--init", "--recursive")
+		subCmd.Dir = opts.Destination
+		subCmd.Stdout = os.Stdout
+		subCmd.Stderr = os.Stderr
+		if err := subCmd.Run(); err != nil {
+			return fmt.Errorf("failed to initialize submodules: %w", err)
+		}
+	}
+
 	// Apply cherry-picks if specified
 	if opts.CherryPicks != "" {
 		log.Infof("Applying cherry-picks")
@@ -130,7 +143,8 @@ func parseCherryPicks(input string) ([]string, error) {
 
 		pickSpec := strings.TrimSpace(parts[0])
 
-		// Strip optional branch prefix (we don't need it with full clone)
+		// Strip optional branch prefix: take everything after the last '/'.
+		// path.Base handles this correctly for paths like "release/1.23/COMMIT-ID".
 		commit := path.Base(pickSpec)
 
 		commits = append(commits, commit)
@@ -163,84 +177,115 @@ func parsePatchList(input string) []string {
 }
 
 func applyPatches(ctx context.Context, repoPath string, workspaceDir string, patches []string) error {
-	log := clog.FromContext(ctx)
-
 	for _, patch := range patches {
 		// Resolve patch path relative to workspace directory
 		patchPath := patch
-		if workspaceDir != "" && !strings.HasPrefix(patch, "/") {
-			patchPath = fmt.Sprintf("%s/%s", workspaceDir, patch)
+		if workspaceDir != "" && !filepath.IsAbs(patch) {
+			patchPath = filepath.Join(workspaceDir, patch)
 		}
 
-		log.Infof("Applying patch %s", patchPath)
-
-		// Try git am first (preserves commit metadata if present)
-		amCmd := exec.CommandContext(ctx, "git", "am", "--no-gpg-sign", patchPath)
-		amCmd.Dir = repoPath
-		amCmd.Stdout = os.Stdout
-		amCmd.Stderr = os.Stderr
-
-		if err := amCmd.Run(); err != nil {
-			// git am failed, abort to clean up
-			log.Infof("git am failed, aborting to clean up")
-			abortCmd := exec.CommandContext(ctx, "git", "am", "--abort")
-			abortCmd.Dir = repoPath
-			_ = abortCmd.Run() // Ignore error, may not be in am session
-
-			// Try git apply --check to see if patch is valid
-			log.Infof("Checking if patch can be applied with git apply")
-			checkCmd := exec.CommandContext(ctx, "git", "apply", "--check", patchPath)
-			checkCmd.Dir = repoPath
-			checkCmd.Stderr = os.Stderr
-
-			if err := checkCmd.Run(); err != nil {
-				// git apply failed too, fall back to patch command (supports fuzz matching)
-				log.Infof("git apply failed, falling back to patch -p1")
-				patchCmd := exec.CommandContext(ctx, "patch", "-p1", "--fuzz=2")
-				patchCmd.Dir = repoPath
-				patchCmd.Stdout = os.Stdout
-				patchCmd.Stderr = os.Stderr
-				patchFile, err := os.Open(patchPath)
-				if err != nil {
-					return fmt.Errorf("failed to open patch file %s: %w", patchPath, err)
-				}
-				patchCmd.Stdin = patchFile
-				if err := patchCmd.Run(); err != nil {
-					patchFile.Close()
-					return fmt.Errorf("patch %s cannot be applied (tried git am, git apply, and patch -p1): %w", patchPath, err)
-				}
-				patchFile.Close()
-			} else {
-				// Apply the patch with git apply
-				applyCmd := exec.CommandContext(ctx, "git", "apply", patchPath)
-				applyCmd.Dir = repoPath
-				applyCmd.Stdout = os.Stdout
-				applyCmd.Stderr = os.Stderr
-				if err := applyCmd.Run(); err != nil {
-					return fmt.Errorf("failed to apply patch %s: %w", patchPath, err)
-				}
-			}
-
-			// Stage all changes
-			addCmd := exec.CommandContext(ctx, "git", "add", "-A")
-			addCmd.Dir = repoPath
-			if err := addCmd.Run(); err != nil {
-				return fmt.Errorf("failed to stage changes for patch %s: %w", patchPath, err)
-			}
-
-			// Commit with patch filename
-			commitMsg := fmt.Sprintf("Apply patch: %s", patch)
-			commitCmd := exec.CommandContext(ctx, "git", "commit", "--no-gpg-sign", "-m", commitMsg)
-			commitCmd.Dir = repoPath
-			commitCmd.Stdout = os.Stdout
-			commitCmd.Stderr = os.Stderr
-			if err := commitCmd.Run(); err != nil {
-				return fmt.Errorf("failed to commit patch %s: %w", patchPath, err)
-			}
-
-			log.Infof("Applied patch %s using git apply + commit", patchPath)
+		if err := applyOnePatch(ctx, repoPath, patchPath, patch); err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+// applyOnePatch applies a single patch file to the git repository at repoPath.
+// patchPath is the resolved path to the patch file; patchName is the original
+// filename (used for commit messages when falling back from git am).
+func applyOnePatch(ctx context.Context, repoPath, patchPath, patchName string) error {
+	log := clog.FromContext(ctx)
+
+	log.Infof("Applying patch %s", patchPath)
+
+	// Try git am first (preserves commit metadata if the patch has email headers)
+	amCmd := exec.CommandContext(ctx, "git", "am", "--no-gpg-sign", patchPath)
+	amCmd.Dir = repoPath
+	amCmd.Stdout = os.Stdout
+	amCmd.Stderr = os.Stderr
+
+	if err := amCmd.Run(); err == nil {
+		return nil
+	}
+
+	// git am failed — abort to clean up any partial state
+	log.Infof("git am failed, aborting to clean up")
+	abortCmd := exec.CommandContext(ctx, "git", "am", "--abort")
+	abortCmd.Dir = repoPath
+	_ = abortCmd.Run() // Ignore error, may not be in am session
+
+	if err := applyPatchFallback(ctx, repoPath, patchPath, patchName); err != nil {
+		return err
+	}
+
+	log.Infof("Applied patch %s using git apply + commit", patchPath)
+	return nil
+}
+
+// applyPatchFallback tries git apply, then patch -p1, then stages and commits the result.
+func applyPatchFallback(ctx context.Context, repoPath, patchPath, patchName string) error {
+	log := clog.FromContext(ctx)
+
+	// Try git apply --check to see if the patch is applicable
+	log.Infof("Checking if patch can be applied with git apply")
+	checkCmd := exec.CommandContext(ctx, "git", "apply", "--check", patchPath)
+	checkCmd.Dir = repoPath
+	checkCmd.Stderr = os.Stderr
+
+	if checkErr := checkCmd.Run(); checkErr != nil {
+		// git apply won't work — fall back to patch(1) which supports fuzz matching
+		log.Infof("git apply failed, falling back to patch -p1")
+		if err := runPatchCommand(ctx, repoPath, patchPath); err != nil {
+			return fmt.Errorf("patch %s cannot be applied (tried git am, git apply, and patch -p1): %w", patchPath, err)
+		}
+	} else {
+		applyCmd := exec.CommandContext(ctx, "git", "apply", patchPath)
+		applyCmd.Dir = repoPath
+		applyCmd.Stdout = os.Stdout
+		applyCmd.Stderr = os.Stderr
+		if err := applyCmd.Run(); err != nil {
+			return fmt.Errorf("failed to apply patch %s: %w", patchPath, err)
+		}
+	}
+
+	// Stage all changes
+	addCmd := exec.CommandContext(ctx, "git", "add", "-A")
+	addCmd.Dir = repoPath
+	if err := addCmd.Run(); err != nil {
+		return fmt.Errorf("failed to stage changes for patch %s: %w", patchPath, err)
+	}
+
+	// Use the patch filename without extension as the commit subject so that
+	// a subsequent 'source pop' generates clean patch names without double suffixes
+	// (e.g. "usrmerge-lib" → format-patch produces "0002-usrmerge-lib.patch",
+	// not "0002-Apply-patch-usrmerge-lib.patch.patch").
+	subject := strings.TrimSuffix(filepath.Base(patchName), ".patch")
+	commitCmd := exec.CommandContext(ctx, "git", "commit", "--no-gpg-sign", "-m", subject)
+	commitCmd.Dir = repoPath
+	commitCmd.Stdout = os.Stdout
+	commitCmd.Stderr = os.Stderr
+	if err := commitCmd.Run(); err != nil {
+		return fmt.Errorf("failed to commit patch %s: %w", patchPath, err)
+	}
+
+	return nil
+}
+
+// runPatchCommand applies a patch file using the patch(1) command with -p1 and fuzz=2.
+func runPatchCommand(ctx context.Context, repoPath, patchPath string) error {
+	patchFile, err := os.Open(patchPath)
+	if err != nil {
+		return fmt.Errorf("failed to open patch file %s: %w", patchPath, err)
+	}
+	defer patchFile.Close()
+
+	patchCmd := exec.CommandContext(ctx, "patch", "-p1", "--fuzz=2")
+	patchCmd.Dir = repoPath
+	patchCmd.Stdout = os.Stdout
+	patchCmd.Stderr = os.Stderr
+	patchCmd.Stdin = patchFile
+
+	return patchCmd.Run()
 }

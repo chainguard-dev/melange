@@ -8,6 +8,7 @@ new built-in pipelines, consult [Creating a new built-in pipeline](/docs/PIPELIN
 
 
 - [fetch](#fetch)
+- [git-am](#git-am)
 - [git-checkout](#git-checkout)
 - [patch](#patch)
 - [strip](#strip)
@@ -33,6 +34,16 @@ Fetch and extract external object into workspace
 | strip-components | false | The number of path components to strip while extracting.  | 1 |
 | timeout | false | The timeout (in seconds) to use for connecting and reading. The fetch will fail if the timeout is hit.  | 5 |
 | uri | true | The URI to fetch as an artifact.  |  |
+
+## git-am
+
+Apply patches with git am
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| patches | true | A list of patches to apply with git am, as a whitespace delimited string.  Patches are resolved relative to the workspace root, which is where melange copies the contents of the source directory (--source-dir, defaulting to the directory containing the melange YAML file).  This is the same convention used by the 'patch' pipeline: place patch files in the package's source directory (e.g. ./my-package/) alongside the YAML file.  This pipeline assumes that git-checkout used the default destination ('.'), so the workspace root is the git repository.  If git-checkout clones into a subdirectory, the patches must include the path relative to the workspace root.  |  |
 
 ## git-checkout
 

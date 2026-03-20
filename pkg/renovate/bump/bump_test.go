@@ -180,6 +180,46 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")
 }
 
+func TestBump_withCustomVarTransformGitTag(t *testing.T) {
+	dir := t.TempDir()
+
+	tests := []struct {
+		name           string
+		newVersion     string
+		expectedCommit string
+		expectedEpoch  uint64
+	}{
+		{name: "custom_var_version.yaml", newVersion: "2.0.0", expectedCommit: "abc123def456", expectedEpoch: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := slogtest.Context(t)
+			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
+			assert.NoError(t, err)
+
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0o755)
+			assert.NoError(t, err)
+
+			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			assert.NoError(t, err)
+
+			bumpRenovator := New(ctx,
+				WithTargetVersion(tt.newVersion),
+				WithExpectedCommit(tt.expectedCommit),
+			)
+
+			err = rctx.Renovate(slogtest.Context(t), bumpRenovator)
+			assert.NoError(t, err)
+
+			rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, tt.name))
+			require.NoError(t, err)
+			assert.Equal(t, tt.newVersion, rs.Package.Version)
+			assert.Equal(t, tt.expectedEpoch, rs.Package.Epoch)
+			assert.Equal(t, tt.expectedCommit, rs.Pipeline[0].With["expected-commit"])
+		})
+	}
+}
+
 func setupTestServer(t *testing.T) (*httptest.Server, error) {
 	packageData, err := os.ReadFile(filepath.Join("testdata", "cheese-7.0.1.tar.gz"))
 	assert.NoError(t, err)

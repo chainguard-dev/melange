@@ -1,0 +1,18 @@
+package:
+  name: example
+  version: 1.2.3
+  epoch: 0
+  description: "example with custom var-transform"
+
+var-transforms:
+  - from: ${{package.version}}
+    match: ^(\d+)\.(\d+)\.(\d+)$
+    replace: ${1}_${2}_${3}
+    to: underscored-version
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/example/example
+      tag: v${{vars.underscored-version}}
+      expected-commit: oldcommitsha

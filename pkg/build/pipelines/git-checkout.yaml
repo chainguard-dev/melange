@@ -253,7 +253,7 @@ pipeline:
           fi
 
           [ -n "$expcommit" ] ||
-              msg "Warning: no expected-commit"
+              fail "expected-commit should be specified"
 
           local flags="" depthflag="" dest_fullpath="" workdir=""
           local remote="origin" rcfile="" rc="" quiet="--quiet"

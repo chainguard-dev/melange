@@ -1,0 +1,25 @@
+name: Apply patches with git am
+
+needs:
+  packages:
+    - git
+
+inputs:
+  patches:
+    description: |
+      A list of patches to apply with git am, as a whitespace delimited string.
+
+      Patches are resolved relative to the workspace root, which is where melange
+      copies the contents of the source directory (--source-dir, defaulting to the
+      directory containing the melange YAML file).  This is the same convention
+      used by the 'patch' pipeline: place patch files in the package's source
+      directory (e.g. ./my-package/) alongside the YAML file.
+
+      This pipeline assumes that git-checkout used the default destination ('.'),
+      so the workspace root is the git repository.  If git-checkout clones into a
+      subdirectory, the patches must include the path relative to the workspace root.
+    required: true
+
+pipeline:
+  - runs: |
+      git am ${{inputs.patches}}

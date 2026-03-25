@@ -26,6 +26,10 @@ inputs:
 
       full-line and inline comments are supported via '#'
     required: false
+  venv:
+    description: |
+      Path to virtual environment to source
+    required: false
 
 pipeline:
   - runs: |
@@ -34,6 +38,7 @@ pipeline:
       SINGLE_IMPORT="${{inputs.import}}"
       MULTIPLE_IMPORTS="${{inputs.imports}}"
       FROM_PKG="${{inputs.from}}"
+      VIRTUAL_ENV="${{inputs.venv}}"
 
       perform_import() {
         command="$1"
@@ -44,6 +49,20 @@ pipeline:
           return 1
         fi
       }
+
+      if [ -n "$VIRTUAL_ENV" ]; then
+        if [ "$PYTHON" != "DEFAULT" ]; then
+          echo "Error: Can not set 'python' with 'venv'"
+          exit 1
+        fi
+
+        if ! . "$VIRTUAL_ENV/bin/activate"; then
+          echo "Error: Not a valid virtual environment: $VIRTUAL_ENV"
+          exit 1
+        fi
+
+        PYTHON="$VIRTUAL_ENV/bin/python3"
+      fi
 
       if [ "$PYTHON" = "DEFAULT" ]; then
           glob="/usr/bin/python3.[0-9][0-9] /usr/bin/python3.[789]"

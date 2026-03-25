@@ -1,3 +1,4 @@
+
 <!-- start:pipeline-reference-gen -->
 # Pipeline Reference
 
@@ -38,6 +39,7 @@ Test a python package import, with optional from clause
 | import | false | The package to import. Deprecated, use 'imports' instead.  |  |
 | imports | false | Commands to import packages, each line is a separate command. Example:   from libfoo import bar   # test that otherthing can be imported from asdf   from asdf import otherthing   import bark # this is like woof  full-line and inline comments are supported via '#'  |  |
 | python | false | Which python to use | DEFAULT |
+| venv | false | Path to virtual environment to source  |  |
 
 ## python/install
 

@@ -988,8 +988,8 @@ type Update struct {
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for updates tracked via Git
 	GitMonitor *GitMonitor `json:"git,omitempty" yaml:"git,omitempty"`
-	// The configuration block for updates tracked via OCI image tags using crane
-	CraneMonitor *CraneMonitor `json:"crane,omitempty" yaml:"crane,omitempty"`
+	// The configuration block for updates tracked via OCI image tags
+	OCIMonitor *OCIMonitor `json:"oci,omitempty" yaml:"oci,omitempty"`
 	// The configuration block for updates tracked via chainguard version data
 	VersionDataMonitor *VersionDataMonitor `json:"version_data,omitempty" yaml:"version_data,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
@@ -1140,8 +1140,8 @@ func (rm *ReleaseMonitor) GetFilterContains() string {
 	return rm.VersionFilterContains
 }
 
-// CraneMonitor indicates using OCI image tags via crane
-type CraneMonitor struct {
+// OCIMonitor indicates using OCI image tags
+type OCIMonitor struct {
 	// Required: OCI image reference (e.g. cgr.dev/chainguard/node)
 	Identifier string `json:"identifier" yaml:"identifier"`
 	// If the version in the tag contains a prefix which should be ignored
@@ -1154,17 +1154,17 @@ type CraneMonitor struct {
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
 }
 
-// GetStripPrefix returns the prefix that should be stripped from the CraneMonitor version.
-func (cm *CraneMonitor) GetStripPrefix() string { return cm.StripPrefix }
+// GetStripPrefix returns the prefix that should be stripped from the OCIMonitor version.
+func (om *OCIMonitor) GetStripPrefix() string { return om.StripPrefix }
 
-// GetStripSuffix returns the suffix that should be stripped from the CraneMonitor version.
-func (cm *CraneMonitor) GetStripSuffix() string { return cm.StripSuffix }
+// GetStripSuffix returns the suffix that should be stripped from the OCIMonitor version.
+func (om *OCIMonitor) GetStripSuffix() string { return om.StripSuffix }
 
-// GetFilterPrefix returns the prefix filter to apply when searching tags in CraneMonitor.
-func (cm *CraneMonitor) GetFilterPrefix() string { return cm.TagFilterPrefix }
+// GetFilterPrefix returns the prefix filter to apply when searching tags in OCIMonitor.
+func (om *OCIMonitor) GetFilterPrefix() string { return om.TagFilterPrefix }
 
-// GetFilterContains returns the substring filter to apply when searching tags in CraneMonitor.
-func (cm *CraneMonitor) GetFilterContains() string { return cm.TagFilterContains }
+// GetFilterContains returns the substring filter to apply when searching tags in OCIMonitor.
+func (om *OCIMonitor) GetFilterContains() string { return om.TagFilterContains }
 
 // VersionTransform allows mapping the package version to an APK version
 type VersionTransform struct {

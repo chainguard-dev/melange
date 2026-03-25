@@ -10,7 +10,7 @@ There are currently four ways to describe where to search for latest versions of
  1. `release-monitor:` to query https://release-monitoring.org/
  2. `github:` to query https://github.com via its graphql API
  3. `git:` to query local git checkout
- 4. `crane:` to query OCI container registry image tags
+ 4. `oci:` to query OCI container registry image tags
 
 ## Release Monitor
 
@@ -93,14 +93,14 @@ update:
     reason: upstream project does not support tags or releases
 ```
 
-## Crane
+## OCI
 
-Crane uses the [go-containerregistry](https://github.com/google/go-containerregistry) library to list OCI image tags from a container registry. This is useful for packages that track upstream versions via container image tags rather than git tags or GitHub releases.
+The OCI monitor uses the [go-containerregistry](https://github.com/google/go-containerregistry) library to list OCI image tags from a container registry. This is useful for packages that track upstream versions via container image tags rather than git tags or GitHub releases.
 
 ```yaml
 update:
   enabled: true
-  crane:
+  oci:
     identifier: cgr.dev/chainguard/node # Mandatory, OCI image reference
     strip-prefix: v # Optional, if the tag contains a prefix which should be ignored
     strip-suffix: foo # Optional, if the tag contains a suffix which should be ignored
@@ -111,7 +111,7 @@ update:
 ```yaml
 update:
   enabled: true
-  crane:
+  oci:
     identifier: cgr.dev/chainguard/node
 ```
 

@@ -76,6 +76,7 @@ jobs:
           go-version-file: './go.mod'
           check-latest: true
 
+      - uses: cue-lang/setup-cue@a93fa358375740cd8b0078f76355512b9208acb1
 
       - name: Install QEMU/KVM
         run: |

@@ -415,6 +415,12 @@
             "$ref": "#/$defs/AdditionalCertificateEntry"
           },
           "type": "array"
+        },
+        "providers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,
@@ -614,6 +620,36 @@
       "required": [
         "Packages"
       ]
+    },
+    "OCIMonitor": {
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Required: OCI image reference (e.g. cgr.dev/chainguard/node)"
+        },
+        "strip-prefix": {
+          "type": "string",
+          "description": "If the version in the tag contains a prefix which should be ignored"
+        },
+        "strip-suffix": {
+          "type": "string",
+          "description": "If the version in the tag contains a suffix which should be ignored"
+        },
+        "tag-filter-prefix": {
+          "type": "string",
+          "description": "Prefix filter to apply when searching tags"
+        },
+        "tag-filter-contains": {
+          "type": "string",
+          "description": "Substring filter to apply when searching tags"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "description": "OCIMonitor indicates using OCI image tags"
     },
     "Package": {
       "properties": {
@@ -1100,6 +1136,14 @@
           "$ref": "#/$defs/GitMonitor",
           "description": "The configuration block for updates tracked via Git"
         },
+        "oci": {
+          "$ref": "#/$defs/OCIMonitor",
+          "description": "The configuration block for updates tracked via OCI image tags"
+        },
+        "version_data": {
+          "$ref": "#/$defs/VersionDataMonitor",
+          "description": "The configuration block for updates tracked via chainguard version data"
+        },
         "version-transform": {
           "items": {
             "$ref": "#/$defs/VersionTransform"
@@ -1175,6 +1219,62 @@
         "replace",
         "to"
       ]
+    },
+    "VersionDataMonitor": {
+      "properties": {
+        "version_format": {
+          "type": "string",
+          "description": "Format string for composing the version, using ${{source_name.field}} placeholders"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/VersionDataSource"
+          },
+          "type": "array",
+          "description": "The list of upstream sources to fetch version data from"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "version_format",
+        "sources"
+      ],
+      "description": "VersionDataMonitor indicates using chainguard version data"
+    },
+    "VersionDataSource": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the source, used to reference it in the format string"
+        },
+        "stream": {
+          "type": "string",
+          "description": "The stream to track for updates (e.g. \"12.6\", \"9\")"
+        },
+        "ignore": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "A list of regex patterns to ignore when matching upstream versions"
+        },
+        "commit_source": {
+          "type": "string",
+          "description": "The source whose commits to use when multiple sources are configured"
+        },
+        "use_release": {
+          "type": "boolean",
+          "description": "Whether to use GitHub releases as the tag source instead of git tags"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "stream"
+      ],
+      "description": "VersionDataSource defines an individual upstream source for version data"
     },
     "VersionTransform": {
       "properties": {

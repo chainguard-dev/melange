@@ -13,4 +13,5 @@
 // limitations under the License.
 
 //go:generate go run . -o ../../pkg/config/schema.json
+//go:generate cue import -f jsonschema: ../../pkg/config/schema.json -o ../../pkg/config/schema.cue
 package main

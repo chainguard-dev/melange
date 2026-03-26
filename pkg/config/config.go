@@ -988,6 +988,8 @@ type Update struct {
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for updates tracked via Git
 	GitMonitor *GitMonitor `json:"git,omitempty" yaml:"git,omitempty"`
+	// The configuration block for updates tracked via OCI image tags
+	OCIMonitor *OCIMonitor `json:"oci,omitempty" yaml:"oci,omitempty"`
 	// The configuration block for updates tracked via chainguard version data
 	VersionDataMonitor *VersionDataMonitor `json:"version_data,omitempty" yaml:"version_data,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
@@ -1137,6 +1139,32 @@ func (rm *ReleaseMonitor) GetFilterPrefix() string {
 func (rm *ReleaseMonitor) GetFilterContains() string {
 	return rm.VersionFilterContains
 }
+
+// OCIMonitor indicates using OCI image tags
+type OCIMonitor struct {
+	// Required: OCI image reference (e.g. cgr.dev/chainguard/node)
+	Identifier string `json:"identifier" yaml:"identifier"`
+	// If the version in the tag contains a prefix which should be ignored
+	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
+	// If the version in the tag contains a suffix which should be ignored
+	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
+	// Prefix filter to apply when searching tags
+	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
+	// Substring filter to apply when searching tags
+	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+}
+
+// GetStripPrefix returns the prefix that should be stripped from the OCIMonitor version.
+func (om *OCIMonitor) GetStripPrefix() string { return om.StripPrefix }
+
+// GetStripSuffix returns the suffix that should be stripped from the OCIMonitor version.
+func (om *OCIMonitor) GetStripSuffix() string { return om.StripSuffix }
+
+// GetFilterPrefix returns the prefix filter to apply when searching tags in OCIMonitor.
+func (om *OCIMonitor) GetFilterPrefix() string { return om.TagFilterPrefix }
+
+// GetFilterContains returns the substring filter to apply when searching tags in OCIMonitor.
+func (om *OCIMonitor) GetFilterContains() string { return om.TagFilterContains }
 
 // VersionTransform allows mapping the package version to an APK version
 type VersionTransform struct {

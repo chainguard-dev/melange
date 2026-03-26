@@ -50,7 +50,7 @@ jobs:
       - name: Fetch dependencies
         run: |
           apk upgrade -Ua
-          apk add go build-base git bubblewrap jq
+          apk add go cue-cli build-base git bubblewrap jq
 
       - name: Build melange
         run: |

@@ -5,11 +5,12 @@
 __IMPORTANT:__ Adding update configuration does not mean melange package will be kept up to date, it is a way to describe "how"
 it can be updated.
 
-There are currently two ways to describe where to search for latest versions of a package.
+There are currently four ways to describe where to search for latest versions of a package.
 
  1. `release-monitor:` to query https://release-monitoring.org/
- 2. `github:` to query https://github.com via it's graphql API
+ 2. `github:` to query https://github.com via its graphql API
  3. `git:` to query local git checkout
+ 4. `oci:` to query OCI container registry image tags
 
 ## Release Monitor
 
@@ -90,6 +91,28 @@ update:
   schedule:
     period: daily
     reason: upstream project does not support tags or releases
+```
+
+## OCI
+
+The OCI monitor uses the [go-containerregistry](https://github.com/google/go-containerregistry) library to list OCI image tags from a container registry. This is useful for packages that track upstream versions via container image tags rather than git tags or GitHub releases.
+
+```yaml
+update:
+  enabled: true
+  oci:
+    identifier: cgr.dev/chainguard/node # Mandatory, OCI image reference
+    strip-prefix: v # Optional, if the tag contains a prefix which should be ignored
+    strip-suffix: foo # Optional, if the tag contains a suffix which should be ignored
+    tag-filter-prefix: v # Optional, filter to apply when searching tags with a prefix
+    tag-filter-contains: foo # Optional, filter to apply when searching tags with any match
+```
+
+```yaml
+update:
+  enabled: true
+  oci:
+    identifier: cgr.dev/chainguard/node
 ```
 
 ## Ignore versions

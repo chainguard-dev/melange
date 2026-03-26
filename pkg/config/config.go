@@ -47,7 +47,12 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/util"
+
+	_ "embed"
 )
+
+//go:embed schema.json
+var SchemaJSON []byte
 
 const (
 	buildUser   = "build"

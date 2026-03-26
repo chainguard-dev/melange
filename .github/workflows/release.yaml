@@ -26,6 +26,7 @@ jobs:
             *.githubapp.com:443
             api.github.com:443
             auth.docker.io:443
+            dl.google.com:443
             fulcio.sigstore.dev:443
             ghcr.io:443
             github.com:443

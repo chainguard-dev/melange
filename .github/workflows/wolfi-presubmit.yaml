@@ -24,6 +24,7 @@ jobs:
             *.blob.core.windows.net:443
             *.githubapp.com:443
             api.github.com:443
+            dl.google.com:443
             github.com:443
             go.dev:443
             objects.githubusercontent.com:443
@@ -117,6 +118,7 @@ jobs:
             cpan.metacpan.org:443
             de.postfix.org:443
             dl-cdn.alpinelinux.org:443
+            dl.google.com:443
             doc-10-as-docs.googleusercontent.com:443
             download.docker.com:443
             drive.google.com:443
@@ -127,10 +129,12 @@ jobs:
             ghcr.io:443
             git.dpkg.org:443
             github.com:443
+            go.dev:443
             grype.anchore.io:443
             index.crates.io:443
             invisible-mirror.net:443
             motd.ubuntu.com:443
+            objects.githubusercontent.com:443
             packages.microsoft.com:443
             packages.wolfi.dev:443
             pkg-containers.githubusercontent.com:443
@@ -140,6 +144,7 @@ jobs:
             raw.githubusercontent.com:443
             registry.npmjs.org:443
             registry.yarnpkg.com:443
+            release-assets.githubusercontent.com:443
             results-receiver.actions.githubusercontent.com:443
             security.ubuntu.com:80
             static.crates.io:443

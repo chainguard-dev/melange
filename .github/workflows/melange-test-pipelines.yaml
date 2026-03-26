@@ -24,6 +24,7 @@ jobs:
             *.blob.core.windows.net:443
             *.githubapp.com:443
             api.github.com:443
+            dl.google.com:443
             github.com:443
             go.dev:443
             objects.githubusercontent.com:443
@@ -76,6 +77,7 @@ jobs:
             auth.docker.io:443
             azure.archive.ubuntu.com:80
             dl-cdn.alpinelinux.org:443
+            dl.google.com:443
             esm.ubuntu.com:443
             files.pythonhosted.org:443
             git.netfilter.org:443

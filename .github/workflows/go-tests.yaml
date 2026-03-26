@@ -25,6 +25,7 @@ jobs:
             7-zip.org:443
             api.github.com:443
             azure.archive.ubuntu.com:80
+            dl.google.com:443
             esm.ubuntu.com:443
             files.pythonhosted.org:443
             git.savannah.gnu.org:443

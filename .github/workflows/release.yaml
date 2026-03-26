@@ -2,7 +2,7 @@ name: Release
 
 on:
   schedule:
-    - cron: '0 0 * * 1' # every Monday at 00:00 UTC
+    - cron: "0 0 * * 1" # every Monday at 00:00 UTC
   workflow_dispatch:
 
 permissions: {}
@@ -20,7 +20,28 @@ jobs:
     steps:
       - uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            *.blob.core.windows.net:443
+            *.githubapp.com:443
+            api.github.com:443
+            auth.docker.io:443
+            fulcio.sigstore.dev:443
+            ghcr.io:443
+            github.com:443
+            go.dev:443
+            goreleaser.com:443
+            index.docker.io:443
+            objects.githubusercontent.com:443
+            production.cloudflare.docker.com:443
+            proxy.golang.org:443
+            raw.githubusercontent.com:443
+            rekor.sigstore.dev:443
+            release-assets.githubusercontent.com:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            uploads.github.com:443
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -61,7 +82,7 @@ jobs:
       - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         if: steps.check.outputs.need_release == 'yes'
         with:
-          go-version-file: './go.mod'
+          go-version-file: "./go.mod"
           check-latest: true
 
       # Cosign is used by goreleaser to sign release artifacts.

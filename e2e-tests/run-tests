@@ -77,17 +77,22 @@ for yaml in "$@"; do
         "test") opargs="--pipeline-dirs $PWD/pipelines";;
     esac
 
-    vrc "Testing $base from $yaml for $op" \
-      ${MELANGE} "$op" \
-        --arch=${ARCH} --source-dir=./test-fixtures \
-        --runner=qemu \
-        "$yaml" \
-        ${args} $opargs \
-        "--keyring-append=$PWD/$key.pub" \
-        "--repository-append=$PWD/packages" \
-        "--repository-append=https://packages.wolfi.dev/os" \
-        "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
-        fails="${fails} $yaml/$op"
+    for runner in "qemu" "bubblewrap" "docker"; do
+	if [ $(uname -s) = "Darwin" ] && [ ${runner} = "bubblewrap" ]; then
+	    continue
+	fi
+	vrc "Testing $base from $yaml for $op using $runner" \
+	${MELANGE} "$op" \
+	    --arch=${ARCH} --source-dir=./test-fixtures \
+	    --runner=${runner} \
+	    "$yaml" \
+	    ${args} $opargs \
+	    "--keyring-append=$PWD/$key.pub" \
+	    "--repository-append=$PWD/packages" \
+	    "--repository-append=https://packages.wolfi.dev/os" \
+	    "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
+	    fails="${fails} $yaml/$op/$runner"
+    done
   done
 done
 

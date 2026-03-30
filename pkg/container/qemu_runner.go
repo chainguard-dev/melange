@@ -2329,6 +2329,12 @@ func injectRuntimeData(ctx context.Context, cfg *Config, modulesDir, baseInitram
 			if err != nil {
 				return err
 			}
+			// Skip symlinks — extracted APKs may contain broken absolute symlinks
+			// that are not kernel modules (e.g. /lib/modules/<ver>/vmlinuz -> /boot/vmlinuz-virt).
+			// The kernel image is provided separately via QEMU_KERNEL_IMAGE.
+			if d.Type()&fs.ModeSymlink != 0 {
+				return nil
+			}
 			archivePath := filepath.Join(archivePrefix, path)
 			if d.IsDir() {
 				moduleRecords = append(moduleRecords, cpio.Directory(archivePath, 0o755))

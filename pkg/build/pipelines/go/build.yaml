@@ -10,8 +10,8 @@ needs:
 inputs:
   go-package:
     description: |
-      The go package to install
-    default: go
+      **Deprecated** The go package to install. From now on, this input no longer implicitely installs a go toolchain. If a specific toolchain is needed, declare it in the environment.
+    default: build-base
 
   packages:
     description: |

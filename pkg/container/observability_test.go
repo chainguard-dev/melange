@@ -422,4 +422,3 @@ func parseObservabilityEvents(data []byte) ([]ObservabilityEvent, []Observabilit
 	}
 	return allEvents, networkEvents, nil
 }
-

@@ -3,16 +3,16 @@ module chainguard.dev/melange
 go 1.25.7
 
 require (
-	chainguard.dev/apko v1.1.16
+	chainguard.dev/apko v1.2.0
 	github.com/chainguard-dev/clog v1.8.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.53
+	github.com/chainguard-dev/yam v0.2.54
 	github.com/charmbracelet/log v1.0.0
 	github.com/docker/cli v29.3.1+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.4.0
-	github.com/go-git/go-git/v5 v5.17.1
+	github.com/go-git/go-git/v5 v5.17.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.3
 	github.com/google/licenseclassifier/v2 v2.0.0
@@ -47,16 +47,14 @@ require (
 	gopkg.in/ini.v1 v1.67.1
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.13.0
-	sigs.k8s.io/release-utils v0.12.3
+	sigs.k8s.io/release-utils v0.12.4
 	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
-	github.com/clipperhouse/stringish v0.1.1 // indirect
-	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.6.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
@@ -78,7 +76,7 @@ require (
 
 require (
 	chainguard.dev/go-grpc-kit v0.17.16 // indirect
-	chainguard.dev/sdk v0.1.51 // indirect
+	chainguard.dev/sdk v0.1.52 // indirect
 	cloud.google.com/go/auth v0.18.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -123,7 +121,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.14 // indirect
-	github.com/googleapis/gax-go/v2 v2.18.0 // indirect
+	github.com/googleapis/gax-go/v2 v2.19.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
@@ -133,7 +131,6 @@ require (
 	github.com/kevinburke/ssh_config v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -172,9 +169,9 @@ require (
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	google.golang.org/api v0.272.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260311181403-84a4fc48630c // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260311181403-84a4fc48630c // indirect
+	google.golang.org/api v0.273.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260316180232-0b37fe3546d5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/warnings.v0 v0.1.2 // indirect

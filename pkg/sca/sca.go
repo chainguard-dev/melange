@@ -839,10 +839,17 @@ func generatePerlDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		return err
 	}
 
-	perlModuleMatch, err := fs.Glob(fsys, "usr/lib/perl[0-9]/*_perl")
+	perlModuleMatchUsrLib, err := fs.Glob(fsys, "usr/lib/perl[0-9]*/*_perl")
 	if err != nil {
 		return err
 	}
+	perlModuleMatchLib, err := fs.Glob(fsys, "lib/perl[0-9]*/*_perl")
+	if err != nil {
+		return err
+	}
+
+	perlModuleMatch := slices.Clone(perlModuleMatchUsrLib)
+	perlModuleMatch = append(perlModuleMatch, perlModuleMatchLib...)
 	if len(perlModuleMatch) == 0 {
 		return nil
 	}
@@ -940,10 +947,17 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		return err
 	}
 
-	rubyGemMatches, err := fs.Glob(fsys, "usr/lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
+	rubyGemMatchesUsrLib, err := fs.Glob(fsys, "usr/lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
 	if err != nil {
 		return err
 	}
+	rubyGemMatchesLib, err := fs.Glob(fsys, "lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
+	if err != nil {
+		return err
+	}
+
+	rubyGemMatches := slices.Clone(rubyGemMatchesUsrLib)
+	rubyGemMatches = append(rubyGemMatches, rubyGemMatchesLib...)
 	if len(rubyGemMatches) == 0 {
 		return nil
 	}

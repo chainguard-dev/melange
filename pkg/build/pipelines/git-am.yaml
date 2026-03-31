@@ -22,4 +22,4 @@ inputs:
 
 pipeline:
   - runs: |
-      git am ${{inputs.patches}}
+      echo "${{inputs.patches}}" | xargs git am

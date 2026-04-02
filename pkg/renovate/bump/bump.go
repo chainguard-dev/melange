@@ -229,21 +229,13 @@ func updateGitCheckout(ctx context.Context, cfg *config.Configuration, node *yam
 		return err
 	}
 
-	// Check if the tag or branch contains a version substitution.
-	// If neither depends on package.version, we assume this is not the main
-	// checkout and skip updating the expected-commit sha.
+	// If a tag is present, check it contains a version substitution.
+	// If it doesn't depend on package.version, skip updating.
+	// If there is no tag (e.g. branch-only checkout), always update since
+	// branches are often built from main and should not be skipped.
 	tag, tagErr := renovate.NodeFromMapping(withNode, "tag")
-	branch, branchErr := renovate.NodeFromMapping(withNode, "branch")
-
-	switch {
-	case tagErr != nil && branchErr != nil:
-		log.Infof("git-checkout node does not contain a tag or branch, assume we need to update the expected-commit sha")
-	case tagErr == nil && dependsOnVersion(tag.Value, cfg):
-		// tag is version-derived, proceed to update
-	case branchErr == nil && dependsOnVersion(branch.Value, cfg):
-		// branch is version-derived, proceed to update
-	default:
-		log.Infof("Skipping git-checkout node as neither tag nor branch is derived from package.version")
+	if tagErr == nil && !dependsOnVersion(tag.Value, cfg) {
+		log.Infof("Skipping git-checkout node as tag is not derived from package.version")
 		return nil
 	}
 

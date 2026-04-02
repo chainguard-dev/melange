@@ -34,7 +34,6 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	moby "github.com/moby/moby/v2/daemon/pkg/oci/caps"
 	"go.opentelemetry.io/otel"
 )
 
@@ -44,6 +43,26 @@ const (
 	BubblewrapName = "bubblewrap"
 	buildUserID    = "1000"
 )
+
+// defaultCapabilities is the set of Linux capabilities granted by the
+// Docker/Moby runtime by default. Mirrors moby/moby's DefaultCapabilities()
+// to avoid depending on moby/moby/v2 (pre-release) for a static list.
+var defaultCapabilities = []string{
+	"CAP_CHOWN",
+	"CAP_DAC_OVERRIDE",
+	"CAP_FSETID",
+	"CAP_FOWNER",
+	"CAP_MKNOD",
+	"CAP_NET_RAW",
+	"CAP_SETGID",
+	"CAP_SETUID",
+	"CAP_SETFCAP",
+	"CAP_SETPCAP",
+	"CAP_NET_BIND_SERVICE",
+	"CAP_SYS_CHROOT",
+	"CAP_KILL",
+	"CAP_AUDIT_WRITE",
+}
 
 type bubblewrap struct {
 	remove bool // if true, clean up temp dirs on close.
@@ -138,7 +157,9 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 	}
 
 	// Add Docker runner-parity kernel capabilities to the container.
-	for _, c := range moby.DefaultCapabilities() {
+	// These are the default Linux capabilities granted by the Docker/Moby
+	// runtime. Inlined to avoid pulling in moby/moby/v2 (beta) as a dependency.
+	for _, c := range defaultCapabilities {
 		baseargs = append(baseargs, "--cap-add", c)
 	}
 	// Add additional process kernel capabilities to the container as configured.

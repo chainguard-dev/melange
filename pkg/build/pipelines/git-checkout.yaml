@@ -100,6 +100,16 @@ pipeline:
       fail() { msg FAIL "$@"; exit 1; }
       vr() { msg "execute:" "$@"; "$@"; }
 
+      # Obscure the second half of a string with asterisks
+      obscure_half() {
+          local s="$1" len half
+          len=${#s}
+          half=$((len / 2))
+          prefix=$(echo "$s" | cut -c1-"$half")
+          suffix=$(echo "$s" | cut -c$((half + 1))-"$len" | sed 's/./*/g')
+          echo "${prefix}${suffix}"
+      }
+
       # Retry function with exponential backoff and jitter
       retry_with_backoff() {
           local max_retries=$1
@@ -316,20 +326,21 @@ pipeline:
           vr cd "$dest_fullpath"
           vr git config --global --add safe.directory "$dest_fullpath"
 
-          local foundcommit="" tagobj=""
+          local foundcommit="" obs_foundcommit="" tagobj=""
           if [ -z "$tag" ]; then
               foundcommit=$(git rev-parse --verify HEAD)
+              obs_foundcommit=$(obscure_half "$foundcommit")
               if [ -n "$expcommit" ] && [ "$expcommit" != "$foundcommit" ]; then
                   if [ "$depth" = "-1" ]; then
                       msg "expected commit $expcommit on ${branch:-HEAD}," \
-                          "got $foundcommit, performing reset"
+                          "got $obs_foundcommit, performing reset"
                       vr git reset --hard "$expcommit"
                   else
                       fail "expected commit $expcommit on ${branch:-HEAD}," \
-                           "got $foundcommit, set depth to -1 to attempt a reset"
+                           "got $obs_foundcommit, set depth to -1 to attempt a reset"
                   fi
               fi
-              msg "tip of ${branch:-HEAD} is commit $foundcommit"
+              msg "tip of ${branch:-HEAD} is commit $obs_foundcommit"
               process_cherry_picks "$cherry_pick" || fail "failed to apply cherry-pick"
               return 0
           fi
@@ -342,8 +353,9 @@ pipeline:
           vr git checkout $quiet "$remote/tags/$tag"
 
           foundcommit=$(git rev-parse --verify HEAD)
+          obs_foundcommit=$(obscure_half "$foundcommit")
           if [ -z "$expcommit" ] || [ "$expcommit" = "$foundcommit" ]; then
-              msg "tag $tag is $foundcommit"
+              msg "tag $tag is $obs_foundcommit"
           else
                 # If it's a tag, then it could be a lightweight or annotated tag.
                 # Lightweight tags point directly to the commit and do not have
@@ -356,12 +368,12 @@ pipeline:
                 if [ "$expcommit" != "$tagobj" ]; then
                     [ "$tagobj" != "$expcommit" ] &&
                         msg "tag object hash was $tagobj"
-                    fail "Expected commit $expcommit for $tag, found $foundcommit"
+                    fail "Expected commit $expcommit for $tag, found $obs_foundcommit"
                 fi
 
                 msg "Warning: The provided expected-commit ($expcommit)"
                 msg "was the hash of the annotated tag object for $tag."
-                msg "Update to set expected-commit to $foundcommit"
+                msg "Update to set expected-commit to $obs_foundcommit"
           fi
 
           process_cherry_picks "$cherry_pick" ||

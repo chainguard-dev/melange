@@ -1,5 +1,5 @@
-chainguard.dev/apko v1.2.0 h1:44uI/EBIjMuOwdwxDCbIpY1bJrSOLEVtRqM9SUcz69E=
-chainguard.dev/apko v1.2.0/go.mod h1:mLYcD45WyC55MGyjeJSju1+FmxzZFB9LCAnZzbRp8WU=
+chainguard.dev/apko v1.2.1 h1:sRNvd45n99be9Z720qTEtdsa20PQ8acBq0f0eSloo3A=
+chainguard.dev/apko v1.2.1/go.mod h1:Nq9ZJnHzB+eBJCvWJ+Ucm9wqA0abAs9iiwtXmvJuQ5A=
 chainguard.dev/go-grpc-kit v0.17.16 h1:Y9RKwZCnrYR3S0K8BiazyOoBrZF+Q7bJWDacfKXz2zg=
 chainguard.dev/go-grpc-kit v0.17.16/go.mod h1:0vrfIBJguXNa+EKOUEhx1Fj2aBp8o6A8gAHoidiF8ps=
 chainguard.dev/sdk v0.1.52 h1:G1wmZHU8v5E78YlCHuwQH0Hwt4NBBCvCNAFad5FUanQ=
@@ -382,8 +382,8 @@ go.opentelemetry.io/otel/trace v1.42.0 h1:OUCgIPt+mzOnaUTpOQcBiM/PLQ/Op7oq6g4Len
 go.opentelemetry.io/otel/trace v1.42.0/go.mod h1:f3K9S+IFqnumBkKhRJMeaZeNk9epyhnCmQh/EysQCdc=
 go.opentelemetry.io/proto/otlp v1.10.0 h1:IQRWgT5srOCYfiWnpqUYz9CVmbO8bFmKcwYxpuCSL2g=
 go.opentelemetry.io/proto/otlp v1.10.0/go.mod h1:/CV4QoCR/S9yaPj8utp3lvQPoqMtxXdzn7ozvvozVqk=
-go.step.sm/crypto v0.77.1 h1:4EEqfKdv0egQ1lqz2RhnU8Jv6QgXZfrgoxWMqJF9aDs=
-go.step.sm/crypto v0.77.1/go.mod h1:U/SsmEm80mNnfD5WIkbhuW/B1eFp3fgFvdXyDLpU1AQ=
+go.step.sm/crypto v0.77.2 h1:qFjjei+RHc5kP5R7NW9OUWT7SqWIuAOvOkXqg4fNWj8=
+go.step.sm/crypto v0.77.2/go.mod h1:W0YJb9onM5l78qgkXIJ2Up6grnwW8EtpCKIza/NCg0o=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 go.yaml.in/yaml/v2 v2.4.4 h1:tuyd0P+2Ont/d6e2rl3be67goVK4R6deVxCUX5vyPaQ=
@@ -482,8 +482,8 @@ golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 gonum.org/v1/gonum v0.16.0 h1:5+ul4Swaf3ESvrOnidPp4GZbzf0mxVQpDCYUQE7OJfk=
 gonum.org/v1/gonum v0.16.0/go.mod h1:fef3am4MQ93R2HHpKnLk4/Tbh/s0+wqD5nfa6Pnwy4E=
-google.golang.org/api v0.273.0 h1:r/Bcv36Xa/te1ugaN1kdJ5LoA5Wj/cL+a4gj6FiPBjQ=
-google.golang.org/api v0.273.0/go.mod h1:JbAt7mF+XVmWu6xNP8/+CTiGH30ofmCmk9nM8d8fHew=
+google.golang.org/api v0.273.1 h1:L7G/TmpAMz0nKx/ciAVssVmWQiOF6+pOuXeKrWVsquY=
+google.golang.org/api v0.273.1/go.mod h1:JbAt7mF+XVmWu6xNP8/+CTiGH30ofmCmk9nM8d8fHew=
 google.golang.org/appengine v1.1.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9YwlJXL52JkM=
 google.golang.org/appengine v1.4.0/go.mod h1:xpcJRLb0r/rnEns0DIKYYv+WjYCduHsrkT7/EB5XEv4=
 google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8/go.mod h1:JiN7NxoALGmiZfu7CAH4rXhgtRTLTxftemlI0sWmxmc=

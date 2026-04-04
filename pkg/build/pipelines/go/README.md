@@ -22,7 +22,7 @@ Run a build using the go compiler
 | deps | false | space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3  |  |
 | experiments | false | A comma-separated list of Golang experiment names (ex: loopvar) to use when building the binary.  |  |
 | extra-args | false | A space-separated list of extra arguments to pass to the go build command.  |  |
-| go-package | false | The go package to install  | go |
+| go-package | false | **Deprecated** The go package to install. From now on, this input no longer implicitely installs a go toolchain. If a specific toolchain is needed, declare it in the environment.  | build-base |
 | ignore-untracked-files | false | If true, we will provide a gitignore that ignore all untracked files.  | true |
 | install-dir | false | Directory where binaries will be installed  | bin |
 | ldflags | false | List of [pattern=]arg to append to the go compiler with -ldflags |  |

@@ -738,6 +738,31 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 // wolfi, however package install tests will catch that in presubmit
 var generateRuntimePkgConfigDeps = true
 
+// generateStaticLibRunDeps controls whether static:lib<name> runtime dependencies
+// derived from pkg-config Libs.private fields are added to packages.  When false,
+// candidate dependencies are only logged.  Set MELANGE_GENERATE_STATIC_DEPS to
+// "true" or "false" to control this behavior.
+var generateStaticLibRunDeps = parseEnvBool("MELANGE_GENERATE_STATIC_DEPS", false)
+
+// parseEnvBool reads an environment variable and returns its boolean value.
+// Accepted values are "true" and "false"; any other non-empty value is fatal.
+// Returns defaultVal when the variable is unset or empty.
+func parseEnvBool(envVar string, defaultVal bool) bool {
+	v := os.Getenv(envVar)
+	switch v {
+	case "":
+		return defaultVal
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		fmt.Fprintf(os.Stderr, "fatal: %s must be set to 'true' or 'false', got %q\n", envVar, v)
+		os.Exit(1)
+		return false // unreachable
+	}
+}
+
 // generatePkgConfigDeps generates a list of provided pkg-config package names and versions,
 // as well as dependency relationships.
 func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
@@ -818,6 +843,133 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 		} else {
 			log.Infof("  found vendored pkg-config %s for %s", pcName, path)
 			generated.Vendored = append(generated.Vendored, fmt.Sprintf("pc:%s=%s", pcName, hdl.Version()))
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// generateStaticLibDeps scans for static libraries (.a files) in standard
+// library directories and emits static:lib<name> provides for each one found.
+// It also scans pkg-config files for Libs.private entries and emits
+// static:lib<name> runtime dependencies.  The runtime dependency generation is
+// gated behind the MELANGE_GENERATE_STATIC_DEPS environment variable; when
+// disabled, candidate dependencies are only logged.
+func generateStaticLibDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for static libraries...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
+	staticLibDirs := []string{"lib/", "usr/lib/", "lib64/", "usr/lib64/"}
+
+	// Scan for .a files to generate provides.
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasSuffix(path, ".a") {
+			return nil
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		if !fi.Mode().IsRegular() {
+			return nil
+		}
+
+		base := filepath.Base(path)
+		libName, ok := strings.CutSuffix(base, ".a")
+		if !ok || !strings.HasPrefix(libName, "lib") {
+			return nil
+		}
+
+		staticProv := fmt.Sprintf("static:%s", libName)
+		if isInDir(path, staticLibDirs) {
+			log.Infof("  found static library %s for %s", libName, path)
+			generated.Provides = append(generated.Provides, staticProv)
+		} else {
+			log.Infof("  found vendored static library %s for %s", libName, path)
+			generated.Vendored = append(generated.Vendored, staticProv)
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Scan .pc files to generate runtime dependencies from Libs.private.
+	pcDirs := []string{
+		"usr/local/lib/pkgconfig/",
+		"usr/local/share/pkgconfig/",
+		"usr/lib/pkgconfig/",
+		"usr/lib64/pkgconfig/",
+		"usr/share/pkgconfig/",
+	}
+
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasSuffix(path, ".pc") {
+			return nil
+		}
+
+		if !isInDir(path, pcDirs) {
+			return nil
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		// Skip symlinks (e.g. ncurses aliases).
+		if fi.Mode().Type()&fs.ModeSymlink == fs.ModeSymlink {
+			return nil
+		}
+
+		dataFile, err := fsys.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer dataFile.Close()
+
+		data, err := io.ReadAll(dataFile)
+		if err != nil {
+			return nil
+		}
+
+		pkg, err := pkgconfig.Parse(string(data))
+		if err != nil {
+			log.Warnf("unable to parse .pc file (%s) for static dep scanning: %v", path, err)
+			return nil
+		}
+
+		for _, field := range strings.Fields(pkg.LibsPrivate) {
+			name, ok := strings.CutPrefix(field, "-l")
+			if !ok {
+				continue
+			}
+			dep := fmt.Sprintf("static:lib%s", name)
+			if generateStaticLibRunDeps {
+				log.Infof("  found static library dependency (Libs.private) %s for %s", dep, path)
+				generated.Runtime = append(generated.Runtime, dep)
+			} else {
+				log.Infof("  would add static library dependency (Libs.private) %s for %s (set MELANGE_GENERATE_STATIC_DEPS=1 to enable)", dep, path)
+			}
 		}
 
 		return nil
@@ -1185,6 +1337,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generateCmdProviders,
 		generateDocDeps,
 		generatePkgConfigDeps,
+		generateStaticLibDeps,
 		generatePerlDeps,
 		generatePythonDeps,
 		generateRubyDeps,

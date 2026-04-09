@@ -482,12 +482,14 @@ type staticTestHandle struct {
 func (h *staticTestHandle) PackageName() string { return h.name }
 func (h *staticTestHandle) Version() string     { return "1.0-r0" }
 func (h *staticTestHandle) RelativeNames() []string {
-	names := []string{h.name}
+	names := make([]string, 1, 1+len(h.siblings))
+	names[0] = h.name
 	for k := range h.siblings {
 		names = append(names, k)
 	}
 	return names
 }
+
 func (h *staticTestHandle) FilesystemForRelative(pkgName string) (SCAFS, error) {
 	if pkgName == h.name {
 		return h.fsys, nil
@@ -497,11 +499,11 @@ func (h *staticTestHandle) FilesystemForRelative(pkgName string) (SCAFS, error) 
 	}
 	return nil, fmt.Errorf("unknown package %q", pkgName)
 }
-func (h *staticTestHandle) Filesystem() (SCAFS, error)           { return h.fsys, nil }
+func (h *staticTestHandle) Filesystem() (SCAFS, error)            { return h.fsys, nil }
 func (h *staticTestHandle) Options() config.PackageOption         { return config.PackageOption{} }
 func (h *staticTestHandle) BaseDependencies() config.Dependencies { return config.Dependencies{} }
 func (h *staticTestHandle) InstalledPackages() map[string]string  { return nil }
-func (h *staticTestHandle) PkgResolver() *apk.PkgResolver        { return nil }
+func (h *staticTestHandle) PkgResolver() *apk.PkgResolver         { return nil }
 
 func TestStaticLibProvides(t *testing.T) {
 	ctx := slogtest.Context(t)

@@ -929,7 +929,7 @@ func generateStaticLibDeps(ctx context.Context, hdl SCAHandle, generated *config
 	// Libs.private field, either adding them to runtime or only logging them
 	// depending on the feature flag.
 	addStaticDeps := func(libsPrivate, sourceDesc string) {
-		for _, field := range strings.Fields(libsPrivate) {
+		for field := range strings.FieldsSeq(libsPrivate) {
 			name, ok := strings.CutPrefix(field, "-l")
 			if !ok {
 				continue

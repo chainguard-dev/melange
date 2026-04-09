@@ -179,7 +179,7 @@ func TestConfigurationLoad(t *testing.T) {
 				Package: config.Package{
 					Name:      "hello",
 					Version:   "world",
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Test: &config.Test{
 					Environment: defaultEnv(),
@@ -291,7 +291,7 @@ func TestConfigurationLoad(t *testing.T) {
 				Package: config.Package{
 					Name:      "py3-pandas",
 					Version:   "2.1.3",
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Test: &config.Test{
 					Environment: defaultEnv(func(env *apko_types.ImageConfiguration) {

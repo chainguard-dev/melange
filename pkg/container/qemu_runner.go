@@ -789,6 +789,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
+	// Support configurable DNS search domains inside the QEMU VM.
+	if dnsSearch, ok := os.LookupEnv("QEMU_DNS_SEARCH"); ok {
+		log.Infof("qemu: QEMU_DNS_SEARCH set to %s, passing to guest via kernel cmdline", dnsSearch)
+		kernelArgs += " dns_search=" + dnsSearch
+	}
+
 	baseargs = append(baseargs, "-append", kernelArgs)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)

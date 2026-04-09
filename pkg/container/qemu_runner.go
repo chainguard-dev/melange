@@ -697,8 +697,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
 	}
 
-	// default to use all CPUs, if a cpu limit is set, respect it.
+	// default to use all CPUs, if a cgroup or config limit is set, respect it.
+	// In a container (e.g. Kubernetes pod), runtime.NumCPU() returns the host's
+	// total CPUs, not the pod's allocation. Check cgroup limits first.
 	nproc := runtime.NumCPU()
+	if cgroupCPU := getCgroupCPULimitCores(); cgroupCPU > 0 && cgroupCPU < nproc {
+		nproc = cgroupCPU
+	}
 	if cfg.CPU != "" {
 		cpu, err := strconv.Atoi(cfg.CPU)
 		if err == nil && nproc > cpu {
@@ -1758,6 +1763,39 @@ func convertHumanToKB(memory string) (int64, error) {
 
 	// Return the value in kilobytes
 	return num * multiplier / 1024, nil
+}
+
+// getCgroupCPULimitCores reads the cgroup CPU quota for the current process and
+// returns the number of whole CPU cores available. It checks cgroup v2 first,
+// then falls back to cgroup v1. Returns 0 if no cgroup limit is found.
+func getCgroupCPULimitCores() int {
+	// cgroup v2: /sys/fs/cgroup/cpu.max (format: "quota period" e.g. "1000000 100000")
+	if data, err := os.ReadFile("/sys/fs/cgroup/cpu.max"); err == nil {
+		s := strings.TrimSpace(string(data))
+		if !strings.HasPrefix(s, "max") {
+			parts := strings.Fields(s)
+			if len(parts) == 2 {
+				quota, err1 := strconv.ParseInt(parts[0], 10, 64)
+				period, err2 := strconv.ParseInt(parts[1], 10, 64)
+				if err1 == nil && err2 == nil && period > 0 && quota > 0 {
+					return max(int(quota/period), 1)
+				}
+			}
+		}
+	}
+
+	// cgroup v1: cpu.cfs_quota_us / cpu.cfs_period_us
+	quotaData, err1 := os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+	periodData, err2 := os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+	if err1 == nil && err2 == nil {
+		quota, err1 := strconv.ParseInt(strings.TrimSpace(string(quotaData)), 10, 64)
+		period, err2 := strconv.ParseInt(strings.TrimSpace(string(periodData)), 10, 64)
+		if err1 == nil && err2 == nil && period > 0 && quota > 0 {
+			return max(int(quota/period), 1)
+		}
+	}
+
+	return 0
 }
 
 // getCgroupMemoryLimitKB reads the cgroup memory limit for the current process.

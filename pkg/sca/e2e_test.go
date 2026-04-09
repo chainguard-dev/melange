@@ -145,10 +145,13 @@ func TestAnalyze(t *testing.T) {
 				"so:libcrypt.so.1",
 				"so:libcrypto.so.3",
 				"so:libfdisk.so.1",
+				"so:libkmod.so.2",
+				"so:liblzma.so.5",
 				"so:libm.so.6",
 				"so:libmount.so.1",
 				"so:libssl.so.3",
 				"so:libudev.so.1",
+				"so:libzstd.so.1",
 			},
 			Provides: []string{
 				"cmd:bootctl=256.2-r1",
@@ -216,6 +219,24 @@ func TestAnalyze(t *testing.T) {
 				"so:libsystemd-core-256.so=0",
 				"so:libsystemd-shared-256.so=0",
 			},
+		},
+	}, {
+		apk:     "libsystemd-256.2-r1.apk",
+		cfgpath: "systemd.yaml",
+		want: config.Dependencies{
+			Runtime: []string{
+				"so:ld-linux-x86-64.so.2",
+				"so:libc.so.6",
+				"so:libcap.so.2",
+				"so:liblzma.so.5",
+				"so:libsystemd.so.0",
+				"so:libzstd.so.1",
+			},
+			Provides: []string{
+				"so-ver:libsystemd.so.0=256.2-r1",
+				"so:libsystemd.so.0=0",
+			},
+			Vendored: nil,
 		},
 	}} {
 		t.Run(c.apk, func(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"debug/buildinfo"
 	"debug/elf"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,7 @@ import (
 	"github.com/chainguard-dev/go-pkgconfig"
 
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/util"
 )
 
 // LibDirs is the list of library directories to search for shared objects.
@@ -733,6 +735,143 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	return nil
 }
 
+type DlopenJSON struct {
+	SOname      []string
+	Feature     string
+	Description string
+	Priority    string
+}
+
+// Find the dlopen dependencies specified in the ELF notes and return
+// a string array listing all of them.
+func findDlopenDeps(ctx context.Context, hdl SCAHandle, bin *elf.File, path string) ([]string, error) {
+	log := clog.FromContext(ctx)
+
+	deps := []string{}
+
+	for _, section := range bin.Sections {
+		if section.Type != elf.SHT_NOTE {
+			continue
+		}
+		if section.Name != ".note.dlopen" {
+			continue
+		}
+
+		notes, err := util.ReadElfNotes(section, bin.ByteOrder)
+		if err != nil {
+			return nil, err
+		}
+
+		pkgResolver := hdl.PkgResolver()
+		if pkgResolver == nil {
+			log.Debugf("Package resolver is nil; not checking if dlopen dependency exists")
+		}
+
+		for _, note := range notes {
+			var jsonNotes []util.DlopenDependency
+
+			err := json.Unmarshal([]byte(note.Description), &jsonNotes)
+			if err != nil {
+				log.Warnf("could not parse JSON note for %s; ignoring dlopen dependencies for the file", path)
+				continue
+			}
+
+			for _, dlopenNote := range jsonNotes {
+				// According to the spec, if there are
+				// multiple sonames specified then the
+				// implementation should use the first
+				// one that is available on the system.
+				//
+				// We don't take into account the
+				// priority, but perhaps we should.
+				if pkgResolver == nil {
+					// We can't check if the
+					// dependency exists.  Just
+					// use the first one.
+					if len(dlopenNote.SOname) > 0 {
+						deps = append(deps, dlopenNote.SOname[0])
+					}
+					continue
+				}
+
+				// Check if the dependency exists in stereo.
+				for _, dep := range dlopenNote.SOname {
+					candidates, err := pkgResolver.ResolvePackage("so:"+dep, map[*apk.RepositoryPackage]string{})
+					if err == nil && len(candidates) > 0 {
+						deps = append(deps, dep)
+						break
+					} else {
+						log.Debugf("found dlopen dependency %s for %s but no package provides it", dep, path)
+					}
+				}
+			}
+		}
+	}
+
+	return deps, nil
+}
+
+func generateDlopenDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for dlopen dependencies...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
+	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		mode := fi.Mode()
+
+		if !mode.IsRegular() {
+			return nil
+		}
+
+		rawFile, err := fsys.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer rawFile.Close()
+
+		seekableFile, ok := rawFile.(io.ReaderAt)
+		if !ok {
+			return nil
+		}
+
+		elfFile, err := elf.NewFile(seekableFile)
+		if err != nil {
+			return nil
+		}
+		defer elfFile.Close()
+
+		dlopenDeps, err := findDlopenDeps(ctx, hdl, elfFile, path)
+		if err != nil {
+			return err
+		}
+
+		for _, dep := range dlopenDeps {
+			log.Infof("  found dlopen dependency %s for %s", dep, path)
+
+			generated.Runtime = append(generated.Runtime, "so:"+dep)
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // TODO(xnox): Note remove this feature flag, once successful
 // note this can generate depends on pc: files that do not exist in
 // wolfi, however package install tests will catch that in presubmit
@@ -1184,6 +1323,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generateSharedObjectNameDeps,
 		generateCmdProviders,
 		generateDocDeps,
+		generateDlopenDeps,
 		generatePkgConfigDeps,
 		generatePerlDeps,
 		generatePythonDeps,

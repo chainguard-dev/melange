@@ -4,6 +4,7 @@ needs:
   packages:
     - autoconf
     - automake
+    - libtool
 
 inputs:
   dir:

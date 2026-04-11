@@ -152,6 +152,17 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 	}
 }
 
+func TestNewTestWithoutRunner(t *testing.T) {
+	ctx := slogtest.Context(t)
+	_, err := NewTest(ctx,
+		WithTestConfig(filepath.Join("testdata", "test_configuration_load", "py3-pandas.melange.yaml")),
+		WithTestWorkspaceDir(t.TempDir()),
+	)
+	if err != nil {
+		t.Fatalf("NewTest without runner should succeed for compile-only use: %v", err)
+	}
+}
+
 // TestConfigurationLoad is the main set of tests for loading a configuration
 // file for tests. When in doubt, add your test here.
 func TestConfigurationLoad(t *testing.T) {
@@ -168,7 +179,7 @@ func TestConfigurationLoad(t *testing.T) {
 				Package: config.Package{
 					Name:      "hello",
 					Version:   "world",
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Test: &config.Test{
 					Environment: defaultEnv(),
@@ -280,7 +291,7 @@ func TestConfigurationLoad(t *testing.T) {
 				Package: config.Package{
 					Name:      "py3-pandas",
 					Version:   "2.1.3",
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Test: &config.Test{
 					Environment: defaultEnv(func(env *apko_types.ImageConfiguration) {

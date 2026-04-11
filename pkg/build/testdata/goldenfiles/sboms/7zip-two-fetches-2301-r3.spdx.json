@@ -45,6 +45,11 @@
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceLocator": "pkg:apk/wolfi/7zip-two-fetches@2301-r3?arch=x86_64\u0026distro=wolfi",
           "referenceType": "purl"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:7-zip:7-zip:2301:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
         }
       ]
     },

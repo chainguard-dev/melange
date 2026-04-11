@@ -50,7 +50,7 @@ func TestConfiguration_Load(t *testing.T) {
 				Package: config.Package{
 					Name:      "hello",
 					Version:   "world",
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Pipeline: []config.Pipeline{
 					{
@@ -127,7 +127,7 @@ func TestConfiguration_Load(t *testing.T) {
 				Package: config.Package{
 					Name:      "cosign",
 					Version:   "2.0.0",
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Update: config.Update{
 					Enabled: true,
@@ -144,7 +144,7 @@ func TestConfiguration_Load(t *testing.T) {
 			name:       "release-monitor",
 			requireErr: require.NoError,
 			expected: &config.Configuration{
-				Package: config.Package{Name: "bison", Version: "3.8.2", Resources: &config.Resources{}},
+				Package: config.Package{Name: "bison", Version: "3.8.2", Resources: &config.Resources{CPU: "2", Memory: "4Gi"}},
 				Update: config.Update{
 					Enabled: true,
 					Shared:  false,
@@ -199,7 +199,7 @@ func TestConfiguration_Load(t *testing.T) {
 					Name:      "cosign",
 					Version:   "2.0.0",
 					Epoch:     0,
-					Resources: &config.Resources{},
+					Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 				},
 				Environment: apko_types.ImageConfiguration{
 					Environment: map[string]string{
@@ -210,7 +210,6 @@ func TestConfiguration_Load(t *testing.T) {
 						"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 						"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 						"npm_config_cache":   "/var/cache/melange/npm",
-						"CARGO_HOME":         "/var/cache/melange/cargo",
 					},
 					Accounts: apko_types.ImageAccounts{
 						Users:  []apko_types.User{{UserName: buildUser, UID: 1000, GID: apko_types.GID(&gid1000)}},
@@ -283,7 +282,7 @@ package:
 		Package: config.Package{
 			Name:      "nginx",
 			Version:   "100",
-			Resources: &config.Resources{},
+			Resources: &config.Resources{CPU: "2", Memory: "4Gi"},
 		},
 		Subpackages: []config.Subpackage{},
 	}
@@ -306,7 +305,6 @@ package:
 		"PIP_CACHE_DIR":      "/var/cache/melange/pip",
 		"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
 		"npm_config_cache":   "/var/cache/melange/npm",
-		"CARGO_HOME":         "/var/cache/melange/cargo",
 	}
 
 	f := filepath.Join(t.TempDir(), "config")

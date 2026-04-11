@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"iter"
 	"maps"
@@ -46,7 +47,12 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/util"
+
+	_ "embed"
 )
+
+//go:embed schema.json
+var SchemaJSON []byte
 
 const (
 	buildUser   = "build"
@@ -987,6 +993,10 @@ type Update struct {
 	GitHubMonitor *GitHubMonitor `json:"github,omitempty" yaml:"github,omitempty"`
 	// The configuration block for updates tracked via Git
 	GitMonitor *GitMonitor `json:"git,omitempty" yaml:"git,omitempty"`
+	// The configuration block for updates tracked via OCI image tags
+	OCIMonitor *OCIMonitor `json:"oci,omitempty" yaml:"oci,omitempty"`
+	// The configuration block for updates tracked via chainguard version data
+	VersionDataMonitor *VersionDataMonitor `json:"version_data,omitempty" yaml:"version_data,omitempty"`
 	// The configuration block for transforming the `package.version` into an APK version
 	VersionTransform []VersionTransform `json:"version-transform,omitempty" yaml:"version-transform,omitempty"`
 	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
@@ -1053,6 +1063,28 @@ type GitMonitor struct {
 	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
 }
 
+// VersionDataMonitor indicates using chainguard version data
+type VersionDataMonitor struct {
+	// Format string for composing the version, using ${{source_name.field}} placeholders
+	Format string `json:"version_format" yaml:"version_format"`
+	// The list of upstream sources to fetch version data from
+	Sources []VersionDataSource `json:"sources" yaml:"sources"`
+}
+
+// VersionDataSource defines an individual upstream source for version data
+type VersionDataSource struct {
+	// The name of the source, used to reference it in the format string
+	Name string `json:"name" yaml:"name"`
+	// The stream to track for updates (e.g. "12.6", "9")
+	Stream string `json:"stream" yaml:"stream"`
+	// A list of regex patterns to ignore when matching upstream versions
+	Ignore []string `json:"ignore,omitempty" yaml:"ignore,omitempty"`
+	// The source whose commits to use when multiple sources are configured
+	CommitSource string `json:"commit_source,omitempty" yaml:"commit_source,omitempty"`
+	// Whether to use GitHub releases as the tag source instead of git tags
+	UseRelease bool `json:"use_release,omitempty" yaml:"use_release,omitempty"`
+}
+
 // GetStripPrefix returns the prefix that should be stripped from the GitMonitor version.
 func (gm *GitMonitor) GetStripPrefix() string {
 	return gm.StripPrefix
@@ -1112,6 +1144,32 @@ func (rm *ReleaseMonitor) GetFilterPrefix() string {
 func (rm *ReleaseMonitor) GetFilterContains() string {
 	return rm.VersionFilterContains
 }
+
+// OCIMonitor indicates using OCI image tags
+type OCIMonitor struct {
+	// Required: OCI image reference (e.g. cgr.dev/chainguard/node)
+	Identifier string `json:"identifier" yaml:"identifier"`
+	// If the version in the tag contains a prefix which should be ignored
+	StripPrefix string `json:"strip-prefix,omitempty" yaml:"strip-prefix,omitempty"`
+	// If the version in the tag contains a suffix which should be ignored
+	StripSuffix string `json:"strip-suffix,omitempty" yaml:"strip-suffix,omitempty"`
+	// Prefix filter to apply when searching tags
+	TagFilterPrefix string `json:"tag-filter-prefix,omitempty" yaml:"tag-filter-prefix,omitempty"`
+	// Substring filter to apply when searching tags
+	TagFilterContains string `json:"tag-filter-contains,omitempty" yaml:"tag-filter-contains,omitempty"`
+}
+
+// GetStripPrefix returns the prefix that should be stripped from the OCIMonitor version.
+func (om *OCIMonitor) GetStripPrefix() string { return om.StripPrefix }
+
+// GetStripSuffix returns the suffix that should be stripped from the OCIMonitor version.
+func (om *OCIMonitor) GetStripSuffix() string { return om.StripSuffix }
+
+// GetFilterPrefix returns the prefix filter to apply when searching tags in OCIMonitor.
+func (om *OCIMonitor) GetFilterPrefix() string { return om.TagFilterPrefix }
+
+// GetFilterContains returns the substring filter to apply when searching tags in OCIMonitor.
+func (om *OCIMonitor) GetFilterContains() string { return om.TagFilterContains }
 
 // VersionTransform allows mapping the package version to an APK version
 type VersionTransform struct {
@@ -1394,6 +1452,43 @@ func replaceTest(r *strings.Replacer, in *Test) *Test {
 	}
 }
 
+func replaceUpdate(r *strings.Replacer, in Update) Update {
+	out := in
+
+	if in.ReleaseMonitor != nil {
+		out.ReleaseMonitor = &ReleaseMonitor{
+			Identifier:            in.ReleaseMonitor.Identifier,
+			StripPrefix:           in.ReleaseMonitor.StripPrefix,
+			StripSuffix:           in.ReleaseMonitor.StripSuffix,
+			VersionFilterContains: r.Replace(in.ReleaseMonitor.VersionFilterContains),
+			VersionFilterPrefix:   r.Replace(in.ReleaseMonitor.VersionFilterPrefix),
+		}
+	}
+
+	if in.GitHubMonitor != nil {
+		out.GitHubMonitor = &GitHubMonitor{
+			Identifier:        r.Replace(in.GitHubMonitor.Identifier),
+			StripPrefix:       in.GitHubMonitor.StripPrefix,
+			StripSuffix:       in.GitHubMonitor.StripSuffix,
+			TagFilter:         r.Replace(in.GitHubMonitor.TagFilter),
+			TagFilterPrefix:   r.Replace(in.GitHubMonitor.TagFilterPrefix),
+			TagFilterContains: r.Replace(in.GitHubMonitor.TagFilterContains),
+			UseTags:           in.GitHubMonitor.UseTags,
+		}
+	}
+
+	if in.GitMonitor != nil {
+		out.GitMonitor = &GitMonitor{
+			StripPrefix:       in.GitMonitor.StripPrefix,
+			StripSuffix:       in.GitMonitor.StripSuffix,
+			TagFilterPrefix:   r.Replace(in.GitMonitor.TagFilterPrefix),
+			TagFilterContains: r.Replace(in.GitMonitor.TagFilterContains),
+		}
+	}
+
+	return out
+}
+
 func replaceScriptlets(r *strings.Replacer, in *Scriptlets) *Scriptlets {
 	if in == nil {
 		return nil
@@ -1568,24 +1663,23 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 	defer f.Close()
 
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", configurationFilePath, err)
+	}
+
 	root := yaml.Node{}
 
 	cfg := Configuration{root: &root}
 
-	// Unmarshal into a node first
-	decoderNode := yaml.NewDecoder(f)
+	// Unmarshal into a node first, so renovate can operate on its AST.
+	decoderNode := yaml.NewDecoder(bytes.NewReader(data))
 	err = decoderNode.Decode(&root)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
 	}
 
-	// XXX(Elizafox) - Node.Decode doesn't allow setting of KnownFields, so we do this cheesy hack below
-	data, err := yaml.Marshal(&root)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode configuration file %q: %w", configurationFilePath, err)
-	}
-
-	// Now unmarshal it into the struct, part of said cheesy hack
+	// Also unmarshal it into the struct.
 	reader := bytes.NewReader(data)
 	decoder := yaml.NewDecoder(reader)
 	decoder.KnownFields(true)
@@ -1635,6 +1729,8 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	cfg.Environment = replaceImageConfig(replacer, cfg.Environment)
 
 	cfg.Test = replaceTest(replacer, cfg.Test)
+
+	cfg.Update = replaceUpdate(replacer, cfg.Update)
 
 	cfg.Data = nil // TODO: zero this out or not?
 
@@ -1711,7 +1807,6 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		defaultEnvVarPIPCACHEDIR      = "/var/cache/melange/pip"
 		defaultEnvVarCOMPOSERCACHEDIR = "/var/cache/melange/composer"
 		defaultEnvVarNPMCACHE         = "/var/cache/melange/npm"
-		defaultEnvVarCARGOHOME        = "/var/cache/melange/cargo"
 	)
 
 	setIfEmpty := func(key, value string) {
@@ -1727,7 +1822,6 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	setIfEmpty("PIP_CACHE_DIR", defaultEnvVarPIPCACHEDIR)
 	setIfEmpty("COMPOSER_CACHE_DIR", defaultEnvVarCOMPOSERCACHEDIR)
 	setIfEmpty("npm_config_cache", defaultEnvVarNPMCACHE)
-	setIfEmpty("CARGO_HOME", defaultEnvVarCARGOHOME)
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err
@@ -1765,6 +1859,17 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 	if options.disk != "" {
 		cfg.Package.Resources.Disk = options.disk
+	}
+
+	// Apply reasonable defaults for CPU and memory if still unset after YAML and CLI
+	// flag processing. Without these, the QEMU runner defaults to all host CPUs
+	// and 85% of host memory, causing resource contention when multiple builds
+	// share a node.
+	if cfg.Package.Resources.CPU == "" {
+		cfg.Package.Resources.CPU = "2"
+	}
+	if cfg.Package.Resources.Memory == "" {
+		cfg.Package.Resources.Memory = "4Gi"
 	}
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.

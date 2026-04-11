@@ -2,6 +2,9 @@ package:
   name: 7zip-two-fetches
   version: 2301
   epoch: 3
+  cpe:
+    vendor: "7-zip"
+    product: "7-zip"
   description: "File archiver with a high compression ratio"
   copyright:
     - license: LGPL-2.0-only

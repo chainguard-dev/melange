@@ -828,6 +828,50 @@ func generatePkgConfigDeps(ctx context.Context, hdl SCAHandle, generated *config
 	return nil
 }
 
+// generatePerlDeps generates a perl dependency for packages which ship
+// Perl modules.
+func generatePerlDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
+	log := clog.FromContext(ctx)
+	log.Infof("scanning for perl modules...")
+
+	fsys, err := hdl.Filesystem()
+	if err != nil {
+		return err
+	}
+
+	perlModuleMatchUsrLib, err := fs.Glob(fsys, "usr/lib/perl[0-9]*/*_perl")
+	if err != nil {
+		return err
+	}
+	perlModuleMatchLib, err := fs.Glob(fsys, "lib/perl[0-9]*/*_perl")
+	if err != nil {
+		return err
+	}
+
+	perlModuleMatch := slices.Clone(perlModuleMatchUsrLib)
+	perlModuleMatch = append(perlModuleMatch, perlModuleMatchLib...)
+	if len(perlModuleMatch) == 0 {
+		return nil
+	}
+
+	// Get the 'perlN' component of the path
+	perlVersion := strings.Split(perlModuleMatch[0], "/")[2]
+	// Remove the 'perl' prefix
+	perlVersion, _ = strings.CutPrefix(perlVersion, "perl")
+	log.Debugf("  perl module depends on Perl version %s", perlVersion)
+
+	// Do not add a Perl dependency if one already exists.
+	if slices.Contains(hdl.BaseDependencies().Runtime, "perl") {
+		log.Warnf("%s: Perl dependency 'perl' already specified, consider removing it in favor of SCA-generated dependency", hdl.PackageName())
+		return nil
+	}
+
+	log.Infof("  found perl module, generating perl~%s dependency", perlVersion)
+	generated.Runtime = append(generated.Runtime, fmt.Sprintf("perl~%s", perlVersion))
+
+	return nil
+}
+
 // generatePythonDeps generates a python-3.X-base dependency for packages which ship
 // Python modules.
 func generatePythonDeps(ctx context.Context, hdl SCAHandle, generated *config.Dependencies, extraLibDirs []string) error {
@@ -903,10 +947,17 @@ func generateRubyDeps(ctx context.Context, hdl SCAHandle, generated *config.Depe
 		return err
 	}
 
-	rubyGemMatches, err := fs.Glob(fsys, "usr/lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
+	rubyGemMatchesUsrLib, err := fs.Glob(fsys, "usr/lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
 	if err != nil {
 		return err
 	}
+	rubyGemMatchesLib, err := fs.Glob(fsys, "lib/ruby/gems/[0-9]*.[0-9]*.[0.9]*/gems")
+	if err != nil {
+		return err
+	}
+
+	rubyGemMatches := slices.Clone(rubyGemMatchesUsrLib)
+	rubyGemMatches = append(rubyGemMatches, rubyGemMatchesLib...)
 	if len(rubyGemMatches) == 0 {
 		return nil
 	}
@@ -1134,6 +1185,7 @@ func Analyze(ctx context.Context, hdl SCAHandle, generated *config.Dependencies)
 		generateCmdProviders,
 		generateDocDeps,
 		generatePkgConfigDeps,
+		generatePerlDeps,
 		generatePythonDeps,
 		generateRubyDeps,
 		generateShbangDeps,

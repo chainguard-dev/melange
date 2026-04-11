@@ -1,0 +1,36 @@
+package:
+  name: sed
+  version: "4.9"
+  epoch: 8 # go/wolfi-rsc/sed
+  description: "GNU stream editor"
+  copyright:
+    - license: GPL-3.0-or-later
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - ca-certificates-bundle
+
+# This test exists to exercise git-checkout with recurse-submodules,
+# shallow-submodules, and submodule-jobs under set -u. We don't need
+# to actually build sed — just verify the checkout succeeds.
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://git.savannah.gnu.org/git/sed.git
+      tag: v${{package.version}}
+      expected-commit: 7e2e575a36bc88c0f3f3d6d8083c5f5b0ed44009
+      recurse-submodules: true
+      shallow-submodules: true
+      submodule-jobs: $(nproc)
+
+  - runs: |
+      mkdir -p "${{targets.destdir}}"/usr/bin
+      echo "#!/bin/sh" > "${{targets.destdir}}"/usr/bin/sed
+      chmod +x "${{targets.destdir}}"/usr/bin/sed
+
+update:
+  enabled: true
+  release-monitor:
+    identifier: 4789

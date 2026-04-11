@@ -34,6 +34,16 @@ inputs:
     description: |
       Indicates whether --recurse-submodules should be passed to git clone.
     default: false
+  shallow-submodules:
+    description: |
+      Whether to use --shallow-submodules when recurse-submodules is true.
+      Ignored if recurse-submodules is false.
+    default: false
+  submodule-jobs:
+    description: |
+      The number of concurrent jobs to use when recurse-submodules is true.
+      Ignored if recurse-submodules is false.
+    default: 1
   cherry-picks:
     description: |
       List of cherry picks to apply.
@@ -83,7 +93,8 @@ inputs:
 pipeline:
   - runs: |
       #!/bin/sh
-      set -e
+      # shellcheck shell=busybox
+      set -eu
 
       msg() { echo "[git checkout]" "$@"; }
       fail() { msg FAIL "$@"; exit 1; }
@@ -98,7 +109,7 @@ pipeline:
           local attempt=0
           local backoff=$initial_backoff
 
-          while [ $attempt -le $max_retries ]; do
+          while [ $attempt -le "$max_retries" ]; do
               if [ $attempt -gt 0 ]; then
                   msg "Retry attempt $attempt/$max_retries after ${backoff}s backoff..."
               fi
@@ -108,7 +119,7 @@ pipeline:
               fi
 
               attempt=$((attempt + 1))
-              if [ $attempt -gt $max_retries ]; then
+              if [ $attempt -gt "$max_retries" ]; then
                   msg "All $max_retries retry attempts exhausted"
                   return 1
               fi
@@ -129,7 +140,7 @@ pipeline:
 
               # Exponential backoff: double the backoff time
               backoff=$((backoff * 2))
-              if [ $backoff -gt $max_backoff ]; then
+              if [ $backoff -gt "$max_backoff" ]; then
                   backoff=$max_backoff
               fi
           done
@@ -138,11 +149,11 @@ pipeline:
       }
 
       process_cherry_picks() {
-        local cpicksf="$1" oifs="$IFS" count=0
+        local cpicksf="$1" count=0
         local fetched_branches=""
         local sdate=${SOURCE_DATE_EPOCH:-0}
         if [ "$sdate" -lt 315532800 ]; then
-            msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH})"
+            msg "Setting commit date to Jan 1, 1980 (SOURCE_DATE_EPOCH found ${SOURCE_DATE_EPOCH:-(not set)})"
             sdate=315532800
         fi
         if [ -z "$cpicksf" ]; then
@@ -166,6 +177,7 @@ pipeline:
             # Split the line into branch/hash and comment parts
             branch=${line%%:*}
             comment=${line#*:}
+            # shellcheck disable=SC2086
             comment=$(set -f; echo $comment) # Strip leading/trailing whitespace
 
             if [ -z "$comment" ]; then
@@ -186,7 +198,7 @@ pipeline:
             if [ -n "$branch" ]; then
                 case " $fetched_branches " in
                     *" $branch "*) ;;
-                    *) vr git fetch $unshallow_arg origin $branch:$branch || {
+                    *) vr git fetch $unshallow_arg origin "$branch:$branch" || {
                         msg "failed to fetch branch $branch"
                         return 1
                         }
@@ -216,14 +228,20 @@ pipeline:
           local tag=$5 expcommit=$6 recurse=${7:-false}
           local cherry_pick="$8" sparse_paths="$9"
           local max_retries="${10:-3}" initial_backoff="${11:-2}" max_backoff="${12:-60}"
+          local shallow_submodules="${13:-false}" submodule_jobs="${14:-1}"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
               "tag='$tag' expcommit='$expcommit' recurse='$recurse'" \
               "sparse_paths='$sparse_paths' max_retries='$max_retries'" \
-              "initial_backoff='$initial_backoff' max_backoff='$max_backoff'"
+              "initial_backoff='$initial_backoff' max_backoff='$max_backoff'" \
+              "shallow_submodules='$shallow_submodules' submodule_jobs='$submodule_jobs'"
 
           case "$recurse" in
               true|false) :;;
               *) fail "recurse must be true or false, not '$recurse'"
+          esac
+          case "$shallow_submodules" in
+              true|false) :;;
+              *) fail "shallow_submodules must be true or false, not '$shallow_submodules'"
           esac
 
           [ -n "$repo" ] || fail "repository not provided"
@@ -242,12 +260,15 @@ pipeline:
           flags="--config=advice.detachedHead=false"
           [ -n "$branch" ] && flags="$flags --branch=$branch"
           [ -n "$tag" ] && flags="$flags --branch=$tag"
-          [ "$recurse" = "true" ] && flags="$flags --recurse-submodules"
+          if [ "$recurse" = "true" ] ; then
+              flags="$flags --recurse-submodules --jobs=$submodule_jobs"
+              [ "$shallow_submodules" = "true" ] && flags="$flags --shallow-submodules"
+          fi
           [ -n "$sparse_paths" ] && flags="$flags --sparse --filter=blob:none"
 
           if [ "$depth" = "unset" ]; then
             depth=1
-            if [ -n "$branch" -a -n "$expcommit" ]; then
+            if [ -n "$branch" ] && [ -n "$expcommit" ]; then
               # if we're just checking out a specific commit on a branch
               # then we need to get history, otherwise it will break
               # if the expected commit is not tip of the branch.
@@ -266,12 +287,13 @@ pipeline:
           vr git config --global --add safe.directory "$dest_fullpath"
 
           msg "Attempting git clone with retry (max_retries=$max_retries, initial_backoff=${initial_backoff}s, max_backoff=${max_backoff}s)"
+          # shellcheck disable=SC2086
           retry_with_backoff "$max_retries" "$initial_backoff" "$max_backoff" \
               git clone $quiet "--origin=$remote" \
               "--config=user.name=Melange Build" \
               "--config=user.email=melange-build@cgr.dev" \
               $flags \
-              ${depthflag:+"$depthflag"} "$repo" "$workdir" ||
+              ${depthflag:+"${depthflag}"} "$repo" "$workdir" ||
               fail "git clone failed after $max_retries retries"
 
           vr cd "$workdir"
@@ -279,14 +301,16 @@ pipeline:
           # Configure sparse-checkout if paths were provided
           if [ -n "$sparse_paths" ]; then
               msg "Configuring sparse-checkout with paths: $sparse_paths"
+              # shellcheck disable=SC2086
               vr git sparse-checkout set --cone $sparse_paths ||
                   fail "failed to configure sparse-checkout --filter=blob:none"
           fi
 
           msg "tar -c . | tar -C \"$dest_fullpath\" -x"
           ( tar -c . ; echo $? > "$rcfile") | tar -C "$dest_fullpath" -x --no-same-owner
+          # shellcheck disable=SC2162 # ash doesn't support read -f
           read rc < "$rcfile" || fail "failed to read rc file"
-          [ $rc -eq 0 ] || fail "tar creation in $workdir failed"
+          [ "$rc" -eq 0 ] || fail "tar creation in $workdir failed"
 
           rm -rf "$workdir"
           vr cd "$dest_fullpath"
@@ -313,7 +337,7 @@ pipeline:
           # git clone --branch=X will pick the branch X if there
           # exists both a tag and a branch by that name.
           # since a tag was given, we want the tag.
-          vr git fetch $quiet $remote ${depthflag:-"$depthflag"} --no-tags \
+          vr git fetch $quiet $remote ${depthflag:+"${depthflag}"} --no-tags \
               "+refs/tags/$tag:refs/$remote/tags/$tag"
           vr git checkout $quiet "$remote/tags/$tag"
 
@@ -362,6 +386,7 @@ pipeline:
           "${{inputs.recurse-submodules}}" "$cpickf" \
           "${{inputs.sparse-paths}}" \
           "${{inputs.max-retries}}" "${{inputs.initial-backoff}}" \
-          "${{inputs.max-backoff}}"
+          "${{inputs.max-backoff}}" \
+          "${{inputs.shallow-submodules}}" "${{inputs.submodule-jobs}}"
 
       rm -f "$cpickf"

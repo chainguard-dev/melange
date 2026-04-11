@@ -26,6 +26,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/dprotaso/go-yit"
@@ -219,6 +220,12 @@ func addFileToCache(ctx context.Context, cfg CacheConfig, downloadedFile string,
 	return nil
 }
 
+// maxDownloadSize is the maximum allowed download size (1 GB).
+const maxDownloadSize = 1 << 30 // 1 GiB
+
+// downloadTimeout is the maximum time allowed for the entire download.
+const downloadTimeout = 30 * time.Minute
+
 // downloadFile downloads a file and returns a path to it in temporary storage.
 func downloadFile(ctx context.Context, uri string) (string, error) {
 	targetFile, err := os.CreateTemp("", "melange-update-*")
@@ -226,6 +233,10 @@ func downloadFile(ctx context.Context, uri string) (string, error) {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer targetFile.Close()
+
+	// Apply a timeout to the download context to prevent hanging connections.
+	ctx, cancel := context.WithTimeout(ctx, downloadTimeout)
+	defer cancel()
 
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -254,8 +265,15 @@ func downloadFile(ctx context.Context, uri string) (string, error) {
 		return "", fmt.Errorf("unexpected status code %d (%s) when fetching %s", resp.StatusCode, resp.Status, uri)
 	}
 
-	if _, err := io.Copy(targetFile, resp.Body); err != nil {
-		return "", err
+	// Limit the download size to prevent unbounded resource consumption.
+	limitedReader := io.LimitReader(resp.Body, maxDownloadSize+1)
+	n, err := io.Copy(targetFile, limitedReader)
+	if err != nil {
+		return "", fmt.Errorf("failed to download %s: %w", uri, err)
+	}
+	if n > maxDownloadSize {
+		os.Remove(targetFile.Name())
+		return "", fmt.Errorf("download from %s exceeds maximum allowed size of %d bytes", uri, maxDownloadSize)
 	}
 
 	return targetFile.Name(), nil

@@ -181,11 +181,15 @@ func buildEvalRunCommand(_ *config.Pipeline, debugOption rune, workdir string, f
 	// Using go-shellquote library for robust shell escaping
 	safeWorkdir := quoteShellArg(workdir)
 
-	script := fmt.Sprintf(`set -e%c
+	xFlag := ""
+	if debugOption == 'x' {
+		xFlag = "x"
+	}
+	script := fmt.Sprintf(`set -e%so pipefail
 [ -d %s ] || mkdir -p %s
 cd %s
 %s
-exit 0`, debugOption, safeWorkdir, safeWorkdir, safeWorkdir, fragment)
+exit 0`, xFlag, safeWorkdir, safeWorkdir, safeWorkdir, fragment)
 	return []string{"/bin/sh", "-c", script}
 }
 

@@ -20,12 +20,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chainguard-dev/clog"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/linter/types"
 )
+
+// containsPathTraversal checks if a string contains path traversal sequences
+// or path separators that could be used to escape the intended directory.
+func containsPathTraversal(s string) bool {
+	return strings.Contains(s, "..") ||
+		strings.Contains(s, string(filepath.Separator)) ||
+		strings.Contains(s, "/")
+}
 
 // saveLintResults saves the lint results to JSON files in the packages directory
 func saveLintResults(ctx context.Context, cfg *config.Configuration, results map[string]*types.PackageLintResults, outputDir, arch string) error {
@@ -37,6 +46,11 @@ func saveLintResults(ctx context.Context, cfg *config.Configuration, results map
 		return nil
 	}
 
+	// Validate arch to prevent path traversal
+	if containsPathTraversal(arch) {
+		return fmt.Errorf("invalid arch %q: contains path traversal sequence", arch)
+	}
+
 	// Ensure the package directory exists
 	packageDir := filepath.Join(outputDir, arch)
 	if err := os.MkdirAll(packageDir, 0o755); err != nil {
@@ -45,6 +59,10 @@ func saveLintResults(ctx context.Context, cfg *config.Configuration, results map
 
 	// Save results for each package
 	for pkgName, pkgResults := range results {
+		// Validate pkgName to prevent path traversal
+		if containsPathTraversal(pkgName) {
+			return fmt.Errorf("invalid package name %q: contains path traversal sequence", pkgName)
+		}
 		// Generate the filename: lint-{packagename}-{version}-r{epoch}.json
 		filename := fmt.Sprintf("lint-%s-%s-r%d.json", pkgName, cfg.Package.Version, cfg.Package.Epoch)
 		filepath := filepath.Join(packageDir, filename)

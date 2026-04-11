@@ -32,6 +32,11 @@ import (
 	"golang.org/x/text/language"
 )
 
+const (
+	ExtRefSecurity = "SECURITY"
+	ExtRefTypeCPE  = "cpe23Type"
+)
+
 // Package is a representation of an SBOM package specified by the build
 // process. It is later converted to an SPDX package, but it doesn't expose
 // fields that are invariant in the SPDX output.
@@ -81,6 +86,10 @@ type Package struct {
 	// should have only one PURL external ref.)
 	PURL *purl.PackageURL
 
+	// CPE string for upstream of this package, if any. If set, it
+	// will be added as an ExternalRef of type "cpe23Type" to the SPDX
+	// package.
+	CPE string
 	// The Download Location for this package, if any; It set this is generated
 	// alongside the PackageURL from fetch/git-checkout pipelines for upstream
 	// source locations; Leaving this empty will result in NOASSERTION being
@@ -182,6 +191,13 @@ func (p Package) getExternalRefs() []spdx.ExternalRef {
 			Category: spdx.ExtRefPackageManager,
 			Locator:  p.PURL.ToString(),
 			Type:     spdx.ExtRefTypePurl,
+		})
+	}
+	if p.CPE != "" {
+		result = append(result, spdx.ExternalRef{
+			Category: ExtRefSecurity,
+			Locator:  p.CPE,
+			Type:     ExtRefTypeCPE,
 		})
 	}
 

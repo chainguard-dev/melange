@@ -2,6 +2,11 @@
 @jsonschema(id="https://chainguard.dev/melange/pkg/config/configuration")
 #Configuration
 
+#AdditionalCertificateEntry: close({
+	name?:    string
+	content?: string
+})
+
 #BaseImageDescriptor: close({
 	image?:    string
 	apkindex?: string
@@ -9,9 +14,7 @@
 
 // BuildOption describes an optional deviation to a package build.
 #BuildOption: close({
-	Vars!: close({
-		[string]: string
-	})
+	Vars!: [string]: string
 	Environment!: #EnvironmentOption
 })
 
@@ -39,6 +42,14 @@
 	drop?: [...string]
 })
 
+// Capability stores paths and an associated map of capabilities
+// and justification to include in a package.
+#Capability: close({
+	path?: string
+	add?: [string]: string
+	reason?: string
+})
+
 #Checks: close({
 	// Optional: disable these linters that are not enabled by
 	// default.
@@ -52,11 +63,11 @@
 
 	// The specification for the packages build environment
 	// Optional: environment variables to override apko
-	environment?: #ImageConfiguration
+	environment!: #ImageConfiguration
 
 	// Optional: Linux capabilities configuration to apply to the
 	// melange runner.
-	capabilities?: #Capabilities
+	capabilities!: #Capabilities
 
 	// Required: The list of pipelines that produce the package.
 	pipeline?: [...#Pipeline]
@@ -72,14 +83,12 @@
 
 	// Optional: The update block determining how this package is auto
 	// updated
-	update?: #Update
+	update!: #Update
 
 	// Optional: A map of arbitrary variables that can be used via
 	// templating in
 	// the pipeline
-	vars?: close({
-		[string]: string
-	})
+	vars?: [string]: string
 
 	// Optional: A list of transformations to create for the builtin
 	// template
@@ -87,9 +96,7 @@
 	"var-transforms"?: [...#VarTransforms]
 
 	// Optional: Deviations to the build
-	options?: close({
-		[string]: #BuildOption
-	})
+	options?: [string]: #BuildOption
 
 	// Test section for the main package.
 	test?: #Test
@@ -113,11 +120,12 @@
 
 	// Optional: Path to text of the custom License Ref
 	"license-path"?: string
+
+	// Optional: License override
+	"detection-override"?: string
 })
 
-#DataItems: close({
-	[string]: string
-})
+#DataItems: [string]: string
 
 #Dependencies: close({
 	// Optional: List of runtime dependencies
@@ -160,6 +168,7 @@
 	"strip-suffix"?: string
 
 	// Filter to apply when searching tags on a GitHub repository
+	//
 	// Deprecated: Use TagFilterPrefix instead
 	"tag-filter"?: string
 
@@ -205,6 +214,11 @@
 	groups?: [...#Group]
 })
 
+#ImageCertificates: close({
+	additional?: [...#AdditionalCertificateEntry]
+	providers?: [...string]
+})
+
 #ImageConfiguration: close({
 	contents?:      #ImageContents
 	entrypoint?:    #ImageEntrypoint
@@ -213,21 +227,19 @@
 	"work-dir"?:    string
 	accounts?:      #ImageAccounts
 	archs?: [...string]
-	environment?: close({
-		[string]: string
-	})
+	environment?: [string]: string
 	paths?: [...#PathMutation]
 	"vcs-url"?: string
-	annotations?: close({
-		[string]: string
-	})
+	annotations?: [string]: string
 	include?: string
 	volumes?: [...string]
-	layering?: #Layering
+	layering?:     #Layering
+	certificates?: #ImageCertificates
 })
 
 #ImageContents: close({
 	build_repositories?: [...string]
+	runtime_repositories?: [...string]
 	repositories?: [...string]
 	keyring?: [...string]
 	packages?: [...string]
@@ -238,9 +250,7 @@
 	type?:             string
 	command?:          string
 	"shell-fragment"?: string
-	services?: close({
-		[string]: string
-	})
+	services?: [string]: string
 })
 
 #Input: close({
@@ -273,6 +283,26 @@
 	Packages!: [...string]
 })
 
+// OCIMonitor indicates using OCI image tags
+#OCIMonitor: close({
+	// Required: OCI image reference (e.g. cgr.dev/chainguard/node)
+	identifier!: string
+
+	// If the version in the tag contains a prefix which should be
+	// ignored
+	"strip-prefix"?: string
+
+	// If the version in the tag contains a suffix which should be
+	// ignored
+	"strip-suffix"?: string
+
+	// Prefix filter to apply when searching tags
+	"tag-filter-prefix"?: string
+
+	// Substring filter to apply when searching tags
+	"tag-filter-contains"?: string
+})
+
 #Package: close({
 	// The name of the package
 	name!: string
@@ -287,9 +317,7 @@
 	description?: string
 
 	// Annotations for this package
-	annotations?: close({
-		[string]: string
-	})
+	annotations?: [string]: string
 
 	// The URL to the package's homepage
 	url?: string
@@ -305,7 +333,7 @@
 	copyright?: [...#Copyright]
 
 	// List of packages to depends on
-	dependencies?: #Dependencies
+	dependencies!: #Dependencies
 
 	// Optional: Options that alter the packages behavior
 	options?: #PackageOption
@@ -317,26 +345,27 @@
 
 	// Optional: enabling, disabling, and configuration of build
 	// checks
-	checks?: #Checks
+	checks!: #Checks
 
 	// The CPE field values to be used for matching against NVD
 	// vulnerability
 	// records, if known.
-	cpe?: #CPE
+	cpe!: #CPE
+
+	// Capabilities to set after the pipeline completes.
+	setcap?: [...#Capability]
 
 	// Optional: The amount of time to allow this build to take before
 	// timing out.
 	timeout?: int
 
 	// Optional: Resources to allocate to the build.
-	// Used by external schedulers (like elastic build) to provision
-	// appropriately-sized build pods/VMs.
 	resources?: #Resources
 
 	// Optional: Resources to allocate for test execution.
 	// Used by external schedulers (like elastic build) to provision
-	// appropriately-sized test pods/VMs. If not specified, external
-	// schedulers should fall back to the resources configuration.
+	// appropriately-sized test pods/VMs. If not specified, falls back
+	// to Resources.
 	"test-resources"?: #Resources
 })
 
@@ -354,6 +383,9 @@
 
 	// Optional: Mark this package as not providing any executables
 	"no-commands"?: bool
+
+	// Optional: Don't generate versioned depends for shared libraries
+	"no-versioned-shlib-deps"?: bool
 })
 
 #PathMutation: close({
@@ -383,9 +415,7 @@
 
 	// Optional: Arguments passed to the reusable pipelines defined in
 	// `uses`
-	with?: close({
-		[string]: string
-	})
+	with?: [string]: string
 
 	// Optional: The command to run using the builder's shell
 	// (/bin/sh)
@@ -403,9 +433,7 @@
 	pipeline?: [...#Pipeline]
 
 	// Optional: A map of inputs to the pipeline
-	inputs?: close({
-		[string]: #Input
-	})
+	inputs?: [string]: #Input
 
 	// Optional: Configuration to determine any explicit dependencies
 	// this pipeline may have
@@ -424,9 +452,7 @@
 	"working-directory"?: string
 
 	// Optional: environment variables to override apko
-	environment?: close({
-		[string]: string
-	})
+	environment?: [string]: string
 })
 
 #PipelineAssertions: close({
@@ -478,7 +504,7 @@
 
 #Scriptlets: close({
 	// Optional: A script to run on a custom trigger
-	trigger?: #Trigger
+	trigger!: #Trigger
 
 	// Optional: The script to run pre install. The script should
 	// contain the
@@ -526,7 +552,7 @@
 	pipeline?: [...#Pipeline]
 
 	// Optional: List of packages to depend on
-	dependencies?: #Dependencies
+	dependencies!: #Dependencies
 
 	// Optional: Options that alter the packages behavior
 	options?:    #PackageOption
@@ -543,10 +569,13 @@
 
 	// Optional: enabling, disabling, and configuration of build
 	// checks
-	checks?: #Checks
+	checks!: #Checks
 
 	// Test section for the subpackage.
 	test?: #Test
+
+	// Capabilities to set after the pipeline completes.
+	setcap?: [...#Capability]
 })
 
 #Test: close({
@@ -556,7 +585,7 @@
 	// needs
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
-	environment?: #ImageConfiguration
+	environment!: #ImageConfiguration
 
 	// Required: The list of pipelines that test the produced package.
 	pipeline!: [...#Pipeline]
@@ -608,6 +637,13 @@
 	// The configuration block for updates tracked via Git
 	git?: #GitMonitor
 
+	// The configuration block for updates tracked via OCI image tags
+	oci?: #OCIMonitor
+
+	// The configuration block for updates tracked via chainguard
+	// version data
+	version_data?: #VersionDataMonitor
+
 	// The configuration block for transforming the `package.version`
 	// into an APK version
 	"version-transform"?: [...#VersionTransform]
@@ -648,6 +684,39 @@
 	//
 	// Example: mangeled-package-version
 	to!: string
+})
+
+// VersionDataMonitor indicates using chainguard version data
+#VersionDataMonitor: close({
+	// Format string for composing the version, using
+	// ${{source_name.field}} placeholders
+	version_format!: string
+
+	// The list of upstream sources to fetch version data from
+	sources!: [...#VersionDataSource]
+})
+
+// VersionDataSource defines an individual upstream source for
+// version data
+#VersionDataSource: close({
+	// The name of the source, used to reference it in the format
+	// string
+	name!: string
+
+	// The stream to track for updates (e.g. "12.6", "9")
+	stream!: string
+
+	// A list of regex patterns to ignore when matching upstream
+	// versions
+	ignore?: [...string]
+
+	// The source whose commits to use when multiple sources are
+	// configured
+	commit_source?: string
+
+	// Whether to use GitHub releases as the tag source instead of git
+	// tags
+	use_release?: bool
 })
 
 // VersionTransform allows mapping the package version to an APK

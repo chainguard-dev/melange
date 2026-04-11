@@ -8,6 +8,7 @@ new built-in pipelines, consult [Creating a new built-in pipeline](/docs/PIPELIN
 
 
 - [fetch](#fetch)
+- [git-am](#git-am)
 - [git-checkout](#git-checkout)
 - [patch](#patch)
 - [strip](#strip)
@@ -34,6 +35,16 @@ Fetch and extract external object into workspace
 | timeout | false | The timeout (in seconds) to use for connecting and reading. The fetch will fail if the timeout is hit.  | 5 |
 | uri | true | The URI to fetch as an artifact.  |  |
 
+## git-am
+
+Apply patches with git am
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| patches | true | A list of patches to apply with git am, as a whitespace delimited string.  Patches are resolved relative to the workspace root, which is where melange copies the contents of the source directory (--source-dir, defaulting to the directory containing the melange YAML file).  This is the same convention used by the 'patch' pipeline: place patch files in the package's source directory (e.g. ./my-package/) alongside the YAML file.  This pipeline assumes that git-checkout used the default destination ('.'), so the workspace root is the git repository.  If git-checkout clones into a subdirectory, the patches must include the path relative to the workspace root.  |  |
+
 ## git-checkout
 
 Check out sources from git
@@ -52,7 +63,9 @@ Check out sources from git
 | max-retries | false | Maximum number of retry attempts for git clone operation on failure.  | 3 |
 | recurse-submodules | false | Indicates whether --recurse-submodules should be passed to git clone.  | false |
 | repository | true | The repository to check out sources from.  |  |
+| shallow-submodules | false | Whether to use --shallow-submodules when recurse-submodules is true. Ignored if recurse-submodules is false.  | false |
 | sparse-paths | false | List of directory paths to checkout when using sparse-checkout (cone mode). This is useful for monorepos where you only need specific subdirectories. When specified, only these directories will be checked out from the repository. Uses cone mode for optimal performance. Example:   sparse-paths:     - omnibump     - shared/lib  |  |
+| submodule-jobs | false | The number of concurrent jobs to use when recurse-submodules is true. Ignored if recurse-submodules is false.  | 1 |
 | tag | false | The tag to check out.  Branch and tag are mutually exclusive.  |  |
 | type-hint | false | Type hint to use during SBOM generation for the provided git repository. This is primarily used to identify Gitlab based sources which are not heuristically identifiable as Gitlab.  Supported hints: gitlab.  |  |
 

@@ -31,7 +31,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"text/template"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -74,10 +73,6 @@ echo "cleaning Workspace by removing $# file/directories in $d"
 rm -Rf "$@"`,
 	"shellEmptyDir",
 }
-
-var gccLinkTemplate = `*link:
-+ %{!r:--package-metadata={"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.Arch.ToAPK}}"{{if .Configuration.Package.CPE.Vendor}},"appCpe":"{{.Configuration.Package.CPEString}}"{{end}}}}
-`
 
 var ErrSkipThisArch = errors.New("error: skip this arch")
 
@@ -370,6 +365,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	if err := bc.BuildImage(ctx); err != nil {
 		return "", fmt.Errorf("unable to generate image: %w", err)
 	}
+
 	// if the runner needs an image, create an OCI image from the directory and load it.
 	loader := b.Runner.OCIImageLoader()
 	if loader == nil {
@@ -524,17 +520,7 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	}
 
 	// Write out build settings into workspacedir
-	// For now, just the gcc spec file and just link settings.
-	// In the future can control debug symbol generation, march/mtune, etc.
-	specFile, err := os.Create(filepath.Join(b.WorkspaceDir, ".melange.gcc.spec"))
-	if err != nil {
-		return err
-	}
-	specTemplate := template.New("gccSpecFile")
-	if err := template.Must(specTemplate.Parse(gccLinkTemplate)).Execute(specFile, b); err != nil {
-		return err
-	}
-	if err := specFile.Close(); err != nil {
+	if err := b.createCompilerConfigFiles(ctx); err != nil {
 		return err
 	}
 	return fs.WalkDir(src, ".", func(path string, d fs.DirEntry, err error) error {
@@ -783,6 +769,16 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("retrieving workspace: %w", err)
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
+
+	// Retrieve and log build observability events if the observability hook
+	// is installed. Only applicable to QEMU builds which run in a full VM.
+	if b.Runner.Name() == container.QemuName {
+		if obsEvents, err := container.RetrieveObservabilityEvents(ctx, cfg); err != nil {
+			log.Warnf("failed to retrieve observability events: %v", err)
+		} else if obsEvents != nil {
+			container.LogObservabilityEvents(ctx, obsEvents)
+		}
+	}
 
 	// perform package linting
 	for _, lt := range linterQueue {

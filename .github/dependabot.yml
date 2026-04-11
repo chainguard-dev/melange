@@ -8,6 +8,7 @@ updates:
     groups:
       gomod:
         update-types:
+          - "minor"
           - "patch"
 
   - package-ecosystem: "github-actions"

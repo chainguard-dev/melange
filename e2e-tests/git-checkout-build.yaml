@@ -267,35 +267,19 @@ pipeline:
       set -eu
       runner_user=$(id -u)
       melange_user=$(stat -c "%u" .)
-      expected_runner=""
-      expected_melange=""
-      if [[ $runner_user == $melange_user ]]; then
-        # Ownership of existing files match the ownership of files created within the runner
-        # (i.e. by the git-checkout pipeline tar --extract command).
-        expected_runner=48
-        expected_melange=2
-      else
-        # Ownership of existing files is not changed.
-        expected_runner=42
-        expected_melange=1
-      fi
-      exclude_args="! -regex ^\.\/\.ssh.*$ ! -regex ^./.gitconfig$"
-      found_runner=$(find . -user $runner_user $exclude_args | wc -l)
-      mismatch=""
-      if [[ $found_runner != $expected_runner ]]; then
-        echo "Expected $expected_runner files owned by the runner user $runner_user, found $found_runner"
-        find . -user $runner_user $exclude_args
-        echo "files owned by Melange user $melange_user:"
-        find . -user $melange_user $exclude_args
-        mismatch=true
-      fi
-      if [[ $melange_user != $runner_user ]]; then
-        found_melange=$(find . -user $melange_user $exclude_args | wc -l)
-        if [[ $found_runner != $expected_runner || $found_melange != $expected_melange ]]; then
-          echo "Expected $expected_melange files owned by $melange_user, found $found_melange"
-          find . -user $melange_user $exclude_args
-          mismatch=true
-        fi
-      fi
-      [[ $mismatch != "" ]] && exit 1
 
+      exclude_args="! -regex ^\.\/\.ssh.*$ ! -regex ^./.gitconfig$"
+      find . -user "$melange_user" $exclude_args | sort > /tmp/melange-owned.lst
+      find . -user "$runner_user" $exclude_args | sort > /tmp/runner-owned.lst
+
+      if [ "${runner_user}" = "${melange_user}" ]; then
+        sort -u melange-created.lst runner-created.lst > \
+          /tmp/expected-melange-owned.lst
+        cp /tmp/expected-melange-owned.lst /tmp/expected-runner-owned.lst
+      else
+        cp melange-created.lst /tmp/expected-melange-owned.lst
+        cp runner-created.lst /tmp/expected-runner-owned.lst
+      fi
+
+      diff -u /tmp/expected-melange-owned.lst /tmp/melange-owned.lst
+      diff -u /tmp/expected-runner-owned.lst /tmp/runner-owned.lst

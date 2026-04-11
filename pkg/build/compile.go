@@ -225,6 +225,11 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	// When compiling an already-compiled config, `uses` will be redundant and FYI only,
 	// so ignore it if there is also a `pipelines` spelled out.
 	if uses != "" && len(pipeline.Pipeline) == 0 {
+		// Validate that 'uses' does not contain path traversal sequences or absolute paths.
+		if filepath.IsAbs(uses) || strings.Contains(uses, "..") {
+			return fmt.Errorf("invalid pipeline 'uses' value %q: must not contain absolute paths or '..' sequences", uses)
+		}
+
 		var data []byte
 		// Set this to fail up front in case there are no pipeline dirs specified
 		// and we can't find them.
@@ -232,7 +237,12 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 
 		for _, pd := range c.PipelineDirs {
 			log.Debugf("trying to load pipeline %q from %q", uses, pd)
-			data, err = os.ReadFile(filepath.Join(pd, uses+".yaml")) // #nosec G304 - Loading pipeline definition from configured directory
+			target := filepath.Join(pd, uses+".yaml")
+			// Verify the resolved path is still within the pipeline directory.
+			if rel, err := filepath.Rel(pd, filepath.Clean(target)); err != nil || strings.HasPrefix(rel, "..") {
+				return fmt.Errorf("pipeline 'uses' value %q resolves outside pipeline directory %q", uses, pd)
+			}
+			data, err = os.ReadFile(target) // #nosec G304 - Loading pipeline definition from configured directory
 			if err == nil {
 				log.Debugf("Found pipeline %s", string(data))
 				break
@@ -426,13 +436,15 @@ func stripComments(runs string) (string, error) {
 		}
 	}
 
-	var perr error
-	if err := parser.Stmts(strings.NewReader(runs), func(stmt *syntax.Stmt) bool {
-		perr = printer.Print(&builder, stmt)
+	for stmt, err := range parser.StmtsSeq(strings.NewReader(runs)) {
+		if err != nil {
+			return "", maybeIncludeSyntaxError(runs, err)
+		}
+		perr := printer.Print(&builder, stmt)
+		if perr != nil {
+			return "", maybeIncludeSyntaxError(runs, perr)
+		}
 		builder.WriteRune('\n')
-		return perr == nil
-	}); err != nil || perr != nil {
-		return "", maybeIncludeSyntaxError(runs, errors.Join(err, perr))
 	}
 
 	return builder.String(), nil

@@ -15,7 +15,6 @@
 package container
 
 import (
-	"archive/tar"
 	"bufio"
 	"bytes"
 	"context"
@@ -29,6 +28,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"os"
@@ -49,7 +49,6 @@ import (
 	apko_cpio "chainguard.dev/apko/pkg/cpio"
 	"github.com/chainguard-dev/clog"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/kballard/go-shellquote"
 	"github.com/u-root/u-root/pkg/cpio"
 	"go.opentelemetry.io/otel"
@@ -68,6 +67,20 @@ const QemuName = "qemu"
 
 const (
 	defaultDiskSize = "50Gi"
+
+	// sshDialTimeout is the maximum time allowed for TCP connect + SSH handshake.
+	sshDialTimeout = 30 * time.Second
+
+	// sshKeepaliveInterval is how often keepalive requests are sent.
+	sshKeepaliveInterval = 30 * time.Second
+
+	// sshKeepaliveMaxMissed is the number of consecutive missed keepalives
+	// before the connection is closed (equivalent to ServerAliveCountMax).
+	sshKeepaliveMaxMissed = 3
+
+	// sshKeepaliveRequestTimeout is how long to wait for a single keepalive
+	// response before counting it as missed.
+	sshKeepaliveRequestTimeout = 10 * time.Second
 )
 
 type qemu struct{}
@@ -185,7 +198,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 	}
 
 	// Connect to the SSH server
-	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	client, err := sshDialWithTimeout(cfg.SSHAddress, config, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
@@ -628,25 +641,21 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	baseargs := []string{}
 
-	kernelConsole := ""
-	// If the log level is debug, then crank up the logging.
-	// Otherwise, use quiet mode.
+	// Always attach the serial console so guest kernel and init output is
+	// captured through QEMU's stdout, giving visibility into boot failures
+	// (e.g. when SSH never comes up). Kernel verbosity is still gated on
+	// the log level.
+	kernelConsole := "console=hvc0"
 	if log.Enabled(ctx, slog.LevelDebug) {
 		kernelConsole += " debug loglevel=7"
 	} else {
 		kernelConsole += " quiet"
 	}
 
-	// Only enable console on debug runs.
-	// Spare some boot time and memory
-	serialArgs := []string{}
-	if log.Enabled(ctx, slog.LevelDebug) {
-		kernelConsole = "console=hvc0"
-		serialArgs = []string{
-			"-device", "virtio-serial-pci,id=virtio-serial0,max_ports=2",
-			"-chardev", "stdio,id=charconsole0",
-			"-device", "virtconsole,chardev=charconsole0,id=console0",
-		}
+	serialArgs := []string{
+		"-device", "virtio-serial-pci,id=virtio-serial0,max_ports=2",
+		"-chardev", "stdio,id=charconsole0",
+		"-device", "virtconsole,chardev=charconsole0,id=console0",
 	}
 
 	// Helper to add memory-backend suffix for virtiofs shared memory
@@ -688,8 +697,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
 	}
 
-	// default to use all CPUs, if a cpu limit is set, respect it.
+	// default to use all CPUs, if a cgroup or config limit is set, respect it.
+	// In a container (e.g. Kubernetes pod), runtime.NumCPU() returns the host's
+	// total CPUs, not the pod's allocation. Check cgroup limits first.
 	nproc := runtime.NumCPU()
+	if cgroupCPU := getCgroupCPULimitCores(); cgroupCPU > 0 && cgroupCPU < nproc {
+		nproc = cgroupCPU
+	}
 	if cfg.CPU != "" {
 		cpu, err := strconv.Atoi(cfg.CPU)
 		if err == nil && nproc > cpu {
@@ -742,7 +756,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHControlAddress+"-:2223")
-	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1,romfile=")
+	// Set host_mtu to avoid silent packet drops in nested environments (e.g.,
+	// QEMU inside GKE pods). SLIRP defaults to 1500 MTU but the host path MTU
+	// may be lower due to encapsulation (GCP VPC uses 1460, pod networks can be
+	// lower). The guest kernel picks up host_mtu via virtio feature negotiation
+	// and configures the interface MTU automatically at boot.
+	baseargs = append(baseargs, "-device", "virtio-net-pci,netdev=id1,romfile=,host_mtu=1400")
 	// add random generator via pci, improve ssh startup time
 	baseargs = append(baseargs, "-device", "virtio-rng-pci,rng=rng0", "-object", "rng-random,filename=/dev/urandom,id=rng0")
 	// panic=-1 ensures that if the init fails, we immediately exit the machine
@@ -849,6 +868,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	// #nosec G204 - Architecture is from validated configuration, not user input
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
+	clog.FromContext(ctx).Infof("qemu: VM resources: arch=%s cpus=%d memory=%dMiB", cfg.Arch.ToAPK(), nproc, mem/1024)
 	clog.FromContext(ctx).Info("qemu: starting VM")
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
@@ -931,13 +951,16 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	select {
 	case <-started:
 		log.Info("qemu: VM started successfully, SSH server is up")
-		secureDelete(ctx, cfg.InitramfsPath)
-		cfg.InitramfsPath = ""
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
 		defer stopVirtiofsd(ctx, cfg)
 		return fmt.Errorf("qemu: VM exited unexpectedly: %w", err)
+	case <-logCtx.Done():
+		defer os.Remove(cfg.ImgRef)
+		defer os.Remove(cfg.Disk)
+		defer stopVirtiofsd(ctx, cfg)
+		return fmt.Errorf("qemu: %w", context.Cause(logCtx))
 	case <-ctx.Done():
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
@@ -945,15 +968,16 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("qemu: context canceled while waiting for VM to start: %w", context.Cause(ctx))
 	}
 
-	err = getHostKey(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("qemu: could not get VM host key")
+	if err := getHostKey(ctx, cfg); err != nil {
+		return fmt.Errorf("qemu: could not get VM host key: %w", err)
 	}
 
-	err = setupSSHClients(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("qemu: could not setup SSH client")
+	if err := setupSSHClients(ctx, cfg); err != nil {
+		return fmt.Errorf("qemu: could not setup SSH client: %w", err)
 	}
+
+	secureDelete(ctx, cfg.InitramfsPath)
+	cfg.InitramfsPath = ""
 
 	// Zero out sensitive private key material now that all SSH connections are established
 	// The public key is retained for verification in setupSSHClients
@@ -965,7 +989,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	kv, err := getGuestKernelVersion(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("qemu: unable to query guest kernel version")
+		return fmt.Errorf("qemu: unable to query guest kernel version: %w", err)
 	}
 	clog.FromContext(ctx).Infof("qemu: running kernel version: %s", kv)
 
@@ -1136,27 +1160,123 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 	}
 
 	// Connect to the SSH server
-	cfg.SSHBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, buildConfig)
+	cfg.SSHBuildClient, err = sshDialWithTimeout(cfg.SSHAddress, buildConfig, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server on the control (unchrooted) port
-	cfg.SSHControlClient, err = ssh.Dial("tcp", cfg.SSHControlAddress, controlConfig)
+	cfg.SSHControlClient, err = sshDialWithTimeout(cfg.SSHControlAddress, controlConfig, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
 	// Connect to the SSH server on the chrooted port with privilege
-	cfg.SSHControlBuildClient, err = ssh.Dial("tcp", cfg.SSHAddress, controlConfig)
+	cfg.SSHControlBuildClient, err = sshDialWithTimeout(cfg.SSHAddress, controlConfig, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to dial: %s", err)
 		return err
 	}
 
+	// Start SSH keepalives for all clients to prevent idle disconnects
+	startSSHKeepalive(ctx, cfg.SSHBuildClient, "build")
+	startSSHKeepalive(ctx, cfg.SSHControlClient, "control")
+	startSSHKeepalive(ctx, cfg.SSHControlBuildClient, "control-build")
+
 	return nil
+}
+
+// sshDialWithTimeout dials an SSH connection with a deadline covering both the
+// TCP connect and the SSH handshake. This prevents hangs when the remote end
+// accepts the TCP connection but stalls during the handshake (golang/go#19338).
+func sshDialWithTimeout(addr string, config *ssh.ClientConfig, timeout time.Duration) (*ssh.Client, error) {
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set a deadline covering the entire SSH handshake
+	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	// Clear the deadline so it doesn't affect future operations
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return ssh.NewClient(c, chans, reqs), nil
+}
+
+// sshKeepaliveClient is the interface needed for SSH keepalive operations.
+type sshKeepaliveClient interface {
+	SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error)
+	Close() error
+}
+
+// startSSHKeepalive sends periodic keepalive requests to an SSH client to
+// prevent idle connection timeouts. After sshKeepaliveMaxMissed consecutive
+// missed keepalives (equivalent to ServerAliveCountMax), the client connection
+// is closed. The goroutine stops when the context is canceled or the connection
+// is closed.
+func startSSHKeepalive(ctx context.Context, client sshKeepaliveClient, name string) {
+	go runSSHKeepalive(ctx, client, name)
+}
+
+// runSSHKeepalive is the keepalive loop, separated from startSSHKeepalive for
+// testability (synctest requires the goroutine to be started inside the bubble).
+func runSSHKeepalive(ctx context.Context, client sshKeepaliveClient, name string) {
+	t := time.NewTicker(sshKeepaliveInterval)
+	defer t.Stop()
+
+	missed := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if err := sshSendKeepalive(ctx, client); err != nil {
+				missed++
+				clog.FromContext(ctx).Debugf("ssh keepalive missed for %s client (%d/%d): %v", name, missed, sshKeepaliveMaxMissed, err)
+				if missed >= sshKeepaliveMaxMissed {
+					clog.FromContext(ctx).Warnf("ssh keepalive: closing %s client after %d consecutive missed keepalives", name, missed)
+					client.Close()
+					return
+				}
+				continue
+			}
+			missed = 0
+		}
+	}
+}
+
+// sshSendKeepalive sends a single keepalive request with a timeout to prevent
+// blocking indefinitely on a hung connection.
+func sshSendKeepalive(ctx context.Context, client sshKeepaliveClient) error {
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(sshKeepaliveRequestTimeout):
+		return fmt.Errorf("keepalive request timed out after %s", sshKeepaliveRequestTimeout)
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // getWorkspaceLicenseFiles returns a list of possible license files from the
@@ -1280,7 +1400,7 @@ func getKernelPath(ctx context.Context) (string, error) {
 			kernel = kernelVar
 		}
 	} else if _, err := os.Stat(kernel); err != nil {
-		return "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE")
+		return "", fmt.Errorf("qemu: /boot/vmlinuz not found, specify a kernel path with env variable QEMU_KERNEL_IMAGE: %w", err)
 	}
 
 	return kernel, nil
@@ -1385,7 +1505,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 		HostKeyCallback: ssh.FixedHostKey(cfg.VMHostKeyPublic),
 	}
 
-	client, err := ssh.Dial("tcp", cfg.SSHAddress, config)
+	client, err := sshDialWithTimeout(cfg.SSHAddress, config, sshDialTimeout)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("Failed to verify and connect to VM: %s", err)
 		return fmt.Errorf("vm host key verification failed (possible security issue): %w", err)
@@ -1645,11 +1765,80 @@ func convertHumanToKB(memory string) (int64, error) {
 	return num * multiplier / 1024, nil
 }
 
+// getCgroupCPULimitCores reads the cgroup CPU quota for the current process and
+// returns the number of whole CPU cores available. It checks cgroup v2 first,
+// then falls back to cgroup v1. Returns 0 if no cgroup limit is found.
+func getCgroupCPULimitCores() int {
+	// cgroup v2: /sys/fs/cgroup/cpu.max (format: "quota period" e.g. "1000000 100000")
+	if data, err := os.ReadFile("/sys/fs/cgroup/cpu.max"); err == nil {
+		s := strings.TrimSpace(string(data))
+		if !strings.HasPrefix(s, "max") {
+			parts := strings.Fields(s)
+			if len(parts) == 2 {
+				quota, err1 := strconv.ParseInt(parts[0], 10, 64)
+				period, err2 := strconv.ParseInt(parts[1], 10, 64)
+				if err1 == nil && err2 == nil && period > 0 && quota > 0 {
+					return max(int(quota/period), 1)
+				}
+			}
+		}
+	}
+
+	// cgroup v1: cpu.cfs_quota_us / cpu.cfs_period_us
+	quotaData, err1 := os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+	periodData, err2 := os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+	if err1 == nil && err2 == nil {
+		quota, err1 := strconv.ParseInt(strings.TrimSpace(string(quotaData)), 10, 64)
+		period, err2 := strconv.ParseInt(strings.TrimSpace(string(periodData)), 10, 64)
+		if err1 == nil && err2 == nil && period > 0 && quota > 0 {
+			return max(int(quota/period), 1)
+		}
+	}
+
+	return 0
+}
+
+// getCgroupMemoryLimitKB reads the cgroup memory limit for the current process.
+// It checks cgroup v2 first, then falls back to cgroup v1. Returns 0 if no
+// cgroup limit is found or the limit is effectively unlimited.
+func getCgroupMemoryLimitKB() int {
+	// cgroup v2: /sys/fs/cgroup/memory.max
+	if data, err := os.ReadFile("/sys/fs/cgroup/memory.max"); err == nil {
+		s := strings.TrimSpace(string(data))
+		if s != "max" {
+			if bytes, err := strconv.ParseInt(s, 10, 64); err == nil && bytes > 0 {
+				return int(bytes / 1024)
+			}
+		}
+	}
+
+	// cgroup v1: /sys/fs/cgroup/memory/memory.limit_in_bytes
+	if data, err := os.ReadFile("/sys/fs/cgroup/memory/memory.limit_in_bytes"); err == nil {
+		s := strings.TrimSpace(string(data))
+		if bytes, err := strconv.ParseInt(s, 10, 64); err == nil && bytes > 0 {
+			// cgroup v1 reports a very large number (close to max int64) when unlimited
+			const unlimitedThreshold = 1 << 50 // ~1 PiB, well above any real limit
+			if bytes < unlimitedThreshold {
+				return int(bytes / 1024)
+			}
+		}
+	}
+
+	return 0
+}
+
 func getAvailableMemoryKB() int {
 	mem := 16000000
 
 	switch runtime.GOOS {
 	case "linux":
+		// Check cgroup limits first — in a container (e.g. Kubernetes pod),
+		// /proc/meminfo reports the entire node's memory, not the pod's allocation.
+		// The cgroup limit reflects the actual memory available to this process.
+		if cgroupMem := getCgroupMemoryLimitKB(); cgroupMem > 0 {
+			return cgroupMem
+		}
+
 		f, e := os.Open("/proc/meminfo")
 		if e != nil {
 			return mem
@@ -1717,7 +1906,7 @@ func getAvailableMemoryKB() int {
 func randomPortN() (int, error) {
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return 0, fmt.Errorf("no open port found")
+		return 0, fmt.Errorf("no open port found: %w", err)
 	}
 	defer l.Close()
 
@@ -1936,65 +2125,100 @@ func secureDelete(ctx context.Context, path string) {
 }
 
 func generateCpio(ctx context.Context, cfg *Config) (string, error) {
-	/*
-	 * we only build once, useful for local development, we
-	 * cache it.
-	 * if present, we nop and return, else we build it.
-	 */
-	cacheDir := filepath.Join(
-		"kernel",
-		cfg.Arch.ToAPK())
+	var baseInitramfs string
 
-	cacheDir = filepath.Join(cacheDir, "melange-cpio")
+	// Check for prebuilt initramfs via environment variable
+	if prebuiltPath := os.Getenv("QEMU_BASE_INITRAMFS"); prebuiltPath != "" {
+		// Validate file exists and is readable
+		if _, err := os.Stat(prebuiltPath); err != nil {
+			return "", fmt.Errorf("QEMU_BASE_INITRAMFS file not accessible: %w", err)
+		}
+		clog.FromContext(ctx).Infof("qemu: using prebuilt base initramfs from QEMU_BASE_INITRAMFS: %s", prebuiltPath)
+		baseInitramfs = prebuiltPath
+	} else {
+		// Fall back to generating or using cached initramfs
 
-	// Include additional packages in cache filename to invalidate cache when they change
-	additionalPkgs := getAdditionalPackages(ctx)
-	cacheSuffix := getPackageCacheSuffix(additionalPkgs)
+		/*
+		 * we only build once, useful for local development, we
+		 * cache it.
+		 * if present, we nop and return, else we build it.
+		 */
+		cacheDir := filepath.Join(
+			"kernel",
+			cfg.Arch.ToAPK(),
+			"melange-cpio")
 
-	baseInitramfs := filepath.Join(
-		cacheDir,
-		fmt.Sprintf("melange-guest%s.initramfs.cpio", cacheSuffix))
-	initramfsInfo, err := os.Stat(baseInitramfs)
+		if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+			return "", fmt.Errorf("unable to create dest directory: %w", err)
+		}
 
-	// Check if we can use the cached base initramfs (less than 24h old)
-	useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
+		additionalPkgs := getAdditionalPackages(ctx)
+		cacheSuffix := getPackageCacheSuffix(additionalPkgs)
 
-	if !useCache {
-		err = generateBaseInitramfs(ctx, cfg, baseInitramfs, cacheDir, additionalPkgs)
-		if err != nil {
-			return "", err
+		baseInitramfs = filepath.Join(
+			cacheDir,
+			fmt.Sprintf("melange-guest%s.initramfs.cpio", cacheSuffix))
+		initramfsInfo, err := os.Stat(baseInitramfs)
+
+		// Check if we can use the cached base initramfs (less than 24h old)
+		useCache := err == nil && time.Since(initramfsInfo.ModTime()) < 24*time.Hour
+
+		if !useCache {
+			microvmCfg := DefaultMicrovmConfig()
+			microvmCfg.AdditionalPackages = additionalPkgs
+			err = GenerateBaseInitramfs(ctx, cfg.Arch, microvmCfg, baseInitramfs)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 
-	return injectHostKeyIntoCpio(ctx, cfg, baseInitramfs)
+	// Inject SSH host keys and modules
+	return injectRuntimeData(ctx, cfg, os.Getenv("QEMU_KERNEL_MODULES"), baseInitramfs)
 }
 
-// generateBaseInitramfs creates the base initramfs with microvm-init.
-// This is cached for performance as it doesn't change often.
-func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cacheDir string, additionalPkgs []string) error {
+// MicrovmConfig configures how the microvm initramfs is built.
+// This is used by both the QEMU runner's auto-generation and the
+// `melange build-qemu-initramfs` command.
+type MicrovmConfig struct {
+	Package            string   // Main init package (default: "microvm-init")
+	Repositories       []string // APK repositories
+	AdditionalPackages []string // Extra packages to include
+	ExtraKeys          []string // Extra keys for APK signature verification
+}
+
+// DefaultMicrovmConfig returns the default microvm configuration.
+// This uses the "microvm-init" package from the Chainguard APK repository.
+func DefaultMicrovmConfig() MicrovmConfig {
+	return MicrovmConfig{
+		Package:      "microvm-init",
+		Repositories: []string{"https://apk.cgr.dev/chainguard"},
+	}
+}
+
+// GenerateBaseInitramfs generates a base initramfs suitable for the QEMU runner.
+// This can be reused via QEMU_BASE_INITRAMFS, but is cached if not.
+//
+// The generated initramfs does NOT contain SSH host keys or kernel modules,
+// those are injected at runtime by the QEMU runner.
+func GenerateBaseInitramfs(ctx context.Context, arch apko_types.Architecture, cfg MicrovmConfig, outputPath string) error {
 	clog.FromContext(ctx).Info("qemu: generating base initramfs")
 
-	err := os.MkdirAll(cacheDir, 0o755)
-	if err != nil {
-		return fmt.Errorf("unable to create dest directory: %w", err)
-	}
-
-	// Start with base packages and add any additional packages from environment
-	packages := make([]string, 0, len(additionalPkgs)+1)
-	packages = append(packages, "microvm-init")
-	packages = append(packages, additionalPkgs...)
+	// Start with base packages and add any additional packages from configuration
+	packages := make([]string, 0, len(cfg.AdditionalPackages)+1)
+	packages = append(packages, cfg.Package)
+	packages = append(packages, cfg.AdditionalPackages...)
 
 	spec := apko_types.ImageConfiguration{
 		Contents: apko_types.ImageContents{
-			BuildRepositories: []string{
-				"https://apk.cgr.dev/chainguard",
-			},
-			Packages: packages,
+			BuildRepositories: cfg.Repositories,
+			Packages:          packages,
 		},
 	}
 	opts := []apko_build.Option{
 		apko_build.WithImageConfiguration(spec),
-		apko_build.WithArch(cfg.Arch),
+		apko_build.WithArch(arch),
+		apko_build.WithExtraKeys(cfg.ExtraKeys),
 	}
 
 	tmpDir, err := os.MkdirTemp("", "melange-guest-*.initramfs")
@@ -2020,21 +2244,7 @@ func generateBaseInitramfs(ctx context.Context, cfg *Config, initramfsPath, cach
 
 	clog.FromContext(ctx).Debugf("using %s for image layer", layerTarGZ)
 
-	// in case of some kernel images, we also need the /lib/modules directory to load
-	// necessary drivers, like 9p, virtio_net which are foundamental for the VM working.
-	if qemuModule, ok := os.LookupEnv("QEMU_KERNEL_MODULES"); ok {
-		clog.FromContext(ctx).Debugf("qemu: QEMU_KERNEL_MODULES env set, injecting modules in initramfs")
-		if _, err := os.Stat(qemuModule); err == nil {
-			clog.FromContext(ctx).Debugf("qemu: local QEMU_KERNEL_MODULES dir detected, injecting")
-			layer, err = injectKernelModules(ctx, layer, qemuModule)
-			if err != nil {
-				clog.FromContext(ctx).Errorf("qemu: could not inject needed kernel modules into initramfs: %v", err)
-				return err
-			}
-		}
-	}
-
-	guestInitramfs, err := os.Create(initramfsPath) // #nosec G304 - Creating initramfs in build output
+	guestInitramfs, err := os.Create(outputPath) // #nosec G304 - Creating initramfs in build output
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create cpio initramfs: %v", err)
 		return err
@@ -2096,17 +2306,16 @@ func getPackageCacheSuffix(packages []string) string {
 	return fmt.Sprintf("-%x", hash[:6])
 }
 
-// injectHostKeyIntoCpio creates a new initramfs by concatenating the base
-// initramfs with a secondary cpio containing the VM's SSH host key.
-// This allows us to use cached base initramfs while injecting fresh keys each time.
-//
+// injectRuntimeData injects SSH host keys and kernel modules in a base initramfs.
+// This allows us to use cached base initramfs while injecting fresh keys and latest modules
+// each time.
 // The file exists only briefly until QEMU reads it into memory, at which point it should be deleted.
-func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs string) (string, error) {
+func injectRuntimeData(ctx context.Context, cfg *Config, modulesDir, baseInitramfs string) (string, error) {
 	if cfg.VMHostKeySigner == nil || cfg.VMHostKeyPrivateKeyBytes == nil {
 		return "", fmt.Errorf("VM host key not generated")
 	}
 
-	clog.FromContext(ctx).Debug("qemu: injecting SSH host key into initramfs")
+	clog.FromContext(ctx).Debug("qemu: injecting SSH host key and kernel modules into initramfs")
 
 	combinedInitramfs, err := os.CreateTemp("", "melange-initramfs-*.cpio")
 	if err != nil {
@@ -2149,6 +2358,46 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 		return "", fmt.Errorf("failed to write host public key: %w", err)
 	}
 
+	if modulesDir != "" {
+		var moduleRecords []cpio.Record
+		modfs := os.DirFS(modulesDir)
+		archivePrefix := filepath.Join("lib", filepath.Base(filepath.Clean(modulesDir)))
+
+		walkModules := func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			// Skip symlinks — extracted APKs may contain broken absolute symlinks
+			// that are not kernel modules (e.g. /lib/modules/<ver>/vmlinuz -> /boot/vmlinuz-virt).
+			// The kernel image is provided separately via QEMU_KERNEL_IMAGE.
+			if d.Type()&fs.ModeSymlink != 0 {
+				return nil
+			}
+			archivePath := filepath.Join(archivePrefix, path)
+			if d.IsDir() {
+				moduleRecords = append(moduleRecords, cpio.Directory(archivePath, 0o755))
+			} else {
+				f, err := modfs.Open(path)
+				if err != nil {
+					return err
+				}
+				contents, err := io.ReadAll(f)
+				f.Close()
+				if err != nil {
+					return err
+				}
+				moduleRecords = append(moduleRecords, cpio.StaticFile(archivePath, string(contents), 0o755))
+			}
+			return nil
+		}
+		if err := fs.WalkDir(modfs, ".", walkModules); err != nil {
+			return "", fmt.Errorf("failed to generate module cpio records: %w", err)
+		}
+		if err := cpio.WriteRecordsAndDirs(cpioWriter, moduleRecords); err != nil {
+			return "", fmt.Errorf("failed to write modules: %w", err)
+		}
+	}
+
 	// Write CPIO trailer to finalize the archive
 	if err := cpioWriter.WriteRecord(cpio.TrailerRecord); err != nil {
 		return "", fmt.Errorf("failed to finalize cpio: %w", err)
@@ -2165,81 +2414,4 @@ func injectHostKeyIntoCpio(ctx context.Context, cfg *Config, baseInitramfs strin
 	clog.FromContext(ctx).Debugf("qemu: created initramfs with injected host key at %s", initramfsPath)
 	success = true
 	return initramfsPath, nil
-}
-
-// in case of external modules (usually for 9p and virtio) we need a matching /lib/modules/kernel-$(uname)
-// we need to inject this directly into the initramfs cpio, as we cannot share them via 9p later.
-func injectKernelModules(ctx context.Context, rootfs v1.Layer, modulesPath string) (v1.Layer, error) {
-	clog.FromContext(ctx).Info("qemu: appending modules to initramfs")
-
-	// get tar layer, we will need to inject new files into it
-	uncompressed, err := rootfs.Uncompressed()
-	if err != nil {
-		return nil, err
-	}
-	defer uncompressed.Close()
-
-	// copy old tar layer into new tar
-	buf := new(bytes.Buffer)
-	tarWriter := tar.NewWriter(buf)
-	tartReader := tar.NewReader(uncompressed)
-
-	for {
-		header, err := tartReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return nil, err
-		}
-		// #nosec G110 - Copying trusted tar content in controlled build environment
-		if _, err := io.Copy(tarWriter, tartReader); err != nil {
-			return nil, err
-		}
-	}
-
-	// Walk through the input directory and add files to the tar archive
-	err = filepath.Walk(modulesPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		data, err := os.ReadFile(path) // #nosec G304 - Reading guest file for verification
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", path, err)
-		}
-
-		header, err := tar.FileInfoHeader(info, path)
-		if err != nil {
-			return fmt.Errorf("failed to create tar header for %s: %w", path, err)
-		}
-
-		header.Name = "/lib/modules/" + filepath.ToSlash(path[len(modulesPath):])
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return fmt.Errorf("failed to write tar header for %s: %w", path, err)
-		}
-
-		if _, err := tarWriter.Write(data); err != nil {
-			return fmt.Errorf("failed to write file %s to tar: %w", path, err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	opener := func() (io.ReadCloser, error) {
-		// Return a ReadCloser from the buffer
-		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
-	}
-
-	// Create a layer from the Opener
-	return tarball.LayerFromOpener(opener)
 }

@@ -81,4 +81,9 @@ type Config struct {
 	VirtiofsEnabled     bool   // Whether virtiofs is enabled for cache
 	VirtiofsdPID        int    // PID of virtiofsd daemon for cleanup
 	VirtiofsdSocketPath string // Path to Unix socket for virtiofsd
+
+	// ObservabilityHook is true when the observability hook's sentinel file
+	// was found in the initramfs CPIO during VM setup. When false,
+	// RetrieveObservabilityEvents returns immediately without probing the VM.
+	ObservabilityHook bool
 }

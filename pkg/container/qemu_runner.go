@@ -26,6 +26,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -394,6 +395,24 @@ func (bw *qemu) StartPod(ctx context.Context, cfg *Config) error {
 	return createMicroVM(ctx, cfg)
 }
 
+// waitForProcessExit polls until a process exits or the timeout is reached.
+// Returns true if the process exited, false if timeout exceeded.
+func waitForProcessExit(proc *os.Process, timeout time.Duration) bool {
+	if proc == nil {
+		return true
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		// Signal 0 tests if the process exists without sending a signal
+		err := proc.Signal(syscall.Signal(0))
+		if err != nil {
+			return true // process is gone
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
+}
+
 // TerminatePod terminates a pod if necessary. For Qemu runners, shuts
 // down the guest VM.
 func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
@@ -405,7 +424,8 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	defer secureDelete(ctx, cfg.InitramfsPath)
 	defer stopVirtiofsd(ctx, cfg)
 
-	clog.FromContext(ctx).Info("qemu: sending shutdown signal")
+	log := clog.FromContext(ctx)
+	log.Info("qemu: sending shutdown signal")
 	err := sendSSHCommand(ctx,
 		cfg.SSHControlClient,
 		cfg,
@@ -416,12 +436,29 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", "echo s > /proc/sysrq-trigger && echo o > /proc/sysrq-trigger&"},
 	)
 	if err != nil {
-		clog.FromContext(ctx).Warnf("failed to gracefully shutdown vm, killing it: %v", err)
-		// in case of graceful shutdown failure, axe it with pkill
-		return syscall.Kill(cfg.QemuPID, syscall.SIGKILL)
+		// ExitMissingError is expected when the VM powers off abruptly before
+		// the SSH channel can return a clean exit status. Don't log this as an error.
+		var missingErr *ssh.ExitMissingError
+		if !errors.As(err, &missingErr) {
+			log.Warnf("qemu: graceful shutdown command failed: %v", err)
+		}
 	}
 
-	return nil
+	// Wait up to 5 seconds for the VM process to exit
+	if waitForProcessExit(cfg.QemuProcess, 5*time.Second) {
+		return nil
+	}
+
+	// VM didn't exit, try SIGTERM and wait another 5 seconds
+	log.Warn("qemu: VM did not exit after shutdown signal, sending SIGTERM")
+	_ = cfg.QemuProcess.Signal(syscall.SIGTERM)
+	if waitForProcessExit(cfg.QemuProcess, 5*time.Second) {
+		return nil
+	}
+
+	// VM still didn't exit, send SIGKILL
+	log.Warn("qemu: VM did not exit after SIGTERM, sending SIGKILL")
+	return cfg.QemuProcess.Signal(syscall.SIGKILL)
 }
 
 // WorkspaceTar implements Runner
@@ -1118,7 +1155,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		// don't fail the build because of this.
 	}
 
-	cfg.QemuPID = qemuCmd.Process.Pid
+	cfg.QemuProcess = qemuCmd.Process
 	return nil
 }
 
@@ -1599,7 +1636,12 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	clog.FromContext(ctx).Debugf("running (%d) %v", len(command), cmd)
 	err = session.Run(cmd)
 	if err != nil {
-		clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
+		// ExitMissingError is expected when the SSH channel closes abruptly
+		// (e.g., when the VM powers off). Don't log it as an error.
+		var missingErr *ssh.ExitMissingError
+		if !errors.As(err, &missingErr) {
+			clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
+		}
 		return err
 	}
 

@@ -16,6 +16,7 @@ package container
 
 import (
 	"crypto/ed25519"
+	"os"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -73,7 +74,7 @@ type Config struct {
 	SSHBuildClient           *ssh.Client // SSH client for the build environment, may not have privileges
 	SSHControlBuildClient    *ssh.Client // SSH client for control operations in the build environment, has privileges
 	SSHControlClient         *ssh.Client // SSH client for unrestricted control environment, has privileges
-	QemuPID                  int
+	QemuProcess              *os.Process // QEMU process handle (not just PID, to avoid PID reuse issues)
 	RunAsGID                 string
 
 	// Virtiofs-related fields for cache directory

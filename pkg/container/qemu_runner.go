@@ -2330,7 +2330,7 @@ func parseDNSSearchDomains(input string) []string {
 	// Split on comma or whitespace
 	parts := dnsSearchDelimiterRegex.Split(input, -1)
 
-	var domains []string
+	domains := make([]string, 0, len(parts))
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {

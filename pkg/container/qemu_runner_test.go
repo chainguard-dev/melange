@@ -236,6 +236,7 @@ func TestParseDNSSearchDomains(t *testing.T) {
 		name     string
 		input    string
 		expected []string
+		wantErr  bool
 	}{
 		// Valid single domain
 		{
@@ -249,22 +250,16 @@ func TestParseDNSSearchDomains(t *testing.T) {
 			input:    "example.com,test.org",
 			expected: []string{"example.com", "test.org"},
 		},
-		// Valid multiple domains - space separated
+		// Multiple commas collapsed
 		{
-			name:     "space separated domains",
-			input:    "example.com test.org",
-			expected: []string{"example.com", "test.org"},
+			name:     "multiple commas collapsed",
+			input:    "a.com,,b.org",
+			expected: []string{"a.com", "b.org"},
 		},
-		// Mixed delimiters
+		// Comma with spaces around domains (trimmed)
 		{
-			name:     "mixed comma and space delimiters",
-			input:    "a.com,b.org c.net",
-			expected: []string{"a.com", "b.org", "c.net"},
-		},
-		// Multiple spaces/commas collapsed
-		{
-			name:     "multiple delimiters collapsed",
-			input:    "a.com,,b.org  c.net",
+			name:     "comma with spaces trimmed",
+			input:    "a.com, b.org , c.net",
 			expected: []string{"a.com", "b.org", "c.net"},
 		},
 		// Hyphenated domain
@@ -287,147 +282,165 @@ func TestParseDNSSearchDomains(t *testing.T) {
 		},
 		// Empty input
 		{
-			name:     "empty string",
-			input:    "",
-			expected: nil,
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
 		},
 		// Only whitespace
 		{
-			name:     "only whitespace",
-			input:    "   ",
-			expected: nil,
+			name:    "only whitespace",
+			input:   "   ",
+			wantErr: true,
 		},
 		// Only commas
 		{
-			name:     "only commas",
-			input:    ",,,",
-			expected: nil,
+			name:    "only commas",
+			input:   ",,,",
+			wantErr: true,
+		},
+		// Space-separated domains (not allowed)
+		{
+			name:    "space separated domains rejected",
+			input:   "example.com test.org",
+			wantErr: true,
+		},
+		// Newline in domain (not allowed)
+		{
+			name:    "newline rejected",
+			input:   "foo\nbar",
+			wantErr: true,
+		},
+		// Tab in domain (not allowed)
+		{
+			name:    "tab rejected",
+			input:   "foo\tbar",
+			wantErr: true,
 		},
 		// Injection with equals sign (netdev option injection)
 		{
-			name:     "injection attempt with equals",
-			input:    "evil=value",
-			expected: nil,
+			name:    "injection attempt with equals",
+			input:   "evil=value",
+			wantErr: true,
 		},
 		// Injection with hostfwd attempt
 		{
-			name:     "hostfwd injection attempt",
-			input:    "foo,hostfwd=tcp::8080-:22",
-			expected: nil,
+			name:    "hostfwd injection attempt",
+			input:   "foo,hostfwd=tcp::8080-:22",
+			wantErr: true,
 		},
 		// Injection with colon
 		{
-			name:     "colon injection (port-like)",
-			input:    "domain:8080",
-			expected: nil,
+			name:    "colon injection (port-like)",
+			input:   "domain:8080",
+			wantErr: true,
 		},
 		// Semicolon injection (command separator)
 		{
-			name:     "semicolon injection",
-			input:    "foo;rm -rf /",
-			expected: nil,
+			name:    "semicolon injection",
+			input:   "foo;rm -rf /",
+			wantErr: true,
 		},
 		// Pipe injection
 		{
-			name:     "pipe injection",
-			input:    "foo|cat /etc/passwd",
-			expected: nil,
+			name:    "pipe injection",
+			input:   "foo|cat /etc/passwd",
+			wantErr: true,
 		},
 		// Backtick injection
 		{
-			name:     "backtick injection",
-			input:    "foo`whoami`",
-			expected: nil,
+			name:    "backtick injection",
+			input:   "foo`whoami`",
+			wantErr: true,
 		},
 		// Dollar sign injection
 		{
-			name:     "dollar sign injection",
-			input:    "foo$HOME",
-			expected: nil,
+			name:    "dollar sign injection",
+			input:   "foo$HOME",
+			wantErr: true,
 		},
 		// Quote injection
 		{
-			name:     "double quote injection",
-			input:    `foo"bar`,
-			expected: nil,
+			name:    "double quote injection",
+			input:   `foo"bar`,
+			wantErr: true,
 		},
 		// Single quote injection
 		{
-			name:     "single quote injection",
-			input:    "foo'bar",
-			expected: nil,
+			name:    "single quote injection",
+			input:   "foo'bar",
+			wantErr: true,
 		},
 		// Ampersand injection
 		{
-			name:     "ampersand injection",
-			input:    "foo&bar",
-			expected: nil,
+			name:    "ampersand injection",
+			input:   "foo&bar",
+			wantErr: true,
 		},
 		// Parentheses injection
 		{
-			name:     "parentheses injection",
-			input:    "foo(bar)",
-			expected: nil,
+			name:    "parentheses injection",
+			input:   "foo(bar)",
+			wantErr: true,
 		},
 		// Bracket injection
 		{
-			name:     "bracket injection",
-			input:    "foo[bar]",
-			expected: nil,
+			name:    "bracket injection",
+			input:   "foo[bar]",
+			wantErr: true,
 		},
 		// Brace injection
 		{
-			name:     "brace injection",
-			input:    "foo{bar}",
-			expected: nil,
+			name:    "brace injection",
+			input:   "foo{bar}",
+			wantErr: true,
 		},
 		// Angle bracket injection
 		{
-			name:     "angle bracket injection",
-			input:    "foo<bar>",
-			expected: nil,
+			name:    "angle bracket injection",
+			input:   "foo<bar>",
+			wantErr: true,
 		},
 		// Backslash injection
 		{
-			name:     "backslash injection",
-			input:    "foo\\bar",
-			expected: nil,
+			name:    "backslash injection",
+			input:   "foo\\bar",
+			wantErr: true,
 		},
 		// Forward slash (path-like)
 		{
-			name:     "forward slash injection",
-			input:    "foo/bar",
-			expected: nil,
-		},
-		// Newline as delimiter (treated like space)
-		{
-			name:     "newline as delimiter",
-			input:    "foo\nbar",
-			expected: []string{"foo", "bar"},
-		},
-		// Tab as delimiter (treated like space)
-		{
-			name:     "tab as delimiter",
-			input:    "foo\tbar",
-			expected: []string{"foo", "bar"},
+			name:    "forward slash injection",
+			input:   "foo/bar",
+			wantErr: true,
 		},
 		// One valid, one invalid domain
 		{
-			name:     "mixed valid and invalid domains",
-			input:    "good.com,evil=bad",
-			expected: nil,
+			name:    "mixed valid and invalid domains",
+			input:   "good.com,evil=bad",
+			wantErr: true,
 		},
 		// QEMU dnssearch option injection attempt
 		{
-			name:     "dnssearch option injection",
-			input:    "foo,dnssearch=evil.com",
-			expected: nil,
+			name:    "dnssearch option injection",
+			input:   "foo,dnssearch=evil.com",
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseDNSSearchDomains(tt.input)
+			result, err := parseDNSSearchDomains(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("parseDNSSearchDomains(%q) expected error, got nil with result %v", tt.input, result)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("parseDNSSearchDomains(%q) unexpected %v", tt.input, err)
+				return
+			}
 
 			if len(result) != len(tt.expected) {
 				t.Errorf("parseDNSSearchDomains(%q) returned %d domains, expected %d: got %v, want %v",

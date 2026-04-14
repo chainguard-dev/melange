@@ -761,17 +761,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// domains, or when the build environment requires specific DNS resolution
 	// behavior. The search domains are passed to SLIRP which includes them in DHCP
 	// responses, so the guest receives them naturally via DHCP.
-	// Supports multiple domains: comma or space separated.
-	// Example: QEMU_DNS_SEARCH="example.com my.domain.org"
+	// Multiple domains should be comma-separated.
 	// Example: QEMU_DNS_SEARCH="example.com,my.domain.org"
 	if dnsSearch, ok := os.LookupEnv("QEMU_DNS_SEARCH"); ok {
-		domains := parseDNSSearchDomains(dnsSearch)
-		if len(domains) > 0 {
-			log.Infof("qemu: QEMU_DNS_SEARCH set to %v, adding %d domains to SLIRP network config", domains, len(domains))
-			netdevArgs += buildDNSSearchNetdevArgs(domains)
-		} else {
-			log.Warnf("qemu: QEMU_DNS_SEARCH contains invalid characters or is empty, ignoring: %s", dnsSearch)
+		domains, err := parseDNSSearchDomains(dnsSearch)
+		if err != nil {
+			return fmt.Errorf("invalid QEMU_DNS_SEARCH value %q: %w", dnsSearch, err)
 		}
+		log.Infof("qemu: QEMU_DNS_SEARCH set to %v, adding %d domain(s) to SLIRP network config", domains, len(domains))
+		netdevArgs += buildDNSSearchNetdevArgs(domains)
 	}
 	baseargs = append(baseargs, "-netdev", netdevArgs)
 	// Set host_mtu to avoid silent packet drops in nested environments (e.g.,
@@ -2314,21 +2312,18 @@ var (
 	// Only allows alphanumeric characters, dots, and hyphens.
 	// This prevents injection of QEMU netdev options via malicious domain names.
 	dnsSearchDomainRegex = regexp.MustCompile(`^[a-zA-Z0-9.-]+$`)
-	// dnsSearchDelimiterRegex splits on comma or whitespace (space, tab, newline).
-	dnsSearchDelimiterRegex = regexp.MustCompile(`[,\s]+`)
 )
 
-// parseDNSSearchDomains parses and validates DNS search domains from a string.
-// Input can be comma or space delimited (or both).
-// Returns nil if any domain is invalid (fail-safe).
-func parseDNSSearchDomains(input string) []string {
+// parseDNSSearchDomains parses and validates DNS search domains from a comma-separated string.
+// Returns an error if the input is empty or contains invalid domain characters.
+func parseDNSSearchDomains(input string) ([]string, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
-		return nil
+		return nil, fmt.Errorf("empty input")
 	}
 
-	// Split on comma or whitespace
-	parts := dnsSearchDelimiterRegex.Split(input, -1)
+	// Only split on commas
+	parts := strings.Split(input, ",")
 
 	domains := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -2339,18 +2334,17 @@ func parseDNSSearchDomains(input string) []string {
 
 		// Validate domain: only allow [a-zA-Z0-9.-]
 		if !dnsSearchDomainRegex.MatchString(part) {
-			// Invalid character found - reject entire input for security
-			return nil
+			return nil, fmt.Errorf("invalid characters in domain %q: only alphanumeric, dots, and hyphens are allowed", part)
 		}
 
 		domains = append(domains, part)
 	}
 
 	if len(domains) == 0 {
-		return nil
+		return nil, fmt.Errorf("no valid domains found")
 	}
 
-	return domains
+	return domains, nil
 }
 
 // buildDNSSearchNetdevArgs constructs the QEMU netdev dnssearch options string.

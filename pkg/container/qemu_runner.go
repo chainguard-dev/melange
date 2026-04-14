@@ -755,7 +755,18 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-nodefaults")
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHControlAddress+"-:2223")
+	netdevArgs := "user,id=id1,hostfwd=tcp:" + cfg.SSHAddress + "-:22,hostfwd=tcp:" + cfg.SSHControlAddress + "-:2223"
+	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
+	// This is useful for builds that need to resolve short hostnames via search
+	// domains, or when the build environment requires specific DNS resolution
+	// behavior. The search domain is passed to SLIRP which includes it in DHCP
+	// responses, so the guest receives it naturally via DHCP.
+	// Example: QEMU_DNS_SEARCH=example.com
+	if dnsSearch, ok := os.LookupEnv("QEMU_DNS_SEARCH"); ok {
+		log.Infof("qemu: QEMU_DNS_SEARCH set to %s, adding to SLIRP network config", dnsSearch)
+		netdevArgs += ",dnssearch=" + dnsSearch
+	}
+	baseargs = append(baseargs, "-netdev", netdevArgs)
 	// Set host_mtu to avoid silent packet drops in nested environments (e.g.,
 	// QEMU inside GKE pods). SLIRP defaults to 1500 MTU but the host path MTU
 	// may be lower due to encapsulation (GCP VPC uses 1460, pod networks can be
@@ -787,12 +798,6 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} else {
 			log.Warnf("qemu: TESTING env must be a number, ignoring invalid value: %s", testingValue)
 		}
-	}
-
-	// Support configurable DNS search domains inside the QEMU VM.
-	if dnsSearch, ok := os.LookupEnv("QEMU_DNS_SEARCH"); ok {
-		log.Infof("qemu: QEMU_DNS_SEARCH set to %s, passing to guest via kernel cmdline", dnsSearch)
-		kernelArgs += " dns_search=" + dnsSearch
 	}
 
 	baseargs = append(baseargs, "-append", kernelArgs)

@@ -792,7 +792,23 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-nodefaults")
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	baseargs = append(baseargs, "-netdev", "user,id=id1,hostfwd=tcp:"+cfg.SSHAddress+"-:22,hostfwd=tcp:"+cfg.SSHControlAddress+"-:2223")
+	netdevArgs := "user,id=id1,hostfwd=tcp:" + cfg.SSHAddress + "-:22,hostfwd=tcp:" + cfg.SSHControlAddress + "-:2223"
+	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
+	// This is useful for builds that need to resolve short hostnames via search
+	// domains, or when the build environment requires specific DNS resolution
+	// behavior. The search domains are passed to SLIRP which includes them in DHCP
+	// responses, so the guest receives them naturally via DHCP.
+	// Multiple domains should be comma-separated.
+	// Example: QEMU_DNS_SEARCH="example.com,my.domain.org"
+	if dnsSearch, ok := os.LookupEnv("QEMU_DNS_SEARCH"); ok {
+		domains, err := parseDNSSearchDomains(dnsSearch)
+		if err != nil {
+			return fmt.Errorf("invalid QEMU_DNS_SEARCH value %q: %w", dnsSearch, err)
+		}
+		log.Infof("qemu: QEMU_DNS_SEARCH set to %v, adding %d domain(s) to SLIRP network config", domains, len(domains))
+		netdevArgs += buildDNSSearchNetdevArgs(domains)
+	}
+	baseargs = append(baseargs, "-netdev", netdevArgs)
 	// Set host_mtu to avoid silent packet drops in nested environments (e.g.,
 	// QEMU inside GKE pods). SLIRP defaults to 1500 MTU but the host path MTU
 	// may be lower due to encapsulation (GCP VPC uses 1460, pod networks can be
@@ -2328,6 +2344,65 @@ func getAdditionalPackages(ctx context.Context) []string {
 	}
 
 	return packages
+}
+
+// dnsSearchDomainRegex matches valid DNS search domain characters.
+// Only allows alphanumeric characters, dots, and hyphens.
+// This prevents injection of QEMU netdev options via malicious domain names.
+var (
+	// dnsSearchDomainRegex matches valid DNS search domain characters.
+	// Only allows alphanumeric characters, dots, and hyphens.
+	// This prevents injection of QEMU netdev options via malicious domain names.
+	dnsSearchDomainRegex = regexp.MustCompile(`^[a-zA-Z0-9.-]+$`)
+)
+
+// parseDNSSearchDomains parses and validates DNS search domains from a comma-separated string.
+// Returns an error if the input is empty or contains invalid domain characters.
+func parseDNSSearchDomains(input string) ([]string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil, fmt.Errorf("empty input")
+	}
+
+	// Only split on commas
+	parts := strings.Split(input, ",")
+
+	domains := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		// Validate domain: only allow [a-zA-Z0-9.-]
+		if !dnsSearchDomainRegex.MatchString(part) {
+			return nil, fmt.Errorf("invalid characters in domain %q: only alphanumeric, dots, and hyphens are allowed", part)
+		}
+
+		domains = append(domains, part)
+	}
+
+	if len(domains) == 0 {
+		return nil, fmt.Errorf("no valid domains found")
+	}
+
+	return domains, nil
+}
+
+// buildDNSSearchNetdevArgs constructs the QEMU netdev dnssearch options string.
+// Returns empty string if no domains provided.
+// Each domain produces a separate ",dnssearch=<domain>" option.
+func buildDNSSearchNetdevArgs(domains []string) string {
+	if len(domains) == 0 {
+		return ""
+	}
+
+	var builder strings.Builder
+	for _, domain := range domains {
+		builder.WriteString(",dnssearch=")
+		builder.WriteString(domain)
+	}
+	return builder.String()
 }
 
 // getPackageCacheSuffix generates a deterministic cache suffix based on the package list.

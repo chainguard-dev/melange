@@ -31,6 +31,12 @@ var observabilityEventPaths = []string{
 	"/tmp/observability/events.log",
 }
 
+// observabilityHookSentinel is a file installed exclusively by the
+// observability hook package. Its presence in the initramfs CPIO confirms
+// the hook is installed, regardless of how it was included.
+// CPIO record names are stored without a leading slash.
+const observabilityHookSentinel = "etc/tetragon/tetragon.tp.d/network-monitor.yaml"
+
 // ObservabilityEvents holds parsed event data retrieved from the build VM.
 type ObservabilityEvents struct {
 	// RawData is the raw NDJSON event data.
@@ -60,18 +66,19 @@ type NetworkConnection struct {
 // via the SSHControlClient (port 2223, unchrooted root access). This should
 // be called after the build completes but before TerminatePod.
 //
-// Returns nil with no error if the observability hook is not installed or no
-// events were generated. This makes the feature fully optional — default
-// builds without the hook are completely unaffected.
+// If cfg.ObservabilityHook is false the function returns immediately without
+// probing the VM. If true, a missing events file is treated as an error.
 func RetrieveObservabilityEvents(ctx context.Context, cfg *Config) (*ObservabilityEvents, error) {
+	if !cfg.ObservabilityHook {
+		return nil, nil
+	}
 	if cfg.SSHControlClient == nil {
 		return nil, nil
 	}
 
 	log := clog.FromContext(ctx)
 
-	// Probe known event file locations. If none exist, the observability
-	// hook is not installed and we silently return nil.
+	// Probe known event file locations.
 	eventsPath := ""
 	for _, path := range observabilityEventPaths {
 		err := sendSSHCommand(ctx, cfg.SSHControlClient, cfg, nil, nil, nil, false,
@@ -83,9 +90,7 @@ func RetrieveObservabilityEvents(ctx context.Context, cfg *Config) (*Observabili
 	}
 
 	if eventsPath == "" {
-		// No events file found — observability hook is not installed.
-		// This is the normal case for default builds; return silently.
-		return nil, nil
+		return nil, fmt.Errorf("observability hook is installed but no events file found at any known path: %v", observabilityEventPaths)
 	}
 
 	log.Infof("qemu: found observability events at %s", eventsPath)

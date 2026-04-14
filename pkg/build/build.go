@@ -774,7 +774,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// is installed. Only applicable to QEMU builds which run in a full VM.
 	if b.Runner.Name() == container.QemuName {
 		if obsEvents, err := container.RetrieveObservabilityEvents(ctx, cfg); err != nil {
-			log.Warnf("failed to retrieve observability events: %v", err)
+			log.Errorf("failed to retrieve observability events: %v", err)
 		} else if obsEvents != nil {
 			container.LogObservabilityEvents(ctx, obsEvents)
 		}

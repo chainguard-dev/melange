@@ -2231,6 +2231,11 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 		}
 	}
 
+	// Detect whether the observability hook is present. We cache the result in
+	// a sidecar file (<cpio>.observability) so we only scan the archive once
+	// per cached initramfs rather than on every melange invocation.
+	cfg.ObservabilityHook = observabilityHookPresent(ctx, baseInitramfs)
+
 	// Inject SSH host keys and modules
 	return injectRuntimeData(ctx, cfg, os.Getenv("QEMU_KERNEL_MODULES"), baseInitramfs)
 }
@@ -2315,6 +2320,68 @@ func GenerateBaseInitramfs(ctx context.Context, arch apko_types.Architecture, cf
 	}
 
 	return nil
+}
+
+// cpioContainsPath reports whether target exists as a record name in the CPIO
+// archive at cpioFile. CPIO record names are stored without a leading slash.
+func cpioContainsPath(cpioFile, target string) (bool, error) {
+	f, err := os.Open(cpioFile)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	rr, err := cpio.Newc.NewFileReader(f)
+	if err != nil {
+		return false, err
+	}
+
+	errFound := errors.New("found")
+	err = cpio.ForEachRecord(rr, func(r cpio.Record) error {
+		if r.Name == target {
+			return errFound
+		}
+		return nil
+	})
+	if errors.Is(err, errFound) {
+		return true, nil
+	}
+	return false, err
+}
+
+// observabilityHookPresent reports whether the observability hook is present in
+// the CPIO archive at cpioFile. The result is cached in a sidecar file
+// (<cpioFile>.observability) so the archive is only scanned once per cached
+// initramfs. Subsequent calls just read the tiny sidecar.
+func observabilityHookPresent(ctx context.Context, cpioFile string) bool {
+	sidecar := cpioFile + ".observability"
+
+	// Use the cached result when the sidecar is at least as new as the CPIO.
+	cpioInfo, cpioErr := os.Stat(cpioFile)
+	sidecarInfo, sidecarErr := os.Stat(sidecar)
+	if cpioErr == nil && sidecarErr == nil && !sidecarInfo.ModTime().Before(cpioInfo.ModTime()) {
+		data, err := os.ReadFile(sidecar)
+		if err == nil {
+			return strings.TrimSpace(string(data)) == "true"
+		}
+	}
+
+	// Sidecar missing or stale — scan the archive.
+	present, err := cpioContainsPath(cpioFile, observabilityHookSentinel)
+	if err != nil {
+		clog.FromContext(ctx).Debugf("qemu: could not inspect initramfs for observability hook: %v", err)
+		return false
+	}
+
+	// Write the sidecar so future invocations skip the scan.
+	val := "false"
+	if present {
+		val = "true"
+	}
+	if err := os.WriteFile(sidecar, []byte(val+"\n"), 0o600); err != nil {
+		clog.FromContext(ctx).Debugf("qemu: could not write observability sidecar: %v", err)
+	}
+	return present
 }
 
 // getAdditionalPackages parses and validates the QEMU_ADDITIONAL_PACKAGES environment variable.

@@ -89,6 +89,9 @@ inputs:
     description: |
       Maximum backoff duration in seconds between retries.
     default: "60"
+  reason:
+    description: |
+      Provide reason for a mutable reference.
 
 pipeline:
   - runs: |

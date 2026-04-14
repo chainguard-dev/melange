@@ -30,6 +30,7 @@ Fetch and extract external object into workspace
 | extract | false | Whether to extract the downloaded artifact as a source tarball.  | true |
 | purl-name | false | package-URL (PURL) name for use in SPDX SBOM External References  | ${{package.name}} |
 | purl-version | false | package-URL (PURL) version for use in SPDX SBOM External References  | ${{package.version}} |
+| reason | false | Provide reason why fetch is used, instead of git-checkout  |  |
 | retry-limit | false | The number of times to retry fetching before failing.  | 5 |
 | strip-components | false | The number of path components to strip while extracting.  | 1 |
 | timeout | false | The timeout (in seconds) to use for connecting and reading. The fetch will fail if the timeout is hit.  | 5 |
@@ -61,6 +62,7 @@ Check out sources from git
 | initial-backoff | false | Initial backoff duration in seconds before first retry.  | 2 |
 | max-backoff | false | Maximum backoff duration in seconds between retries.  | 60 |
 | max-retries | false | Maximum number of retry attempts for git clone operation on failure.  | 3 |
+| reason | false | Provide reason for a mutable reference.  |  |
 | recurse-submodules | false | Indicates whether --recurse-submodules should be passed to git clone.  | false |
 | repository | true | The repository to check out sources from.  |  |
 | shallow-submodules | false | Whether to use --shallow-submodules when recurse-submodules is true. Ignored if recurse-submodules is false.  | false |

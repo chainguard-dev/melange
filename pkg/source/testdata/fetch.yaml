@@ -21,5 +21,6 @@ pipeline:
   - uses: fetch
     with:
       uri: https://unofficial-builds.nodejs.org/download/release/v22.9.0/node-v22.9.0-linux-x64-glibc-217.tar.gz
+      reason: this is a test of the fetch pipeline
 
   - runs: echo "steps after"

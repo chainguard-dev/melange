@@ -69,6 +69,10 @@ inputs:
       Whether to delete the fetched artifact after unpacking.
     default: false
 
+  reason:
+    description: |
+      Provide reason why fetch is used, instead of git-checkout
+
 pipeline:
   - runs: |
       if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ] && [ "${{inputs.expected-none}}" == "" ]; then

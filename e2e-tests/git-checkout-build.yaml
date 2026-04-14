@@ -126,6 +126,7 @@ pipeline:
     with:
       repository: ${{vars.giturl}}
       branch: 1.x
+      reason: testing mutable git-checkout reference
 
   - name: "check branch without expected"
     working-directory: branch-no-expected

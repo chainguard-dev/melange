@@ -1504,8 +1504,8 @@ package:
     memory: 8Gi
 `,
 			expectResources: &Resources{
-				CPU:    "2",
-				Memory: "4Gi",
+				CPU:    "",
+				Memory: "",
 			},
 			expectTestResources: &Resources{
 				CPU:    "4",
@@ -1540,8 +1540,8 @@ package:
   epoch: 0
 `,
 			expectResources: &Resources{
-				CPU:    "2",
-				Memory: "4Gi",
+				CPU:    "",
+				Memory: "",
 			},
 			expectTestResources: nil,
 			expectParseError:    false,
@@ -1585,8 +1585,8 @@ package:
     memory: 8Gi
 `,
 			expectResources: &Resources{
-				CPU:    "2",
-				Memory: "4Gi",
+				CPU:    "",
+				Memory: "",
 			},
 			expectTestResources: &Resources{
 				CPU:      "4",

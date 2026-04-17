@@ -712,18 +712,22 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("unknown architecture: %s", cfg.Arch.ToAPK())
 	}
 
-	// default to use 85% of available memory, if a mem limit is set, respect it.
-	mem := int64(float64(getAvailableMemoryKB()) * 0.85)
+	// Memory: start from 85% of available memory (cgroup-aware via
+	// getAvailableMemoryKB), then apply precedence cfg.Memory > cgroup > fallback
+	// through effectiveMemoryKB. The fallback caps shared-runner VMs at 4 GiB
+	// when neither a user-supplied value nor a cgroup limit is present.
+	hostScaledKB := int64(float64(getAvailableMemoryKB()) * 0.85)
+	cgroupMemKB := int64(getCgroupMemoryLimitKB())
+	var cfgMemKB int64
 	if cfg.Memory != "" {
-		memKb, err := convertHumanToKB(cfg.Memory)
+		var err error
+		cfgMemKB, err = convertHumanToKB(cfg.Memory)
 		if err != nil {
 			return err
 		}
-
-		if mem > memKb {
-			mem = memKb
-		}
 	}
+	mem := effectiveMemoryKB(cfgMemKB, hostScaledKB, cgroupMemKB)
+
 	// Memory configuration - virtiofs requires shared memory backend
 	if cfg.VirtiofsEnabled {
 		// Round up memory to MiB boundary for memory-backend-memfd alignment
@@ -734,19 +738,20 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		baseargs = append(baseargs, "-m", fmt.Sprintf("%dk", mem))
 	}
 
-	// default to use all CPUs, if a cgroup or config limit is set, respect it.
+	// CPU: apply precedence cfg.CPU > cgroup > fallback through effectiveCPU.
 	// In a container (e.g. Kubernetes pod), runtime.NumCPU() returns the host's
-	// total CPUs, not the pod's allocation. Check cgroup limits first.
-	nproc := runtime.NumCPU()
-	if cgroupCPU := getCgroupCPULimitCores(); cgroupCPU > 0 && cgroupCPU < nproc {
-		nproc = cgroupCPU
-	}
+	// total CPUs, not the pod's allocation; the cgroup check below covers that.
+	// The fallback caps shared-runner VMs at 2 vCPUs when neither a user-
+	// supplied value nor a cgroup limit is present.
+	hostCPU := runtime.NumCPU()
+	cgroupCPU := getCgroupCPULimitCores()
+	var cfgCPU int
 	if cfg.CPU != "" {
-		cpu, err := strconv.Atoi(cfg.CPU)
-		if err == nil && nproc > cpu {
-			nproc = cpu
+		if parsed, err := strconv.Atoi(cfg.CPU); err == nil && parsed > 0 {
+			cfgCPU = parsed
 		}
 	}
+	nproc := effectiveCPU(cfgCPU, cgroupCPU, hostCPU)
 	baseargs = append(baseargs, "-smp", fmt.Sprintf("%d,dies=1,sockets=1,cores=%d,threads=1", nproc, nproc))
 
 	// use kvm on linux, Hypervisor.framework on macOS, and software for cross-arch
@@ -1821,6 +1826,88 @@ func convertHumanToKB(memory string) (int64, error) {
 
 	// Return the value in kilobytes
 	return num * multiplier / 1024, nil
+}
+
+// cpuFallbackCap is the host-exhaustion safeguard cap (in vCPUs) applied
+// only when neither cfg.CPU nor a cgroup CPU limit is present.
+const cpuFallbackCap = 2
+
+// memFallbackCapKB is the host-exhaustion safeguard cap (in KB) applied
+// only when neither cfg.Memory nor a cgroup memory limit is present.
+// 4 GiB in KB.
+const memFallbackCapKB int64 = 4 * 1024 * 1024
+
+// effectiveCPU returns the vCPU count the VM should be pinned to, enforcing
+// the precedence:
+//
+//	cfgCPU (user flag / YAML)  >  cgroupCPU (container runtime)  >  fallback cap
+//
+// Arguments:
+//   - cfgCPU: value parsed from cfg.CPU, or 0 if empty/invalid.
+//   - cgroupCPU: value from getCgroupCPULimitCores(), or 0 if no limit.
+//   - hostCPU: runtime.NumCPU() on the invoking host.
+//
+// Precedence and capping:
+//   - hostCPU is first narrowed by the cgroup limit (when present and < host).
+//   - A user-supplied cfgCPU is then capped at that cgroup-narrowed host so
+//     the user request is honoured only when it fits on the effective host.
+//   - When cfgCPU is zero AND no cgroup limit is driving the budget, the
+//     min(cap, host) fallback fires. This safeguard prevents shared GKE /
+//     CI runners with empty YAML from claiming every host core.
+func effectiveCPU(cfgCPU, cgroupCPU, hostCPU int) int {
+	effHost := hostCPU
+	cgroupNarrows := cgroupCPU > 0 && cgroupCPU < hostCPU
+	if cgroupNarrows {
+		effHost = cgroupCPU
+	}
+	if cfgCPU > 0 {
+		if effHost > 0 && effHost < cfgCPU {
+			return effHost
+		}
+		return cfgCPU
+	}
+	if cgroupNarrows {
+		return cgroupCPU
+	}
+	if hostCPU < cpuFallbackCap {
+		return hostCPU
+	}
+	return cpuFallbackCap
+}
+
+// effectiveMemoryKB returns the memory (in KB) the VM should be allocated,
+// enforcing the precedence:
+//
+//	cfgMemoryKB (user flag / YAML)  >  cgroup (reflected in hostScaledKB)  >  fallback cap
+//
+// Arguments:
+//   - cfgMemoryKB: value parsed from cfg.Memory, or 0 if empty.
+//   - hostScaledKB: the runner's 85%-of-available-memory budget. This value
+//     is already cgroup-aware because getAvailableMemoryKB() consults the
+//     cgroup limit before falling back to /proc/meminfo.
+//   - cgroupMemoryKB: value from getCgroupMemoryLimitKB(), or 0 if no limit.
+//     Used only to distinguish "cgroup is driving the budget" (no extra cap)
+//     from "no cgroup present" (apply host-exhaustion cap).
+//
+// When cfgMemoryKB is set it takes precedence but is capped at hostScaledKB,
+// so a user request larger than host availability does not oversubscribe.
+// When cfgMemoryKB is unset and cgroupMemoryKB is present, hostScaledKB is
+// used as-is (cgroup already narrows it). When both are unset, the fallback
+// cap fires so a 128 GiB host does not hand its VM ~108 GiB.
+func effectiveMemoryKB(cfgMemoryKB, hostScaledKB, cgroupMemoryKB int64) int64 {
+	if cfgMemoryKB > 0 {
+		if hostScaledKB > 0 && hostScaledKB < cfgMemoryKB {
+			return hostScaledKB
+		}
+		return cfgMemoryKB
+	}
+	if cgroupMemoryKB > 0 {
+		return hostScaledKB
+	}
+	if hostScaledKB < memFallbackCapKB {
+		return hostScaledKB
+	}
+	return memFallbackCapKB
 }
 
 // getCgroupCPULimitCores reads the cgroup CPU quota for the current process and

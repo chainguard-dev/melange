@@ -1861,16 +1861,11 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 		cfg.Package.Resources.Disk = options.disk
 	}
 
-	// Apply reasonable defaults for CPU and memory if still unset after YAML and CLI
-	// flag processing. Without these, the QEMU runner defaults to all host CPUs
-	// and 85% of host memory, causing resource contention when multiple builds
-	// share a node.
-	if cfg.Package.Resources.CPU == "" {
-		cfg.Package.Resources.CPU = "2"
-	}
-	if cfg.Package.Resources.Memory == "" {
-		cfg.Package.Resources.Memory = "4Gi"
-	}
+	// Host-exhaustion safeguards for CPU and memory live in the QEMU runner
+	// (see effectiveCPU / effectiveMemoryKB in pkg/container/qemu_runner.go),
+	// not here. Defaulting Package.Resources at parse time would clobber
+	// empty-value signals that downstream consumers rely on to decide when
+	// to apply their own, often larger, build-specific defaults.
 
 	// Finally, validate the configuration we ended up with before returning it for use downstream.
 	if err = cfg.validate(ctx); err != nil {

@@ -924,3 +924,90 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+func TestEffectiveCPU(t *testing.T) {
+	tests := []struct {
+		name      string
+		cfgCPU    int
+		cgroupCPU int
+		hostCPU   int
+		want      int
+	}{
+		// Flag / YAML precedence (Invariants 1 & 2):
+		// cfg wins over the fallback (never returns 2 when cfgCPU is set)
+		// but is still capped at the cgroup-narrowed host.
+		{name: "flag wins under host", cfgCPU: 4, cgroupCPU: 0, hostCPU: 8, want: 4},
+		{name: "flag wins over cgroup when smaller", cfgCPU: 4, cgroupCPU: 8, hostCPU: 16, want: 4},
+		{name: "flag wins at host boundary", cfgCPU: 8, cgroupCPU: 0, hostCPU: 8, want: 8},
+		{name: "flag capped at host when larger", cfgCPU: 16, cgroupCPU: 0, hostCPU: 8, want: 8},
+		{name: "flag capped at cgroup when cgroup narrower", cfgCPU: 16, cgroupCPU: 4, hostCPU: 8, want: 4},
+		{name: "flag capped at cgroup on big host", cfgCPU: 16, cgroupCPU: 4, hostCPU: 32, want: 4},
+
+		// Cgroup precedence (Invariant 3)
+		{name: "cgroup wins when cfg empty", cfgCPU: 0, cgroupCPU: 3, hostCPU: 8, want: 3},
+		{name: "cgroup at host boundary falls to fallback", cfgCPU: 0, cgroupCPU: 8, hostCPU: 8, want: 2},
+		// cgroupCPU >= hostCPU means cgroup didn't actually narrow — fallback applies.
+
+		// Fallback (Invariant 4)
+		{name: "regression: no cfg no cgroup big host", cfgCPU: 0, cgroupCPU: 0, hostCPU: 16, want: 2},
+		{name: "fallback caps at 2 on 32-core host", cfgCPU: 0, cgroupCPU: 0, hostCPU: 32, want: 2},
+		{name: "fallback small host", cfgCPU: 0, cgroupCPU: 0, hostCPU: 1, want: 1},
+		{name: "fallback exact 2 host", cfgCPU: 0, cgroupCPU: 0, hostCPU: 2, want: 2},
+
+		// Edge: zero / degenerate inputs
+		{name: "all zero (degenerate)", cfgCPU: 0, cgroupCPU: 0, hostCPU: 0, want: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := effectiveCPU(tt.cfgCPU, tt.cgroupCPU, tt.hostCPU)
+			if got != tt.want {
+				t.Errorf("effectiveCPU(cfg=%d, cgroup=%d, host=%d) = %d, want %d",
+					tt.cfgCPU, tt.cgroupCPU, tt.hostCPU, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEffectiveMemoryKB(t *testing.T) {
+	const (
+		gib       = int64(1024 * 1024) // 1 GiB in KB
+		fallback  = int64(4 * 1024 * 1024)
+		bigHost   = int64(108 * 1024 * 1024) // 108 GiB in KB (85% of 128 GiB)
+		smallHost = int64(2 * 1024 * 1024)
+	)
+
+	tests := []struct {
+		name     string
+		cfgKB    int64
+		hostKB   int64 // the already-scaled (85%) host-available value
+		cgroupKB int64
+		want     int64
+	}{
+		// Flag / YAML precedence
+		{name: "cfg wins under host", cfgKB: 8 * gib, hostKB: bigHost, cgroupKB: 0, want: 8 * gib},
+		{name: "cfg wins over cgroup", cfgKB: 8 * gib, hostKB: 16 * gib, cgroupKB: 32 * gib, want: 8 * gib},
+		{name: "cfg capped at host", cfgKB: 32 * gib, hostKB: smallHost, cgroupKB: 0, want: smallHost},
+
+		// Cgroup precedence: host is already cgroup-aware, so pass through.
+		{name: "cgroup wins when cfg empty", cfgKB: 0, hostKB: 8 * gib, cgroupKB: 16 * gib, want: 8 * gib},
+
+		// Fallback cap at 4Gi when no cfg and no cgroup
+		{name: "regression: 128GiB host capped at 4GiB", cfgKB: 0, hostKB: bigHost, cgroupKB: 0, want: fallback},
+		{name: "fallback exact 4GiB host", cfgKB: 0, hostKB: fallback, cgroupKB: 0, want: fallback},
+		{name: "fallback small host below cap", cfgKB: 0, hostKB: 2 * gib, cgroupKB: 0, want: 2 * gib},
+
+		// Edge
+		{name: "cfg zero host zero", cfgKB: 0, hostKB: 0, cgroupKB: 0, want: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := effectiveMemoryKB(tt.cfgKB, tt.hostKB, tt.cgroupKB)
+			if got != tt.want {
+				t.Errorf("effectiveMemoryKB(cfg=%d, host=%d, cgroup=%d) = %d, want %d",
+					tt.cfgKB, tt.hostKB, tt.cgroupKB, got, tt.want)
+			}
+		})
+	}
+}

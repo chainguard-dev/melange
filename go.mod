@@ -3,15 +3,15 @@ module chainguard.dev/melange
 go 1.25.7
 
 require (
-	chainguard.dev/apko v1.2.3
+	chainguard.dev/apko v1.2.4
 	github.com/chainguard-dev/clog v1.8.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.55
+	github.com/chainguard-dev/yam v0.2.56
 	github.com/charmbracelet/log v1.0.0
 	github.com/docker/cli v29.4.0+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
-	github.com/github/go-spdx/v2 v2.5.0
+	github.com/github/go-spdx/v2 v2.6.0
 	github.com/go-git/go-git/v5 v5.18.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.21.5
@@ -170,11 +170,11 @@ require (
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	google.golang.org/api v0.275.0 // indirect
+	google.golang.org/api v0.276.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.35.3 // indirect
+	k8s.io/apimachinery v0.35.4 // indirect
 )

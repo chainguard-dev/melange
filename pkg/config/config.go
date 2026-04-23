@@ -861,6 +861,8 @@ type Subpackage struct {
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
+	// List of target architectures for which this subpackage should be built
+	TargetArchitecture []string `json:"target-architecture,omitempty" yaml:"target-architecture,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
@@ -1551,17 +1553,18 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 
 func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage) Subpackage {
 	return Subpackage{
-		If:           r.Replace(in.If),
-		Name:         r.Replace(in.Name),
-		Pipeline:     replacePipelines(r, in.Pipeline),
-		Dependencies: replaceDependencies(r, in.Dependencies),
-		Options:      in.Options,
-		Scriptlets:   replaceScriptlets(r, in.Scriptlets),
-		Description:  r.Replace(in.Description),
-		URL:          r.Replace(in.URL),
-		Commit:       replaceCommit(detectedCommit, in.Commit),
-		Checks:       in.Checks,
-		Test:         replaceTest(r, in.Test),
+		If:                 r.Replace(in.If),
+		Name:               r.Replace(in.Name),
+		Pipeline:           replacePipelines(r, in.Pipeline),
+		Dependencies:       replaceDependencies(r, in.Dependencies),
+		Options:            in.Options,
+		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
+		Description:        r.Replace(in.Description),
+		URL:                r.Replace(in.URL),
+		Commit:             replaceCommit(detectedCommit, in.Commit),
+		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
+		Checks:             in.Checks,
+		Test:               replaceTest(r, in.Test),
 	}
 }
 

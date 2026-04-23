@@ -861,6 +861,8 @@ type Subpackage struct {
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
+	// Optional: The list of copyrights for this subpackage
+	Copyright []Copyright `json:"copyright,omitempty" yaml:"copyright,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
 	Checks Checks `json:"checks" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
@@ -1560,6 +1562,7 @@ func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage
 		Description:  r.Replace(in.Description),
 		URL:          r.Replace(in.URL),
 		Commit:       replaceCommit(detectedCommit, in.Commit),
+		Copyright:    in.Copyright,
 		Checks:       in.Checks,
 		Test:         replaceTest(r, in.Test),
 	}

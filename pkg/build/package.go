@@ -73,6 +73,7 @@ type PackageBuild struct {
 	Description   string
 	URL           string
 	Commit        string
+	Copyright     []config.Copyright
 }
 
 func pkgFromSub(sub *config.Subpackage) *config.Package {
@@ -84,6 +85,7 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 		Description:  sub.Description,
 		URL:          sub.URL,
 		Commit:       sub.Commit,
+		Copyright:    sub.Copyright,
 	}
 }
 
@@ -102,6 +104,10 @@ func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 		Description:  pkg.Description,
 		URL:          pkg.URL,
 		Commit:       pkg.Commit,
+		Copyright:    pkg.Copyright,
+	}
+	if len(pc.Copyright) == 0 {
+		pc.Copyright = pc.Origin.Copyright
 	}
 
 	if !b.StripOriginName {
@@ -166,7 +172,7 @@ maintainer = {{.Build.Namespace}}
 {{- if ne .Build.SourceDateEpoch.Unix 0 }}
 builddate = {{ .Build.SourceDateEpoch.Unix }}
 {{- end}}
-{{- range $copyright := .Origin.Copyright }}
+{{- range $copyright := .Copyright }}
 license = {{ $copyright.License }}
 {{- end }}
 {{- range $dep := .Dependencies.Runtime }}

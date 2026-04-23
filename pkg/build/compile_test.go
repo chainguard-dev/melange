@@ -121,6 +121,28 @@ func TestCompileTest(t *testing.T) {
 	}
 }
 
+func TestFilterSubpackagesTargetArchitecture(t *testing.T) {
+	subpackages := []config.Subpackage{
+		{Name: "default"},
+		{Name: "all", TargetArchitecture: []string{"all"}},
+		{Name: "native", TargetArchitecture: []string{"x86_64"}},
+		{Name: "other", TargetArchitecture: []string{"aarch64"}},
+	}
+
+	got := filterSubpackages(context.Background(), subpackages, apko_types.ParseArchitecture("x86_64"))
+	if got, want := packageNames(got), []string{"default", "all", "native"}; !slices.Equal(got, want) {
+		t.Errorf("subpackage names: want %v, got %v", want, got)
+	}
+}
+
+func packageNames(subpackages []config.Subpackage) []string {
+	names := make([]string, 0, len(subpackages))
+	for _, sp := range subpackages {
+		names = append(names, sp.Name)
+	}
+	return names
+}
+
 func Test_stripComments(t *testing.T) {
 	tests := []struct {
 		in, want string

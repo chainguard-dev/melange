@@ -567,6 +567,10 @@
 	// Optional: The git commit of the subpackage build configuration
 	commit?: string
 
+	// List of target architectures for which this subpackage should be
+	// built
+	"target-architecture"?: [...string]
+
 	// Optional: enabling, disabling, and configuration of build
 	// checks
 	checks!: #Checks

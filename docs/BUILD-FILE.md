@@ -23,6 +23,8 @@ The following are the high level sections for the build file, with detailed desc
 ### subpackages
 
    List of subpackages that this package also produces. For example, docs.
+   Subpackages may define their own `copyright` entries when their files have
+   different licensing from the origin package.
 
 ### data
 
@@ -499,4 +501,3 @@ TODO(vaikas): melange config points to apko here:
 
 # pipeline
 Pipeline defines the ordered steps to build the package.
-

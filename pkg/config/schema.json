@@ -1033,6 +1033,13 @@
           "type": "string",
           "description": "Optional: The git commit of the subpackage build configuration"
         },
+        "copyright": {
+          "items": {
+            "$ref": "#/$defs/Copyright"
+          },
+          "type": "array",
+          "description": "Optional: The list of copyrights for this subpackage"
+        },
         "checks": {
           "$ref": "#/$defs/Checks",
           "description": "Optional: enabling, disabling, and configuration of build checks"

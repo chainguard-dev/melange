@@ -1,0 +1,14 @@
+name: Build a Python wheel with gpep517
+
+needs:
+  packages:
+    - busybox
+    - python3
+    - py3-gpep517
+    - py3-installer
+    - py3-wheel
+
+pipeline:
+  - runs: |
+      python3 -m gpep517 build-wheel --wheel-dir dist --output-fd 3 3>&1 >&2
+      python3 -m installer -d "${{targets.contextdir}}" dist/*.whl

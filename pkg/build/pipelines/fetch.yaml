@@ -100,20 +100,32 @@ pipeline:
         wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
       fi
 
+      # Obscure the second half of a string with asterisks
+      obscure_half() {
+          local s="$1" len half
+          len=${#s}
+          half=$((len / 2))
+          prefix=$(echo "$s" | cut -c1-"$half")
+          suffix=$(echo "$s" | cut -c$((half + 1))-"$len" | sed 's/./*/g')
+          echo "${prefix}${suffix}"
+      }
+
       if [ "${{inputs.expected-none}}" != "" ]; then
         printf "fetch: Checksum validation skipped\n"
       elif [ "${{inputs.expected-sha256}}" != "" ]; then
         printf "fetch: Expected sha256: ${{inputs.expected-sha256}}\n"
         sum=$(sha256sum $bn | awk '{print $1}')
         if [ "${{inputs.expected-sha256}}" != "$sum" ]; then
-          printf "fetch: Expected sha256 does not match found: $sum\n"
+          obs_sum=$(obscure_half "$sum")
+          printf "fetch: Expected sha256 does not match found: $obs_sum\n"
           exit 1
         fi
       else
         printf "fetch: Expected sha512: ${{inputs.expected-sha512}}\n"
         sum=$(sha512sum $bn | awk '{print $1}')
         if [ "${{inputs.expected-sha512}}" != "$sum" ]; then
-          printf "fetch: Expected sha512 does not match found: $sum\n"
+          obs_sum=$(obscure_half "$sum")
+          printf "fetch: Expected sha512 does not match found: $obs_sum\n"
           exit 1
         fi
       fi

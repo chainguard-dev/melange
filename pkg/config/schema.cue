@@ -63,11 +63,11 @@
 
 	// The specification for the packages build environment
 	// Optional: environment variables to override apko
-	environment!: #ImageConfiguration
+	environment?: #ImageConfiguration
 
 	// Optional: Linux capabilities configuration to apply to the
 	// melange runner.
-	capabilities!: #Capabilities
+	capabilities?: #Capabilities
 
 	// Required: The list of pipelines that produce the package.
 	pipeline?: [...#Pipeline]
@@ -333,7 +333,7 @@
 	copyright?: [...#Copyright]
 
 	// List of packages to depends on
-	dependencies!: #Dependencies
+	dependencies?: #Dependencies
 
 	// Optional: Options that alter the packages behavior
 	options?: #PackageOption
@@ -345,12 +345,12 @@
 
 	// Optional: enabling, disabling, and configuration of build
 	// checks
-	checks!: #Checks
+	checks?: #Checks
 
 	// The CPE field values to be used for matching against NVD
 	// vulnerability
 	// records, if known.
-	cpe!: #CPE
+	cpe?: #CPE
 
 	// Capabilities to set after the pipeline completes.
 	setcap?: [...#Capability]
@@ -504,7 +504,7 @@
 
 #Scriptlets: close({
 	// Optional: A script to run on a custom trigger
-	trigger!: #Trigger
+	trigger?: #Trigger
 
 	// Optional: The script to run pre install. The script should
 	// contain the
@@ -552,7 +552,7 @@
 	pipeline?: [...#Pipeline]
 
 	// Optional: List of packages to depend on
-	dependencies!: #Dependencies
+	dependencies?: #Dependencies
 
 	// Optional: Options that alter the packages behavior
 	options?:    #PackageOption
@@ -569,7 +569,7 @@
 
 	// Optional: enabling, disabling, and configuration of build
 	// checks
-	checks!: #Checks
+	checks?: #Checks
 
 	// Test section for the subpackage.
 	test?: #Test
@@ -585,7 +585,7 @@
 	// needs
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
-	environment!: #ImageConfiguration
+	environment?: #ImageConfiguration
 
 	// Required: The list of pipelines that test the produced package.
 	pipeline!: [...#Pipeline]
@@ -603,7 +603,7 @@
 // package up to date
 #Update: close({
 	// Toggle if updates should occur
-	enabled!: bool
+	enabled?: bool
 
 	// Indicates that this package should be manually updated, usually
 	// taking
@@ -682,7 +682,7 @@
 
 	// Required: The name of the new variable to create
 	//
-	// Example: mangeled-package-version
+	// Example: mangled-package-version
 	to!: string
 })
 

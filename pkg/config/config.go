@@ -68,7 +68,7 @@ type Trigger struct {
 
 type Scriptlets struct {
 	// Optional: A script to run on a custom trigger
-	Trigger Trigger `json:"trigger" yaml:"trigger,omitempty"`
+	Trigger Trigger `json:"trigger,omitempty" yaml:"trigger,omitempty"`
 	// Optional: The script to run pre install. The script should contain the
 	// shebang interpreter.
 	PreInstall string `json:"pre-install,omitempty" yaml:"pre-install,omitempty"`
@@ -127,17 +127,17 @@ type Package struct {
 	// The list of copyrights for this package
 	Copyright []Copyright `json:"copyright,omitempty" yaml:"copyright,omitempty"`
 	// List of packages to depends on
-	Dependencies Dependencies `json:"dependencies" yaml:"dependencies,omitempty"`
+	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
 	Options *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
 	Scriptlets *Scriptlets `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// The CPE field values to be used for matching against NVD vulnerability
 	// records, if known.
-	CPE CPE `json:"cpe" yaml:"cpe,omitempty"`
+	CPE CPE `json:"cpe,omitempty" yaml:"cpe,omitempty"`
 	// Capabilities to set after the pipeline completes.
 	SetCap []Capability `json:"setcap,omitempty" yaml:"setcap,omitempty"`
 
@@ -851,7 +851,7 @@ type Subpackage struct {
 	// Optional: The list of pipelines that produce subpackage.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: List of packages to depend on
-	Dependencies Dependencies `json:"dependencies" yaml:"dependencies,omitempty"`
+	Dependencies Dependencies `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	// Optional: Options that alter the packages behavior
 	Options    *PackageOption `json:"options,omitempty" yaml:"options,omitempty"`
 	Scriptlets *Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
@@ -862,7 +862,7 @@ type Subpackage struct {
 	// Optional: The git commit of the subpackage build configuration
 	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 	// Optional: enabling, disabling, and configuration of build checks
-	Checks Checks `json:"checks" yaml:"checks,omitempty"`
+	Checks Checks `json:"checks,omitempty" yaml:"checks,omitempty"`
 	// Test section for the subpackage.
 	Test *Test `json:"test,omitempty" yaml:"test,omitempty"`
 	// Capabilities to set after the pipeline completes.
@@ -892,9 +892,9 @@ type Configuration struct {
 	Package Package `json:"package" yaml:"package"`
 	// The specification for the packages build environment
 	// Optional: environment variables to override apko
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment,omitempty"`
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 	// Optional: Linux capabilities configuration to apply to the melange runner.
-	Capabilities Capabilities `json:"capabilities" yaml:"capabilities,omitempty"`
+	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 
 	// Required: The list of pipelines that produce the package.
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
@@ -943,7 +943,7 @@ type Test struct {
 	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
-	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment,omitempty"`
+	Environment apko_types.ImageConfiguration `json:"environment,omitempty" yaml:"environment,omitempty"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`
@@ -967,17 +967,17 @@ type VarTransforms struct {
 	Replace string `json:"replace" yaml:"replace"`
 	// Required: The name of the new variable to create
 	//
-	// Example: mangeled-package-version
+	// Example: mangled-package-version
 	To string `json:"to" yaml:"to"`
 }
 
 // Update provides information used to describe how to keep the package up to date
 type Update struct {
 	// Toggle if updates should occur
-	Enabled bool `json:"enabled" yaml:"enabled"`
+	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// Indicates that this package should be manually updated, usually taking
 	// care over special version numbers
-	Manual bool `json:"manual,omitempty" yaml:"manual"`
+	Manual bool `json:"manual,omitempty" yaml:"manual,omitempty"`
 	// Indicates that automated pull requests should be merged in order rather than superseding and closing previous unmerged PRs
 	RequireSequential bool `json:"require-sequential,omitempty" yaml:"require-sequential"`
 	// Indicate that an update to this package requires an epoch bump of

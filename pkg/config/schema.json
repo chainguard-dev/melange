@@ -203,8 +203,6 @@
       "type": "object",
       "required": [
         "package",
-        "environment",
-        "capabilities",
         "update"
       ],
       "description": "Configuration is the root melange configuration."
@@ -743,10 +741,7 @@
       "required": [
         "name",
         "version",
-        "epoch",
-        "dependencies",
-        "checks",
-        "cpe"
+        "epoch"
       ]
     },
     "PackageOption": {
@@ -984,10 +979,7 @@
         }
       },
       "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "trigger"
-      ]
+      "type": "object"
     },
     "Subpackage": {
       "properties": {
@@ -1052,9 +1044,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "name",
-        "dependencies",
-        "checks"
+        "name"
       ]
     },
     "Test": {
@@ -1074,7 +1064,6 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "environment",
         "pipeline"
       ]
     },
@@ -1166,9 +1155,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "enabled"
-      ],
       "description": "Update provides information used to describe how to keep the package up to date"
     },
     "User": {
@@ -1208,7 +1194,7 @@
         },
         "to": {
           "type": "string",
-          "description": "Required: The name of the new variable to create\n\nExample: mangeled-package-version"
+          "description": "Required: The name of the new variable to create\n\nExample: mangled-package-version"
         }
       },
       "additionalProperties": false,

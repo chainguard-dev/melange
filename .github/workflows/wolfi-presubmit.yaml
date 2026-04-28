@@ -178,7 +178,7 @@ jobs:
           melange version
 
       # needed to run tests for Bubblewrap packages
-      - uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d # v5.0.0
+      - uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db # v5.1.0
 
       # this need to point to main to always get the latest action
       - uses: wolfi-dev/actions/install-wolfictl@d8faf0b2bf2a7c6eefc571567ef370faae5baed2 # last commit that had the scan command

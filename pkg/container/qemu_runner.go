@@ -797,7 +797,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-nodefaults")
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	netdevArgs := "user,id=id1,hostfwd=tcp:" + cfg.SSHAddress + "-:22,hostfwd=tcp:" + cfg.SSHControlAddress + "-:2223"
+	restrictGuestNetwork := isQEMURestrictGuestNetworkEnabled()
+	netdevArgs := buildSLIRPNetdevArgs(cfg.SSHAddress, cfg.SSHControlAddress, restrictGuestNetwork)
+	if restrictGuestNetwork {
+		log.Infof("qemu: QEMU_RESTRICT_GUEST_NETWORK is set; guest VM cannot reach destinations outside the declared SSH hostfwd ports.")
+	}
 	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
 	// This is useful for builds that need to resolve short hostnames via search
 	// domains, or when the build environment requires specific DNS resolution
@@ -2541,6 +2545,41 @@ func parseDNSSearchDomains(input string) ([]string, error) {
 	}
 
 	return domains, nil
+}
+
+// buildSLIRPNetdevArgs constructs the QEMU `-netdev user,...` argument for the
+// guest VM's network. The default (restrict=false) preserves SLIRP's standard
+// behavior: the guest can reach whatever the host can reach via NAT. Setting
+// restrict=true adds SLIRP `restrict=on`, which isolates the guest so that the
+// only reachable destinations are the explicitly forwarded SSH hostfwd ports
+// (22 and 2223). This is useful for hardened build environments where recipe
+// authors should not be trusted to make outbound network calls from inside
+// the guest VM (for example, multi-tenant CI builders, or build pipelines
+// running in cloud environments where the pod can reach instance metadata).
+//
+// Recipes that legitimately need network access do so host-side via `uses:`
+// pipeline steps (e.g. `uses: fetch`, `uses: git-checkout`) which run before
+// the guest starts; apk packages are installed into the rootfs by apko on the
+// host. Most well-formed recipes do not need in-guest network at all, so
+// enabling guest-network restriction is non-invasive in typical melange usage.
+func buildSLIRPNetdevArgs(sshAddress, sshControlAddress string, restrict bool) string {
+	args := "user,id=id1,hostfwd=tcp:" + sshAddress + "-:22,hostfwd=tcp:" + sshControlAddress + "-:2223"
+	if restrict {
+		args += ",restrict=on"
+	}
+	return args
+}
+
+// isQEMURestrictGuestNetworkEnabled returns true if the QEMU_RESTRICT_GUEST_NETWORK
+// environment variable is set to a truthy value. Truthy values are: "1", "true",
+// "yes" (case-insensitive). Empty or any other value returns false (default).
+//
+// When enabled, the guest VM's SLIRP network is started with `restrict=on`,
+// which prevents the guest from reaching anything beyond the explicitly
+// forwarded SSH hostfwd ports. See buildSLIRPNetdevArgs for the rationale.
+func isQEMURestrictGuestNetworkEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("QEMU_RESTRICT_GUEST_NETWORK")))
+	return v == "1" || v == "true" || v == "yes"
 }
 
 // buildDNSSearchNetdevArgs constructs the QEMU netdev dnssearch options string.

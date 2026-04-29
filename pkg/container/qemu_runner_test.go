@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/chainguard-dev/clog"
@@ -456,6 +457,102 @@ func TestParseDNSSearchDomains(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildSLIRPNetdevArgs(t *testing.T) {
+	tests := []struct {
+		name              string
+		sshAddress        string
+		sshControlAddress string
+		restrict          bool
+		expected          string
+	}{
+		{
+			name:              "default unrestricted (current behavior)",
+			sshAddress:        "127.0.0.1:40000",
+			sshControlAddress: "127.0.0.1:40001",
+			restrict:          false,
+			expected:          "user,id=id1,hostfwd=tcp:127.0.0.1:40000-:22,hostfwd=tcp:127.0.0.1:40001-:2223",
+		},
+		{
+			name:              "opt-in network isolation (restrict=on)",
+			sshAddress:        "127.0.0.1:40000",
+			sshControlAddress: "127.0.0.1:40001",
+			restrict:          true,
+			expected:          "user,id=id1,hostfwd=tcp:127.0.0.1:40000-:22,hostfwd=tcp:127.0.0.1:40001-:2223,restrict=on",
+		},
+		{
+			name:              "different ports - unrestricted",
+			sshAddress:        "127.0.0.1:1234",
+			sshControlAddress: "127.0.0.1:5678",
+			restrict:          false,
+			expected:          "user,id=id1,hostfwd=tcp:127.0.0.1:1234-:22,hostfwd=tcp:127.0.0.1:5678-:2223",
+		},
+		{
+			name:              "different ports - restricted",
+			sshAddress:        "127.0.0.1:1234",
+			sshControlAddress: "127.0.0.1:5678",
+			restrict:          true,
+			expected:          "user,id=id1,hostfwd=tcp:127.0.0.1:1234-:22,hostfwd=tcp:127.0.0.1:5678-:2223,restrict=on",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildSLIRPNetdevArgs(tt.sshAddress, tt.sshControlAddress, tt.restrict)
+			if got != tt.expected {
+				t.Errorf("buildSLIRPNetdevArgs(%q, %q, %v) = %q, expected %q",
+					tt.sshAddress, tt.sshControlAddress, tt.restrict, got, tt.expected)
+			}
+			if tt.restrict && !strings.Contains(got, ",restrict=on") {
+				t.Errorf("expected restrict=on substring when restrict=true; got %q", got)
+			}
+			if !tt.restrict && strings.Contains(got, "restrict=on") {
+				t.Errorf("expected NO restrict=on when restrict=false; got %q", got)
+			}
+		})
+	}
+}
+
+func TestIsQEMURestrictGuestNetworkEnabled(t *testing.T) {
+	tests := []struct {
+		envValue string
+		expected bool
+	}{
+		{"", false},
+		{"0", false},
+		{"false", false},
+		{"no", false},
+		{"off", false},
+		{"random", false},
+		{"1", true},
+		{"true", true},
+		{"TRUE", true},
+		{"True", true},
+		{"yes", true},
+		{"YES", true},
+		{"  true  ", true},
+		{"  1  ", true},
+	}
+
+	for _, tt := range tests {
+		t.Run("env="+tt.envValue, func(t *testing.T) {
+			t.Setenv("QEMU_RESTRICT_GUEST_NETWORK", tt.envValue)
+			got := isQEMURestrictGuestNetworkEnabled()
+			if got != tt.expected {
+				t.Errorf("isQEMURestrictGuestNetworkEnabled() with env=%q = %v, expected %v",
+					tt.envValue, got, tt.expected)
+			}
+		})
+	}
+
+	// Also confirm unset env returns false
+	t.Run("env unset", func(t *testing.T) {
+		os.Unsetenv("QEMU_RESTRICT_GUEST_NETWORK")
+		if isQEMURestrictGuestNetworkEnabled() {
+			t.Errorf("expected false when env var is unset")
+		}
+	})
 }
 
 func TestBuildDNSSearchNetdevArgs(t *testing.T) {

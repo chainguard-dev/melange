@@ -113,8 +113,10 @@ jobs:
           path: ${{ github.workspace }}/.melange-dir
           run-id: ${{ github.run_id }}
 
-      - run: |
-          sudo mv ${{ github.workspace }}/.melange-dir/melange /usr/bin/melange
+      - env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          sudo mv "$GITHUB_WORKSPACE"/.melange-dir/melange /usr/bin/melange
           sudo chmod a+x /usr/bin/melange
           melange version
 

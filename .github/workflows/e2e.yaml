@@ -58,9 +58,11 @@ jobs:
           ./melange keygen
 
       - name: Build package
+        env:
+          MATRIX_CFG: ${{ matrix.cfg }}
         run: |
-          path=examples/${{matrix.cfg}}
-          if [ "${{matrix.cfg}}" == "melange.yaml" ]; then
+          path=examples/$MATRIX_CFG
+          if [ "$MATRIX_CFG" == "melange.yaml" ]; then
             path="melange.yaml"
           fi
           ./melange build $path --arch=x86_64 --namespace=wolfi

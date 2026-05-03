@@ -104,6 +104,7 @@ jobs:
             *.githubapp.com:443
             9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
             _http._tcp.azure.archive.ubuntu.com:443
+            _https._tcp.dl.google.com:443
             _https._tcp.esm.ubuntu.com:443
             _https._tcp.motd.ubuntu.com:443
             _https._tcp.packages.microsoft.com:443

@@ -57,16 +57,16 @@ jobs:
           TAG=$(git tag --points-at HEAD)
           if [ -z "$TAG" ]; then
             echo "No tag points at HEAD, so we need a new tag and then a new release."
-            echo "need_release=yes" >> $GITHUB_OUTPUT
+            echo "need_release=yes" >> "$GITHUB_OUTPUT"
           else
             RELEASE=$(gh release view "$TAG" --json tagName --jq '.tagName' || echo "none")
             if [ "$RELEASE" == "$TAG" ]; then
               echo "A release exists for tag $TAG, which has the latest changes, so no need for a new tag or release."
-              echo "need_release=no" >> $GITHUB_OUTPUT
+              echo "need_release=no" >> "$GITHUB_OUTPUT"
             else
               echo "Tag $TAG exists, but no release is associated. Need a new release."
-              echo "need_release=yes" >> $GITHUB_OUTPUT
-              echo "existing_tag=$TAG" >> $GITHUB_OUTPUT
+              echo "need_release=yes" >> "$GITHUB_OUTPUT"
+              echo "existing_tag=$TAG" >> "$GITHUB_OUTPUT"
             fi
           fi
 

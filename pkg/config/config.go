@@ -664,14 +664,6 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		repoType = purl.TypeGithub
 		downloadLocation = fmt.Sprintf("%s://github.com/%s/%s/archive/%s.tar.gz", repoURL.Scheme, namespace, name, ref)
 
-	case repoURL.Host == "gitlab.com":
-		repoType = purl.TypeGitlab
-		downloadLocation = fmt.Sprintf("%s://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, namespace, name, ref, ref)
-
-	case strings.HasPrefix(repoURL.Host, "gitlab") || hint == "gitlab":
-		repoType = purl.TypeGeneric
-		downloadLocation = fmt.Sprintf("%s://%s/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, repoURL.Host, namespace, name, ref, ref)
-
 	default:
 		repoType = purl.TypeGeneric
 		// We can't determine the namespace so use the supplier passed instead.
@@ -707,7 +699,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		var pu *purl.PackageURL
 
 		switch repoType {
-		case purl.TypeGithub, purl.TypeGitlab:
+		case purl.TypeGithub:
 			pu = &purl.PackageURL{
 				Type:      repoType,
 				Namespace: namespace,

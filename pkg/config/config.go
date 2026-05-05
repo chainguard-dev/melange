@@ -637,7 +637,7 @@ func SHA256(text string) string {
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
-func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
+func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, supplier string) (*sbom.Package, error) {
 	var repoType, namespace, name, ref string
 	var downloadLocation string
 
@@ -659,8 +659,8 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 	namespace, name, _ = strings.Cut(trimmedPath, "/")
 	name = strings.TrimSuffix(name, ".git")
 
-	switch {
-	case repoURL.Host == "github.com":
+	switch repoURL.Host {
+	case "github.com":
 		repoType = purl.TypeGithub
 		downloadLocation = fmt.Sprintf("%s://github.com/%s/%s/archive/%s.tar.gz", repoURL.Scheme, namespace, name, ref)
 
@@ -801,7 +801,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
-		hint := with["type-hint"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -820,7 +819,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint, supplier)
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, supplier)
 		if err != nil {
 			return nil, err
 		} else if gitPackage != nil {

@@ -4,6 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: daily
+    cooldown:
+      default-days: 3
     open-pull-requests-limit: 10
     groups:
       gomod:
@@ -15,6 +17,8 @@ updates:
     directory: "/"
     schedule:
       interval: daily
+    cooldown:
+      default-days: 3
     open-pull-requests-limit: 10
     groups:
       actions:

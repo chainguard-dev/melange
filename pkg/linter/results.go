@@ -51,6 +51,11 @@ func saveLintResults(ctx context.Context, cfg *config.Configuration, results map
 		return fmt.Errorf("invalid arch %q: contains path traversal sequence", arch)
 	}
 
+	// Validate version to prevent path traversal
+	if containsPathTraversal(cfg.Package.Version) {
+		return fmt.Errorf("invalid package version %q: contains path traversal sequence", cfg.Package.Version)
+	}
+
 	// Ensure the package directory exists
 	packageDir := filepath.Join(outputDir, arch)
 	if err := os.MkdirAll(packageDir, 0o755); err != nil {

@@ -44,8 +44,8 @@ github.com/chainguard-dev/clog v1.8.0 h1:frlTMEdg3XQR+ioQ6O9i92uigY8GTUcWKpuCFkh
 github.com/chainguard-dev/clog v1.8.0/go.mod h1:5MQOZi+Iu7fV7GcJG8ag8rCB5elEOpqRMKEASgnGVdo=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10 h1:XR2vgQC024I9/boh9r1ihVv8Z14+pbvWqXeYMCnZJpc=
 github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10/go.mod h1:1p6+MesLcjKeON5BRWa7I87mvAY0QmKjgginIM3w6BI=
-github.com/chainguard-dev/yam v0.2.57 h1:v1qCjl96/s5jT+zJrMgRDRPb74qr/SW0ubsh9Zx8GoM=
-github.com/chainguard-dev/yam v0.2.57/go.mod h1:Sbt8pVO8DbHoVly44oF5gg03NRxl9AhEImOkqGyoQCs=
+github.com/chainguard-dev/yam v0.2.58 h1:ty4ZOrKdTh0FRWEIhSn35hhtkY89rrXtUvr4D9C22fw=
+github.com/chainguard-dev/yam v0.2.58/go.mod h1:Sbt8pVO8DbHoVly44oF5gg03NRxl9AhEImOkqGyoQCs=
 github.com/charmbracelet/colorprofile v0.3.2 h1:9J27WdztfJQVAQKX2WOlSSRB+5gaKqqITmrvb1uTIiI=
 github.com/charmbracelet/colorprofile v0.3.2/go.mod h1:mTD5XzNeWHj8oqHb+S1bssQb7vIHbepiebQ2kPKVKbI=
 github.com/charmbracelet/lipgloss v1.1.0 h1:vYXsiLHVkK7fp74RkV7b2kq9+zDLoEU4MZoFqR/noCY=

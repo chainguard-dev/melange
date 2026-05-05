@@ -759,3 +759,20 @@ func Test_lintApkWithOutput(t *testing.T) {
 	assert.NotEmpty(t, manInfoFindings[0].Message)
 	assert.NotEmpty(t, manInfoFindings[0].Explain)
 }
+
+func Test_saveLintResultsVersionTraversal(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Name:    "testpkg",
+			Version: "1.0-../../etc/cron.d/evil",
+		},
+	}
+	results := map[string]*types.PackageLintResults{
+		"testpkg": {},
+	}
+
+	err := saveLintResults(ctx, cfg, results, t.TempDir(), "x86_64")
+	assert.ErrorContains(t, err, "path traversal")
+}

@@ -199,6 +199,11 @@ var linterMap = map[string]linter{
 		Explain:         "This package contains static archives (.a files)",
 		defaultBehavior: Warn,
 	},
+	"libtool/la-files": {
+		LinterFunc:      linters.LaFilesLinter,
+		Explain:         "Remove libtool archive (.la) files from the package, or disable this linter if they are required",
+		defaultBehavior: Require,
+	},
 	"duplicate": {
 		LinterFunc:      linters.DuplicateLinter,
 		Explain:         "This package contains files with the same name and content in different directories (consider symlinking)",

@@ -571,6 +571,19 @@ func TestLinters(t *testing.T) {
 		linter:  "staticarchive",
 		pkgname: "test-dev",
 		pass:    true, // .a files are expected in -dev packages
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo.la"),
+		linter:  "libtool/la-files",
+		pass:    false,
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo.la"),
+		linter:  "libtool/la-files",
+		pkgname: "foo-dev",
+		pass:    false, // no auto-exemption for -dev; opt-out is via checks.disabled
+	}, {
+		dirFunc: mkfile(t, "usr/lib/libfoo.so"),
+		linter:  "libtool/la-files",
+		pass:    true,
 	}} {
 		ctx := slogtest.Context(t)
 		t.Run(c.linter, func(t *testing.T) {

@@ -718,6 +718,10 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if setting.Key == "microsoft_systemcrypto" && setting.Value == "1" {
 				fipscrypto = true
 			}
+			// Geomys module
+			if setting.Key == "GOFIPS140" && setting.Value == "v1.0.0-c2097c7c" {
+				generated.Runtime = append(generated.Runtime, "NIST-CMVP-9999")
+			}
 		}
 		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
 		if cgo && fipscrypto {

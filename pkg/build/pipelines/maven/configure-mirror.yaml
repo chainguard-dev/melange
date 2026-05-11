@@ -30,7 +30,7 @@ pipeline:
               <id>google-maven-central</id>
               <name>GCS Maven Central mirror</name>
               <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-              <mirrorOf>*</mirrorOf>
+              <mirrorOf>central</mirrorOf>
             </mirror>
           </mirrors>
         </settings>

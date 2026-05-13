@@ -1671,7 +1671,7 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 
 func getUserSSHKey(ctx context.Context) ([]byte, error) {
 	socket := os.Getenv("SSH_AUTH_SOCK")
-	conn, err := net.Dial("unix", socket)
+	conn, err := net.Dial("unix", socket) // #nosec G704 - connecting to user's SSH agent socket from SSH_AUTH_SOCK is intentional
 	if err != nil {
 		clog.FromContext(ctx).Warnf("Failed to open SSH_AUTH_SOCK: %v, falling back to key search", err)
 		currentUser, err := user.Current()
@@ -2275,7 +2275,7 @@ func generateCpio(ctx context.Context, cfg *Config) (string, error) {
 	// Check for prebuilt initramfs via environment variable
 	if prebuiltPath := os.Getenv("QEMU_BASE_INITRAMFS"); prebuiltPath != "" {
 		// Validate file exists and is readable
-		if _, err := os.Stat(prebuiltPath); err != nil {
+		if _, err := os.Stat(prebuiltPath); err != nil { // #nosec G304,G703 - prebuilt initramfs path is intentionally user-configurable via env var
 			return "", fmt.Errorf("QEMU_BASE_INITRAMFS file not accessible: %w", err)
 		}
 		clog.FromContext(ctx).Infof("qemu: using prebuilt base initramfs from QEMU_BASE_INITRAMFS: %s", prebuiltPath)
@@ -2412,7 +2412,7 @@ func GenerateBaseInitramfs(ctx context.Context, arch apko_types.Architecture, cf
 // cpioContainsPath reports whether target exists as a record name in the CPIO
 // archive at cpioFile. CPIO record names are stored without a leading slash.
 func cpioContainsPath(cpioFile, target string) (bool, error) {
-	f, err := os.Open(cpioFile)
+	f, err := os.Open(cpioFile) // #nosec G304,G703 - cpio path is internally computed/cached, not user-supplied
 	if err != nil {
 		return false, err
 	}
@@ -2444,10 +2444,10 @@ func observabilityHookPresent(ctx context.Context, cpioFile string) bool {
 	sidecar := cpioFile + ".observability"
 
 	// Use the cached result when the sidecar is at least as new as the CPIO.
-	cpioInfo, cpioErr := os.Stat(cpioFile)
-	sidecarInfo, sidecarErr := os.Stat(sidecar)
+	cpioInfo, cpioErr := os.Stat(cpioFile)      // #nosec G304,G703 - cpio path is internally computed/cached
+	sidecarInfo, sidecarErr := os.Stat(sidecar) // #nosec G304,G703 - sidecar path is derived from cpioFile
 	if cpioErr == nil && sidecarErr == nil && !sidecarInfo.ModTime().Before(cpioInfo.ModTime()) {
-		data, err := os.ReadFile(sidecar)
+		data, err := os.ReadFile(sidecar) // #nosec G304,G703 - sidecar path is derived from cpioFile
 		if err == nil {
 			return strings.TrimSpace(string(data)) == "true"
 		}
@@ -2465,7 +2465,7 @@ func observabilityHookPresent(ctx context.Context, cpioFile string) bool {
 	if present {
 		val = "true"
 	}
-	if err := os.WriteFile(sidecar, []byte(val+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(sidecar, []byte(val+"\n"), 0o600); err != nil { // #nosec G304,G703 - sidecar path is derived from cpioFile
 		clog.FromContext(ctx).Debugf("qemu: could not write observability sidecar: %v", err)
 	}
 	return present
@@ -2602,7 +2602,7 @@ func injectRuntimeData(ctx context.Context, cfg *Config, modulesDir, baseInitram
 		}
 	}()
 
-	baseFile, err := os.Open(baseInitramfs) // #nosec G304 - Reading base initramfs from cache
+	baseFile, err := os.Open(baseInitramfs) // #nosec G304,G703 - Reading base initramfs from cache or env-configured path
 	if err != nil {
 		return "", fmt.Errorf("failed to open base initramfs: %w", err)
 	}

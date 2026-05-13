@@ -62,7 +62,7 @@ func (b *Build) createGccSpecFile() error {
 func createClangConfigFile(outputPath string, includePaths ...string) error {
 	var content strings.Builder
 	for _, includePath := range includePaths {
-		content.WriteString(fmt.Sprintf("@%s\n", includePath))
+		fmt.Fprintf(&content, "@%s\n", includePath)
 	}
 
 	// #nosec G306 -- clang config files should be world-readable

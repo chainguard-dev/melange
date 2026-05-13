@@ -26,7 +26,7 @@ func (c *RLHTTPClient) Do(req *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 	}
-	resp, err := c.Client.Do(req)
+	resp, err := c.Client.Do(req) // #nosec G107,G704 - URLs come from build configuration, not untrusted runtime input
 	if err != nil {
 		return nil, err
 	}

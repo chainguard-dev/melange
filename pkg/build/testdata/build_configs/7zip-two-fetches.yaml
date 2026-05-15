@@ -1,7 +1,7 @@
 package:
   name: 7zip-two-fetches
   version: 2301
-  epoch: 3
+  epoch: 4
   cpe:
     vendor: "7-zip"
     product: "7-zip"
@@ -36,7 +36,7 @@ pipeline:
       mkdir -p b/g
       make -f ../../cmpl_gcc.mak -j$(nproc) \
         CC="${CC:-cc} $CFLAGS $CPPFLAGS $LDFLAGS" \
-        CXX="${CXX:-c++} $CXXFLAGS $CPPFLAGS $LDFLAGS" \
+        CXX="${CXX:-c++} $CXXFLAGS $CPPFLAGS $LDFLAGS -Wno-error=array-bounds -Wno-error=maybe-uninitialized" \
         DISABLE_RAR=1
 
   - runs: |

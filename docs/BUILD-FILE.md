@@ -101,16 +101,35 @@ and which license applies to it) and may include the following fields:
 The license for either the package or part of the package (if there are multiple entries). It is important to note that only packages with OSI-approved licenses can be included in Wolfi. You can check the relevant package info in the licenses page at [opensource.org](https://opensource.org/licenses/).
 
 #### paths [optional]
-The license paths that this license applies to
+File globs (relative to the package root) that this license applies to.
+Defaults to `*` (the whole package). Use this when different parts of the
+package ship under different licenses:
+```yaml
+copyright:
+  - license: Apache-2.0
+    paths:
+      - "*"
+  - license: BSD-3-Clause
+    paths:
+      - "vendor/foo/**"
+```
 
 #### attestation [optional]
-Attestations for this license.
+Free-form attribution text appended to the package's copyright notice (for
+example, the upstream `NOTICE` contents):
+```yaml
+copyright:
+  - license: Apache-2.0
+    attestation: |
+      Copyright 2024 Example Corp.
+      Licensed under the Apache License, Version 2.0.
+```
 
-#### license-path
+#### license-path [optional]
 Path (relative to the build workspace) to a file containing the license
 text to embed in the SBOM. Required for non-SPDX `license` values. Supports
-`${{package.*}}` and `${{vars.*}}` substitution. Must stay within the
-workspace.
+`${{package.*}}` and `${{vars.*}}` substitution. License must stay within
+the workspace.
 
 #### detection-override [optional]
 Overrides the result of automatic license detection for the file referenced
@@ -123,15 +142,12 @@ copyright:
   - license: PSF-2.0
 ```
 
-A more complete example using `license-path` with a versioned directory:
+Another example using `license-path` with a versioned directory:
 ```yaml
 copyright:
   - license: CustomLicense
-    license-path: usr/share/doc/${{package.name}}-${{package.version}}/LICENSE
+    license-path: path/to/${{package.version}}/LICENSE
 ```
-
-  TODO(vaikas): Add attestation example (only found TODO)
-  TODO(vaikas): Add paths example (only found *)
 
 ### dependencies
 List of packages that this package depends on at runtime, but not during build

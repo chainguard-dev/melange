@@ -94,8 +94,8 @@ Leaving this out defaults to `all`.
   TODO(vaikas): Saw something about riscv64. Does all include that?
 
 ### copyright
-List of copyrights for this package. Each entry in the list consists of 3
-fields that define the scope (paths, and which license applies to it):
+List of copyrights for this package. Each entry defines the scope (paths,
+and which license applies to it) and may include the following fields:
 
 #### license
 The license for either the package or part of the package (if there are multiple entries). It is important to note that only packages with OSI-approved licenses can be included in Wolfi. You can check the relevant package info in the licenses page at [opensource.org](https://opensource.org/licenses/).
@@ -103,13 +103,31 @@ The license for either the package or part of the package (if there are multiple
 #### paths [optional]
 The license paths that this license applies to
 
-#### attestation
+#### attestation [optional]
 Attestations for this license.
+
+#### license-path
+Path (relative to the build workspace) to a file containing the license
+text to embed in the SBOM. Required for non-SPDX `license` values. Supports
+`${{package.*}}` and `${{vars.*}}` substitution. Must stay within the
+workspace.
+
+#### detection-override [optional]
+Overrides the result of automatic license detection for the file referenced
+by `license-path`. Use this when the on-disk text is misidentified by the
+classifier but the declared `license` is known to be correct.
 
 For example, saying that this entire package has license `PSF-2.0`
 ```yaml
 copyright:
   - license: PSF-2.0
+```
+
+A more complete example using `license-path` with a versioned directory:
+```yaml
+copyright:
+  - license: CustomLicense
+    license-path: usr/share/doc/${{package.name}}-${{package.version}}/LICENSE
 ```
 
   TODO(vaikas): Add attestation example (only found TODO)

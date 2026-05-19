@@ -9,7 +9,7 @@ package:
 environment:
   contents:
     packages:
-      - go
+      - go-1.26
       - git
   environment:
     CGO_ENABLED: "0"
@@ -44,10 +44,9 @@ pipeline:
       git commit -m "Initial commit"
 
   # Test 1: Clean repository should not have +dirty
-  - uses: go/build
+  - uses: go/build/v2
     with:
       modroot: hello-app
-      packages: .
       output: git-clean-binary
       ignore-untracked-files: false
 
@@ -68,10 +67,9 @@ pipeline:
       cd hello-app
       echo "// Modified tracked file" >> main.go
 
-  - uses: go/build
+  - uses: go/build/v2
     with:
       modroot: hello-app
-      packages: .
       output: git-modified-tracked-binary
       ignore-untracked-files: true
 
@@ -93,10 +91,9 @@ pipeline:
       git checkout -- main.go  # Reset to clean
       echo "untracked content" > untracked.txt
 
-  - uses: go/build
+  - uses: go/build/v2
     with:
       modroot: hello-app
-      packages: .
       output: git-untracked-not-ignored-binary
       ignore-untracked-files: false
 
@@ -113,10 +110,9 @@ pipeline:
       fi
 
   # Test 4: Same untracked file, ignore-untracked-files: true should NOT be +dirty
-  - uses: go/build
+  - uses: go/build/v2
     with:
       modroot: hello-app
-      packages: .
       output: git-untracked-ignored-binary
       ignore-untracked-files: true
 

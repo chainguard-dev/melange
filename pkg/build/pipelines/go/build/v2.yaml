@@ -1,0 +1,129 @@
+name: Run a build using the go compiler
+
+needs:
+  packages:
+    - busybox
+    - ca-certificates-bundle
+
+inputs:
+  packages:
+    description: |
+      List of space-separated packages to compile. Files can also be specified.
+      This value is passed as an argument to go build. All paths are relative
+      to inputs.modroot. Can be multiple packages. Defaults to "." build current package. To build all packages use "./...".
+    default: "."
+
+  tags:
+    description: |
+      A comma-separated list of build tags to append to the go compiler
+
+  toolchaintags:
+    description: |
+      A comma-separated list of default toolchain go build tags
+    default: "netgo,osusergo"
+
+  output:
+    description: |
+      Filename to use when writing the binary. The final install location inside
+      the apk will be in prefix / install-dir / output. This is optional, by default the name of the package is used.
+    default: ""
+
+  vendor:
+    description: |
+      If true, the go mod command will also update the vendor directory
+    default: "false"
+
+  modroot:
+    default: "."
+    required: false
+    description: |
+      Top directory of the go module, this is where go.mod lives. Before buiding
+      the go pipeline wil cd into this directory.
+
+  prefix:
+    description: |
+      Prefix to relocate binaries
+    default: usr
+
+  ldflags:
+    description: |
+      List of [pattern=]arg to append to the go compiler with -ldflags
+
+  strip:
+    description: |
+      Set of strip ldflags passed to the go compiler
+    # Note symbols tables are useful for cryptography audits and govulncheck
+    default: "-w"
+
+  install-dir:
+    description: |
+      Directory where binaries will be installed
+    default: bin
+
+  experiments:
+    description: |
+      A comma-separated list of Golang experiment names (ex: loopvar) to use
+      when building the binary.
+    default: ""
+
+  extra-args:
+    description: |
+      A space-separated list of extra arguments to pass to the go build command.
+    default: ""
+
+  amd64:
+    description: |
+      GOAMD64 microarchitecture level to use
+    default: "v2"
+
+  arm64:
+    description: |
+      GOARM64 microarchitecture level to use
+    default: "v8.0"
+
+  buildmode:
+    description: |
+      The -buildmode flag value. See "go help buildmode" for more information.
+    default: "default"
+
+  ignore-untracked-files:
+    description: |
+      If true, we will provide a gitignore that ignore all untracked files.
+    default: "true"
+
+pipeline:
+  - runs: |
+
+      # We sometimes have stray files in our build environment
+      # That we don't neccesarily want surfaced in the build version
+      if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then
+        mkdir -p ~/.config/git/
+        touch ~/.config/git/ignore
+        cp ~/.config/git/ignore ~/.config/git/ignore.bak
+        echo '**' > ~/.config/git/ignore
+      fi
+
+      cd "${{inputs.modroot}}"
+
+      # check if modroot is set correctly by checking go.mod file exist
+      if [ ! -e go.mod ]; then
+        echo "go.mod not found in ${{inputs.modroot}}"
+        exit 1
+      fi
+
+      LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
+
+      BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
+
+      # Take advantage of melange's buid cache for downloaded modules
+      export GOMODCACHE=/var/cache/melange/gomodcache
+
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.extra-args}} ${{inputs.packages}}
+
+      # Clean up the gitignore file we created to avoid interfering with subsequent builds
+      if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then
+        mv ~/.config/git/ignore.bak ~/.config/git/ignore
+      fi
+
+  # Strip go binaries by default
+  - uses: strip

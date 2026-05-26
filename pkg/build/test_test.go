@@ -85,6 +85,8 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 		},
 	}
 
+	networkingFalse := false
+
 	tests := []struct {
 		name    string
 		env     map[string]string
@@ -125,6 +127,18 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 				want.Mounts = append(want.Mounts, container.BindMount{Source: tmpDirReal, Destination: "/var/cache/melange"})
 				want.Environment = map[string]string{"FOO": "bar", "BAZ": "zzz", "HOME": "/root"}
 				want.CacheDir = tmpDirReal
+				return &want
+			}(),
+		}, {
+			name: "test - networking disabled",
+			t: func() *Test {
+				cacheT := baseTest
+				cacheT.Configuration.Capabilities.Networking = &networkingFalse
+				return &cacheT
+			}(),
+			want: func() *container.Config {
+				want := wantBase
+				want.Capabilities.Networking = false
 				return &want
 			}(),
 		},

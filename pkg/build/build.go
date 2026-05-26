@@ -1018,10 +1018,12 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		}
 	}
 
-	// TODO(kaniini): Disable networking capability according to the pipeline requirements.
-	caps := container.Capabilities{
-		Networking: true,
+	networking := true
+	if b.Configuration.Capabilities.Networking != nil {
+		networking = *b.Configuration.Capabilities.Networking
 	}
+
+	caps := container.Capabilities{Networking: networking}
 
 	cfg := container.Config{
 		Arch:         b.Arch,

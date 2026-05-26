@@ -40,6 +40,12 @@
 
 	// Linux process capabilities to drop from the pipeline container.
 	drop?: [...string]
+
+	// When set to false, melange will run the build/test runner sandbox
+	// without network access.
+	//
+	// When omitted, melange keeps the existing default (network enabled).
+	networking?: bool
 })
 
 // Capability stores paths and an associated map of capabilities

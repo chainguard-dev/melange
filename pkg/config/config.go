@@ -875,6 +875,14 @@ type Capabilities struct {
 	Add []string `json:"add,omitempty" yaml:"add,omitempty"`
 	// Linux process capabilities to drop from the pipeline container.
 	Drop []string `json:"drop,omitempty" yaml:"drop,omitempty"`
+
+	// Controls whether the build/test runner sandbox has access to the
+	// network. When omitted, melange keeps the existing behavior (network
+	// enabled).
+	//
+	// Note: network access may still be required for pipeline steps like
+	// fetch/git-checkout unless inputs are preloaded via cache/local sources.
+	Networking *bool `json:"networking,omitempty" yaml:"networking,omitempty"`
 }
 
 // Configuration is the root melange configuration.

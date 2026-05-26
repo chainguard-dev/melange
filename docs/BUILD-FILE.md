@@ -100,6 +100,8 @@ and which license applies to it) and may include the following fields:
 #### license
 The license for either the package or part of the package (if there are multiple entries). It is important to note that only packages with OSI-approved licenses can be included in Wolfi. You can check the relevant package info in the licenses page at [opensource.org](https://opensource.org/licenses/).
 
+Supports variable substitution, which is useful for producing unique license references across version streamed packages.
+
 #### paths [optional]
 File globs (relative to the package root) that this license applies to.
 Defaults to `*` (the whole package). Use this when different parts of the
@@ -147,6 +149,18 @@ Another example using `license-path` with a versioned directory:
 copyright:
   - license: CustomLicense
     license-path: path/to/${{package.version}}/LICENSE
+```
+
+Variables in `license` are also substituted, which is helpful when the
+SPDX identifier itself is derived from a `var-transforms` rule (e.g.
+selecting `GPL-2.0-only` vs `GPL-3.0-only` based on the upstream version):
+```yaml
+vars:
+  license-version: "2.4"
+
+copyright:
+  - license: LicenseRef-SOME-LICENSE-${{vars.some-version}}
+    license-path: path/to/LICENSE
 ```
 
 ### dependencies

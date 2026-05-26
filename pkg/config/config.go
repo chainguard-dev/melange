@@ -1535,7 +1535,7 @@ func replaceCopyright(r *strings.Replacer, in []Copyright) []Copyright {
 		out[i] = Copyright{
 			Paths:             replaceAll(r, cp.Paths),
 			Attestation:       cp.Attestation,
-			License:           cp.License,
+			License:           r.Replace(cp.License),
 			LicensePath:       r.Replace(cp.LicensePath),
 			DetectionOverride: cp.DetectionOverride,
 		}

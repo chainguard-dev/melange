@@ -33,13 +33,12 @@ import (
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	"github.com/docker/cli/cli/streams"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"chainguard.dev/melange/internal/contextreader"
@@ -62,7 +61,7 @@ type docker struct {
 
 // NewRunner returns a Docker Runner implementation.
 func NewRunner(ctx context.Context) (mcontainer.Runner, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -120,20 +119,24 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	}
 
 	// ldconfig is run to prime ld.so.cache for glibc packages which require it.
-	resp, err := dk.cli.ContainerCreate(ctx, &container.Config{
-		Image: cfg.ImgRef,
-		Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
-		Tty:   false,
-		Labels: map[string]string{
-			"dev.chainguard.melange":         "true",
-			"dev.chainguard.melange.package": cfg.PackageName,
+	resp, err := dk.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image: cfg.ImgRef,
+			Cmd:   []string{"/bin/sh", "-c", "[ -x /sbin/ldconfig ] && /sbin/ldconfig /lib || true\nwhile true; do sleep 5; done"},
+			Tty:   false,
+			Labels: map[string]string{
+				"dev.chainguard.melange":         "true",
+				"dev.chainguard.melange.package": cfg.PackageName,
+			},
 		},
-	}, hostConfig, nil, platform, "")
+		HostConfig: hostConfig,
+		Platform:   platform,
+	})
 	if err != nil {
 		return err
 	}
 
-	if err := dk.cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if _, err := dk.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
 		return err
 	}
 
@@ -154,7 +157,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *mcontainer.Config) erro
 		return fmt.Errorf("pod not running")
 	}
 
-	if err := dk.cli.ContainerRemove(ctx, cfg.PodID, container.RemoveOptions{
+	if _, err := dk.cli.ContainerRemove(ctx, cfg.PodID, client.ContainerRemoveOptions{
 		Force: true,
 	}); err != nil {
 		return err
@@ -169,7 +172,7 @@ func (dk *docker) TerminatePod(ctx context.Context, cfg *mcontainer.Config) erro
 // as a container runner.
 func (dk *docker) TestUsability(ctx context.Context) bool {
 	log := clog.FromContext(ctx)
-	if _, err := dk.cli.Ping(ctx); err != nil {
+	if _, err := dk.cli.Ping(ctx, client.PingOptions{}); err != nil {
 		log.Errorf("cannot use docker for containers: %v", err)
 		return false
 	}
@@ -225,12 +228,12 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+	taskIDResp, err := dk.cli.ExecCreate(ctx, cfg.PodID, client.ExecCreateOptions{
 		User:         cfg.RunAsUID,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
-		Tty:          false,
+		TTY:          false,
 		AttachStderr: true,
 		AttachStdout: true,
 	})
@@ -238,8 +241,8 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 		return fmt.Errorf("failed to create exec task inside pod: %w", err)
 	}
 
-	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
-		Tty: false,
+	attachResp, err := dk.cli.ExecAttach(ctx, taskIDResp.ID, client.ExecAttachOptions{
+		TTY: false,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to attach to exec task: %w", err)
@@ -250,7 +253,7 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 		return err
 	}
 
-	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	inspectResp, err := dk.cli.ExecInspect(ctx, taskIDResp.ID, client.ExecInspectOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get exit code from task: %w", err)
 	}
@@ -278,14 +281,14 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 
 	outterm := streams.NewOut(os.Stdout)
 	h, w := outterm.GetTtySize()
-	size := [2]uint{h, w}
+	size := client.ConsoleSize{Height: h, Width: w}
 
-	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+	taskIDResp, err := dk.cli.ExecCreate(ctx, cfg.PodID, client.ExecCreateOptions{
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
-		Tty:          true,
-		ConsoleSize:  &size,
+		TTY:          true,
+		ConsoleSize:  size,
 		AttachStdin:  true,
 		AttachStderr: true,
 		AttachStdout: true,
@@ -294,9 +297,9 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 		return fmt.Errorf("failed to create debug exec task inside pod: %w", err)
 	}
 
-	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
-		ConsoleSize: &size,
-		Tty:         true,
+	attachResp, err := dk.cli.ExecAttach(ctx, taskIDResp.ID, client.ExecAttachOptions{
+		ConsoleSize: size,
+		TTY:         true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to attach to exec task: %w", err)
@@ -347,7 +350,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 	}
 
 	// Poll docker once per second to see if the container has exited yet.
-	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	inspectResp, err := dk.cli.ExecInspect(ctx, taskIDResp.ID, client.ExecInspectOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get exit code from task: %w", err)
 	}
@@ -374,11 +377,11 @@ func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*
 		return nil, fmt.Errorf("pod not running")
 	}
 
-	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
+	taskIDResp, err := dk.cli.ExecCreate(ctx, cfg.PodID, client.ExecCreateOptions{
 		User:         cfg.RunAsUID,
 		Cmd:          []string{"cat", "/etc/os-release"},
 		WorkingDir:   runnerWorkdir,
-		Tty:          false,
+		TTY:          false,
 		AttachStderr: true,
 		AttachStdout: true,
 	})
@@ -386,8 +389,8 @@ func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*
 		return nil, fmt.Errorf("failed to create exec task to read os-release: %w", err)
 	}
 
-	attachResp, err := dk.cli.ContainerExecAttach(ctx, taskIDResp.ID, container.ExecStartOptions{
-		Tty: false,
+	attachResp, err := dk.cli.ExecAttach(ctx, taskIDResp.ID, client.ExecAttachOptions{
+		TTY: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to exec task: %w", err)
@@ -413,7 +416,7 @@ func (dk *docker) GetReleaseData(ctx context.Context, cfg *mcontainer.Config) (*
 		return nil, fmt.Errorf("failed to flush buffer: %w", err)
 	}
 
-	inspectResp, err := dk.cli.ContainerExecInspect(ctx, taskIDResp.ID)
+	inspectResp, err := dk.cli.ExecInspect(ctx, taskIDResp.ID, client.ExecInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exit code from os-release task: %w", err)
 	}
@@ -479,7 +482,7 @@ func uniqueImageTag() (string, error) {
 func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 	log := clog.FromContext(ctx)
 	log.Infof("deleting image %s", ref)
-	resps, err := d.cli.ImageRemove(ctx, ref, image.RemoveOptions{
+	resps, err := d.cli.ImageRemove(ctx, ref, client.ImageRemoveOptions{
 		Force:         true,
 		PruneChildren: true,
 	})
@@ -487,7 +490,7 @@ func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {
 		return err
 	}
 
-	for _, resp := range resps {
+	for _, resp := range resps.Items {
 		if resp.Untagged != "" {
 			log.Infof("untagged %s", resp.Untagged)
 		}

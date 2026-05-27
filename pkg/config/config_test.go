@@ -2372,6 +2372,53 @@ func TestLicensingInfosMultipleLicenses(t *testing.T) {
 	})
 }
 
+// TestCopyrightVarSubstitution ensures that variable references in
+// copyright[].license and copyright[].license-path are resolved during
+// configuration parsing.
+func TestCopyrightVarSubstitution(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(os.TempDir(), "melange-test-copyright-vars")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: copyright-vars
+  version: 1.2.3
+  epoch: 0
+  description: test variable substitution in copyright fields
+  copyright:
+    - license: ${{vars.spdx-license}}
+      license-path: licenses/${{package.name}}-${{package.version}}/LICENSE
+    - license: LicenseRef-${{package.name}}
+      license-path: ${{vars.license-dir}}/NOTICE
+    - license: GPL-${{vars.short-version}}-only
+      license-path: licenses/${{vars.short-version}}/COPYING
+
+vars:
+  spdx-license: Apache-2.0
+  license-dir: share/doc
+
+var-transforms:
+  - from: ${{package.version}}
+    match: ^(\d+)\.\d+\.\d+$
+    replace: "$1.0"
+    to: short-version
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Len(t, cfg.Package.Copyright, 3)
+	require.Equal(t, "Apache-2.0", cfg.Package.Copyright[0].License)
+	require.Equal(t, "licenses/copyright-vars-1.2.3/LICENSE", cfg.Package.Copyright[0].LicensePath)
+	require.Equal(t, "LicenseRef-copyright-vars", cfg.Package.Copyright[1].License)
+	require.Equal(t, "share/doc/NOTICE", cfg.Package.Copyright[1].LicensePath)
+	require.Equal(t, "GPL-1.0-only", cfg.Package.Copyright[2].License)
+	require.Equal(t, "licenses/1.0/COPYING", cfg.Package.Copyright[2].LicensePath)
+}
+
 func TestLineNumbersInError(t *testing.T) {
 	ctx := slogtest.Context(t)
 

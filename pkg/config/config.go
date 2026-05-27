@@ -1517,6 +1517,23 @@ func replaceDependencies(r *strings.Replacer, in Dependencies) Dependencies {
 	}
 }
 
+func replaceCopyright(r *strings.Replacer, in []Copyright) []Copyright {
+	if in == nil {
+		return nil
+	}
+	out := make([]Copyright, len(in))
+	for i, cp := range in {
+		out[i] = Copyright{
+			Paths:             replaceAll(r, cp.Paths),
+			Attestation:       cp.Attestation,
+			License:           r.Replace(cp.License),
+			LicensePath:       r.Replace(cp.LicensePath),
+			DetectionOverride: cp.DetectionOverride,
+		}
+	}
+	return out
+}
+
 func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 	return Package{
 		Name:               r.Replace(in.Name),
@@ -1527,7 +1544,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		URL:                r.Replace(in.URL),
 		Commit:             replaceCommit(commit, in.Commit),
 		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
-		Copyright:          in.Copyright,
+		Copyright:          replaceCopyright(r, in.Copyright),
 		Dependencies:       replaceDependencies(r, in.Dependencies),
 		Options:            in.Options,
 		Scriptlets:         replaceScriptlets(r, in.Scriptlets),

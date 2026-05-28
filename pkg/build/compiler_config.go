@@ -28,7 +28,7 @@ import (
 var packageMetadataTemplate = `{"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.Arch.ToAPK}}"{{if .Configuration.Package.CPE.Vendor}},"appCpe":"{{.Configuration.Package.CPEString}}"{{end}}}`
 
 var gccLinkTemplate = `*link:
-+ --package-metadata=` + packageMetadataTemplate + `
++ %{!r:--package-metadata=` + packageMetadataTemplate + }`
 `
 
 var clangConfigTemplate = `-Xlinker --package-metadata='` + packageMetadataTemplate + `'

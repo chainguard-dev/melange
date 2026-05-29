@@ -16,6 +16,7 @@ package build
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -50,6 +51,12 @@ type gitArchiveOptions struct {
 //
 // Path prefixes are preserved: archiving "charts/foo" extracts to
 // Destination/charts/foo/..., matching the layout of the source repository.
+//
+// Because this uses `git archive`, the repository's .gitattributes are honored:
+// paths marked `export-ignore` are omitted and `export-subst` placeholders are
+// expanded. The output is therefore the committed tree as filtered by those
+// export rules, not necessarily a byte-for-byte copy. Requires `git` and `tar`
+// on the host.
 func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit string, err error) {
 	log := clog.FromContext(ctx)
 
@@ -89,6 +96,10 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 		return "", fmt.Errorf("ref %q resolved to commit %s, expected %s", opts.Ref, resolved, opts.ExpectedCommit)
 	}
 	if opts.ExpectedCommit == "" {
+		// Only reached when the caller passed a tag/branch with no
+		// expected-commit (genuinely unpinned). The default-ref path in
+		// maybeGitArchiveSource backfills ExpectedCommit with the build commit,
+		// so it does not trigger this warning.
 		log.Warnf("git archive: no expected-commit; ref %q resolved to %s", opts.Ref, resolved)
 	}
 
@@ -115,11 +126,16 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 	if err := extract.Start(); err != nil {
 		return "", fmt.Errorf("starting tar: %w", err)
 	}
-	if err := archive.Run(); err != nil {
-		return "", fmt.Errorf("git archive %s %s: %w", resolved, opts.Path, err)
-	}
-	if err := extract.Wait(); err != nil {
-		return "", fmt.Errorf("extracting archive: %w", err)
+
+	// Always wait on both commands so the tar child is reaped even when git
+	// archive fails, and join their errors so a failure in either is surfaced.
+	// Reporting only one would mask the real cause: if tar dies first, git
+	// archive sees EPIPE; if git archive dies first, tar sees EOF.
+	archiveErr := archive.Run()
+	extractErr := extract.Wait()
+	if archiveErr != nil || extractErr != nil {
+		return "", fmt.Errorf("git archive %s %s: %w", resolved, opts.Path,
+			errors.Join(archiveErr, extractErr))
 	}
 
 	return resolved, nil

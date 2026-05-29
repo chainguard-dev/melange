@@ -25,6 +25,7 @@ import (
 	"maps"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -554,56 +555,103 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	})
 }
 
+// gitArchiveStepName is the pipeline `uses:` identifier handled host-side.
+const gitArchiveStepName = "git-archive"
+
+// countGitArchiveSteps returns the number of git-archive steps in the given
+// pipeline tree, descending into nested sub-pipelines.
+func countGitArchiveSteps(steps []config.Pipeline) int {
+	n := 0
+	for i := range steps {
+		if steps[i].Uses == gitArchiveStepName {
+			n++
+		}
+		n += countGitArchiveSteps(steps[i].Pipeline)
+	}
+	return n
+}
+
 // maybeGitArchiveSource looks for a `git-archive` step in the main pipeline and,
 // if present, performs the archive host-side: it extracts the requested subtree
 // of the local git repository into a temporary directory and repoints
 // b.SourceDir at it, so the normal workspace population copies only the archived
 // subtree into the build. This avoids cloning over the network and avoids
-// mounting the repository's .git history into the sandbox.
+// mounting the repository's .git history into the sandbox. git-archive supersedes
+// any --source-dir, as it is itself the source-acquisition mechanism.
 //
 // By default it archives at the commit melange is building (the config file's
-// repository commit), since the packaged source and the config live in the same
-// repository. The resolved commit is recorded back into the step so SBOM
-// provenance reflects the exact source even when the manifest omits a ref.
+// repository commit), so the packaged source matches the commit under build
+// (subject to .gitattributes export rules; see gitArchive).
 //
-// It returns a cleanup function (removing the temp dir) when an archive was
-// performed, or nil when no git-archive step is present.
+// It always returns a non-nil cleanup function (a no-op when no archive was
+// performed), so callers can unconditionally defer it.
 func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 	log := clog.FromContext(ctx)
+	noop := func() {}
+
+	// git-archive runs host-side before the sandbox, so it is only meaningful as
+	// a single top-level step in the main pipeline. Reject duplicates or
+	// placement in nested/subpackage pipelines rather than silently treating the
+	// extra steps as in-sandbox no-op markers.
+	total := countGitArchiveSteps(b.Configuration.Pipeline)
+	for i := range b.Configuration.Subpackages {
+		total += countGitArchiveSteps(b.Configuration.Subpackages[i].Pipeline)
+	}
+	if total == 0 {
+		return noop, nil
+	}
+	if total > 1 {
+		return noop, fmt.Errorf("git-archive: may be used at most once per build, found %d", total)
+	}
 
 	var step *config.Pipeline
 	for i := range b.Configuration.Pipeline {
-		if b.Configuration.Pipeline[i].Uses == "git-archive" {
+		if b.Configuration.Pipeline[i].Uses == gitArchiveStepName {
 			step = &b.Configuration.Pipeline[i]
 			break
 		}
 	}
 	if step == nil {
-		return nil, nil
+		return noop, fmt.Errorf("git-archive: must be a top-level step in the main pipeline (not nested or in a subpackage)")
 	}
 
-	// Substitute ${{...}} templates in the step's inputs (e.g. an explicit ref
-	// of iamguarded-chart-common-v${{package.version}}) using the same
-	// machinery the in-sandbox pipeline runner uses.
+	// git-archive provides the workspace source, which is incompatible with an
+	// explicitly empty workspace.
+	if b.EmptyWorkspace {
+		return noop, fmt.Errorf("git-archive: cannot be used with an empty workspace")
+	}
+
+	// The archive shells out to host git and tar (the pipeline's `needs` only
+	// provisions the sandbox). Fail early with a clear message if either is
+	// missing.
+	for _, tool := range []string{"git", "tar"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			return noop, fmt.Errorf("git-archive: requires %q on the host: %w", tool, err)
+		}
+	}
+
+	// Substitute ${{...}} templates in the step's inputs (e.g. an explicit tag
+	// of iamguarded-chart-common-v${{package.version}}) using the same machinery
+	// the in-sandbox pipeline runner uses.
 	sm, err := NewSubstitutionMap(b.Configuration, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
 	if err != nil {
-		return nil, fmt.Errorf("building substitution map: %w", err)
+		return noop, fmt.Errorf("building substitution map: %w", err)
 	}
 	mutated, err := sm.MutateWith(step.With)
 	if err != nil {
-		return nil, fmt.Errorf("substituting git-archive inputs: %w", err)
+		return noop, fmt.Errorf("substituting git-archive inputs: %w", err)
 	}
 	get := func(name string) string { return mutated[fmt.Sprintf("${{inputs.%s}}", name)] }
 
 	archivePath := get("path")
 	if archivePath == "" {
-		return nil, fmt.Errorf("git-archive: 'path' is required")
+		return noop, fmt.Errorf("git-archive: 'path' is required")
 	}
 
 	tag := get("tag")
 	branch := get("branch")
 	if tag != "" && branch != "" {
-		return nil, fmt.Errorf("git-archive: 'tag' and 'branch' are mutually exclusive")
+		return noop, fmt.Errorf("git-archive: 'tag' and 'branch' are mutually exclusive")
 	}
 
 	// Anchor git at the directory containing the config file; git discovers the
@@ -611,17 +659,17 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 	// does not depend on the current working directory.
 	configPath, err := filepath.Abs(b.ConfigFile)
 	if err != nil {
-		return nil, fmt.Errorf("resolving config file path: %w", err)
+		return noop, fmt.Errorf("resolving config file path: %w", err)
 	}
 	repoDir := filepath.Dir(configPath)
 
 	expectedCommit := get("expected-commit")
 
 	// Determine the ref to archive. A tag or branch is used as given; if neither
-	// is specified, default to the commit melange is building (and its
-	// assurance). The chart source and the config live in the same repository,
-	// so the default packages 'path' exactly as it existed in the commit under
-	// build.
+	// is specified, default to the commit melange is building and pin the
+	// assurance to it. The chart source and the config live in the same
+	// repository, so the default packages 'path' as committed at the build
+	// commit (subject to .gitattributes export rules).
 	var ref string
 	switch {
 	case tag != "":
@@ -630,13 +678,13 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 		ref = branch
 	default:
 		buildCommit := b.ConfigFileRepositoryCommit
-		if buildCommit == "" || buildCommit == "unknown" {
+		if buildCommit == "" || buildCommit == config.UnknownCommit {
 			// Melange could not determine the build commit (for example, go-git
-			// cannot read HEAD in a linked worktree). Fall back to resolving
-			// HEAD with the git CLI, which is the commit being built.
+			// cannot read HEAD in a linked worktree). Fall back to resolving HEAD
+			// with the git CLI, which is the commit being built.
 			head, err := gitRevParse(ctx, repoDir, "HEAD")
 			if err != nil {
-				return nil, fmt.Errorf("git-archive: no 'tag' or 'branch' given and could not determine the build commit (the config must live in a git repository, or set 'tag'/'branch' explicitly): %w", err)
+				return noop, fmt.Errorf("git-archive: no 'tag' or 'branch' given and could not determine the build commit (the config must live in a git repository, or set 'tag'/'branch' explicitly): %w", err)
 			}
 			buildCommit = head
 		}
@@ -648,7 +696,7 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 
 	dest, err := os.MkdirTemp("", "melange-git-archive-")
 	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
+		return noop, fmt.Errorf("creating temp dir: %w", err)
 	}
 	cleanup := func() {
 		if err := os.RemoveAll(dest); err != nil {
@@ -665,21 +713,28 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 	})
 	if err != nil {
 		cleanup()
-		return nil, err
+		return noop, err
 	}
 
 	// Record the resolved commit and substituted path back into the step so the
-	// SBOM provenance entry reflects the exact source, even when the manifest
-	// left ref/expected-commit to default.
+	// SBOM provenance entry reflects the exact source even when the manifest left
+	// ref/expected-commit to default. The SBOM generator (pkg/build/sbom) reads
+	// the raw, un-substituted `with` map, so this write-back is what makes the
+	// provenance correct. It is safe because each architecture build parses and
+	// owns its own Configuration, so this is not shared across goroutines.
 	if step.With == nil {
 		step.With = map[string]string{}
 	}
 	step.With["path"] = archivePath
 	step.With["expected-commit"] = resolved
 
-	log.Infof("git-archive: sourced %s at %s; using %s as source dir", archivePath, resolved, dest)
+	// The extracted subtree is copied again by populateWorkspace into the build
+	// workspace, so the data is passed over twice. This deliberately reuses
+	// melange's standard workspace population (ignore rules, compiler config
+	// files) instead of extracting in place; for chart-sized subtrees the extra
+	// copy is negligible. Streaming directly into the workspace is a possible
+	// future optimization.
 	b.SourceDir = dest
-
 	return cleanup, nil
 }
 
@@ -759,9 +814,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("git-archive source: %w", err)
 	}
-	if archiveCleanup != nil {
-		defer archiveCleanup()
-	}
+	defer archiveCleanup()
 
 	if b.EmptyWorkspace {
 		log.Debugf("empty workspace requested")

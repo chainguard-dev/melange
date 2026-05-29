@@ -9,6 +9,7 @@ new built-in pipelines, consult [Creating a new built-in pipeline](/docs/PIPELIN
 
 - [fetch](#fetch)
 - [git-am](#git-am)
+- [git-archive](#git-archive)
 - [git-checkout](#git-checkout)
 - [patch](#patch)
 - [strip](#strip)
@@ -45,6 +46,18 @@ Apply patches with git am
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | patches | true | A list of patches to apply with git am, as a whitespace delimited string.  Patches are resolved relative to the workspace root, which is where melange copies the contents of the source directory (--source-dir, defaulting to the directory containing the melange YAML file).  This is the same convention used by the 'patch' pipeline: place patch files in the package's source directory (e.g. ./my-package/) alongside the YAML file.  This pipeline assumes that git-checkout used the default destination ('.'), so the workspace root is the git repository.  If git-checkout clones into a subdirectory, the patches must include the path relative to the workspace root.  |  |
+
+## git-archive
+
+Archive sources from the local git repository
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| expected-commit | false | The commit `ref` must resolve to; a mismatch fails the build. When `ref` is left at its default (the build commit), this defaults to that same commit, so the assurance holds automatically.  |  |
+| path | true | Path within the repository (relative to the repository root) to extract into the workspace. The extracted files retain this path prefix in the workspace, matching the layout of the source repository.  |  |
+| ref | false | The git ref (tag, branch, or commit) to archive. Defaults to the commit melange is building (the config file's repository commit). Set this to build a different ref, e.g. an older tag, from the current checkout.  |  |
 
 ## git-checkout
 

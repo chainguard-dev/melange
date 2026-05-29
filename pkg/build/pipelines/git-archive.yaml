@@ -1,0 +1,47 @@
+name: Archive sources from the local git repository
+
+# git-archive populates the build workspace from a subtree of the local git
+# repository that contains this melange configuration, WITHOUT cloning over the
+# network and without mounting the repository's .git history into the build
+# sandbox.
+#
+# It is intended for monorepos where the package definition and the source it
+# packages live in the same repository. By default it archives `path` at the
+# very commit melange is building (the commit of the config file's repository),
+# so the packaged source is exactly the source as it existed in that commit.
+#
+# The archive is performed host-side by melange before the sandbox starts:
+# melange resolves the commit, verifies it, and extracts only `path` into the
+# workspace. This step's in-sandbox body is therefore a no-op marker; it exists
+# so the source acquisition is declared honestly in the manifest and so SBOM
+# provenance can be recorded.
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  path:
+    description: |
+      Path within the repository (relative to the repository root) to extract
+      into the workspace. The extracted files retain this path prefix in the
+      workspace, matching the layout of the source repository.
+    required: true
+  ref:
+    description: |
+      The git ref (tag, branch, or commit) to archive. Defaults to the commit
+      melange is building (the config file's repository commit). Set this to
+      build a different ref, e.g. an older tag, from the current checkout.
+  expected-commit:
+    description: |
+      The commit `ref` must resolve to; a mismatch fails the build. When `ref`
+      is left at its default (the build commit), this defaults to that same
+      commit, so the assurance holds automatically.
+
+pipeline:
+  - runs: |
+      #!/bin/sh
+      # shellcheck shell=busybox
+      # The archive was performed host-side by melange before the sandbox
+      # started; the workspace is already populated. Nothing to do here.
+      echo "[git archive] workspace populated host-side from ${{inputs.path}}"

@@ -554,6 +554,122 @@ func (b *Build) populateWorkspace(ctx context.Context, src fs.FS) error {
 	})
 }
 
+// maybeGitArchiveSource looks for a `git-archive` step in the main pipeline and,
+// if present, performs the archive host-side: it extracts the requested subtree
+// of the local git repository into a temporary directory and repoints
+// b.SourceDir at it, so the normal workspace population copies only the archived
+// subtree into the build. This avoids cloning over the network and avoids
+// mounting the repository's .git history into the sandbox.
+//
+// By default it archives at the commit melange is building (the config file's
+// repository commit), since the packaged source and the config live in the same
+// repository. The resolved commit is recorded back into the step so SBOM
+// provenance reflects the exact source even when the manifest omits a ref.
+//
+// It returns a cleanup function (removing the temp dir) when an archive was
+// performed, or nil when no git-archive step is present.
+func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
+	log := clog.FromContext(ctx)
+
+	var step *config.Pipeline
+	for i := range b.Configuration.Pipeline {
+		if b.Configuration.Pipeline[i].Uses == "git-archive" {
+			step = &b.Configuration.Pipeline[i]
+			break
+		}
+	}
+	if step == nil {
+		return nil, nil
+	}
+
+	// Substitute ${{...}} templates in the step's inputs (e.g. an explicit ref
+	// of iamguarded-chart-common-v${{package.version}}) using the same
+	// machinery the in-sandbox pipeline runner uses.
+	sm, err := NewSubstitutionMap(b.Configuration, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
+	if err != nil {
+		return nil, fmt.Errorf("building substitution map: %w", err)
+	}
+	mutated, err := sm.MutateWith(step.With)
+	if err != nil {
+		return nil, fmt.Errorf("substituting git-archive inputs: %w", err)
+	}
+	get := func(name string) string { return mutated[fmt.Sprintf("${{inputs.%s}}", name)] }
+
+	archivePath := get("path")
+	if archivePath == "" {
+		return nil, fmt.Errorf("git-archive: 'path' is required")
+	}
+
+	// Anchor git at the directory containing the config file; git discovers the
+	// enclosing repository root from there. Make the path absolute first so this
+	// does not depend on the current working directory.
+	configPath, err := filepath.Abs(b.ConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("resolving config file path: %w", err)
+	}
+	repoDir := filepath.Dir(configPath)
+
+	ref := get("ref")
+	expectedCommit := get("expected-commit")
+
+	// Default the ref (and its assurance) to the commit melange is building. The
+	// chart source and the config live in the same repository, so this packages
+	// 'path' exactly as it existed in the commit under build.
+	if ref == "" {
+		buildCommit := b.ConfigFileRepositoryCommit
+		if buildCommit == "" || buildCommit == "unknown" {
+			// Melange could not determine the build commit (for example, go-git
+			// cannot read HEAD in a linked worktree). Fall back to resolving
+			// HEAD with the git CLI, which is the commit being built.
+			head, err := gitRevParse(ctx, repoDir, "HEAD")
+			if err != nil {
+				return nil, fmt.Errorf("git-archive: no 'ref' given and could not determine the build commit (the config must live in a git repository, or set 'ref' explicitly): %w", err)
+			}
+			buildCommit = head
+		}
+		ref = buildCommit
+		if expectedCommit == "" {
+			expectedCommit = buildCommit
+		}
+	}
+
+	dest, err := os.MkdirTemp("", "melange-git-archive-")
+	if err != nil {
+		return nil, fmt.Errorf("creating temp dir: %w", err)
+	}
+	cleanup := func() {
+		if err := os.RemoveAll(dest); err != nil {
+			log.Warnf("failed to remove git-archive temp dir %s: %v", dest, err)
+		}
+	}
+
+	resolved, err := gitArchive(ctx, &gitArchiveOptions{
+		RepositoryDir:  repoDir,
+		Ref:            ref,
+		Path:           archivePath,
+		ExpectedCommit: expectedCommit,
+		Destination:    dest,
+	})
+	if err != nil {
+		cleanup()
+		return nil, err
+	}
+
+	// Record the resolved commit and substituted path back into the step so the
+	// SBOM provenance entry reflects the exact source, even when the manifest
+	// left ref/expected-commit to default.
+	if step.With == nil {
+		step.With = map[string]string{}
+	}
+	step.With["path"] = archivePath
+	step.With["expected-commit"] = resolved
+
+	log.Infof("git-archive: sourced %s at %s; using %s as source dir", archivePath, resolved, dest)
+	b.SourceDir = dest
+
+	return cleanup, nil
+}
+
 type linterTarget struct {
 	pkgName  string
 	disabled []string // checks that are downgraded from required -> warn
@@ -620,6 +736,18 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		debug:       b.Debug,
 		config:      b.workspaceConfig(ctx),
 		runner:      b.Runner,
+	}
+
+	// If the pipeline declares a git-archive source step, perform the archive
+	// host-side and repoint SourceDir at the extracted subtree before the
+	// workspace is populated. This sources from a local git repository at a
+	// pinned ref without mounting the repository's .git history into the build.
+	archiveCleanup, err := b.maybeGitArchiveSource(ctx)
+	if err != nil {
+		return fmt.Errorf("git-archive source: %w", err)
+	}
+	if archiveCleanup != nil {
+		defer archiveCleanup()
 	}
 
 	if b.EmptyWorkspace {

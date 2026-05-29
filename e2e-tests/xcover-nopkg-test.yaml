@@ -19,6 +19,7 @@ test:
     - uses: xcover/profile
       with:
         executable-path: /usr/bin/crane
+        include-functions: ^github\\.com/google/go-containerregistry
         exclude-functions: ^runtime\\.
     - runs: |
         crane version || exit 1

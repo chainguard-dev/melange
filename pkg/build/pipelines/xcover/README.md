@@ -29,6 +29,7 @@ Start the coverage profile with the xcover tool
 | ---- | -------- | ----------- | ------- |
 | exclude-functions | false | The function symbols to exclude from profiling as a regular expression. |  |
 | executable-path | true | The path to the executable of the application to test. |  |
+| include-functions | false | The function symbols to include in profiling as a regular expression. When set, only matching symbols are profiled. |  |
 | log-level | false | The log level of the xcover profile command. | info |
 | package | false | The xcover package | xcover |
 | verbose | false | Enable verbosity of the xcover profile command. It prints out all the functions being traced real-time. | false |

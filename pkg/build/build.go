@@ -600,6 +600,12 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 		return nil, fmt.Errorf("git-archive: 'path' is required")
 	}
 
+	tag := get("tag")
+	branch := get("branch")
+	if tag != "" && branch != "" {
+		return nil, fmt.Errorf("git-archive: 'tag' and 'branch' are mutually exclusive")
+	}
+
 	// Anchor git at the directory containing the config file; git discovers the
 	// enclosing repository root from there. Make the path absolute first so this
 	// does not depend on the current working directory.
@@ -609,13 +615,20 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 	}
 	repoDir := filepath.Dir(configPath)
 
-	ref := get("ref")
 	expectedCommit := get("expected-commit")
 
-	// Default the ref (and its assurance) to the commit melange is building. The
-	// chart source and the config live in the same repository, so this packages
-	// 'path' exactly as it existed in the commit under build.
-	if ref == "" {
+	// Determine the ref to archive. A tag or branch is used as given; if neither
+	// is specified, default to the commit melange is building (and its
+	// assurance). The chart source and the config live in the same repository,
+	// so the default packages 'path' exactly as it existed in the commit under
+	// build.
+	var ref string
+	switch {
+	case tag != "":
+		ref = tag
+	case branch != "":
+		ref = branch
+	default:
 		buildCommit := b.ConfigFileRepositoryCommit
 		if buildCommit == "" || buildCommit == "unknown" {
 			// Melange could not determine the build commit (for example, go-git
@@ -623,7 +636,7 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 			// HEAD with the git CLI, which is the commit being built.
 			head, err := gitRevParse(ctx, repoDir, "HEAD")
 			if err != nil {
-				return nil, fmt.Errorf("git-archive: no 'ref' given and could not determine the build commit (the config must live in a git repository, or set 'ref' explicitly): %w", err)
+				return nil, fmt.Errorf("git-archive: no 'tag' or 'branch' given and could not determine the build commit (the config must live in a git repository, or set 'tag'/'branch' explicitly): %w", err)
 			}
 			buildCommit = head
 		}

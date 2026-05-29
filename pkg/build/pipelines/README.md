@@ -55,9 +55,10 @@ Archive sources from the local git repository
 
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
-| expected-commit | false | The commit `ref` must resolve to; a mismatch fails the build. When `ref` is left at its default (the build commit), this defaults to that same commit, so the assurance holds automatically.  |  |
+| branch | false | The branch to archive. Branch and tag are mutually exclusive. For reproducibility, prefer tag.  |  |
+| expected-commit | false | The commit the tag/branch must resolve to; a mismatch fails the build. When neither tag nor branch is set, this defaults to the commit melange is building, so the assurance holds automatically.  |  |
 | path | true | Path within the repository (relative to the repository root) to extract into the workspace. The extracted files retain this path prefix in the workspace, matching the layout of the source repository.  |  |
-| ref | false | The git ref (tag, branch, or commit) to archive. Defaults to the commit melange is building (the config file's repository commit). Set this to build a different ref, e.g. an older tag, from the current checkout.  |  |
+| tag | false | The tag to archive. For reproducibility, tag is generally favored over branch. Branch and tag are mutually exclusive. If neither is specified, the commit melange is building (the config file's repository commit) is archived.  |  |
 
 ## git-checkout
 

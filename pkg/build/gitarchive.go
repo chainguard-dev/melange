@@ -72,7 +72,7 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 	// relative to the current directory prefix, so running from a subdirectory
 	// would mis-resolve Path; from the toplevel, Path is repository-root
 	// relative and unambiguous.
-	topOut, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--show-toplevel").Output()
+	topOut, err := exec.CommandContext(ctx, "git", "-C", repoDir, "rev-parse", "--show-toplevel").Output() // #nosec G204 - git arguments come from trusted melange build configuration
 	if err != nil {
 		return "", fmt.Errorf("locating git repository from %s: %w", repoDir, err)
 	}
@@ -100,8 +100,8 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 
 	// `git archive <commit> <path> | tar -x -C dest`. We pipe a tar stream so
 	// extraction is direct and independent of tar's format autodetection.
-	archive := exec.CommandContext(ctx, "git", "-C", topLevel, "archive", "--format=tar", resolved, opts.Path)
-	extract := exec.CommandContext(ctx, "tar", "-x", "-C", opts.Destination)
+	archive := exec.CommandContext(ctx, "git", "-C", topLevel, "archive", "--format=tar", resolved, opts.Path) // #nosec G204 - git arguments come from trusted melange build configuration
+	extract := exec.CommandContext(ctx, "tar", "-x", "-C", opts.Destination)                                   // #nosec G204 - destination is a melange-created temp dir
 
 	pipe, err := archive.StdoutPipe()
 	if err != nil {
@@ -127,7 +127,7 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 
 // gitRevParse resolves rev to a commit hash in the repository containing dir.
 func gitRevParse(ctx context.Context, dir, rev string) (string, error) {
-	out, err := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--verify", rev).Output()
+	out, err := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--verify", rev).Output() // #nosec G204 - git arguments come from trusted melange build configuration
 	if err != nil {
 		return "", err
 	}

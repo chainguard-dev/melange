@@ -59,6 +59,12 @@ const (
 	purlTypeAPK = "apk"
 )
 
+// UnknownCommit is the sentinel used for the config file's repository commit
+// when it cannot be determined (for example, when git auto-detection fails).
+// It is set by the CLI and checked by consumers such as git-archive source
+// resolution, so it is shared here to keep the two ends from drifting.
+const UnknownCommit = "unknown"
+
 type Trigger struct {
 	// Optional: The script to run
 	Script string `json:"script,omitempty"`

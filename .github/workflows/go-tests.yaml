@@ -33,6 +33,7 @@ jobs:
             git.sv.gnu.org:9418
             github.com:443
             go.dev:443
+            https.git.savannah.gnu.org:443
             motd.ubuntu.com:443
             objects.githubusercontent.com:443
             packages.microsoft.com:443

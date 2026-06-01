@@ -16,6 +16,9 @@ inputs:
   exclude-functions:
     description: The function symbols to exclude from profiling as a regular expression.
     required: false
+  include-functions:
+    description: The function symbols to include in profiling as a regular expression. When set, only matching symbols are profiled.
+    required: false
   log-level:
     description: The log level of the xcover profile command.
     required: false
@@ -35,7 +38,8 @@ pipeline:
       # Run profile in background.
       xcover run \
         --path ${{inputs.executable-path}} \
-        --exclude ${{inputs.exclude-functions}} \
+        --exclude=${{inputs.exclude-functions}} \
+        --include=${{inputs.include-functions}} \
         --log-level=${{inputs.log-level}} \
         --verbose=${{inputs.verbose}} \
         --status \

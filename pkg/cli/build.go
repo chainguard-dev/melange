@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
@@ -44,16 +43,15 @@ const BuiltinPipelineDir = "/usr/share/melange/pipelines"
 
 // addBuildFlags registers all build command flags to the provided FlagSet using the BuildFlags struct
 func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
+	// Set build-specific defaults before registering common flags.
+	flags.Remove = true
+	flags.CacheDir = "./melange-cache/"
+	addCommonFlags(fs, &flags.CommonFlags)
+
+	// Build-specific flags.
 	fs.StringVar(&flags.BuildDate, "build-date", "", "date used for the timestamps of the files inside the image")
-	fs.StringVar(&flags.WorkspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	fs.StringVar(&flags.PipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
-	fs.StringSliceVar(&flags.PipelineDirs, "pipeline-dirs", []string{}, "directories used to extend defined built-in pipelines")
-	fs.StringVar(&flags.SourceDir, "source-dir", "", "directory used for included sources")
-	fs.StringVar(&flags.CacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
-	fs.StringVar(&flags.CacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
-	fs.StringVar(&flags.ApkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
 	fs.StringVar(&flags.SigningKey, "signing-key", "", "key to use for signing")
-	fs.StringSliceVar(&flags.EnvFiles, "env-file", []string{}, "files to use for preloaded environment variables")
 	fs.StringVar(&flags.VarsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	fs.BoolVar(&flags.GenerateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	fs.BoolVar(&flags.EmptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
@@ -64,25 +62,11 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringSliceVar(&flags.Archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	fs.StringVar(&flags.Libc, "override-host-triplet-libc-substitution-flavor", "gnu", "override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu")
 	fs.StringSliceVar(&flags.BuildOption, "build-option", []string{}, "build options to enable")
-	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
-	fs.StringSliceVarP(&flags.ExtraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
-	fs.StringSliceVar(&flags.ExtraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
 	fs.BoolVar(&flags.CreateBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
 	fs.BoolVar(&flags.PersistLintResults, "persist-lint-results", false, "persist lint results to JSON files in packages/{arch}/ directory")
-	fs.BoolVar(&flags.Debug, "debug", false, "enables debug logging of build pipelines")
-	fs.BoolVar(&flags.DebugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
-	fs.BoolVarP(&flags.Interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	fs.BoolVar(&flags.Remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
-	fs.StringVar(&flags.CPU, "cpu", "", "default CPU resources to use for builds")
-	fs.StringVar(&flags.CPUModel, "cpumodel", "", "default memory resources to use for builds")
-	fs.StringVar(&flags.Disk, "disk", "", "disk size to use for builds")
-	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for builds")
-	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for builds")
 	fs.StringVar(&flags.TraceFile, "trace", "", "where to write trace output")
 	fs.StringSliceVar(&flags.LintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	fs.StringSliceVar(&flags.LintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
-	fs.BoolVar(&flags.IgnoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
 	fs.BoolVar(&flags.Cleanup, "cleanup", true, "when enabled, the temp dir used for the guest will be cleaned up after completion")
 	fs.StringVar(&flags.ConfigFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
 	fs.StringVar(&flags.ConfigFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
@@ -95,44 +79,26 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 
 // BuildFlags holds all parsed build command flags
 type BuildFlags struct {
+	CommonFlags
+
+	// Build-specific fields:
 	BuildDate            string
-	WorkspaceDir         string
 	PipelineDir          string
-	PipelineDirs         []string
-	SourceDir            string
-	CacheDir             string
-	CacheSource          string
-	ApkCacheDir          string
 	SigningKey           string
 	GenerateIndex        bool
 	EmptyWorkspace       bool
 	StripOriginName      bool
 	OutDir               string
 	Archstrs             []string
-	ExtraKeys            []string
-	ExtraRepos           []string
 	DependencyLog        string
-	EnvFiles             []string
 	VarsFile             string
 	PurlNamespace        string
 	BuildOption          []string
 	CreateBuildLog       bool
 	PersistLintResults   bool
-	Debug                bool
-	DebugRunner          bool
-	Interactive          bool
-	Remove               bool
-	Runner               string
-	CPU                  string
-	CPUModel             string
-	Memory               string
-	Disk                 string
-	Timeout              time.Duration
-	ExtraPackages        []string
 	Libc                 string
 	LintRequire          []string
 	LintWarn             []string
-	IgnoreSignatures     bool
 	Cleanup              bool
 	ConfigFileGitCommit  string
 	ConfigFileGitRepoURL string

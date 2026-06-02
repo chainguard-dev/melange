@@ -29,7 +29,7 @@ const DefaultProjectConfigFile = ".melange.yaml"
 
 // ProjectConfig represents the top-level structure of a .melange.yaml project config file.
 type ProjectConfig struct {
-	Global GlobalConfig      `yaml:"global,omitempty"`
+	Global GlobalConfig       `yaml:"global,omitempty"`
 	Build  BuildSectionConfig `yaml:"build,omitempty"`
 	Test   TestSectionConfig  `yaml:"test,omitempty"`
 }
@@ -38,8 +38,8 @@ type ProjectConfig struct {
 type GlobalConfig struct {
 	Runner           string        `yaml:"runner,omitempty"`
 	SigningKey       string        `yaml:"signing-key,omitempty"`
-	KeyringAppend   []string      `yaml:"keyring-append,omitempty"`
-	RepositoryAppend []string     `yaml:"repository-append,omitempty"`
+	KeyringAppend    []string      `yaml:"keyring-append,omitempty"`
+	RepositoryAppend []string      `yaml:"repository-append,omitempty"`
 	Arch             []string      `yaml:"arch,omitempty"`
 	OutDir           string        `yaml:"out-dir,omitempty"`
 	CacheDir         string        `yaml:"cache-dir,omitempty"`

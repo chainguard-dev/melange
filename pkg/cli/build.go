@@ -281,6 +281,10 @@ func buildCmd() *cobra.Command {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
 
+			if pc := ProjectConfigFromContext(ctx); pc != nil {
+				pc.ApplyToBuildFlags(flags, cmd.Flags())
+			}
+
 			if flags.TraceFile != "" {
 				w, err := os.Create(flags.TraceFile) // #nosec G304 - User-specified trace file output
 				if err != nil {

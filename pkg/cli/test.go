@@ -172,6 +172,11 @@ func test() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			if pc := ProjectConfigFromContext(ctx); pc != nil {
+				pc.ApplyToTestFlags(flags, cmd.Flags())
+			}
+
 			archs := apko_types.ParseArchitectures(flags.Archstrs)
 			options, err := flags.TestOptions(ctx, args...)
 			if err != nil {

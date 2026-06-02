@@ -153,6 +153,26 @@ pipeline:
       cd ..
       rm -R branch-old-expected
 
+  # expected-commit-is-branch-tip: when the expected-commit IS the current tip
+  # of the branch, the checkout succeeds (the branch is treated as an immutable
+  # release pointer).  4b1593d is the current tip of the 1.x branch.
+  - name: "branch tip with expected-commit-is-branch-tip"
+    working-directory: branch-tip-expected
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      expected-commit: 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f
+      expected-commit-is-branch-tip: true
+
+  - name: "check branch tip with expected-commit-is-branch-tip"
+    working-directory: branch-tip-expected
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f ]
+      cd ..
+      rm -R branch-tip-expected
+
   # for an annotated tag you can point to either the commit
   # or the tag object hash object
   - name: "annotated hash"

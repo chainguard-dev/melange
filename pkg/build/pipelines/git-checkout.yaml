@@ -300,7 +300,7 @@ pipeline:
           if [ "$depth" = "unset" ]; then
             depth=1
             if [ -n "$branch" ] && [ -n "$expcommit" ] &&
-                [ "$expected_commit_is_branch_tip" != "true" ]; then
+                [ "$expected_commit_is_branch_tip" = "false" ]; then
               # if we're just checking out a specific commit on a branch
               # then we need to get history, otherwise it will break
               # if the expected commit is not tip of the branch.

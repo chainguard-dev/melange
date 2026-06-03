@@ -296,6 +296,39 @@ func (b *Build) Close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
+func filterSubpackages(ctx context.Context, subpackages []config.Subpackage, arch apko_types.Architecture) []config.Subpackage {
+	log := clog.FromContext(ctx)
+
+	return slices.DeleteFunc(subpackages, func(sp config.Subpackage) bool {
+		result, err := shouldRun(sp.If)
+		if err != nil {
+			// This shouldn't give an error because we evaluate it in Compile.
+			panic(err)
+		}
+		if !result {
+			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
+			return true
+		}
+
+		if !subpackageTargetsArch(sp, arch) {
+			log.Infof("skipping subpackage %s because target-architecture does not include %s", sp.Name, arch.ToAPK())
+			return true
+		}
+
+		return false
+	})
+}
+
+func subpackageTargetsArch(sp config.Subpackage, arch apko_types.Architecture) bool {
+	if len(sp.TargetArchitecture) == 0 {
+		return true
+	}
+	if len(sp.TargetArchitecture) == 1 && sp.TargetArchitecture[0] == "all" {
+		return true
+	}
+	return slices.Contains(sp.TargetArchitecture, arch.ToAPK())
+}
+
 // buildGuest invokes apko to build the guest environment, returning a reference to the image
 // loaded by the OCI Image loader.
 //
@@ -594,19 +627,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("compiling %s: %w", b.ConfigFile, err)
 	}
 
-	// Filter out any subpackages with false If conditions.
-	b.Configuration.Subpackages = slices.DeleteFunc(b.Configuration.Subpackages, func(sp config.Subpackage) bool {
-		result, err := shouldRun(sp.If)
-		if err != nil {
-			// This shouldn't give an error because we evaluate it in Compile.
-			panic(err)
-		}
-		if !result {
-			log.Infof("skipping subpackage %s because %s == false", sp.Name, sp.If)
-		}
-
-		return !result
-	})
+	b.Configuration.Subpackages = filterSubpackages(ctx, b.Configuration.Subpackages, b.Arch)
 
 	// Initialize SBOMGroup for the main package and all subpackages
 	pkgNames := []string{b.Configuration.Package.Name}

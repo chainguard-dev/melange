@@ -98,6 +98,7 @@ environment:
 vars:
   foo: FOO
   bar: BAR
+  arch: x86_64
 
 var-transforms:
   - from: ${{package.version}}
@@ -107,6 +108,8 @@ var-transforms:
 
 subpackages:
   - name: subpackage-${{vars.short-package-version}}
+    target-architecture:
+      - ${{vars.arch}}
     dependencies:
       runtime:
         - ${{package.name}}-config-${{package.version}}
@@ -181,6 +184,7 @@ test:
 	}, cfg.Test.Environment.Contents.Packages)
 
 	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")
+	require.Equal(t, []string{"x86_64"}, cfg.Subpackages[0].TargetArchitecture)
 
 	require.Equal(t, "/usr/local/FOO", cfg.Test.Environment.Environment["LD_LIBRARY_PATH"])
 }

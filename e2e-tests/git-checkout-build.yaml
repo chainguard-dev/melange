@@ -173,6 +173,27 @@ pipeline:
       cd ..
       rm -R branch-tip-expected
 
+  # a specific commit with no branch and no tag (the shape used by packages
+  # that pin an upstream commit directly, e.g. eco-python-llvm-triton pinning
+  # an llvm-project commit). With depth: -1 the full history is present, so the
+  # ancestry-guarded reset to the (older, on-default-branch) commit succeeds.
+  # 0007b4c is an older commit on the fixture's default branch.
+  - name: "expected commit, no branch"
+    working-directory: commit-no-branch
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      expected-commit: 0007b4cdf2358e7d9b0d774baf5cba9f862c023b
+      depth: -1
+
+  - name: "check expected commit, no branch"
+    working-directory: commit-no-branch
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 0007b4cdf2358e7d9b0d774baf5cba9f862c023b ]
+      cd ..
+      rm -R commit-no-branch
+
   # for an annotated tag you can point to either the commit
   # or the tag object hash object
   - name: "annotated hash"

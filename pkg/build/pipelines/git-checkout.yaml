@@ -30,6 +30,16 @@ inputs:
   expected-commit:
     description: |
       The expected commit hash
+  expected-commit-is-branch-tip:
+    description: |
+      When "true", require that expected-commit exactly matches the tip of
+      the checked-out branch instead of allowing any older commit on the
+      branch.  Use this when a branch is used as an immutable release pointer
+      (e.g. version-named release branches) so that a stale expected-commit --
+      for example after bumping the version but forgetting to update the
+      commit -- fails loudly instead of silently checking out old code.
+      Only valid together with 'branch'; mutually exclusive with 'tag'.
+    default: "false"
   recurse-submodules:
     description: |
       Indicates whether --recurse-submodules should be passed to git clone.
@@ -232,11 +242,13 @@ pipeline:
           local cherry_pick="$8" sparse_paths="$9"
           local max_retries="${10:-3}" initial_backoff="${11:-2}" max_backoff="${12:-60}"
           local shallow_submodules="${13:-false}" submodule_jobs="${14:-1}"
+          local expected_commit_is_branch_tip="${15:-false}"
           msg "repo='$repo' dest='$dest' depth='$depth' branch='$branch'" \
               "tag='$tag' expcommit='$expcommit' recurse='$recurse'" \
               "sparse_paths='$sparse_paths' max_retries='$max_retries'" \
               "initial_backoff='$initial_backoff' max_backoff='$max_backoff'" \
-              "shallow_submodules='$shallow_submodules' submodule_jobs='$submodule_jobs'"
+              "shallow_submodules='$shallow_submodules' submodule_jobs='$submodule_jobs'" \
+              "expected_commit_is_branch_tip='$expected_commit_is_branch_tip'"
 
           case "$recurse" in
               true|false) :;;
@@ -246,6 +258,11 @@ pipeline:
               true|false) :;;
               *) fail "shallow_submodules must be true or false, not '$shallow_submodules'"
           esac
+          case "$expected_commit_is_branch_tip" in
+              true|false) :;;
+              *) fail "expected-commit-is-branch-tip must be true or false," \
+                      "not '$expected_commit_is_branch_tip'"
+          esac
 
           [ -n "$repo" ] || fail "repository not provided"
 
@@ -253,6 +270,17 @@ pipeline:
               msg "Warning: you have not specified a branch or tag."
           elif [ -n "$branch" ] && [ -n "$tag" ]; then
               fail "both branch ($branch) and tag ($tag) are specified."
+          fi
+
+          if [ "$expected_commit_is_branch_tip" = "true" ]; then
+              [ -z "$tag" ] ||
+                  fail "expected-commit-is-branch-tip is only valid with" \
+                       "'branch', not 'tag'."
+              [ -n "$branch" ] ||
+                  fail "expected-commit-is-branch-tip requires 'branch' to be set."
+              [ -n "$expcommit" ] ||
+                  fail "expected-commit-is-branch-tip requires 'expected-commit'" \
+                       "to be set."
           fi
 
           [ -n "$expcommit" ] ||
@@ -271,10 +299,13 @@ pipeline:
 
           if [ "$depth" = "unset" ]; then
             depth=1
-            if [ -n "$branch" ] && [ -n "$expcommit" ]; then
+            if [ -n "$branch" ] && [ -n "$expcommit" ] &&
+                [ "$expected_commit_is_branch_tip" = "false" ]; then
               # if we're just checking out a specific commit on a branch
               # then we need to get history, otherwise it will break
               # if the expected commit is not tip of the branch.
+              # (when expected-commit-is-branch-tip is set we only compare
+              # against the tip, so a shallow clone is sufficient.)
               depth=-1
             fi
           fi
@@ -323,10 +354,30 @@ pipeline:
           if [ -z "$tag" ]; then
               foundcommit=$(git rev-parse --verify HEAD)
               if [ -n "$expcommit" ] && [ "$expcommit" != "$foundcommit" ]; then
-                  if [ "$depth" = "-1" ]; then
-                      msg "expected commit $expcommit on ${branch:-HEAD}," \
-                          "got $foundcommit, performing reset"
-                      vr git reset --hard "$expcommit"
+                  if [ "$expected_commit_is_branch_tip" = "true" ]; then
+                      # the branch is being used as an immutable release
+                      # pointer, so expected-commit must be its tip exactly.
+                      fail "expected-commit $expcommit is not the tip of branch" \
+                           "${branch:-HEAD} ($foundcommit); the branch advanced" \
+                           "or the version was bumped without updating" \
+                           "expected-commit"
+                  elif [ "$depth" = "-1" ]; then
+                      # depth=-1 is a full clone, so $foundcommit (the branch
+                      # tip) has its complete history present.  Only reset to
+                      # $expcommit if it is reachable from the tip; otherwise it
+                      # belongs to a different/diverged branch and resetting
+                      # would silently build stale code (e.g. the branch was
+                      # bumped but expected-commit was not).
+                      if git merge-base --is-ancestor "$expcommit" "$foundcommit"; then
+                          msg "expected commit $expcommit on ${branch:-HEAD}," \
+                              "got $foundcommit, performing reset"
+                          vr git reset --hard "$expcommit"
+                      else
+                          fail "expected commit $expcommit is not reachable from" \
+                               "${branch:-HEAD} (tip $foundcommit); the branch may" \
+                               "have diverged from the pinned commit -- update" \
+                               "expected-commit"
+                      fi
                   else
                       fail "expected commit $expcommit on ${branch:-HEAD}," \
                            "got $foundcommit, set depth to -1 to attempt a reset"
@@ -390,6 +441,7 @@ pipeline:
           "${{inputs.sparse-paths}}" \
           "${{inputs.max-retries}}" "${{inputs.initial-backoff}}" \
           "${{inputs.max-backoff}}" \
-          "${{inputs.shallow-submodules}}" "${{inputs.submodule-jobs}}"
+          "${{inputs.shallow-submodules}}" "${{inputs.submodule-jobs}}" \
+          "${{inputs.expected-commit-is-branch-tip}}"
 
       rm -f "$cpickf"

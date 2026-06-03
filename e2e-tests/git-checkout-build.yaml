@@ -153,6 +153,113 @@ pipeline:
       cd ..
       rm -R branch-old-expected
 
+  # expected-commit-is-branch-tip: when the expected-commit IS the current tip
+  # of the branch, the checkout succeeds (the branch is treated as an immutable
+  # release pointer).  4b1593d is the current tip of the 1.x branch.
+  #
+  # The flag is verification-only and must not change the clone depth.  With no
+  # explicit depth, branch + expected-commit-is-branch-tip defaults to a shallow
+  # (depth 1) clone -- we only compare against the tip -- so 'git show HEAD^'
+  # must fail here.
+  - name: "branch tip with expected-commit-is-branch-tip"
+    working-directory: branch-tip-expected
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      expected-commit: 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f
+      expected-commit-is-branch-tip: true
+
+  - name: "check branch tip with expected-commit-is-branch-tip"
+    working-directory: branch-tip-expected
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f ]
+      if out=$(git show HEAD^ 2>&1); then
+          echo "FAIL: expected a shallow clone (depth 1) but 'git show HEAD^' succeeded"
+          echo "git show HEAD^ output: $out"
+          exit 1
+      fi
+      cd ..
+      rm -R branch-tip-expected
+
+  # ...with an explicit depth: -1 it must still produce a full clone (some
+  # builds need history), so 'git show HEAD^' must succeed.
+  - name: "branch tip with expected-commit-is-branch-tip, depth -1"
+    working-directory: branch-tip-full
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      expected-commit: 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f
+      expected-commit-is-branch-tip: true
+      depth: -1
+
+  - name: "check branch tip with expected-commit-is-branch-tip, depth -1"
+    working-directory: branch-tip-full
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f ]
+      out=$(git show HEAD^ 2>&1) || {
+          echo "FAIL: expected a full clone (depth -1) but 'git show HEAD^' failed"
+          echo "git show HEAD^ output: $out"
+          exit 1
+      }
+      cd ..
+      rm -R branch-tip-full
+
+  # ...with an explicit finite depth it honors that depth: a depth-2 clone of
+  # 1.x has the tip and its parent but nothing beyond, so 'git show HEAD^'
+  # succeeds while 'git show HEAD~2' fails.
+  - name: "branch tip with expected-commit-is-branch-tip, partial depth"
+    working-directory: branch-tip-partial
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      branch: 1.x
+      expected-commit: 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f
+      expected-commit-is-branch-tip: true
+      depth: 2
+
+  - name: "check branch tip with expected-commit-is-branch-tip, partial depth"
+    working-directory: branch-tip-partial
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 4b1593d8d8038f8c0ce1e2c608c9dd89066a2a0f ]
+      out=$(git show HEAD^ 2>&1) || {
+          echo "FAIL: depth 2 should include HEAD^ but 'git show HEAD^' failed"
+          echo "git show HEAD^ output: $out"
+          exit 1
+      }
+      if out=$(git show HEAD~2 2>&1); then
+          echo "FAIL: depth 2 should not include HEAD~2 but 'git show HEAD~2' succeeded"
+          echo "git show HEAD~2 output: $out"
+          exit 1
+      fi
+      cd ..
+      rm -R branch-tip-partial
+
+  # a specific commit with no branch and no tag (the shape used by packages
+  # that pin an upstream commit directly, e.g. eco-python-llvm-triton pinning
+  # an llvm-project commit). With depth: -1 the full history is present, so the
+  # ancestry-guarded reset to the (older, on-default-branch) commit succeeds.
+  # 0007b4c is an older commit on the fixture's default branch.
+  - name: "expected commit, no branch"
+    working-directory: commit-no-branch
+    uses: git-checkout
+    with:
+      repository: ${{vars.giturl}}
+      expected-commit: 0007b4cdf2358e7d9b0d774baf5cba9f862c023b
+      depth: -1
+
+  - name: "check expected commit, no branch"
+    working-directory: commit-no-branch
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 0007b4cdf2358e7d9b0d774baf5cba9f862c023b ]
+      cd ..
+      rm -R commit-no-branch
+
   # for an annotated tag you can point to either the commit
   # or the tag object hash object
   - name: "annotated hash"

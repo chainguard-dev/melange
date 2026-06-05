@@ -19,6 +19,10 @@ inputs:
   include-functions:
     description: The function symbols to include in profiling as a regular expression. When set, only matching symbols are profiled.
     required: false
+  scope:
+    description: 'The function scope to profile: "binary" (all functions) or "project" (project module only). The "project" scope is only supported by Go binaries and is a no-op for others.'
+    required: false
+    default: project
   log-level:
     description: The log level of the xcover profile command.
     required: false
@@ -40,6 +44,7 @@ pipeline:
         --path ${{inputs.executable-path}} \
         --exclude=${{inputs.exclude-functions}} \
         --include=${{inputs.include-functions}} \
+        --scope=${{inputs.scope}} \
         --log-level=${{inputs.log-level}} \
         --verbose=${{inputs.verbose}} \
         --status \

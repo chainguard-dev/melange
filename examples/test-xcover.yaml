@@ -40,7 +40,6 @@ update:
 capabilities:
   add:
     - CAP_SYS_ADMIN
-    - CAP_SYS_RESOURCE
 
 test:
   environment:

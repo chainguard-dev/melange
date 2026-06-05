@@ -1,0 +1,52 @@
+package:
+  name: crane
+  version: "0.20.3"
+  epoch: 3
+  description: Tests the xcover project function scope on a Go binary
+
+capabilities:
+  add:
+    - CAP_SYS_ADMIN
+
+test:
+  environment:
+    contents:
+      packages:
+        - jq
+        - crane
+  pipeline:
+    - uses: xcover/profile
+      with:
+        executable-path: /usr/bin/crane
+        scope: project
+    - runs: |
+        crane version || exit 1
+        crane --help
+    - runs: |
+        crane manifest chainguard/static | jq '.schemaVersion' | grep '2' || exit 1
+    - runs: |
+        crane ls chainguard/static | grep -E 'latest|v[0-9]+.[0-9]+.[0-9]+' || exit 1
+    - runs: |
+        crane digest chainguard/static:latest && echo "Image exists" || exit 1
+    - runs: |
+        crane pull chainguard/static:latest static_latest.tar || exit 1
+        [ -f static_latest.tar ] || exit 1
+    - uses: xcover/stop
+    - runs: |
+        # Project scope must keep only crane's own Go module functions
+        # (github.com/google/go-containerregistry/...) plus root main.* funcs.
+        # Any Go stdlib or third-party dependency symbol means scope leaked,
+        # i.e. the pipeline did not actually apply scope=project.
+        mod="github.com/google/go-containerregistry"
+        jq -r '.funcs_traced[]' xcover-report.json > traced.txt
+        [ -s traced.txt ] || { echo "no functions traced"; exit 1; }
+        leaked=$(grep -vE "^(main\\.|${mod}[/.])" traced.txt || true)
+        if [ -n "$leaked" ]; then
+          echo "project scope leaked non-project functions:"
+          echo "$leaked" | head -20
+          exit 1
+        fi
+        echo "all $(wc -l < traced.txt) traced functions are project-scoped"
+    - uses: xcover/ensure
+      with:
+        min-coverage: 10

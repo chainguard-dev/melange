@@ -80,6 +80,18 @@ func (dk *docker) Close() error {
 	return dk.cli.Close()
 }
 
+// dockerNetworkMode returns the Docker NetworkMode for the pod based on the
+// networking capability. When networking is disabled it returns "none", which
+// gives the container only a loopback interface with no route to the host or
+// the outside world. When enabled it returns the empty NetworkMode, leaving
+// Docker's default networking in place.
+func dockerNetworkMode(networking bool) container.NetworkMode {
+	if !networking {
+		return "none"
+	}
+	return ""
+}
+
 // StartPod starts a pod for supporting a Docker task, if
 // necessary.
 func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
@@ -113,6 +125,10 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	if len(cfg.Capabilities.Drop) > 0 {
 		hostConfig.CapDrop = cfg.Capabilities.Drop
 	}
+	// Disable the container network when the networking capability is turned
+	// off. NetworkMode "none" gives the container only a loopback interface,
+	// with no route to the host or the outside world.
+	hostConfig.NetworkMode = dockerNetworkMode(cfg.Capabilities.Networking)
 
 	platform := &image_spec.Platform{
 		Architecture: cfg.Arch.String(),

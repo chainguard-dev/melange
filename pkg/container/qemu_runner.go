@@ -797,7 +797,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-nodefaults")
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
-	netdevArgs := "user,id=id1,hostfwd=tcp:" + cfg.SSHAddress + "-:22,hostfwd=tcp:" + cfg.SSHControlAddress + "-:2223"
+	netdevArgs := qemuNetdevArgs(cfg.SSHAddress, cfg.SSHControlAddress, cfg.Capabilities.Networking)
 	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
 	// This is useful for builds that need to resolve short hostnames via search
 	// domains, or when the build environment requires specific DNS resolution
@@ -2541,6 +2541,22 @@ func parseDNSSearchDomains(input string) ([]string, error) {
 	}
 
 	return domains, nil
+}
+
+// qemuNetdevArgs builds the QEMU -netdev option string for the guest's
+// user-mode (SLIRP) network. The hostfwd rules expose the guest SSH and
+// control ports on the host, which is how melange drives the guest.
+//
+// When networking is disabled, SLIRP restrict=on isolates the guest: it
+// blocks all guest-initiated traffic to the host and the outside world while
+// leaving the explicit hostfwd rules intact, so the SSH control channel keeps
+// working. DNS search domains are appended by the caller.
+func qemuNetdevArgs(sshAddress, sshControlAddress string, networking bool) string {
+	args := "user,id=id1,hostfwd=tcp:" + sshAddress + "-:22,hostfwd=tcp:" + sshControlAddress + "-:2223"
+	if !networking {
+		args += ",restrict=on"
+	}
+	return args
 }
 
 // buildDNSSearchNetdevArgs constructs the QEMU netdev dnssearch options string.

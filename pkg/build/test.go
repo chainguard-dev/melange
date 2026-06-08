@@ -442,10 +442,12 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		}
 	}
 
-	// TODO(kaniini): Disable networking capability according to the pipeline requirements.
-	caps := container.Capabilities{
-		Networking: true,
+	networking := true
+	if t.Configuration.Capabilities.Networking != nil {
+		networking = *t.Configuration.Capabilities.Networking
 	}
+
+	caps := container.Capabilities{Networking: networking}
 
 	cfg := container.Config{
 		PackageName:  pkgName,

@@ -39,7 +39,8 @@ melange sign [flags]
 ### Options inherited from parent commands
 
 ```
-      --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
+      --config-file string   path to project config file (default: .melange.yaml in current directory)
+      --log-level string     log level (e.g. debug, info, warn, error) (default "INFO")
 ```
 
 ### SEE ALSO

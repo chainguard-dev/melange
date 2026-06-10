@@ -1,0 +1,52 @@
+package:
+  name: test-git-archive
+  version: 1.0.0
+  epoch: 0
+  description: This package mainly just tests the git-archive pipeline
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+# git-archive sources a subtree of the local git repository (the one containing
+# this config) host-side, without cloning and without mounting .git into the
+# build. With no tag/branch it archives the commit being built, so it packages
+# the fixture exactly as committed in this repository. Tag/branch/expected-commit
+# variants are covered by the unit tests in pkg/build/gitarchive_test.go; this
+# e2e test exercises the real build integration.
+pipeline:
+  - name: "Create the bogus package content"
+    runs: |
+      echo "package does not do anything" > "${{targets.contextdir}}/README"
+
+  - name: "Archive a subtree of the local repository at the build commit"
+    uses: git-archive
+    with:
+      path: e2e-tests/git-archive-fixture
+
+  - name: "Verify the subtree was archived into the workspace"
+    runs: |
+      set -e
+      dir=e2e-tests/git-archive-fixture
+
+      # The archived files retain their repository-root-relative path prefix.
+      [ -f "$dir/marker.txt" ] || { echo "FAIL: $dir/marker.txt missing"; exit 1; }
+      [ -f "$dir/nested/deep.txt" ] || { echo "FAIL: $dir/nested/deep.txt missing"; exit 1; }
+
+      # Content matches the committed fixture.
+      grep -q "git-archive e2e fixture" "$dir/marker.txt" || { echo "FAIL: marker.txt content"; exit 1; }
+      grep -q "nested content" "$dir/nested/deep.txt" || { echo "FAIL: nested/deep.txt content"; exit 1; }
+
+      # Only the requested subtree is archived: repository files outside the
+      # archived path must NOT be present in the workspace.
+      for f in go.mod e2e-tests/git-archive-build.yaml pkg/build/build.go; do
+        if [ -e "$f" ]; then
+          echo "FAIL: '$f' should not be present; only the requested subtree should be archived"
+          exit 1
+        fi
+      done
+
+      echo "PASS: git-archive populated the workspace with only the requested subtree"

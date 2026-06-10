@@ -149,8 +149,23 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 			RecurseNodes().
 			Filter(yit.WithMapValue("git-checkout"))
 
+		var gitCheckoutNodes []*yaml.Node
 		for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
-			if err := updateGitCheckout(ctx, rc.Configuration, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
+			gitCheckoutNodes = append(gitCheckoutNodes, gitCheckoutNode)
+		}
+
+		for _, gitCheckoutNode := range gitCheckoutNodes {
+			// When there are multiple git-checkout nodes, only bump the ones
+			// whose tag is derived from package.version. With a single
+			// git-checkout node, always bump it regardless of its tag.
+			if versioned, err := gitCheckoutDependsOnVersion(rc.Configuration, gitCheckoutNode); err != nil {
+				return err
+			} else if len(gitCheckoutNodes) > 1 && !versioned {
+				log.Infof("Skipping git-checkout node as tag is not derived from package.version")
+				continue
+			}
+
+			if err := updateGitCheckout(ctx, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
 				return err
 			}
 		}
@@ -220,23 +235,32 @@ func updateFetch(ctx context.Context, rc *renovate.RenovationContext, node *yaml
 	return nil
 }
 
+// gitCheckoutDependsOnVersion reports whether a "git-checkout" pipeline node's
+// tag is derived from package.version. If there is no tag (e.g. a branch-only
+// checkout), it returns true since branches are often built from main and
+// should not be skipped.
+func gitCheckoutDependsOnVersion(cfg *config.Configuration, node *yaml.Node) (bool, error) {
+	withNode, err := renovate.NodeFromMapping(node, "with")
+	if err != nil {
+		return false, err
+	}
+
+	// If a tag is present, check whether it contains a version substitution.
+	tag, tagErr := renovate.NodeFromMapping(withNode, "tag")
+	if tagErr == nil {
+		return dependsOnVersion(tag.Value, cfg), nil
+	}
+
+	return true, nil
+}
+
 // updateGitCheckout takes a "git-checkout" pipeline node and updates the parameters of it.
-func updateGitCheckout(ctx context.Context, cfg *config.Configuration, node *yaml.Node, expectedGitSha string) error {
+func updateGitCheckout(ctx context.Context, node *yaml.Node, expectedGitSha string) error {
 	log := clog.FromContext(ctx)
 
 	withNode, err := renovate.NodeFromMapping(node, "with")
 	if err != nil {
 		return err
-	}
-
-	// If a tag is present, check it contains a version substitution.
-	// If it doesn't depend on package.version, skip updating.
-	// If there is no tag (e.g. branch-only checkout), always update since
-	// branches are often built from main and should not be skipped.
-	tag, tagErr := renovate.NodeFromMapping(withNode, "tag")
-	if tagErr == nil && !dependsOnVersion(tag.Value, cfg) {
-		log.Infof("Skipping git-checkout node as tag is not derived from package.version")
-		return nil
 	}
 
 	log.Infof("processing git-checkout node")

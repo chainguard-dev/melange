@@ -798,6 +798,22 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, serialArgs...)
 	// use -netdev + -device instead of -nic, as this is better supported by microvm machine type
 	netdevArgs := "user,id=id1,hostfwd=tcp:" + cfg.SSHAddress + "-:22,hostfwd=tcp:" + cfg.SSHControlAddress + "-:2223"
+	// QEMU_NET_CIDR overrides SLIRP's default internal network (10.0.2.0/24).
+	// This is necessary when the host needs to reach VPC-internal addresses
+	// that fall within the 10.0.0.0/8 range, since SLIRP treats its default
+	// network as part of its own NAT space and may not correctly forward
+	// connections to other 10.x.x.x addresses on the host's network.
+	// The value must be a valid IPv4 CIDR. SLIRP automatically assigns the
+	// gateway, DNS, and DHCP range based on the supplied network.
+	// Example: QEMU_NET_CIDR="192.168.76.0/24"
+	if netCIDR, ok := os.LookupEnv("QEMU_NET_CIDR"); ok {
+		cidr, err := parseAndValidateNetCIDR(netCIDR)
+		if err != nil {
+			return fmt.Errorf("invalid QEMU_NET_CIDR value %q: %w", netCIDR, err)
+		}
+		log.Infof("qemu: QEMU_NET_CIDR set to %s, overriding SLIRP default network", cidr)
+		netdevArgs += ",net=" + cidr
+	}
 	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
 	// This is useful for builds that need to resolve short hostnames via search
 	// domains, or when the build environment requires specific DNS resolution
@@ -2541,6 +2557,36 @@ func parseDNSSearchDomains(input string) ([]string, error) {
 	}
 
 	return domains, nil
+}
+
+// parseAndValidateNetCIDR validates an IPv4 CIDR string for use as the SLIRP
+// internal network. The CIDR must be a valid IPv4 network with a prefix length
+// between 8 and 30 (SLIRP requires at least 4 usable addresses). The input is
+// returned unchanged on success so it can be passed directly to SLIRP.
+func parseAndValidateNetCIDR(input string) (string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", fmt.Errorf("empty CIDR")
+	}
+
+	ip, ipnet, err := net.ParseCIDR(input)
+	if err != nil {
+		return "", fmt.Errorf("parse CIDR: %w", err)
+	}
+
+	if ip.To4() == nil {
+		return "", fmt.Errorf("CIDR must be IPv4")
+	}
+
+	ones, bits := ipnet.Mask.Size()
+	if bits != 32 {
+		return "", fmt.Errorf("CIDR must be IPv4 (got %d-bit mask)", bits)
+	}
+	if ones < 8 || ones > 30 {
+		return "", fmt.Errorf("CIDR prefix length must be between 8 and 30 (got /%d)", ones)
+	}
+
+	return ipnet.String(), nil
 }
 
 // buildDNSSearchNetdevArgs constructs the QEMU netdev dnssearch options string.

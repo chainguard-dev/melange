@@ -492,6 +492,90 @@ func TestBuildDNSSearchNetdevArgs(t *testing.T) {
 	}
 }
 
+func TestParseAndValidateNetCIDR(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		wantErr  bool
+	}{
+		{
+			name:     "valid /24",
+			input:    "192.168.76.0/24",
+			expected: "192.168.76.0/24",
+		},
+		{
+			name:     "valid /16",
+			input:    "192.168.0.0/16",
+			expected: "192.168.0.0/16",
+		},
+		{
+			name:     "non-zero host bits normalized",
+			input:    "192.168.76.5/24",
+			expected: "192.168.76.0/24",
+		},
+		{
+			name:     "whitespace trimmed",
+			input:    "  192.168.76.0/24  ",
+			expected: "192.168.76.0/24",
+		},
+		{
+			name:    "empty",
+			input:   "",
+			wantErr: true,
+		},
+		{
+			name:    "not a CIDR",
+			input:   "192.168.76.0",
+			wantErr: true,
+		},
+		{
+			name:    "garbage",
+			input:   "not-a-cidr",
+			wantErr: true,
+		},
+		{
+			name:    "IPv6",
+			input:   "fd00::/64",
+			wantErr: true,
+		},
+		{
+			name:    "prefix too short",
+			input:   "10.0.0.0/7",
+			wantErr: true,
+		},
+		{
+			name:    "prefix too long",
+			input:   "192.168.76.0/31",
+			wantErr: true,
+		},
+		{
+			name:    "injection via comma",
+			input:   "192.168.76.0/24,dnssearch=evil.com",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseAndValidateNetCIDR(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("parseAndValidateNetCIDR(%q) expected error, got nil with result %q", tt.input, result)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("parseAndValidateNetCIDR(%q) unexpected error: %v", tt.input, err)
+				return
+			}
+			if result != tt.expected {
+				t.Errorf("parseAndValidateNetCIDR(%q) = %q, expected %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestGetPackageCacheSuffix(t *testing.T) {
 	tests := []struct {
 		name     string

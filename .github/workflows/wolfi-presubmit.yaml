@@ -78,15 +78,12 @@ jobs:
           #- glibc # takes ~35-40 minutes to build; not an all-encompassing signal of Melange functionality; TODO: replace with a smaller, related package
           #- xmlto # TODO: https://github.com/wolfi-dev/os/issues/26442
           - bubblewrap
-          - cadvisor # uses cgroups
           - dpkg
           - fixuid # uses a diff test user
           - fping # uses get/setcaps
           - gitsign
-          - grafana-image-renderer
           - guac
           - lzo
-          - mdbook
           - ncurses
           - perl-yaml-syck
           - postfix

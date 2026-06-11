@@ -806,7 +806,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// The value must be a valid IPv4 CIDR. SLIRP automatically assigns the
 	// gateway, DNS, and DHCP range based on the supplied network.
 	// Example: QEMU_NET_CIDR="192.168.76.0/24"
-	if netCIDR, ok := os.LookupEnv("QEMU_NET_CIDR"); ok {
+	if netCIDR, ok := os.LookupEnv("QEMU_NET_CIDR"); ok && netCIDR != "" {
 		cidr, err := parseAndValidateNetCIDR(netCIDR)
 		if err != nil {
 			return fmt.Errorf("invalid QEMU_NET_CIDR value %q: %w", netCIDR, err)

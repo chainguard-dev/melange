@@ -3,12 +3,12 @@ module chainguard.dev/melange
 go 1.26.2
 
 require (
-	chainguard.dev/apko v1.2.13
+	chainguard.dev/apko v1.2.16
 	github.com/chainguard-dev/clog v1.8.0
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
-	github.com/chainguard-dev/yam v0.2.60
+	github.com/chainguard-dev/yam v0.2.63
 	github.com/charmbracelet/log v1.0.0
-	github.com/docker/cli v29.5.1+incompatible
+	github.com/docker/cli v29.5.3+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/github/go-spdx/v2 v2.7.0
@@ -32,18 +32,18 @@ require (
 	github.com/ulikunitz/xz v0.5.15
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
-	go.opentelemetry.io/otel v1.43.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.43.0
-	go.opentelemetry.io/otel/sdk v1.43.0
+	go.opentelemetry.io/otel v1.44.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.44.0
+	go.opentelemetry.io/otel/sdk v1.44.0
 	go.yaml.in/yaml/v2 v2.4.4
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.44.0
-	golang.org/x/term v0.43.0
-	golang.org/x/text v0.37.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0
+	golang.org/x/term v0.44.0
+	golang.org/x/text v0.38.0
 	golang.org/x/time v0.15.0
-	gopkg.in/ini.v1 v1.67.2
+	gopkg.in/ini.v1 v1.67.3
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.13.1
 	sigs.k8s.io/release-utils v0.12.4
@@ -81,7 +81,7 @@ require (
 
 require (
 	chainguard.dev/go-grpc-kit v0.17.17 // indirect
-	chainguard.dev/sdk v0.1.54 // indirect
+	chainguard.dev/sdk v0.1.55 // indirect
 	cloud.google.com/go/auth v0.20.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -161,17 +161,17 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.67.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
-	go.step.sm/crypto v0.78.0 // indirect
+	go.opentelemetry.io/otel/metric v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	go.step.sm/crypto v0.81.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	google.golang.org/api v0.278.0 // indirect
+	google.golang.org/api v0.280.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260427160629-7cedc36a6bc4 // indirect
-	google.golang.org/grpc v1.80.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
+	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.36.0 // indirect
+	k8s.io/apimachinery v0.36.1 // indirect
 )

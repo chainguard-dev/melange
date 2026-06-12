@@ -576,6 +576,70 @@ func TestParseAndValidateNetCIDR(t *testing.T) {
 	}
 }
 
+func TestSlirpDNSAddr(t *testing.T) {
+	tests := []struct {
+		name     string
+		cidr     string
+		expected string
+		wantErr  bool
+	}{
+		{
+			name:     "standard /24",
+			cidr:     "192.168.76.0/24",
+			expected: "192.168.76.3",
+		},
+		{
+			name:     "default SLIRP network",
+			cidr:     "10.0.2.0/24",
+			expected: "10.0.2.3",
+		},
+		{
+			name:     "/16 network",
+			cidr:     "172.16.0.0/16",
+			expected: "172.16.0.3",
+		},
+		{
+			name:     "/8 network",
+			cidr:     "10.0.0.0/8",
+			expected: "10.0.0.3",
+		},
+		{
+			name:     "non-zero third octet",
+			cidr:     "192.168.1.0/24",
+			expected: "192.168.1.3",
+		},
+		{
+			name:    "invalid CIDR",
+			cidr:    "not-a-cidr",
+			wantErr: true,
+		},
+		{
+			name:    "empty input",
+			cidr:    "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := slirpDNSAddr(tt.cidr)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("slirpDNSAddr(%q) expected error, got %q", tt.cidr, result)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("slirpDNSAddr(%q) unexpected error: %v", tt.cidr, err)
+				return
+			}
+			if result != tt.expected {
+				t.Errorf("slirpDNSAddr(%q) = %q, expected %q", tt.cidr, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestGetPackageCacheSuffix(t *testing.T) {
 	tests := []struct {
 		name     string

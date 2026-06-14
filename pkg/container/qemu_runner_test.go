@@ -545,9 +545,24 @@ func TestParseAndValidateNetCIDR(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "prefix too long",
+			name:    "prefix too long /29",
+			input:   "192.168.76.0/29",
+			wantErr: true,
+		},
+		{
+			name:    "prefix too long /30",
+			input:   "192.168.76.0/30",
+			wantErr: true,
+		},
+		{
+			name:    "prefix too long /31",
 			input:   "192.168.76.0/31",
 			wantErr: true,
+		},
+		{
+			name:     "valid /28 boundary",
+			input:    "192.168.76.0/28",
+			expected: "192.168.76.0/28",
 		},
 		{
 			name:    "injection via comma",
@@ -607,6 +622,21 @@ func TestSlirpDNSAddr(t *testing.T) {
 			name:     "non-zero third octet",
 			cidr:     "192.168.1.0/24",
 			expected: "192.168.1.3",
+		},
+		{
+			name:     "/22 boundary",
+			cidr:     "192.168.0.0/22",
+			expected: "192.168.0.3",
+		},
+		{
+			name:     "/23 boundary",
+			cidr:     "192.168.0.0/23",
+			expected: "192.168.0.3",
+		},
+		{
+			name:     "/28 smallest valid",
+			cidr:     "192.168.76.0/28",
+			expected: "192.168.76.3",
 		},
 		{
 			name:    "invalid CIDR",

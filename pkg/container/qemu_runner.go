@@ -25,6 +25,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -818,7 +819,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 		slirpDNS = dnsIP
 		log.Infof("qemu: QEMU_NET_CIDR set to %s, overriding SLIRP default network (dns=%s)", cidr, slirpDNS)
-		netdevArgs += ",net=" + cidr
+		netdevArgs += ",net=" + cidr + ",dns=" + slirpDNS
 	}
 	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
 	// This is useful for builds that need to resolve short hostnames via search
@@ -2595,43 +2596,33 @@ func parseAndValidateNetCIDR(input string) (string, error) {
 	if bits != 32 {
 		return "", fmt.Errorf("CIDR must be IPv4 (got %d-bit mask)", bits)
 	}
-	if ones < 8 || ones > 30 {
-		return "", fmt.Errorf("CIDR prefix length must be between 8 and 30 (got /%d)", ones)
+	if ones < 8 || ones > 28 {
+		return "", fmt.Errorf("CIDR prefix length must be between 8 and 28 (got /%d)", ones)
 	}
 
 	return ipnet.String(), nil
 }
 
-// slirpDNSAddr returns the DNS server address that SLIRP assigns for a given
-// network CIDR. SLIRP uses a fixed offset from the network base: +2 for the
-// gateway and +3 for the DNS server. For example, 192.168.76.0/24 yields
+// slirpDNSAddr returns the DNS server address to use for the SLIRP network.
+// The address is network base + 3, placed at offset .3 within the subnet.
+// The caller must also pass this address via the QEMU netdev dns= option so
+// SLIRP serves it, and via the kernel cmdline dns= parameter so the guest
+// init writes it to /etc/resolv.conf. For example, 192.168.76.0/24 yields
 // 192.168.76.3. The input must be a valid IPv4 CIDR (as returned by
 // parseAndValidateNetCIDR).
 func slirpDNSAddr(cidr string) (string, error) {
-	ip, ipnet, err := net.ParseCIDR(cidr)
+	_, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return "", fmt.Errorf("parse CIDR: %w", err)
 	}
-	ipv4 := ip.To4()
-	if ipv4 == nil {
+	base := ipnet.IP.To4()
+	if base == nil {
 		return "", fmt.Errorf("not IPv4")
 	}
 
-	// Use the network address (mask away host bits) and add 3.
-	base := ipnet.IP.To4()
-	if base == nil {
-		return "", fmt.Errorf("network address is not IPv4")
-	}
-
-	// Convert to uint32 for safe arithmetic, then add 3.
-	n := uint32(base[0])<<24 | uint32(base[1])<<16 | uint32(base[2])<<8 | uint32(base[3])
-	n += 3
-	dns := net.IPv4(byte(n>>24), byte(n>>16), byte(n>>8), byte(n))
-
-	// Verify the result is still within the network.
-	if !ipnet.Contains(dns) {
-		return "", fmt.Errorf("DNS address %s is outside network %s", dns, ipnet)
-	}
+	n := binary.BigEndian.Uint32(base) + 3
+	dns := make(net.IP, 4)
+	binary.BigEndian.PutUint32(dns, n)
 
 	return dns.String(), nil
 }

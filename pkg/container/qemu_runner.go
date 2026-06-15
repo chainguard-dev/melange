@@ -25,6 +25,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -806,13 +807,19 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// The value must be a valid IPv4 CIDR. SLIRP automatically assigns the
 	// gateway, DNS, and DHCP range based on the supplied network.
 	// Example: QEMU_NET_CIDR="192.168.76.0/24"
+	var slirpDNS string
 	if netCIDR, ok := os.LookupEnv("QEMU_NET_CIDR"); ok && netCIDR != "" {
 		cidr, err := parseAndValidateNetCIDR(netCIDR)
 		if err != nil {
 			return fmt.Errorf("invalid QEMU_NET_CIDR value %q: %w", netCIDR, err)
 		}
-		log.Infof("qemu: QEMU_NET_CIDR set to %s, overriding SLIRP default network", cidr)
-		netdevArgs += ",net=" + cidr
+		dnsIP, err := slirpDNSAddr(cidr)
+		if err != nil {
+			return fmt.Errorf("deriving SLIRP DNS address from QEMU_NET_CIDR %q: %w", cidr, err)
+		}
+		slirpDNS = dnsIP
+		log.Infof("qemu: QEMU_NET_CIDR set to %s, overriding SLIRP default network (dns=%s)", cidr, slirpDNS)
+		netdevArgs += ",net=" + cidr + ",dns=" + slirpDNS
 	}
 	// QEMU_DNS_SEARCH allows configuring DNS search domains inside the guest VM.
 	// This is useful for builds that need to resolve short hostnames via search
@@ -851,6 +858,13 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		" pci=lastbus=0 ftrace=off swiotlb=noforce edd=off " +
 		cmdlineVar + " sshkey=" + sshkey +
 		" melange_qemu_runner=1"
+
+	// When QEMU_NET_CIDR overrides the SLIRP network, the default DNS
+	// address (10.0.2.3) no longer exists. Pass the correct address via
+	// kernel cmdline so microvm-init writes it to /etc/resolv.conf.
+	if slirpDNS != "" {
+		kernelArgs += " dns=" + slirpDNS
+	}
 
 	// Check for TESTING environment variable and pass it to microvm-init
 	// TESTING must be a number (0 for disabled, non-zero for enabled)
@@ -2582,11 +2596,35 @@ func parseAndValidateNetCIDR(input string) (string, error) {
 	if bits != 32 {
 		return "", fmt.Errorf("CIDR must be IPv4 (got %d-bit mask)", bits)
 	}
-	if ones < 8 || ones > 30 {
-		return "", fmt.Errorf("CIDR prefix length must be between 8 and 30 (got /%d)", ones)
+	if ones < 8 || ones > 28 {
+		return "", fmt.Errorf("CIDR prefix length must be between 8 and 28 (got /%d)", ones)
 	}
 
 	return ipnet.String(), nil
+}
+
+// slirpDNSAddr returns the DNS server address to use for the SLIRP network.
+// The address is network base + 3, placed at offset .3 within the subnet.
+// The caller must also pass this address via the QEMU netdev dns= option so
+// SLIRP serves it, and via the kernel cmdline dns= parameter so the guest
+// init writes it to /etc/resolv.conf. For example, 192.168.76.0/24 yields
+// 192.168.76.3. The input must be a valid IPv4 CIDR (as returned by
+// parseAndValidateNetCIDR).
+func slirpDNSAddr(cidr string) (string, error) {
+	_, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return "", fmt.Errorf("parse CIDR: %w", err)
+	}
+	base := ipnet.IP.To4()
+	if base == nil {
+		return "", fmt.Errorf("not IPv4")
+	}
+
+	n := binary.BigEndian.Uint32(base) + 3
+	dns := make(net.IP, 4)
+	binary.BigEndian.PutUint32(dns, n)
+
+	return dns.String(), nil
 }
 
 // buildDNSSearchNetdevArgs constructs the QEMU netdev dnssearch options string.

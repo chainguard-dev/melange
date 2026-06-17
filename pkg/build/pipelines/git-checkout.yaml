@@ -330,6 +330,8 @@ pipeline:
               ${depthflag:+"${depthflag}"} "$repo" "$workdir" ||
               fail "git clone failed after $max_retries retries"
 
+          msg "cloned from $(cd "$workdir" && git remote get-url origin)"
+
           vr cd "$workdir"
 
           # Configure sparse-checkout if paths were provided

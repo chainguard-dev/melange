@@ -11,10 +11,15 @@ inputs:
       Options to pass to the make command.
     default: ''
 
+  targets:
+    description: |
+      Makefile targets to build, space-separated.
+    default: ''
+
 needs:
   packages:
     - make
 
 pipeline:
   - runs: |
-      make -C "${{inputs.dir}}" -j$(nproc) V=1 ${{inputs.opts}}
+      make -C "${{inputs.dir}}" -j$(nproc) V=1 ${{inputs.opts}} ${{inputs.targets}}

@@ -51,6 +51,7 @@ Split development files
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | package | false | The package to split development files from  |  |
+| prefix | false | The package's installation prefix  | /usr |
 
 ## split/infodir
 

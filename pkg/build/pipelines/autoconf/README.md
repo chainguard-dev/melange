@@ -29,6 +29,7 @@ Run autoconf make install
 | ---- | -------- | ----------- | ------- |
 | dir | false | The directory containing the Makefile.  | . |
 | opts | false | Options to pass to the make command.  |  |
+| targets | false | Makefile install targets, space-separated.  | install |
 
 ## autoconf/make
 
@@ -40,6 +41,7 @@ Run autoconf make
 | ---- | -------- | ----------- | ------- |
 | dir | false | The directory containing the Makefile.  | . |
 | opts | false | Options to pass to the make command.  |  |
+| targets | false | Makefile targets to build, space-separated.  |  |
 
 
 <!-- end:pipeline-reference-gen -->

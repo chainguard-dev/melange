@@ -11,13 +11,18 @@ inputs:
       Options to pass to the make command.
     default: ''
 
+  targets:
+    description: |
+      Makefile install targets, space-separated.
+    default: "install"
+
 needs:
   packages:
     - make
 
 pipeline:
   - runs: |
-      make -C "${{inputs.dir}}" install DESTDIR="${{targets.contextdir}}" V=1 ${{inputs.opts}}
+      make -C "${{inputs.dir}}" ${{inputs.targets}} DESTDIR="${{targets.contextdir}}" V=1 ${{inputs.opts}}
 
   # Delete all GNU libtool metadata files.  These things are the bane of a
   # packager's existence: they contain useless metadata, cause overlinking and

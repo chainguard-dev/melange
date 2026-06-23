@@ -40,14 +40,25 @@ const WorkDir = "/home/build"
 func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
 	nw := maps.Clone(sm.Substitutions)
 
+	// Seed the parent's inherited "${{...}}" entries first, then this pipeline's
+	// own plain inputs, resolving each against the parent so a forwarded self-ref
+	// (`foo: ${{inputs.foo}}`) takes the parent value and the input then wins.
 	for k, v := range with {
-		// already mutated?
 		if strings.HasPrefix(k, "${{") {
 			nw[k] = v
-		} else {
-			nk := fmt.Sprintf("${{inputs.%s}}", k)
-			nw[nk] = v
 		}
+	}
+	for k, v := range with {
+		if strings.HasPrefix(k, "${{") {
+			continue
+		}
+		nk := fmt.Sprintf("${{inputs.%s}}", k)
+		// Resolve against the parent scope; keep raw if not yet in scope (a
+		// sibling input) — the mutation loop below resolves it.
+		if rv, err := util.MutateStringFromMap(nw, v); err == nil {
+			v = rv
+		}
+		nw[nk] = v
 	}
 
 	// do the actual mutations

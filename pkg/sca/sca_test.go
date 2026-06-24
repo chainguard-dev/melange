@@ -26,12 +26,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -456,6 +458,166 @@ func TestIsInDir(t *testing.T) {
 		result := isInDir(tt.path, tt.dirs)
 		if result != tt.expected {
 			t.Errorf("isInDir(%q, %v) = %v, expected %v", tt.path, tt.dirs, result, tt.expected)
+		}
+	}
+}
+
+// mapSCAFS wraps fstest.MapFS to satisfy the SCAFS interface for unit tests.
+// Readlink always returns an error since test fixtures don't use symlinks.
+type mapSCAFS struct {
+	fstest.MapFS
+}
+
+func (m mapSCAFS) Readlink(name string) (string, error) {
+	return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrInvalid}
+}
+
+// staticTestHandle is a minimal SCAHandle for testing generateStaticLibDeps.
+type staticTestHandle struct {
+	name     string
+	fsys     mapSCAFS
+	siblings map[string]mapSCAFS
+}
+
+func (h *staticTestHandle) PackageName() string { return h.name }
+func (h *staticTestHandle) Version() string     { return "1.0-r0" }
+func (h *staticTestHandle) RelativeNames() []string {
+	names := make([]string, 1, 1+len(h.siblings))
+	names[0] = h.name
+	for k := range h.siblings {
+		names = append(names, k)
+	}
+	return names
+}
+
+func (h *staticTestHandle) FilesystemForRelative(pkgName string) (SCAFS, error) {
+	if pkgName == h.name {
+		return h.fsys, nil
+	}
+	if fsys, ok := h.siblings[pkgName]; ok {
+		return fsys, nil
+	}
+	return nil, fmt.Errorf("unknown package %q", pkgName)
+}
+func (h *staticTestHandle) Filesystem() (SCAFS, error)            { return h.fsys, nil }
+func (h *staticTestHandle) Options() config.PackageOption         { return config.PackageOption{} }
+func (h *staticTestHandle) BaseDependencies() config.Dependencies { return config.Dependencies{} }
+func (h *staticTestHandle) InstalledPackages() map[string]string  { return nil }
+func (h *staticTestHandle) PkgResolver() *apk.PkgResolver         { return nil }
+
+func TestStaticLibProvides(t *testing.T) {
+	ctx := slogtest.Context(t)
+	hdl := &staticTestHandle{
+		name: "libfoo-static",
+		fsys: mapSCAFS{fstest.MapFS{
+			"usr/lib/libfoo.a": {},
+		}},
+	}
+	got := config.Dependencies{}
+	if err := generateStaticLibDeps(ctx, hdl, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+	want := config.Dependencies{Provides: []string{"static:libfoo"}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got):\n%s", diff)
+	}
+}
+
+func TestStaticLibVendored(t *testing.T) {
+	ctx := slogtest.Context(t)
+	hdl := &staticTestHandle{
+		name: "libfoo-static",
+		fsys: mapSCAFS{fstest.MapFS{
+			"opt/lib/libfoo.a": {},
+		}},
+	}
+	got := config.Dependencies{}
+	if err := generateStaticLibDeps(ctx, hdl, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+	want := config.Dependencies{Vendored: []string{"static:libfoo"}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got):\n%s", diff)
+	}
+}
+
+func TestStaticLibDepsFromSiblingPC(t *testing.T) {
+	orig := generateStaticLibRunDeps
+	generateStaticLibRunDeps = true
+	defer func() { generateStaticLibRunDeps = orig }()
+
+	ctx := slogtest.Context(t)
+	hdl := &staticTestHandle{
+		name: "libfoo-static",
+		fsys: mapSCAFS{fstest.MapFS{
+			"usr/lib/libfoo.a": {},
+		}},
+		siblings: map[string]mapSCAFS{
+			"libfoo-dev": {fstest.MapFS{
+				"usr/lib/pkgconfig/libfoo.pc": {Data: []byte(
+					"Name: libfoo\nVersion: 1.0\nDescription: foo\nLibs: -lfoo\nLibs.private: -lbar\n",
+				)},
+			}},
+		},
+	}
+	got := config.Dependencies{}
+	if err := generateStaticLibDeps(ctx, hdl, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+	want := config.Dependencies{
+		Provides: []string{"static:libfoo"},
+		Runtime:  []string{"static:libbar"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got):\n%s", diff)
+	}
+}
+
+func TestStaticLibDepsLoggedWhenFlagDisabled(t *testing.T) {
+	orig := generateStaticLibRunDeps
+	generateStaticLibRunDeps = false
+	defer func() { generateStaticLibRunDeps = orig }()
+
+	ctx := slogtest.Context(t)
+	hdl := &staticTestHandle{
+		name: "libfoo-static",
+		fsys: mapSCAFS{fstest.MapFS{
+			"usr/lib/libfoo.a": {},
+		}},
+		siblings: map[string]mapSCAFS{
+			"libfoo-dev": {fstest.MapFS{
+				"usr/lib/pkgconfig/libfoo.pc": {Data: []byte(
+					"Name: libfoo\nVersion: 1.0\nDescription: foo\nLibs: -lfoo\nLibs.private: -lbar\n",
+				)},
+			}},
+		},
+	}
+	got := config.Dependencies{}
+	if err := generateStaticLibDeps(ctx, hdl, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+	// Runtime deps should not be added when the flag is disabled.
+	want := config.Dependencies{Provides: []string{"static:libfoo"}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got):\n%s", diff)
+	}
+}
+
+func TestParseEnvBool(t *testing.T) {
+	for _, tc := range []struct {
+		val  string
+		def  bool
+		want bool
+	}{
+		{"", false, false},
+		{"", true, true},
+		{"true", false, true},
+		{"false", true, false},
+	} {
+		t.Setenv("TEST_PARSE_ENV_BOOL", tc.val)
+		got := parseEnvBool("TEST_PARSE_ENV_BOOL", tc.def)
+		if got != tc.want {
+			t.Errorf("parseEnvBool(env=%q, default=%v) = %v, want %v", tc.val, tc.def, got, tc.want)
 		}
 	}
 }

@@ -31,6 +31,10 @@ linters:
       excludes:
         - G115  # Integer overflow conversions - handled where needed
         - G301  # Directory permissions (0o755) - directories may be accessed by non-melange users/processes in CI/CD environments
+    modernize:
+      disable:
+        # Suggest replacing omitempty with omitzero for struct fields.
+        - omitzero
   exclusions:
     generated: lax
     presets:

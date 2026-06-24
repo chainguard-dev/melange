@@ -1,0 +1,23 @@
+name: Run make for redis/valkey
+
+inputs:
+  dir:
+    description: |
+      The directory containing the codebase.
+    default: .
+  opts:
+    description: |
+      Options to pass to the make command.
+    default: ''
+
+needs:
+  packages:
+    - make
+
+pipeline:
+  - runs: |
+      export CFLAGS="$CFLAGS -DUSE_MALLOC_USABLE_SIZE ${{inputs.opts}}"
+        make \
+        BUILD_TLS=yes \
+        all -j$(nproc)
+      make install PREFIX=/usr INSTALL_BIN="${{targets.destdir}}/usr/bin"

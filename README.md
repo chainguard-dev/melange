@@ -84,6 +84,7 @@ environment:
       - scanelf
       - ssl_client
       - ca-certificates-bundle
+      - help2man
 
 pipeline:
   - uses: fetch

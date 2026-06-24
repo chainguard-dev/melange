@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
@@ -34,56 +33,23 @@ import (
 
 // addTestFlags registers all test command flags to the provided FlagSet using the TestFlags struct
 func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
-	fs.StringVar(&flags.WorkspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
-	fs.StringSliceVar(&flags.PipelineDirs, "pipeline-dirs", []string{}, "directories used to extend defined built-in pipelines")
-	fs.StringVar(&flags.SourceDir, "source-dir", "", "directory used for included sources")
-	fs.StringVar(&flags.CacheDir, "cache-dir", "", "directory used for cached inputs")
-	fs.StringVar(&flags.CacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
-	fs.StringVar(&flags.ApkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
+	// Set test-specific defaults before registering common flags.
+	flags.Remove = true
+	addCommonFlags(fs, &flags.CommonFlags)
+
+	// Test-specific flags.
 	fs.StringSliceVar(&flags.Archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
 	fs.StringSliceVar(&flags.TestOption, "test-option", []string{}, "build options to enable")
-	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
-	fs.StringSliceVar(&flags.EnvFiles, "env-file", []string{}, "files to use for preloaded environment variables")
-	fs.BoolVar(&flags.Debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
-	fs.BoolVar(&flags.DebugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
-	fs.BoolVarP(&flags.Interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	fs.StringSliceVarP(&flags.ExtraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	fs.StringSliceVar(&flags.ExtraTestPackages, "test-package-append", []string{}, "extra packages to install for each of the test environments")
-	fs.BoolVar(&flags.Remove, "rm", true, "clean up intermediate artifacts (e.g. container images, temp dirs)")
-	fs.BoolVar(&flags.IgnoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
-	fs.StringVar(&flags.CPU, "cpu", "", "default CPU resources to use for tests")
-	fs.StringVar(&flags.CPUModel, "cpumodel", "", "default CPU model to use for tests")
-	fs.StringVar(&flags.Disk, "disk", "", "disk size to use for tests")
-	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for tests")
-	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for tests")
 }
 
 // TestFlags holds all parsed test command flags
 type TestFlags struct {
-	WorkspaceDir      string
-	SourceDir         string
-	CacheDir          string
-	CacheSource       string
-	ApkCacheDir       string
+	CommonFlags
+
 	Archstrs          []string
-	PipelineDirs      []string
-	ExtraKeys         []string
-	ExtraRepos        []string
-	EnvFiles          []string
 	TestOption        []string
-	Debug             bool
-	DebugRunner       bool
-	Interactive       bool
-	Runner            string
 	ExtraTestPackages []string
-	Remove            bool
-	IgnoreSignatures  bool
-	CPU               string
-	CPUModel          string
-	Memory            string
-	Disk              string
-	Timeout           time.Duration
 }
 
 // ParseTestFlags parses test flags from the provided args and returns a TestFlags struct
@@ -172,6 +138,11 @@ func test() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			if pc := ProjectConfigFromContext(ctx); pc != nil {
+				pc.ApplyToTestFlags(flags, cmd.Flags())
+			}
+
 			archs := apko_types.ParseArchitectures(flags.Archstrs)
 			options, err := flags.TestOptions(ctx, args...)
 			if err != nil {

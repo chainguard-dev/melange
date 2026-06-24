@@ -30,6 +30,7 @@ import (
 func New() *cobra.Command {
 	var level slag.Level
 	var gcplog bool
+	var configFile string
 	cmd := &cobra.Command{
 		Use:               "melange",
 		DisableAutoGenTag: true,
@@ -44,12 +45,27 @@ func New() *cobra.Command {
 				slog.SetDefault(slog.New(charmlog.NewWithOptions(os.Stderr, charmlog.Options{ReportTimestamp: true, Level: charmlog.Level(level)})))
 			}
 
+			// Load project config file.
+			cfgPath := configFile
+			if cfgPath == "" {
+				cfgPath = FindProjectConfig()
+			}
+			if cfgPath != "" {
+				pc, err := LoadProjectConfig(cfgPath)
+				if err != nil {
+					return fmt.Errorf("loading project config: %w", err)
+				}
+				slog.Debug("loaded project config", "path", cfgPath)
+				cmd.SetContext(WithProjectConfig(cmd.Context(), pc))
+			}
+
 			return nil
 		},
 	}
 	cmd.PersistentFlags().Var(&level, "log-level", "log level (e.g. debug, info, warn, error)")
 	cmd.PersistentFlags().BoolVar(&gcplog, "gcplog", false, "use GCP logging")
 	_ = cmd.PersistentFlags().MarkHidden("gcplog")
+	cmd.PersistentFlags().StringVar(&configFile, "config-file", "", "path to project config file (default: .melange.yaml in current directory)")
 
 	cmd.AddCommand(buildCmd())
 	cmd.AddCommand(initramfsCmd())

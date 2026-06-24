@@ -567,6 +567,9 @@
 	// Optional: The git commit of the subpackage build configuration
 	commit?: string
 
+	// Optional: The list of copyrights for this subpackage
+	copyright?: [...#Copyright]
+
 	// Optional: enabling, disabling, and configuration of build
 	// checks
 	checks!: #Checks

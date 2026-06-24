@@ -1033,6 +1033,13 @@
           "type": "string",
           "description": "Optional: The git commit of the subpackage build configuration"
         },
+        "target-architecture": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "List of target architectures for which this subpackage should be built"
+        },
         "checks": {
           "$ref": "#/$defs/Checks",
           "description": "Optional: enabling, disabling, and configuration of build checks"

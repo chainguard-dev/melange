@@ -72,8 +72,9 @@ func TestCreateGccSpecFile(t *testing.T) {
 			// Should start with *link:
 			assert.True(t, strings.HasPrefix(string(content), "*link:\n"))
 
-			// Should contain the package-metadata flag
-			assert.Contains(t, string(content), "+ --package-metadata=")
+			// Should contain the package-metadata flag, guarded so it is
+			// not emitted for relocatable (-r) links.
+			assert.Contains(t, string(content), "+ %{!r:--package-metadata=")
 		})
 	}
 }
@@ -104,6 +105,54 @@ func TestCreateGccSpecFileError(t *testing.T) {
 		err := b.createGccSpecFile()
 		assert.Error(t, err)
 	})
+}
+
+func TestCreateFdoNoteHeader(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	b := &Build{
+		WorkspaceDir: tmpDir,
+		Arch:         apko_types.ParseArchitecture("x86_64"),
+		Namespace:    "test",
+		Configuration: &config.Configuration{
+			Package: config.Package{
+				Name:    "test-package",
+				Version: "1.0.0",
+				Epoch:   0,
+			},
+		},
+	}
+
+	err := b.createFdoNoteHeader()
+	require.NoError(t, err)
+
+	headerPath := filepath.Join(tmpDir, ".melange.fdo.h")
+	assert.FileExists(t, headerPath)
+
+	content, err := os.ReadFile(headerPath)
+	require.NoError(t, err)
+	s := string(content)
+
+	// The generated header carries the note attribute and the well-known
+	// variable name, in the FDO .note.package section.
+	assert.Contains(t, s, `__attribute__((used, retain, section(".note.package"), aligned(4)))`)
+	assert.Contains(t, s, "melange_package_note")
+	// 0xcafe1a7e is the NT_FDO_PACKAGING_METADATA note type defined by
+	// https://uapi-group.org/specifications/specs/package_metadata_for_executable_files/ .
+	assert.Contains(t, s, "0xcafe1a7e")
+	assert.Contains(t, s, `"FDO"`)
+
+	// The JSON payload matches --package-metadata, but escaped as a C string
+	// literal (quotes backslash-escaped).
+	assert.Contains(t, s, `\"type\":\"apk\"`)
+	assert.Contains(t, s, `\"name\":\"test-package\"`)
+	assert.Contains(t, s, `\"version\":\"1.0.0-r0\"`)
+	assert.Contains(t, s, `\"architecture\":\"x86_64\"`)
+
+	// World-readable so in-sandbox builds can include it.
+	info, err := os.Stat(headerPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
 }
 
 func TestCreateClangConfigFile(t *testing.T) {

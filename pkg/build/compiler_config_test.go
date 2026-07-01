@@ -137,6 +137,8 @@ func TestCreateFdoNoteHeader(t *testing.T) {
 	// variable name, in the FDO .note.package section.
 	assert.Contains(t, s, `__attribute__((used, retain, section(".note.package"), aligned(4)))`)
 	assert.Contains(t, s, "melange_package_note")
+	// 0xcafe1a7e is the NT_FDO_PACKAGING_METADATA note type defined by
+	// https://systemd.io/COREDUMP_PACKAGE_METADATA/ .
 	assert.Contains(t, s, "0xcafe1a7e")
 	assert.Contains(t, s, `"FDO"`)
 

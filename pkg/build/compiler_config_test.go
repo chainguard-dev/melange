@@ -107,6 +107,52 @@ func TestCreateGccSpecFileError(t *testing.T) {
 	})
 }
 
+func TestCreateFdoNoteHeader(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	b := &Build{
+		WorkspaceDir: tmpDir,
+		Arch:         apko_types.ParseArchitecture("x86_64"),
+		Namespace:    "test",
+		Configuration: &config.Configuration{
+			Package: config.Package{
+				Name:    "test-package",
+				Version: "1.0.0",
+				Epoch:   0,
+			},
+		},
+	}
+
+	err := b.createFdoNoteHeader()
+	require.NoError(t, err)
+
+	headerPath := filepath.Join(tmpDir, ".melange.fdo.h")
+	assert.FileExists(t, headerPath)
+
+	content, err := os.ReadFile(headerPath)
+	require.NoError(t, err)
+	s := string(content)
+
+	// The generated header carries the note attribute and the well-known
+	// variable name, in the FDO .note.package section.
+	assert.Contains(t, s, `__attribute__((used, retain, section(".note.package"), aligned(4)))`)
+	assert.Contains(t, s, "melange_package_note")
+	assert.Contains(t, s, "0xcafe1a7e")
+	assert.Contains(t, s, `"FDO"`)
+
+	// The JSON payload matches --package-metadata, but escaped as a C string
+	// literal (quotes backslash-escaped).
+	assert.Contains(t, s, `\"type\":\"apk\"`)
+	assert.Contains(t, s, `\"name\":\"test-package\"`)
+	assert.Contains(t, s, `\"version\":\"1.0.0-r0\"`)
+	assert.Contains(t, s, `\"architecture\":\"x86_64\"`)
+
+	// World-readable so in-sandbox builds can include it.
+	info, err := os.Stat(headerPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
+}
+
 func TestCreateClangConfigFile(t *testing.T) {
 	tests := []struct {
 		name         string

@@ -34,6 +34,38 @@ var gccLinkTemplate = `*link:
 var clangConfigTemplate = `-Xlinker --package-metadata='` + packageMetadataTemplate + `'
 `
 
+// fdoNoteTemplate is a C header, generated alongside the gcc spec file, that
+// projects can #include to embed the very same FDO packaging metadata that the
+// --package-metadata linker flag would emit. This is useful for statically
+// linked or vendored code (e.g. a bundled allocator), which leaves no trace in
+// the dynamic dependency graph and is therefore invisible to SBOM / CVE
+// scanners: the note travels with the object into the final binary regardless.
+//
+// The note layout (NT_FDO_PACKAGING_METADATA, owner "FDO") follows
+// https://systemd.io/COREDUMP_PACKAGE_METADATA/ . The %s is the C-string-escaped
+// metadata JSON, identical to what the linker flag carries.
+var fdoNoteTemplate = `#ifndef MELANGE_PACKAGE_NOTE_H
+#define MELANGE_PACKAGE_NOTE_H
+#if defined(__ELF__)
+#define MELANGE_PACKAGE_NOTE_JSON "%s"
+__attribute__((used, retain, section(".note.package"), aligned(4)))
+static const struct {
+	unsigned int namesz;
+	unsigned int descsz;
+	unsigned int type;
+	char name[4];
+	char desc[sizeof(MELANGE_PACKAGE_NOTE_JSON)];
+} melange_package_note = {
+	sizeof("FDO"),
+	sizeof(MELANGE_PACKAGE_NOTE_JSON),
+	0xcafe1a7e,
+	"FDO",
+	MELANGE_PACKAGE_NOTE_JSON
+};
+#endif
+#endif
+`
+
 // range of clang versions we may support in the foreseeable future
 var (
 	minClangVer  = 15
@@ -56,6 +88,37 @@ func (b *Build) createGccSpecFile() error {
 		return err
 	}
 	return nil
+}
+
+// renderPackageMetadata renders the package metadata JSON (the same payload
+// carried by the --package-metadata linker flag) for this build.
+func (b *Build) renderPackageMetadata() (string, error) {
+	var sb strings.Builder
+	tmpl := template.Must(template.New("packageMetadata").Parse(packageMetadataTemplate))
+	if err := tmpl.Execute(&sb, b); err != nil {
+		return "", err
+	}
+	return sb.String(), nil
+}
+
+// createFdoNoteHeader writes a C header next to the gcc spec file that projects
+// can #include to embed the FDO packaging metadata note themselves. See
+// fdoNoteTemplate for why this is useful for statically linked / vendored code.
+func (b *Build) createFdoNoteHeader() error {
+	metadata, err := b.renderPackageMetadata()
+	if err != nil {
+		return err
+	}
+
+	// Escape for embedding in a C string literal: backslash first so we don't
+	// double-escape the backslashes we introduce for the quotes.
+	escaped := strings.ReplaceAll(metadata, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+
+	content := fmt.Sprintf(fdoNoteTemplate, escaped)
+
+	// #nosec G306 -- header should be world-readable so builds can include it
+	return os.WriteFile(filepath.Join(b.WorkspaceDir, ".melange.fdo.h"), []byte(content), 0o644)
 }
 
 // create a clang config file that just includes other clang config files
@@ -128,6 +191,9 @@ func (b *Build) createClangConfigFiles(ctx context.Context) error {
 // In the future can control debug symbol generation, march/mtune, etc.
 func (b *Build) createCompilerConfigFiles(ctx context.Context) error {
 	if err := b.createGccSpecFile(); err != nil {
+		return err
+	}
+	if err := b.createFdoNoteHeader(); err != nil {
 		return err
 	}
 	if err := b.createClangConfigFiles(ctx); err != nil {

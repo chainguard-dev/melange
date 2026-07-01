@@ -82,6 +82,7 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 		Options:      sub.Options,
 		Scriptlets:   sub.Scriptlets,
 		Description:  sub.Description,
+		Annotations:  sub.Annotations,
 		URL:          sub.URL,
 		Commit:       sub.Commit,
 	}

@@ -848,6 +848,8 @@ type Subpackage struct {
 	Scriptlets *Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: The human readable description of the subpackage
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Optional: Annotations for this subpackage
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// Optional: The URL to the package's homepage
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the subpackage build configuration
@@ -1566,6 +1568,7 @@ func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage
 		Options:      in.Options,
 		Scriptlets:   replaceScriptlets(r, in.Scriptlets),
 		Description:  r.Replace(in.Description),
+		Annotations:  replaceMap(r, in.Annotations),
 		URL:          r.Replace(in.URL),
 		Commit:       replaceCommit(detectedCommit, in.Commit),
 		Checks:       in.Checks,

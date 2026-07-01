@@ -496,6 +496,35 @@ package:
 	require.Equal(t, "python", cfg.Package.Annotations["cgr.dev/ecosystem"])
 }
 
+func Test_subpackageAnnotations(t *testing.T) {
+	ctx := slogtest.Context(t)
+	fp := filepath.Join(os.TempDir(), "melange-test-subpackageAnnotations")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: parent
+  version: 0.0.1
+  epoch: 1
+
+subpackages:
+  - name: parent-docs
+    annotations:
+      cgr.dev/ecosystem: docs
+      cgr.dev/component: manual
+
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Len(t, cfg.Subpackages, 1)
+	require.Equal(t, "docs", cfg.Subpackages[0].Annotations["cgr.dev/ecosystem"])
+	require.Equal(t, "manual", cfg.Subpackages[0].Annotations["cgr.dev/component"])
+	require.Nil(t, cfg.Package.Annotations, "subpackage annotations must not leak into parent")
+}
+
 func TestDuplicateSubpackage(t *testing.T) {
 	ctx := slogtest.Context(t)
 

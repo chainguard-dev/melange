@@ -561,6 +561,9 @@
 	// Optional: The human readable description of the subpackage
 	description?: string
 
+	// Optional: Annotations for this subpackage
+	annotations?: [string]: string
+
 	// Optional: The URL to the package's homepage
 	url?: string
 

@@ -42,7 +42,7 @@ var clangConfigTemplate = `-Xlinker --package-metadata='` + packageMetadataTempl
 // scanners: the note travels with the object into the final binary regardless.
 //
 // The note layout (NT_FDO_PACKAGING_METADATA, owner "FDO") follows
-// https://systemd.io/COREDUMP_PACKAGE_METADATA/ . The %s is the C-string-escaped
+// https://uapi-group.org/specifications/specs/package_metadata_for_executable_files/ . The %s is the C-string-escaped
 // metadata JSON, identical to what the linker flag carries.
 var fdoNoteTemplate = `#ifndef MELANGE_PACKAGE_NOTE_H
 #define MELANGE_PACKAGE_NOTE_H

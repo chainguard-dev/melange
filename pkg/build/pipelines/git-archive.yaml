@@ -1,0 +1,66 @@
+name: Archive sources from the local git repository
+
+# git-archive populates the build workspace from a subtree of the local git
+# repository that contains this melange configuration, WITHOUT cloning over the
+# network and without mounting the repository's .git history into the build
+# sandbox.
+#
+# It is intended for monorepos where the package definition and the source it
+# packages live in the same repository. By default it archives `path` at the
+# very commit melange is building (the commit of the config file's repository),
+# so the packaged source matches the source as committed at that commit.
+#
+# Because the archive is produced with `git archive`, the repository's
+# .gitattributes are honored: paths marked `export-ignore` are omitted and
+# `export-subst` placeholders are expanded. The result is the committed tree as
+# filtered by those export rules, not necessarily a byte-for-byte copy. In a
+# repository with many contributors, note that a committed .gitattributes can
+# influence (via export-subst) the content of the archived files.
+#
+# The archive is performed host-side by melange before the sandbox starts, so it
+# requires `git` and `tar` on the host (the `needs` below only provisions the
+# sandbox). Melange resolves the commit, verifies it, and extracts only `path`
+# into the workspace. This step's in-sandbox body is therefore a no-op marker;
+# it exists so the source acquisition is declared honestly in the manifest and
+# so SBOM provenance can be recorded.
+#
+# git-archive is the source-acquisition mechanism, so it supersedes any
+# --source-dir passed to melange. Uncommitted working-tree changes under `path`
+# are never included (a warning is logged when they exist).
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  path:
+    description: |
+      Path within the repository (relative to the repository root) to extract
+      into the workspace. The extracted files retain this path prefix in the
+      workspace, matching the layout of the source repository.
+    required: true
+  tag:
+    description: |
+      The tag to archive. For reproducibility, tag is generally favored over
+      branch. Branch and tag are mutually exclusive. If neither is specified,
+      the commit melange is building (the config file's repository commit) is
+      archived.
+  branch:
+    description: |
+      The branch to archive. Branch and tag are mutually exclusive. For
+      reproducibility, prefer tag.
+  expected-commit:
+    description: |
+      The commit to verify against. A tag must resolve to it exactly. With
+      branch, it pins what is archived and (matching git-checkout) may be an
+      older commit on the branch; a commit not on the branch fails the build.
+      When neither tag nor branch is set, this defaults to the commit melange is
+      building, so the assurance holds automatically.
+
+pipeline:
+  - runs: |
+      #!/bin/sh
+      # shellcheck shell=busybox
+      # The archive was performed host-side by melange before the sandbox
+      # started; the workspace is already populated. Nothing to do here.
+      echo "[git archive] workspace populated host-side from ${{inputs.path}}"

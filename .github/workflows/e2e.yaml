@@ -67,7 +67,7 @@ jobs:
           if [ "$MATRIX_CFG" == "melange.yaml" ]; then
             path="melange.yaml"
           fi
-          ./melange build $path --arch=x86_64 --namespace=wolfi
+          ./melange build "$path" --arch=x86_64 --namespace=wolfi
 
       - name: Rebuild package
         run: |

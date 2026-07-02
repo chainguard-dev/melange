@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/chainguard-dev/clog/slogtest"
@@ -170,6 +171,63 @@ func TestGitArchive(t *testing.T) {
 		require.FileExists(t, filepath.Join(dest, "sub/chart/Chart.yaml"))
 	})
 
+	t.Run("branch with older expected-commit archives that commit", func(t *testing.T) {
+		dest := t.TempDir()
+		resolved, err := gitArchive(ctx, &gitArchiveOptions{
+			RepositoryDir:  repoDir,
+			Ref:            "feature",
+			RefIsBranch:    true,
+			Path:           "sub/chart",
+			ExpectedCommit: commit, // main HEAD: an ancestor of the feature tip
+			Destination:    dest,
+		})
+		require.NoError(t, err)
+		require.Equal(t, commit, resolved)
+		// The pinned (older) commit is archived, not the branch tip.
+		require.FileExists(t, filepath.Join(dest, "sub/chart/Chart.yaml"))
+		require.NoFileExists(t, filepath.Join(dest, "sub/chart/feature-only.txt"))
+	})
+
+	t.Run("branch with expected-commit not on the branch fails", func(t *testing.T) {
+		out, err := exec.Command("git", "-C", repoDir, "rev-parse", "feature").Output()
+		require.NoError(t, err)
+		featureTip := strings.TrimSpace(string(out))
+		_, err = gitArchive(ctx, &gitArchiveOptions{
+			RepositoryDir:  repoDir,
+			Ref:            "main",
+			RefIsBranch:    true,
+			Path:           "sub/chart",
+			ExpectedCommit: featureTip, // not an ancestor of main
+			Destination:    t.TempDir(),
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not an ancestor")
+	})
+
+	t.Run("path starting with dash cannot inject git options", func(t *testing.T) {
+		outFile := filepath.Join(t.TempDir(), "pwned.tar")
+		_, err := gitArchive(ctx, &gitArchiveOptions{
+			RepositoryDir: repoDir,
+			Ref:           "HEAD",
+			Path:          "--output=" + outFile,
+			Destination:   t.TempDir(),
+		})
+		require.Error(t, err)
+		// The -- separator forces Path to be a pathspec, so git must not have
+		// written the file.
+		require.NoFileExists(t, outFile)
+	})
+
+	t.Run("ref starting with dash cannot inject rev-parse options", func(t *testing.T) {
+		_, err := gitArchive(ctx, &gitArchiveOptions{
+			RepositoryDir: repoDir,
+			Ref:           "--all",
+			Path:          "sub/chart",
+			Destination:   t.TempDir(),
+		})
+		require.Error(t, err)
+	})
+
 	t.Run("expected-commit mismatch fails", func(t *testing.T) {
 		dest := t.TempDir()
 		_, err := gitArchive(ctx, &gitArchiveOptions{
@@ -307,6 +365,24 @@ func TestMaybeGitArchiveSource_Errors(t *testing.T) {
 		_, err := b.maybeGitArchiveSource(ctx)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "top-level step in the main pipeline")
+	})
+
+	t.Run("rejects git-archive in the test pipeline", func(t *testing.T) {
+		b := &Build{Configuration: &config.Configuration{
+			Test: &config.Test{Pipeline: []config.Pipeline{ga}},
+		}}
+		_, err := b.maybeGitArchiveSource(ctx)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "test pipeline")
+	})
+
+	t.Run("rejects git-archive in a subpackage test pipeline", func(t *testing.T) {
+		b := &Build{Configuration: &config.Configuration{
+			Subpackages: []config.Subpackage{{Name: "sub", Test: &config.Test{Pipeline: []config.Pipeline{ga}}}},
+		}}
+		_, err := b.maybeGitArchiveSource(ctx)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "test pipeline")
 	})
 
 	t.Run("no git-archive step returns a non-nil no-op cleanup", func(t *testing.T) {

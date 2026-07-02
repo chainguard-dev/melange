@@ -23,6 +23,10 @@ name: Archive sources from the local git repository
 # into the workspace. This step's in-sandbox body is therefore a no-op marker;
 # it exists so the source acquisition is declared honestly in the manifest and
 # so SBOM provenance can be recorded.
+#
+# git-archive is the source-acquisition mechanism, so it supersedes any
+# --source-dir passed to melange. Uncommitted working-tree changes under `path`
+# are never included (a warning is logged when they exist).
 
 needs:
   packages:
@@ -47,7 +51,9 @@ inputs:
       reproducibility, prefer tag.
   expected-commit:
     description: |
-      The commit the tag/branch must resolve to; a mismatch fails the build.
+      The commit to verify against. A tag must resolve to it exactly. With
+      branch, it pins what is archived and (matching git-checkout) may be an
+      older commit on the branch; a commit not on the branch fails the build.
       When neither tag nor branch is set, this defaults to the commit melange is
       building, so the assurance holds automatically.
 

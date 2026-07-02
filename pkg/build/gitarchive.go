@@ -15,6 +15,7 @@
 package build
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -32,6 +33,11 @@ type gitArchiveOptions struct {
 	RepositoryDir string
 	// Ref is the git ref (tag, branch, or commit) to archive.
 	Ref string
+	// RefIsBranch marks Ref as a branch, enabling git-checkout's branch
+	// semantics for ExpectedCommit: it may be an older commit on the branch
+	// (an ancestor of the tip), in which case that commit is archived. When
+	// false, Ref must resolve to ExpectedCommit exactly.
+	RefIsBranch bool
 	// Path is the path within the repository (relative to the repository root)
 	// to extract.
 	Path string
@@ -93,7 +99,20 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 	}
 
 	if opts.ExpectedCommit != "" && resolved != opts.ExpectedCommit {
-		return "", fmt.Errorf("ref %q resolved to commit %s, expected %s", opts.Ref, resolved, opts.ExpectedCommit)
+		if !opts.RefIsBranch {
+			return "", fmt.Errorf("ref %q resolved to commit %s, expected %s", opts.Ref, resolved, opts.ExpectedCommit)
+		}
+		// Branch semantics match git-checkout: expected-commit pins what is
+		// archived and may be an older commit on the branch, so a moving tip
+		// does not break the build. Anything not on the branch is an error.
+		if err := exec.CommandContext(ctx, "git", "-C", topLevel, "merge-base", "--is-ancestor", opts.ExpectedCommit, resolved).Run(); err != nil { // #nosec G204 - git arguments come from trusted melange build configuration
+			return "", fmt.Errorf("branch %q is at %s and expected-commit %s is not an ancestor of it", opts.Ref, resolved, opts.ExpectedCommit)
+		}
+		log.Infof("expected-commit %s is on branch %q (tip %s); archiving it", opts.ExpectedCommit, opts.Ref, resolved)
+		resolved, err = gitRevParse(ctx, topLevel, opts.ExpectedCommit+"^{commit}")
+		if err != nil {
+			return "", fmt.Errorf("resolving expected-commit %q in %s: %w", opts.ExpectedCommit, topLevel, err)
+		}
 	}
 	if opts.ExpectedCommit == "" {
 		// Only reached when the caller passed a tag/branch with no
@@ -103,16 +122,27 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 		log.Warnf("git archive: no expected-commit; ref %q resolved to %s", opts.Ref, resolved)
 	}
 
+	// Archiving HEAD with uncommitted changes under Path is a common local
+	// iteration trap: the archive contains the committed tree, not the edits.
+	if head, headErr := gitRevParse(ctx, topLevel, "HEAD^{commit}"); headErr == nil && head == resolved {
+		if out, statusErr := exec.CommandContext(ctx, "git", "-C", topLevel, "status", "--porcelain", "--", opts.Path).Output(); statusErr == nil && len(bytes.TrimSpace(out)) > 0 { // #nosec G204 - git arguments come from trusted melange build configuration
+			log.Warnf("git archive: uncommitted changes under %s are NOT included; archiving %s as committed", opts.Path, resolved)
+		}
+	}
+
 	if err := os.MkdirAll(opts.Destination, 0o755); err != nil {
 		return "", fmt.Errorf("creating destination %s: %w", opts.Destination, err)
 	}
 
 	log.Infof("archiving %s at %s from %s into %s", opts.Path, resolved, topLevel, opts.Destination)
 
-	// `git archive <commit> <path> | tar -x -C dest`. We pipe a tar stream so
-	// extraction is direct and independent of tar's format autodetection.
-	archive := exec.CommandContext(ctx, "git", "-C", topLevel, "archive", "--format=tar", resolved, opts.Path) // #nosec G204 - git arguments come from trusted melange build configuration
-	extract := exec.CommandContext(ctx, "tar", "-x", "-C", opts.Destination)                                   // #nosec G204 - destination is a melange-created temp dir
+	// `git archive <commit> -- <path> | tar -x -C dest`. We pipe a tar stream
+	// so extraction is direct and independent of tar's format autodetection.
+	// The `--` forces Path to be a pathspec: git otherwise parses options even
+	// after the tree-ish, so a Path like `--output=/host/file` would write the
+	// archive to an arbitrary host path.
+	archive := exec.CommandContext(ctx, "git", "-C", topLevel, "archive", "--format=tar", resolved, "--", opts.Path) // #nosec G204 - option injection blocked by --; remaining arguments come from melange build configuration
+	extract := exec.CommandContext(ctx, "tar", "-x", "-C", opts.Destination)                                         // #nosec G204 - destination is a melange-created temp dir
 
 	pipe, err := archive.StdoutPipe()
 	if err != nil {
@@ -142,8 +172,10 @@ func gitArchive(ctx context.Context, opts *gitArchiveOptions) (resolvedCommit st
 }
 
 // gitRevParse resolves rev to a commit hash in the repository containing dir.
+// --end-of-options forces rev to be parsed as a revision, so a configured ref
+// starting with `-` cannot inject rev-parse options.
 func gitRevParse(ctx context.Context, dir, rev string) (string, error) {
-	out, err := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--verify", rev).Output() // #nosec G204 - git arguments come from trusted melange build configuration
+	out, err := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--verify", "--end-of-options", rev).Output() // #nosec G204 - option injection blocked by --end-of-options
 	if err != nil {
 		return "", err
 	}

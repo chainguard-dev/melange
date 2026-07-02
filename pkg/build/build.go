@@ -591,11 +591,18 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 
 	// git-archive runs host-side before the sandbox, so it is only meaningful as
 	// a single top-level step in the main pipeline. Reject duplicates or
-	// placement in nested/subpackage pipelines rather than silently treating the
-	// extra steps as in-sandbox no-op markers.
+	// placement in nested/subpackage/test pipelines rather than silently
+	// treating the extra steps as in-sandbox no-op markers (`melange test`
+	// never performs the host-side archive).
 	total := countGitArchiveSteps(b.Configuration.Pipeline)
+	if b.Configuration.Test != nil {
+		total += countGitArchiveSteps(b.Configuration.Test.Pipeline)
+	}
 	for i := range b.Configuration.Subpackages {
 		total += countGitArchiveSteps(b.Configuration.Subpackages[i].Pipeline)
+		if b.Configuration.Subpackages[i].Test != nil {
+			total += countGitArchiveSteps(b.Configuration.Subpackages[i].Test.Pipeline)
+		}
 	}
 	if total == 0 {
 		return noop, nil
@@ -612,7 +619,7 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 		}
 	}
 	if step == nil {
-		return noop, fmt.Errorf("git-archive: must be a top-level step in the main pipeline (not nested or in a subpackage)")
+		return noop, fmt.Errorf("git-archive: must be a top-level step in the main pipeline (not nested, in a subpackage, or in a test pipeline)")
 	}
 
 	// git-archive provides the workspace source, which is incompatible with an
@@ -630,18 +637,10 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 		}
 	}
 
-	// Substitute ${{...}} templates in the step's inputs (e.g. an explicit tag
-	// of iamguarded-chart-common-v${{package.version}}) using the same machinery
-	// the in-sandbox pipeline runner uses.
-	sm, err := NewSubstitutionMap(b.Configuration, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
-	if err != nil {
-		return noop, fmt.Errorf("building substitution map: %w", err)
-	}
-	mutated, err := sm.MutateWith(step.With)
-	if err != nil {
-		return noop, fmt.Errorf("substituting git-archive inputs: %w", err)
-	}
-	get := func(name string) string { return mutated[fmt.Sprintf("${{inputs.%s}}", name)] }
+	// Compile has already validated the step's inputs and substituted ${{...}}
+	// templates into step.With (compilePipeline rewrites With with the mutated,
+	// non-default values), so the values can be read directly.
+	get := func(name string) string { return step.With[name] }
 
 	archivePath := get("path")
 	if archivePath == "" {
@@ -707,6 +706,7 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 	resolved, err := gitArchive(ctx, &gitArchiveOptions{
 		RepositoryDir:  repoDir,
 		Ref:            ref,
+		RefIsBranch:    branch != "",
 		Path:           archivePath,
 		ExpectedCommit: expectedCommit,
 		Destination:    dest,
@@ -716,16 +716,14 @@ func (b *Build) maybeGitArchiveSource(ctx context.Context) (func(), error) {
 		return noop, err
 	}
 
-	// Record the resolved commit and substituted path back into the step so the
-	// SBOM provenance entry reflects the exact source even when the manifest left
-	// ref/expected-commit to default. The SBOM generator (pkg/build/sbom) reads
-	// the raw, un-substituted `with` map, so this write-back is what makes the
-	// provenance correct. It is safe because each architecture build parses and
-	// owns its own Configuration, so this is not shared across goroutines.
+	// Record the resolved commit back into the step so the SBOM provenance
+	// entry (which reads this `with` map) reflects the exact source even when
+	// the manifest left ref/expected-commit to default. It is safe because each
+	// architecture build parses and owns its own Configuration, so this is not
+	// shared across goroutines.
 	if step.With == nil {
 		step.With = map[string]string{}
 	}
-	step.With["path"] = archivePath
 	step.With["expected-commit"] = resolved
 
 	// The extracted subtree is copied again by populateWorkspace into the build

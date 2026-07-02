@@ -1,0 +1,8 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+self-hosted-runner:
+  # Custom larger-runner labels provisioned for chainguard-dev.
+  # These are not part of actionlint's built-in GitHub-hosted label list,
+  # so register them here to avoid false-positive "unknown label" errors.
+  labels:
+    - ubuntu-latest-8-core

@@ -204,7 +204,7 @@ pipeline:
 
             unshallow_arg=""
             is_shallow=$(git rev-parse --is-shallow-repository)
-            if [ "$is_shallow" == "true" ] ; then
+            if [ "$is_shallow" = "true" ] ; then
                 unshallow_arg="--unshallow"
             fi
 

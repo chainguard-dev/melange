@@ -21,11 +21,10 @@ pipeline:
         PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
       fi
 
-      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+      if [ "$PACKAGE_DIR" = "${{targets.contextdir}}" ]; then
         echo "ERROR: Package can not split files from itself!" && exit 1
       fi
 
-      i= j=
       cd "$PACKAGE_DIR" || exit 0
 
       prefix="${{inputs.prefix}}"

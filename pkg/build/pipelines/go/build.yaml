@@ -135,7 +135,7 @@ pipeline:
       export GOMODCACHE=/var/cache/melange/gomodcache
 
       # Install any specified dependencies
-      if [ ! "${{inputs.deps}}" == "" ]; then
+      if [ -n "${{inputs.deps}}" ]; then
         for dep in ${{inputs.deps}}; do
           go get $dep
         done

@@ -35,6 +35,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"chainguard.dev/melange/pkg/build"
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/container/docker"
 	"chainguard.dev/melange/pkg/linter"
@@ -179,7 +180,7 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		commit, err := detectGitHead(ctx, buildConfigFilePath)
 		if err != nil {
 			log.Warnf("unable to detect commit for build config file: %v", err)
-			flags.ConfigFileGitCommit = "unknown"
+			flags.ConfigFileGitCommit = config.UnknownCommit
 		} else {
 			flags.ConfigFileGitCommit = commit
 		}

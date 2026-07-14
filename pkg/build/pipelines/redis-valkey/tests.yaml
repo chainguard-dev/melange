@@ -1,0 +1,40 @@
+name: Run tests for redis/valkey
+
+needs:
+  packages:
+    - make
+
+inputs:
+  project:
+    description: |
+      The project name (redis or valkey)
+    required: true
+
+pipeline:
+  - runs: |
+      cat <<EOF >> /tmp/config
+      dbfilename dump.rdb
+      pidfile /tmp/6379.pid
+      dir /tmp/
+      EOF
+
+      ${{inputs.project}}-server /tmp/config &
+      sleep 2 # wait for ${{inputs.project}} to start
+      ${{inputs.project}}-cli SET bike:1 "Process 134" || exit 1
+      ${{inputs.project}}-cli GET bike:1 | grep 'Process 134' || exit 1
+      ${{inputs.project}}-cli exists bike:1 | grep 1 || exit 1
+      ${{inputs.project}}-cli exists bike:2 | grep 0 || exit 1
+      ${{inputs.project}}-cli save
+      # these are used in the case of symlinks in valkey packages
+      if [ "${{inputs.project}}" -eq "valkey" ]; then
+        redis-check-aof --version
+        redis-check-rdb --version
+        redis-sentinel --version
+        redis-server --version
+      fi
+      ${{inputs.project}}-check-rdb /tmp/dump.rdb
+      ${{inputs.project}}-sentinel --version
+      ${{inputs.project}}-server --version
+
+  - runs: |
+      ${{inputs.project}}-server --version | grep "jemalloc" || exit 1

@@ -29,6 +29,7 @@ jobs:
           - minimal.yaml
           - npm-install.yaml
           - pnpm-install.yaml
+          - parallel-subpackages.yaml
 
           - melange.yaml # special; builds melange itself
 

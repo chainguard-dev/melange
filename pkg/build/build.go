@@ -44,6 +44,7 @@ import (
 	"github.com/yookoala/realpath"
 	"github.com/zealic/xignore"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"sigs.k8s.io/release-utils/version"
 
@@ -615,6 +616,21 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	b.SBOMGroup = NewSBOMGroup(pkgNames...)
 
+	// Determine whether parallel subpackage builds are possible for this build.
+	hasParallel := slices.ContainsFunc(b.Configuration.Subpackages, func(sp config.Subpackage) bool {
+		return sp.Parallel
+	})
+	isolator, canIsolate := b.Runner.(container.IsolatedRunner)
+	if hasParallel && !canIsolate {
+		return fmt.Errorf("parallel subpackages require a runner that supports build isolation; runner %q does not", b.Runner.Name())
+	}
+	// Interactive debugging execs a shell into the shared pod on failure, which
+	// is incompatible with concurrent isolated builds, so fall back to sequential.
+	parallelAllowed := hasParallel && canIsolate && !b.Interactive && !b.DebugRunner
+	if hasParallel && (b.Interactive || b.DebugRunner) {
+		log.Warnf("parallel subpackages disabled: incompatible with interactive/debug-runner; building subpackages sequentially")
+	}
+
 	pr := &pipelineRunner{
 		interactive: b.Interactive,
 		debug:       b.Debug,
@@ -645,6 +661,9 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	linterQueue := []linterTarget{}
 	cfg := b.workspaceConfig(ctx)
+	// Grant runners that need extra privileges for isolation (e.g. docker) the
+	// opportunity to request them at pod start, but only when needed.
+	cfg.NeedsIsolation = parallelAllowed
 
 	imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
 	if err != nil {
@@ -679,26 +698,36 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	linterQueue = append(linterQueue, lintTarget)
 
-	// run any pipelines for subpackages
-	for _, sp := range b.Configuration.Subpackages {
-		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
+	// Run subpackage pipelines. Consecutive subpackages marked parallel form a
+	// batch that runs concurrently in isolated filesystem views; every other
+	// subpackage runs sequentially in the shared environment, exactly as before.
+	// Declaration order is preserved, and a non-parallel subpackage acts as a
+	// synchronization barrier between batches.
+	for _, batch := range batchSubpackages(b.Configuration.Subpackages, parallelAllowed) {
+		if len(batch) == 1 {
+			sp := batch[0]
+			if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
+				return err
+			}
+
+			log.Infof("running pipeline for subpackage %s", sp.Name)
+
+			sctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
+
+			if err := pr.runPipelines(sctx, sp.Pipeline); err != nil {
+				return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
+			}
+		} else if err := b.runParallelBatch(ctx, isolator, pr.config, batch); err != nil {
 			return err
 		}
 
-		log.Infof("running pipeline for subpackage %s", sp.Name)
-
-		ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
-
-		if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
-			return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
+		// add the subpackages to the linter queue, deterministically in order.
+		for _, sp := range batch {
+			linterQueue = append(linterQueue, linterTarget{
+				pkgName:  sp.Name,
+				disabled: sp.Checks.Disabled,
+			})
 		}
-
-		// add the subpackage to the linter queue
-		lintTarget := linterTarget{
-			pkgName:  sp.Name,
-			disabled: sp.Checks.Disabled,
-		}
-		linterQueue = append(linterQueue, lintTarget)
 	}
 
 	// Store metadata for use after the workspace is loaded into memory
@@ -915,6 +944,109 @@ func (b *Build) summarize(ctx context.Context) {
 	log.Infof("melange %s with runner %s is building:", version.GetVersionInfo().GitVersion, b.Runner.Name())
 	log.Debugf("  configuration file: %s", b.ConfigFile)
 	b.SummarizePaths(ctx)
+}
+
+// batchSubpackages groups subpackages into ordered batches for execution.
+// Consecutive subpackages marked Parallel (when parallelAllowed) are grouped
+// into a single batch that is later run concurrently; every other subpackage
+// becomes its own singleton batch that runs sequentially. Declaration order is
+// always preserved.
+func batchSubpackages(subpackages []config.Subpackage, parallelAllowed bool) [][]config.Subpackage {
+	batches := make([][]config.Subpackage, 0, len(subpackages))
+	var cur []config.Subpackage
+
+	flush := func() {
+		if len(cur) > 0 {
+			batches = append(batches, cur)
+			cur = nil
+		}
+	}
+
+	for _, sp := range subpackages {
+		if parallelAllowed && sp.Parallel {
+			cur = append(cur, sp)
+		} else {
+			flush()
+			batches = append(batches, []config.Subpackage{sp})
+		}
+	}
+	flush()
+
+	return batches
+}
+
+// runParallelBatch builds a batch of subpackages concurrently, each in its own
+// isolated filesystem view. Outputs are copied back into the shared workspace
+// after the whole batch completes, forming a barrier before the next batch and
+// before workspace retrieval.
+func (b *Build) runParallelBatch(ctx context.Context, isolator container.IsolatedRunner, base *container.Config, batch []config.Subpackage) error {
+	log := clog.FromContext(ctx)
+
+	// Pre-create the shared output dirs so copy-back has a destination.
+	for _, sp := range batch {
+		if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, sp.Name), 0o755); err != nil {
+			return err
+		}
+	}
+
+	cfgs := make([]*container.Config, len(batch))
+	for i, sp := range batch {
+		id, err := container.NewIsolationID()
+		if err != nil {
+			return fmt.Errorf("generating isolation id for subpackage %s: %w", sp.Name, err)
+		}
+		cfgs[i] = base.ForIsolation(&container.Isolation{ID: id, SubpkgName: sp.Name})
+	}
+
+	g, gctx := errgroup.WithContext(ctx)
+	if limit := b.Configuration.MaxParallelSubpackages; limit > 0 {
+		g.SetLimit(limit)
+	}
+
+	// results[i] records the per-subpackage outcome so we only copy back
+	// successful builds; g.Wait() still returns the first error to fail the build.
+	results := make([]error, len(batch))
+	for i := range batch {
+		sp := batch[i]
+		g.Go(func() error {
+			sctx := clog.WithLogger(gctx, log.With("subpackage", sp.Name))
+			log.Infof("running pipeline for subpackage %s (parallel)", sp.Name)
+
+			if err := isolator.SetupIsolation(sctx, cfgs[i]); err != nil {
+				results[i] = fmt.Errorf("setting up isolation for subpackage %s: %w", sp.Name, err)
+				return results[i]
+			}
+
+			spr := &pipelineRunner{
+				interactive: false,
+				debug:       b.Debug,
+				config:      cfgs[i],
+				runner:      b.Runner,
+			}
+			if err := spr.runPipelines(sctx, sp.Pipeline); err != nil {
+				results[i] = fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
+				return results[i]
+			}
+			return nil
+		})
+	}
+	waitErr := g.Wait()
+
+	// Copy back successful outputs and always tear down. Use WithoutCancel so
+	// cleanup runs even when gctx was cancelled by a failed sibling.
+	cleanupCtx := context.WithoutCancel(ctx)
+	for i, sp := range batch {
+		if results[i] == nil {
+			if err := isolator.CopyOutIsolation(cleanupCtx, cfgs[i]); err != nil {
+				log.Warnf("copying out isolated outputs for subpackage %s: %v", sp.Name, err)
+			}
+		}
+		if err := isolator.TeardownIsolation(cleanupCtx, cfgs[i]); err != nil {
+			log.Warnf("tearing down isolation for subpackage %s: %v", sp.Name, err)
+		}
+	}
+
+	return waitErr
 }
 
 // buildFlavor determines if a build context uses glibc or musl, it returns

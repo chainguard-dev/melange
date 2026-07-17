@@ -2,23 +2,16 @@ name: Run a build using the go compiler
 
 needs:
   packages:
-    - ${{inputs.go-package}}
-    - build-base
     - busybox
     - ca-certificates-bundle
 
 inputs:
-  go-package:
-    description: |
-      The go package to install
-    default: go
-
   packages:
     description: |
       List of space-separated packages to compile. Files can also be specified.
       This value is passed as an argument to go build. All paths are relative
-      to inputs.modroot.
-    required: true
+      to inputs.modroot. Can be multiple packages. Defaults to "." build current package. To build all packages use "./...".
+    default: "."
 
   tags:
     description: |
@@ -32,8 +25,8 @@ inputs:
   output:
     description: |
       Filename to use when writing the binary. The final install location inside
-      the apk will be in prefix / install-dir / output
-    required: true
+      the apk will be in prefix / install-dir / output. This is optional, by default the name of the package is used.
+    default: ""
 
   vendor:
     description: |
@@ -53,11 +46,11 @@ inputs:
     default: usr
 
   ldflags:
-    description:
+    description: |
       List of [pattern=]arg to append to the go compiler with -ldflags
 
   strip:
-    description:
+    description: |
       Set of strip ldflags passed to the go compiler
     # Note symbols tables are useful for cryptography audits and govulncheck
     default: "-w"
@@ -66,10 +59,6 @@ inputs:
     description: |
       Directory where binaries will be installed
     default: bin
-
-  deps:
-    description: |
-      space separated list of go modules to update before building. example: github.com/foo/bar@v1.2.3
 
   experiments:
     description: |
@@ -97,11 +86,6 @@ inputs:
       The -buildmode flag value. See "go help buildmode" for more information.
     default: "default"
 
-  tidy:
-    description: |
-      If true, "go mod tidy" will run before the build
-    default: "false"
-
   ignore-untracked-files:
     description: |
       If true, we will provide a gitignore that ignore all untracked files.
@@ -114,6 +98,8 @@ pipeline:
       # That we don't neccesarily want surfaced in the build version
       if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then
         mkdir -p ~/.config/git/
+        touch ~/.config/git/ignore
+        cp ~/.config/git/ignore ~/.config/git/ignore.bak
         echo '**' > ~/.config/git/ignore
       fi
 
@@ -125,8 +111,6 @@ pipeline:
         exit 1
       fi
 
-      "${{inputs.tidy}}" && go mod tidy
-
       LDFLAGS="${{inputs.strip}} ${{inputs.ldflags}}"
 
       BASE_PATH="${{inputs.prefix}}/${{inputs.install-dir}}/${{inputs.output}}"
@@ -134,23 +118,12 @@ pipeline:
       # Take advantage of melange's buid cache for downloaded modules
       export GOMODCACHE=/var/cache/melange/gomodcache
 
-      # Install any specified dependencies
-      if [ -n "${{inputs.deps}}" ]; then
-        for dep in ${{inputs.deps}}; do
-          go get $dep
-        done
-        go mod tidy
-        # If vendor is specified, update the vendor directory
-        "${{inputs.vendor}}" && go mod vendor
-      fi
-
-      # Install go mod overlay if it exists.
-      [ -e /home/build/go.mod.local ] && cp /home/build/go.mod.local go.mod
-      [ -e /home/build/go.sum.local ] && cp /home/build/go.sum.local go.sum
-
       GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.extra-args}} ${{inputs.packages}}
 
       # Clean up the gitignore file we created to avoid interfering with subsequent builds
       if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then
-        rm -f ~/.config/git/ignore
+        mv ~/.config/git/ignore.bak ~/.config/git/ignore
       fi
+
+  # Strip go binaries by default
+  - uses: strip

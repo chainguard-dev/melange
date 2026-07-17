@@ -637,7 +637,7 @@ func SHA256(text string) string {
 // getGitSBOMPackage creates an SBOM package for Git based repositories.
 // Returns nil package and nil error if the repository is not from a supported platform or
 // if neither a tag of expectedCommit is not provided
-func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, hint, supplier string) (*sbom.Package, error) {
+func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, licenseDeclared, supplier string) (*sbom.Package, error) {
 	var repoType, namespace, name, ref string
 	var downloadLocation string
 
@@ -659,18 +659,10 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 	namespace, name, _ = strings.Cut(trimmedPath, "/")
 	name = strings.TrimSuffix(name, ".git")
 
-	switch {
-	case repoURL.Host == "github.com":
+	switch repoURL.Host {
+	case "github.com":
 		repoType = purl.TypeGithub
 		downloadLocation = fmt.Sprintf("%s://github.com/%s/%s/archive/%s.tar.gz", repoURL.Scheme, namespace, name, ref)
-
-	case repoURL.Host == "gitlab.com":
-		repoType = purl.TypeGitlab
-		downloadLocation = fmt.Sprintf("%s://gitlab.com/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, namespace, name, ref, ref)
-
-	case strings.HasPrefix(repoURL.Host, "gitlab") || hint == "gitlab":
-		repoType = purl.TypeGeneric
-		downloadLocation = fmt.Sprintf("%s://%s/%s/%s/-/archive/%s/%s.tar.gz", repoURL.Scheme, repoURL.Host, namespace, name, ref, ref)
 
 	default:
 		repoType = purl.TypeGeneric
@@ -707,7 +699,7 @@ func getGitSBOMPackage(repo, tag, expectedCommit string, idComponents []string, 
 		var pu *purl.PackageURL
 
 		switch repoType {
-		case purl.TypeGithub, purl.TypeGitlab:
+		case purl.TypeGithub:
 			pu = &purl.PackageURL{
 				Type:      repoType,
 				Namespace: namespace,
@@ -809,7 +801,6 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		branch := with["branch"]
 		tag := with["tag"]
 		expectedCommit := with["expected-commit"]
-		hint := with["type-hint"]
 
 		// We'll use all available data to ensure our SBOM's package ID is unique, even
 		// when the same repo is git-checked out multiple times.
@@ -828,7 +819,7 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 			idComponents = append(idComponents, uniqueID)
 		}
 
-		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, hint, supplier)
+		gitPackage, err := getGitSBOMPackage(repo, tag, expectedCommit, idComponents, licenseDeclared, supplier)
 		if err != nil {
 			return nil, err
 		} else if gitPackage != nil {
@@ -857,6 +848,8 @@ type Subpackage struct {
 	Scriptlets *Scriptlets    `json:"scriptlets,omitempty" yaml:"scriptlets,omitempty"`
 	// Optional: The human readable description of the subpackage
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Optional: Annotations for this subpackage
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// Optional: The URL to the package's homepage
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 	// Optional: The git commit of the subpackage build configuration
@@ -1526,6 +1519,23 @@ func replaceDependencies(r *strings.Replacer, in Dependencies) Dependencies {
 	}
 }
 
+func replaceCopyright(r *strings.Replacer, in []Copyright) []Copyright {
+	if in == nil {
+		return nil
+	}
+	out := make([]Copyright, len(in))
+	for i, cp := range in {
+		out[i] = Copyright{
+			Paths:             replaceAll(r, cp.Paths),
+			Attestation:       cp.Attestation,
+			License:           r.Replace(cp.License),
+			LicensePath:       r.Replace(cp.LicensePath),
+			DetectionOverride: cp.DetectionOverride,
+		}
+	}
+	return out
+}
+
 func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 	return Package{
 		Name:               r.Replace(in.Name),
@@ -1536,7 +1546,7 @@ func replacePackage(r *strings.Replacer, commit string, in Package) Package {
 		URL:                r.Replace(in.URL),
 		Commit:             replaceCommit(commit, in.Commit),
 		TargetArchitecture: replaceAll(r, in.TargetArchitecture),
-		Copyright:          in.Copyright,
+		Copyright:          replaceCopyright(r, in.Copyright),
 		Dependencies:       replaceDependencies(r, in.Dependencies),
 		Options:            in.Options,
 		Scriptlets:         replaceScriptlets(r, in.Scriptlets),
@@ -1558,6 +1568,7 @@ func replaceSubpackage(r *strings.Replacer, detectedCommit string, in Subpackage
 		Options:      in.Options,
 		Scriptlets:   replaceScriptlets(r, in.Scriptlets),
 		Description:  r.Replace(in.Description),
+		Annotations:  replaceMap(r, in.Annotations),
 		URL:          r.Replace(in.URL),
 		Commit:       replaceCommit(detectedCommit, in.Commit),
 		Checks:       in.Checks,

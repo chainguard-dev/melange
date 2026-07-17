@@ -14,10 +14,20 @@ inputs:
 pipeline:
   - working-directory: ${{targets.contextdir}}
     runs: |
-      scanelf --recursive --nobanner --osabi --etype "ET_DYN,ET_EXEC" . \
-        | while read type osabi filename; do
+      # strip does not support stripping files for non-native platforms
+      case "${{build.arch}}" in
+        x86_64)  native_mach="EM_X86_64" ;;
+        aarch64) native_mach="EM_AARCH64" ;;
+        *)       echo "strip: unsupported architecture: ${{build.arch}}" >&2; exit 1 ;;
+      esac
+
+      scanelf --recursive --nobanner --osabi --format "%a %o %F" --etype "ET_DYN,ET_EXEC" . \
+        | while read mach osabi filename; do
 
         [ "$osabi" != "STANDALONE" ] || continue
+        [ "$mach" = "$native_mach" ] || continue
+
         # scanelf may have picked up a temp file so verify that file still exists
-        strip ${{inputs.opts}} "${filename}" || [ ! -e "$filename" ]
+        [ -e "$filename" ] || continue
+        strip ${{inputs.opts}} "${filename}"
       done

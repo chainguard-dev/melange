@@ -141,6 +141,7 @@
 ./.config/clang-42/x86_64-unknown-linux-gnu-clang++.cfg
 ./.config/clang-42/x86_64-unknown-linux-gnu-clang.cfg
 ./.melange.clang.cfg
+./.melange.fdo.h
 ./.melange.gcc.spec
 ./create-git-repo
 ./melange-created.lst

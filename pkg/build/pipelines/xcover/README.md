@@ -29,8 +29,10 @@ Start the coverage profile with the xcover tool
 | ---- | -------- | ----------- | ------- |
 | exclude-functions | false | The function symbols to exclude from profiling as a regular expression. |  |
 | executable-path | true | The path to the executable of the application to test. |  |
+| include-functions | false | The function symbols to include in profiling as a regular expression. When set, only matching symbols are profiled. |  |
 | log-level | false | The log level of the xcover profile command. | info |
 | package | false | The xcover package | xcover |
+| scope | false | The function scope to profile: "binary" (all functions) or "project" (project module only). The "project" scope is only supported by Go binaries and is a no-op for others. | project |
 | verbose | false | Enable verbosity of the xcover profile command. It prints out all the functions being traced real-time. | false |
 | wait-timeout | false | The maximum amount of time to wait for the xcover profiler to be ready for profiling, in seconds. | 60 |
 

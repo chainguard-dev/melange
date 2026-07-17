@@ -9,6 +9,10 @@ inputs:
     description: |
       The package to split development files from
     required: false
+  prefix:
+    description: |
+      The package's installation prefix
+    default: "/usr"
 
 pipeline:
   - runs: |
@@ -17,22 +21,29 @@ pipeline:
         PACKAGE_DIR="${{targets.outdir}}/${{inputs.package}}"
       fi
 
-      if [ "$PACKAGE_DIR" == "${{targets.contextdir}}" ]; then
+      if [ "$PACKAGE_DIR" = "${{targets.contextdir}}" ]; then
         echo "ERROR: Package can not split files from itself!" && exit 1
       fi
 
-      i= j=
       cd "$PACKAGE_DIR" || exit 0
 
-      libdirs=usr/
-      [ -d lib/ ] && libdirs="lib/ $libdirs"
-      for i in usr/include usr/lib/pkgconfig usr/share/pkgconfig \
-        usr/share/aclocal usr/share/gettext \
-        usr/bin/*-config usr/bin/*_config usr/share/vala/vapi \
-        usr/share/gir-[0-9]* usr/share/qt*/mkspecs \
-        usr/lib/qt*/mkspecs \
-        usr/lib/cmake usr/share/cmake \
-        usr/lib/glade/modules usr/share/glade/catalogs \
+      prefix="${{inputs.prefix}}"
+      # trim leading /
+      while [ "${prefix#/}" != "$prefix" ]; do
+        prefix="${prefix#/}"
+      done
+      libdirs="${prefix}/"
+      if [ "${prefix%%/*}" = "usr" ] && [ -d lib/ ]; then
+        # usr-merge case
+        libdirs="lib/ $libdirs"
+      fi
+      for i in "${prefix}"/include "${prefix}"/lib/pkgconfig "${prefix}"/share/pkgconfig \
+        "${prefix}"/share/aclocal "${prefix}"/share/gettext \
+        "${prefix}"/bin/*-config "${prefix}"/bin/*_config "${prefix}"/share/vala/vapi \
+        "${prefix}"/share/gir-[0-9]* "${prefix}"/share/qt*/mkspecs \
+        "${prefix}"/lib/qt*/mkspecs \
+        "${prefix}"/lib/cmake "${prefix}"/share/cmake \
+        "${prefix}"/lib/glade/modules "${prefix}"/share/glade/catalogs \
         $(find . -name include -type d) \
         $(find $libdirs -name '*.a' 2>/dev/null) \
         $(find $libdirs -name '*.[cho]' \
@@ -46,9 +57,22 @@ pipeline:
         done
 
         # move *.so links needed when linking the apps to -dev packages
-        for i in lib/*.so usr/lib/*.so; do
-          if [ -L "$i" ]; then
-            mkdir -p "${{targets.contextdir}}"/"${i%/*}"
-            mv "$i" "${{targets.contextdir}}/$i" || return 1
-          fi
+        sodirs="$prefix/lib"
+        # Special case: if the prefix dir is */usr, then search
+        # for .so files in */lib in addition to */usr/lib
+        case "$prefix" in
+          usr)
+            sodirs="lib $sodirs"
+            ;;
+          */usr)
+            sodirs="${prefix%/*}/lib $sodirs"
+            ;;
+        esac
+        for sodir in $sodirs; do
+          for i in "$sodir"/*.so; do
+            if [ -L "$i" ]; then
+              mkdir -p "${{targets.contextdir}}"/"${i%/*}"
+              mv "$i" "${{targets.contextdir}}/$i" || return 1
+            fi
+          done
         done

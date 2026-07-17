@@ -59,6 +59,7 @@ Check out sources from git
 | depth | false | The depth to use when cloning. Use -1 to get full branch history. If 'branch' and 'expected-commit' are provided the default is -1. Otherwise, default is to use '1' (shallow clone).  | unset |
 | destination | false | The path to check out the sources to.  | . |
 | expected-commit | false | The expected commit hash  |  |
+| expected-commit-is-branch-tip | false | When "true", require that expected-commit exactly matches the tip of the checked-out branch instead of allowing any older commit on the branch.  Use this when a branch is used as an immutable release pointer (e.g. version-named release branches) so that a stale expected-commit -- for example after bumping the version but forgetting to update the commit -- fails loudly instead of silently checking out old code. Only valid together with 'branch'; mutually exclusive with 'tag'.  | false |
 | initial-backoff | false | Initial backoff duration in seconds before first retry.  | 2 |
 | max-backoff | false | Maximum backoff duration in seconds between retries.  | 60 |
 | max-retries | false | Maximum number of retry attempts for git clone operation on failure.  | 3 |

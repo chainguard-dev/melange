@@ -124,7 +124,7 @@ func TestSubstTrailingMarker(t *testing.T) {
 }
 
 func TestSubstVarShellFragment(t *testing.T) {
-	doc := `if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ]; then
+	doc := `if [ -z "${{inputs.expected-sha256}}" ] && [ -z "${{inputs.expected-sha512}}" ]; then
   printf "One of expected-sha256 or expected-sha512 is required"
   exit 1
 fi`

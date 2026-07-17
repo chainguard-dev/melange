@@ -18,9 +18,12 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -441,11 +444,36 @@ func (d *dockerLoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
-	ref, err := apko_oci.LoadImage(ctx, img, []string{"melange:latest"})
+	// Use a per-invocation unique tag instead of a shared "melange:latest" so
+	// concurrent melange build/test runs on the same host don't race when
+	// retagging the daemon's image. The matching RemoveImage in Build.Close
+	// cleans up by ref, so a unique tag is cleaned up automatically.
+	tag, err := uniqueImageTag()
+	if err != nil {
+		return "", fmt.Errorf("generating unique image tag: %w", err)
+	}
+
+	ref, err := apko_oci.LoadImage(ctx, img, []string{tag})
 	if err != nil {
 		return "", err
 	}
 	return ref.String(), nil
+}
+
+// uniqueImageTag returns an image tag of the form "melange:<pid>-<16 hex chars>"
+// that is statistically unique across concurrent invocations on the same host.
+//
+// The PID prefix gives 100% uniqueness across separate melange processes on the
+// same host for free (PIDs are unique while their owners are alive). The 64-bit
+// random suffix handles intra-process concurrency — at 256 concurrent calls in
+// a single process the birthday-bound collision probability is ~1-in-1.4×10¹⁴,
+// i.e. effectively zero.
+func uniqueImageTag() (string, error) {
+	var buf [8]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", err
+	}
+	return "melange:" + strconv.Itoa(os.Getpid()) + "-" + hex.EncodeToString(buf[:]), nil
 }
 
 func (d *dockerLoader) RemoveImage(ctx context.Context, ref string) error {

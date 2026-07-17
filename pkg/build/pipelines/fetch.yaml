@@ -75,14 +75,14 @@ inputs:
 
 pipeline:
   - runs: |
-      if [ "${{inputs.expected-sha256}}" == "" ] && [ "${{inputs.expected-sha512}}" == "" ] && [ "${{inputs.expected-none}}" == "" ]; then
-        printf "One of expected-sha256 or expected-sha512 is required"
+      if [ -z "${{inputs.expected-sha256}}" ] && [ -z "${{inputs.expected-sha512}}" ] && [ -z "${{inputs.expected-none}}" ]; then
+        printf "One of expected-sha256 or expected-sha512 is required\n"
         exit 1
       fi
 
       bn=$(basename ${{inputs.uri}})
 
-      if [ ! "${{inputs.expected-sha256}}" == "" ]; then
+      if [ -n "${{inputs.expected-sha256}}" ]; then
         fn="/var/cache/melange/sha256:${{inputs.expected-sha256}}"
         if [ -f $fn ]; then
           printf "fetch: found $fn in cache\n"
@@ -100,9 +100,9 @@ pipeline:
         wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
       fi
 
-      if [ "${{inputs.expected-none}}" != "" ]; then
+      if [ -n "${{inputs.expected-none}}" ]; then
         printf "fetch: Checksum validation skipped\n"
-      elif [ "${{inputs.expected-sha256}}" != "" ]; then
+      elif [ -n "${{inputs.expected-sha256}}" ]; then
         printf "fetch: Expected sha256: ${{inputs.expected-sha256}}\n"
         sum=$(sha256sum $bn | awk '{print $1}')
         if [ "${{inputs.expected-sha256}}" != "$sum" ]; then

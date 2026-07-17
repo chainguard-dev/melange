@@ -77,7 +77,7 @@ pipeline:
       # Installed binaries will be stored in a tmp dir
       export GOBIN=$(mktemp -d)
 
-      if [ ! "${{inputs.version}}" == "" ]; then
+      if [ -n "${{inputs.version}}" ]; then
         VERSION="@${{inputs.version}}"
       fi
 

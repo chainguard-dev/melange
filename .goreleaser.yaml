@@ -21,6 +21,9 @@ builds:
   goarch:
     - amd64
     - arm64
+    - ppc64le
+    - riscv64
+    - s390x
   flags:
     - -trimpath
   mod_timestamp: '{{ .CommitTimestamp }}'

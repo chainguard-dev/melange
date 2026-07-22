@@ -837,6 +837,11 @@ type Subpackage struct {
 	If string `json:"if,omitempty" yaml:"if,omitempty"`
 	// Optional: The iterable used to generate multiple subpackages
 	Range string `json:"range,omitempty" yaml:"range,omitempty"`
+	// Optional: When true, this subpackage's pipeline may run concurrently with
+	// adjacent parallel subpackages in an isolated filesystem view. It gets
+	// read-only access to melange-out as it stood at batch start; its writes to
+	// /home/build do not persist for or leak to other subpackages.
+	Parallel bool `json:"parallel,omitempty" yaml:"parallel,omitempty"`
 	// Required: Name of the subpackage
 	Name string `json:"name" yaml:"name"`
 	// Optional: The list of pipelines that produce subpackage.
@@ -893,6 +898,9 @@ type Configuration struct {
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.
 	Subpackages []Subpackage `json:"subpackages,omitempty" yaml:"subpackages,omitempty"`
+	// Optional: Maximum number of parallel subpackages to build concurrently
+	// within a single batch. 0 (default) means unbounded.
+	MaxParallelSubpackages int `json:"max-parallel-subpackages,omitempty" yaml:"max-parallel-subpackages,omitempty"`
 	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline
 	Data []RangeData `json:"data,omitempty" yaml:"data,omitempty"`

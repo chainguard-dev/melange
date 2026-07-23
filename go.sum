@@ -1,9 +1,9 @@
-chainguard.dev/apko v1.2.26 h1:di5gD2qkrPCLtvr3N14fLEK79s68ue8I1swc2eaY5Es=
-chainguard.dev/apko v1.2.26/go.mod h1:KLfACXt8KrvFwxbYAvs2U4zG6JuL3ODRXq+2vSuuHDI=
+chainguard.dev/apko v1.2.27 h1:L6E0ko+ygtLBWv2WVXZYXg8bn+7jHMdcmy3jJ2eh4Qg=
+chainguard.dev/apko v1.2.27/go.mod h1:vb06PoeJ6VZZghXJUSCWPbCc+dSwHRHKPGsrsUXhL3k=
 chainguard.dev/go-grpc-kit v0.17.17 h1:Jwhc0zyUwQbC2hNcsi+YMeUX/JUnM+dXVCkTw6wtPzs=
 chainguard.dev/go-grpc-kit v0.17.17/go.mod h1:qn0meP6RtrbLicE1bgBZnnVU9dvX95eLs0x0T6kZ+b4=
-chainguard.dev/sdk v0.1.119 h1:M8/7Q6OjISkZpGek2EsTpFyb2CKemu/90k/NNA2JbdM=
-chainguard.dev/sdk v0.1.119/go.mod h1:3Pub6HVK2Zy4btJgijBRXkVZX8l/kmrYJ99c5DaRSa0=
+chainguard.dev/sdk v0.1.127 h1:yObJejkFZ6uPmiuQWZUxZabTjY8ypB0+Ysv99k5xYNg=
+chainguard.dev/sdk v0.1.127/go.mod h1:hwsZl3o558o1R4d8hXrIYHZ6E9lCAXJgeVXQMnV5bRM=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go/auth v0.21.0 h1:g/QwYfYb2Ai6HH8oomAOyBaIHLbscZ4+T/F/f5JZHkE=
 cloud.google.com/go/auth v0.21.0/go.mod h1:M9o2Oz+YI2jAfxewJgb1vyI3vceHF+eohmxyzmrl+9s=
@@ -216,8 +216,8 @@ github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dv
 github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
 github.com/kevinburke/ssh_config v1.6.0 h1:J1FBfmuVosPHf5GRdltRLhPJtJpTlMdKTBjRgTaQBFY=
 github.com/kevinburke/ssh_config v1.6.0/go.mod h1:q2RIzfka+BXARoNexmF9gkxEX7DmvbW9P4hIVx2Kg4M=
-github.com/klauspost/compress v1.19.0 h1:sXLILfc9jV2QYWkzFOPWStmcUVH2RHEB1JCdY2oVvCQ=
-github.com/klauspost/compress v1.19.0/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
+github.com/klauspost/compress v1.19.1 h1:VsB4HPswih7mmZ8WleSFQ75c/Ui1M4trX5oAsJnhSlk=
+github.com/klauspost/compress v1.19.1/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/klauspost/cpuid/v2 v2.4.0 h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
 github.com/klauspost/cpuid/v2 v2.4.0/go.mod h1:19jmZ9mjzoF//ddRSUsv0zfBTJWh3QJh9FNxZTMrGxU=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=

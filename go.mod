@@ -29,7 +29,7 @@ require (
 	github.com/spdx/tools-golang v0.5.7
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	github.com/ulikunitz/xz v0.5.15
+	github.com/ulikunitz/xz v0.5.16
 	github.com/yookoala/realpath v1.0.0
 	github.com/zealic/xignore v0.3.3
 	go.opentelemetry.io/otel v1.44.0

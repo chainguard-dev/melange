@@ -131,6 +131,8 @@ func TestAnalyze(t *testing.T) {
 				"so:libwebpdemux-df9b36c7.so.2.0.14=2.0.14",
 				"so:libwebpmux-9fe05867.so.3.0.13=3.0.13",
 				"so:libxcb-f0538cc0.so.1.1.0=1.1.0",
+				"static:libnpymath",
+				"static:libnpyrandom",
 			},
 		},
 	}, {

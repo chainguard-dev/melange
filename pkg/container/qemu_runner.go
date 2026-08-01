@@ -70,6 +70,31 @@ const QemuName = "qemu"
 const (
 	defaultDiskSize = "50Gi"
 
+	// rootfsFormatEnv opts the guest rootfs into a non-tar apko layer format.
+	// Accepted values are "tar" (the default) and "erofs[+ALGO[,level=N]]".
+	rootfsFormatEnv = "QEMU_ROOTFS_FORMAT"
+
+	// rootfsFormatTar is apko's default: a tar the guest init unpacks onto the
+	// scratch disk.
+	rootfsFormatTar = "tar"
+
+	// rootfsFormatErofs builds the guest rootfs as an EROFS image that the
+	// guest mounts directly instead of unpacking. Compressed variants
+	// ("erofs+zstd", ...) also mount natively, but building them needs
+	// mkfs.erofs on the host.
+	rootfsFormatErofs = "erofs"
+
+	// scratchDiskMount is where the guest init leaves the bare scratch disk
+	// when the rootfs is an erofs overlay. It is the only writable non-overlay
+	// filesystem in the guest, so it is where anything needing a real
+	// overlayfs upperdir has to go. Must match microvm-init.
+	scratchDiskMount = "/rw"
+
+	// rootfsBlockdevNode is the qemu node-name of the rootfs block device. It
+	// is historical and reads oddly for erofs, but the guest finds the device
+	// by PCI enumeration order (/dev/vdb), never by this name.
+	rootfsBlockdevNode = "image.tar"
+
 	// sshDialTimeout is the maximum time allowed for TCP connect + SSH handshake.
 	sshDialTimeout = 30 * time.Second
 
@@ -600,16 +625,128 @@ func getGuestKernelVersion(ctx context.Context, cfg *Config) (version string, er
 
 type qemuOCILoader struct{}
 
+// parseRootfsFormat validates a QEMU_ROOTFS_FORMAT value. It returns "" for
+// apko's default (gzipped tar, which the guest init unpacks onto the scratch
+// disk) and otherwise the format string to hand to apko.
+func parseRootfsFormat(v string) (string, error) {
+	switch {
+	case v == "" || v == rootfsFormatTar:
+		return "", nil
+	case isErofsFormat(v):
+		return v, nil
+	default:
+		return "", fmt.Errorf("unsupported %s=%q (want %q or %q, optionally %q)",
+			rootfsFormatEnv, v, rootfsFormatTar, rootfsFormatErofs, "erofs+ALGO[,level=N]")
+	}
+}
+
+// isErofsFormat reports whether an apko layer format is one of the EROFS
+// variants: "erofs" or "erofs+ALGO[,level=N]". Compressed variants still mount
+// natively in the guest, so everything downstream treats them alike.
+func isErofsFormat(format string) bool {
+	return format == rootfsFormatErofs || strings.HasPrefix(format, rootfsFormatErofs+"+")
+}
+
+// qemuRootfsFormat returns the validated guest rootfs format from the
+// environment, or "" (apko's default) if unset or invalid. Invalid values are
+// rejected with a clear error by createMicroVM before any VM work happens.
+func qemuRootfsFormat() string {
+	format, err := parseRootfsFormat(os.Getenv(rootfsFormatEnv))
+	if err != nil {
+		return ""
+	}
+	return format
+}
+
+// LayerFormat implements LayerFormatter, letting the guest rootfs be built as
+// an EROFS image the guest mounts directly rather than a tar it must unpack.
+func (b qemuOCILoader) LayerFormat() string {
+	return qemuRootfsFormat()
+}
+
+// rootfsBlockdevArg builds the -blockdev argument for the guest rootfs image.
+// An EROFS rootfs is mounted, never written, so it is attached read-only.
+func rootfsBlockdevArg(imgRef, format string) string {
+	arg := "driver=raw,node-name=" + rootfsBlockdevNode
+	if isErofsFormat(format) {
+		arg += ",read-only=on"
+	}
+	return arg + ",file.driver=file,file.filename=" + imgRef
+}
+
+// cacheOverlayCommand builds the guest-side command that mounts the host cache
+// read-only over 9p with a writable overlay on top.
+//
+// The upperdir and workdir must live on a real filesystem: overlayfs refuses an
+// upperdir that is itself on an overlay. With a tar rootfs /mount is the
+// scratch disk, so /mount works. With an EROFS rootfs /mount *is* an overlay,
+// and the guest init leaves the bare scratch disk at scratchDiskMount for
+// exactly this purpose.
+func cacheOverlayCommand(format string) string {
+	overlayBase := "/mount"
+	if isErofsFormat(format) {
+		overlayBase = scratchDiskMount
+	}
+	var (
+		upperDir    = filepath.Join(overlayBase, "cache-upper")
+		workDir     = filepath.Join(overlayBase, "cache-work")
+		chrootCache = filepath.Join("/mount", DefaultCacheDir)
+		lowerDir    = DefaultCacheDir
+	)
+	return fmt.Sprintf(
+		"mkdir -p %s %s %s %s && "+
+			"chmod 1777 %s && "+
+			"mount -t 9p -o ro melange_cache %s && "+
+			"mount -t overlay overlay -o lowerdir=%s,upperdir=%s,workdir=%s %s",
+		lowerDir, chrootCache, upperDir, workDir,
+		upperDir,
+		lowerDir,
+		lowerDir, upperDir, workDir, chrootCache,
+	)
+}
+
+// erofsLayerPath is satisfied by apko's EROFS layer, which is already backed
+// by a finished image file on disk. Recognizing it lets us hardlink instead of
+// re-streaming several hundred MiB.
+type erofsLayerPath interface {
+	LayerPath() string
+}
+
 func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error) {
 	_, span := otel.Tracer("melange").Start(ctx, "qemu.LoadImage")
 	defer span.End()
 
+	suffix := ".tar"
+	if isErofsFormat(qemuRootfsFormat()) {
+		suffix = ".erofs"
+	}
+
 	// qemu does not have the idea of container images or layers or such, just
 	// create a rootfs from the layer
-	guestRootfs, err := os.CreateTemp("", "melange-guest-*.tar")
+	guestRootfs, err := os.CreateTemp("", "melange-guest-*"+suffix)
 	if err != nil {
 		clog.FromContext(ctx).Errorf("failed to create guest dir: %v", err)
 		return ref, err
+	}
+	name := guestRootfs.Name()
+
+	// An EROFS layer is already a finished image file; hardlink it rather than
+	// copying. apko removes its own copy after we return, so the link keeps the
+	// image alive for the VM's lifetime.
+	if lp, ok := layer.(erofsLayerPath); ok && suffix == ".erofs" {
+		if err := guestRootfs.Close(); err != nil {
+			return "", err
+		}
+		if err := os.Remove(name); err != nil {
+			return "", err
+		}
+		if err := os.Link(lp.LayerPath(), name); err == nil {
+			return name, nil
+		}
+		// Cross-device or otherwise unlinkable: fall through to the copy.
+		if guestRootfs, err = os.Create(name); err != nil {
+			return "", err
+		}
 	}
 
 	// the uncompressed layer will be unpacked in a rootfs by the
@@ -626,7 +763,7 @@ func (b qemuOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arch apko_
 		return "", err
 	}
 
-	return guestRootfs.Name(), nil
+	return name, nil
 }
 
 func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
@@ -877,6 +1014,17 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
+	// Tell the guest init how the rootfs block device is formatted. Absent
+	// this, init falls back to its historical behaviour of unpacking a tar.
+	cfg.RootfsFormat, err = parseRootfsFormat(os.Getenv(rootfsFormatEnv))
+	if err != nil {
+		return fmt.Errorf("qemu: %w", err)
+	}
+	if cfg.RootfsFormat != "" {
+		log.Infof("qemu: guest rootfs format is %s, init will mount it instead of unpacking", cfg.RootfsFormat)
+		kernelArgs += " melange.rootfs=" + cfg.RootfsFormat
+	}
+
 	baseargs = append(baseargs, "-append", kernelArgs)
 	// we will *not* mount workspace using qemu, this will use 9pfs which is network-based, and will
 	// kill all performances (lots of small files)
@@ -948,10 +1096,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=disk0,iothread=io1,packed=on,num-queues="+fmt.Sprintf("%d", max(1, nproc/2)))
 	baseargs = append(baseargs, "-drive", "if=none,id=disk0,cache=unsafe,format=raw,aio=threads,file="+diskFile)
 
-	// append the rootfs tar.gz, init will take care of populating the disk with it
+	// append the rootfs image. For the default tar format init populates the
+	// disk from it; for erofs init mounts it read-only and overlays the disk
+	// on top, so no unpacking happens at boot.
 	baseargs = append(baseargs, "-object", "iothread,id=io2")
-	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive=image.tar,iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", max(1, nproc/2)))
-	baseargs = append(baseargs, "-blockdev", "driver=raw,node-name=image.tar,file.driver=file,file.filename="+cfg.ImgRef)
+	baseargs = append(baseargs, "-device", "virtio-blk-pci,drive="+rootfsBlockdevNode+",iothread=io2,packed=on,num-queues="+fmt.Sprintf("%d", max(1, nproc/2)))
+	baseargs = append(baseargs, "-blockdev", rootfsBlockdevArg(cfg.ImgRef, cfg.RootfsFormat))
 
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	// #nosec G204 - Architecture is from validated configuration, not user input
@@ -1098,17 +1248,7 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} else {
 			// 9p: readonly with overlay for write support
 			clog.FromContext(ctx).Infof("qemu: setting up 9p cache mount (read-only with overlay): %s", cfg.CacheDir)
-			setupMountCommand = fmt.Sprintf(
-				"mkdir -p %s %s /mount/upper /mount/work && "+
-					"chmod 1777 /mount/upper && "+
-					"mount -t 9p -o ro melange_cache %s && "+
-					"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
-				DefaultCacheDir,
-				filepath.Join("/mount", DefaultCacheDir),
-				DefaultCacheDir,
-				DefaultCacheDir,
-				filepath.Join("/mount", DefaultCacheDir),
-			)
+			setupMountCommand = cacheOverlayCommand(cfg.RootfsFormat)
 		}
 
 		err = sendSSHCommand(ctx,

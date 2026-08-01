@@ -77,6 +77,11 @@ type Config struct {
 	QemuProcess              *os.Process // QEMU process handle (not just PID, to avoid PID reuse issues)
 	RunAsGID                 string
 
+	// RootfsFormat is the apko layer format of the guest rootfs image at
+	// ImgRef. Empty means a tar the guest init unpacks onto the scratch disk;
+	// an "erofs" variant means an image the guest init mounts directly.
+	RootfsFormat string
+
 	// Virtiofs-related fields for cache directory
 	VirtiofsEnabled     bool   // Whether virtiofs is enabled for cache
 	VirtiofsdPID        int    // PID of virtiofsd daemon for cleanup

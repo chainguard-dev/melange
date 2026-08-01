@@ -346,6 +346,16 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 
 	opts = append(opts, apko_build.WithImageConfiguration(*locked))
 
+	// if the runner needs an image, create an OCI image from the directory and load it.
+	loader := b.Runner.OCIImageLoader()
+	if loader == nil {
+		return "", fmt.Errorf("runner %s does not support OCI image loading", b.Runner.Name())
+	}
+	if format := container.GuestLayerFormat(loader); format != "" {
+		log.Infof("building guest rootfs in %q layer format", format)
+		opts = append(opts, apko_build.WithFormat(format))
+	}
+
 	bc, err := apko_build.New(ctx, guestFS, opts...)
 	if err != nil {
 		return "", fmt.Errorf("unable to create build context: %w", err)
@@ -366,11 +376,6 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 		return "", fmt.Errorf("unable to generate image: %w", err)
 	}
 
-	// if the runner needs an image, create an OCI image from the directory and load it.
-	loader := b.Runner.OCIImageLoader()
-	if loader == nil {
-		return "", fmt.Errorf("runner %s does not support OCI image loading", b.Runner.Name())
-	}
 	layerTarGZ, layer, err := bc.ImageLayoutToLayer(ctx)
 	if err != nil {
 		return "", err

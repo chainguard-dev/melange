@@ -52,3 +52,21 @@ type Loader interface {
 	LoadImage(ctx context.Context, layer v1.Layer, arch apko_types.Architecture, bc *apko_build.Context) (ref string, err error)
 	RemoveImage(ctx context.Context, ref string) error
 }
+
+// LayerFormatter is an optional interface for Loaders that need the guest
+// image built in a specific apko layer format. Loaders that do not implement
+// it get apko's default (gzipped tar).
+type LayerFormatter interface {
+	// LayerFormat returns an apko layer format string ("erofs", "erofs+zstd",
+	// ...). An empty string leaves apko's default in place.
+	LayerFormat() string
+}
+
+// GuestLayerFormat returns the apko layer format the loader asks for, or ""
+// for apko's default.
+func GuestLayerFormat(loader Loader) string {
+	if lf, ok := loader.(LayerFormatter); ok {
+		return lf.LayerFormat()
+	}
+	return ""
+}

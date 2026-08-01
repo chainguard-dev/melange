@@ -55,6 +55,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
+	github.com/erofs/go-erofs v0.3.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
@@ -82,7 +83,7 @@ require (
 
 require (
 	chainguard.dev/go-grpc-kit v0.17.17 // indirect
-	chainguard.dev/sdk v0.1.140 // indirect
+	chainguard.dev/sdk v0.1.158 // indirect
 	cloud.google.com/go/auth v0.21.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -164,15 +165,17 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	go.step.sm/crypto v0.85.0 // indirect
+	go.step.sm/crypto v0.86.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	google.golang.org/api v0.289.0 // indirect
+	google.golang.org/api v0.290.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260706201446-f0a921348800 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 	google.golang.org/grpc v1.82.1 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.36.2 // indirect
+	k8s.io/apimachinery v0.36.3 // indirect
 )
+
+replace chainguard.dev/apko => github.com/smoser/apko v0.0.0-20260801074824-f88d4999b763

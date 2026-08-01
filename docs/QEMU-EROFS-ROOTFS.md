@@ -22,9 +22,15 @@ place.
 - **apko** must support `--format=erofs`.
 - **The guest kernel** needs `CONFIG_EROFS_FS` and `CONFIG_OVERLAY_FS`.
   `linux-qemu-melange` has both built in.
-- **The guest init** (`microvm-init`) must honour the `melange.rootfs=` kernel
-  command line argument that melange adds. An init without that support will
-  try to `tar -xpf` an EROFS image and panic.
+- **The guest init** (`microvm-init`) must recognise an EROFS rootfs. An init
+  without that support will try to `tar -xpf` an EROFS image and panic.
+
+The init detects the format by sniffing the EROFS superblock magic on the
+rootfs block device, not from anything melange passes it. So the two sides
+upgrade independently in one direction: an erofs-aware init still boots tar
+images, and can therefore be rolled out before any host enables this. The
+reverse does not hold — enabling this against an init that predates the support
+fails at boot, and melange cannot detect that in advance.
 
 ## Values
 
@@ -36,37 +42,52 @@ place.
 
 ## Measurements
 
-Building `examples/gnu-hello.yaml` with `linux-qemu-melange` 6.18.41. "Boot" is
-the span from QEMU starting to sshd being reachable, which is where the
-unpacking cost lives. All three formats produced a byte-identical `.apk`.
+`linux-qemu-melange` 6.18.41, x86_64, three runs each. "Boot" is QEMU start to
+sshd reachable, which is where the unpacking cost lives. Every run produced a
+byte-identical `.apk`.
 
-| format | guest image | host build | boot |
+| guest environment | uncompressed tar fed to the VM | tar boot | erofs boot |
 | --- | --- | --- | --- |
-| `tar` | 578 MB (uncompressed, as fed to the VM) | ~3s | 9.0s |
-| `erofs` | 582 MB (+0.7%) | ~3s | 4.7s |
-| `erofs+zstd` | 276 MB (−52%) | ~10s | 5.0s |
+| `build-base`, `busybox` | 578 MB | 9.0s | 5.0s |
+| `+ rust, go, openjdk-21, nodejs, python3, cmake, ninja, perl, git` | 1.73 GB | 17.7s | 5.7s |
 
-Boot roughly halves. The rest of the build is unchanged within noise, so on a
-short build the total is a wash and the win shows up as a flat per-build saving
-that matters most when building many packages.
+EROFS boot is effectively constant: tripling the environment roughly doubled the
+tar path and left EROFS where it was. Extraction cost scales with rootfs size, a
+mount does not.
+
+Image sizes for the same two environments:
+
+| format | small | large |
+| --- | --- | --- |
+| uncompressed tar (what the VM reads today) | 578 MB | 1.73 GB |
+| `erofs` | 582 MB (+0.7%) | 1.75 GB (+1.0%) |
+| `erofs+zstd` | 276 MB (−52%) | 818 MB (−54%) |
+
+Compressed EROFS costs host CPU when the image is built (~10s vs ~3s for the
+small environment) and buys back roughly half the bytes, while still mounting
+natively.
+
+Total build wall clock on a *small* package with a small environment is a wash —
+the saving is flat, so it disappears into noise on one short build and shows up
+in aggregate, or immediately on a large environment.
 
 ## How it fits together
 
-melange asks apko for the layer in the requested format, then attaches the
-resulting image to the VM read-only and adds `melange.rootfs=<format>` to the
-kernel command line. The guest init mounts it as an overlayfs lowerdir with the
-scratch disk supplying `upperdir` and `workdir`:
+melange asks apko for the layer in the requested format and attaches the
+resulting image to the VM read-only. The guest init recognises it and mounts it
+as an overlayfs lowerdir, with the scratch disk supplying `upperdir` and
+`workdir`:
 
 ```
-/dev/vdb  (EROFS, read-only)  ->  /lower  \
-                                           +->  overlay  ->  /mount
-/dev/vda  (xfs scratch disk)  ->  /rw     /
+/dev/vdb  (EROFS, read-only)  ->  /lower    \
+                                             +->  overlay  ->  /mount
+/dev/vda  (xfs scratch disk)  ->  /scratch  /
 ```
 
-The scratch disk stays mounted at `/rw`. That matters because overlayfs refuses
-an `upperdir` that is itself on an overlay: when the cache directory is shared
-over 9p, its writable overlay has to put `upperdir`/`workdir` on `/rw` rather
-than under `/mount`.
+The scratch disk stays mounted at `/scratch`. That matters because overlayfs
+refuses an `upperdir` that is itself on an overlay: when the cache directory is
+shared over 9p, its writable overlay has to put `upperdir`/`workdir` on
+`/scratch` rather than under `/mount`.
 
 Very little is actually written to the rootfs during a build — outside the
 `/home/build` workspace it is `/etc/resolv.conf`, `/etc/hosts`,

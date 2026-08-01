@@ -88,7 +88,7 @@ const (
 	// when the rootfs is an erofs overlay. It is the only writable non-overlay
 	// filesystem in the guest, so it is where anything needing a real
 	// overlayfs upperdir has to go. Must match microvm-init.
-	scratchDiskMount = "/rw"
+	scratchDiskMount = "/scratch"
 
 	// rootfsBlockdevNode is the qemu node-name of the rootfs block device. It
 	// is historical and reads oddly for erofs, but the guest finds the device
@@ -1014,15 +1014,16 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		}
 	}
 
-	// Tell the guest init how the rootfs block device is formatted. Absent
-	// this, init falls back to its historical behaviour of unpacking a tar.
+	// The guest init detects the format by sniffing the EROFS superblock magic
+	// on the rootfs block device rather than being told, so that the host and
+	// the microvm-init package can be upgraded independently. Nothing about
+	// the format goes on the kernel command line.
 	cfg.RootfsFormat, err = parseRootfsFormat(os.Getenv(rootfsFormatEnv))
 	if err != nil {
 		return fmt.Errorf("qemu: %w", err)
 	}
 	if cfg.RootfsFormat != "" {
 		log.Infof("qemu: guest rootfs format is %s, init will mount it instead of unpacking", cfg.RootfsFormat)
-		kernelArgs += " melange.rootfs=" + cfg.RootfsFormat
 	}
 
 	baseargs = append(baseargs, "-append", kernelArgs)

@@ -307,8 +307,8 @@ github.com/sirupsen/logrus v1.9.4 h1:TsZE7l11zFCLZnZ+teH4Umoq5BhEIfIzfRDZ1Uzql2w
 github.com/sirupsen/logrus v1.9.4/go.mod h1:ftWc9WdOfJ0a92nsE2jF5u5ZwH8Bv2zdeOC42RjbV2g=
 github.com/skeema/knownhosts v1.3.2 h1:EDL9mgf4NzwMXCTfaxSD/o/a5fxDw/xL9nkU28JjdBg=
 github.com/skeema/knownhosts v1.3.2/go.mod h1:bEg3iQAuw+jyiw+484wwFJoKSLwcfd7fqRy+N0QTiow=
-github.com/smoser/apko v0.0.0-20260801072102-ca00547fa9cb h1:GX7AUBFiRy21Ya9mzOxSei+UvPHBWBEJGHVNm4MWpNM=
-github.com/smoser/apko v0.0.0-20260801072102-ca00547fa9cb/go.mod h1:/DlVzaKtOhtfTMmcNYJu4qMAUhpaUr4dlfHGWomj7WE=
+github.com/smoser/apko v0.0.0-20260801074824-f88d4999b763 h1:qJT5XbTpmM1OstvNqTy85FP/oE86/E/VCNM2F86ROuU=
+github.com/smoser/apko v0.0.0-20260801074824-f88d4999b763/go.mod h1:/DlVzaKtOhtfTMmcNYJu4qMAUhpaUr4dlfHGWomj7WE=
 github.com/spdx/tools-golang v0.5.7 h1:+sWcKGnhwp3vLdMqPcLdA6QK679vd86cK9hQWH3AwCg=
 github.com/spdx/tools-golang v0.5.7/go.mod h1:jg7w0LOpoNAw6OxKEzCoqPC2GCTj45LyTlVmXubDsYw=
 github.com/spf13/afero v1.2.0/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTdifk=

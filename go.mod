@@ -55,7 +55,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/erofs/go-erofs v0.3.0 // indirect
+	github.com/erofs/go-erofs v0.3.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
@@ -178,4 +178,4 @@ require (
 	k8s.io/apimachinery v0.36.3 // indirect
 )
 
-replace chainguard.dev/apko => github.com/smoser/apko v0.0.0-20260801065507-85c4667fefa5
+replace chainguard.dev/apko => github.com/smoser/apko v0.0.0-20260801072102-ca00547fa9cb

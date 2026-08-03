@@ -91,6 +91,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Merge any capabilities this subpackage test needs into the runner.
+		mergeCapabilities(&t.Configuration.Capabilities, test.Capabilities)
 	}
 
 	if cfg.Test != nil {
@@ -116,6 +119,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Merge any capabilities the main package test needs into the runner.
+		mergeCapabilities(&t.Configuration.Capabilities, test.Capabilities)
 	}
 
 	return nil
@@ -172,10 +178,16 @@ func (b *Build) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Merge any capabilities this subpackage test needs into the runner.
+		mergeCapabilities(&b.Configuration.Capabilities, tc.Capabilities)
 	}
 
 	ic := &b.Configuration.Environment.Contents
 	ic.Packages = append(ic.Packages, c.Needs...)
+
+	// Merge any capabilities the build pipelines need into the runner.
+	mergeCapabilities(&b.Configuration.Capabilities, c.Capabilities)
 
 	if cfg.Test != nil {
 		tc := &Compiled{
@@ -194,6 +206,9 @@ func (b *Build) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Merge any capabilities the main package test needs into the runner.
+		mergeCapabilities(&b.Configuration.Capabilities, tc.Capabilities)
 	}
 
 	return nil
@@ -202,6 +217,7 @@ func (b *Build) Compile(ctx context.Context) error {
 type Compiled struct {
 	PipelineDirs []string
 	Needs        []string
+	Capabilities config.Capabilities
 }
 
 func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
@@ -356,6 +372,17 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	return nil
 }
 
+// mergeCapabilities merges the capabilities gathered from pipelines into the
+// runner's capabilities configuration, sorting and removing duplicates.
+func mergeCapabilities(dst *config.Capabilities, src config.Capabilities) {
+	if len(src.Add) > 0 {
+		dst.Add = slices.Compact(slices.Sorted(slices.Values(append(dst.Add, src.Add...))))
+	}
+	if len(src.Drop) > 0 {
+		dst.Drop = slices.Compact(slices.Sorted(slices.Values(append(dst.Drop, src.Drop...))))
+	}
+}
+
 func identity(p *config.Pipeline) string {
 	if p.Name != "" {
 		return p.Name
@@ -385,6 +412,9 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 			log.Debugf("  adding package %q for pipeline %q", pkg, id)
 		}
 		c.Needs = append(c.Needs, pipeline.Needs.Packages...)
+
+		c.Capabilities.Add = append(c.Capabilities.Add, pipeline.Needs.Capabilities.Add...)
+		c.Capabilities.Drop = append(c.Capabilities.Drop, pipeline.Needs.Capabilities.Drop...)
 
 		pipeline.Needs = nil
 	}

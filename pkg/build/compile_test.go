@@ -121,6 +121,74 @@ func TestCompileTest(t *testing.T) {
 	}
 }
 
+func TestCompileCapabilities(t *testing.T) {
+	// Capabilities declared in the manifest and capabilities needed by a
+	// pipeline should both end up on the runner as a deduplicated union, not
+	// have one overwrite the other.
+	needs := func() *config.Needs {
+		return &config.Needs{
+			Capabilities: config.Capabilities{
+				// A new capability, plus a duplicate of a manifest one.
+				Add:  []string{"CAP_SYS_ADMIN", "CAP_NET_ADMIN"},
+				Drop: []string{"CAP_MKNOD"},
+			},
+		}
+	}
+
+	manifestCaps := func() config.Capabilities {
+		return config.Capabilities{
+			Add:  []string{"CAP_NET_ADMIN"},
+			Drop: []string{"CAP_MKNOD"},
+		}
+	}
+
+	wantAdd := []string{"CAP_NET_ADMIN", "CAP_SYS_ADMIN"}
+	wantDrop := []string{"CAP_MKNOD"}
+
+	t.Run("test", func(t *testing.T) {
+		test := &Test{
+			Package: "main",
+			Configuration: config.Configuration{
+				Capabilities: manifestCaps(),
+				Test: &config.Test{
+					Pipeline: []config.Pipeline{{Needs: needs()}},
+				},
+			},
+		}
+
+		if err := test.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got := test.Configuration.Capabilities.Add; !slices.Equal(got, wantAdd) {
+			t.Errorf("add capabilities: want %v, got %v", wantAdd, got)
+		}
+		if got := test.Configuration.Capabilities.Drop; !slices.Equal(got, wantDrop) {
+			t.Errorf("drop capabilities: want %v, got %v", wantDrop, got)
+		}
+	})
+
+	t.Run("build", func(t *testing.T) {
+		build := &Build{
+			Configuration: &config.Configuration{
+				Capabilities: manifestCaps(),
+				Pipeline:     []config.Pipeline{{Needs: needs()}},
+			},
+		}
+
+		if err := build.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got := build.Configuration.Capabilities.Add; !slices.Equal(got, wantAdd) {
+			t.Errorf("add capabilities: want %v, got %v", wantAdd, got)
+		}
+		if got := build.Configuration.Capabilities.Drop; !slices.Equal(got, wantDrop) {
+			t.Errorf("drop capabilities: want %v, got %v", wantDrop, got)
+		}
+	})
+}
+
 func Test_stripComments(t *testing.T) {
 	tests := []struct {
 		in, want string

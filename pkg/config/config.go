@@ -582,7 +582,7 @@ type Needs struct {
 	Packages []string
 	// Optional: Linux capabilities needed by this pipeline. These are merged
 	// into the runner's capabilities configuration whenever the pipeline is used.
-	Capabilities Capabilities `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	Capabilities Capabilities `json:"capabilities,omitzero" yaml:"capabilities,omitempty"`
 }
 
 type PipelineAssertions struct {

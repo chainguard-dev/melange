@@ -518,12 +518,6 @@
           },
           "type": "array"
         },
-        "runtime_keyring": {
-          "items": {
-            "$ref": "#/$defs/RuntimeKeyringEntry"
-          },
-          "type": "array"
-        },
         "packages": {
           "items": {
             "type": "string"
@@ -942,18 +936,6 @@
           "type": "string"
         },
         "disk": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "RuntimeKeyringEntry": {
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "content": {
           "type": "string"
         }
       },

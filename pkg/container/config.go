@@ -86,4 +86,28 @@ type Config struct {
 	// was found in the initramfs CPIO during VM setup. When false,
 	// RetrieveObservabilityEvents returns immediately without probing the VM.
 	ObservabilityHook bool
+
+	// NeedsIsolation is set before StartPod when the build contains parallel
+	// subpackages. Runners that require extra privileges to construct isolated
+	// filesystem views (e.g. docker needs CAP_SYS_ADMIN to mount) use this to
+	// opt into those privileges only when isolation will actually be used.
+	NeedsIsolation bool
+
+	// Isolation, when non-nil, requests that Run execute inside a per-invocation
+	// isolated filesystem view (used for parallel subpackage builds). It is set
+	// on a per-subpackage clone of the base Config; the base pod's Config leaves
+	// it nil. Runners that do not implement IsolatedRunner ignore it.
+	Isolation *Isolation
+}
+
+// ForIsolation returns a shallow copy of the Config with the given Isolation
+// set (and PackageName updated to the subpackage). The copy shares the live pod
+// handles (SSH clients, PodID, image ref, workspace/cache dirs) with the base
+// Config so concurrent isolated Run calls all target the same running pod; only
+// the per-subpackage isolation state differs.
+func (c *Config) ForIsolation(iso *Isolation) *Config {
+	clone := *c
+	clone.Isolation = iso
+	clone.PackageName = iso.SubpkgName
+	return &clone
 }

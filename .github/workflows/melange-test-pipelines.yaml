@@ -8,10 +8,85 @@ on:
 
 permissions: {}
 
+# Each push to a PR fans out one 8-core runner per e2e test, so don't leave
+# superseded runs going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-melange:
-    name: Build melange and add to artifact cache
+  # Cheap and checkout-only, so the Go matrix isn't gated on the melange build
+  # and the kernel fetch. Both matrices are discovered rather than hand-listed,
+  # so adding a test or a package needs no workflow change.
+  discover:
+    name: Discover test matrices
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      tests: ${{ steps.e2e.outputs.tests }}
+      gopkgs: ${{ steps.gopkgs.outputs.gopkgs }}
+
+    steps:
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            *.blob.core.windows.net:443
+            *.githubapp.com:443
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Find e2e pipeline tests
+        id: e2e
+        working-directory: e2e-tests
+        run: |
+          # run-tests defaults to '*.yaml', so match that: anything else in
+          # this directory (*.yaml-DISABLED, for example) is not a test.
+          tests="$(find . -maxdepth 1 -name '*.yaml' -printf '%f\n' | sort | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          count="$(jq 'length' <<< "${tests}")"
+          if [[ "${count}" -eq 0 ]]; then
+            echo "found no e2e tests in e2e-tests/; matrix would be empty" >&2
+            exit 1
+          fi
+          echo "tests=${tests}" >> "${GITHUB_OUTPUT}"
+          echo "discovered ${count} e2e pipeline tests:"
+          jq . <<< "${tests}"
+
+      - name: Find Go packages to generate and test
+        id: gopkgs
+        run: |
+          # Packages holding tests, plus packages holding //go:generate
+          # directives, so between them the jobs still cover everything a
+          # 'go generate ./...' would. Matching 'go list' without needing a Go
+          # toolchain in this job.
+          dirs="$(
+            {
+              find . -name '*_test.go' -not -path './.git/*' -printf '%h\n'
+              grep -rl '^//go:generate' --include='*.go' . | sed 's|/[^/]*$||'
+            } | sed 's|^\./||' | sort -u
+          )"
+          gopkgs="$(jq -Rsc 'split("\n") | map(select(length > 0))' <<< "${dirs}")"
+          count="$(jq 'length' <<< "${gopkgs}")"
+          if [[ "${count}" -eq 0 ]]; then
+            echo "found no Go packages to test; matrix would be empty" >&2
+            exit 1
+          fi
+          echo "gopkgs=${gopkgs}" >> "${GITHUB_OUTPUT}"
+          echo "discovered ${count} Go packages:"
+          jq . <<< "${gopkgs}"
+
+  build-melange:
+    name: Build melange and fetch the qemu kernel
+    runs-on: ubuntu-latest-8-core
 
     permissions:
       contents: read
@@ -24,6 +99,7 @@ jobs:
             *.blob.core.windows.net:443
             *.githubapp.com:443
             api.github.com:443
+            dl-cdn.alpinelinux.org:443
             dl.google.com:443
             github.com:443
             go.dev:443
@@ -53,14 +129,41 @@ jobs:
           path: ${{ github.workspace }}/melange
           retention-days: 1
 
+      # Fetch the qemu kernel once and hand the same one to every test job.
+      # Pulling it per-job would hammer the Alpine CDN and, because 'chosen'
+      # resolves to the latest edge build, could hand different jobs different
+      # kernels within a single run.
+      - name: Fetch qemu kernel
+        run: |
+          make fetch-kernel
+
+      # Tar rather than uploading kernel/ directly: the modules tree has
+      # symlinks in it, and upload-artifact dereferences them.
+      - name: Package kernel
+        run: |
+          tar -czf kernel.tar.gz kernel
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kernel-${{ github.run_id }}
+          path: ${{ github.workspace }}/kernel.tar.gz
+          retention-days: 1
+          compression-level: 0 # already gzipped
+
   test-packages:
-    name: Test packages
+    name: Test ${{ matrix.test }}
     needs:
+      - discover
       - build-melange
     runs-on: ubuntu-latest-8-core
 
     permissions:
       contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        test: ${{ fromJSON(needs.discover.outputs.tests) }}
 
     steps:
       - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -121,22 +224,27 @@ jobs:
       - env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
         run: |
-          sudo mv "$GITHUB_WORKSPACE"/.melange-dir/melange /usr/bin/melange
+          sudo mv "${GITHUB_WORKSPACE}"/.melange-dir/melange /usr/bin/melange
           sudo chmod a+x /usr/bin/melange
           melange version
+
+      # And the kernel, so this job doesn't have to fetch its own.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: kernel-${{ github.run_id }}
+          path: ${{ github.workspace }}/.kernel-dir
+          run-id: ${{ github.run_id }}
+
+      - env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          tar -xzf "${GITHUB_WORKSPACE}"/.kernel-dir/kernel.tar.gz
+          arch="$(uname -m)"
+          test -f "kernel/${arch}/vmlinuz"
 
       - run: |
           sudo apt-get -y install bubblewrap
       - uses: ./.github/actions/setup-bubblewrap
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: "./go.mod"
-          check-latest: true
-
-      - uses: cue-lang/setup-cue@a93fa358375740cd8b0078f76355512b9208acb1 # v1.0.1
 
       - name: Install QEMU/KVM
         run: |
@@ -149,6 +257,128 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run e2e-tests
+      - name: Run e2e test
+        env:
+          E2E_TEST: ${{ matrix.test }}
         run: |
-          make test-e2e
+          make test-e2e-pipelines MELANGE_BIN=/usr/bin/melange E2E_TESTS="${E2E_TEST}"
+
+  test-go:
+    name: Go tests ${{ matrix.pkg }}
+    needs:
+      - discover
+    runs-on: ubuntu-latest-8-core
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: ${{ fromJSON(needs.discover.outputs.gopkgs) }}
+
+    steps:
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          # Same allowlist as the test-packages job: 'go generate' builds the
+          # sca testdata packages, so it reaches the same places a build does.
+          allowed-endpoints: >
+            *.blob.core.windows.net:443
+            *.githubapp.com:443
+            9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+            _http._tcp.azure.archive.ubuntu.com:443
+            _https._tcp.dl.google.com:443
+            _https._tcp.esm.ubuntu.com:443
+            _https._tcp.motd.ubuntu.com:443
+            _https._tcp.packages.microsoft.com:443
+            api.github.com:443
+            apk.cgr.dev:443
+            auth.docker.io:443
+            azure.archive.ubuntu.com:80
+            dl-cdn.alpinelinux.org:443
+            dl.google.com:443
+            esm.ubuntu.com:443
+            files.pythonhosted.org:443
+            git.netfilter.org:443
+            github.com:443
+            go.dev:443
+            index.docker.io:443
+            motd.ubuntu.com:443
+            objects.githubusercontent.com:443
+            packages.microsoft.com:443
+            packages.wolfi.dev:443
+            ppa.launchpadcontent.net:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            proxy.golang.org:443
+            pypi.org:443
+            raw.githubusercontent.com:443
+            registry-1.docker.io:443
+            release-assets.githubusercontent.com:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+            time1.google.com:123
+            time2.google.com:123
+            time3.google.com:123
+            time4.google.com:123
+            us.download.nvidia.com:443
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: "./go.mod"
+          check-latest: true
+
+      - uses: cue-lang/setup-cue@a93fa358375740cd8b0078f76355512b9208acb1 # v1.0.1
+
+      # 'make test-e2e-unit' runs 'go generate', which builds the sca testdata
+      # packages with the bwrap runner.
+      - run: |
+          sudo apt-get -y install bubblewrap
+      - uses: ./.github/actions/setup-bubblewrap
+
+      - name: Run Go e2e tests
+        env:
+          E2E_PKG: ${{ matrix.pkg }}
+        run: |
+          make test-e2e-unit E2E_PKG="./${E2E_PKG}"
+
+  e2e-complete:
+    name: e2e tests complete
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - discover
+      - build-melange
+      - test-packages
+      - test-go
+
+    permissions: {}
+
+    steps:
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+
+      # A single check to require in branch protection, since the matrix job
+      # names change whenever a test is added or removed.
+      - name: Check job results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: ${RESULTS}"
+          case "${RESULTS}" in
+            *failure*|*cancelled*|*skipped*)
+              echo "one or more e2e jobs did not succeed"
+              exit 1
+              ;;
+            *)
+              echo "all e2e jobs succeeded"
+              ;;
+          esac

@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/chainguard-dev/clog"
-	"gopkg.in/yaml.v3"
 	"mvdan.cc/sh/v3/syntax"
 
 	"chainguard.dev/melange/pkg/cond"
@@ -34,6 +33,27 @@ import (
 )
 
 const unidentifiablePipeline = "???"
+
+// CompileOption adjusts what a Compile produces.
+type CompileOption func(*Compiled)
+
+// WithDependenciesOnly narrows compilation to what a caller resolving build
+// dependencies needs, which is the `uses:` tree and the packages it pulls in.
+//
+// The compiled pipelines are not runnable: each step's `runs:` keeps the
+// comments and formatting it was written with, because normalizing it is the
+// single most expensive part of compiling and a caller that only reads
+// .environment.contents.packages discards it. Everything else — substitution,
+// validation, conditionals and the resolved dependency list — is unchanged, so
+// a definition that fails to compile still fails the same way.
+//
+// Do not use this to produce a configuration that will be built or recorded:
+// use a plain Compile for that.
+func WithDependenciesOnly() CompileOption {
+	return func(c *Compiled) {
+		c.dependenciesOnly = true
+	}
+}
 
 func (t *Test) Compile(ctx context.Context) error {
 	cfg := t.Configuration
@@ -128,16 +148,14 @@ func (t *Test) Compile(ctx context.Context) error {
 }
 
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
-func (b *Build) Compile(ctx context.Context) error {
+func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 	cfg := b.Configuration
 	sm, err := NewSubstitutionMap(cfg, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
 	if err != nil {
 		return err
 	}
 
-	c := &Compiled{
-		PipelineDirs: b.PipelineDirs,
-	}
+	c := newCompiled(b.PipelineDirs, opts)
 
 	if err := c.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
 		return fmt.Errorf("compiling %q pipelines: %w", cfg.Package.Name, err)
@@ -161,9 +179,7 @@ func (b *Build) Compile(ctx context.Context) error {
 			continue
 		}
 
-		tc := &Compiled{
-			PipelineDirs: b.PipelineDirs,
-		}
+		tc := newCompiled(b.PipelineDirs, opts)
 		if err := tc.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
@@ -190,9 +206,7 @@ func (b *Build) Compile(ctx context.Context) error {
 	mergeCapabilities(&b.Configuration.Capabilities, c.Capabilities)
 
 	if cfg.Test != nil {
-		tc := &Compiled{
-			PipelineDirs: b.PipelineDirs,
-		}
+		tc := newCompiled(b.PipelineDirs, opts)
 
 		if err := tc.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling %q test pipelines: %w", cfg.Package.Name, err)
@@ -218,6 +232,19 @@ type Compiled struct {
 	PipelineDirs []string
 	Needs        []string
 	Capabilities config.Capabilities
+
+	// dependenciesOnly skips producing runnable `runs:` bodies. See
+	// WithDependenciesOnly.
+	dependenciesOnly bool
+}
+
+func newCompiled(pipelineDirs []string, opts []CompileOption) *Compiled {
+	c := &Compiled{PipelineDirs: pipelineDirs}
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pipelines []config.Pipeline) error {
@@ -235,7 +262,6 @@ func (c *Compiled) CompilePipelines(ctx context.Context, sm *SubstitutionMap, pi
 }
 
 func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pipeline *config.Pipeline, parent map[string]string) error {
-	log := clog.FromContext(ctx)
 	name, uses, with := pipeline.Name, pipeline.Uses, maps.Clone(pipeline.With)
 
 	// When compiling an already-compiled config, `uses` will be redundant and FYI only,
@@ -246,34 +272,18 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 			return fmt.Errorf("invalid pipeline 'uses' value %q: must not contain absolute paths or '..' sequences", uses)
 		}
 
-		var data []byte
-		// Set this to fail up front in case there are no pipeline dirs specified
-		// and we can't find them.
-		err := fmt.Errorf("could not find 'uses' pipeline %q", uses)
-
-		for _, pd := range c.PipelineDirs {
-			log.Debugf("trying to load pipeline %q from %q", uses, pd)
-			target := filepath.Join(pd, uses+".yaml")
-			// Verify the resolved path is still within the pipeline directory.
-			if rel, err := filepath.Rel(pd, filepath.Clean(target)); err != nil || strings.HasPrefix(rel, "..") {
-				return fmt.Errorf("pipeline 'uses' value %q resolves outside pipeline directory %q", uses, pd)
-			}
-			data, err = os.ReadFile(target) // #nosec G304 - Loading pipeline definition from configured directory
-			if err == nil {
-				log.Debugf("Found pipeline %s", string(data))
-				break
-			}
-		}
+		// Reading and parsing the definition only happens the first time it
+		// is used; see usesDocument.
+		doc, err := usesDocument(c.PipelineDirs, uses, func() ([]byte, error) {
+			return c.readUses(ctx, uses)
+		})
 		if err != nil {
-			log.Debugf("trying to load pipeline %q from embedded fs pipelines/%q.yaml", uses, uses)
-			data, err = PipelinesFS.ReadFile("pipelines/" + uses + ".yaml")
-			if err != nil {
-				return fmt.Errorf("unable to load pipeline: %w", err)
-			}
+			return err
 		}
-
-		if err := yaml.Unmarshal(data, pipeline); err != nil {
-			return fmt.Errorf("unable to parse pipeline %q: %w", uses, err)
+		if doc != nil {
+			if err := doc.Decode(pipeline); err != nil {
+				return fmt.Errorf("unable to parse pipeline %q: %w", uses, err)
+			}
 		}
 
 		for k := range with {
@@ -324,10 +334,14 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		return fmt.Errorf("mutating runs: %w", err)
 	}
 
-	// Drop any comments to avoid leaking things into .melange.json.
-	pipeline.Runs, err = stripComments(pipeline.Runs)
-	if err != nil {
-		return fmt.Errorf("stripping runs comments: %w", err)
+	// Drop any comments to avoid leaking things into .melange.json. Parsing
+	// the script to do it costs more than the rest of compiling the step, so
+	// a caller that is only resolving dependencies skips it.
+	if !c.dependenciesOnly {
+		pipeline.Runs, err = stripComments(pipeline.Runs)
+		if err != nil {
+			return fmt.Errorf("stripping runs comments: %w", err)
+		}
 	}
 
 	if pipeline.If != "" {
@@ -381,6 +395,40 @@ func mergeCapabilities(dst *config.Capabilities, src config.Capabilities) {
 	if len(src.Drop) > 0 {
 		dst.Drop = slices.Compact(slices.Sorted(slices.Values(append(dst.Drop, src.Drop...))))
 	}
+}
+
+// readUses reads the definition named by uses from the configured pipeline
+// directories, falling back to the ones built into melange.
+func (c *Compiled) readUses(ctx context.Context, uses string) ([]byte, error) {
+	log := clog.FromContext(ctx)
+
+	var data []byte
+	// Set this to fail up front in case there are no pipeline dirs specified
+	// and we can't find them.
+	err := fmt.Errorf("could not find 'uses' pipeline %q", uses)
+
+	for _, pd := range c.PipelineDirs {
+		log.Debugf("trying to load pipeline %q from %q", uses, pd)
+		target := filepath.Join(pd, uses+".yaml")
+		// Verify the resolved path is still within the pipeline directory.
+		if rel, err := filepath.Rel(pd, filepath.Clean(target)); err != nil || strings.HasPrefix(rel, "..") {
+			return nil, fmt.Errorf("pipeline 'uses' value %q resolves outside pipeline directory %q", uses, pd)
+		}
+		data, err = os.ReadFile(target) // #nosec G304 - Loading pipeline definition from configured directory
+		if err == nil {
+			log.Debugf("Found pipeline %s", string(data))
+			break
+		}
+	}
+	if err != nil {
+		log.Debugf("trying to load pipeline %q from embedded fs pipelines/%q.yaml", uses, uses)
+		data, err = PipelinesFS.ReadFile("pipelines/" + uses + ".yaml")
+		if err != nil {
+			return nil, fmt.Errorf("unable to load pipeline: %w", err)
+		}
+	}
+
+	return data, nil
 }
 
 func identity(p *config.Pipeline) string {

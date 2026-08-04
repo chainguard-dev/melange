@@ -44,7 +44,8 @@ jobs:
         id: get_yamls
         run: |
           set -ex
-          mapfile -t yamls < <(find .github/workflows -name "*.y*ml" | grep -v dependabot.)
+          found="$(find .github/workflows -name "*.y*ml" -not -name "dependabot.*")"
+          mapfile -t yamls <<< "${found}"
           echo "files=${yamls[*]}" >> "${GITHUB_OUTPUT}"
 
       - name: Action lint

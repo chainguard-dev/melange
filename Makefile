@@ -205,14 +205,38 @@ kernel/%/vmlinuz: kernel/%/linux.apk
 		rc=$$?; rm -Rf $$tmpd; exit $$rc
 	touch $@
 
-.PHONY: test-e2e
-test-e2e: kernel/$(ARCH)/vmlinuz melange generate # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
-	go test -tags e2e ./... -race
+# melange binary the e2e pipeline tests run against. Override it to use a
+# prebuilt binary (CI downloads one instead of rebuilding it in every job).
+MELANGE_BIN ?= $(TOP_D)/melange
+
+# Space-separated list of yaml files under e2e-tests/ to run. Empty means all
+# of them; CI sets it to a single file so each test gets its own job.
+E2E_TESTS ?=
+
+# Go package(s) to generate and test. Defaults to everything; CI sets it to a
+# single package so each one gets its own job. Scoping the codegen matters as
+# much as scoping the test: most of the runtime here is 'go generate' building
+# the pkg/sca testdata, and only pkg/sca needs it.
+E2E_PKG ?= ./...
+
+.PHONY: test-e2e-unit
+test-e2e-unit: ## Run the Go tests behind the 'e2e' build tag
+	go generate $(E2E_PKG)
+	go test -tags e2e $(E2E_PKG) -race
+
+.PHONY: test-e2e-pipelines
+test-e2e-pipelines: kernel/$(ARCH)/vmlinuz ## Run the e2e-tests/ yamls under the qemu runner
 	cd e2e-tests && \
 	QEMU_KERNEL_IMAGE=$(TOP_D)/kernel/$(ARCH)/vmlinuz \
 	QEMU_KERNEL_MODULES=$(TOP_D)/kernel/$(ARCH)/modules/ \
-	MELANGE=$(TOP_D)/melange \
-	./run-tests
+	MELANGE=$(MELANGE_BIN) \
+	./run-tests $(E2E_TESTS)
+
+# Recipe lines rather than prerequisites so the ordering holds under 'make -j'.
+.PHONY: test-e2e
+test-e2e: melange # This is invoked by a separate GHA workflow, so not combining it with the other test targets.
+	$(MAKE) test-e2e-unit
+	$(MAKE) test-e2e-pipelines
 
 .PHONY: clean
 clean: ## Clean the workspace

@@ -107,7 +107,7 @@ func TestSBOMGeneration(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
-					PrimaryPurpose:   "OPERATING-SYSTEM",
+					PrimaryPurpose:   "OPERATING_SYSTEM",
 				},
 				{
 					ID:               "SPDXRef-Package-apk-test-pkg-1.2.3-r2",
@@ -180,7 +180,7 @@ func TestSBOMGeneration(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
-					PrimaryPurpose:   "OPERATING-SYSTEM",
+					PrimaryPurpose:   "OPERATING_SYSTEM",
 				},
 				{
 					ID:               "SPDXRef-Package-apk-test-pkg-dev-1.2.3-r2",
@@ -336,7 +336,7 @@ func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 				DownloadLocation: "NOASSERTION",
 				Originator:       "Organization: Test-Ns",
 				Supplier:         "Organization: Test-Ns",
-				PrimaryPurpose:   "OPERATING-SYSTEM",
+				PrimaryPurpose:   "OPERATING_SYSTEM",
 			},
 			{
 				ID:               "SPDXRef-Package-apk-proprietary-pkg-1.0.0-r0",
@@ -443,7 +443,7 @@ func TestSBOMGenerationWithMixedLicenses(t *testing.T) {
 				DownloadLocation: "NOASSERTION",
 				Originator:       "Organization: Test-Ns",
 				Supplier:         "Organization: Test-Ns",
-				PrimaryPurpose:   "OPERATING-SYSTEM",
+				PrimaryPurpose:   "OPERATING_SYSTEM",
 			},
 			{
 				ID:               "SPDXRef-Package-apk-mixed-license-pkg-2.0.0-r1",
@@ -585,7 +585,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
-					PrimaryPurpose:   "OPERATING-SYSTEM",
+					PrimaryPurpose:   "OPERATING_SYSTEM",
 				},
 				{
 					ID:               "SPDXRef-Package-apk-main-pkg-1.0.0-r0",
@@ -658,7 +658,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
-					PrimaryPurpose:   "OPERATING-SYSTEM",
+					PrimaryPurpose:   "OPERATING_SYSTEM",
 				},
 				{
 					ID:               "SPDXRef-Package-apk-sub-pkg-1.0.0-r0",
@@ -755,7 +755,7 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 					DownloadLocation: "NOASSERTION",
 					Originator:       "Organization: Test-Ns",
 					Supplier:         "Organization: Test-Ns",
-					PrimaryPurpose:   "OPERATING-SYSTEM",
+					PrimaryPurpose:   "OPERATING_SYSTEM",
 				},
 				{
 					ID:               "SPDXRef-Package-apk-sub-pkg-no-git-1.0.0-r0",

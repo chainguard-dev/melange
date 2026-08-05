@@ -59,6 +59,12 @@ const (
 	purlTypeAPK = "apk"
 )
 
+// UnknownCommit is the sentinel used for the config file's repository commit
+// when it cannot be determined (for example, when git auto-detection fails).
+// It is set by the CLI and checked by consumers such as git-archive source
+// resolution, so it is shared here to keep the two ends from drifting.
+const UnknownCommit = "unknown"
+
 type Trigger struct {
 	// Optional: The script to run
 	Script string `json:"script,omitempty"`
@@ -825,6 +831,40 @@ func (p Pipeline) SBOMPackageForUpstreamSource(licenseDeclared, supplier string,
 		} else if gitPackage != nil {
 			return gitPackage, nil
 		}
+
+	case "git-archive":
+		// git-archive sources a subtree of a local repository at a pinned ref.
+		// The meaningful provenance is the subpath plus the commit it was taken
+		// at. Without a pinned commit there is no immutable identifier to
+		// record, so (like git-checkout) we emit nothing.
+		archivePath := with["path"]
+		expectedCommit := with["expected-commit"]
+		if expectedCommit == "" || archivePath == "" {
+			break
+		}
+
+		pu := &purl.PackageURL{
+			Type:    "generic",
+			Name:    archivePath,
+			Version: expectedCommit,
+		}
+		if err := pu.Normalize(); err != nil {
+			return nil, err
+		}
+
+		idComponents := []string{"Source", archivePath, expectedCommit}
+		if uniqueID != "" {
+			idComponents = append(idComponents, uniqueID)
+		}
+
+		return &sbom.Package{
+			IDComponents:   idComponents,
+			Name:           archivePath,
+			Version:        expectedCommit,
+			Namespace:      supplier,
+			PURL:           pu,
+			PrimaryPurpose: "SOURCE",
+		}, nil
 	}
 
 	// This is not a fetch or git-checkout step.

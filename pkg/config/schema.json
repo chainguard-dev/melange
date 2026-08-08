@@ -613,6 +613,10 @@
           },
           "type": "array",
           "description": "A list of packages needed by this pipeline"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities",
+          "description": "Optional: Linux capabilities needed by this pipeline. These are merged\ninto the runner's capabilities configuration whenever the pipeline is used."
         }
       },
       "additionalProperties": false,

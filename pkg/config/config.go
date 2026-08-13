@@ -51,8 +51,15 @@ import (
 	_ "embed"
 )
 
-//go:embed schema.json
-var SchemaJSON []byte
+var (
+	//go:embed schema.json
+	SchemaJSON []byte
+
+	// All 3 are valid, but melange produces software and should never emit a
+	// hardware CPE part.
+	allowedCPEParts = []string{"a", "o"}
+	validCPEParts   = []string{"a", "h", "o"}
+)
 
 const (
 	buildUser   = "build"
@@ -239,8 +246,8 @@ func (p Package) CPEString() (string, error) {
 	}
 
 	// Last-mile validation to avoid headaches downstream of this.
-	if !slices.Contains([]string{"a", "h", "o"}, part) {
-		return "", fmt.Errorf("part value must be a, h or o")
+	if !slices.Contains(validCPEParts, part) {
+		return "", fmt.Errorf("part value must be one of %s", strings.Join(validCPEParts, ", "))
 	}
 	if vendor == anyValue {
 		return "", fmt.Errorf("vendor value must be exactly specified")
@@ -2015,8 +2022,8 @@ func validateDependenciesPriorities(deps Dependencies) error {
 }
 
 func validateCPE(cpe CPE) error {
-	if cpe.Part != "" && cpe.Part != "a" {
-		return fmt.Errorf("invalid CPE part (must be 'a' for application, if specified): %q", cpe.Part)
+	if cpe.Part != "" && !slices.Contains(allowedCPEParts, cpe.Part) {
+		return fmt.Errorf("invalid CPE part (must be one of %s, if specified. most applications should be 'a'): %q", strings.Join(allowedCPEParts, ", "), cpe.Part)
 	}
 
 	if (cpe.Vendor == "") != (cpe.Product == "") {

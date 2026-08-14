@@ -156,11 +156,15 @@ func runPatchStep(ctx context.Context, resolve func(string) (string, error), des
 	// A quilt-style series file lists patch filenames, one per line (with '#'
 	// comments). Fold it into the patch list when no explicit patches are given.
 	if strings.TrimSpace(patches) == "" && strings.TrimSpace(series) != "" {
-		seriesPath := series
-		if !filepath.IsAbs(seriesPath) {
-			seriesPath = filepath.Join(destDir, series)
+		// Keep the series path within the workspace directory.
+		if filepath.IsAbs(series) {
+			return fmt.Errorf("absolute series paths are not allowed: %q", series)
 		}
-		data, err := os.ReadFile(seriesPath) // #nosec G304 - series path resolved within the workspace dir
+		seriesPath := filepath.Join(destDir, series)
+		if rel, err := filepath.Rel(destDir, seriesPath); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("series path %q escapes the workspace directory", series)
+		}
+		data, err := os.ReadFile(seriesPath) // #nosec G304 - series path validated to stay within the workspace dir
 		if err != nil {
 			return fmt.Errorf("reading series file %q: %w", seriesPath, err)
 		}

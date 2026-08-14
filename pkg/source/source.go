@@ -16,14 +16,13 @@ package source
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
@@ -31,27 +30,180 @@ import (
 
 	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/util"
 )
 
-// Variable to allow mocking the runCommand function in tests.
-var sourceRunPipelineStep = runPipelineStep
+// sourceRunStep dispatches a single source-fetching pipeline step to its native
+// handler. It is a package variable so tests can stub it out.
+var sourceRunStep = runStep
 
-// Simple wrapper for executing pipeline steps.
-func runPipelineStep(ctx context.Context, step config.Pipeline) error {
-	var stdout, stderr io.Writer
-	outputBuf := &bytes.Buffer{}
-	log := clog.FromContext(ctx)
-	stdout = outputBuf
-	stderr = outputBuf
+// runStep executes one supported source-fetching step (fetch, git-checkout, or
+// patch) natively in Go. Input values are resolved through the substitution map
+// (so `${{package.version}}` and friends still work) and are then used as data:
+// a URL, a git remote, and argv elements.
+func runStep(ctx context.Context, step config.Pipeline, sm *build.SubstitutionMap, _ bool, destDir string) error {
+	// resolve returns the substituted value for a `with:` input, or "" if the
+	// input was not provided. The result is used as data.
+	resolve := func(key string) (string, error) {
+		v, ok := step.With[key]
+		if !ok {
+			return "", nil
+		}
+		return util.MutateStringFromMap(sm.Substitutions, v)
+	}
 
-	cmd := []string{"/bin/sh", "-c", step.Pipeline[0].Runs}
-	// #nosec G204 - Executing pipeline step from trusted melange configuration
-	proc := exec.Command(cmd[0], cmd[1:]...)
-	proc.Stdout = stdout
-	proc.Stderr = stderr
-	log.Debugf("Command output:\n%s", outputBuf.String())
+	switch step.Uses {
+	case "fetch":
+		return runFetchStep(ctx, resolve)
+	case "git-checkout":
+		return runGitCheckoutStep(ctx, resolve, destDir)
+	case "patch":
+		return runPatchStep(ctx, resolve, destDir)
+	default:
+		return fmt.Errorf("unsupported source step %q", step.Uses)
+	}
+}
 
-	return proc.Run()
+func runFetchStep(ctx context.Context, resolve func(string) (string, error)) error {
+	get := func(dst *string, key string) error {
+		v, err := resolve(key)
+		if err != nil {
+			return err
+		}
+		*dst = v
+		return nil
+	}
+
+	opts := &FetchOptions{}
+	var stripRaw, extractRaw, deleteRaw string
+	for dst, key := range map[*string]string{
+		&opts.URI:            "uri",
+		&opts.Directory:      "directory",
+		&opts.ExpectedSHA256: "expected-sha256",
+		&opts.ExpectedSHA512: "expected-sha512",
+		&stripRaw:            "strip-components",
+		&extractRaw:          "extract",
+		&deleteRaw:           "delete",
+	} {
+		if err := get(dst, key); err != nil {
+			return err
+		}
+	}
+
+	opts.StripComponents = parseIntDefault(stripRaw, 1)
+	opts.Extract = parseBoolDefault(extractRaw, true)
+	opts.Delete = parseBoolDefault(deleteRaw, false)
+
+	return Fetch(ctx, opts)
+}
+
+func runGitCheckoutStep(ctx context.Context, resolve func(string) (string, error), destDir string) error {
+	repo, err := resolve("repository")
+	if err != nil {
+		return err
+	}
+	dest, err := resolve("destination")
+	if err != nil {
+		return err
+	}
+	switch {
+	case dest == "" || dest == ".":
+		dest = destDir
+	case !filepath.IsAbs(dest):
+		dest = filepath.Join(destDir, dest)
+	}
+	expectedCommit, err := resolve("expected-commit")
+	if err != nil {
+		return err
+	}
+	cherryPicks, err := resolve("cherry-picks")
+	if err != nil {
+		return err
+	}
+	recurse, err := resolve("recurse-submodules")
+	if err != nil {
+		return err
+	}
+
+	return GitCheckout(ctx, &GitCheckoutOptions{
+		Repository:        repo,
+		Destination:       dest,
+		ExpectedCommit:    expectedCommit,
+		CherryPicks:       cherryPicks,
+		WorkspaceDir:      destDir,
+		RecurseSubmodules: parseBoolDefault(recurse, false),
+	})
+}
+
+func runPatchStep(ctx context.Context, resolve func(string) (string, error), destDir string) error {
+	patches, err := resolve("patches")
+	if err != nil {
+		return err
+	}
+	series, err := resolve("series")
+	if err != nil {
+		return err
+	}
+	stripRaw, err := resolve("strip-components")
+	if err != nil {
+		return err
+	}
+	fuzzRaw, err := resolve("fuzz")
+	if err != nil {
+		return err
+	}
+
+	// A quilt-style series file lists patch filenames, one per line (with '#'
+	// comments). Fold it into the patch list when no explicit patches are given.
+	if strings.TrimSpace(patches) == "" && strings.TrimSpace(series) != "" {
+		// Keep the series path within the workspace directory.
+		if filepath.IsAbs(series) {
+			return fmt.Errorf("absolute series paths are not allowed: %q", series)
+		}
+		seriesPath := filepath.Join(destDir, series)
+		if rel, err := filepath.Rel(destDir, seriesPath); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("series path %q escapes the workspace directory", series)
+		}
+		data, err := os.ReadFile(seriesPath) // #nosec G304 - series path validated to stay within the workspace dir
+		if err != nil {
+			return fmt.Errorf("reading series file %q: %w", seriesPath, err)
+		}
+		var names []string
+		for line := range strings.SplitSeq(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			names = append(names, line)
+		}
+		patches = strings.Join(names, " ")
+	}
+
+	if strings.TrimSpace(patches) == "" {
+		return fmt.Errorf("patch step: neither 'patches' nor 'series' was set")
+	}
+
+	return applyPatchStep(ctx, patches, parseIntDefault(stripRaw, 1), parseIntDefault(fuzzRaw, 2), destDir)
+}
+
+func parseIntDefault(s string, def int) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return def
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+func parseBoolDefault(s string, def bool) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return def
+	}
+	return s == "true"
 }
 
 // Function to extract the .melange.yaml from an apk package.
@@ -139,44 +291,13 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 		return nil, fmt.Errorf("failed to parse melange config: %w", err)
 	}
 
-	// Temporarily copy out the embedded files and directories from f into a
-	// temporary directory. We want to pass it later on to the pipeline
-	// compilation.
-	err = os.CopyFS(tmpDir, build.PipelinesFS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to copy embedded pilelines: %w", err)
-	}
-
-	// Prepare the substitution map and compile the pipelines, making sure that
-	// the resulting pipeline run statements are all substituted with the
-	// correct values and ready for execution.
-	c := &build.Compiled{
-		PipelineDirs: []string{tmpDir},
-	}
-
-	// Now also try looking if the base directory of filePath has a pipelines
-	// directory. Add those to the list of directories to search for pipelines.
-	absFilePath, err := filepath.Abs(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path of file: %w", err)
-	}
-	baseDir := filepath.Dir(absFilePath)
-	pipelinesDir := filepath.Join(baseDir, "pipelines")
-
-	if _, err := os.Stat(pipelinesDir); err == nil {
-		log.Infof("Found pipelines directory in base directory: %s", pipelinesDir)
-		c.PipelineDirs = append(c.PipelineDirs, pipelinesDir)
-	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("error checking pipelines directory: %w", err)
-	}
-
+	// Prepare the substitution map so that input values referencing built-in
+	// variables (e.g. ${{package.version}}) resolve correctly. The supported
+	// source steps are dispatched to native Go handlers below, which treat
+	// every substituted value as data.
 	sm, err := build.NewSubstitutionMap(cfg, "amd64", "gnu", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create substitution map: %w", err)
-	}
-	err = c.CompilePipelines(ctx, sm, cfg.Pipeline)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile pipelines: %w", err)
 	}
 
 	// During command execution we change the working directory. We need to
@@ -207,12 +328,12 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 
 	// Iterate over the pipeline steps and look for any source fetching steps.
 	for _, step := range cfg.Pipeline {
-		if step.Uses == "patch" && isApk {
-			log.Warnf("Skipping patch step as we do not have patches available inside apk metadata yet.")
+		if step.Uses != "git-checkout" && step.Uses != "fetch" && step.Uses != "patch" {
 			continue
 		}
 
-		if step.Uses != "git-checkout" && step.Uses != "fetch" && step.Uses != "patch" {
+		if step.Uses == "patch" && isApk {
+			log.Warnf("Skipping patch step as we do not have patches available inside apk metadata yet.")
 			continue
 		}
 
@@ -226,7 +347,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 		if err != nil {
 			return nil, fmt.Errorf("failed to change directory: %w", err)
 		}
-		err = sourceRunPipelineStep(ctx, step)
+		err = sourceRunStep(ctx, step, sm, isApk, destDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run step: %w", err)
 		}

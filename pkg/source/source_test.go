@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"chainguard.dev/melange/pkg/build"
 	"chainguard.dev/melange/pkg/config"
 )
 
@@ -105,13 +106,13 @@ func TestExtractMelangeYamlFromTarball_noMelange(t *testing.T) {
 	}
 }
 
-// TestFetchSourceFromMelange tests the FetchSourceFromMelange function with mocked sourceRunCommand
+// TestFetchSourceFromMelange tests the FetchSourceFromMelange function with a mocked step dispatcher
 func TestFetchSourceFromMelange(t *testing.T) {
-	// Mock the sourceRunCommand function
+	// Mock the step dispatcher so the test stays hermetic (no network/git).
 	stepsRun := []string{}
-	originalSourceRunPipelineStep := sourceRunPipelineStep
-	defer func() { sourceRunPipelineStep = originalSourceRunPipelineStep }()
-	sourceRunPipelineStep = func(ctx context.Context, step config.Pipeline) error {
+	originalSourceRunStep := sourceRunStep
+	defer func() { sourceRunStep = originalSourceRunStep }()
+	sourceRunStep = func(ctx context.Context, step config.Pipeline, sm *build.SubstitutionMap, isApk bool, destDir string) error {
 		fmt.Printf("Running step: %s\n", step.Uses)
 		stepsRun = append(stepsRun, step.Uses)
 		return nil
@@ -172,6 +173,65 @@ func TestFetchSourceFromMelange(t *testing.T) {
 				if _, err := os.Stat(filePath); os.IsNotExist(err) {
 					t.Errorf("Expected file %s to exist in %s, but it does not", file, destDir)
 				}
+			}
+		})
+	}
+}
+
+// TestFetchSourceFromMelange_inputsTreatedAsData runs the real (unmocked)
+// dispatcher against configs whose inputs contain shell-like syntax, and
+// asserts those inputs are treated as literal data: the fetch/checkout fails
+// (the value is not a valid URL or git remote) and no side-effect file is
+// produced.
+func TestFetchSourceFromMelange_inputsTreatedAsData(t *testing.T) {
+	tmpDir := t.TempDir()
+	marker := filepath.Join(tmpDir, "marker")
+
+	// If a value were ever evaluated by a shell, it would create the marker
+	// file. As literal data (a URL / git remote) it cannot.
+	configs := map[string]string{
+		"fetch-uri": `package:
+  name: example
+  version: "1.0.0"
+  epoch: 0
+  copyright:
+    - license: MIT
+pipeline:
+  - uses: fetch
+    with:
+      uri: "$(touch ` + marker + `; echo x)"
+      expected-none: "true"
+`,
+		"git-checkout-repository": `package:
+  name: example
+  version: "1.0.0"
+  epoch: 0
+  copyright:
+    - license: MIT
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: "$(touch ` + marker + `; echo x)"
+`,
+	}
+
+	for name, content := range configs {
+		t.Run(name, func(t *testing.T) {
+			_ = os.Remove(marker)
+
+			cfgPath := filepath.Join(tmpDir, name+".yaml")
+			if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+				t.Fatalf("failed to write config: %v", err)
+			}
+
+			// The value is not a valid URL/remote, so fetching fails.
+			_, err := FetchSourceFromMelange(context.Background(), cfgPath, filepath.Join(tmpDir, name+"-out"))
+			if err == nil {
+				t.Errorf("expected an error fetching from an invalid uri/repository, got nil")
+			}
+
+			if _, statErr := os.Stat(marker); statErr == nil {
+				t.Fatalf("input was not treated as literal data (marker file %s was created)", marker)
 			}
 		})
 	}

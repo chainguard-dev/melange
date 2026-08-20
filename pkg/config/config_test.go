@@ -997,6 +997,82 @@ func TestGetGitSBOMPackage(t *testing.T) {
 	}
 }
 
+func TestSBOMPackageForUpstreamSource_GitArchive(t *testing.T) {
+	const (
+		archivePath = "charts/iamguarded/charts/common"
+		commit      = "c64abdbdd120a5fb2e1474ec7243c90ffce7f79c"
+		supplier    = "wolfi"
+	)
+
+	testCases := []struct {
+		name     string
+		with     map[string]string
+		uniqueID string
+		// nil means we expect no SBOM package (nil, nil).
+		wantPackage bool
+		wantIDTail  []string
+	}{
+		{
+			name:        "path and expected-commit",
+			with:        map[string]string{"path": archivePath, "expected-commit": commit},
+			uniqueID:    "0",
+			wantPackage: true,
+			wantIDTail:  []string{"Source", archivePath, commit, "0"},
+		},
+		{
+			name:        "path and expected-commit without uniqueID",
+			with:        map[string]string{"path": archivePath, "expected-commit": commit},
+			uniqueID:    "",
+			wantPackage: true,
+			wantIDTail:  []string{"Source", archivePath, commit},
+		},
+		{
+			// The build backfills expected-commit, but if it is somehow absent
+			// there is no immutable identifier to record, so emit nothing.
+			name:        "path without expected-commit",
+			with:        map[string]string{"path": archivePath},
+			uniqueID:    "0",
+			wantPackage: false,
+		},
+		{
+			name:        "expected-commit without path",
+			with:        map[string]string{"expected-commit": commit},
+			uniqueID:    "0",
+			wantPackage: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := Pipeline{Uses: "git-archive", With: tc.with}
+
+			pkg, err := p.SBOMPackageForUpstreamSource("Apache-2.0", supplier, tc.uniqueID)
+			require.NoError(t, err)
+
+			if !tc.wantPackage {
+				require.Nil(t, pkg)
+				return
+			}
+
+			require.NotNil(t, pkg)
+			require.Equal(t, archivePath, pkg.Name)
+			require.Equal(t, commit, pkg.Version)
+			require.Equal(t, supplier, pkg.Namespace)
+			require.Equal(t, "SOURCE", pkg.PrimaryPurpose)
+			require.Equal(t, tc.wantIDTail, pkg.IDComponents)
+
+			// PURL: generic type keyed on path + commit. Build the expected
+			// value the same way the implementation does so normalization
+			// matches exactly.
+			wantPURL := &purl.PackageURL{Type: "generic", Name: archivePath, Version: commit}
+			require.NoError(t, wantPURL.Normalize())
+			require.Equal(t, wantPURL.Type, pkg.PURL.Type)
+			require.Equal(t, wantPURL.Name, pkg.PURL.Name)
+			require.Equal(t, wantPURL.Version, pkg.PURL.Version)
+		})
+	}
+}
+
 func TestSetCap(t *testing.T) {
 	tests := []struct {
 		setcap []Capability

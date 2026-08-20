@@ -1,0 +1,14 @@
+name: Test a Ruby package
+
+needs:
+  packages:
+    - busybox
+
+inputs:
+  command:
+    description: |
+      The command to run.
+    required: true
+
+pipeline:
+  - runs: ${{inputs.command}}

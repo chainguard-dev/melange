@@ -21,52 +21,74 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 
 	"chainguard.dev/melange/pkg/build"
 )
 
+// CompileFlags holds all parsed compile command flags
+type CompileFlags struct {
+	CommonFlags
+
+	// Compile-specific fields:
+	Arch                 string // single string, required
+	BuildDate            string
+	PipelineDir          string
+	SigningKey           string
+	VarsFile             string
+	GenerateIndex        bool
+	EmptyWorkspace       bool
+	StripOriginName      bool
+	OutDir               string
+	DependencyLog        string
+	PurlNamespace        string
+	BuildOption          []string
+	LogPolicy            []string
+	CreateBuildLog       bool
+	FailOnLintWarning    bool
+	GenerateProvenance   bool
+	ConfigFileGitCommit  string
+	ConfigFileGitRepoURL string
+	ConfigFileLicense    string
+}
+
+// addCompileFlags registers all compile command flags to the provided FlagSet using the CompileFlags struct
+func addCompileFlags(fs *pflag.FlagSet, flags *CompileFlags) {
+	// Set compile-specific defaults before registering common flags.
+	// Note: Remove (--rm) intentionally defaults to false for compile,
+	// unlike build/test which default to true.
+	flags.CacheDir = "./melange-cache/"
+	addCommonFlags(fs, &flags.CommonFlags)
+
+	// Compile-specific flags.
+	fs.StringVar(&flags.Arch, "arch", "", "architectures to compile for")
+	fs.StringVar(&flags.BuildDate, "build-date", "", "date used for the timestamps of the files inside the image")
+	fs.StringVar(&flags.PipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
+	fs.StringVar(&flags.SigningKey, "signing-key", "", "key to use for signing")
+	fs.StringVar(&flags.VarsFile, "vars-file", "", "file to use for preloaded build configuration variables")
+	fs.BoolVar(&flags.GenerateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
+	fs.BoolVar(&flags.EmptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
+	fs.BoolVar(&flags.StripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
+	fs.StringVar(&flags.OutDir, "out-dir", "./packages/", "directory where packages will be output")
+	fs.StringVar(&flags.DependencyLog, "dependency-log", "", "log dependencies to a specified file")
+	fs.StringVar(&flags.PurlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
+	fs.StringSliceVar(&flags.BuildOption, "build-option", []string{}, "build options to enable")
+	fs.StringSliceVar(&flags.LogPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
+	fs.BoolVar(&flags.CreateBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
+	fs.BoolVar(&flags.FailOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
+	fs.BoolVar(&flags.GenerateProvenance, "generate-provenance", false, "generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)")
+	fs.StringVar(&flags.ConfigFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
+	fs.StringVar(&flags.ConfigFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
+	fs.StringVar(&flags.ConfigFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
+}
+
 func compile() *cobra.Command {
-	var buildDate string
-	var workspaceDir string
-	var pipelineDir string
-	var sourceDir string
-	var cacheDir string
-	var cacheSource string
-	var apkCacheDir string
-	var signingKey string
-	var generateIndex bool
-	var emptyWorkspace bool
-	var stripOriginName bool
-	var outDir string
-	var archstr string
-	var extraKeys []string
-	var extraRepos []string
-	var dependencyLog string
-	var envFiles []string
-	var varsFile string
-	var purlNamespace string
-	var buildOption []string
-	var logPolicy []string
-	var createBuildLog bool
-	var debug bool
-	var debugRunner bool
-	var interactive bool
-	var remove bool
-	var runner string
-	var failOnLintWarning bool
-	var cpu, memory string
-	var timeout time.Duration
-	var extraPackages []string
-	var configFileGitCommit string
-	var configFileGitRepoURL string
-	var configFileLicense string
-	var generateProvenance bool
+	flags := &CompileFlags{}
 
 	cmd := &cobra.Command{
 		Use:     "compile",
@@ -78,6 +100,10 @@ func compile() *cobra.Command {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
 
+			if pc := ProjectConfigFromContext(ctx); pc != nil {
+				pc.ApplyToCompileFlags(flags, cmd.Flags())
+			}
+
 			var buildConfigFilePath string
 			if len(args) > 0 {
 				buildConfigFilePath = args[0] // e.g. "crane.yaml"
@@ -87,71 +113,81 @@ func compile() *cobra.Command {
 			// melange build definition. As a fallback, detect this from local git state.
 			// Git auto-detection should be "best effort" and not fail the build if it
 			// fails.
-			if configFileGitCommit == "" {
+			if flags.ConfigFileGitCommit == "" {
 				log.Debugf("git commit for build config not provided, attempting to detect automatically")
 				commit, err := detectGitHead(ctx, buildConfigFilePath)
 				if err != nil {
 					log.Warnf("unable to detect commit for build config file: %v", err)
-					configFileGitCommit = "unknown"
+					flags.ConfigFileGitCommit = "unknown"
 				} else {
-					configFileGitCommit = commit
+					flags.ConfigFileGitCommit = commit
 				}
 			}
-			if configFileGitRepoURL == "" {
+			if flags.ConfigFileGitRepoURL == "" {
 				log.Warnf("git repository URL for build config not provided")
-				configFileGitRepoURL = "https://unknown/unknown/unknown"
+				flags.ConfigFileGitRepoURL = "https://unknown/unknown/unknown"
 			}
 
-			arch := apko_types.ParseArchitecture(archstr)
+			arch := apko_types.ParseArchitecture(flags.Arch)
 			options := []build.Option{
 				build.WithArch(arch),
-				build.WithBuildDate(buildDate),
-				build.WithWorkspaceDir(workspaceDir),
+				build.WithBuildDate(flags.BuildDate),
+				build.WithWorkspaceDir(flags.WorkspaceDir),
 				// Order matters, so add any specified pipelineDir before
-				// builtin pipelines.
-				build.WithPipelineDir(pipelineDir),
-				build.WithPipelineDir(BuiltinPipelineDir),
-				build.WithCacheDir(cacheDir),
-				build.WithCacheSource(cacheSource),
-				build.WithPackageCacheDir(apkCacheDir),
-				build.WithSigningKey(signingKey),
-				build.WithGenerateIndex(generateIndex),
-				build.WithEmptyWorkspace(emptyWorkspace),
-				build.WithOutDir(outDir),
-				build.WithExtraKeys(extraKeys),
-				build.WithExtraRepos(extraRepos),
-				build.WithExtraPackages(extraPackages),
-				build.WithDependencyLog(dependencyLog),
-				build.WithStripOriginName(stripOriginName),
-				build.WithEnvFiles(envFiles),
-				build.WithVarsFile(varsFile),
-				build.WithNamespace(purlNamespace),
-				build.WithEnabledBuildOptions(buildOption),
-				build.WithCreateBuildLog(createBuildLog),
-				build.WithDebug(debug),
-				build.WithDebugRunner(debugRunner),
-				build.WithInteractive(interactive),
-				build.WithRemove(remove),
-				build.WithCPU(cpu),
-				build.WithMemory(memory),
-				build.WithTimeout(timeout),
-				build.WithConfigFileRepositoryCommit(configFileGitCommit),
-				build.WithConfigFileRepositoryURL(configFileGitRepoURL),
-				build.WithConfigFileLicense(configFileLicense),
-				build.WithGenerateProvenance(generateProvenance),
+				// builtin pipelines. Support both --pipeline-dir (singular)
+				// and --pipeline-dirs (plural).
+				build.WithPipelineDir(flags.PipelineDir),
+				build.WithCacheDir(flags.CacheDir),
+				build.WithCacheSource(flags.CacheSource),
+				build.WithPackageCacheDir(flags.ApkCacheDir),
+				build.WithSigningKey(flags.SigningKey),
+				build.WithGenerateIndex(flags.GenerateIndex),
+				build.WithEmptyWorkspace(flags.EmptyWorkspace),
+				build.WithOutDir(flags.OutDir),
+				build.WithExtraKeys(flags.ExtraKeys),
+				build.WithExtraRepos(flags.ExtraRepos),
+				build.WithExtraPackages(flags.ExtraPackages),
+				build.WithDependencyLog(flags.DependencyLog),
+				build.WithStripOriginName(flags.StripOriginName),
+				build.WithEnvFiles(flags.EnvFiles),
+				build.WithVarsFile(flags.VarsFile),
+				build.WithNamespace(flags.PurlNamespace),
+				build.WithEnabledBuildOptions(flags.BuildOption),
+				build.WithCreateBuildLog(flags.CreateBuildLog),
+				build.WithDebug(flags.Debug),
+				build.WithDebugRunner(flags.DebugRunner),
+				build.WithInteractive(flags.Interactive),
+				build.WithRemove(flags.Remove),
+				build.WithCPU(flags.CPU),
+				build.WithCPUModel(flags.CPUModel),
+				build.WithDisk(flags.Disk),
+				build.WithMemory(flags.Memory),
+				build.WithTimeout(flags.Timeout),
+				build.WithIgnoreSignatures(flags.IgnoreSignatures),
+				build.WithConfigFileRepositoryCommit(flags.ConfigFileGitCommit),
+				build.WithConfigFileRepositoryURL(flags.ConfigFileGitRepoURL),
+				build.WithConfigFileLicense(flags.ConfigFileLicense),
+				build.WithGenerateProvenance(flags.GenerateProvenance),
 			}
 
 			if len(args) > 0 {
 				options = append(options, build.WithConfig(args[0]))
 
-				if sourceDir == "" {
-					sourceDir = filepath.Dir(args[0])
+				if flags.SourceDir == "" {
+					flags.SourceDir = filepath.Dir(args[0])
 				}
 			}
 
-			if sourceDir != "" {
-				options = append(options, build.WithSourceDir(sourceDir))
+			if flags.SourceDir != "" {
+				options = append(options, build.WithSourceDir(flags.SourceDir))
 			}
+
+			// Add multiple pipeline directories from --pipeline-dirs
+			for i := range flags.PipelineDirs {
+				options = append(options, build.WithPipelineDir(flags.PipelineDirs[i]))
+			}
+			// Always append built-in pipeline directory as fallback
+			options = append(options, build.WithPipelineDir(BuiltinPipelineDir))
 
 			if auth, ok := os.LookupEnv("HTTP_AUTH"); !ok {
 				// Fine, no auth.
@@ -168,47 +204,11 @@ func compile() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&archstr, "arch", "", "architectures to compile for")
+	addCompileFlags(cmd.Flags(), flags)
+
 	if err := cmd.MarkFlagRequired("arch"); err != nil {
 		panic(err)
 	}
-
-	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
-	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
-	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
-	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
-	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
-	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
-	cmd.Flags().StringVar(&apkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
-	cmd.Flags().StringVar(&signingKey, "signing-key", "", "key to use for signing")
-	cmd.Flags().StringSliceVar(&envFiles, "env-file", []string{}, "files to use for preloaded environment variables")
-	cmd.Flags().StringVar(&varsFile, "vars-file", "", "file to use for preloaded build configuration variables")
-	cmd.Flags().BoolVar(&generateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
-	cmd.Flags().BoolVar(&emptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
-	cmd.Flags().BoolVar(&stripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
-	cmd.Flags().StringVar(&outDir, "out-dir", "./packages/", "directory where packages will be output")
-	cmd.Flags().StringVar(&dependencyLog, "dependency-log", "", "log dependencies to a specified file")
-	cmd.Flags().StringVar(&purlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
-	cmd.Flags().StringSliceVar(&buildOption, "build-option", []string{}, "build options to enable")
-	cmd.Flags().StringSliceVar(&logPolicy, "log-policy", []string{"builtin:stderr"}, "logging policy to use")
-	cmd.Flags().StringVar(&runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
-	cmd.Flags().StringSliceVarP(&extraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
-	cmd.Flags().StringSliceVarP(&extraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
-	cmd.Flags().StringSliceVar(&extraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
-	cmd.Flags().BoolVar(&createBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
-	cmd.Flags().BoolVar(&debug, "debug", false, "enables debug logging of build pipelines")
-	cmd.Flags().BoolVar(&debugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
-	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "when enabled, attaches stdin with a tty to the pod on failure")
-	cmd.Flags().BoolVar(&remove, "rm", false, "clean up intermediate artifacts (e.g. container images)")
-	cmd.Flags().BoolVar(&failOnLintWarning, "fail-on-lint-warning", false, "turns linter warnings into failures")
-	cmd.Flags().StringVar(&cpu, "cpu", "", "default CPU resources to use for builds")
-	cmd.Flags().StringVar(&memory, "memory", "", "default memory resources to use for builds")
-	cmd.Flags().DurationVar(&timeout, "timeout", 0, "default timeout for builds")
-	cmd.Flags().BoolVar(&generateProvenance, "generate-provenance", false, "generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)")
-
-	cmd.Flags().StringVar(&configFileGitCommit, "git-commit", "", "commit hash of the git repository containing the build config file (defaults to detecting HEAD)")
-	cmd.Flags().StringVar(&configFileGitRepoURL, "git-repo-url", "", "URL of the git repository containing the build config file (defaults to detecting from configured git remotes)")
-	cmd.Flags().StringVar(&configFileLicense, "license", "NOASSERTION", "license to use for the build config file itself")
 
 	return cmd
 }

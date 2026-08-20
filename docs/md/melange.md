@@ -14,8 +14,9 @@ toc: true
 ### Options
 
 ```
-  -h, --help               help for melange
-      --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
+      --config-file string   path to project config file (default: .melange.yaml in current directory)
+  -h, --help                 help for melange
+      --log-level string     log level (e.g. debug, info, warn, error) (default "INFO")
 ```
 
 ### SEE ALSO

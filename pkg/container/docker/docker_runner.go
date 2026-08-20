@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -40,6 +42,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/kballard/go-shellquote"
 	image_spec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"chainguard.dev/melange/internal/contextreader"
@@ -47,12 +50,17 @@ import (
 	mcontainer "chainguard.dev/melange/pkg/container"
 )
 
-var _ mcontainer.Debugger = (*docker)(nil)
+var (
+	_ mcontainer.Debugger       = (*docker)(nil)
+	_ mcontainer.IsolatedRunner = (*docker)(nil)
+)
 
 const (
 	DockerName = "docker"
 
 	runnerWorkdir = "/home/build"
+
+	melangeOutDirName = "melange-out"
 )
 
 // docker is a Runner implementation that uses the docker library.
@@ -105,9 +113,15 @@ func (dk *docker) StartPod(ctx context.Context, cfg *mcontainer.Config) error {
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
 	}
+	// Parallel subpackage builds construct isolated filesystem views with
+	// unshare(2)/mount(2) inside the container, which require CAP_SYS_ADMIN.
+	// Only grant it when isolation will actually be used.
+	if cfg.NeedsIsolation {
+		hostConfig.CapAdd = append(hostConfig.CapAdd, "SYS_ADMIN")
+	}
 	// Add process kernel capabilities to the container if configured.
 	if len(cfg.Capabilities.Add) > 0 {
-		hostConfig.CapAdd = cfg.Capabilities.Add
+		hostConfig.CapAdd = append(hostConfig.CapAdd, cfg.Capabilities.Add...)
 	}
 	// Drop process kernel capabilities from the container if configured.
 	if len(cfg.Capabilities.Drop) > 0 {
@@ -225,8 +239,19 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 		environ = append(environ, fmt.Sprintf("%s=%s", k, v))
 	}
 
+	// For a parallel subpackage build, wrap the command in an unshare(2) mount
+	// namespace that constructs the isolated filesystem view (see Isolation).
+	// mount(2) requires privileges, so the exec runs as root; outputs written to
+	// melange-out/<subpkg> land on the host workspace bind and are chowned back
+	// to the build user during CopyOutIsolation.
+	user := cfg.RunAsUID
+	if cfg.Isolation != nil {
+		args = dockerIsolationCommand(cfg.Isolation, args)
+		user = "0"
+	}
+
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
-		User:         cfg.RunAsUID,
+		User:         user,
 		Cmd:          args,
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
@@ -366,6 +391,79 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 // This is a noop for Docker, which uses bind-mounts to manage the workspace
 func (dk *docker) WorkspaceTar(ctx context.Context, cfg *mcontainer.Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
+}
+
+// dockerIsolationCommand wraps a build command in an unshare(2) mount namespace
+// that constructs the per-subpackage isolated filesystem view before exec'ing
+// the original command. The mount namespace (and thus the whole view) is torn
+// down automatically when the exec process exits, so each pipeline step re-runs
+// the setup. Writes to melange-out/<subpkg> are bind-mounted through to the host
+// workspace so they persist; writes elsewhere under /home/build do not.
+func dockerIsolationCommand(iso *mcontainer.Isolation, command []string) []string {
+	q := shellquote.Join
+	base := iso.BaseDir()
+	hostOut := filepath.Join(base, "hostout")
+	upper := filepath.Join(base, "upper")
+	work := filepath.Join(base, "work")
+	melangeOut := filepath.Join(runnerWorkdir, melangeOutDirName)
+	hostSub := filepath.Join(hostOut, iso.SubpkgName)
+
+	setup := strings.Join([]string{
+		"set -e",
+		"mount --make-rprivate /",
+		"mkdir -p " + q(hostOut) + " " + q(upper) + " " + q(work),
+		// Capture the shared melange-out before overlaying /home/build hides it.
+		"mount --bind " + q(melangeOut) + " " + q(hostOut),
+		"mkdir -p " + q(hostSub),
+		// /home/build = overlay(upper=private, lower=shared workspace).
+		fmt.Sprintf("mount -t overlay overlay -o lowerdir=%s,upperdir=%s,workdir=%s %s",
+			runnerWorkdir, upper, work, q(runnerWorkdir)),
+		// melange-out is a read-only view of the shared outputs at batch start.
+		"mount --bind " + q(hostOut) + " " + q(melangeOut),
+		"mount -o remount,ro,bind " + q(melangeOut),
+		// This subpackage's own output dir writes through to the host workspace.
+		"mount --bind " + q(hostSub) + " " + q(filepath.Join(melangeOut, iso.SubpkgName)),
+	}, "\n")
+
+	full := setup + "\nexec " + shellquote.Join(command...)
+	return []string{"unshare", "-m", "/bin/sh", "-c", full}
+}
+
+// SetupIsolation ensures the shared destination directory exists on the host
+// workspace bind. The isolated mount view itself is (re)constructed per exec in
+// Run, so there is nothing else to set up here.
+func (dk *docker) SetupIsolation(ctx context.Context, cfg *mcontainer.Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("docker: SetupIsolation called without an isolation config")
+	}
+	return os.MkdirAll(filepath.Join(cfg.WorkspaceDir, melangeOutDirName, cfg.Isolation.SubpkgName), 0o755)
+}
+
+// CopyOutIsolation restores ownership of the outputs (written as root inside the
+// isolated view) back to the build user. The outputs themselves already live on
+// the host workspace via the bind mount, so no copy is required.
+func (dk *docker) CopyOutIsolation(ctx context.Context, cfg *mcontainer.Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("docker: CopyOutIsolation called without an isolation config")
+	}
+	uid := cfg.RunAsUID
+	if uid == "" {
+		return nil
+	}
+	gid := cfg.RunAsGID
+	if gid == "" {
+		gid = uid
+	}
+	sub := filepath.Join(runnerWorkdir, melangeOutDirName, cfg.Isolation.SubpkgName)
+	return dk.Run(ctx, &mcontainer.Config{PodID: cfg.PodID, RunAsUID: "0"}, nil,
+		"chown", "-R", fmt.Sprintf("%s:%s", uid, gid), sub)
+}
+
+// TeardownIsolation is a noop for Docker: the isolated mount namespace is torn
+// down when each exec exits, and the private overlay layers live in the
+// container's ephemeral filesystem which is removed with the pod.
+func (dk *docker) TeardownIsolation(ctx context.Context, cfg *mcontainer.Config) error {
+	return nil
 }
 
 // GetReleaseData returns the OS information (os-release contents) for the Docker runner.

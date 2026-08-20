@@ -63,7 +63,10 @@ import (
 	"chainguard.dev/melange/pkg/license"
 )
 
-var _ Debugger = (*qemu)(nil)
+var (
+	_ Debugger       = (*qemu)(nil)
+	_ IsolatedRunner = (*qemu)(nil)
+)
 
 const QemuName = "qemu"
 
@@ -113,8 +116,19 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	defer stdout.Close()
 	defer stderr.Close()
 
+	// For a parallel subpackage build, run the command inside the per-subpackage
+	// chroot via the privileged (control) build client. The command runs as root
+	// within the chroot; its outputs are chowned back to the build user during
+	// CopyOutIsolation. Subpackage pipelines are split operations for which this
+	// is acceptable.
+	client := cfg.SSHBuildClient
+	if cfg.Isolation != nil {
+		client = cfg.SSHControlBuildClient
+		args = append([]string{"chroot", cfg.Isolation.ChrootDir()}, args...)
+	}
+
 	err := sendSSHCommand(ctx,
-		cfg.SSHBuildClient,
+		client,
 		cfg,
 		envOverride,
 		stderr,
@@ -127,6 +141,130 @@ func (bw *qemu) Run(ctx context.Context, cfg *Config, envOverride map[string]str
 	}
 
 	return nil
+}
+
+// runControlScript runs a /bin/sh script via the given SSH client, streaming
+// output to the logger.
+func (bw *qemu) runControlScript(ctx context.Context, client *ssh.Client, cfg *Config, script string) error {
+	log := clog.FromContext(ctx)
+	stdout, stderr := logwriter.New(log.Info), logwriter.New(log.Warn)
+	defer stdout.Close()
+	defer stderr.Close()
+
+	return sendSSHCommand(ctx, client, cfg, nil, stderr, stdout, false, []string{"sh", "-c", script})
+}
+
+// SetupIsolation constructs the isolated filesystem view for a parallel
+// subpackage build. See Isolation for the resulting layout.
+func (bw *qemu) SetupIsolation(ctx context.Context, cfg *Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("qemu: SetupIsolation called without an isolation config")
+	}
+	return bw.runControlScript(ctx, cfg.SSHControlClient, cfg, qemuIsolationSetupScript(cfg.Isolation))
+}
+
+// CopyOutIsolation copies the isolated outputs back into the shared
+// melange-out/<subpkg> directory.
+func (bw *qemu) CopyOutIsolation(ctx context.Context, cfg *Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("qemu: CopyOutIsolation called without an isolation config")
+	}
+	user := ""
+	if cfg.SSHBuildClient != nil {
+		user = cfg.SSHBuildClient.User()
+	}
+	return bw.runControlScript(ctx, cfg.SSHControlClient, cfg, qemuIsolationCopyOutScript(cfg.Isolation, user))
+}
+
+// TeardownIsolation unmounts and removes the isolated filesystem view. It is
+// tolerant of a partially-constructed view.
+func (bw *qemu) TeardownIsolation(ctx context.Context, cfg *Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("qemu: TeardownIsolation called without an isolation config")
+	}
+	return bw.runControlScript(ctx, cfg.SSHControlClient, cfg, qemuIsolationTeardownScript(cfg.Isolation))
+}
+
+// The guest runs the build chrooted at /mount, so the control client sees the
+// isolation tree at /mount/<Isolation.BaseDir()> while the (already chrooted)
+// build client sees it at <Isolation.BaseDir()>.
+const qemuGuestMount = "/mount"
+
+// qemuIsolationSetupScript builds the shell script (run by the unchrooted
+// control client) that constructs the isolated filesystem view.
+func qemuIsolationSetupScript(iso *Isolation) string {
+	q := shellquote.Join
+	base := filepath.Join(qemuGuestMount, iso.BaseDir())
+	tmpDir := filepath.Join(base, "tmp")
+	upper := filepath.Join(tmpDir, "upper")
+	work := filepath.Join(tmpDir, "work")
+	outDir := filepath.Join(base, "out")
+	chrootRoot := filepath.Join(base, "root")
+	chrootHomeBuild := filepath.Join(chrootRoot, "home", "build")
+	chrootMelangeOut := filepath.Join(chrootHomeBuild, "melange-out")
+	chrootSubDir := filepath.Join(chrootMelangeOut, iso.SubpkgName)
+	chrootTmp := filepath.Join(chrootRoot, "tmp")
+
+	sharedMelangeOut := filepath.Join(qemuGuestMount, "home", "build", "melange-out")
+	sharedSubDir := filepath.Join(sharedMelangeOut, iso.SubpkgName)
+
+	lines := []string{
+		"set -e",
+		// Ensure the shared destination exists so it is visible in the read-only
+		// bind and can be used as the read-write bind mountpoint.
+		"mkdir -p " + q(sharedSubDir),
+		"mkdir -p " + q(tmpDir) + " " + q(outDir) + " " + q(chrootRoot),
+		// Private tmpfs backing the overlay upper layer.
+		"mount -t tmpfs tmpfs " + q(tmpDir),
+		"mkdir -p " + q(upper) + " " + q(work),
+		// Chroot root is a recursive bind of the guest rootfs so binaries/libs
+		// are available; /home/build and /tmp are then replaced below.
+		"mount --rbind " + q(qemuGuestMount) + " " + q(chrootRoot),
+		"mount --make-rslave " + q(chrootRoot),
+		// /home/build = overlay(upper=private tmpfs, lower=shared /home/build).
+		fmt.Sprintf("mount -t overlay overlay -o lowerdir=%s,upperdir=%s,workdir=%s %s",
+			filepath.Join(qemuGuestMount, "home", "build"), upper, work, q(chrootHomeBuild)),
+		// melange-out is a read-only view of the shared outputs at batch start.
+		"mount --bind " + q(sharedMelangeOut) + " " + q(chrootMelangeOut),
+		"mount -o remount,ro,bind " + q(chrootMelangeOut),
+		// This subpackage's own output dir is read-write, over the read-only bind.
+		"mount --bind " + q(outDir) + " " + q(chrootSubDir),
+		// Private /tmp so scratch files do not leak or collide.
+		"mount -t tmpfs tmpfs " + q(chrootTmp),
+	}
+	return strings.Join(lines, "\n")
+}
+
+// qemuIsolationCopyOutScript builds the shell script that copies the isolated
+// outputs back into the shared workspace and restores ownership.
+func qemuIsolationCopyOutScript(iso *Isolation, user string) string {
+	q := shellquote.Join
+	base := filepath.Join(qemuGuestMount, iso.BaseDir())
+	outDir := filepath.Join(base, "out")
+	sharedSubDir := filepath.Join(qemuGuestMount, "home", "build", "melange-out", iso.SubpkgName)
+
+	lines := []string{
+		"set -e",
+		"mkdir -p " + q(sharedSubDir),
+		"cp -a " + q(outDir+"/.") + " " + q(sharedSubDir+"/"),
+	}
+	if user != "" {
+		lines = append(lines, "chown -R "+q(user)+" "+q(sharedSubDir))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// qemuIsolationTeardownScript builds the shell script that unmounts and removes
+// the isolated filesystem view.
+func qemuIsolationTeardownScript(iso *Isolation) string {
+	q := shellquote.Join
+	base := filepath.Join(qemuGuestMount, iso.BaseDir())
+	lines := []string{
+		"umount -R " + q(filepath.Join(base, "root")) + " 2>/dev/null || true",
+		"umount -R " + q(filepath.Join(base, "tmp")) + " 2>/dev/null || true",
+		"rm -rf " + q(base),
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]string, args ...string) error {

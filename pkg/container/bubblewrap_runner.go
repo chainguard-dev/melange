@@ -37,7 +37,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-var _ Debugger = (*bubblewrap)(nil)
+var (
+	_ Debugger       = (*bubblewrap)(nil)
+	_ IsolatedRunner = (*bubblewrap)(nil)
+)
 
 const (
 	BubblewrapName = "bubblewrap"
@@ -125,7 +128,16 @@ func (bw *bubblewrap) cmd(ctx context.Context, cfg *Config, debug bool, envOverr
 	baseargs = append(baseargs, "--bind", cfg.ImgRef, "/")
 
 	for _, bind := range cfg.Mounts {
+		// For a parallel subpackage build the workspace bind is replaced by an
+		// overlay (see bubblewrapIsolationArgs) so writes to /home/build do not
+		// persist for or leak to other subpackages.
+		if cfg.Isolation != nil && bind.Destination == DefaultWorkspaceDir {
+			continue
+		}
 		baseargs = append(baseargs, "--bind", bind.Source, bind.Destination)
+	}
+	if cfg.Isolation != nil {
+		baseargs = append(baseargs, bubblewrapIsolationArgs(cfg)...)
 	}
 	// add the ref of the directory
 
@@ -257,6 +269,70 @@ func (bw *bubblewrap) TerminatePod(ctx context.Context, cfg *Config) error {
 // This is a noop for Bubblewrap, which uses bind-mounts to manage the workspace
 func (bw *bubblewrap) WorkspaceTar(ctx context.Context, cfg *Config, extraFiles []string) (io.ReadCloser, error) {
 	return nil, nil
+}
+
+// bubblewrapIsolationArgs returns the bwrap arguments that replace the workspace
+// bind with an isolated filesystem view for a parallel subpackage build:
+//   - /home/build is an overlay (lower = shared workspace, upper = private dir)
+//   - /home/build/melange-out is a read-only view of the shared outputs
+//   - /home/build/melange-out/<subpkg> is a read-write bind copied back later
+func bubblewrapIsolationArgs(cfg *Config) []string {
+	iso := cfg.Isolation
+	upper := filepath.Join(iso.BaseDir(), "upper")
+	work := filepath.Join(iso.BaseDir(), "work")
+	melangeOut := filepath.Join(cfg.WorkspaceDir, melangeOutDirName)
+	subDest := filepath.Join(DefaultWorkspaceDir, melangeOutDirName, iso.SubpkgName)
+
+	return []string{
+		"--overlay-src", cfg.WorkspaceDir,
+		"--overlay", upper, work, DefaultWorkspaceDir,
+		"--ro-bind", melangeOut, filepath.Join(DefaultWorkspaceDir, melangeOutDirName),
+		"--bind", iso.OutDir(), subDest,
+		"--tmpfs", "/tmp",
+	}
+}
+
+// SetupIsolation creates the host-side scratch directories for a parallel
+// subpackage build (bwrap runs on the host, so the isolation tree lives on the
+// host at Isolation.BaseDir()).
+func (bw *bubblewrap) SetupIsolation(ctx context.Context, cfg *Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("bubblewrap: SetupIsolation called without an isolation config")
+	}
+	iso := cfg.Isolation
+	for _, d := range []string{iso.OutDir(), filepath.Join(iso.BaseDir(), "upper"), filepath.Join(iso.BaseDir(), "work")} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			return fmt.Errorf("bubblewrap: creating isolation dir %s: %w", d, err)
+		}
+	}
+	return os.MkdirAll(filepath.Join(cfg.WorkspaceDir, melangeOutDirName, iso.SubpkgName), 0o755)
+}
+
+// CopyOutIsolation copies the isolated outputs back into the shared
+// melange-out/<subpkg> directory on the host.
+func (bw *bubblewrap) CopyOutIsolation(ctx context.Context, cfg *Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("bubblewrap: CopyOutIsolation called without an isolation config")
+	}
+	iso := cfg.Isolation
+	dst := filepath.Join(cfg.WorkspaceDir, melangeOutDirName, iso.SubpkgName)
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return err
+	}
+	// #nosec G204 - paths are derived from the workspace dir and a random isolation id, not user input
+	execCmd := exec.CommandContext(ctx, "cp", "-a", iso.OutDir()+"/.", dst+"/")
+	if out, err := execCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("bubblewrap: copying isolated outputs: %w: %s", err, string(out))
+	}
+	return nil
+}
+
+// TeardownIsolation removes the host-side isolation tree.
+func (bw *bubblewrap) TeardownIsolation(ctx context.Context, cfg *Config) error {
+	if cfg.Isolation == nil {
+		return fmt.Errorf("bubblewrap: TeardownIsolation called without an isolation config")
+	}
+	return os.RemoveAll(cfg.Isolation.BaseDir())
 }
 
 // GetReleaseData returns the OS information (os-release contents) for the Bubblewrap runner.

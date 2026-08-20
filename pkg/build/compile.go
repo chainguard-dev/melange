@@ -155,6 +155,10 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 		return fmt.Errorf("compiling %q pipelines: %w", cfg.Package.Name, err)
 	}
 
+	if err := c.CompilePipelines(ctx, sm, cfg.Finalize); err != nil {
+		return fmt.Errorf("compiling finalize %q: %w", cfg.Package.Name, err)
+	}
+
 	for i, sp := range cfg.Subpackages {
 		sm := sm.Subpackage(&sp)
 

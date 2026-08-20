@@ -281,6 +281,11 @@
 #Needs: close({
 	// A list of packages needed by this pipeline
 	Packages!: [...string]
+
+	// Optional: Linux capabilities needed by this pipeline. These are
+	// merged into the runner's capabilities configuration whenever the
+	// pipeline is used.
+	capabilities?: #Capabilities
 })
 
 // OCIMonitor indicates using OCI image tags

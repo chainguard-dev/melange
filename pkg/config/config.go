@@ -587,6 +587,9 @@ func (p Package) FullCopyright() string {
 type Needs struct {
 	// A list of packages needed by this pipeline
 	Packages []string
+	// Optional: Linux capabilities needed by this pipeline. These are merged
+	// into the runner's capabilities configuration whenever the pipeline is used.
+	Capabilities Capabilities `json:"capabilities,omitzero" yaml:"capabilities,omitempty"`
 }
 
 type PipelineAssertions struct {

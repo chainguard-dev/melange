@@ -111,6 +111,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Merge any capabilities this subpackage test needs into the runner.
+		mergeCapabilities(ctx, &t.Configuration.Capabilities, test.Capabilities)
 	}
 
 	if cfg.Test != nil {
@@ -136,6 +139,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Merge any capabilities the main package test needs into the runner.
+		mergeCapabilities(ctx, &t.Configuration.Capabilities, test.Capabilities)
 	}
 
 	return nil
@@ -188,10 +194,18 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Capabilities from test pipelines are intentionally not merged here:
+		// `melange build` never runs the test pipelines, so granting them to the
+		// build runner would only over-privilege it. They are applied by
+		// Test.Compile when the tests actually run under `melange test`.
 	}
 
 	ic := &b.Configuration.Environment.Contents
 	ic.Packages = append(ic.Packages, c.Needs...)
+
+	// Merge any capabilities the build pipelines need into the runner.
+	mergeCapabilities(ctx, &b.Configuration.Capabilities, c.Capabilities)
 
 	if cfg.Test != nil {
 		tc := newCompiled(b.PipelineDirs, opts)
@@ -208,6 +222,9 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Capabilities from test pipelines are intentionally not merged here;
+		// see the note in the subpackage test loop above.
 	}
 
 	return nil
@@ -216,6 +233,7 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 type Compiled struct {
 	PipelineDirs []string
 	Needs        []string
+	Capabilities config.Capabilities
 
 	// dependenciesOnly skips producing runnable `runs:` bodies. See
 	// WithDependenciesOnly.
@@ -370,6 +388,27 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	return nil
 }
 
+// mergeCapabilities folds the capabilities gathered from pipelines (src) into
+// the runner's capabilities configuration (dst), keeping each of the resulting
+// Add and Drop sets sorted and deduplicated. A capability that ends up in both
+// Add and Drop is a conflict the runners resolve inconsistently (under
+// bubblewrap the drop silently wins on flag order; docker/qemu decide
+// downstream), so it is surfaced as a warning at compile time.
+func mergeCapabilities(ctx context.Context, dst *config.Capabilities, src config.Capabilities) {
+	dst.Add = slices.Compact(slices.Sorted(slices.Values(append(dst.Add, src.Add...))))
+	dst.Drop = slices.Compact(slices.Sorted(slices.Values(append(dst.Drop, src.Drop...))))
+
+	var conflicts []string
+	for _, c := range dst.Add {
+		if slices.Contains(dst.Drop, c) {
+			conflicts = append(conflicts, c)
+		}
+	}
+	if len(conflicts) > 0 {
+		clog.FromContext(ctx).Warnf("capabilities %v are both added and dropped; the runner decides which wins", conflicts)
+	}
+}
+
 // readUses reads the definition named by uses from the configured pipeline
 // directories, falling back to the ones built into melange.
 func (c *Compiled) readUses(ctx context.Context, uses string) ([]byte, error) {
@@ -433,6 +472,18 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 			log.Debugf("  adding package %q for pipeline %q", pkg, id)
 		}
 		c.Needs = append(c.Needs, pipeline.Needs.Packages...)
+
+		// Widening the sandbox is more consequential than adding a package, so
+		// surface it at Info (not Debug like packages above).
+		caps := pipeline.Needs.Capabilities
+		if len(caps.Add) > 0 {
+			log.Infof("pipeline %q adds capabilities %v to the runner", id, caps.Add)
+		}
+		if len(caps.Drop) > 0 {
+			log.Infof("pipeline %q drops capabilities %v from the runner", id, caps.Drop)
+		}
+		c.Capabilities.Add = append(c.Capabilities.Add, caps.Add...)
+		c.Capabilities.Drop = append(c.Capabilities.Drop, caps.Drop...)
 
 		pipeline.Needs = nil
 	}

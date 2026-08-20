@@ -4,6 +4,10 @@ needs:
   packages:
     - busybox
     - ${{inputs.package}}
+  capabilities:
+    add:
+      # xcover attaches BPF uprobes to the profiled interpreter.
+      - CAP_SYS_ADMIN
 
 inputs:
   package:

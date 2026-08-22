@@ -301,7 +301,7 @@ func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 	providedDepsMap := map[string]bool{}
 
 	for _, versionedDep := range providedDeps {
-		dep := strings.Split(versionedDep, "=")[0]
+		dep, _, _ := strings.Cut(versionedDep, "=")
 		providedDepsMap[dep] = true
 	}
 

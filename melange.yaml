@@ -12,6 +12,8 @@ package:
       - bubblewrap
 
 environment:
+  environment:
+    - GOTOOLCHAIN: auto
   contents:
     repositories:
       - https://dl-cdn.alpinelinux.org/alpine/edge/main

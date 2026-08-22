@@ -193,9 +193,7 @@ func (bw *qemu) Debug(ctx context.Context, cfg *Config, envOverride map[string]s
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(cfg.SSHKey),
 		},
-		Config: ssh.Config{
-			Ciphers: []string{"aes128-gcm@openssh.com"},
-		},
+		Ciphers:         []string{"aes128-gcm@openssh.com"},
 		HostKeyCallback: hostKeyCallback,
 	}
 
@@ -439,8 +437,7 @@ func (bw *qemu) TerminatePod(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		// ExitMissingError is expected when the VM powers off abruptly before
 		// the SSH channel can return a clean exit status. Don't log this as an error.
-		var missingErr *ssh.ExitMissingError
-		if !errors.As(err, &missingErr) {
+		if _, ok := errors.AsType[*ssh.ExitMissingError](err); !ok {
 			log.Warnf("qemu: graceful shutdown command failed: %v", err)
 		}
 	}
@@ -1229,9 +1226,7 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(cfg.SSHKey),
 		},
-		Config: ssh.Config{
-			Ciphers: []string{"aes128-gcm@openssh.com"},
-		},
+		Ciphers:         []string{"aes128-gcm@openssh.com"},
 		HostKeyCallback: hostKeyCallback,
 	}
 
@@ -1241,9 +1236,7 @@ func setupSSHClients(ctx context.Context, cfg *Config) error {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(cfg.SSHKey),
 		},
-		Config: ssh.Config{
-			Ciphers: []string{"aes128-gcm@openssh.com"},
-		},
+		Ciphers:         []string{"aes128-gcm@openssh.com"},
 		HostKeyCallback: hostKeyCallback,
 	}
 
@@ -1587,9 +1580,7 @@ func getHostKey(ctx context.Context, cfg *Config) error {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(cfg.SSHKey),
 		},
-		Config: ssh.Config{
-			Ciphers: []string{"aes128-gcm@openssh.com"},
-		},
+		Ciphers:         []string{"aes128-gcm@openssh.com"},
 		HostKeyCallback: ssh.FixedHostKey(cfg.VMHostKeyPublic),
 	}
 
@@ -1689,8 +1680,7 @@ func sendSSHCommand(ctx context.Context, client *ssh.Client,
 	if err != nil {
 		// ExitMissingError is expected when the SSH channel closes abruptly
 		// (e.g., when the VM powers off). Don't log it as an error.
-		var missingErr *ssh.ExitMissingError
-		if !errors.As(err, &missingErr) {
+		if _, ok := errors.AsType[*ssh.ExitMissingError](err); !ok {
 			clog.FromContext(ctx).Errorf("Failed to run command %q: %v", cmd, err)
 		}
 		return err

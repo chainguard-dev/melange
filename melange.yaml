@@ -13,7 +13,7 @@ package:
 
 environment:
   environment:
-    - GOTOOLCHAIN: auto
+    GOTOOLCHAIN: auto
   contents:
     repositories:
       - https://dl-cdn.alpinelinux.org/alpine/edge/main

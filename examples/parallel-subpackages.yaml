@@ -1,0 +1,74 @@
+package:
+  name: parallel-subpackages
+  version: 0.0.1
+  epoch: 0
+  description: exercises parallel subpackage builds and their isolated filesystem view
+
+# Cap concurrency so the batching + limit path is exercised as well.
+max-parallel-subpackages: 2
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - busybox
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.destdir}}"
+      echo "from-main" > "${{targets.destdir}}/main-output"
+
+subpackages:
+  # First batch: three parallel subpackages built concurrently. Each writes a
+  # distinct file to its own subpkgdir; none may see the others' writes.
+  - name: parallel-a
+    parallel: true
+    description: writes its own file in isolation
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}"
+          echo "a" > "${{targets.subpkgdir}}/a"
+
+  - name: parallel-b
+    parallel: true
+    description: writes its own file in isolation
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}"
+          echo "b" > "${{targets.subpkgdir}}/b"
+
+  - name: parallel-reads-main
+    parallel: true
+    description: reads the main package output read-only from melange-out
+    pipeline:
+      - runs: |
+          # The main package output is visible read-only in melange-out.
+          got=$(cat "${{targets.outdir}}/parallel-subpackages/main-output")
+          [ "$got" = "from-main" ] || { echo "unexpected main output: $got"; exit 1; }
+          mkdir -p "${{targets.subpkgdir}}"
+          echo "$got" > "${{targets.subpkgdir}}/copied-from-main"
+
+  # Synchronization barrier: a non-parallel subpackage. It runs after the batch
+  # above completes and its output is copied into melange-out before the next
+  # batch starts.
+  - name: sync-barrier
+    description: sequential subpackage acting as a batch barrier
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}"
+          echo "barrier" > "${{targets.subpkgdir}}/barrier"
+
+  # Second batch: a parallel subpackage that reads a prior batch's output. All
+  # of melange-out as it stood at batch start is visible read-only.
+  - name: parallel-reads-prior
+    parallel: true
+    description: reads a prior batch's output read-only
+    pipeline:
+      - runs: |
+          got=$(cat "${{targets.outdir}}/sync-barrier/barrier")
+          [ "$got" = "barrier" ] || { echo "unexpected prior output: $got"; exit 1; }
+          mkdir -p "${{targets.subpkgdir}}"
+          echo "$got" > "${{targets.subpkgdir}}/copied-from-prior"

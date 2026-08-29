@@ -1,0 +1,25 @@
+global:
+  runner: bubblewrap
+  signing-key: local-signing.rsa
+  keyring-append:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+  repository-append:
+    - https://packages.wolfi.dev/os
+  arch:
+    - x86_64
+    - aarch64
+  out-dir: ./packages/
+  cache-dir: ./melange-cache/
+  namespace: wolfi
+  debug: true
+
+build:
+  runner: qemu
+  lint-require:
+    - dev
+    - opt
+  generate-index: false
+
+test:
+  test-package-append:
+    - wolfi-base

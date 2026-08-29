@@ -1,0 +1,111 @@
+# Example demonstrating retry functionality in melange pipelines
+#
+# This example shows how to use retry configuration to handle transient failures
+# such as network issues, flaky tests, or resource contention.
+
+package:
+  name: retry-example
+  version: 1.0.0
+  epoch: 0
+  description: Example package demonstrating retry functionality
+  copyright:
+    - license: MIT
+
+environment:
+  contents:
+    packages:
+      - busybox
+      - curl
+      - bash
+
+pipeline:
+  # Example 1: Simple retry on a flaky test command
+  # This pipeline will retry up to 3 times if the test fails
+  - name: flaky-test-simple
+    retry:
+      attempts: 3
+    runs: |
+      echo "Running flaky test..."
+      # Simulate a flaky test that might randomly fail
+      if [ $((RANDOM % 3)) -eq 0 ]; then
+        echo "Test passed!"
+      else
+        echo "Test failed!"
+        exit 1
+      fi
+
+  # Example 2: Retry with custom exponential backoff
+  # This is useful for network operations that might fail due to temporary issues
+  - name: fetch-with-retry
+    retry:
+      attempts: 5
+      backoff: exponential
+      initial-delay: 2s
+      max-delay: 30s
+    runs: |
+      echo "Attempting to fetch remote resource..."
+      # Simulate a network fetch that might fail
+      curl --fail --max-time 10 https://example.com/resource || exit 1
+
+  # Example 3: Retry with linear backoff
+  # Linear backoff increases the delay by a fixed amount each time
+  - name: database-operation
+    retry:
+      attempts: 4
+      backoff: linear
+      initial-delay: 1s
+      max-delay: 10s
+    runs: |
+      echo "Connecting to database..."
+      # Simulate a database operation
+      sleep 1
+      echo "Database operation complete"
+
+  # Example 4: Retry with constant backoff
+  # Constant backoff uses the same delay between all retry attempts
+  - name: api-request
+    retry:
+      attempts: 3
+      backoff: constant
+      initial-delay: 5s
+      max-delay: 60s
+    runs: |
+      echo "Making API request..."
+      # Simulate an API request
+      sleep 1
+      echo "API request successful"
+
+  # Example 5: Retry wrapping multiple pipeline steps
+  # All steps in the nested pipeline will be retried together
+  - name: build-and-test-with-retry
+    retry:
+      attempts: 3
+      backoff: exponential
+      initial-delay: 1s
+      max-delay: 60s
+    pipeline:
+      - name: configure
+        runs: |
+          echo "Configuring build..."
+          # Simulate configuration
+          sleep 1
+
+      - name: compile
+        runs: |
+          echo "Compiling source..."
+          # Simulate compilation
+          sleep 1
+
+      - name: test
+        runs: |
+          echo "Running tests..."
+          # Simulate tests
+          sleep 1
+          echo "All tests passed!"
+
+  # Example 6: No retry (default behavior)
+  # If retry is not specified, the pipeline runs once without retries
+  - name: simple-command
+    runs: |
+      echo "This command runs once without retries"
+      echo "Build complete!"

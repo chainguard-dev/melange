@@ -54,6 +54,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(buildCmd())
 	cmd.AddCommand(initramfsCmd())
 	cmd.AddCommand(bumpCmd())
+	cmd.AddCommand(compareVersions())
 	cmd.AddCommand(completion())
 	cmd.AddCommand(compile())
 	cmd.AddCommand(indexCmd())

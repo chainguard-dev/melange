@@ -485,7 +485,7 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 				_, err := apk.ParseVersion(providedVersion)
 				// If we're able to parse the version,
 				// then it's a valid one.
-				return err != nil
+				return err == nil
 			}) {
 				return installedPackageVersionString, nil
 			}

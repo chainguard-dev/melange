@@ -44,6 +44,16 @@ func Test_removeSelfProvidedDeps_WithoutVersionedProvides(t *testing.T) {
 	require.Equal(t, final[0], "so:libbaz.so.4", "remaining depend should be so:libbaz.so.4")
 }
 
+func Test_removeSelfProvidedDeps_KeepsSoVerConstraint(t *testing.T) {
+	provides := []string{"so:libfoo.so.3=3", "so-ver:libfoo.so.3=1.2.3-r0"}
+	depends := []string{"so:libc.so.6", "so-ver:libc.so.6>=2.42-r0", "so:libfoo.so.3", "so-ver:libfoo.so.3>=1.2.3-r0"}
+
+	final := removeSelfProvidedDeps(depends, provides)
+
+	require.Equal(t, []string{"so:libc.so.6", "so-ver:libc.so.6>=2.42-r0"}, final,
+		"self-provided deps should be dropped and the so-ver constraint preserved")
+}
+
 func Test_removeSelfProvidedDeps_WithEmptyProvides(t *testing.T) {
 	provides := []string{}
 	depends := []string{"so:libbaz.so.4", "so:libfoo.so.3"}

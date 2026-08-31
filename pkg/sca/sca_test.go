@@ -150,6 +150,60 @@ func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile strin
 	}
 }
 
+func TestVersionedShlibDepsEnabled(t *testing.T) {
+	yes, no := true, false
+	on := "1"
+
+	for _, tc := range []struct {
+		name string
+		// nil means MELANGE_VERSIONED_SHLIB_DEPENDS is unset.
+		flag *string
+		opts config.PackageOption
+		want bool
+	}{{
+		name: "disabled by default",
+		want: false,
+	}, {
+		name: "enabled by the feature flag",
+		flag: &on,
+		want: true,
+	}, {
+		name: "opted in without the feature flag",
+		opts: config.PackageOption{VersionedShlibDeps: &yes},
+		want: true,
+	}, {
+		name: "opted out despite the feature flag",
+		flag: &on,
+		opts: config.PackageOption{VersionedShlibDeps: &no},
+		want: false,
+	}, {
+		name: "opt in wins over the legacy opt out",
+		opts: config.PackageOption{VersionedShlibDeps: &yes, NoVersionedShlibDeps: true},
+		want: true,
+	}, {
+		name: "legacy opt out disables the feature flag",
+		flag: &on,
+		opts: config.PackageOption{NoVersionedShlibDeps: true},
+		want: false,
+	}, {
+		name: "legacy opt out cannot opt in",
+		opts: config.PackageOption{NoVersionedShlibDeps: false},
+		want: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.flag != nil {
+				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", *tc.flag)
+			} else {
+				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", "")
+			}
+
+			if got := versionedShlibDepsEnabled(tc.opts); got != tc.want {
+				t.Errorf("versionedShlibDepsEnabled() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestExecableSharedObjects(t *testing.T) {
 	ctx := slogtest.Context(t)
 	th := handleFromApk(ctx, t, "libcap-2.69-r0.apk", "libcap.yaml")

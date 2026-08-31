@@ -386,6 +386,13 @@
 
 	// Optional: Don't generate versioned depends for shared libraries
 	"no-versioned-shlib-deps"?: bool
+
+	// Optional: Explicitly opt in to (true) or out of (false)
+	// generating versioned depends for shared libraries. When set,
+	// this takes precedence over both the
+	// MELANGE_VERSIONED_SHLIB_DEPENDS environment variable and
+	// no-versioned-shlib-deps.
+	"versioned-shlib-deps"?: bool
 })
 
 #PathMutation: close({

@@ -324,6 +324,28 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 	return "", "", nil
 }
 
+// versionedShlibDepsEnabled reports whether versioned shared library
+// "depends:" should be generated for the package being built.
+//
+// The per-package "versioned-shlib-deps" option, when set, has the
+// final say: it can opt a package in while the global feature flag is
+// still off, and opt one out while the flag is on.  When it is unset we
+// fall back to the MELANGE_VERSIONED_SHLIB_DEPENDS feature flag, which
+// the older "no-versioned-shlib-deps" option can only turn off.
+func versionedShlibDepsEnabled(opts config.PackageOption) bool {
+	if opts.VersionedShlibDeps != nil {
+		return *opts.VersionedShlibDeps
+	}
+
+	// Feature flag to disable versioned shlib dependencies.
+	if os.Getenv("MELANGE_VERSIONED_SHLIB_DEPENDS") == "" {
+		return false
+	}
+
+	// This package does not care about versioned shlib depends.
+	return !opts.NoVersionedShlibDeps
+}
+
 // determineShlibVersion tries to determine the exact version of the
 // package that provides the shared library shlib.  It does that by:
 //
@@ -350,14 +372,7 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (string, error) {
 	log := clog.FromContext(ctx)
 
-	// Feature flag to disable versioned shlib dependencies.
-	if os.Getenv("MELANGE_VERSIONED_SHLIB_DEPENDS") == "" {
-		return "", nil
-	}
-
-	if hdl.Options().NoVersionedShlibDeps {
-		// This package does not care about versioned shlib
-		// depends.
+	if !versionedShlibDepsEnabled(hdl.Options()) {
 		return "", nil
 	}
 

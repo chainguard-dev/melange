@@ -83,6 +83,7 @@ jobs:
           - fping # uses get/setcaps
           - gitsign
           - guac
+          - jq # built with MELANGE_VERSIONED_SHLIB_DEPENDS=1 to exercise so-ver: depends
           - lzo
           - ncurses
           - perl-yaml-syck
@@ -204,8 +205,15 @@ jobs:
       - if: matrix.runner == 'bubblewrap'
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
+          # Build jq with versioned shared library depends enabled, so that
+          # the presubmit demonstrates so-ver: dependency generation on a
+          # real package.  melange runs under sudo here, which resets the
+          # environment, so the variable is handed to env(1) instead of being
+          # set in the step environment.  Empty means "off", which is how
+          # melange reads an unset variable.
+          MELANGE_SUDO_ENV: ${{ matrix.package == 'jq' && 'env MELANGE_VERSIONED_SHLIB_DEPENDS=1' || '' }}
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/"${MATRIX_PACKAGE}"
+          make SHELL="/bin/bash" MELANGE="sudo ${MELANGE_SUDO_ENV} melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/"${MATRIX_PACKAGE}"
       - if: matrix.runner == 'bubblewrap'
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
@@ -237,6 +245,9 @@ jobs:
         if: matrix.runner == 'qemu'
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
+          # See the note on the bubblewrap build step.  melange is not run
+          # under sudo here, so the step environment reaches it directly.
+          MELANGE_VERSIONED_SHLIB_DEPENDS: ${{ matrix.package == 'jq' && '1' || '' }}
         run: |
           make \
             SHELL="/bin/bash" \
@@ -290,6 +301,33 @@ jobs:
             sudo tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/
           done
           ls -hal packages/x86_64/usr/bin/sudo
+
+      - name: Check package ${{ matrix.package }} for versioned shared library depends
+        if: matrix.package == 'jq'
+        run: |
+          # jq links libonig and libc, and both providers publish versioned
+          # so-ver: provides, so building with
+          # MELANGE_VERSIONED_SHLIB_DEPENDS=1 should have produced matching
+          # versioned depends, e.g.:
+          #
+          #   depend = so:libonig.so.5
+          #   depend = so-ver:libonig.so.5>=6.9.10-r4
+          #
+          # ld-linux-*.so is deliberately excluded from versioned depends, so
+          # it stays unversioned.
+          found=0
+          for pkg in packages/x86_64/jq-*.apk; do
+            echo "=== ${pkg} ==="
+            depends="$(tar -Oxzf "${pkg}" .PKGINFO 2>/dev/null | grep '^depend = ' || true)"
+            echo "${depends:-(no depends)}"
+            if echo "${depends}" | grep -q '^depend = so-ver:'; then
+              found=1
+            fi
+          done
+          if [ "${found}" -ne 1 ]; then
+            echo "::error::MELANGE_VERSIONED_SHLIB_DEPENDS=1 produced no so-ver: depends for jq"
+            exit 1
+          fi
 
       - name: Test installable and Scan for CVEs
         env:

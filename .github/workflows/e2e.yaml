@@ -33,12 +33,19 @@ jobs:
           - melange.yaml # special; builds melange itself
 
     container:
-      image: alpine:latest
+      image: alpine:latest@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
       options: |
         --cap-add NET_ADMIN --cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor:unconfined
 
+    # alpine has no bash, so the default 'bash' shell already falls back to sh.
+    # Say so explicitly, so shellcheck lints these scripts as the shell that
+    # actually runs them.
+    defaults:
+      run:
+        shell: sh
+
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: audit
 
@@ -63,11 +70,11 @@ jobs:
         env:
           MATRIX_CFG: ${{ matrix.cfg }}
         run: |
-          path=examples/$MATRIX_CFG
-          if [ "$MATRIX_CFG" == "melange.yaml" ]; then
+          path="examples/${MATRIX_CFG}"
+          if [ "${MATRIX_CFG}" = "melange.yaml" ]; then
             path="melange.yaml"
           fi
-          ./melange build "$path" --arch=x86_64 --namespace=wolfi
+          ./melange build "${path}" --arch=x86_64 --namespace=wolfi
 
       - name: Rebuild package
         run: |

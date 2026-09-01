@@ -8,6 +8,9 @@ spec:
         identities:
           - issuer: https://accounts.google.com
           - issuer: https://github.com/login/oauth
+          # allow the digest bump commits gitsign-signed by the digestabot workflow
+          - issuer: https://token.actions.githubusercontent.com
+            subject: https://github.com/chainguard-dev/melange/.github/workflows/digestabot.yaml@refs/heads/main
     - key:
         # allow commits signed by GitHub, e.g. the UI
         kms: https://github.com/web-flow.gpg

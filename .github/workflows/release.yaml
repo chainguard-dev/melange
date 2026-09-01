@@ -18,7 +18,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -56,18 +56,18 @@ jobs:
         run: |
           git fetch --tags  # no creds needed: repo is public; if this ever goes private, pass token explicitly here
           TAG=$(git tag --points-at HEAD)
-          if [ -z "$TAG" ]; then
+          if [[ -z "${TAG}" ]]; then
             echo "No tag points at HEAD, so we need a new tag and then a new release."
-            echo "need_release=yes" >> "$GITHUB_OUTPUT"
+            echo "need_release=yes" >> "${GITHUB_OUTPUT}"
           else
-            RELEASE=$(gh release view "$TAG" --json tagName --jq '.tagName' || echo "none")
-            if [ "$RELEASE" == "$TAG" ]; then
-              echo "A release exists for tag $TAG, which has the latest changes, so no need for a new tag or release."
-              echo "need_release=no" >> "$GITHUB_OUTPUT"
+            RELEASE=$(gh release view "${TAG}" --json tagName --jq '.tagName' || echo "none")
+            if [[ "${RELEASE}" == "${TAG}" ]]; then
+              echo "A release exists for tag ${TAG}, which has the latest changes, so no need for a new tag or release."
+              echo "need_release=no" >> "${GITHUB_OUTPUT}"
             else
-              echo "Tag $TAG exists, but no release is associated. Need a new release."
-              echo "need_release=yes" >> "$GITHUB_OUTPUT"
-              echo "existing_tag=$TAG" >> "$GITHUB_OUTPUT"
+              echo "Tag ${TAG} exists, but no release is associated. Need a new release."
+              echo "need_release=yes" >> "${GITHUB_OUTPUT}"
+              echo "existing_tag=${TAG}" >> "${GITHUB_OUTPUT}"
             fi
           fi
 
@@ -89,6 +89,9 @@ jobs:
         with:
           go-version-file: "./go.mod"
           check-latest: true
+          # Release artifacts are published from this job, so don't let a
+          # cache restored from another ref influence what goreleaser builds.
+          cache: false
 
       # Cosign is used by goreleaser to sign release artifacts.
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2

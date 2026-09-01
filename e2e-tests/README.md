@@ -11,3 +11,9 @@ Melange options are based on yaml file name.
     If the yaml file name matches '*-nopkg', then the flag `--test-package-append`
     will be appended for `busybox` and `python-3`.  The intent of these tests
     is to verify that the test-package-append works.
+
+CI discovers these files automatically and runs each one in its own job, so
+they must not depend on artifacts produced by any of the others. To run a
+subset locally:
+
+    make test-e2e-pipelines E2E_TESTS="greeter-build-test.yaml"

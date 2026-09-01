@@ -155,7 +155,7 @@ func EmitSignature(signer ApkSigner, controlData []byte, sde time.Time) ([]byte,
 	return sigbuf.Bytes(), nil
 }
 
-// Key base signature (normal) uses a SHA-1 hash on the control digest.
+// Key base signature (normal) uses a SHA-256 hash on the control digest.
 type KeyApkSigner struct {
 	KeyFile       string
 	KeyPassphrase string

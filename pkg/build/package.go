@@ -296,16 +296,12 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	return buf.Bytes(), nil
 }
 
-func (pc *PackageBuild) SignatureName() string {
-	return fmt.Sprintf(".SIGN.RSA.%s.pub", filepath.Base(pc.Build.SigningKey))
-}
-
 // removeSelfProvidedDeps removes dependencies which are provided by the package itself.
 func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 	providedDepsMap := map[string]bool{}
 
 	for _, versionedDep := range providedDeps {
-		dep := strings.Split(versionedDep, "=")[0]
+		dep, _, _ := strings.Cut(versionedDep, "=")
 		providedDepsMap[dep] = true
 	}
 

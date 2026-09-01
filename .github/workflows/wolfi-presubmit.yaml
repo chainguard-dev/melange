@@ -17,7 +17,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -95,7 +95,7 @@ jobs:
           - tini
 
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -176,7 +176,7 @@ jobs:
       - env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
         run: |
-          sudo mv "$GITHUB_WORKSPACE"/.melange-dir/melange /usr/bin/melange
+          sudo mv "${GITHUB_WORKSPACE}"/.melange-dir/melange /usr/bin/melange
           sudo chmod a+x /usr/bin/melange
           melange version
 
@@ -189,7 +189,7 @@ jobs:
       - env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
-          wolfictl bump "$MATRIX_PACKAGE"
+          wolfictl bump "${MATRIX_PACKAGE}"
 
       - if: matrix.runner == 'bubblewrap'
         run: |
@@ -205,18 +205,18 @@ jobs:
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/"$MATRIX_PACKAGE"
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/"${MATRIX_PACKAGE}"
       - if: matrix.runner == 'bubblewrap'
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="docker" test/"$MATRIX_PACKAGE"
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="docker" test/"${MATRIX_PACKAGE}"
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
         run: |
           KERNEL_PKG="$(curl -sL https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$1 == "P" {printf "%s-", $2} $1 == "V" {printf "%s.apk\n", $2}' | grep "linux-virt" | grep -v dev)"
-          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/$KERNEL_PKG"
+          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/${KERNEL_PKG}"
           mkdir -p /tmp/kernel
           tar -xf ./linux-virt.apk -C /tmp/kernel/
 
@@ -244,7 +244,7 @@ jobs:
             QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
             MELANGE="/usr/bin/melange" \
             MELANGE_EXTRA_OPTS="--runner qemu --generate-provenance" \
-            package/"$MATRIX_PACKAGE"
+            package/"${MATRIX_PACKAGE}"
 
       - name: Output SLSA provenance
         run: |
@@ -260,7 +260,7 @@ jobs:
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" test/"$MATRIX_PACKAGE"
+          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" test/"${MATRIX_PACKAGE}"
 
       - name: Run tests with QEMU runner
         if: matrix.runner == 'qemu'
@@ -273,7 +273,7 @@ jobs:
             QEMU_KERNEL_MODULES=/tmp/kernel/lib/modules/ \
             MELANGE="/usr/bin/melange" \
             MELANGE_EXTRA_OPTS="--runner qemu" \
-            test/"$MATRIX_PACKAGE"
+            test/"${MATRIX_PACKAGE}"
 
       - name: Check package ${{ matrix.package }} xattrs for QEMU-built package
         if: matrix.runner == 'qemu' && matrix.package == 'fping'
@@ -295,17 +295,20 @@ jobs:
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
-          if [[ "$MATRIX_PACKAGE" == "fping" ]]; then
-            docker run --rm -v "$(pwd)":/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/$MATRIX_PACKAGE-*.apk; apk add libcap-utils; getcap /usr/sbin/fping"
-          elif [[ "$MATRIX_PACKAGE" == "sudo" ]]; then
-            docker run --rm -v "$(pwd)":/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/$MATRIX_PACKAGE-*.apk; ls -hal /usr/bin/sudo"
-          elif [[ "$MATRIX_PACKAGE" == "postfix" ]]; then
-            docker run --rm -v "$(pwd)":/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/$MATRIX_PACKAGE-*.apk; ls -hal /var/spool/postfix; ls -hal /var/lib/postfix"
-          else
-            docker run --rm -v "$(pwd)":/work --workdir /work cgr.dev/chainguard/wolfi-base /bin/sh -c "sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/$MATRIX_PACKAGE-*.apk"
-          fi
+          # Install the package we just built, then run a package-specific
+          # check that its mode bits / xattrs / directories survived.
+          install="sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${MATRIX_PACKAGE}-*.apk"
+          case "${MATRIX_PACKAGE}" in
+            fping)   verify="apk add libcap-utils; getcap /usr/sbin/fping";;
+            sudo)    verify="ls -hal /usr/bin/sudo";;
+            postfix) verify="ls -hal /var/spool/postfix; ls -hal /var/lib/postfix";;
+            *)       verify="true";;
+          esac
+          docker run --rm -v "${PWD}":/work --workdir /work \
+            cgr.dev/chainguard/wolfi-base /bin/sh -c "${install}; ${verify}"
+
           # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
           # Do this outside of the loop in one invocation with every package.
           wolfictl scan \
-          packages/x86_64/"$MATRIX_PACKAGE"-*.apk \
+          packages/x86_64/"${MATRIX_PACKAGE}"-*.apk \
           2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.

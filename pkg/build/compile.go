@@ -106,14 +106,15 @@ func (t *Test) Compile(ctx context.Context) error {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
 
-		// Append anything this subpackage test needs.
+		// Append anything this subpackage test needs. Packages and capabilities
+		// are scoped to this subpackage's test container, not shared across
+		// every test in the configuration.
 		te.Packages = append(te.Packages, test.Needs...)
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 
-		// Merge any capabilities this subpackage test needs into the runner.
-		mergeCapabilities(ctx, &t.Configuration.Capabilities, test.Capabilities)
+		addCapabilities(&cfg.Subpackages[i].Test.Capabilities, test.Capabilities)
 	}
 
 	if cfg.Test != nil {
@@ -140,8 +141,7 @@ func (t *Test) Compile(ctx context.Context) error {
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 
-		// Merge any capabilities the main package test needs into the runner.
-		mergeCapabilities(ctx, &t.Configuration.Capabilities, test.Capabilities)
+		addCapabilities(&t.Configuration.Test.Capabilities, test.Capabilities)
 	}
 
 	return nil
@@ -195,17 +195,18 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
 
-		// Capabilities from test pipelines are intentionally not merged here:
+		// Capabilities from test pipelines are intentionally not applied here:
 		// `melange build` never runs the test pipelines, so granting them to the
-		// build runner would only over-privilege it. They are applied by
-		// Test.Compile when the tests actually run under `melange test`.
+		// build runner would only over-privilege it. Test.Compile scopes them to
+		// each test's runner under `melange test`.
 	}
 
 	ic := &b.Configuration.Environment.Contents
 	ic.Packages = append(ic.Packages, c.Needs...)
 
-	// Merge any capabilities the build pipelines need into the runner.
-	mergeCapabilities(ctx, &b.Configuration.Capabilities, c.Capabilities)
+	// Capabilities needed by the build pipelines apply to the build runner.
+	addCapabilities(&b.Configuration.Capabilities, c.Capabilities)
+	warnCapabilityConflicts(ctx, b.Configuration.Capabilities)
 
 	if cfg.Test != nil {
 		tc := newCompiled(b.PipelineDirs, opts)
@@ -222,9 +223,6 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
-
-		// Capabilities from test pipelines are intentionally not merged here;
-		// see the note in the subpackage test loop above.
 	}
 
 	return nil
@@ -233,7 +231,10 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 type Compiled struct {
 	PipelineDirs []string
 	Needs        []string
-	Capabilities config.Capabilities
+	// Capabilities are the Linux capabilities the compiled pipelines request be
+	// added to their runner. Pipelines can only add capabilities, so this is a
+	// plain add-list rather than an add/drop pair.
+	Capabilities []string
 
 	// dependenciesOnly skips producing runnable `runs:` bodies. See
 	// WithDependenciesOnly.
@@ -388,19 +389,24 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	return nil
 }
 
-// mergeCapabilities folds the capabilities gathered from pipelines (src) into
-// the runner's capabilities configuration (dst), keeping each of the resulting
-// Add and Drop sets sorted and deduplicated. A capability that ends up in both
-// Add and Drop is a conflict the runners resolve inconsistently (under
-// bubblewrap the drop silently wins on flag order; docker/qemu decide
-// downstream), so it is surfaced as a warning at compile time.
-func mergeCapabilities(ctx context.Context, dst *config.Capabilities, src config.Capabilities) {
-	dst.Add = slices.Compact(slices.Sorted(slices.Values(append(dst.Add, src.Add...))))
-	dst.Drop = slices.Compact(slices.Sorted(slices.Values(append(dst.Drop, src.Drop...))))
+// addCapabilities folds the capabilities gathered from pipelines (adds) into
+// the Add set of the runner's capabilities configuration (dst), sorting and
+// deduplicating the result. It leaves dst untouched when there is nothing to
+// add.
+func addCapabilities(dst *config.Capabilities, adds []string) {
+	if len(adds) == 0 {
+		return
+	}
+	dst.Add = slices.Compact(slices.Sorted(slices.Values(append(dst.Add, adds...))))
+}
 
+// warnCapabilityConflicts warns when a capability ends up in both the Add and
+// Drop sets, which the runners resolve inconsistently (under bubblewrap the
+// drop silently wins on flag order; docker/qemu decide downstream).
+func warnCapabilityConflicts(ctx context.Context, caps config.Capabilities) {
 	var conflicts []string
-	for _, c := range dst.Add {
-		if slices.Contains(dst.Drop, c) {
+	for _, c := range caps.Add {
+		if slices.Contains(caps.Drop, c) {
 			conflicts = append(conflicts, c)
 		}
 	}
@@ -475,15 +481,13 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 
 		// Widening the sandbox is more consequential than adding a package, so
 		// surface it at Info (not Debug like packages above).
-		caps := pipeline.Needs.Capabilities
-		if len(caps.Add) > 0 {
-			log.Infof("pipeline %q adds capabilities %v to the runner", id, caps.Add)
+		if adds := pipeline.Needs.Capabilities.Add; len(adds) > 0 {
+			if err := pipeline.Needs.Capabilities.Validate(); err != nil {
+				return fmt.Errorf("pipeline %q: %w", id, err)
+			}
+			log.Infof("pipeline %q adds capabilities %v to the runner", id, adds)
+			c.Capabilities = append(c.Capabilities, adds...)
 		}
-		if len(caps.Drop) > 0 {
-			log.Infof("pipeline %q drops capabilities %v from the runner", id, caps.Drop)
-		}
-		c.Capabilities.Add = append(c.Capabilities.Add, caps.Add...)
-		c.Capabilities.Drop = append(c.Capabilities.Drop, caps.Drop...)
 
 		pipeline.Needs = nil
 	}

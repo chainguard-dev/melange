@@ -24,7 +24,7 @@ needs:
     - wget
 ```
 
-A pipeline can also declare the Linux capabilities it needs, which are merged into the runner running the pipeline. For example, a pipeline that attaches BPF probes needs `CAP_SYS_ADMIN`:
+A pipeline can also declare the Linux capabilities it needs added to its runner. Only additions are supported: a pipeline states what it requires, it cannot drop a capability from the other steps sharing its container. For example, a pipeline that attaches BPF probes needs `CAP_SYS_ADMIN`:
 
 ```yaml
 needs:
@@ -33,7 +33,7 @@ needs:
       - CAP_SYS_ADMIN
 ```
 
-Capabilities declared by build pipelines are granted to the build runner, and those declared by test pipelines are granted to the test runner under `melange test`; capabilities from test pipelines are never granted to the build runner.
+Capabilities declared by build pipelines are added to the build runner. Capabilities declared by test pipelines are scoped to that test's runner under `melange test`, so a capability one subpackage's test needs is not granted to sibling tests or to the build runner. Names are checked while the pipeline is compiled, so a misspelled `CAP_*` fails the build rather than the container.
 
 ## Where does Melange build?
 

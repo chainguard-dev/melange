@@ -578,11 +578,52 @@ func (p Package) FullCopyright() string {
 }
 
 type Needs struct {
-	// A list of packages needed by this pipeline
-	Packages []string
-	// Optional: Linux capabilities needed by this pipeline. These are merged
-	// into the runner's capabilities configuration whenever the pipeline is used.
-	Capabilities Capabilities `json:"capabilities,omitzero" yaml:"capabilities,omitempty"`
+	// Optional: A list of packages needed by this pipeline
+	Packages []string `json:",omitzero"`
+	// Optional: Linux capabilities needed by this pipeline. They are added to
+	// the runner of the test or build that uses the pipeline. Only additions
+	// are supported: a pipeline declares what it needs, it cannot drop a
+	// capability from the steps that share its container.
+	Capabilities NeedsCapabilities `json:"capabilities,omitzero" yaml:"capabilities,omitempty"`
+}
+
+// NeedsCapabilities is the set of Linux capabilities a pipeline requests be
+// added to its runner.
+type NeedsCapabilities struct {
+	// Linux process capabilities to add to the runner for this pipeline.
+	Add []string `json:"add,omitempty" yaml:"add,omitempty"`
+}
+
+// knownRunnerCapabilities is the set of capability names the runners accept,
+// mirroring the CAP_* constants in linux/capability.h. A name outside this set
+// is a typo: bubblewrap would only reject it once the container starts.
+var knownRunnerCapabilities = map[string]struct{}{
+	"CAP_CHOWN": {}, "CAP_DAC_OVERRIDE": {}, "CAP_DAC_READ_SEARCH": {},
+	"CAP_FOWNER": {}, "CAP_FSETID": {}, "CAP_KILL": {}, "CAP_SETGID": {},
+	"CAP_SETUID": {}, "CAP_SETPCAP": {}, "CAP_LINUX_IMMUTABLE": {},
+	"CAP_NET_BIND_SERVICE": {}, "CAP_NET_BROADCAST": {}, "CAP_NET_ADMIN": {},
+	"CAP_NET_RAW": {}, "CAP_IPC_LOCK": {}, "CAP_IPC_OWNER": {},
+	"CAP_SYS_MODULE": {}, "CAP_SYS_RAWIO": {}, "CAP_SYS_CHROOT": {},
+	"CAP_SYS_PTRACE": {}, "CAP_SYS_PACCT": {}, "CAP_SYS_ADMIN": {},
+	"CAP_SYS_BOOT": {}, "CAP_SYS_NICE": {}, "CAP_SYS_RESOURCE": {},
+	"CAP_SYS_TIME": {}, "CAP_SYS_TTY_CONFIG": {}, "CAP_MKNOD": {},
+	"CAP_LEASE": {}, "CAP_AUDIT_WRITE": {}, "CAP_AUDIT_CONTROL": {},
+	"CAP_SETFCAP": {}, "CAP_MAC_OVERRIDE": {}, "CAP_MAC_ADMIN": {},
+	"CAP_SYSLOG": {}, "CAP_WAKE_ALARM": {}, "CAP_BLOCK_SUSPEND": {},
+	"CAP_AUDIT_READ": {}, "CAP_PERFMON": {}, "CAP_BPF": {},
+	"CAP_CHECKPOINT_RESTORE": {},
+}
+
+// Validate reports capability names the runners would not understand, so a
+// typo fails at compile time rather than when the container is created.
+func (nc NeedsCapabilities) Validate() error {
+	var errs []error
+	for _, c := range nc.Add {
+		if _, ok := knownRunnerCapabilities[c]; !ok {
+			errs = append(errs, fmt.Errorf("unknown capability %q, expected an uppercase CAP_* name", c))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 type PipelineAssertions struct {
@@ -940,6 +981,12 @@ type Test struct {
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
 	Environment apko_types.ImageConfiguration `json:"environment" yaml:"environment,omitempty"`
+
+	// Optional: Linux capabilities to apply to this test's runner. Capabilities
+	// required by the test pipelines are gathered here during compilation, so
+	// they are scoped to this test's container rather than shared across every
+	// test in the configuration.
+	Capabilities Capabilities `json:"capabilities,omitzero" yaml:"capabilities,omitempty"`
 
 	// Required: The list of pipelines that test the produced package.
 	Pipeline []Pipeline `json:"pipeline" yaml:"pipeline"`

@@ -279,13 +279,20 @@
 })
 
 #Needs: close({
-	// A list of packages needed by this pipeline
-	Packages!: [...string]
+	// Optional: A list of packages needed by this pipeline
+	Packages?: [...string]
 
-	// Optional: Linux capabilities needed by this pipeline. These are
-	// merged into the runner's capabilities configuration whenever the
-	// pipeline is used.
-	capabilities?: #Capabilities
+	// Optional: Linux capabilities needed by this pipeline. They are added
+	// to the runner of the test or build that uses the pipeline. Only
+	// additions are supported: a pipeline declares what it needs, it cannot
+	// drop a capability from the steps that share its container.
+	capabilities?: #NeedsCapabilities
+})
+
+// NeedsCapabilities is the set of Linux capabilities a pipeline requests be added to its runner.
+#NeedsCapabilities: close({
+	// Linux process capabilities to add to the runner for this pipeline.
+	add?: [...string]
 })
 
 // OCIMonitor indicates using OCI image tags
@@ -594,6 +601,12 @@
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
 	environment!: #ImageConfiguration
+
+	// Optional: Linux capabilities to apply to this test's runner.
+	// Capabilities required by the test pipelines are gathered here during
+	// compilation, so they are scoped to this test's container rather than
+	// shared across every test in the configuration.
+	capabilities?: #Capabilities
 
 	// Required: The list of pipelines that test the produced package.
 	pipeline!: [...#Pipeline]

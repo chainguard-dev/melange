@@ -1,0 +1,34 @@
+# Builds a real, dependency-free Composer package (psr/log, the PSR-3
+# logger interface) using the php/composer-install pipeline, then verifies
+# the installed autoloader can actually load and instantiate a class from
+# it.
+package:
+  name: php-psr-log
+  version: 3.0.2
+  epoch: 0
+  description: "psr/log, the PSR-3 logger interface package"
+  dependencies:
+    runtime:
+      - php
+
+environment:
+  contents:
+    packages:
+      - composer
+      - php
+
+pipeline:
+  - uses: php/composer-install
+    with:
+      package: psr/log
+      version: ${{package.version}}
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - php
+  pipeline:
+    - runs: |
+        php -r "require '/usr/share/php/vendor/autoload.php'; new Psr\Log\NullLogger();"

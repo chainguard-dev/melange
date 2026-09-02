@@ -1,0 +1,52 @@
+name: Install a PHP package with Composer
+
+needs:
+  packages:
+    - busybox
+    - ca-certificates-bundle
+    - composer
+
+inputs:
+  package:
+    description: |
+      The name of the Composer package to install, e.g. "psr/log".
+    required: true
+
+  version:
+    description: |
+      The version constraint to pass to composer require, e.g. "3.0.2".
+    required: true
+
+  opts:
+    description: |
+      Extra options to pass to composer require.
+    default: ""
+    required: false
+
+pipeline:
+  - name: Check composer
+    runs: |
+      if ! [ -x "$(command -v composer)" ]; then
+        echo 'ERROR: Composer is not installed.'
+        exit 1
+      fi
+  - name: Composer require
+    runs: |
+      # Packages are installed into a single shared vendor tree at
+      # /usr/share/php/vendor, the same way python/install and ruby/install
+      # target one shared runtime location rather than a directory per
+      # package. This means composer-installed packages across multiple
+      # apks share one autoload tree, so it assumes the packages installed
+      # this way do not require conflicting versions of the same
+      # dependency.
+      WORK_DIR="${{targets.contextdir}}/usr/share/php"
+      mkdir -p "${WORK_DIR}"
+
+      # With --no-interaction, composer require creates composer.json and
+      # the vendor/ directory itself if they do not already exist.
+      composer require \
+        --working-dir="${WORK_DIR}" \
+        --no-interaction \
+        --no-progress \
+        ${{inputs.opts}} \
+        "${{inputs.package}}:${{inputs.version}}"

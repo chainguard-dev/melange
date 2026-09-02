@@ -94,17 +94,33 @@ output paths. Only the latter becomes `"noarch"`.
 - Register default-on in `pkg/linter/linter.go`, overridable via
   `Package.Checks.Disabled`.
 
-### 6. SBOM (`pkg/build/build.go` SBOM `GeneratorContext.Arch`)
+### 6. SBOM (`pkg/build/build.go` SBOM `GeneratorContext.Arch`) — DONE, no dedicated change needed
 
 - Use `PackageArch()` (→ `"noarch"`) so SBOM/PURL output matches PKGINFO.
   Generated once against the staged canonical build, then copied alongside
   each replicated apk like the package file itself.
+- Turned out to already be fully satisfied by step 3's `PackageArch()`
+  wiring (`GeneratorContext.Arch` already used it; SBOM is embedded in the
+  apk's data section, not a sidecar, so it's covered by step 3's
+  copy-replication with no extra work). One adjacent, previously-missed
+  spot was fixed in passing: `pkg/build/compiler_config.go`'s FDO
+  package-metadata linker template used `.Arch.ToAPK` instead of
+  `.PackageArch` for its embedded `"architecture"` field.
 
-### 7. `rebuild.go`
+### 7. `rebuild.go` — DONE, no code change needed
 
 - `pkginfo.Arch == "noarch"` ⇒ rebuild using `runtime.GOARCH`, not a literal
   `"noarch"` guest platform (current code feeds `pkginfo.Arch` straight into
   `apko_types.ParseArchitecture` and uses it as the guest arch).
+- Verified already fully handled end-to-end by step 2's shared
+  `build.New` noarch-override: `RebuildCmd` passes the apk's embedded
+  original `.melange.yaml` config via `WithConfiguration`, which is set
+  before `New`'s noarch-override block runs; that block unconditionally
+  resets `b.Arch` to the host arch whenever `Configuration.Package.IsNoArch()`
+  is true, regardless of the literal `"noarch"` string fed in via
+  `ParseArchitecture(pkginfo.Arch)`. `ReplicateArchs` stays `["noarch"]`,
+  so the rebuilt apk lands at `${OutDir}/noarch/...`, which is exactly
+  where `RebuildCmd`'s diff step looks for it.
 
 ### 8. Tests
 

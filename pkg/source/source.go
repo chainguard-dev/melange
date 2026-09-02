@@ -54,7 +54,7 @@ func runStep(ctx context.Context, step config.Pipeline, sm *build.SubstitutionMa
 
 	switch step.Uses {
 	case "fetch":
-		return runFetchStep(ctx, resolve)
+		return runFetchStep(ctx, resolve, destDir)
 	case "git-checkout":
 		return runGitCheckoutStep(ctx, resolve, destDir)
 	case "patch":
@@ -64,7 +64,7 @@ func runStep(ctx context.Context, step config.Pipeline, sm *build.SubstitutionMa
 	}
 }
 
-func runFetchStep(ctx context.Context, resolve func(string) (string, error)) error {
+func runFetchStep(ctx context.Context, resolve func(string) (string, error), destDir string) error {
 	get := func(dst *string, key string) error {
 		v, err := resolve(key)
 		if err != nil {
@@ -74,7 +74,7 @@ func runFetchStep(ctx context.Context, resolve func(string) (string, error)) err
 		return nil
 	}
 
-	opts := &FetchOptions{}
+	opts := &FetchOptions{WorkspaceDir: destDir}
 	var stripRaw, extractRaw, deleteRaw string
 	for dst, key := range map[*string]string{
 		&opts.URI:            "uri",
@@ -106,11 +106,11 @@ func runGitCheckoutStep(ctx context.Context, resolve func(string) (string, error
 	if err != nil {
 		return err
 	}
-	switch {
-	case dest == "" || dest == ".":
+	// Keep the clone destination inside the workspace.
+	if dest == "" || dest == "." {
 		dest = destDir
-	case !filepath.IsAbs(dest):
-		dest = filepath.Join(destDir, dest)
+	} else if dest, err = secureJoin(destDir, dest, "git-checkout destination"); err != nil {
+		return err
 	}
 	expectedCommit, err := resolve("expected-commit")
 	if err != nil {
@@ -157,14 +157,11 @@ func runPatchStep(ctx context.Context, resolve func(string) (string, error), des
 	// comments). Fold it into the patch list when no explicit patches are given.
 	if strings.TrimSpace(patches) == "" && strings.TrimSpace(series) != "" {
 		// Keep the series path within the workspace directory.
-		if filepath.IsAbs(series) {
-			return fmt.Errorf("absolute series paths are not allowed: %q", series)
+		seriesPath, err := secureJoin(destDir, series, "series")
+		if err != nil {
+			return err
 		}
-		seriesPath := filepath.Join(destDir, series)
-		if rel, err := filepath.Rel(destDir, seriesPath); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return fmt.Errorf("series path %q escapes the workspace directory", series)
-		}
-		data, err := os.ReadFile(seriesPath) // #nosec G304 - series path validated to stay within the workspace dir
+		data, err := os.ReadFile(seriesPath) // #nosec G304 - series path resolves inside the workspace dir
 		if err != nil {
 			return fmt.Errorf("reading series file %q: %w", seriesPath, err)
 		}

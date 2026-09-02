@@ -21,12 +21,18 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 )
+
+// commitIDRE matches the commit id form the git-checkout pipeline documents
+// for cherry-picks. Values in any other form are rejected rather than passed
+// through to git.
+var commitIDRE = regexp.MustCompile(`^[0-9a-fA-F]{7,64}$`)
 
 type GitCheckoutOptions struct {
 	Repository        string
@@ -87,7 +93,11 @@ func GitCheckout(ctx context.Context, opts *GitCheckoutOptions) error {
 
 	if opts.RecurseSubmodules {
 		log.Infof("Initializing submodules")
-		subCmd := exec.CommandContext(ctx, "git", "submodule", "update", "--init", "--recursive")
+		// Submodule sources are expected to be remote, so disable the local
+		// file transport instead of relying on the git default.
+		subCmd := exec.CommandContext(ctx, "git",
+			"-c", "protocol.file.allow=never",
+			"submodule", "update", "--init", "--recursive")
 		subCmd.Dir = opts.Destination
 		subCmd.Stdout = os.Stdout
 		subCmd.Stderr = os.Stderr
@@ -147,6 +157,12 @@ func parseCherryPicks(input string) ([]string, error) {
 		// path.Base handles this correctly for paths like "release/1.23/COMMIT-ID".
 		commit := path.Base(pickSpec)
 
+		// The pipeline documents this input as a commit id. Enforcing that
+		// keeps a leading '-' from reaching `git cherry-pick` as an option.
+		if !commitIDRE.MatchString(commit) {
+			return nil, fmt.Errorf("invalid cherry-pick commit id %q: expected a hex commit id", commit)
+		}
+
 		commits = append(commits, commit)
 	}
 
@@ -178,10 +194,14 @@ func parsePatchList(input string) []string {
 
 func applyPatches(ctx context.Context, repoPath string, workspaceDir string, patches []string) error {
 	for _, patch := range patches {
-		// Resolve patch path relative to workspace directory
+		// Resolve the patch path relative to the workspace directory, and keep
+		// it there.
 		patchPath := patch
-		if workspaceDir != "" && !filepath.IsAbs(patch) {
-			patchPath = filepath.Join(workspaceDir, patch)
+		if workspaceDir != "" {
+			var err error
+			if patchPath, err = secureJoin(workspaceDir, patch, "patch"); err != nil {
+				return err
+			}
 		}
 
 		if err := applyOnePatch(ctx, repoPath, patchPath, patch); err != nil {

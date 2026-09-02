@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"chainguard.dev/melange/pkg/build"
@@ -234,5 +235,134 @@ pipeline:
 				t.Fatalf("input was not treated as literal data (marker file %s was created)", marker)
 			}
 		})
+	}
+}
+
+// TestFetchSourceFromMelange_pathsConfinedToWorkspace asserts that the path
+// inputs of the source steps resolve inside the workspace: absolute values and
+// `../` traversal are rejected, and the step leaves nothing behind outside the
+// destination directory.
+func TestFetchSourceFromMelange_pathsConfinedToWorkspace(t *testing.T) {
+	tmpDir := t.TempDir()
+	outsideDir := filepath.Join(tmpDir, "outside")
+	if err := os.MkdirAll(outsideDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	header := `package:
+  name: example
+  version: "1.0.0"
+  epoch: 0
+  copyright:
+    - license: MIT
+pipeline:
+`
+
+	configs := map[string]string{
+		"fetch-directory-absolute": header + `  - uses: fetch
+    with:
+      uri: https://example.invalid/archive.tar.gz
+      directory: ` + outsideDir + `
+`,
+		"fetch-directory-traversal": header + `  - uses: fetch
+    with:
+      uri: https://example.invalid/archive.tar.gz
+      directory: ../outside
+`,
+		"git-checkout-destination-absolute": header + `  - uses: git-checkout
+    with:
+      repository: https://example.invalid/repo.git
+      destination: ` + outsideDir + `
+`,
+		"git-checkout-destination-traversal": header + `  - uses: git-checkout
+    with:
+      repository: https://example.invalid/repo.git
+      destination: ../outside
+`,
+		"patch-absolute": header + `  - uses: patch
+    with:
+      patches: /etc/passwd
+`,
+		"patch-traversal": header + `  - uses: patch
+    with:
+      patches: ../outside/x.patch
+`,
+		"series-traversal": header + `  - uses: patch
+    with:
+      series: ../outside/series
+`,
+	}
+
+	for name, content := range configs {
+		t.Run(name, func(t *testing.T) {
+			cfgPath := filepath.Join(tmpDir, name+".yaml")
+			if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+				t.Fatalf("failed to write config: %v", err)
+			}
+
+			workspace := filepath.Join(tmpDir, name+"-out")
+			_, err := FetchSourceFromMelange(context.Background(), cfgPath, workspace)
+			if err == nil {
+				t.Fatalf("expected a path-confinement error, got nil")
+			}
+			// The step must be rejected on the path, not merely fail later on
+			// an unreachable host.
+			if !strings.Contains(err.Error(), "escapes the workspace") &&
+				!strings.Contains(err.Error(), "are not allowed") {
+				t.Fatalf("expected a path-confinement error, got: %v", err)
+			}
+
+			entries, readErr := os.ReadDir(outsideDir)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if len(entries) != 0 {
+				t.Fatalf("wrote %d entries outside the workspace: %v", len(entries), entries)
+			}
+		})
+	}
+}
+
+// TestFetchSourceFromMelange_symlinkedDirectoryRejected covers a `directory:`
+// that is relative and lexically inside the workspace but names a symlink
+// pointing out of it, as an earlier step in the same pipeline could have
+// created. Containment is checked after resolving symlinks, so it is rejected.
+func TestFetchSourceFromMelange_symlinkedDirectoryRejected(t *testing.T) {
+	tmpDir := t.TempDir()
+	outsideDir := filepath.Join(tmpDir, "outside")
+	workspace := filepath.Join(tmpDir, "workspace")
+	for _, d := range []string{outsideDir, workspace} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Stands in for a symlink a previous fetch step extracted.
+	if err := os.Symlink(outsideDir, filepath.Join(workspace, "outward-link")); err != nil {
+		t.Fatal(err)
+	}
+
+	content := `package:
+  name: example
+  version: "1.0.0"
+  epoch: 0
+  copyright:
+    - license: MIT
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://example.invalid/archive.tar.gz
+      directory: outward-link
+`
+	cfgPath := filepath.Join(tmpDir, "symlink.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := FetchSourceFromMelange(context.Background(), cfgPath, workspace)
+	if err == nil {
+		t.Fatalf("expected a path-confinement error, got nil")
+	}
+	if !strings.Contains(err.Error(), "escapes the workspace") {
+		t.Fatalf("expected a path-confinement error, got: %v", err)
 	}
 }

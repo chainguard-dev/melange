@@ -38,7 +38,8 @@ import (
 // filename, and argv elements.
 type FetchOptions struct {
 	URI             string
-	Directory       string // where to extract; relative to the current working directory
+	Directory       string // where to extract; relative to WorkspaceDir
+	WorkspaceDir    string // root that the download and extraction are confined to
 	StripComponents int
 	Extract         bool
 	ExpectedSHA256  string
@@ -46,11 +47,30 @@ type FetchOptions struct {
 	Delete          bool
 }
 
-// Fetch downloads the artifact named by opts.URI into the current working
-// directory, optionally verifies its checksum, and optionally extracts it. The
-// URI is parsed and used as data (never passed to a shell).
+// Fetch downloads the artifact named by opts.URI into the workspace directory,
+// optionally verifies its checksum, and optionally extracts it. The URI is
+// parsed and used as data (never passed to a shell), and the extraction
+// directory is confined to the workspace.
 func Fetch(ctx context.Context, opts *FetchOptions) error {
 	log := clog.FromContext(ctx)
+
+	workDir := opts.WorkspaceDir
+	if workDir == "" {
+		var err error
+		if workDir, err = os.Getwd(); err != nil {
+			return fmt.Errorf("determining working directory: %w", err)
+		}
+	}
+
+	// Resolve the extraction directory up front so an unusable `directory:`
+	// fails before anything is written to disk.
+	extractDir := workDir
+	if opts.Extract && opts.Directory != "" {
+		var err error
+		if extractDir, err = secureJoin(workDir, opts.Directory, "fetch directory"); err != nil {
+			return err
+		}
+	}
 
 	u, err := url.Parse(opts.URI)
 	if err != nil {
@@ -70,27 +90,25 @@ func Fetch(ctx context.Context, opts *FetchOptions) error {
 		return fmt.Errorf("could not determine a filename from uri %q", opts.URI)
 	}
 
+	archive := filepath.Join(workDir, base)
+
 	log.Infof("Fetching %s", opts.URI)
-	if err := download(ctx, opts.URI, base); err != nil {
+	if err := download(ctx, opts.URI, archive); err != nil {
 		return err
 	}
 
-	if err := verifyChecksum(base, opts.ExpectedSHA256, opts.ExpectedSHA512); err != nil {
+	if err := verifyChecksum(archive, opts.ExpectedSHA256, opts.ExpectedSHA512); err != nil {
 		return err
 	}
 
 	if opts.Extract {
-		dir := opts.Directory
-		if dir == "" {
-			dir = "."
-		}
 		// tar is invoked with an explicit argv, so the filename and directory
 		// are passed as plain arguments. tar auto-detects the compression
 		// format, matching the built-in pipeline.
-		// #nosec G204 - argv-only invocation; args are validated data, not shell
+		// #nosec G204 - argv-only invocation; extractDir resolves inside the workspace
 		cmd := exec.CommandContext(ctx, "tar", "-x",
 			fmt.Sprintf("--strip-components=%d", opts.StripComponents),
-			"--no-same-owner", "-C", dir, "-f", base)
+			"--no-same-owner", "-C", extractDir, "-f", archive)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -99,7 +117,7 @@ func Fetch(ctx context.Context, opts *FetchOptions) error {
 	}
 
 	if opts.Delete {
-		if err := os.Remove(base); err != nil {
+		if err := os.Remove(archive); err != nil {
 			return fmt.Errorf("deleting %q: %w", base, err)
 		}
 	}
@@ -175,17 +193,14 @@ func applyPatchStep(ctx context.Context, patches string, stripComponents, fuzz i
 
 	for patch := range strings.FieldsSeq(patches) {
 		// Keep patch paths within the workspace directory.
-		if filepath.IsAbs(patch) {
-			return fmt.Errorf("absolute patch paths are not allowed: %q", patch)
-		}
-		patchPath := filepath.Join(workDir, patch)
-		if rel, err := filepath.Rel(workDir, patchPath); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return fmt.Errorf("patch path %q escapes the workspace directory", patch)
+		patchPath, err := secureJoin(workDir, patch, "patch")
+		if err != nil {
+			return err
 		}
 
 		log.Infof("Applying patch %s", patchPath)
 
-		f, err := os.Open(patchPath) // #nosec G304 G703 - patch path validated to stay within the workspace dir
+		f, err := os.Open(patchPath) // #nosec G304 G703 - patch path resolves inside the workspace dir
 		if err != nil {
 			return fmt.Errorf("opening patch %q: %w", patchPath, err)
 		}

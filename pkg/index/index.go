@@ -186,6 +186,14 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 				return nil
 			}
 
+			// A noarch package is valid in every architecture-specific repository,
+			// but this index entry describes one concrete repository architecture.
+			// Stamp that architecture in the in-memory entry without changing the
+			// package's embedded .PKGINFO, which must remain arch = noarch.
+			if pkg.Arch == "noarch" && idx.ExpectedArch != "" {
+				pkg.Arch = idx.ExpectedArch
+			}
+
 			packages[i] = pkg
 
 			return nil

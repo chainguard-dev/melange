@@ -993,6 +993,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 			opts := []index.Option{
 				index.WithPackageFiles(apkFiles),
+				index.WithExpectedArch(arch.ToAPK()),
 				index.WithSigningKey(b.SigningKey),
 				index.WithMergeIndexFileFlag(true),
 				index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),

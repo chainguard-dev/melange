@@ -11,12 +11,6 @@ package:
     runtime:
       - php
 
-environment:
-  contents:
-    packages:
-      - composer
-      - php
-
 pipeline:
   - uses: php/composer-install
     with:

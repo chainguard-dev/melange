@@ -18,9 +18,6 @@ environment:
       - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
     repositories:
       - https://packages.wolfi.dev/os
-    packages:
-      - composer
-      - php
 
 pipeline:
   - uses: php/composer-install

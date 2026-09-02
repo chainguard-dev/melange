@@ -5,6 +5,7 @@ needs:
     - busybox
     - ca-certificates-bundle
     - composer
+    - php
 
 inputs:
   package:

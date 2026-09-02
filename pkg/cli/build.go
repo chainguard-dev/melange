@@ -403,7 +403,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	} else {
 		for _, arch := range archs {
 			opts := append([]build.Option{}, baseOpts...)
-			opts = append(opts, build.WithArch(arch), build.WithReplicateArchs(archs))
+			opts = append(opts, build.WithArch(arch))
 
 			bc, err := build.New(ctx, opts...)
 			if errors.Is(err, build.ErrSkipThisArch) {

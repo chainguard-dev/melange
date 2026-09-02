@@ -51,3 +51,10 @@ pipeline:
         --no-progress \
         ${{inputs.opts}} \
         "${{inputs.package}}:${{inputs.version}}"
+
+      # composer.json/composer.lock are build-time project manifests with
+      # no purpose at runtime; the generated vendor/autoload.php and
+      # vendor/composer/*.php files are fully self-contained and do not
+      # reference them. Removing them keeps the shipped apk to just the
+      # installed code.
+      rm -f "${WORK_DIR}/composer.json" "${WORK_DIR}/composer.lock"

@@ -73,6 +73,39 @@ type Test struct {
 	DefaultTimeout    time.Duration
 }
 
+// resolveConfiguration loads the test configuration without performing setup
+// that depends on the selected architecture or runner.
+func (t *Test) resolveConfiguration(ctx context.Context) error {
+	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
+		config.WithEnvFilesForParsing(t.EnvFiles),
+		config.WithDefaultCPU(t.DefaultCPU),
+		config.WithDefaultCPUModel(t.DefaultCPUModel),
+		config.WithDefaultDisk(t.DefaultDisk),
+		config.WithDefaultMemory(t.DefaultMemory),
+		config.WithDefaultTimeout(t.DefaultTimeout),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+	t.Configuration = *parsedCfg
+	return nil
+}
+
+// PeekIsNoArchTest resolves just enough configuration to report whether the
+// test run targets the noarch architecture, without doing NewTest's heavier setup.
+func PeekIsNoArchTest(ctx context.Context, opts ...TestOption) (bool, error) {
+	t := &Test{}
+	for _, opt := range opts {
+		if err := opt(t); err != nil {
+			return false, err
+		}
+	}
+	if err := t.resolveConfiguration(ctx); err != nil {
+		return false, err
+	}
+	return t.Configuration.Package.IsNoArch(), nil
+}
+
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t := Test{
 		WorkspaceIgnore: ".melangeignore",
@@ -88,19 +121,9 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	log := clog.FromContext(ctx).With("arch", t.Arch)
 	ctx = clog.WithLogger(ctx, log)
 
-	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
-		config.WithEnvFilesForParsing(t.EnvFiles),
-		config.WithDefaultCPU(t.DefaultCPU),
-		config.WithDefaultCPUModel(t.DefaultCPUModel),
-		config.WithDefaultDisk(t.DefaultDisk),
-		config.WithDefaultMemory(t.DefaultMemory),
-		config.WithDefaultTimeout(t.DefaultTimeout),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	if err := t.resolveConfiguration(ctx); err != nil {
+		return nil, err
 	}
-
-	t.Configuration = *parsedCfg
 
 	if t.Configuration.Package.IsNoArch() {
 		hostArch := apko_types.ParseArchitecture(runtime.GOARCH)

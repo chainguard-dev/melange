@@ -187,6 +187,67 @@ func (b *Build) replicateTargets() []apko_types.Architecture {
 	return []apko_types.Architecture{b.Arch}
 }
 
+func (b *Build) resolveConfiguration(ctx context.Context) error {
+	// If no config file is explicitly requested for the build context
+	// we check if .melange.yaml or melange.yaml exist.
+	checks := []string{".melange.yaml", ".melange.yml", "melange.yaml", "melange.yml"}
+	if b.ConfigFile == "" {
+		for _, chk := range checks {
+			if _, err := os.Stat(chk); err == nil {
+				clog.FromContext(ctx).Infof("no configuration file provided -- using %s", chk)
+				b.ConfigFile = chk
+				break
+			}
+		}
+	}
+
+	// If no config file could be automatically detected, error.
+	if b.ConfigFile == "" {
+		return fmt.Errorf("melange.yaml is missing")
+	}
+	if b.ConfigFileRepositoryURL == "" {
+		return fmt.Errorf("config file repository URL was not set")
+	}
+	if b.ConfigFileRepositoryCommit == "" {
+		return fmt.Errorf("config file repository commit was not set")
+	}
+
+	if b.Configuration == nil {
+		parsedCfg, err := config.ParseConfiguration(ctx,
+			b.ConfigFile,
+			config.WithEnvFilesForParsing(b.EnvFiles),
+			config.WithVarsFileForParsing(b.VarsFile),
+			config.WithDefaultCPU(b.DefaultCPU),
+			config.WithDefaultCPUModel(b.DefaultCPUModel),
+			config.WithDefaultDisk(b.DefaultDisk),
+			config.WithDefaultMemory(b.DefaultMemory),
+			config.WithDefaultTimeout(b.DefaultTimeout),
+			config.WithCommit(b.ConfigFileRepositoryCommit),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %w", err)
+		}
+		b.Configuration = parsedCfg
+	}
+
+	return nil
+}
+
+// PeekIsNoArch resolves just enough configuration to report whether the build
+// targets the noarch architecture, without doing New's heavier setup.
+func PeekIsNoArch(ctx context.Context, opts ...Option) (bool, error) {
+	b := &Build{}
+	for _, opt := range opts {
+		if err := opt(b); err != nil {
+			return false, err
+		}
+	}
+	if err := b.resolveConfiguration(ctx); err != nil {
+		return false, err
+	}
+	return b.Configuration.Package.IsNoArch(), nil
+}
+
 func New(ctx context.Context, opts ...Option) (*Build, error) {
 	b := Build{
 		WorkspaceIgnore: ".melangeignore",
@@ -208,46 +269,8 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	log := clog.FromContext(ctx).With("arch", b.Arch.ToAPK())
 	ctx = clog.WithLogger(ctx, log)
 
-	// If no config file is explicitly requested for the build context
-	// we check if .melange.yaml or melange.yaml exist.
-	checks := []string{".melange.yaml", ".melange.yml", "melange.yaml", "melange.yml"}
-	if b.ConfigFile == "" {
-		for _, chk := range checks {
-			if _, err := os.Stat(chk); err == nil {
-				log.Infof("no configuration file provided -- using %s", chk)
-				b.ConfigFile = chk
-				break
-			}
-		}
-	}
-
-	// If no config file could be automatically detected, error.
-	if b.ConfigFile == "" {
-		return nil, fmt.Errorf("melange.yaml is missing")
-	}
-	if b.ConfigFileRepositoryURL == "" {
-		return nil, fmt.Errorf("config file repository URL was not set")
-	}
-	if b.ConfigFileRepositoryCommit == "" {
-		return nil, fmt.Errorf("config file repository commit was not set")
-	}
-
-	if b.Configuration == nil {
-		parsedCfg, err := config.ParseConfiguration(ctx,
-			b.ConfigFile,
-			config.WithEnvFilesForParsing(b.EnvFiles),
-			config.WithVarsFileForParsing(b.VarsFile),
-			config.WithDefaultCPU(b.DefaultCPU),
-			config.WithDefaultCPUModel(b.DefaultCPUModel),
-			config.WithDefaultDisk(b.DefaultDisk),
-			config.WithDefaultMemory(b.DefaultMemory),
-			config.WithDefaultTimeout(b.DefaultTimeout),
-			config.WithCommit(b.ConfigFileRepositoryCommit),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load configuration: %w", err)
-		}
-		b.Configuration = parsedCfg
+	if err := b.resolveConfiguration(ctx); err != nil {
+		return nil, err
 	}
 
 	if b.Configuration.Package.IsNoArch() {

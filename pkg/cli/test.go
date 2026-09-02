@@ -219,6 +219,9 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 		defer bc.Close()
 
 		bcs = append(bcs, bc)
+		if bc.Configuration.Package.IsNoArch() {
+			break
+		}
 	}
 
 	if len(bcs) == 0 {

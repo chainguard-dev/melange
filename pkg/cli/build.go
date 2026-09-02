@@ -383,7 +383,7 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	bcs := []*build.Build{}
 	for _, arch := range archs {
 		opts := append([]build.Option{}, baseOpts...)
-		opts = append(opts, build.WithArch(arch))
+		opts = append(opts, build.WithArch(arch), build.WithReplicateArchs(archs))
 
 		bc, err := build.New(ctx, opts...)
 		if errors.Is(err, build.ErrSkipThisArch) {
@@ -396,6 +396,9 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		defer bc.Close(ctx)
 
 		bcs = append(bcs, bc)
+		if bc.Configuration.Package.IsNoArch() {
+			break
+		}
 	}
 
 	if len(bcs) == 0 {

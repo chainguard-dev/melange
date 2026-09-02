@@ -90,14 +90,24 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 
 func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
 	b.End = time.Now()
+	var outDir string
+	if b.Configuration.Package.IsNoArch() {
+		dir, err := b.getNoArchStagingDir()
+		if err != nil {
+			return err
+		}
+		outDir = dir
+	} else {
+		outDir = filepath.Join(b.OutDir, b.Arch.ToAPK())
+	}
 	pc := PackageBuild{
 		Build:        b,
 		Origin:       &b.Configuration.Package,
 		PackageName:  pkg.Name,
 		OriginName:   pkg.Name,
-		OutDir:       filepath.Join(b.OutDir, b.Arch.ToAPK()),
+		OutDir:       outDir,
 		Dependencies: pkg.Dependencies,
-		Arch:         b.Arch.ToAPK(),
+		Arch:         b.PackageArch(),
 		Options:      pkg.Options,
 		Scriptlets:   pkg.Scriptlets,
 		Description:  pkg.Description,

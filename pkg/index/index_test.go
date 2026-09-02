@@ -16,6 +16,29 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestMatchesExpectedArch(t *testing.T) {
+	tests := []struct {
+		name         string
+		pkgArch      string
+		expectedArch string
+		want         bool
+	}{
+		{name: "matching architecture", pkgArch: "x86_64", expectedArch: "x86_64", want: true},
+		{name: "mismatched architecture", pkgArch: "aarch64", expectedArch: "x86_64", want: false},
+		{name: "noarch matches x86_64", pkgArch: "noarch", expectedArch: "x86_64", want: true},
+		{name: "noarch matches aarch64", pkgArch: "noarch", expectedArch: "aarch64", want: true},
+		{name: "no expected architecture", pkgArch: "aarch64", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesExpectedArch(tt.pkgArch, tt.expectedArch); got != tt.want {
+				t.Errorf("matchesExpectedArch(%q, %q) = %t, want %t", tt.pkgArch, tt.expectedArch, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUpdateIndex(t *testing.T) {
 	ctx := slogtest.Context(t)
 

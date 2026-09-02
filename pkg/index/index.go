@@ -98,13 +98,18 @@ func WithSigningKey(signingKey string) Option {
 	}
 }
 
-// WithExpectedArch sets the expected package architecture.  Any packages with
-// an unexpected architecture will not be indexed.
+// WithExpectedArch sets the expected package architecture. Packages with an
+// unexpected architecture will not be indexed, except architecture-independent
+// noarch packages, which are valid for every architecture.
 func WithExpectedArch(expectedArch string) Option {
 	return func(idx *Index) error {
 		idx.ExpectedArch = expectedArch
 		return nil
 	}
+}
+
+func matchesExpectedArch(pkgArch, expectedArch string) bool {
+	return expectedArch == "" || pkgArch == "noarch" || pkgArch == expectedArch
 }
 
 func New(opts ...Option) (*Index, error) {
@@ -175,7 +180,7 @@ func (idx *Index) UpdateIndex(ctx context.Context) error {
 				return fmt.Errorf("failed to parse package %s: %w", apkFile, err)
 			}
 
-			if idx.ExpectedArch != "" && pkg.Arch != idx.ExpectedArch {
+			if !matchesExpectedArch(pkg.Arch, idx.ExpectedArch) {
 				log.Warnf("%s-%s: found unexpected architecture %s, expecting %s",
 					pkg.Name, pkg.Version, pkg.Arch, idx.ExpectedArch)
 				return nil

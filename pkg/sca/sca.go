@@ -705,13 +705,33 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		if err != nil {
 			return nil
 		}
-		var cgo, fipscrypto bool
-		// current RHEL/golang-fips; current microsoft/go; old microsoft/go
+		var dlopen, fipscrypto, fipsgeomys, geomysv1, geomysesv bool
 		fipsexperiments := []string{"boringcrypto", "systemcrypto", "opensslcrypto"}
+		geomysesvs := []string{"openssl+geomys", "geomys"}
 		for _, setting := range buildinfo.Settings {
+			// go-msft-1.26 imlements dlopen with cgo
 			if setting.Key == "CGO_ENABLED" && setting.Value == "1" {
-				cgo = true
+				dlopen = true
 			}
+			// go-msft-1.27 implements dlopen with nocgo
+			if setting.Key == "chainguard_cryptographic_module" && setting.Value == "openssl+geomys" {
+				dlopen = true
+				fipscrypto = true
+				fipsgeomys = true
+			}
+			// go-geomys-1.27 implements hardened geomysv1
+			if setting.Key == "chainguard_cryptographic_module" && setting.Value == "geomys" {
+				fipsgeomys = true
+			}
+			// Statically linked entropy source
+			if setting.Key == "chainguard_entropy_source" && slices.Contains(geomysesvs, setting.Value) {
+				geomysesv = true
+			}
+			// geomysv1 version detection
+			if setting.Key == "GOFIPS140" && setting.Value == "v1.0.0-c2097c7c" {
+				geomysv1 = true
+			}
+			// obsolete and now removed, keep for now
 			if setting.Key == "GOEXPERIMENT" && slices.Contains(fipsexperiments, setting.Value) {
 				fipscrypto = true
 			}
@@ -719,10 +739,16 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 				fipscrypto = true
 			}
 		}
-		// strong indication of go-fips openssl compiled binary, will dlopen the below at runtime
-		if cgo && fipscrypto {
+		// strong indication of go with openssl compiled binary, will dlopen the below at runtime
+		if dlopen && fipscrypto {
 			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
+			// likely need to move this to some virtual, because go-1.27 supports libcrypto.so.4 abi as well
 			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
+		}
+		// geomysv1 by default or as a fallback
+		if fipsgeomys && geomysesv && geomysv1 {
+			generated.Runtime = append(generated.Runtime, "NIST-CMVP-5247")
+			generated.Runtime = append(generated.Runtime, "NIST-ESV-318")
 		}
 
 		return nil

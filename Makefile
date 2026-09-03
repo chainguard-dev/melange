@@ -91,6 +91,7 @@ ko-apply:  ## Build the image and apply the manifests
 .PHONY: generate
 generate:
 	go generate ./...
+	-go generate -tags sca_private ./pkg/sca/sca_private_test.go
 
 ##########
 # Build

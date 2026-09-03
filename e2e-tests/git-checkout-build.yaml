@@ -318,6 +318,11 @@ pipeline:
       [ "$status" == "## 1.x...origin/1.x [ahead 2]" ]
       # for-cherry-pick.txt should exist as a file
       [ -f for-cherry-pick.txt ]
+      # auto maintenance must be disabled so no fetch (like the unshallow
+      # fetch for cherry-picks) spawns a detached 'git maintenance run'
+      # that outlives the pipeline step.
+      [ "$(git config --get maintenance.auto)" = "false" ]
+      [ "$(git config --get gc.auto)" = "0" ]
       cd ..
       rm -R cherry-pick-test
 

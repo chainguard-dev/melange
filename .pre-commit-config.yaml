@@ -1,5 +1,5 @@
 repos:
-  - repo: https://github.com/jessp01/pre-commit-golang.git
+  - repo: https://github.com/jessp01/pre-commit-golang
     rev: v0.5.7
     hooks:
       - id: go-fmt

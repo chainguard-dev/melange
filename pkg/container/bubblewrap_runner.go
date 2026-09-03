@@ -42,6 +42,10 @@ var _ Debugger = (*bubblewrap)(nil)
 const (
 	BubblewrapName = "bubblewrap"
 	buildUserID    = "1000"
+
+	// specialModeBits are the mode bits that Mkdir/MkdirAll cannot set,
+	// since they take only permission bits.
+	specialModeBits = os.ModeSetuid | os.ModeSetgid | os.ModeSticky
 )
 
 // defaultCapabilities is the set of Linux capabilities granted by the
@@ -325,8 +329,16 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(fullname, hdr.FileInfo().Mode().Perm()); err != nil {
+			mode := hdr.FileInfo().Mode()
+			if err := os.MkdirAll(fullname, mode.Perm()); err != nil {
 				return ref, fmt.Errorf("failed to create directory %s: %w", fullname, err)
+			}
+			// MkdirAll carries only permission bits (and applies the umask),
+			// so setuid/setgid/sticky have to be applied separately.
+			if special := mode & specialModeBits; special != 0 {
+				if err := os.Chmod(fullname, mode.Perm()|special); err != nil {
+					return ref, fmt.Errorf("failed to chmod directory %s: %w", fullname, err)
+				}
 			}
 			continue
 		case tar.TypeReg:

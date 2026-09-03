@@ -1100,6 +1100,10 @@ func isValidPath(targetPath, baseDir string) error {
 	return nil
 }
 
+// specialModeBits are the mode bits that Mkdir/MkdirAll cannot set, since
+// they take only permission bits.
+const specialModeBits = os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+
 // retrieveWorkspace retrieves the workspace from the container and unpacks it
 // to the workspace directory. The workspace retrieved from the runner is in a
 // tar stream containing the workspace contents rooted at ./melange-out
@@ -1159,8 +1163,17 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 				}
 			}
 
-			if err := fs.MkdirAll(hdr.Name, hdr.FileInfo().Mode().Perm()); err != nil {
+			mode := hdr.FileInfo().Mode()
+			if err := fs.MkdirAll(hdr.Name, mode.Perm()); err != nil {
 				return fmt.Errorf("unable to create directory %s: %w", hdr.Name, err)
+			}
+
+			// MkdirAll carries only permission bits, so setuid/setgid/sticky
+			// have to be applied separately.
+			if special := mode & specialModeBits; special != 0 {
+				if err := fs.Chmod(hdr.Name, mode.Perm()|special); err != nil {
+					return fmt.Errorf("unable to chmod directory %s: %w", hdr.Name, err)
+				}
 			}
 
 			if err := fs.Chown(hdr.Name, uid, gid); err != nil {

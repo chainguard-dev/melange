@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+package:
+  name: go-msft-bin
+  version: 0.0.1
+  epoch: 0
+  description: "A tiny fips-like go binary"
+
+environment:
+  contents:
+    repositories:
+      - https://apk.cgr.dev/chainguard
+      - https://apk.cgr.dev/chainguard-private
+    packages:
+      - busybox
+      - go-msft-1.27
+      - wolfi-baselayout
+
+pipeline:
+  - uses: go/build/v2

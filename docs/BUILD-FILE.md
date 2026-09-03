@@ -264,14 +264,33 @@ options:
   no-commands: true
 ```
 
-`no-versioned-shlib-deps` - The generated `depends` for shared
-libraries shipped by this package should not be versioned.  By
-default, melange will generate versioned `depends` for shared
-libraries.
+`no-versioned-shlib-deps` - The generated `depends` for the shared
+libraries this package links against should not be versioned.  This
+only turns the versioned `depends` off; it has no effect when they are
+already disabled, and it does not affect the versioned `so-ver:`
+`provides` this package publishes for its own shared libraries.
 
 ```yaml
 options:
   no-versioned-shlib-deps: true
+```
+
+`versioned-shlib-deps` - Explicitly enable (`true`) or disable
+(`false`) the generated versioned `depends` for the shared libraries
+this package links against, for example
+`so-ver:libz.so.1>=1.3.1-r6`.
+
+Versioned shlib `depends` are off by default, and are enabled globally
+for a build by setting the `MELANGE_VERSIONED_SHLIB_DEPENDS`
+environment variable to a non-empty value.  This option overrides
+that, in both directions: a package can opt in while the environment
+variable is unset, and opt out while it is set.  When the option is
+absent, the environment variable decides, and
+`no-versioned-shlib-deps` can then turn the `depends` off.
+
+```yaml
+options:
+  versioned-shlib-deps: true
 ```
 
 ### scriptlets

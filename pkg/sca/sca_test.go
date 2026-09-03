@@ -47,6 +47,11 @@ type testHandle struct {
 	pkg apk.Package
 	exp *expandapk.APKExpanded
 	cfg *config.Configuration
+
+	// Optional: set by tests that exercise the versioned shlib
+	// "depends:" resolution.
+	installed map[string]string
+	resolver  *apk.PkgResolver
 }
 
 func (th *testHandle) PackageName() string {
@@ -86,11 +91,14 @@ func (th *testHandle) BaseDependencies() config.Dependencies {
 }
 
 func (th *testHandle) InstalledPackages() map[string]string {
-	return map[string]string{}
+	if th.installed == nil {
+		return map[string]string{}
+	}
+	return th.installed
 }
 
 func (th *testHandle) PkgResolver() *apk.PkgResolver {
-	return nil
+	return th.resolver
 }
 
 // TODO: Loose coupling.
@@ -147,6 +155,114 @@ func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile strin
 		pkg: pkg,
 		exp: exp,
 		cfg: pkgcfg,
+	}
+}
+
+// resolverFromPackages builds a PkgResolver over a synthetic APKINDEX.
+func resolverFromPackages(ctx context.Context, pkgs ...*apk.Package) *apk.PkgResolver {
+	repo := (&apk.Repository{URI: "https://example.com/os"}).WithIndex(&apk.APKIndex{Packages: pkgs})
+	return apk.NewPkgResolver(ctx, []apk.NamedIndex{apk.NewNamedRepositoryWithIndex("", repo)})
+}
+
+func TestDetermineShlibVersion(t *testing.T) {
+	yes := true
+
+	for _, tc := range []struct {
+		name     string
+		provides []string
+		want     string
+	}{{
+		name:     "versioned provides yields a versioned depend",
+		provides: []string{"so:libonig.so.5=5", "so-ver:libonig.so.5=6.9.10-r4"},
+		want:     "6.9.10-r4",
+	}, {
+		// We can't depend on a version the provider doesn't publish.
+		name:     "unversioned provides yields no versioned depend",
+		provides: []string{"so:libonig.so.5=5"},
+		want:     "",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := slogtest.Context(t)
+
+			hdl := &testHandle{
+				pkg: apk.Package{Name: "jq", Version: "1.8.1-r3"},
+				cfg: &config.Configuration{
+					Package: config.Package{
+						Name:    "jq",
+						Options: &config.PackageOption{VersionedShlibDeps: &yes},
+					},
+				},
+				installed: map[string]string{"oniguruma": "6.9.10-r4"},
+				resolver: resolverFromPackages(ctx, &apk.Package{
+					Name:      "oniguruma",
+					Version:   "6.9.10-r4",
+					Provides:  tc.provides,
+					BuildTime: time.Unix(0, 0),
+				}),
+			}
+
+			got, err := determineShlibVersion(ctx, hdl, "libonig.so.5")
+			if err != nil {
+				t.Fatalf("determineShlibVersion() returned an error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("determineShlibVersion() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestVersionedShlibDepsEnabled(t *testing.T) {
+	yes, no := true, false
+	on := "1"
+
+	for _, tc := range []struct {
+		name string
+		// nil means MELANGE_VERSIONED_SHLIB_DEPENDS is unset.
+		flag *string
+		opts config.PackageOption
+		want bool
+	}{{
+		name: "disabled by default",
+		want: false,
+	}, {
+		name: "enabled by the feature flag",
+		flag: &on,
+		want: true,
+	}, {
+		name: "opted in without the feature flag",
+		opts: config.PackageOption{VersionedShlibDeps: &yes},
+		want: true,
+	}, {
+		name: "opted out despite the feature flag",
+		flag: &on,
+		opts: config.PackageOption{VersionedShlibDeps: &no},
+		want: false,
+	}, {
+		name: "opt in wins over the legacy opt out",
+		opts: config.PackageOption{VersionedShlibDeps: &yes, NoVersionedShlibDeps: true},
+		want: true,
+	}, {
+		name: "legacy opt out disables the feature flag",
+		flag: &on,
+		opts: config.PackageOption{NoVersionedShlibDeps: true},
+		want: false,
+	}, {
+		name: "legacy opt out cannot opt in",
+		opts: config.PackageOption{NoVersionedShlibDeps: false},
+		want: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.flag != nil {
+				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", *tc.flag)
+			} else {
+				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", "")
+			}
+
+			if got := versionedShlibDepsEnabled(tc.opts); got != tc.want {
+				t.Errorf("versionedShlibDepsEnabled() = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

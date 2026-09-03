@@ -766,6 +766,10 @@
         "no-versioned-shlib-deps": {
           "type": "boolean",
           "description": "Optional: Don't generate versioned depends for shared libraries"
+        },
+        "versioned-shlib-deps": {
+          "type": "boolean",
+          "description": "Optional: Explicitly opt in to (true) or out of (false)\ngenerating versioned depends for shared libraries.  When set,\nthis takes precedence over both the\nMELANGE_VERSIONED_SHLIB_DEPENDS environment variable and\nno-versioned-shlib-deps."
         }
       },
       "additionalProperties": false,

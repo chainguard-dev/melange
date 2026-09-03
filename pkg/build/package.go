@@ -307,13 +307,15 @@ func removeSelfProvidedDeps(runtimeDeps, providedDeps []string) []string {
 
 	newRuntimeDeps := []string{}
 	for _, dep := range runtimeDeps {
+		// so-ver: dependencies will always have explicit
+		// versioning.  We need to strip it out when looking the
+		// dependency up, but the constraint must be preserved in
+		// the dependency we emit.
+		name := dep
 		if strings.HasPrefix(dep, "so-ver:") {
-			// so-ver: dependencies will always have
-			// explicit versioning.  We need to strip it
-			// out.
-			dep, _, _ = strings.Cut(dep, ">=")
+			name, _, _ = strings.Cut(dep, ">=")
 		}
-		_, ok := providedDepsMap[dep]
+		_, ok := providedDepsMap[name]
 		if ok {
 			continue
 		}

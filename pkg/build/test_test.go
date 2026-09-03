@@ -15,7 +15,9 @@
 package build
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,6 +32,27 @@ import (
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
 )
+
+func TestPeekIsNoArchTest(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		targetArch string
+		want       bool
+	}{
+		{name: "noarch", targetArch: "[noarch]", want: true},
+		{name: "native", targetArch: "[x86_64]", want: false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			configFile := filepath.Join(t.TempDir(), "melange.yaml")
+			contents := fmt.Sprintf("package:\n  name: test\n  version: 1.0\n  epoch: 0\n  target-architecture: %s\n", tt.targetArch)
+			require.NoError(t, os.WriteFile(configFile, []byte(contents), 0o644))
+
+			got, err := PeekIsNoArchTest(context.Background(), WithTestConfig(configFile))
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
 
 const (
 	buildUser        = "build"

@@ -16,9 +16,9 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -197,6 +197,11 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 		archs = apko_types.AllArchs
 	}
 
+	noArch, err := build.PeekIsNoArchTest(ctx, baseOpts...)
+	if err != nil {
+		return err
+	}
+
 	// Set up the test contexts before running them.  This avoids various
 	// race conditions and the possibility that a context may be garbage
 	// collected before it is actually run.
@@ -204,21 +209,30 @@ func TestCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...b
 	// Yes, this happens.  Really.
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Test{}
-	for _, arch := range archs {
+	if noArch {
 		opts := make([]build.TestOption, 0, len(baseOpts)+1)
-		opts = append(opts, build.WithTestArch(arch))
 		opts = append(opts, baseOpts...)
+		opts = append(opts, build.WithTestArch(apko_types.ParseArchitecture(runtime.GOARCH)))
 
 		bc, err := build.NewTest(ctx, opts...)
-		if errors.Is(err, build.ErrSkipThisArch) {
-			log.Infof("skipping arch %s", arch)
-			continue
-		} else if err != nil {
+		if err != nil {
 			return err
 		}
 		defer bc.Close()
-
 		bcs = append(bcs, bc)
+	} else {
+		for _, arch := range archs {
+			opts := make([]build.TestOption, 0, len(baseOpts)+1)
+			opts = append(opts, build.WithTestArch(arch))
+			opts = append(opts, baseOpts...)
+
+			bc, err := build.NewTest(ctx, opts...)
+			if err != nil {
+				return err
+			}
+			defer bc.Close()
+			bcs = append(bcs, bc)
+		}
 	}
 
 	if len(bcs) == 0 {

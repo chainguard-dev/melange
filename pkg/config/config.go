@@ -282,6 +282,12 @@ func (p Package) PackageURLForSubpackage(distro, arch, subpackage string) *purl.
 	return newAPKPackageURL(distro, subpackage, p.FullVersion(), arch)
 }
 
+// IsNoArch reports whether the package targets the architecture-independent
+// noarch architecture.
+func (p Package) IsNoArch() bool {
+	return len(p.TargetArchitecture) == 1 && p.TargetArchitecture[0] == "noarch"
+}
+
 func newAPKPackageURL(distro, name, version, arch string) *purl.PackageURL {
 	u := &purl.PackageURL{
 		Type:      purlTypeAPK,
@@ -1731,6 +1737,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	replacer := replacerFromMap(configMap)
 
 	cfg.Package = replacePackage(replacer, options.commit, cfg.Package)
+	if slices.Contains(cfg.Package.TargetArchitecture, "noarch") && !cfg.Package.IsNoArch() {
+		return nil, fmt.Errorf("target-architecture: %q must be the only entry when specified", "noarch")
+	}
 
 	cfg.Pipeline = replacePipelines(replacer, cfg.Pipeline)
 

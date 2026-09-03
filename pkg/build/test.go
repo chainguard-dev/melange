@@ -73,6 +73,39 @@ type Test struct {
 	DefaultTimeout    time.Duration
 }
 
+// resolveConfiguration loads the test configuration without performing setup
+// that depends on the selected architecture or runner.
+func (t *Test) resolveConfiguration(ctx context.Context) error {
+	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
+		config.WithEnvFilesForParsing(t.EnvFiles),
+		config.WithDefaultCPU(t.DefaultCPU),
+		config.WithDefaultCPUModel(t.DefaultCPUModel),
+		config.WithDefaultDisk(t.DefaultDisk),
+		config.WithDefaultMemory(t.DefaultMemory),
+		config.WithDefaultTimeout(t.DefaultTimeout),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+	t.Configuration = *parsedCfg
+	return nil
+}
+
+// PeekIsNoArchTest resolves just enough configuration to report whether the
+// test run targets the noarch architecture, without doing NewTest's heavier setup.
+func PeekIsNoArchTest(ctx context.Context, opts ...TestOption) (bool, error) {
+	t := &Test{}
+	for _, opt := range opts {
+		if err := opt(t); err != nil {
+			return false, err
+		}
+	}
+	if err := t.resolveConfiguration(ctx); err != nil {
+		return false, err
+	}
+	return t.Configuration.Package.IsNoArch(), nil
+}
+
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t := Test{
 		WorkspaceIgnore: ".melangeignore",
@@ -87,6 +120,20 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 
 	log := clog.FromContext(ctx).With("arch", t.Arch)
 	ctx = clog.WithLogger(ctx, log)
+
+	if err := t.resolveConfiguration(ctx); err != nil {
+		return nil, err
+	}
+
+	if t.Configuration.Package.IsNoArch() {
+		hostArch := apko_types.ParseArchitecture(runtime.GOARCH)
+		if t.Arch != hostArch {
+			log.Infof("ignoring requested architecture %s for noarch package; building once using host architecture %s", t.Arch.ToAPK(), hostArch.ToAPK())
+		}
+		t.Arch = hostArch
+		log = log.With("arch", t.Arch.ToAPK())
+		ctx = clog.WithLogger(ctx, log)
+	}
 
 	// If no workspace directory is explicitly requested, create a
 	// temporary directory for it.  Otherwise, ensure we are in a
@@ -109,20 +156,6 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		}
 		t.WorkspaceDir = tmpdir
 	}
-
-	parsedCfg, err := config.ParseConfiguration(ctx, t.ConfigFile,
-		config.WithEnvFilesForParsing(t.EnvFiles),
-		config.WithDefaultCPU(t.DefaultCPU),
-		config.WithDefaultCPUModel(t.DefaultCPUModel),
-		config.WithDefaultDisk(t.DefaultDisk),
-		config.WithDefaultMemory(t.DefaultMemory),
-		config.WithDefaultTimeout(t.DefaultTimeout),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	t.Configuration = *parsedCfg
 
 	// Check that we actually can run things in containers.
 	if t.Runner != nil && !t.Runner.TestUsability(ctx) {
@@ -266,7 +299,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	})
 
 	// Unless a specific architecture is requests, we run the test for all.
-	inarchs := len(pkg.TargetArchitecture) == 0
+	inarchs := pkg.IsNoArch() || len(pkg.TargetArchitecture) == 0
 	for _, ta := range pkg.TargetArchitecture {
 		if apko_types.ParseArchitecture(ta) == t.Arch {
 			inarchs = true

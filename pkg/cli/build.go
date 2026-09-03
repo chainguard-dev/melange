@@ -374,6 +374,11 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 		archs = apko_types.AllArchs
 	}
 
+	noArch, err := build.PeekIsNoArch(ctx, baseOpts...)
+	if err != nil {
+		return err
+	}
+
 	// Set up the build contexts before running them.  This avoids various
 	// race conditions and the possibility that a context may be garbage
 	// collected before it is actually run.
@@ -381,21 +386,36 @@ func BuildCmd(ctx context.Context, archs []apko_types.Architecture, baseOpts ...
 	// Yes, this happens.  Really.
 	// https://github.com/distroless/nginx/runs/7219233843?check_suite_focus=true
 	bcs := []*build.Build{}
-	for _, arch := range archs {
+	if noArch {
 		opts := append([]build.Option{}, baseOpts...)
-		opts = append(opts, build.WithArch(arch))
+		opts = append(opts,
+			build.WithArch(apko_types.ParseArchitecture(runtime.GOARCH)),
+			build.WithReplicateArchs(archs),
+		)
 
 		bc, err := build.New(ctx, opts...)
-		if errors.Is(err, build.ErrSkipThisArch) {
-			log.Warnf("skipping arch %s", arch)
-			continue
-		} else if err != nil {
+		if err != nil {
 			return err
 		}
 
 		defer bc.Close(ctx)
-
 		bcs = append(bcs, bc)
+	} else {
+		for _, arch := range archs {
+			opts := append([]build.Option{}, baseOpts...)
+			opts = append(opts, build.WithArch(arch))
+
+			bc, err := build.New(ctx, opts...)
+			if errors.Is(err, build.ErrSkipThisArch) {
+				log.Warnf("skipping arch %s", arch)
+				continue
+			} else if err != nil {
+				return err
+			}
+
+			defer bc.Close(ctx)
+			bcs = append(bcs, bc)
+		}
 	}
 
 	if len(bcs) == 0 {

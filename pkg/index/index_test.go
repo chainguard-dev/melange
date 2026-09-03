@@ -16,6 +16,29 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestMatchesExpectedArch(t *testing.T) {
+	tests := []struct {
+		name         string
+		pkgArch      string
+		expectedArch string
+		want         bool
+	}{
+		{name: "matching architecture", pkgArch: "x86_64", expectedArch: "x86_64", want: true},
+		{name: "mismatched architecture", pkgArch: "aarch64", expectedArch: "x86_64", want: false},
+		{name: "noarch matches x86_64", pkgArch: "noarch", expectedArch: "x86_64", want: true},
+		{name: "noarch matches aarch64", pkgArch: "noarch", expectedArch: "aarch64", want: true},
+		{name: "no expected architecture", pkgArch: "aarch64", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesExpectedArch(tt.pkgArch, tt.expectedArch); got != tt.want {
+				t.Errorf("matchesExpectedArch(%q, %q) = %t, want %t", tt.pkgArch, tt.expectedArch, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUpdateIndex(t *testing.T) {
 	ctx := slogtest.Context(t)
 
@@ -60,6 +83,13 @@ func TestUpdateIndex(t *testing.T) {
 
 func mangleApk(t *testing.T, newDesc string) string {
 	t.Helper()
+	return mangleApkControl(t, func(b []byte) []byte {
+		return bytes.ReplaceAll(b, []byte("POSIX 1003.1e capabilities"), []byte(newDesc))
+	})
+}
+
+func mangleApkControl(t *testing.T, rewrite func([]byte) []byte) string {
+	t.Helper()
 	file, err := os.Open(filepath.Join("..", "sca", "testdata", "libcap-2.69-r0.apk"))
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +110,7 @@ func mangleApk(t *testing.T, newDesc string) string {
 		t.Fatal(err)
 	}
 
-	b = bytes.ReplaceAll(b, []byte("POSIX 1003.1e capabilities"), []byte(newDesc))
+	b = rewrite(b)
 
 	data, err := os.Open(exp.PackageFile)
 	if err != nil {
@@ -117,6 +147,39 @@ func mangleApk(t *testing.T, newDesc string) string {
 	}
 
 	return f.Name()
+}
+
+func TestUpdateIndexStampsNoArch(t *testing.T) {
+	ctx := slogtest.Context(t)
+	filename := mangleApkControl(t, func(b []byte) []byte {
+		return bytes.Replace(b, []byte("arch = aarch64"), []byte("arch = noarch"), 1)
+	})
+
+	idx, err := New(
+		WithPackageFiles([]string{filename}),
+		WithExpectedArch("x86_64"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := idx.UpdateIndex(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := idx.Index.Packages[0].Arch, "x86_64"; got != want {
+		t.Fatalf("UpdateIndex() stamped arch %q, want %q", got, want)
+	}
+
+	withoutExpected, err := New(WithPackageFiles([]string{filename}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := withoutExpected.UpdateIndex(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := withoutExpected.Index.Packages[0].Arch, "noarch"; got != want {
+		t.Fatalf("UpdateIndex() without expected arch changed arch to %q, want %q", got, want)
+	}
 }
 
 func TestMergeIndex(t *testing.T) {

@@ -320,6 +320,15 @@ pipeline:
           vr git config --global --add safe.directory "$workdir"
           vr git config --global --add safe.directory "$dest_fullpath"
 
+          # Never spawn background maintenance: on git >= 2.47 every fetch
+          # spawns 'git maintenance run --auto --detach', which daemonizes,
+          # outlives this pipeline step, and races with later steps reading
+          # .git (e.g. its lock file vanishing mid-tar).  The repo is
+          # ephemeral, so auto maintenance has no value here.  gc.auto covers
+          # code paths that still consult the legacy setting.
+          vr git config --global maintenance.auto false
+          vr git config --global gc.auto 0
+
           msg "Attempting git clone with retry (max_retries=$max_retries, initial_backoff=${initial_backoff}s, max_backoff=${max_backoff}s)"
           # shellcheck disable=SC2086
           retry_with_backoff "$max_retries" "$initial_backoff" "$max_backoff" \

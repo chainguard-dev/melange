@@ -273,7 +273,8 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		return nil, err
 	}
 
-	if b.Configuration.Package.IsNoArch() {
+	switch {
+	case b.Configuration.Package.IsNoArch():
 		hostArch := apko_types.ParseArchitecture(runtime.GOARCH)
 		if b.Arch != hostArch {
 			log.Infof("ignoring requested architecture %s for noarch package; building once using host architecture %s", b.Arch.ToAPK(), hostArch.ToAPK())
@@ -281,11 +282,11 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		b.Arch = hostArch
 		log = log.With("arch", b.Arch.ToAPK())
 		ctx = clog.WithLogger(ctx, log)
-	} else if len(b.Configuration.Package.TargetArchitecture) == 1 &&
-		b.Configuration.Package.TargetArchitecture[0] == "all" {
+	case len(b.Configuration.Package.TargetArchitecture) == 1 &&
+		b.Configuration.Package.TargetArchitecture[0] == "all":
 		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
-	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
-		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
+	case len(b.Configuration.Package.TargetArchitecture) != 0 &&
+		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()):
 		return nil, ErrSkipThisArch
 	}
 

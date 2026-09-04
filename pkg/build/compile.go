@@ -106,11 +106,15 @@ func (t *Test) Compile(ctx context.Context) error {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
 		}
 
-		// Append anything this subpackage test needs.
+		// Append anything this subpackage test needs. Packages and capabilities
+		// are scoped to this subpackage's test container, not shared across
+		// every test in the configuration.
 		te.Packages = append(te.Packages, test.Needs...)
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		addCapabilities(&cfg.Subpackages[i].Test.Capabilities, test.Capabilities)
 	}
 
 	if cfg.Test != nil {
@@ -136,6 +140,8 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		addCapabilities(&t.Configuration.Test.Capabilities, test.Capabilities)
 	}
 
 	return nil
@@ -188,10 +194,19 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
+
+		// Capabilities from test pipelines are intentionally not applied here:
+		// `melange build` never runs the test pipelines, so granting them to the
+		// build runner would only over-privilege it. Test.Compile scopes them to
+		// each test's runner under `melange test`.
 	}
 
 	ic := &b.Configuration.Environment.Contents
 	ic.Packages = append(ic.Packages, c.Needs...)
+
+	// Capabilities needed by the build pipelines apply to the build runner.
+	addCapabilities(&b.Configuration.Capabilities, c.Capabilities)
+	warnCapabilityConflicts(ctx, b.Configuration.Capabilities)
 
 	if cfg.Test != nil {
 		tc := newCompiled(b.PipelineDirs, opts)
@@ -216,6 +231,10 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 type Compiled struct {
 	PipelineDirs []string
 	Needs        []string
+	// Capabilities are the Linux capabilities the compiled pipelines request be
+	// added to their runner. Pipelines can only add capabilities, so this is a
+	// plain add-list rather than an add/drop pair.
+	Capabilities []string
 
 	// dependenciesOnly skips producing runnable `runs:` bodies. See
 	// WithDependenciesOnly.
@@ -370,6 +389,32 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 	return nil
 }
 
+// addCapabilities folds the capabilities gathered from pipelines (adds) into
+// the Add set of the runner's capabilities configuration (dst), sorting and
+// deduplicating the result. It leaves dst untouched when there is nothing to
+// add.
+func addCapabilities(dst *config.Capabilities, adds []string) {
+	if len(adds) == 0 {
+		return
+	}
+	dst.Add = slices.Compact(slices.Sorted(slices.Values(append(dst.Add, adds...))))
+}
+
+// warnCapabilityConflicts warns when a capability ends up in both the Add and
+// Drop sets, which the runners resolve inconsistently (under bubblewrap the
+// drop silently wins on flag order; docker/qemu decide downstream).
+func warnCapabilityConflicts(ctx context.Context, caps config.Capabilities) {
+	var conflicts []string
+	for _, c := range caps.Add {
+		if slices.Contains(caps.Drop, c) {
+			conflicts = append(conflicts, c)
+		}
+	}
+	if len(conflicts) > 0 {
+		clog.FromContext(ctx).Warnf("capabilities %v are both added and dropped; the runner decides which wins", conflicts)
+	}
+}
+
 // readUses reads the definition named by uses from the configured pipeline
 // directories, falling back to the ones built into melange.
 func (c *Compiled) readUses(ctx context.Context, uses string) ([]byte, error) {
@@ -433,6 +478,16 @@ func (c *Compiled) gatherDeps(ctx context.Context, pipeline *config.Pipeline) er
 			log.Debugf("  adding package %q for pipeline %q", pkg, id)
 		}
 		c.Needs = append(c.Needs, pipeline.Needs.Packages...)
+
+		// Widening the sandbox is more consequential than adding a package, so
+		// surface it at Info (not Debug like packages above).
+		if adds := pipeline.Needs.Capabilities.Add; len(adds) > 0 {
+			if err := pipeline.Needs.Capabilities.Validate(); err != nil {
+				return fmt.Errorf("pipeline %q: %w", id, err)
+			}
+			log.Infof("pipeline %q adds capabilities %v to the runner", id, adds)
+			c.Capabilities = append(c.Capabilities, adds...)
+		}
 
 		pipeline.Needs = nil
 	}

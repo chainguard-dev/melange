@@ -132,7 +132,7 @@ func TestBuildWorkspaceConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := slogtest.Context(t)
-			got, gotErr := tt.t.buildWorkspaceConfig(ctx, testImgRef, testPkgName, apko_types.ImageConfiguration{Environment: tt.env})
+			got, gotErr := tt.t.buildWorkspaceConfig(ctx, testImgRef, testPkgName, apko_types.ImageConfiguration{Environment: tt.env}, config.Capabilities{})
 			if gotErr != nil {
 				if tt.wantErr == "" {
 					t.Fatalf("unexpected error: %v", gotErr)

@@ -24,6 +24,17 @@ needs:
     - wget
 ```
 
+A pipeline can also declare the Linux capabilities it needs added to its runner. Only additions are supported: a pipeline states what it requires, it cannot drop a capability from the other steps sharing its container. For example, a pipeline that attaches BPF probes needs `CAP_SYS_ADMIN`:
+
+```yaml
+needs:
+  capabilities:
+    add:
+      - CAP_SYS_ADMIN
+```
+
+Capabilities declared by build pipelines are added to the build runner. Capabilities declared by test pipelines are scoped to that test's runner under `melange test`, so a capability one subpackage's test needs is not granted to sibling tests or to the build runner. Names are checked while the pipeline is compiled, so a misspelled `CAP_*` fails the build rather than the container.
+
 ## Where does Melange build?
 
 The melange build process involves three normally distinct directories.
@@ -74,7 +85,7 @@ persist.
 
 The build process is as follows. The core routine is [`BuildPackage()`](../pkg/build/build.go#L716).
 
-1. Evaluate each step in the pipeline to see if it has a `needs` section. If so, then add its listed packages to the build time package requirements defined in `environment.contents`.
+1. Evaluate each step in the pipeline to see if it has a `needs` section. If so, then add its listed packages to the build time package requirements defined in `environment.contents`, and merge any capabilities it lists into the runner.
 1. Use [apko](https://github.com/chainguard-dev/apko) to create a tar stream of the packages listed in `environment.contents` and lay them out onto the workspace directory.
 1. Overlay `/bin/sh`. This is an optimization step, and is not discussed here. Read [Shell Overlay](./SHELL-OVERLAY.md) for more information.
 1. Populate the build cache. This is an optimization step, and is not discussed here. Read [Build Cache](./BUILD-CACHE.md) for more information.

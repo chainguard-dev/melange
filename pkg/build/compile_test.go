@@ -16,7 +16,10 @@ package build
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -119,6 +122,160 @@ func TestCompileTest(t *testing.T) {
 	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage", "subpackage-base", "subpackage-need"}; !slices.Equal(got, want) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
 	}
+}
+
+func TestCompileCapabilities(t *testing.T) {
+	needs := func(adds ...string) *config.Needs {
+		return &config.Needs{Capabilities: config.NeedsCapabilities{Add: adds}}
+	}
+
+	manifestCaps := func() config.Capabilities {
+		return config.Capabilities{Add: []string{"CAP_NET_ADMIN"}}
+	}
+
+	// A test pipeline's capabilities are gathered onto the test they belong to,
+	// not onto the shared top-level capabilities, so they stay scoped to that
+	// test's runner and do not widen the build or sibling tests.
+	t.Run("test caps are scoped to the test", func(t *testing.T) {
+		test := &Test{
+			Package: "main",
+			Configuration: config.Configuration{
+				Capabilities: manifestCaps(),
+				Test: &config.Test{
+					Pipeline: []config.Pipeline{{Needs: needs("CAP_SYS_ADMIN")}},
+				},
+			},
+		}
+
+		if err := test.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got, want := test.Configuration.Test.Capabilities.Add, []string{"CAP_SYS_ADMIN"}; !slices.Equal(got, want) {
+			t.Errorf("test capabilities: want %v, got %v", want, got)
+		}
+		// The shared top-level set keeps only the manifest's caps.
+		if got, want := test.Configuration.Capabilities.Add, []string{"CAP_NET_ADMIN"}; !slices.Equal(got, want) {
+			t.Errorf("top-level capabilities changed: want %v, got %v", want, got)
+		}
+	})
+
+	// One subpackage test using a capability must not grant it to sibling
+	// subpackage tests or the main test.
+	t.Run("subpackage caps do not leak to siblings", func(t *testing.T) {
+		test := &Test{
+			Package: "main",
+			Configuration: config.Configuration{
+				Test: &config.Test{Pipeline: []config.Pipeline{{Runs: "true"}}},
+				Subpackages: []config.Subpackage{
+					{Name: "sub-a", Test: &config.Test{Pipeline: []config.Pipeline{{Needs: needs("CAP_SYS_ADMIN")}}}},
+					{Name: "sub-b", Test: &config.Test{Pipeline: []config.Pipeline{{Runs: "true"}}}},
+				},
+			},
+		}
+
+		if err := test.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got, want := test.Configuration.Subpackages[0].Test.Capabilities.Add, []string{"CAP_SYS_ADMIN"}; !slices.Equal(got, want) {
+			t.Errorf("sub-a capabilities: want %v, got %v", want, got)
+		}
+		if got := test.Configuration.Subpackages[1].Test.Capabilities.Add; len(got) != 0 {
+			t.Errorf("sub-b capabilities should be empty, got %v", got)
+		}
+		if got := test.Configuration.Test.Capabilities.Add; len(got) != 0 {
+			t.Errorf("main test capabilities should be empty, got %v", got)
+		}
+	})
+
+	// A build pipeline's capabilities apply to the build runner, deduplicated
+	// against the manifest's.
+	t.Run("build pipeline caps apply to build runner", func(t *testing.T) {
+		build := &Build{
+			Configuration: &config.Configuration{
+				Capabilities: manifestCaps(),
+				// Duplicate CAP_NET_ADMIN to exercise dedup.
+				Pipeline: []config.Pipeline{{Needs: needs("CAP_SYS_ADMIN", "CAP_NET_ADMIN")}},
+			},
+		}
+
+		if err := build.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got, want := build.Configuration.Capabilities.Add, []string{"CAP_NET_ADMIN", "CAP_SYS_ADMIN"}; !slices.Equal(got, want) {
+			t.Errorf("build capabilities: want %v, got %v", want, got)
+		}
+	})
+
+	// `melange build` never runs test pipelines, so caps they declare must not
+	// reach the build runner.
+	t.Run("build does not apply test caps", func(t *testing.T) {
+		build := &Build{
+			Configuration: &config.Configuration{
+				Package:      config.Package{Name: "main"},
+				Capabilities: manifestCaps(),
+				Test: &config.Test{
+					Pipeline: []config.Pipeline{{Needs: needs("CAP_SYS_ADMIN")}},
+				},
+			},
+		}
+
+		if err := build.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got, want := build.Configuration.Capabilities.Add, []string{"CAP_NET_ADMIN"}; !slices.Equal(got, want) {
+			t.Errorf("test caps leaked into build runner: want %v, got %v", want, got)
+		}
+	})
+
+	// Capabilities declared via needs: in a pipeline loaded through uses: are
+	// gathered the same way, exercising the yaml round-trip and the
+	// pipeline.Needs = nil handling in gatherDeps.
+	t.Run("uses pipeline round-trip", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "cap.yaml"), []byte(
+			"needs:\n  capabilities:\n    add:\n      - CAP_SYS_ADMIN\npipeline:\n  - runs: \"true\"\n",
+		), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		test := &Test{
+			Package:      "main",
+			PipelineDirs: []string{dir},
+			Configuration: config.Configuration{
+				Test: &config.Test{Pipeline: []config.Pipeline{{Uses: "cap"}}},
+			},
+		}
+
+		if err := test.Compile(context.Background()); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got, want := test.Configuration.Test.Capabilities.Add, []string{"CAP_SYS_ADMIN"}; !slices.Equal(got, want) {
+			t.Errorf("uses capabilities: want %v, got %v", want, got)
+		}
+	})
+
+	// A misspelled capability is rejected while compiling, rather than by the
+	// runner once the container is created.
+	t.Run("unknown capability fails compile", func(t *testing.T) {
+		build := &Build{
+			Configuration: &config.Configuration{
+				Pipeline: []config.Pipeline{{Needs: needs("CAP_SYS_ADMN")}},
+			},
+		}
+
+		err := build.Compile(context.Background())
+		if err == nil {
+			t.Fatal("expected an error for an unknown capability, got none")
+		}
+		if !strings.Contains(err.Error(), "CAP_SYS_ADMN") {
+			t.Errorf("error should name the offending capability, got: %v", err)
+		}
+	})
 }
 
 func Test_stripComments(t *testing.T) {

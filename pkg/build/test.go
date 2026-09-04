@@ -305,10 +305,12 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	}
 
 	env := apko_types.ImageConfiguration{}
+	var testCaps config.Capabilities
 	if t.Configuration.Test != nil {
 		env = t.Configuration.Test.Environment
+		testCaps = t.Configuration.Test.Capabilities
 	}
-	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, env)
+	cfg, err := t.buildWorkspaceConfig(ctx, imgRef, pkg.Name, env, testCaps)
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
@@ -368,7 +370,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("unable to build guest: %w", err)
 			}
-			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment)
+			subCfg, err := t.buildWorkspaceConfig(ctx, spImgRef, sp.Name, sp.Test.Environment, sp.Test.Capabilities)
 			if err != nil {
 				return fmt.Errorf("unable to build workspace config: %w", err)
 			}
@@ -422,7 +424,7 @@ func (t *Test) Summarize(ctx context.Context) {
 	t.SummarizePaths(ctx)
 }
 
-func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string, imgcfg apko_types.ImageConfiguration) (*container.Config, error) {
+func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string, imgcfg apko_types.ImageConfiguration, testCaps config.Capabilities) (*container.Config, error) {
 	log := clog.FromContext(ctx)
 	mounts := []container.BindMount{
 		{Source: t.WorkspaceDir, Destination: container.DefaultWorkspaceDir},
@@ -465,12 +467,14 @@ func (t *Test) buildWorkspaceConfig(ctx context.Context, imgRef, pkgName string,
 		cfg.Memory = t.Configuration.Package.Resources.Memory
 		cfg.Disk = t.Configuration.Package.Resources.Disk
 	}
-	if t.Configuration.Capabilities.Add != nil {
-		cfg.Capabilities.Add = t.Configuration.Capabilities.Add
-	}
-	if t.Configuration.Capabilities.Drop != nil {
-		cfg.Capabilities.Drop = t.Configuration.Capabilities.Drop
-	}
+	// Apply the manifest-wide capabilities plus the ones this specific test
+	// needs. Test capabilities are scoped to this container, so a capability a
+	// sibling test's pipeline requested does not leak in here.
+	addSet := slices.Concat(t.Configuration.Capabilities.Add, testCaps.Add)
+	cfg.Capabilities.Add = slices.Compact(slices.Sorted(slices.Values(addSet)))
+	dropSet := slices.Concat(t.Configuration.Capabilities.Drop, testCaps.Drop)
+	cfg.Capabilities.Drop = slices.Compact(slices.Sorted(slices.Values(dropSet)))
+	warnCapabilityConflicts(ctx, config.Capabilities{Add: cfg.Capabilities.Add, Drop: cfg.Capabilities.Drop})
 
 	maps.Copy(cfg.Environment, t.Configuration.Environment.Environment)
 	maps.Copy(cfg.Environment, imgcfg.Environment)

@@ -106,10 +106,12 @@ type PackageOption struct {
 	// Optional: Mark this package as not providing any executables
 	NoCommands bool `json:"no-commands,omitempty" yaml:"no-commands,omitempty"`
 	// Optional: Don't generate versioned depends for shared libraries
+	// and pkg-config packages
 	NoVersionedShlibDeps bool `json:"no-versioned-shlib-deps,omitempty" yaml:"no-versioned-shlib-deps,omitempty"`
 	// Optional: Explicitly opt in to (true) or out of (false)
-	// generating versioned depends for shared libraries.  When set,
-	// this takes precedence over both the
+	// generating versioned depends for the shared libraries this
+	// package links against and the pkg-config packages its .pc
+	// files require.  When set, this takes precedence over both the
 	// MELANGE_VERSIONED_SHLIB_DEPENDS environment variable and
 	// no-versioned-shlib-deps.
 	VersionedShlibDeps *bool `json:"versioned-shlib-deps,omitempty" yaml:"versioned-shlib-deps,omitempty"`

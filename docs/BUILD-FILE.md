@@ -265,10 +265,12 @@ options:
 ```
 
 `no-versioned-shlib-deps` - The generated `depends` for the shared
-libraries this package links against should not be versioned.  This
-only turns the versioned `depends` off; it has no effect when they are
-already disabled, and it does not affect the versioned `so-ver:`
-`provides` this package publishes for its own shared libraries.
+libraries this package links against, and for the pkg-config packages
+its `.pc` files require, should not be versioned.  This only turns the
+versioned `depends` off; it has no effect when they are already
+disabled, and it does not affect the versioned `so-ver:` and `pc:`
+`provides` this package publishes for its own shared libraries and
+`.pc` files.
 
 ```yaml
 options:
@@ -277,16 +279,19 @@ options:
 
 `versioned-shlib-deps` - Explicitly enable (`true`) or disable
 (`false`) the generated versioned `depends` for the shared libraries
-this package links against, for example
-`so-ver:libz.so.1>=1.3.1-r6`.
+this package links against, for example `so-ver:libz.so.1>=1.3.1-r6`,
+and for the pkg-config packages its `.pc` files require, for example
+`pc:openssl>=4.0.2-r1`.  In both cases the constraint names the
+version of the package that satisfied the dependency at build time, so
+the two are enabled and disabled together.
 
-Versioned shlib `depends` are off by default, and are enabled globally
-for a build by setting the `MELANGE_VERSIONED_SHLIB_DEPENDS`
-environment variable to a non-empty value.  This option overrides
-that, in both directions: a package can opt in while the environment
-variable is unset, and opt out while it is set.  When the option is
-absent, the environment variable decides, and
-`no-versioned-shlib-deps` can then turn the `depends` off.
+Versioned `depends` are off by default, and are enabled globally for a
+build by setting the `MELANGE_VERSIONED_SHLIB_DEPENDS` environment
+variable to a non-empty value.  This option overrides that, in both
+directions: a package can opt in while the environment variable is
+unset, and opt out while it is set.  When the option is absent, the
+environment variable decides, and `no-versioned-shlib-deps` can then
+turn the `depends` off.
 
 ```yaml
 options:

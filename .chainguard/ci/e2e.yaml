@@ -189,7 +189,7 @@ checks:
       - vars: {PACKAGE: py3-pyelftools}
       - vars: {PACKAGE: py3-supported-python}
       - vars: {PACKAGE: s3cmd}
-      - vars: {PACKAGE: subversion}
+      - vars: {PACKAGE: subversion} # built with MELANGE_VERSIONED_SHLIB_DEPENDS=1 to exercise versioned pc: depends
       - vars: {PACKAGE: sudo}
       - vars: {PACKAGE: tini}
     network:
@@ -214,13 +214,14 @@ checks:
       git clone --depth 1 https://github.com/wolfi-dev/os /var/tmp/os
       cd /var/tmp/os
       wolfictl bump "${PACKAGE}"
-      # Build jq with versioned shared library depends enabled, so that the
-      # check demonstrates so-ver: dependency generation on a real package.
-      # Empty means "off", which is how melange reads an unset variable.
+      # Build jq and subversion with versioned depends enabled, so that the
+      # check demonstrates so-ver: and pc: dependency generation on real
+      # packages.  Empty means "off", which is how melange reads an unset
+      # variable.
       versioned=
-      if [ "${PACKAGE}" = jq ]; then
-        versioned=1
-      fi
+      case "${PACKAGE}" in
+        jq|subversion) versioned=1;;
+      esac
       MELANGE_VERSIONED_SHLIB_DEPENDS="${versioned}" \
         make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap \
         MELANGE_EXTRA_OPTS=--generate-provenance package/"${PACKAGE}"
@@ -240,31 +241,45 @@ checks:
         done
         ls -hal packages/x86_64/usr/bin/sudo
       fi
-      if [ "${PACKAGE}" = jq ]; then
-        # jq links libonig and libc, and both providers publish versioned
-        # so-ver: provides, so building with
-        # MELANGE_VERSIONED_SHLIB_DEPENDS=1 should have produced matching
-        # versioned depends, e.g.:
-        #
-        #   depend = so:libonig.so.5
-        #   depend = so-ver:libonig.so.5>=6.9.10-r4
-        #
-        # The dynamic linker is not special: ld-linux-*.so gets a versioned
-        # depend too, from the PT_INTERP of every executable.
-        found=0
-        for pkg in packages/x86_64/jq-*.apk; do
-          echo "=== ${pkg} ==="
-          depends="$(tar -Oxzf "${pkg}" .PKGINFO 2>/dev/null | grep '^depend = ' || true)"
-          echo "${depends:-(no depends)}"
-          if echo "${depends}" | grep -q '^depend = so-ver:'; then
-            found=1
+      case "${PACKAGE}" in
+        jq|subversion)
+          # These packages were built with MELANGE_VERSIONED_SHLIB_DEPENDS=1,
+          # so the shared libraries they link against and the pkg-config
+          # packages their .pc files require should have picked up a
+          # constraint naming the version that satisfied them at build time:
+          #
+          #   depend = so:libonig.so.5
+          #   depend = so-ver:libonig.so.5>=6.9.10-r4
+          #   depend = pc:sqlite3
+          #   depend = pc:sqlite3>=3.50.4-r0
+          #
+          # The dynamic linker is not special: ld-linux-*.so gets a versioned
+          # depend too, from the PT_INTERP of every executable.
+          sover=0
+          pcver=0
+          for pkg in packages/x86_64/"${PACKAGE}"-*.apk; do
+            echo "=== ${pkg} ==="
+            depends="$(tar -Oxzf "${pkg}" .PKGINFO 2>/dev/null | grep '^depend = ' || true)"
+            echo "${depends:-(no depends)}"
+            if echo "${depends}" | grep -q '^depend = so-ver:'; then
+              sover=1
+            fi
+            if echo "${depends}" | grep -q '^depend = pc:.*>='; then
+              pcver=1
+            fi
+          done
+          if [ "${sover}" -ne 1 ]; then
+            echo "MELANGE_VERSIONED_SHLIB_DEPENDS=1 produced no so-ver: depends for ${PACKAGE}" >&2
+            exit 1
           fi
-        done
-        if [ "${found}" -ne 1 ]; then
-          echo "MELANGE_VERSIONED_SHLIB_DEPENDS=1 produced no so-ver: depends for jq" >&2
-          exit 1
-        fi
-      fi
+          # jq's libjq.pc requires no other pkg-config packages; subversion-dev
+          # is the one that depends on pc:apr-1, pc:serf-1, pc:sqlite3 and co.
+          if [ "${PACKAGE}" = subversion ] && [ "${pcver}" -ne 1 ]; then
+            echo "MELANGE_VERSIONED_SHLIB_DEPENDS=1 produced no versioned pc: depends for ${PACKAGE}" >&2
+            exit 1
+          fi
+          ;;
+      esac
       install="sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${PACKAGE}-*.apk"
       case "${PACKAGE}" in
         fping)   verify="apk add libcap-utils; getcap /usr/sbin/fping";;

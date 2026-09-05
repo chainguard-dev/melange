@@ -31,6 +31,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -47,10 +48,24 @@ type testHandle struct {
 	exp *expandapk.APKExpanded
 	cfg *config.Configuration
 
-	// Optional: set by tests that exercise the versioned shlib
+	// Optional: set by tests that exercise the versioned
 	// "depends:" resolution.
 	installed map[string]string
 	resolver  *apk.PkgResolver
+
+	// Optional: set by tests that synthesize a package filesystem
+	// instead of expanding a real .apk.
+	fsys SCAFS
+}
+
+// memFS adapts an fstest.MapFS to the SCAFS interface, for tests that
+// only need a handful of regular files.
+type memFS struct {
+	fstest.MapFS
+}
+
+func (memFS) Readlink(name string) (string, error) {
+	return "", fmt.Errorf("readlink %s: symlinks are not supported by memFS", name)
 }
 
 func (th *testHandle) PackageName() string {
@@ -71,10 +86,13 @@ func (th *testHandle) FilesystemForRelative(pkgName string) (SCAFS, error) {
 		return nil, fmt.Errorf("TODO: implement FilesystemForRelative, %q != %q", pkgName, th.PackageName())
 	}
 
-	return th.exp.TarFS, nil
+	return th.Filesystem()
 }
 
 func (th *testHandle) Filesystem() (SCAFS, error) {
+	if th.fsys != nil {
+		return th.fsys, nil
+	}
 	return th.exp.TarFS, nil
 }
 
@@ -236,7 +254,119 @@ func TestDetermineShlibVersion(t *testing.T) {
 	}
 }
 
-func TestVersionedShlibDepsEnabled(t *testing.T) {
+func TestDeterminePkgConfigVersion(t *testing.T) {
+	yes := true
+
+	for _, tc := range []struct {
+		name     string
+		provides []string
+		want     string
+	}{{
+		// pkg-config "provides:" are always stamped with the
+		// version of the package that ships the .pc file.
+		name:     "versioned provides yields a versioned depend",
+		provides: []string{"pc:openssl=4.0.2-r1", "pc:libcrypto=4.0.2-r1"},
+		want:     "4.0.2-r1",
+	}, {
+		// We can't depend on a version the provider doesn't publish.
+		name:     "unversioned provides yields no versioned depend",
+		provides: []string{"pc:openssl"},
+		want:     "",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := slogtest.Context(t)
+
+			hdl := &testHandle{
+				pkg: apk.Package{Name: "curl-dev", Version: "8.16.0-r1"},
+				cfg: &config.Configuration{
+					Package: config.Package{
+						Name:    "curl-dev",
+						Options: &config.PackageOption{VersionedShlibDeps: &yes},
+					},
+				},
+				installed: map[string]string{"openssl-dev": "4.0.2-r1"},
+				resolver: resolverFromPackages(ctx, &apk.Package{
+					Name:      "openssl-dev",
+					Version:   "4.0.2-r1",
+					Provides:  tc.provides,
+					BuildTime: time.Unix(0, 0),
+				}),
+			}
+
+			got, err := determinePkgConfigVersion(ctx, hdl, "openssl")
+			if err != nil {
+				t.Fatalf("determinePkgConfigVersion() returned an error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("determinePkgConfigVersion() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestVersionedPkgConfigDeps checks that a .pc file's "Requires:" turn
+// into versioned "depends:" on the packages that were actually used to
+// satisfy them at build time.
+func TestVersionedPkgConfigDeps(t *testing.T) {
+	ctx := slogtest.Context(t)
+	yes := true
+
+	hdl := &testHandle{
+		pkg: apk.Package{Name: "curl-dev", Version: "8.16.0-r1"},
+		cfg: &config.Configuration{
+			Package: config.Package{
+				Name:    "curl-dev",
+				Options: &config.PackageOption{VersionedShlibDeps: &yes},
+			},
+		},
+		fsys: memFS{fstest.MapFS{
+			"usr/lib/pkgconfig/libcurl.pc": &fstest.MapFile{Data: []byte(
+				"Name: libcurl\n" +
+					"Description: Library to transfer files with HTTP, FTP, etc.\n" +
+					"Version: 8.16.0\n" +
+					"Requires: openssl\n" +
+					"Requires.private: zlib\n")},
+		}},
+		installed: map[string]string{
+			"openssl-dev": "4.0.2-r1",
+			"zlib-dev":    "1.3.1-r6",
+		},
+		resolver: resolverFromPackages(ctx,
+			&apk.Package{
+				Name:      "openssl-dev",
+				Version:   "4.0.2-r1",
+				Provides:  []string{"pc:openssl=4.0.2-r1"},
+				BuildTime: time.Unix(0, 0),
+			},
+			// zlib-dev has no versioned pkg-config
+			// "provides:", so its depend stays unversioned.
+			&apk.Package{
+				Name:      "zlib-dev",
+				Version:   "1.3.1-r6",
+				Provides:  []string{"pc:zlib"},
+				BuildTime: time.Unix(0, 0),
+			}),
+	}
+
+	got := config.Dependencies{}
+	if err := generatePkgConfigDeps(ctx, hdl, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	want := config.Dependencies{
+		Runtime: []string{
+			"pc:openssl",
+			"pc:openssl>=4.0.2-r1",
+			"pc:zlib",
+		},
+		Provides: []string{"pc:libcurl=8.16.0-r1"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("generatePkgConfigDeps(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestVersionedDepsEnabled(t *testing.T) {
 	yes, no := true, false
 	on := "1"
 
@@ -283,8 +413,8 @@ func TestVersionedShlibDepsEnabled(t *testing.T) {
 				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", "")
 			}
 
-			if got := versionedShlibDepsEnabled(tc.opts); got != tc.want {
-				t.Errorf("versionedShlibDepsEnabled() = %v, want %v", got, tc.want)
+			if got := versionedDepsEnabled(tc.opts); got != tc.want {
+				t.Errorf("versionedDepsEnabled() = %v, want %v", got, tc.want)
 			}
 		})
 	}

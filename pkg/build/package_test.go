@@ -62,6 +62,16 @@ func Test_removeSelfProvidedDeps_KeepsSoVerConstraint(t *testing.T) {
 		"self-provided deps should be dropped and the so-ver constraint preserved")
 }
 
+func Test_removeSelfProvidedDeps_KeepsPkgConfigConstraint(t *testing.T) {
+	provides := []string{"pc:libcurl=8.16.0-r1"}
+	depends := []string{"pc:libcurl", "pc:libcurl>=8.16.0-r1", "pc:openssl", "pc:openssl>=4.0.2-r1"}
+
+	final := removeSelfProvidedDeps(depends, provides)
+
+	require.Equal(t, []string{"pc:openssl", "pc:openssl>=4.0.2-r1"}, final,
+		"self-provided pkg-config deps should be dropped, versioned ones included")
+}
+
 func Test_removeSelfProvidedDeps_WithEmptyProvides(t *testing.T) {
 	provides := []string{}
 	depends := []string{"so:libbaz.so.4", "so:libfoo.so.3"}

@@ -167,18 +167,43 @@ func TestDetermineShlibVersion(t *testing.T) {
 	yes := true
 
 	for _, tc := range []struct {
-		name     string
-		provides []string
-		want     string
+		name        string
+		shlib       string
+		provider    string
+		providerVer string
+		provides    []string
+		want        string
 	}{{
-		name:     "versioned provides yields a versioned depend",
-		provides: []string{"so:libonig.so.5=5", "so-ver:libonig.so.5=6.9.10-r4"},
-		want:     "6.9.10-r4",
+		name:        "versioned provides yields a versioned depend",
+		shlib:       "libonig.so.5",
+		provider:    "oniguruma",
+		providerVer: "6.9.10-r4",
+		provides:    []string{"so:libonig.so.5=5", "so-ver:libonig.so.5=6.9.10-r4"},
+		want:        "6.9.10-r4",
 	}, {
 		// We can't depend on a version the provider doesn't publish.
-		name:     "unversioned provides yields no versioned depend",
-		provides: []string{"so:libonig.so.5=5"},
-		want:     "",
+		name:        "unversioned provides yields no versioned depend",
+		shlib:       "libonig.so.5",
+		provider:    "oniguruma",
+		providerVer: "6.9.10-r4",
+		provides:    []string{"so:libonig.so.5=5"},
+		want:        "",
+	}, {
+		// The dynamic linker is not special: it is versioned like
+		// any other shared library glibc ships.
+		name:        "the x86_64 dynamic linker is versioned",
+		shlib:       "ld-linux-x86-64.so.2",
+		provider:    "glibc",
+		providerVer: "2.42-r5",
+		provides:    []string{"so:ld-linux-x86-64.so.2=2", "so-ver:ld-linux-x86-64.so.2=2.42-r5"},
+		want:        "2.42-r5",
+	}, {
+		name:        "the aarch64 dynamic linker is versioned",
+		shlib:       "ld-linux-aarch64.so.1",
+		provider:    "glibc",
+		providerVer: "2.42-r5",
+		provides:    []string{"so:ld-linux-aarch64.so.1=1", "so-ver:ld-linux-aarch64.so.1=2.42-r5"},
+		want:        "2.42-r5",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := slogtest.Context(t)
@@ -191,16 +216,16 @@ func TestDetermineShlibVersion(t *testing.T) {
 						Options: &config.PackageOption{VersionedShlibDeps: &yes},
 					},
 				},
-				installed: map[string]string{"oniguruma": "6.9.10-r4"},
+				installed: map[string]string{tc.provider: tc.providerVer},
 				resolver: resolverFromPackages(ctx, &apk.Package{
-					Name:      "oniguruma",
-					Version:   "6.9.10-r4",
+					Name:      tc.provider,
+					Version:   tc.providerVer,
 					Provides:  tc.provides,
 					BuildTime: time.Unix(0, 0),
 				}),
 			}
 
-			got, err := determineShlibVersion(ctx, hdl, "libonig.so.5")
+			got, err := determineShlibVersion(ctx, hdl, tc.shlib)
 			if err != nil {
 				t.Fatalf("determineShlibVersion() returned an error: %v", err)
 			}

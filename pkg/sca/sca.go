@@ -376,14 +376,6 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 		return "", nil
 	}
 
-	// We don't version-depend or provide ld-linux-*.so, otherwise
-	// we'd be required to rebuild all packages that link against
-	// glibc whenever the latter is updated.
-	if strings.HasPrefix(shlib, "ld-linux-x86-64.so") || strings.HasPrefix(shlib, "ld-linux-aarch64.so") {
-		log.Debugf("Skipping %s", shlib)
-		return "", nil
-	}
-
 	pkgResolver := hdl.PkgResolver()
 
 	if pkgResolver == nil {
@@ -644,9 +636,19 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 
 			// musl interpreter is a symlink back to itself, so we want to use the non-symlink name as
 			// the dependency.
-			interpName := fmt.Sprintf("so:%s", filepath.Base(interp))
-			interpName = strings.ReplaceAll(interpName, "so:ld-musl", "so:libc.musl")
-			generated.Runtime = append(generated.Runtime, interpName)
+			interpLib := filepath.Base(interp)
+			if rest, ok := strings.CutPrefix(interpLib, "ld-musl"); ok {
+				interpLib = "libc.musl" + rest
+			}
+			generated.Runtime = append(generated.Runtime, fmt.Sprintf("so:%s", interpLib))
+
+			interpVer, err := determineShlibVersion(ctx, hdl, interpLib)
+			if err != nil {
+				return err
+			}
+			if interpVer != "" {
+				generated.Runtime = append(generated.Runtime, fmt.Sprintf("so-ver:%s>=%s", interpLib, interpVer))
+			}
 		}
 
 		libs, err := ef.ImportedLibraries()

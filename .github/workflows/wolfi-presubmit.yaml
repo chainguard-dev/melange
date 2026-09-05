@@ -283,8 +283,8 @@ jobs:
           #   depend = so:libonig.so.5
           #   depend = so-ver:libonig.so.5>=6.9.10-r4
           #
-          # ld-linux-*.so is deliberately excluded from versioned depends, so
-          # it stays unversioned.
+          # The dynamic linker is not special: ld-linux-*.so gets a versioned
+          # depend too, from the PT_INTERP of every executable.
           found=0
           for pkg in packages/x86_64/jq-*.apk; do
             echo "=== ${pkg} ==="

@@ -182,8 +182,6 @@ func resolverFromPackages(ctx context.Context, pkgs ...*apk.Package) *apk.PkgRes
 }
 
 func TestDetermineShlibVersion(t *testing.T) {
-	yes := true
-
 	for _, tc := range []struct {
 		name        string
 		shlib       string
@@ -230,8 +228,7 @@ func TestDetermineShlibVersion(t *testing.T) {
 				pkg: apk.Package{Name: "jq", Version: "1.8.1-r3"},
 				cfg: &config.Configuration{
 					Package: config.Package{
-						Name:    "jq",
-						Options: &config.PackageOption{VersionedShlibDeps: &yes},
+						Name: "jq",
 					},
 				},
 				installed: map[string]string{tc.provider: tc.providerVer},
@@ -255,8 +252,6 @@ func TestDetermineShlibVersion(t *testing.T) {
 }
 
 func TestDeterminePkgConfigVersion(t *testing.T) {
-	yes := true
-
 	for _, tc := range []struct {
 		name     string
 		provides []string
@@ -280,8 +275,7 @@ func TestDeterminePkgConfigVersion(t *testing.T) {
 				pkg: apk.Package{Name: "curl-dev", Version: "8.16.0-r1"},
 				cfg: &config.Configuration{
 					Package: config.Package{
-						Name:    "curl-dev",
-						Options: &config.PackageOption{VersionedShlibDeps: &yes},
+						Name: "curl-dev",
 					},
 				},
 				installed: map[string]string{"openssl-dev": "4.0.2-r1"},
@@ -309,14 +303,12 @@ func TestDeterminePkgConfigVersion(t *testing.T) {
 // satisfy them at build time.
 func TestVersionedPkgConfigDeps(t *testing.T) {
 	ctx := slogtest.Context(t)
-	yes := true
 
 	hdl := &testHandle{
 		pkg: apk.Package{Name: "curl-dev", Version: "8.16.0-r1"},
 		cfg: &config.Configuration{
 			Package: config.Package{
-				Name:    "curl-dev",
-				Options: &config.PackageOption{VersionedShlibDeps: &yes},
+				Name: "curl-dev",
 			},
 		},
 		fsys: memFS{fstest.MapFS{
@@ -367,52 +359,27 @@ func TestVersionedPkgConfigDeps(t *testing.T) {
 }
 
 func TestVersionedDepsEnabled(t *testing.T) {
-	yes, no := true, false
-	on := "1"
-
 	for _, tc := range []struct {
 		name string
-		// nil means MELANGE_VERSIONED_SHLIB_DEPENDS is unset.
-		flag *string
 		opts config.PackageOption
 		want bool
 	}{{
-		name: "disabled by default",
-		want: false,
-	}, {
-		name: "enabled by the feature flag",
-		flag: &on,
+		name: "enabled by default",
 		want: true,
 	}, {
-		name: "opted in without the feature flag",
-		opts: config.PackageOption{VersionedShlibDeps: &yes},
-		want: true,
-	}, {
-		name: "opted out despite the feature flag",
-		flag: &on,
-		opts: config.PackageOption{VersionedShlibDeps: &no},
-		want: false,
-	}, {
-		name: "opt in wins over the legacy opt out",
-		opts: config.PackageOption{VersionedShlibDeps: &yes, NoVersionedShlibDeps: true},
-		want: true,
-	}, {
-		name: "legacy opt out disables the feature flag",
-		flag: &on,
+		name: "opted out",
 		opts: config.PackageOption{NoVersionedShlibDeps: true},
 		want: false,
 	}, {
-		name: "legacy opt out cannot opt in",
+		name: "opt out explicitly disabled",
 		opts: config.PackageOption{NoVersionedShlibDeps: false},
-		want: false,
+		want: true,
+	}, {
+		name: "an unrelated opt out does not disable them",
+		opts: config.PackageOption{NoCommands: true},
+		want: true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.flag != nil {
-				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", *tc.flag)
-			} else {
-				t.Setenv("MELANGE_VERSIONED_SHLIB_DEPENDS", "")
-			}
-
 			if got := versionedDepsEnabled(tc.opts); got != tc.want {
 				t.Errorf("versionedDepsEnabled() = %v, want %v", got, tc.want)
 			}

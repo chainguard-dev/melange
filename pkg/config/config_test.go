@@ -330,16 +330,14 @@ update:
 
 func Test_versionedShlibDepsOption(t *testing.T) {
 	ctx := slogtest.Context(t)
-	yes, no := true, false
 
 	for _, tc := range []struct {
 		name string
 		opt  string
-		want *bool
+		want bool
 	}{
-		{name: "unset", opt: "no-commands: true", want: nil},
-		{name: "opt in", opt: "versioned-shlib-deps: true", want: &yes},
-		{name: "opt out", opt: "versioned-shlib-deps: false", want: &no},
+		{name: "unset", opt: "no-commands: true", want: false},
+		{name: "opt out", opt: "no-versioned-shlib-deps: true", want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fp := filepath.Join(t.TempDir(), "melange.yaml")
@@ -361,7 +359,7 @@ package:
 			}
 
 			require.NotNil(t, cfg.Package.Options)
-			require.Equal(t, tc.want, cfg.Package.Options.VersionedShlibDeps)
+			require.Equal(t, tc.want, cfg.Package.Options.NoVersionedShlibDeps)
 		})
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/linter/types"
@@ -92,9 +93,16 @@ func StrippedLinter(ctx context.Context, _ *config.Configuration, pkgname string
 		}
 		defer file.Close()
 
-		// No debug sections allowed
-		if file.Section(".debug") != nil || file.Section(".zdebug") != nil {
-			unstrippedBinaries = append(unstrippedBinaries, path)
+		// No debug sections allowed. Match on prefix rather than an exact
+		// name: DWARF is emitted as .debug_info, .debug_str, .debug_line and
+		// friends, and compressed DWARF as .zdebug_*. A section named exactly
+		// ".debug" is a legacy convention almost nothing emits, so looking
+		// only for that reported every modern unstripped binary as clean.
+		for _, s := range file.Sections {
+			if strings.HasPrefix(s.Name, ".debug") || strings.HasPrefix(s.Name, ".zdebug") {
+				unstrippedBinaries = append(unstrippedBinaries, path)
+				break
+			}
 		}
 		return nil
 	})

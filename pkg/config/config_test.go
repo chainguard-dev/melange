@@ -185,6 +185,84 @@ test:
 	require.Equal(t, "/usr/local/FOO", cfg.Test.Environment.Environment["LD_LIBRARY_PATH"])
 }
 
+// ParseConfiguration rebuilds pipelines, tests and subpackages field by field,
+// so capabilities written inline in a manifest have to survive that rebuild the
+// same way needs.packages does.
+func Test_capabilitiesSurviveParsing(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(t.TempDir(), "melange.yaml")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: caps-parsing
+  version: 0.0.1
+  epoch: 0
+  description: capabilities survive parsing
+
+capabilities:
+  add:
+    - CAP_NET_ADMIN
+
+pipeline:
+  - needs:
+      packages:
+        - wget
+      capabilities:
+        add:
+          - CAP_SYS_ADMIN
+    runs: echo hi
+
+test:
+  capabilities:
+    add:
+      - CAP_SYS_PTRACE
+  pipeline:
+    - needs:
+        capabilities:
+          add:
+            - CAP_SYS_CHROOT
+      runs: echo test
+
+subpackages:
+  - name: caps-parsing-sub
+    pipeline:
+      - needs:
+          capabilities:
+            add:
+              - CAP_MKNOD
+        runs: echo sub
+    test:
+      capabilities:
+        add:
+          - CAP_SYS_NICE
+      pipeline:
+        - needs:
+            capabilities:
+              add:
+                - CAP_SYS_TIME
+          runs: echo sub test
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := ParseConfiguration(ctx, fp)
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, []string{"CAP_NET_ADMIN"}, cfg.Capabilities.Add)
+	require.Equal(t, []string{"wget"}, cfg.Pipeline[0].Needs.Packages)
+	require.Equal(t, []string{"CAP_SYS_ADMIN"}, cfg.Pipeline[0].Needs.Capabilities.Add)
+
+	require.Equal(t, []string{"CAP_SYS_PTRACE"}, cfg.Test.Capabilities.Add)
+	require.Equal(t, []string{"CAP_SYS_CHROOT"}, cfg.Test.Pipeline[0].Needs.Capabilities.Add)
+
+	sp := cfg.Subpackages[0]
+	require.Equal(t, []string{"CAP_MKNOD"}, sp.Pipeline[0].Needs.Capabilities.Add)
+	require.Equal(t, []string{"CAP_SYS_NICE"}, sp.Test.Capabilities.Add)
+	require.Equal(t, []string{"CAP_SYS_TIME"}, sp.Test.Pipeline[0].Needs.Capabilities.Add)
+}
+
 func Test_updateBlockVarSubstitution(t *testing.T) {
 	ctx := slogtest.Context(t)
 

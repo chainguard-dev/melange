@@ -612,14 +612,29 @@
             "type": "string"
           },
           "type": "array",
-          "description": "A list of packages needed by this pipeline"
+          "description": "Optional: A list of packages needed by this pipeline"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/NeedsCapabilities",
+          "description": "Optional: Linux capabilities needed by this pipeline. They are added to\nthe runner of the test or build that uses the pipeline. Only additions\nare supported: a pipeline declares what it needs, it cannot drop a\ncapability from the steps that share its container."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "NeedsCapabilities": {
+      "properties": {
+        "add": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Linux process capabilities to add to the runner for this pipeline."
         }
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "Packages"
-      ]
+      "description": "NeedsCapabilities is the set of Linux capabilities a pipeline requests be added to its runner."
     },
     "OCIMonitor": {
       "properties": {
@@ -1069,6 +1084,10 @@
         "environment": {
           "$ref": "#/$defs/ImageConfiguration",
           "description": "Additional Environment necessary for test.\nEnvironment.Contents.Packages automatically get\npackage.dependencies.runtime added to it. So, if your test needs\nno additional packages, you can leave it blank.\nOptional: Additional Environment the test needs to run"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities",
+          "description": "Optional: Linux capabilities to apply to this test's runner. Capabilities\nrequired by the test pipelines are gathered here during compilation, so\nthey are scoped to this test's container rather than shared across every\ntest in the configuration."
         },
         "pipeline": {
           "items": {

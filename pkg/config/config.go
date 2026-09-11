@@ -1873,13 +1873,14 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	}
 
 	const (
-		defaultEnvVarHOME             = "/home/build"
-		defaultEnvVarGOPATH           = "/home/build/.cache/go"
-		defaultEnvVarGOMODCACHE       = "/var/cache/melange/gomodcache"
-		defaultEnvVarUVCACHEDIR       = "/var/cache/melange/uv"
-		defaultEnvVarPIPCACHEDIR      = "/var/cache/melange/pip"
-		defaultEnvVarCOMPOSERCACHEDIR = "/var/cache/melange/composer"
-		defaultEnvVarNPMCACHE         = "/var/cache/melange/npm"
+		defaultEnvVarHOME                    = "/home/build"
+		defaultEnvVarGOPATH                  = "/home/build/.cache/go"
+		defaultEnvVarGOMODCACHE              = "/var/cache/melange/gomodcache"
+		defaultEnvVarUVCACHEDIR              = "/var/cache/melange/uv"
+		defaultEnvVarPIPCACHEDIR             = "/var/cache/melange/pip"
+		defaultEnvVarCOMPOSERCACHEDIR        = "/var/cache/melange/composer"
+		defaultEnvVarNPMCACHE                = "/var/cache/melange/npm"
+		defaultEnvVarPYTHONDONTWRITEBYTECODE = "1"
 	)
 
 	setIfEmpty := func(key, value string) {
@@ -1895,6 +1896,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	setIfEmpty("PIP_CACHE_DIR", defaultEnvVarPIPCACHEDIR)
 	setIfEmpty("COMPOSER_CACHE_DIR", defaultEnvVarCOMPOSERCACHEDIR)
 	setIfEmpty("npm_config_cache", defaultEnvVarNPMCACHE)
+	setIfEmpty("PYTHONDONTWRITEBYTECODE", defaultEnvVarPYTHONDONTWRITEBYTECODE)
 
 	if err := cfg.applySubstitutionsForProvides(); err != nil {
 		return nil, err

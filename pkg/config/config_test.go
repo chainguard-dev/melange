@@ -2103,13 +2103,14 @@ package:
   epoch: 0
 `,
 			expectedEnv: map[string]string{
-				"HOME":               "/home/build",
-				"GOPATH":             "/home/build/.cache/go",
-				"GOMODCACHE":         "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR":       "/var/cache/melange/uv",
-				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
-				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
-				"npm_config_cache":   "/var/cache/melange/npm",
+				"HOME":                    "/home/build",
+				"GOPATH":                  "/home/build/.cache/go",
+				"GOMODCACHE":              "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":            "/var/cache/melange/uv",
+				"PIP_CACHE_DIR":           "/var/cache/melange/pip",
+				"COMPOSER_CACHE_DIR":      "/var/cache/melange/composer",
+				"npm_config_cache":        "/var/cache/melange/npm",
+				"PYTHONDONTWRITEBYTECODE": "1",
 			},
 		},
 		{
@@ -2124,17 +2125,18 @@ environment:
     UV_CACHE_DIR: '/custom/uv/cache'
 `,
 			expectedEnv: map[string]string{
-				"HOME":               "/home/build",
-				"GOPATH":             "/home/build/.cache/go",
-				"GOMODCACHE":         "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR":       "/custom/uv/cache",
-				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
-				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
-				"npm_config_cache":   "/var/cache/melange/npm",
+				"HOME":                    "/home/build",
+				"GOPATH":                  "/home/build/.cache/go",
+				"GOMODCACHE":              "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":            "/custom/uv/cache",
+				"PIP_CACHE_DIR":           "/var/cache/melange/pip",
+				"COMPOSER_CACHE_DIR":      "/var/cache/melange/composer",
+				"npm_config_cache":        "/var/cache/melange/npm",
+				"PYTHONDONTWRITEBYTECODE": "1",
 			},
 		},
 		{
-			name: "all cache env vars can be overridden",
+			name: "all default env vars can be overridden",
 			yaml: `
 package:
   name: test-pkg
@@ -2149,15 +2151,17 @@ environment:
     PIP_CACHE_DIR: '/custom/pip'
     COMPOSER_CACHE_DIR: '/custom/composer'
     npm_config_cache: '/custom/npm'
+    PYTHONDONTWRITEBYTECODE: '0'
 `,
 			expectedEnv: map[string]string{
-				"HOME":               "/custom/home",
-				"GOPATH":             "/custom/gopath",
-				"GOMODCACHE":         "/custom/gomodcache",
-				"UV_CACHE_DIR":       "/custom/uv",
-				"PIP_CACHE_DIR":      "/custom/pip",
-				"COMPOSER_CACHE_DIR": "/custom/composer",
-				"npm_config_cache":   "/custom/npm",
+				"HOME":                    "/custom/home",
+				"GOPATH":                  "/custom/gopath",
+				"GOMODCACHE":              "/custom/gomodcache",
+				"UV_CACHE_DIR":            "/custom/uv",
+				"PIP_CACHE_DIR":           "/custom/pip",
+				"COMPOSER_CACHE_DIR":      "/custom/composer",
+				"npm_config_cache":        "/custom/npm",
+				"PYTHONDONTWRITEBYTECODE": "0",
 			},
 		},
 		{
@@ -2172,14 +2176,15 @@ environment:
     MY_CUSTOM_VAR: 'custom_value'
 `,
 			expectedEnv: map[string]string{
-				"HOME":               "/home/build",
-				"GOPATH":             "/home/build/.cache/go",
-				"GOMODCACHE":         "/var/cache/melange/gomodcache",
-				"UV_CACHE_DIR":       "/var/cache/melange/uv",
-				"PIP_CACHE_DIR":      "/var/cache/melange/pip",
-				"COMPOSER_CACHE_DIR": "/var/cache/melange/composer",
-				"npm_config_cache":   "/var/cache/melange/npm",
-				"MY_CUSTOM_VAR":      "custom_value",
+				"HOME":                    "/home/build",
+				"GOPATH":                  "/home/build/.cache/go",
+				"GOMODCACHE":              "/var/cache/melange/gomodcache",
+				"UV_CACHE_DIR":            "/var/cache/melange/uv",
+				"PIP_CACHE_DIR":           "/var/cache/melange/pip",
+				"COMPOSER_CACHE_DIR":      "/var/cache/melange/composer",
+				"npm_config_cache":        "/var/cache/melange/npm",
+				"PYTHONDONTWRITEBYTECODE": "1",
+				"MY_CUSTOM_VAR":           "custom_value",
 			},
 		},
 	}

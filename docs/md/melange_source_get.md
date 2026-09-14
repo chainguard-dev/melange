@@ -38,9 +38,10 @@ melange source get [config.yaml] [flags]
 ### Options inherited from parent commands
 
 ```
-      --log-level string    log level (e.g. debug, info, warn, error) (default "INFO")
-  -o, --output string       output directory for extracted source (default "./source")
-      --source-dir string   directory where patches and other sources are located (defaults to ./package-name/)
+      --config-file string   path to project config file (default: .melange.yaml in current directory)
+      --log-level string     log level (e.g. debug, info, warn, error) (default "INFO")
+  -o, --output string        output directory for extracted source (default "./source")
+      --source-dir string    directory where patches and other sources are located (defaults to ./package-name/)
 ```
 
 ### SEE ALSO

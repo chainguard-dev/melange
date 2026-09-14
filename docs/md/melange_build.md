@@ -35,13 +35,13 @@ melange build [flags]
       --cache-dir string                                        directory used for cached inputs (default "./melange-cache/")
       --cache-source string                                     directory or bucket used for preloading the cache
       --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
-      --cpu string                                              default CPU resources to use for builds
-      --cpumodel string                                         default memory resources to use for builds
+      --cpu string                                              default CPU resources to use
+      --cpumodel string                                         default CPU model to use
       --create-build-log                                        creates a package.log file containing a list of packages that were built by the command
-      --debug                                                   enables debug logging of build pipelines
-      --debug-runner                                            when enabled, the builder pod will persist after the build succeeds or fails
+      --debug                                                   enables debug logging of pipelines
+      --debug-runner                                            when enabled, the runner pod will persist after the build succeeds or fails
       --dependency-log string                                   log dependencies to a specified file
-      --disk string                                             disk size to use for builds
+      --disk string                                             default disk size to use
       --empty-workspace                                         whether the build workspace should be empty
       --env-file strings                                        files to use for preloaded environment variables
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
@@ -55,7 +55,7 @@ melange build [flags]
       --license string                                          license to use for the build config file itself (default "NOASSERTION")
       --lint-require strings                                    linters that must pass (default [dev,infodir,libtool/la-files,setuidgid,tempdir,usrmerge,varempty,worldwrite])
       --lint-warn strings                                       linters that will generate warnings (default [binaryarch,cudaruntimelib,dll,duplicate,dylib,lddcheck,maninfo,nonlinux,object,opt,pkgconf,python/docs,python/multiple,python/test,sbom,srv,staticarchive,strip,unsupportedarch,usrlocal])
-      --memory string                                           default memory resources to use for builds
+      --memory string                                           default memory resources to use
       --namespace string                                        namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
       --out-dir string                                          directory where packages will be output (default "./packages/")
       --override-host-triplet-libc-substitution-flavor string   override the flavor of libc for ${{host.triplet.*}} substitutions (e.g. gnu,musl) -- default is gnu (default "gnu")
@@ -69,7 +69,7 @@ melange build [flags]
       --signing-key string                                      key to use for signing
       --source-dir string                                       directory used for included sources
       --strip-origin-name                                       whether origin names should be stripped (for bootstrap)
-      --timeout duration                                        default timeout for builds
+      --timeout duration                                        default timeout
       --trace string                                            where to write trace output
       --vars-file string                                        file to use for preloaded build configuration variables
       --workspace-dir string                                    directory used for the workspace at /home/build
@@ -78,7 +78,8 @@ melange build [flags]
 ### Options inherited from parent commands
 
 ```
-      --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
+      --config-file string   path to project config file (default: .melange.yaml in current directory)
+      --log-level string     log level (e.g. debug, info, warn, error) (default "INFO")
 ```
 
 ### SEE ALSO

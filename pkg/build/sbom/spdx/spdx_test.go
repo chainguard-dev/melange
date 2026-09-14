@@ -260,6 +260,68 @@ func TestSBOMGeneration(t *testing.T) {
 	}
 }
 
+func TestSBOMGenerationUsesSubpackageCopyright(t *testing.T) {
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	outputFS := apkofs.DirFS(ctx, tmpDir)
+
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Name:    "test-pkg",
+			Version: "1.2.3",
+			Epoch:   2,
+			Copyright: []config.Copyright{
+				{License: "MIT"},
+			},
+		},
+		Subpackages: []config.Subpackage{
+			{
+				Name: "test-pkg-dev",
+				Copyright: []config.Copyright{
+					{
+						License:     "Apache-2.0",
+						Attestation: "Copyright 2026 Example",
+					},
+				},
+			},
+		},
+	}
+
+	genCtx := &build.GeneratorContext{
+		Configuration:   cfg,
+		WorkspaceDir:    tmpDir,
+		OutputFS:        outputFS,
+		SourceDateEpoch: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Namespace:       "test-ns",
+		Arch:            "x86_64",
+	}
+
+	gen := &Generator{}
+	sboms, err := gen.GenerateSPDX(ctx, genCtx)
+	if err != nil {
+		t.Fatalf("GenerateSPDX failed: %v", err)
+	}
+
+	subDoc := sboms["test-pkg-dev"]
+	var subPackage *spdx.Package
+	for i := range subDoc.Packages {
+		if subDoc.Packages[i].Name == "test-pkg-dev" {
+			subPackage = &subDoc.Packages[i]
+			break
+		}
+	}
+	if subPackage == nil {
+		t.Fatal("subpackage package not found in SBOM")
+	}
+
+	if diff := cmp.Diff("Apache-2.0", subPackage.LicenseDeclared); diff != "" {
+		t.Errorf("subpackage license declared mismatch (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff("Copyright 2026 Example\n", subPackage.CopyrightText); diff != "" {
+		t.Errorf("subpackage copyright mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestSBOMGenerationWithNonSPDXLicense(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()

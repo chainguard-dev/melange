@@ -26,7 +26,7 @@
       "downloadLocation": "NOASSERTION",
       "originator": "Organization: Wolfi",
       "supplier": "Organization: Wolfi",
-      "primaryPackagePurpose": "OPERATING-SYSTEM"
+      "primaryPackagePurpose": "OPERATING_SYSTEM"
     },
     {
       "SPDXID": "SPDXRef-Package-apk-crane-0.20.2-r1",

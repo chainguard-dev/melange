@@ -22,6 +22,7 @@ toc: true
 
 * [melange build](/docs/md/melange_build.md)	 - Build a package from a YAML configuration file
 * [melange bump](/docs/md/melange_bump.md)	 - Update a Melange YAML file to reflect a new package version
+* [melange compare-versions](/docs/md/melange_compare-versions.md)	 - Compare two package versions
 * [melange compile](/docs/md/melange_compile.md)	 - Compile a YAML configuration file
 * [melange completion](/docs/md/melange_completion.md)	 - Generate completion script
 * [melange index](/docs/md/melange_index.md)	 - Creates a repository index from a list of package files

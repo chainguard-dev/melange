@@ -9,6 +9,7 @@ new built-in pipelines, consult [Creating a new built-in pipeline](/docs/PIPELIN
 
 - [fetch](#fetch)
 - [git-am](#git-am)
+- [git-archive](#git-archive)
 - [git-checkout](#git-checkout)
 - [patch](#patch)
 - [strip](#strip)
@@ -45,6 +46,19 @@ Apply patches with git am
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | patches | true | A list of patches to apply with git am, as a whitespace delimited string.  Patches are resolved relative to the workspace root, which is where melange copies the contents of the source directory (--source-dir, defaulting to the directory containing the melange YAML file).  This is the same convention used by the 'patch' pipeline: place patch files in the package's source directory (e.g. ./my-package/) alongside the YAML file.  This pipeline assumes that git-checkout used the default destination ('.'), so the workspace root is the git repository.  If git-checkout clones into a subdirectory, the patches must include the path relative to the workspace root.  |  |
+
+## git-archive
+
+Archive sources from the local git repository
+
+### Inputs
+
+| Name | Required | Description | Default |
+| ---- | -------- | ----------- | ------- |
+| branch | false | The branch to archive. Branch and tag are mutually exclusive. For reproducibility, prefer tag.  |  |
+| expected-commit | false | The commit to verify against. A tag must resolve to it exactly. With branch, it pins what is archived and (matching git-checkout) may be an older commit on the branch; a commit not on the branch fails the build. When neither tag nor branch is set, this defaults to the commit melange is building, so the assurance holds automatically.  |  |
+| path | true | Path within the repository (relative to the repository root) to extract into the workspace. The extracted files retain this path prefix in the workspace, matching the layout of the source repository.  |  |
+| tag | false | The tag to archive. For reproducibility, tag is generally favored over branch. Branch and tag are mutually exclusive. If neither is specified, the commit melange is building (the config file's repository commit) is archived.  |  |
 
 ## git-checkout
 

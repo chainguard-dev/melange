@@ -35,6 +35,7 @@ func compile() *cobra.Command {
 	var buildDate string
 	var workspaceDir string
 	var pipelineDir string
+	var pipelineDirs []string
 	var sourceDir string
 	var cacheDir string
 	var cacheSource string
@@ -108,9 +109,9 @@ func compile() *cobra.Command {
 				build.WithBuildDate(buildDate),
 				build.WithWorkspaceDir(workspaceDir),
 				// Order matters, so add any specified pipelineDir before
-				// builtin pipelines.
+				// builtin pipelines. Support both --pipeline-dir (singular, deprecated)
+				// and --pipeline-dirs (plural, new). --pipeline-dir is processed first.
 				build.WithPipelineDir(pipelineDir),
-				build.WithPipelineDir(BuiltinPipelineDir),
 				build.WithCacheDir(cacheDir),
 				build.WithCacheSource(cacheSource),
 				build.WithPackageCacheDir(apkCacheDir),
@@ -140,6 +141,13 @@ func compile() *cobra.Command {
 				build.WithConfigFileLicense(configFileLicense),
 				build.WithGenerateProvenance(generateProvenance),
 			}
+
+			// Add multiple pipeline directories from --pipeline-dirs
+			for i := range pipelineDirs {
+				options = append(options, build.WithPipelineDir(pipelineDirs[i]))
+			}
+			// Always append built-in pipeline directory as fallback
+			options = append(options, build.WithPipelineDir(BuiltinPipelineDir))
 
 			if len(args) > 0 {
 				options = append(options, build.WithConfig(args[0]))
@@ -176,6 +184,7 @@ func compile() *cobra.Command {
 	cmd.Flags().StringVar(&buildDate, "build-date", "", "date used for the timestamps of the files inside the image")
 	cmd.Flags().StringVar(&workspaceDir, "workspace-dir", "", "directory used for the workspace at /home/build")
 	cmd.Flags().StringVar(&pipelineDir, "pipeline-dir", "", "directory used to extend defined built-in pipelines")
+	cmd.Flags().StringSliceVar(&pipelineDirs, "pipeline-dirs", []string{}, "directories used to extend defined built-in pipelines")
 	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "directory used for included sources")
 	cmd.Flags().StringVar(&cacheDir, "cache-dir", "./melange-cache/", "directory used for cached inputs")
 	cmd.Flags().StringVar(&cacheSource, "cache-source", "", "directory or bucket used for preloading the cache")

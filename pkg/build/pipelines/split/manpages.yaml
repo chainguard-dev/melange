@@ -10,33 +10,28 @@ inputs:
       The package to split manpages from
     required: false
 
+  # The three standard roots (usr/share/man, usr/local/share/man,
+  # usr/man) are always searched. `paths` adds to them, for software that
+  # installs its manuals somewhere else: an LLVM toolchain under
+  # usr/lib/llvm-N/share/man, a JDK under usr/lib/jvm/<jdk>/man, an
+  # application venv under opt/<app>/share/man.
   paths:
     description: |
-      Additional manual page directories to split, whitespace separated
-      and relative to the package root. The three standard roots
-      (usr/share/man, usr/local/share/man, usr/man) are always searched;
-      these are searched as well.
-
-      For software that installs its manuals outside those roots -- an
-      LLVM toolchain under usr/lib/llvm-N/share/man, or a JDK under
-      usr/lib/jvm/<jdk>/man.
+      Additional man directories to split, whitespace separated, relative to the package root.
     default: ""
 
+  # Relocating into usr/share/man is the right default: it puts pages
+  # where man(1) looks. But it collapses every source directory onto one
+  # destination, so it cannot be used where several versions of the same
+  # software coexist. Every llvm-N package ships a page called
+  # scan-build.1, and openjdk-17 and openjdk-21 share 27 page names
+  # between them -- relocating those would make the doc subpackages
+  # conflict with each other instead of installing side by side. With
+  # preserve-path the pages stay where the software put them, which is
+  # also where its own tooling expects to find them.
   preserve-path:
     description: |
-      Keep each manual page at the path it was installed to, rather than
-      relocating it under usr/share/man in the subpackage.
-
-      Relocating is the right default: it puts pages where man(1) looks.
-      But it collapses every source directory onto one destination, so it
-      cannot be used where several versions of the same software are meant
-      to coexist. Every llvm-N package ships a page called scan-build.1,
-      and openjdk-17 and openjdk-21 share 27 page names between them --
-      relocating those into usr/share/man would make the doc subpackages
-      conflict with each other instead of installing side by side.
-
-      Set to "true" for that case. The pages stay where the software put
-      them, which is also where its own tooling expects to find them.
+      Keep pages at their installed path instead of relocating them under usr/share/man. "true" or "false".
     default: "false"
 
 pipeline:

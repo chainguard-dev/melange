@@ -94,6 +94,8 @@ Split manpages
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | package | false | The package to split manpages from  |  |
+| paths | false | Additional man directories to split, whitespace separated, relative to the package root.  |  |
+| preserve-path | false | Keep pages at their installed path instead of relocating them under usr/share/man. "true" or "false".  | false |
 
 ## split/static
 

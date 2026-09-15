@@ -32,6 +32,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -47,6 +48,25 @@ type testHandle struct {
 	pkg apk.Package
 	exp *expandapk.APKExpanded
 	cfg *config.Configuration
+
+	// Optional: set by tests that exercise the versioned
+	// "depends:" resolution.
+	installed map[string]string
+	resolver  *apk.PkgResolver
+
+	// Optional: set by tests that synthesize a package filesystem
+	// instead of expanding a real .apk.
+	fsys SCAFS
+}
+
+// memFS adapts an fstest.MapFS to the SCAFS interface, for tests that
+// only need a handful of regular files.
+type memFS struct {
+	fstest.MapFS
+}
+
+func (memFS) Readlink(name string) (string, error) {
+	return "", fmt.Errorf("readlink %s: symlinks are not supported by memFS", name)
 }
 
 func (th *testHandle) PackageName() string {
@@ -67,10 +87,13 @@ func (th *testHandle) FilesystemForRelative(pkgName string) (SCAFS, error) {
 		return nil, fmt.Errorf("TODO: implement FilesystemForRelative, %q != %q", pkgName, th.PackageName())
 	}
 
-	return th.exp.TarFS, nil
+	return th.Filesystem()
 }
 
 func (th *testHandle) Filesystem() (SCAFS, error) {
+	if th.fsys != nil {
+		return th.fsys, nil
+	}
 	return th.exp.TarFS, nil
 }
 
@@ -86,11 +109,14 @@ func (th *testHandle) BaseDependencies() config.Dependencies {
 }
 
 func (th *testHandle) InstalledPackages() map[string]string {
-	return map[string]string{}
+	if th.installed == nil {
+		return map[string]string{}
+	}
+	return th.installed
 }
 
 func (th *testHandle) PkgResolver() *apk.PkgResolver {
-	return nil
+	return th.resolver
 }
 
 // TODO: Loose coupling.
@@ -147,6 +173,218 @@ func handleFromApk(ctx context.Context, t *testing.T, apkfile, melangefile strin
 		pkg: pkg,
 		exp: exp,
 		cfg: pkgcfg,
+	}
+}
+
+// resolverFromPackages builds a PkgResolver over a synthetic APKINDEX.
+func resolverFromPackages(ctx context.Context, pkgs ...*apk.Package) *apk.PkgResolver {
+	repo := (&apk.Repository{URI: "https://example.com/os"}).WithIndex(&apk.APKIndex{Packages: pkgs})
+	return apk.NewPkgResolver(ctx, []apk.NamedIndex{apk.NewNamedRepositoryWithIndex("", repo)})
+}
+
+func TestDetermineShlibVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		shlib       string
+		provider    string
+		providerVer string
+		provides    []string
+		want        string
+	}{{
+		name:        "versioned provides yields a versioned depend",
+		shlib:       "libonig.so.5",
+		provider:    "oniguruma",
+		providerVer: "6.9.10-r4",
+		provides:    []string{"so:libonig.so.5=5", "so-ver:libonig.so.5=6.9.10-r4"},
+		want:        "6.9.10-r4",
+	}, {
+		// We can't depend on a version the provider doesn't publish.
+		name:        "unversioned provides yields no versioned depend",
+		shlib:       "libonig.so.5",
+		provider:    "oniguruma",
+		providerVer: "6.9.10-r4",
+		provides:    []string{"so:libonig.so.5=5"},
+		want:        "",
+	}, {
+		// The dynamic linker is not special: it is versioned like
+		// any other shared library glibc ships.
+		name:        "the x86_64 dynamic linker is versioned",
+		shlib:       "ld-linux-x86-64.so.2",
+		provider:    "glibc",
+		providerVer: "2.42-r5",
+		provides:    []string{"so:ld-linux-x86-64.so.2=2", "so-ver:ld-linux-x86-64.so.2=2.42-r5"},
+		want:        "2.42-r5",
+	}, {
+		name:        "the aarch64 dynamic linker is versioned",
+		shlib:       "ld-linux-aarch64.so.1",
+		provider:    "glibc",
+		providerVer: "2.42-r5",
+		provides:    []string{"so:ld-linux-aarch64.so.1=1", "so-ver:ld-linux-aarch64.so.1=2.42-r5"},
+		want:        "2.42-r5",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := slogtest.Context(t)
+
+			hdl := &testHandle{
+				pkg: apk.Package{Name: "jq", Version: "1.8.1-r3"},
+				cfg: &config.Configuration{
+					Package: config.Package{
+						Name: "jq",
+					},
+				},
+				installed: map[string]string{tc.provider: tc.providerVer},
+				resolver: resolverFromPackages(ctx, &apk.Package{
+					Name:      tc.provider,
+					Version:   tc.providerVer,
+					Provides:  tc.provides,
+					BuildTime: time.Unix(0, 0),
+				}),
+			}
+
+			got, err := determineShlibVersion(ctx, hdl, tc.shlib)
+			if err != nil {
+				t.Fatalf("determineShlibVersion() returned an error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("determineShlibVersion() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDeterminePkgConfigVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		provides []string
+		want     string
+	}{{
+		// pkg-config "provides:" are always stamped with the
+		// version of the package that ships the .pc file.
+		name:     "versioned provides yields a versioned depend",
+		provides: []string{"pc:openssl=4.0.2-r1", "pc:libcrypto=4.0.2-r1"},
+		want:     "4.0.2-r1",
+	}, {
+		// We can't depend on a version the provider doesn't publish.
+		name:     "unversioned provides yields no versioned depend",
+		provides: []string{"pc:openssl"},
+		want:     "",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := slogtest.Context(t)
+
+			hdl := &testHandle{
+				pkg: apk.Package{Name: "curl-dev", Version: "8.16.0-r1"},
+				cfg: &config.Configuration{
+					Package: config.Package{
+						Name: "curl-dev",
+					},
+				},
+				installed: map[string]string{"openssl-dev": "4.0.2-r1"},
+				resolver: resolverFromPackages(ctx, &apk.Package{
+					Name:      "openssl-dev",
+					Version:   "4.0.2-r1",
+					Provides:  tc.provides,
+					BuildTime: time.Unix(0, 0),
+				}),
+			}
+
+			got, err := determinePkgConfigVersion(ctx, hdl, "openssl")
+			if err != nil {
+				t.Fatalf("determinePkgConfigVersion() returned an error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("determinePkgConfigVersion() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestVersionedPkgConfigDeps checks that a .pc file's "Requires:" turn
+// into versioned "depends:" on the packages that were actually used to
+// satisfy them at build time.
+func TestVersionedPkgConfigDeps(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	hdl := &testHandle{
+		pkg: apk.Package{Name: "curl-dev", Version: "8.16.0-r1"},
+		cfg: &config.Configuration{
+			Package: config.Package{
+				Name: "curl-dev",
+			},
+		},
+		fsys: memFS{fstest.MapFS{
+			"usr/lib/pkgconfig/libcurl.pc": &fstest.MapFile{Data: []byte(
+				"Name: libcurl\n" +
+					"Description: Library to transfer files with HTTP, FTP, etc.\n" +
+					"Version: 8.16.0\n" +
+					"Requires: openssl\n" +
+					"Requires.private: zlib\n")},
+		}},
+		installed: map[string]string{
+			"openssl-dev": "4.0.2-r1",
+			"zlib-dev":    "1.3.1-r6",
+		},
+		resolver: resolverFromPackages(ctx,
+			&apk.Package{
+				Name:      "openssl-dev",
+				Version:   "4.0.2-r1",
+				Provides:  []string{"pc:openssl=4.0.2-r1"},
+				BuildTime: time.Unix(0, 0),
+			},
+			// zlib-dev has no versioned pkg-config
+			// "provides:", so its depend stays unversioned.
+			&apk.Package{
+				Name:      "zlib-dev",
+				Version:   "1.3.1-r6",
+				Provides:  []string{"pc:zlib"},
+				BuildTime: time.Unix(0, 0),
+			}),
+	}
+
+	got := config.Dependencies{}
+	if err := generatePkgConfigDeps(ctx, hdl, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	want := config.Dependencies{
+		Runtime: []string{
+			"pc:openssl",
+			"pc:openssl>=4.0.2-r1",
+			"pc:zlib",
+		},
+		Provides: []string{"pc:libcurl=8.16.0-r1"},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("generatePkgConfigDeps(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestVersionedDepsEnabled(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		opts config.PackageOption
+		want bool
+	}{{
+		name: "enabled by default",
+		want: true,
+	}, {
+		name: "opted out",
+		opts: config.PackageOption{NoVersionedShlibDeps: true},
+		want: false,
+	}, {
+		name: "opt out explicitly disabled",
+		opts: config.PackageOption{NoVersionedShlibDeps: false},
+		want: true,
+	}, {
+		name: "an unrelated opt out does not disable them",
+		opts: config.PackageOption{NoCommands: true},
+		want: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := versionedDepsEnabled(tc.opts); got != tc.want {
+				t.Errorf("versionedDepsEnabled() = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

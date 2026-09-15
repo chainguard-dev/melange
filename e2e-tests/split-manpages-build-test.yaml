@@ -1,19 +1,28 @@
-# Test split/manpages in its three modes: the default relocating
-# behaviour, an extra non-standard root via `paths`, and `preserve-path`
-# keeping pages where they were installed.
+# Test split/manpages through a real build: the standard roots merging into
+# usr/share/man, an extra root named via `paths`, and `preserve-path` keeping a
+# versioned root where it was installed.
+#
+# The shell is covered in detail by TestSplitManpages* in pkg/build, including
+# the cases that must fail the build -- which this harness cannot express,
+# since every yaml here has to build cleanly. What this adds is the real qemu
+# build and apk emission path.
 #
 # preserve-path exists for software that ships several coexisting versions.
 # Every llvm-N package ships a page called scan-build.1 and openjdk-17 and
-# openjdk-21 share 27 page names, so relocating those into usr/share/man
-# makes their doc subpackages collide rather than install side by side.
+# openjdk-21 share 27 page names, so relocating those into usr/share/man makes
+# their doc subpackages collide rather than install side by side. It applies
+# only to the directories named in `paths`; the standard roots always relocate.
+#
+# The subpackages run in order against one parent package directory, so each
+# one sees what the previous left behind. The first takes the standard roots.
 #
 # Note the assertions use `if [ ... ]; then ... fi` rather than
-# `[ ... ] && { ... }`. Pipelines run under `set -e`, and an && compound
-# whose test is false returns non-zero -- which would fail the script on
-# exactly the path where the assertion passes.
+# `[ ... ] && { ... }`. Pipelines run under `set -e`, and an && compound whose
+# test is false returns non-zero -- which would fail the script on exactly the
+# path where the assertion passes.
 package:
   name: split-manpages-build-test
-  description: Test that split/manpages relocates, accepts extra roots, and can preserve paths
+  description: Test that split/manpages merges the standard roots, accepts extra roots, and can preserve paths
   version: 0.1.0
   epoch: 0
 
@@ -25,7 +34,9 @@ environment:
 pipeline:
   - name: install manual pages in five different roots
     runs: |
-      # The three standard roots the pipeline always searches...
+      # Two of the three standard roots both carry a man1/, which is the case
+      # the merge exists for: moving the second one wholesale fails with
+      # "Directory not empty" once the destination man1/ is there.
       mkdir -p "${{targets.destdir}}"/usr/share/man/man1
       echo standard > "${{targets.destdir}}"/usr/share/man/man1/standard.1
 
@@ -35,7 +46,13 @@ pipeline:
       mkdir -p "${{targets.destdir}}"/usr/man/man8
       echo usrman > "${{targets.destdir}}"/usr/man/man8/usrman.8
 
-      # ...and two that it does not, which must be named explicitly.
+      # A locale subtree, to exercise the merge below the first level.
+      mkdir -p "${{targets.destdir}}"/usr/share/man/fr/man1
+      echo french > "${{targets.destdir}}"/usr/share/man/fr/man1/standard.1
+      mkdir -p "${{targets.destdir}}"/usr/local/share/man/fr/man1
+      echo francais > "${{targets.destdir}}"/usr/local/share/man/fr/man1/local.1
+
+      # Two roots the pipeline does not search, which must be named explicitly.
       mkdir -p "${{targets.destdir}}"/usr/lib/llvm-99/share/man/man1
       echo versioned > "${{targets.destdir}}"/usr/lib/llvm-99/share/man/man1/versioned.1
 
@@ -43,16 +60,16 @@ pipeline:
       echo opt > "${{targets.destdir}}"/opt/example/share/man/man1/opt.1
 
 subpackages:
-  # Default behaviour: the three standard roots are collected and
-  # relocated under usr/share/man. The two non-standard roots are left
-  # alone, because they were not named.
+  # The three standard roots are collected and merged under usr/share/man. The
+  # two non-standard roots are left alone, because they were not named.
   - name: split-manpages-relocate-test
-    description: standard roots are relocated under usr/share/man
+    description: standard roots are merged under usr/share/man
     pipeline:
       - uses: split/manpages
-      - name: assert the standard roots were relocated and nothing else taken
+      - name: assert the standard roots were merged and nothing else taken
         runs: |
-          for f in man1/standard.1 man1/local.1 man8/usrman.8; do
+          for f in man1/standard.1 man1/local.1 man8/usrman.8 \
+                   fr/man1/standard.1 fr/man1/local.1; do
             if [ ! -f "${{targets.contextdir}}/usr/share/man/$f" ]; then
               echo "missing ${{targets.contextdir}}/usr/share/man/$f"
               exit 1
@@ -70,9 +87,19 @@ subpackages:
             echo "source page was not removed from the parent package"
             exit 1
           fi
+          # Relocating, not preserving: nothing may be left under usr/local
+          # (the usrlocal linter) or usr/man (outside man's search path).
+          if [ -e "${{targets.contextdir}}/usr/local" ]; then
+            echo "usr/local survived into the subpackage"
+            exit 1
+          fi
+          if [ -e "${{targets.contextdir}}/usr/man" ]; then
+            echo "usr/man survived into the subpackage"
+            exit 1
+          fi
 
-  # An extra root named via `paths`, still relocated because
-  # preserve-path defaults to false.
+  # An extra root named via `paths`, still relocated because preserve-path
+  # defaults to false.
   - name: split-manpages-extra-path-test
     description: a non-standard root named via paths is relocated too
     pipeline:
@@ -89,15 +116,20 @@ subpackages:
             echo "path was preserved although preserve-path defaults to false"
             exit 1
           fi
+          if [ -e "${{targets.destdir}}/opt/example/share/man" ]; then
+            echo "source root was not removed from the parent package"
+            exit 1
+          fi
 
-  # preserve-path: the page keeps its installed path, so two versions of
-  # the same software can ship doc subpackages that do not collide.
+  # preserve-path: the page keeps its installed path, so two versions of the
+  # same software can ship doc subpackages that do not collide.
   - name: split-manpages-preserve-path-test
-    description: preserve-path keeps pages at their installed path
+    description: preserve-path keeps paths entries at their installed path
     pipeline:
       - uses: split/manpages
         with:
-          paths: usr/lib/llvm-99/share/man
+          paths: |
+            usr/lib/llvm-99/share/man
           preserve-path: "true"
       - name: assert the page stayed where it was installed
         runs: |

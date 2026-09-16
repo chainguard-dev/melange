@@ -1,0 +1,176 @@
+# Test split/manpages through a real build: the standard roots merging into
+# usr/share/man, an extra root named via `paths`, and `preserve-path` keeping a
+# versioned root where it was installed.
+#
+# Each subpackage builds its own fixture under ${{targets.outdir}} and passes
+# `package:` to the pipeline, following split-lib-build-test.yaml. That keeps
+# them independent: otherwise the first subpackage consumes the parent's
+# standard roots and the later ones never see one, which is exactly the
+# interaction the preserve-path case needs to test.
+#
+# Assertions live in `test:` blocks so they run against the installed apk
+# rather than the staging directory.
+#
+# The cases that must fail the build -- a page present in two roots, an empty
+# root, a symlinked root, a bad preserve-path value, and the `paths`
+# validation -- are in TestSplitManpagesFailsLoudly in pkg/build. This harness
+# has no expected-failure convention; every yaml here must build cleanly.
+package:
+  name: split-manpages-build-test
+  description: Test that split/manpages merges the standard roots, accepts extra roots, and can preserve paths
+  version: 0.1.0
+  epoch: 0
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - name: install manual pages in the three standard roots
+    runs: |
+      # usr/share/man and usr/local/share/man both carry a man1/, which is the
+      # case the merge exists for: moving the second one wholesale fails with
+      # "Directory not empty" once the destination man1/ is there.
+      mkdir -p "${{targets.destdir}}"/usr/share/man/man1
+      echo standard > "${{targets.destdir}}"/usr/share/man/man1/standard.1
+
+      mkdir -p "${{targets.destdir}}"/usr/local/share/man/man1
+      echo local > "${{targets.destdir}}"/usr/local/share/man/man1/local.1
+
+      mkdir -p "${{targets.destdir}}"/usr/man/man8
+      echo usrman > "${{targets.destdir}}"/usr/man/man8/usrman.8
+
+      # A locale subtree in two roots, to exercise the merge below the first
+      # level -- the reason the merge has to recurse.
+      mkdir -p "${{targets.destdir}}"/usr/share/man/fr/man1
+      echo french > "${{targets.destdir}}"/usr/share/man/fr/man1/standard.1
+      mkdir -p "${{targets.destdir}}"/usr/local/share/man/fr/man1
+      echo francais > "${{targets.destdir}}"/usr/local/share/man/fr/man1/local.1
+
+      # Not a manual page, and must stay in the parent package.
+      mkdir -p "${{targets.destdir}}"/usr/bin
+      echo binary > "${{targets.destdir}}"/usr/bin/example
+
+subpackages:
+  # The three standard roots are collected and merged under usr/share/man. The
+  # locale subtrees merge two levels down.
+  - name: split-manpages-relocate-test
+    description: standard roots are merged under usr/share/man
+    pipeline:
+      - uses: split/manpages
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            test -f /usr/share/man/man1/standard.1 || exit 1
+            test -f /usr/share/man/man1/local.1 || exit 1
+            test -f /usr/share/man/man8/usrman.8 || exit 1
+
+            # Merged two levels down, with a page from each root.
+            test -f /usr/share/man/fr/man1/standard.1 || exit 1
+            test -f /usr/share/man/fr/man1/local.1 || exit 1
+
+            # Relocated, not preserved: no page may be left under usr/local,
+            # which the usrlocal linter flags, or usr/man, which is outside
+            # man(1)'s default search path. The directories themselves ship in
+            # the base image, so only the pages can be asserted on.
+            test ! -f /usr/local/share/man/man1/local.1 || exit 1
+            test ! -f /usr/man/man8/usrman.8 || exit 1
+
+            # Only manual pages were taken.
+            test ! -f /usr/bin/example || exit 1
+
+            echo "PASS: standard roots merged under usr/share/man"
+
+  # An extra root named via `paths`, still relocated because preserve-path
+  # defaults to false.
+  - name: split-manpages-extra-path-test
+    description: a non-standard root named via paths is relocated too
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.outdir}}/${{package.name}}/opt/example/share/man/man1
+          echo opt > ${{targets.outdir}}/${{package.name}}/opt/example/share/man/man1/opt.1
+      - uses: split/manpages
+        with:
+          package: ${{package.name}}
+          paths: opt/example/share/man
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            test -f /usr/share/man/man1/opt.1 || exit 1
+            test ! -f /opt/example/share/man/man1/opt.1 || exit 1
+            echo "PASS: an extra root named via paths is relocated"
+
+  # preserve-path keeps the versioned root where it was installed, so two
+  # versions of the same software can ship doc subpackages that do not
+  # collide: every llvm-N ships a scan-build.1, and openjdk-17 and openjdk-21
+  # share 27 page names.
+  #
+  # The standard roots are recreated here on purpose. preserve-path must not
+  # reach them -- they always relocate -- and that interaction is only visible
+  # when a standard root and a preserved root are present in the same split.
+  - name: split-manpages-preserve-path-test
+    description: preserve-path keeps paths entries at their installed path and still relocates standard roots
+    pipeline:
+      - runs: |
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/lib/llvm-99/share/man/man1
+          echo versioned > ${{targets.outdir}}/${{package.name}}/usr/lib/llvm-99/share/man/man1/versioned.1
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/share/man/man1
+          echo standard > ${{targets.outdir}}/${{package.name}}/usr/share/man/man1/standard.1
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/local/share/man/man1
+          echo local > ${{targets.outdir}}/${{package.name}}/usr/local/share/man/man1/local.1
+          mkdir -p ${{targets.outdir}}/${{package.name}}/usr/man/man8
+          echo usrman > ${{targets.outdir}}/${{package.name}}/usr/man/man8/usrman.8
+      - uses: split/manpages
+        with:
+          package: ${{package.name}}
+          # A block scalar, which is the form split/lib documents for its own
+          # `paths` input and the one that keeps a trailing newline. The value
+          # is spliced into the pipeline as text, so this is what turned the
+          # `for` line into a syntax error before the fix.
+          paths: |
+            usr/lib/llvm-99/share/man
+          preserve-path: "true"
+    test:
+      environment:
+        contents:
+          packages:
+            - busybox
+      pipeline:
+        - runs: |
+            # The named root keeps its installed path.
+            test -f /usr/lib/llvm-99/share/man/man1/versioned.1 || exit 1
+            test ! -f /usr/share/man/man1/versioned.1 || exit 1
+
+            # The standard roots relocate regardless of preserve-path.
+            test -f /usr/share/man/man1/standard.1 || exit 1
+            test -f /usr/share/man/man1/local.1 || exit 1
+            test -f /usr/share/man/man8/usrman.8 || exit 1
+            test ! -f /usr/local/share/man/man1/local.1 || exit 1
+            test ! -f /usr/man/man8/usrman.8 || exit 1
+
+            echo "PASS: preserve-path is scoped to paths entries"
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        # The parent package keeps everything that is not a manual page, and
+        # keeps none of the pages that were split out.
+        test -f /usr/bin/example || exit 1
+        test ! -f /usr/share/man/man1/standard.1 || exit 1
+        test ! -f /usr/share/man/fr/man1/standard.1 || exit 1
+        test ! -f /usr/local/share/man/man1/local.1 || exit 1
+        test ! -f /usr/man/man8/usrman.8 || exit 1
+        echo "PASS: the parent package retains only non-manual files"

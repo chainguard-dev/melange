@@ -10,6 +10,23 @@ inputs:
       The package to split manpages from
     required: false
 
+  paths:
+    description: |
+      Optional newline-separated additional man directories to split, relative
+      to the package root. The standard roots (usr/share/man,
+      usr/local/share/man, usr/man) are always split. Example:
+        usr/lib/llvm-19/share/man
+        opt/example/share/man
+      splits those two in addition to the standard roots.
+    required: false
+
+  preserve-path:
+    description: |
+      Keep the directories named in `paths` where they were installed instead of
+      relocating them under usr/share/man. "true" or "false". The standard roots
+      are always relocated.
+    default: "false"
+
 pipeline:
   - runs: |
       PACKAGE_DIR="${{targets.destdir}}"
@@ -21,14 +38,167 @@ pipeline:
         echo "ERROR: Package can not split files from itself!" && exit 1
       fi
 
-      for mandir in \
-        "$PACKAGE_DIR/usr/share/man" \
-        "$PACKAGE_DIR/usr/local/share/man" \
-        "$PACKAGE_DIR/usr/man"; do
+      # Reject anything other than true/false rather than treating an
+      # unexpected value as false, which would silently relocate pages the
+      # caller asked to keep in place.
+      case "${{inputs.preserve-path}}" in
+        true|false) ;;
+        *)
+          echo "ERROR: preserve-path must be \"true\" or \"false\", got \"${{inputs.preserve-path}}\"" >&2
+          exit 1
+          ;;
+      esac
 
-        if [ -d "$mandir" ]; then
-          mkdir -p "${{targets.contextdir}}/usr/share/man"
-          mv "$mandir"/* "${{targets.contextdir}}/usr/share/man/"
-          rmdir --parents --ignore-fail-on-non-empty "$mandir"
+      # Move the contents of $1 into $2, entry by entry, recursing where both
+      # sides hold a directory. Two man roots can each contain a man1/, so the
+      # trees have to be merged rather than moved wholesale -- but a page
+      # present in both roots is a packaging bug, and overwriting it silently
+      # would hide it. Directories merge; files collide.
+      #
+      # Every move is a rename(2), like the single `mv` this replaces. Copying
+      # instead would write through the destination inode, which corrupts the
+      # hard-linked and symlinked alias pages that gzip'd man trees are full of.
+      #
+      # Recursion is needed because locale subtrees (fr/man1) sit two levels
+      # down. `local` is not POSIX but is implemented by both busybox sh and
+      # dash, which are the shells this runs under.
+      merge_tree() {
+        local src="$1" dst="$2" entry name
+        mkdir -p "$dst"
+        for entry in "$src"/* "$src"/.[!.]* "$src"/..?*; do
+          # Unmatched globs stay literal, including the two dotfile patterns
+          # when there are no hidden entries.
+          [ -e "$entry" ] || [ -L "$entry" ] || continue
+          name="${entry##*/}"
+
+          if [ -d "$entry" ] && [ ! -L "$entry" ]; then
+            if [ -d "$dst/$name" ] && [ ! -L "$dst/$name" ]; then
+              merge_tree "$entry" "$dst/$name"
+              rmdir "$entry"
+            elif [ -e "$dst/$name" ] || [ -L "$dst/$name" ]; then
+              echo "ERROR: cannot merge $entry into $dst/$name: destination exists and is not a directory" >&2
+              exit 1
+            else
+              mv "$entry" "$dst/$name"
+            fi
+          elif [ -e "$dst/$name" ] || [ -L "$dst/$name" ]; then
+            echo "ERROR: $name is present in more than one man root; refusing to overwrite $dst/$name" >&2
+            exit 1
+          else
+            mv "$entry" "$dst/$name"
+          fi
+        done
+      }
+
+      # Split the man root $1 (relative to the package root) into $2.
+      split_root() {
+        local root="$1" dest="$2"
+
+        # A symlinked root would be followed by the -d test above, so the
+        # pages would be copied out of the link target while `rm`/`rmdir`
+        # removed only the link -- leaving the originals in the parent
+        # package and shipping a second copy in the subpackage. Dangling
+        # symlinks never reach here: -d is false for them, so a compat
+        # symlink left behind by an earlier root is skipped, as before.
+        if [ -L "$PACKAGE_DIR/$root" ]; then
+          echo "ERROR: $root is a symlink to a directory; name its target in paths instead" >&2
+          exit 1
+        fi
+
+        # An empty root means the install step created the directory and put
+        # nothing in it. The `mv "$root"/*` this replaces failed on the
+        # unmatched glob, which is how that install bug got noticed; melange
+        # will otherwise emit a subpackage holding directory entries and no
+        # files.
+        if [ -z "$(ls -A "$PACKAGE_DIR/$root")" ]; then
+          echo "ERROR: $root exists but contains no files; the install step did not put manuals there" >&2
+          exit 1
+        fi
+
+        if [ -e "$dest" ] || [ -L "$dest" ]; then
+          merge_tree "$PACKAGE_DIR/$root" "$dest"
+        else
+          # Nothing to merge with yet, so the whole root moves in one rename.
+          mkdir -p "$(dirname "$dest")"
+          mv "$PACKAGE_DIR/$root" "$dest"
+        fi
+
+        if [ -d "$PACKAGE_DIR/$root" ]; then
+          rmdir --parents --ignore-fail-on-non-empty "$PACKAGE_DIR/$root"
+        else
+          rmdir --parents --ignore-fail-on-non-empty "$(dirname "$PACKAGE_DIR/$root")"
+        fi
+      }
+
+      # The standard roots always relocate under usr/share/man: that is where
+      # man(1) looks, usr/man is outside its default search path, and leaving
+      # pages under usr/local trips the usrlocal linter.
+      for root in usr/share/man usr/local/share/man usr/man; do
+        [ -d "$PACKAGE_DIR/$root" ] || continue
+        split_root "$root" "${{targets.contextdir}}/usr/share/man"
+      done
+
+      # Assigned before use: the value is spliced into this script as text, so
+      # a newline-separated `paths` would otherwise land in the middle of the
+      # `for` line and make it a syntax error.
+      paths="${{inputs.paths}}"
+
+      # Pathname expansion off while splitting `paths` into words. A glob is
+      # not resolvable here anyway -- it would expand against the build
+      # directory rather than the package root, and then silently match
+      # nothing -- so keep the entry literal and reject it by name below.
+      set -f
+      extra=""
+      for root in $paths; do
+        case "$root" in
+          /*)
+            echo "ERROR: paths entry \"$root\" must be relative to the package root" >&2
+            exit 1
+            ;;
+          ..|../*|*/..|*/../*)
+            # $PACKAGE_DIR/../foo is a sibling package's output directory, and
+            # this function ends in rm/rmdir. Matched per component rather than
+            # as a substring, so a directory whose name merely contains two
+            # dots -- opt/foo..bar/man -- is still accepted.
+            echo "ERROR: paths entry \"$root\" must not contain a \"..\" component" >&2
+            exit 1
+            ;;
+          .|./*|*/.|*/./*)
+            # "." names the package root, and under preserve-path its
+            # destination is the subpackage directory itself. melange creates
+            # that before any pipeline runs, so split_root takes the merge
+            # branch and moves every file in the package into the -doc
+            # subpackage. The trailing rmdir then fails on "." with EINVAL,
+            # which aborts the build, but only after the move.
+            echo "ERROR: paths entry \"$root\" must not contain a \".\" component" >&2
+            exit 1
+            ;;
+          *[\*\?\[]*)
+            echo "ERROR: paths entry \"$root\" must not contain a glob pattern; name each directory" >&2
+            exit 1
+            ;;
+        esac
+        extra="$extra $root"
+      done
+      set +f
+
+      for root in $extra; do
+        # Absent is `continue` for the standard roots, which most packages do
+        # not have, but an error for an explicitly named one: a typo would
+        # otherwise produce an empty -doc subpackage and exit 0.
+        if [ ! -d "$PACKAGE_DIR/$root" ]; then
+          echo "ERROR: paths entry \"$root\" does not exist in the package" >&2
+          exit 1
+        fi
+
+        if [ "${{inputs.preserve-path}}" = "true" ]; then
+          # Relocating collapses every source directory onto one destination,
+          # which cannot work where several versions of the same software
+          # coexist: every llvm-N ships a scan-build.1, and openjdk-17 and
+          # openjdk-21 share 27 page names, so relocating makes their doc
+          # subpackages conflict instead of installing side by side.
+          split_root "$root" "${{targets.contextdir}}/$root"
+        else
+          split_root "$root" "${{targets.contextdir}}/usr/share/man"
         fi
       done

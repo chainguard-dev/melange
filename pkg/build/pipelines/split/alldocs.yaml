@@ -23,6 +23,94 @@ pipeline:
         exit 1
       fi
 
+      # merge_tree and split_root are the same helpers as split/manpages.
+      # They are duplicated rather than shared because melange has no way for
+      # one pipeline to source shell from another, and nesting
+      # `uses: split/manpages` here would fix only the man loop while leaving
+      # the doc loop below with the identical bug -- its two roots collide the
+      # same way. Keep the two copies in step.
+
+      # Move the contents of $1 into $2, entry by entry, recursing where both
+      # sides hold a directory. Two roots can each contain a man1/ (or a
+      # bash/), so the trees have to be merged rather than moved wholesale --
+      # but a file present in both roots is a packaging bug, and overwriting it
+      # silently would hide it. Directories merge; files collide.
+      #
+      # Every move is a rename(2), like the `mv` this replaces. Copying instead
+      # would write through the destination inode, which corrupts the
+      # hard-linked and symlinked alias pages that gzip'd man trees are full of.
+      #
+      # Recursion is needed because locale subtrees (fr/man1) sit two levels
+      # down. `local` is not POSIX but is implemented by both busybox sh and
+      # dash, which are the shells this runs under.
+      merge_tree() {
+        local src="$1" dst="$2" entry name
+        mkdir -p "$dst"
+        for entry in "$src"/* "$src"/.[!.]* "$src"/..?*; do
+          # Unmatched globs stay literal, including the two dotfile patterns
+          # when there are no hidden entries.
+          [ -e "$entry" ] || [ -L "$entry" ] || continue
+          name="${entry##*/}"
+
+          if [ -d "$entry" ] && [ ! -L "$entry" ]; then
+            if [ -d "$dst/$name" ] && [ ! -L "$dst/$name" ]; then
+              merge_tree "$entry" "$dst/$name"
+              rmdir "$entry"
+            elif [ -e "$dst/$name" ] || [ -L "$dst/$name" ]; then
+              echo "ERROR: cannot merge $entry into $dst/$name: destination exists and is not a directory" >&2
+              exit 1
+            else
+              mv "$entry" "$dst/$name"
+            fi
+          elif [ -e "$dst/$name" ] || [ -L "$dst/$name" ]; then
+            echo "ERROR: $name is present in more than one root; refusing to overwrite $dst/$name" >&2
+            exit 1
+          else
+            mv "$entry" "$dst/$name"
+          fi
+        done
+      }
+
+      # Split the root $1 (relative to the package root) into $2.
+      split_root() {
+        local root="$1" dest="$2"
+
+        # A symlinked root would be followed by the -d test at the call site,
+        # so the files would be taken out of the link target while the cleanup
+        # removed only the link -- leaving the originals in the parent package
+        # and shipping a second copy in the subpackage. Dangling symlinks never
+        # reach here: -d is false for them, so a compat symlink left behind by
+        # an earlier root is skipped, as before.
+        if [ -L "$PACKAGE_DIR/$root" ]; then
+          echo "ERROR: $root is a symlink to a directory; split its target instead" >&2
+          exit 1
+        fi
+
+        # An empty root means the install step created the directory and put
+        # nothing in it. The `mv "$root"/*` this replaces failed on the
+        # unmatched glob, which is how that install bug got noticed; melange
+        # will otherwise emit a subpackage holding directory entries and no
+        # files.
+        if [ -z "$(ls -A "$PACKAGE_DIR/$root")" ]; then
+          echo "ERROR: $root exists but contains no files" >&2
+          exit 1
+        fi
+
+        if [ -e "$dest" ] || [ -L "$dest" ]; then
+          merge_tree "$PACKAGE_DIR/$root" "$dest"
+        else
+          # Nothing to merge with yet, so the whole root moves in one rename.
+          mkdir -p "$(dirname "$dest")"
+          mv "$PACKAGE_DIR/$root" "$dest"
+        fi
+
+        if [ -d "$PACKAGE_DIR/$root" ]; then
+          rmdir --parents --ignore-fail-on-non-empty "$PACKAGE_DIR/$root"
+        else
+          rmdir --parents --ignore-fail-on-non-empty "$(dirname "$PACKAGE_DIR/$root")"
+        fi
+      }
+
       # info dir
       if [ -d "$PACKAGE_DIR/usr/share/info" ]; then
         rm -f "$PACKAGE_DIR"/usr/share/info/dir
@@ -32,25 +120,13 @@ pipeline:
       fi
 
       # man pages
-      for mandir in \
-        "$PACKAGE_DIR/usr/share/man" \
-        "$PACKAGE_DIR/usr/local/share/man" \
-        "$PACKAGE_DIR/usr/man"; do
-
-        if [ -d "$mandir" ]; then
-          mkdir -p "${{targets.contextdir}}/usr/share/man"
-          mv "$mandir"/* "${{targets.contextdir}}/usr/share/man/"
-          rmdir --parents --ignore-fail-on-non-empty "$mandir"
-        fi
+      for root in usr/share/man usr/local/share/man usr/man; do
+        [ -d "$PACKAGE_DIR/$root" ] || continue
+        split_root "$root" "${{targets.contextdir}}/usr/share/man"
       done
 
       # other docs
-      for docdir in \
-        "$PACKAGE_DIR/usr/share/doc" \
-        "$PACKAGE_DIR/usr/local/share/doc"; do
-        if [ -d "$docdir" ]; then
-          mkdir -p "${{targets.contextdir}}/usr/share/doc"
-          mv "$docdir"/* "${{targets.contextdir}}/usr/share/doc/"
-          rmdir --parents --ignore-fail-on-non-empty "$docdir"
-        fi
+      for root in usr/share/doc usr/local/share/doc; do
+        [ -d "$PACKAGE_DIR/$root" ] || continue
+        split_root "$root" "${{targets.contextdir}}/usr/share/doc"
       done

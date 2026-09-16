@@ -94,6 +94,8 @@ Split manpages
 | Name | Required | Description | Default |
 | ---- | -------- | ----------- | ------- |
 | package | false | The package to split manpages from  |  |
+| paths | false | Optional newline-separated additional man directories to split, relative to the package root. The standard roots (usr/share/man, usr/local/share/man, usr/man) are always split. Example:   usr/lib/llvm-19/share/man   opt/example/share/man splits those two in addition to the standard roots.  |  |
+| preserve-path | false | Keep the directories named in `paths` where they were installed instead of relocating them under usr/share/man. "true" or "false". The standard roots are always relocated.  | false |
 
 ## split/static
 

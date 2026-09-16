@@ -95,11 +95,11 @@ func compileSplitPipeline(t *testing.T, name string, with map[string]string, tmp
 			t.Fatalf("MkdirAll(%s): %v", d, err)
 		}
 	}
-	// The subpackage directory is created by melange before the pipeline
-	// runs, but an empty one must not look like an existing destination.
-	if err := os.Remove(ctxDir); err != nil {
-		t.Fatalf("Remove(%s): %v", ctxDir, err)
-	}
+	// ctxDir is deliberately left in place: melange creates the subpackage
+	// directory before any pipeline runs, and $dest is always a path beneath
+	// it, never ctxDir itself -- except for a `paths` entry of ".", which is
+	// exactly the case below. Removing it here would make that case take the
+	// wholesale `mv` branch where production takes the merge branch.
 
 	pipeline := config.Pipeline{
 		Uses: "split/" + name,
@@ -291,6 +291,14 @@ func TestSplitManpagesSucceeds(t *testing.T) {
 			wantPkg: []string{"usr/bin/foo"},
 		},
 		{
+			// The ".." check matches whole components, so a directory whose
+			// name merely contains two dots is not caught by it.
+			name:    "a paths entry whose directory name contains two dots",
+			with:    map[string]string{"paths": "opt/foo..bar/man"},
+			tree:    splitTree{"opt/foo..bar/man/man1/d.1": "D"},
+			wantDoc: []string{"usr/share/man/man1/d.1"},
+		},
+		{
 			name:    "a package with no manuals is a no-op",
 			tree:    splitTree{"usr/bin/foo": "ELF"},
 			wantPkg: []string{"usr/bin/foo"},
@@ -425,13 +433,41 @@ func TestSplitManpagesFailsLoudly(t *testing.T) {
 			name:    "a paths entry containing ..",
 			with:    map[string]string{"paths": "../bar"},
 			tree:    splitTree{"usr/share/man/man1/a.1": "A"},
-			wantMsg: `must not contain ".."`,
+			wantMsg: `must not contain a ".." component`,
 		},
 		{
 			name:    "an absolute paths entry",
 			with:    map[string]string{"paths": "/etc"},
 			tree:    splitTree{"usr/share/man/man1/a.1": "A"},
 			wantMsg: "must be relative to the package root",
+		},
+		{
+			// "." names the package root, and under preserve-path its
+			// destination is the subpackage directory, which melange has
+			// already created -- so the merge branch moved every file in the
+			// package into the -doc subpackage. The build did stop, but only
+			// on the trailing rmdir returning EINVAL, well after the move.
+			name: "a paths entry of . under preserve-path",
+			with: map[string]string{"paths": ".", "preserve-path": "true"},
+			tree: splitTree{
+				"usr/share/man/man1/a.1": "A",
+				"usr/bin/foo":            "ELF",
+				"usr/lib/x/libx.so":      "LIB",
+			},
+			wantMsg:  `must not contain a "." component`,
+			wantKept: []string{"usr/bin/foo", "usr/lib/x/libx.so"},
+		},
+		{
+			name:    "a paths entry with a leading ./",
+			with:    map[string]string{"paths": "./usr/share/man"},
+			tree:    splitTree{"usr/share/man/man1/a.1": "A"},
+			wantMsg: `must not contain a "." component`,
+		},
+		{
+			name:    "a paths entry with a trailing /.",
+			with:    map[string]string{"paths": "usr/share/man/."},
+			tree:    splitTree{"usr/share/man/man1/a.1": "A"},
+			wantMsg: `must not contain a "." component`,
 		},
 		{
 			// A glob expands against the build directory, not the package

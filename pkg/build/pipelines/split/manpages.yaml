@@ -155,10 +155,22 @@ pipeline:
             echo "ERROR: paths entry \"$root\" must be relative to the package root" >&2
             exit 1
             ;;
-          *..*)
+          ..|../*|*/..|*/../*)
             # $PACKAGE_DIR/../foo is a sibling package's output directory, and
-            # this function ends in rm/rmdir.
-            echo "ERROR: paths entry \"$root\" must not contain \"..\"" >&2
+            # this function ends in rm/rmdir. Matched per component rather than
+            # as a substring, so a directory whose name merely contains two
+            # dots -- opt/foo..bar/man -- is still accepted.
+            echo "ERROR: paths entry \"$root\" must not contain a \"..\" component" >&2
+            exit 1
+            ;;
+          .|./*|*/.|*/./*)
+            # "." names the package root, and under preserve-path its
+            # destination is the subpackage directory itself. melange creates
+            # that before any pipeline runs, so split_root takes the merge
+            # branch and moves every file in the package into the -doc
+            # subpackage. The trailing rmdir then fails on "." with EINVAL,
+            # which aborts the build, but only after the move.
+            echo "ERROR: paths entry \"$root\" must not contain a \".\" component" >&2
             exit 1
             ;;
           *[\*\?\[]*)

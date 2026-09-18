@@ -16,6 +16,45 @@ import (
 	"chainguard.dev/melange/pkg/sbom"
 )
 
+func TestNoArchTargetArchitecture(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	tests := []struct {
+		name         string
+		targetArch   string
+		wantParseErr bool
+		wantNoArch   bool
+	}{
+		{
+			name:       "noarch",
+			targetArch: "[noarch]",
+			wantNoArch: true,
+		},
+		{
+			name:         "noarch with another architecture",
+			targetArch:   "[noarch, x86_64]",
+			wantParseErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "melange.yaml")
+			yaml := []byte("package:\n  name: test-package\n  version: 1.0.0\n  epoch: 0\n  target-architecture: " + tt.targetArch + "\n")
+			require.NoError(t, os.WriteFile(path, yaml, 0o644))
+
+			cfg, err := ParseConfiguration(ctx, path)
+			if tt.wantParseErr {
+				require.ErrorContains(t, err, `target-architecture: "noarch" must be the only entry when specified`)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantNoArch, cfg.Package.IsNoArch())
+		})
+	}
+}
+
 func Test_validateCPE(t *testing.T) {
 	cases := []struct {
 		name    string

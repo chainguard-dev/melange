@@ -15,6 +15,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,6 +33,31 @@ import (
 
 var requireErrInvalidConfiguration require.ErrorAssertionFunc = func(t require.TestingT, err error, _ ...any) {
 	require.ErrorAs(t, err, &config.ErrInvalidConfiguration{})
+}
+
+func TestPeekIsNoArch(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		targetArch string
+		want       bool
+	}{
+		{name: "noarch", targetArch: "[noarch]", want: true},
+		{name: "native", targetArch: "[x86_64]", want: false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			configFile := filepath.Join(t.TempDir(), "melange.yaml")
+			contents := fmt.Sprintf("package:\n  name: test\n  version: 1.0\n  epoch: 0\n  target-architecture: %s\n", tt.targetArch)
+			require.NoError(t, os.WriteFile(configFile, []byte(contents), 0o644))
+
+			got, err := PeekIsNoArch(context.Background(),
+				WithConfig(configFile),
+				WithConfigFileRepositoryURL("https://example.com/repo"),
+				WithConfigFileRepositoryCommit("test-commit"),
+			)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
 
 // TestConfiguration_Load is the main set of tests for loading a configuration

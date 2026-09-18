@@ -402,8 +402,11 @@ pipeline:
           # git clone --branch=X will pick the branch X if there
           # exists both a tag and a branch by that name.
           # since a tag was given, we want the tag.
-          vr git fetch $quiet $remote ${depthflag:+"${depthflag}"} --no-tags \
-              "+refs/tags/$tag:refs/$remote/tags/$tag"
+          # shellcheck disable=SC2086
+          retry_with_backoff "$max_retries" "$initial_backoff" "$max_backoff" \
+              vr git fetch $quiet $remote ${depthflag:+"${depthflag}"} --no-tags \
+              "+refs/tags/$tag:refs/$remote/tags/$tag" ||
+              fail "git fetch of tag $tag failed after $max_retries retries"
           vr git checkout $quiet "$remote/tags/$tag"
 
           foundcommit=$(git rev-parse --verify HEAD)

@@ -16,7 +16,6 @@ package license
 
 import (
 	"context"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -148,14 +147,7 @@ func TestFindLicenseFiles(t *testing.T) {
 	}
 }
 
-func TestIdentify(t *testing.T) {
-	classifier, err := NewClassifier()
-	if err != nil {
-		t.Fatalf("Failed to create classifier: %v", err)
-	}
-
-	melangeClassifier := classifier.(*melangeClassifier)
-
+func TestCollectLicenseInfo(t *testing.T) {
 	expectedLicenses := map[string]string{
 		"LICENSE-APACHE":       "Apache-2.0",
 		"LICENSE-BSD":          "BSD-3-Clause",
@@ -163,45 +155,45 @@ func TestIdentify(t *testing.T) {
 		"LICENSE-GPLv2":        "GPL-2.0",
 		"LICENSE-GPLv3":        "GPL-3.0",
 		"COPYRIGHT":            "NOASSERTION",
+		"ATYPICAL-FILENAME":    "Apache-2.0",
 	}
 
-	testDataDir := "testdata"
-	dataFS := apkofs.DirFS(t.Context(), testDataDir)
-	err = fs.WalkDir(dataFS, ".", func(path string, info fs.DirEntry, err error) error {
-		if err != nil {
-			t.Errorf("Error walking through testdata directory: %v", err)
-			return err
-		}
-		if !info.IsDir() {
-			filePath := path
+	// ATYPICAL-FILENAME is not named like a license file, so it is reached
+	// through a declaration rather than through discovery.
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Copyright: []config.Copyright{
+				{License: "Apache-2.0", LicensePath: "ATYPICAL-FILENAME"},
+			},
+		},
+	}
 
-			// Call function under test
-			licenses, err := melangeClassifier.Identify(dataFS, filePath)
-			if err != nil {
-				t.Errorf("Identify returned an error for file %s: %v", filePath, err)
-				return nil
-			}
+	dataFS := apkofs.DirFS(t.Context(), "testdata")
 
-			t.Logf("Identified licenses for file %s: %v", filePath, licenses)
-
-			// These licenses are mostly-100% matched, so only one license result should be expected
-			if len(licenses) != 1 {
-				t.Errorf("Expected one license detected for file %s, got %d", filePath, len(licenses))
-			}
-
-			expectedLicense, ok := expectedLicenses[info.Name()]
-			if ok {
-				if licenses[0].Name != expectedLicense {
-					t.Errorf("Expected license %s for file %s, got %s", expectedLicense, filePath, licenses[0].Name)
-				}
-			} else {
-				t.Logf("No expected license found for file %s", info.Name())
-			}
-		}
-		return nil
-	})
+	licenses, err := CollectLicenseInfo(t.Context(), dataFS, true, cfg)
 	if err != nil {
-		t.Fatalf("Failed to walk through testdata directory: %v", err)
+		t.Fatalf("CollectLicenseInfo returned an error: %v", err)
+	}
+
+	// These licenses are mostly-100% matched, so one result per file is expected.
+	got := map[string][]string{}
+	for _, l := range licenses {
+		got[l.Source] = append(got[l.Source], l.Name)
+	}
+
+	for file, want := range expectedLicenses {
+		names, ok := got[file]
+		if !ok {
+			t.Errorf("no license detected for file %s", file)
+			continue
+		}
+		if len(names) != 1 {
+			t.Errorf("expected one license detected for file %s, got %d: %v", file, len(names), names)
+			continue
+		}
+		if names[0] != want {
+			t.Errorf("expected license %s for file %s, got %s", want, file, names[0])
+		}
 	}
 }
 

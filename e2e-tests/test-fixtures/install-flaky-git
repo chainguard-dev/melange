@@ -1,0 +1,53 @@
+#!/bin/sh
+# Install a "git" wrapper earlier on PATH that makes the first N fetches of a
+# tag refspec fail the way gitlab.com does when it is shedding load, then gets
+# out of the way.  Used by git-checkout-build.yaml to check that the pipeline
+# retries the tag fetch rather than dying on the first failure.
+#
+# Usage: ./install-flaky-git [num-failures] ; ./install-flaky-git --uninstall
+set -e
+
+# SHIM/CFILE are overridable so this can be exercised outside a build env.
+SHIM=${FLAKY_GIT_SHIM:-/usr/local/bin/git}
+CFILE=${FLAKY_GIT_ATTEMPTS:-/tmp/flaky-git.attempts}
+
+if [ "$1" = "--uninstall" ]; then
+    rm -f "$SHIM"
+    exit 0
+fi
+
+fails=${1:-3}
+
+# Resolve the real git *before* the shim exists, otherwise the shim would
+# find itself and recurse.
+real=$(command -v git) || { echo "no git on PATH" 1>&2; exit 1; }
+case "$real" in
+    "$SHIM") echo "shim already installed at $real" 1>&2; exit 1;;
+esac
+
+mkdir -p "${SHIM%/*}"
+rm -f "$CFILE"
+
+cat > "$SHIM" <<EOF
+#!/bin/sh
+# test shim installed by install-flaky-git -- fails the first $fails tag fetches
+for a in "\$@"; do
+    case "\$a" in
+        +refs/tags/*)
+            n=0
+            [ -f "$CFILE" ] && read n < "$CFILE"
+            n=\$((n + 1))
+            echo "\$n" > "$CFILE"
+            if [ "\$n" -le $fails ]; then
+                echo "fatal: remote error: GitLab is currently unable to handle" \\
+                     "this request due to load (ID testshim\$n-ORD)." 1>&2
+                exit 128
+            fi
+            ;;
+    esac
+done
+exec "$real" "\$@"
+EOF
+
+chmod 755 "$SHIM"
+echo "installed flaky git shim at $SHIM (first $fails tag fetches will fail)"

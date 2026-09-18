@@ -144,6 +144,7 @@
 ./.melange.fdo.h
 ./.melange.gcc.spec
 ./create-git-repo
+./install-flaky-git
 ./melange-created.lst
 ./melange-out
 ./melange-out/test-git-checkout

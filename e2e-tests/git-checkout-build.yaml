@@ -326,6 +326,40 @@ pipeline:
       cd ..
       rm -R cherry-pick-test
 
+  # The tag path does two network operations -- the clone and then a fetch of
+  # the tag refspec -- and both must survive a flaky remote.  install-flaky-git
+  # shims git so the first 3 tag fetches fail the way gitlab.com does when it
+  # sheds load; the checkout is only reachable if the fetch is retried.
+  - name: "make the next 3 tag fetches fail"
+    runs: |
+      ./install-flaky-git 3
+
+  - name: "tag fetch retried on transient remote failure"
+    uses: git-checkout
+    working-directory: flaky-tag-fetch
+    with:
+      repository: ${{vars.giturl}}
+      tag: 2.0
+      expected-commit: 3dfc3dd573b814be48c07f7f8ae3c19a23b69865
+      max-retries: 5
+      initial-backoff: 1
+      max-backoff: 2
+
+  - name: "check tag fetch retried on transient remote failure"
+    working-directory: flaky-tag-fetch
+    runs: |
+      hash=$(git rev-parse --verify HEAD)
+      [ "$hash" = 3dfc3dd573b814be48c07f7f8ae3c19a23b69865 ]
+      # 3 injected failures + 1 success: anything less means the fetch was not
+      # retried, anything more means it retried when it should have stopped.
+      read attempts < /tmp/flaky-git.attempts
+      [ "$attempts" = 4 ] ||
+          { echo "expected 4 tag fetch attempts, got $attempts"; exit 1; }
+      cd ..
+      ./install-flaky-git --uninstall
+      rm -f /tmp/flaky-git.attempts
+      rm -R flaky-tag-fetch
+
   # When ownership of files created inside and outside of the runner container do not
   # match, if mode is restrictive on files like 0700 on the Melange workspace, if the git-checkout
   # pipeline changes ownership on them, being that it runs inside the runner container, subsequent

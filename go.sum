@@ -2,6 +2,8 @@ chainguard.dev/apko v1.4.3 h1:DRFc8Y873xfkgO9Inh/aD2/BCQyVVh2qEBXeQAHvkPw=
 chainguard.dev/apko v1.4.3/go.mod h1:/NhYNAGYjm2anomxJbYt4j1DNEOSqUzPh0OKDDISMqg=
 chainguard.dev/go-grpc-kit v0.18.0 h1:kr451ml4eBgNcc0ytqcSSPZ3KGtyfHRrrBcYxW/oZwI=
 chainguard.dev/go-grpc-kit v0.18.0/go.mod h1:N1ZZiV3KkNHFlIS6RPhLT9ppfObC7aa1hqWMPmNiTA0=
+chainguard.dev/license v0.1.1 h1:50LeRm7nFGipu21bQMK8cCjkm25qjTbCCpRykXXh5l0=
+chainguard.dev/license v0.1.1/go.mod h1:sQH4AOGvWDKQokr1UYRTaOpIhgjq6KTcfjyKcmVlhas=
 chainguard.dev/sdk v0.1.262 h1:wd8LjRD4nd5c4FWPePs9S2BMICK1EOTcQJDt4Wfysj4=
 chainguard.dev/sdk v0.1.262/go.mod h1:LsITgsC6zgPV/DDfAAjA6rXZReorqokcQlB55yzuBfc=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -403,8 +405,6 @@ golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvx
 golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3/go.mod h1:6SW0HCj/g11FgYtHlgUYUwCkIfeOF89ocIRzGO/8vkc=
 golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4/go.mod h1:jJ57K6gSWd91VN4djpZkiMVwK6gcyfeH4XE8wZrZaV4=
 golang.org/x/mod v0.8.0/go.mod h1:iBbtSCu2XBx23ZKBPSOrRkjjQPZFPuis4dIYUhu/chs=
-golang.org/x/mod v0.39.0 h1:UF5zwQdCRRUpHfyPwr7d4UrGiVeldIsogtzWVnczL74=
-golang.org/x/mod v0.39.0/go.mod h1:bvIbwjQ0HUFFf5AKukeeYQG4ZBUG9yxQbR9aEweIwYY=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=
 golang.org/x/mod v0.41.0/go.mod h1:Ek9pY8RKWXwsWvd3rQiHYtMqkjSUV+s1Rj7j4H5Ur6o=
 golang.org/x/net v0.0.0-20180724234803-3673e40ba225/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=

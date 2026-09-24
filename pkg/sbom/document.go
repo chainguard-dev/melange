@@ -108,9 +108,12 @@ func (d Document) createOperatingSystemPackage(os *apko_build.ReleaseData) spdx.
 		LicenseConcluded: spdx.NOASSERTION,
 		LicenseDeclared:  spdx.NOASSERTION,
 		DownloadLocation: spdx.NOASSERTION,
-		PrimaryPurpose:   "OPERATING-SYSTEM",
-		Originator:       d.Describes.getSupplier(),
-		Supplier:         d.Describes.getSupplier(),
+		// From a customer issue, "Per SPDX 2.3 spec, the valid enum values use
+		// underscores: OPERATING_SYSTEM. The hyphenated OPERATING-SYSTEM is
+		// not in the allowed set. NexusIQ CLI error (v2.11.1)"
+		PrimaryPurpose: "OPERATING_SYSTEM",
+		Originator:     d.Describes.getSupplier(),
+		Supplier:       d.Describes.getSupplier(),
 	}
 }
 

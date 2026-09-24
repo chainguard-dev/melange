@@ -243,6 +243,7 @@ jobs:
           test -f "kernel/${arch}/vmlinuz"
 
       - run: |
+          sudo apt-get update
           sudo apt-get -y install bubblewrap
       - uses: ./.github/actions/setup-bubblewrap
 
@@ -338,6 +339,7 @@ jobs:
       # 'make test-e2e-unit' runs 'go generate', which builds the sca testdata
       # packages with the bwrap runner.
       - run: |
+          sudo apt-get update
           sudo apt-get -y install bubblewrap
       - uses: ./.github/actions/setup-bubblewrap
 

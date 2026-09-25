@@ -1,0 +1,177 @@
+package:
+  name: go-build-v2-vendor-build-test
+  version: "1.0.0"
+  epoch: 0
+  description: Test vendored module and workspace builds with go/build/v2
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    packages:
+      - go-1.26
+  environment:
+    CGO_ENABLED: "0"
+
+pipeline:
+  - name: Create module fixtures
+    runs: |
+      mkdir -p module-app module-dep generated-app generated-dep
+
+      cat > module-dep/go.mod <<'EOF'
+      module example.com/module-dep
+
+      go 1.24
+      EOF
+      cat > module-dep/value.go <<'EOF'
+      package moduledep
+
+      const Value = "module"
+      EOF
+      cat > module-app/go.mod <<'EOF'
+      module example.com/module-app
+
+      go 1.24
+
+      require example.com/module-dep v0.0.0
+
+      replace example.com/module-dep => ../module-dep
+      EOF
+      cat > module-app/main.go <<'EOF'
+      package main
+
+      import (
+          "fmt"
+
+          moduledep "example.com/module-dep"
+      )
+
+      func main() {
+          fmt.Println(moduledep.Value)
+      }
+      EOF
+
+      (cd module-app && go mod vendor)
+      cat > module-app/vendor/example.com/module-dep/value.go <<'EOF'
+      package moduledep
+
+      const Value = "vendored"
+      EOF
+
+      cat > generated-dep/go.mod <<'EOF'
+      module example.com/generated-dep
+
+      go 1.24
+      EOF
+      cat > generated-dep/value.go <<'EOF'
+      package generateddep
+
+      const Value = "generated"
+      EOF
+      cat > generated-app/go.mod <<'EOF'
+      module example.com/generated-app
+
+      go 1.24
+
+      require example.com/generated-dep v0.0.0
+
+      replace example.com/generated-dep => ../generated-dep
+      EOF
+      cat > generated-app/main.go <<'EOF'
+      package main
+
+      import (
+          "fmt"
+
+          generateddep "example.com/generated-dep"
+      )
+
+      func main() {
+          fmt.Println(generateddep.Value)
+      }
+      EOF
+
+  - uses: go/build/v2
+    with:
+      modroot: module-app
+      output: module-vendor-enabled
+      vendor: true
+      # vendor: true must take precedence over a conflicting generic build flag.
+      extra-args: -mod=mod
+
+  - uses: go/build/v2
+    with:
+      modroot: module-app
+      output: module-vendor-disabled
+      extra-args: -mod=mod
+
+  - uses: go/build/v2
+    with:
+      modroot: generated-app
+      output: module-vendor-generated
+      vendor: true
+
+  - name: Verify missing module vendor tree was generated
+    runs: test -s generated-app/vendor/modules.txt
+
+  - name: Create workspace fixture
+    runs: |
+      mkdir -p workspace/app workspace/dep
+
+      cat > workspace/go.work <<'EOF'
+      go 1.24
+
+      use ./app
+      EOF
+      cat > workspace/dep/go.mod <<'EOF'
+      module example.com/workspace-dep
+
+      go 1.24
+      EOF
+      cat > workspace/dep/value.go <<'EOF'
+      package workspacedep
+
+      const Value = "workspace"
+      EOF
+      cat > workspace/app/go.mod <<'EOF'
+      module example.com/workspace-app
+
+      go 1.24
+
+      require example.com/workspace-dep v0.0.0
+
+      replace example.com/workspace-dep => ../dep
+      EOF
+      cat > workspace/app/main.go <<'EOF'
+      package main
+
+      import (
+          "fmt"
+
+          workspacedep "example.com/workspace-dep"
+      )
+
+      func main() {
+          fmt.Println(workspacedep.Value)
+      }
+      EOF
+
+  - uses: go/build/v2
+    with:
+      modroot: workspace/app
+      output: workspace-vendor-generated
+      vendor: true
+
+  - name: Verify missing workspace vendor tree was generated
+    runs: test -s workspace/vendor/modules.txt
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+  pipeline:
+    - runs: module-vendor-enabled | grep -Fx vendored
+    - runs: module-vendor-disabled | grep -Fx module
+    - runs: module-vendor-generated | grep -Fx generated
+    - runs: workspace-vendor-generated | grep -Fx workspace

@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+#
+# This is a sample configuration file to demonstrate how to build a software
+# project using melange's built-in php/composer-install pipeline.
+package:
+  name: php-psr-log
+  version: 3.0.2
+  epoch: 0
+  description: "psr/log, the PSR-3 logger interface package"
+  dependencies:
+    runtime:
+      - php
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+
+pipeline:
+  - uses: php/composer-install
+    with:
+      package: psr/log
+      version: ${{package.version}}
+
+test:
+  environment:
+    contents:
+      packages:
+        - busybox
+        - php
+  pipeline:
+    - runs: |
+        php -r "require '/usr/share/php/vendor/autoload.php'; new Psr\Log\NullLogger();"

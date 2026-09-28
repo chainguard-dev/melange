@@ -116,13 +116,18 @@ func TestSourcePackageDefinition(t *testing.T) {
 
 func TestGuestEnvironmentOnlyStashesWhenEmitting(t *testing.T) {
 	b, _ := sourceBuild(t, nil, false)
-	if _, ok := b.guestEnvironment(t.Context())[sourceStashEnv]; ok {
-		t.Fatal("stash path exported although no companion is emitted")
+	for _, k := range []string{sourceStashEnv, sourceRestoreEnv} {
+		if _, ok := b.guestEnvironment(t.Context())[k]; ok {
+			t.Fatalf("%s exported although no companion is emitted", k)
+		}
 	}
 	b.SourcePackage = true
 	env := b.guestEnvironment(t.Context())
 	if env[sourceStashEnv] != "/home/build/melange-out/.melange-source" {
 		t.Fatalf("stash path %q", env[sourceStashEnv])
+	}
+	if env[sourceRestoreEnv] != "1" {
+		t.Fatal("restore-from-cache not enabled for a build that emits a companion")
 	}
 	if env["SOURCE_DATE_EPOCH"] != "1669683910" {
 		t.Fatalf("SOURCE_DATE_EPOCH lost: %v", env)

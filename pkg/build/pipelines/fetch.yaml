@@ -118,6 +118,23 @@ pipeline:
         fi
       fi
 
+      # When the build emits a -source companion, keep the verified artifact
+      # for it, named exactly as the cache above names it: the companion's
+      # upstream directory is then a valid --cache-dir for an offline rebuild.
+      if [ -n "${MELANGE_SOURCE_STASH:-}" ]; then
+        if [ -n "${{inputs.expected-sha256}}" ]; then
+          key="sha256:${{inputs.expected-sha256}}"
+        elif [ -n "${{inputs.expected-sha512}}" ]; then
+          key="sha512:${{inputs.expected-sha512}}"
+        else
+          key="sha256:$(sha256sum $bn | awk '{print $1}')"
+        fi
+        mkdir -p "$MELANGE_SOURCE_STASH"
+        cp "$bn" "$MELANGE_SOURCE_STASH/$key"
+        printf '%s\n' '${{inputs.uri}}' > "$MELANGE_SOURCE_STASH/$key.uri"
+        printf "fetch: kept $key for the -source package\n"
+      fi
+
       if [ "${{inputs.extract}}" = "true" ]; then
         tar -x '--strip-components=${{inputs.strip-components}}' --no-same-owner -C '${{inputs.directory}}' -f $bn
       fi

@@ -498,6 +498,7 @@ pipeline:
               subsha=${subfile##*.sub.}; subsha=${subsha%.tar.gz}
               tar -tzf "/var/cache/melange/$subfile" | sed -e "s,^$subpath/,," -e '/\/$/d' -e '/^$/d' > "$listf"
               ( cd "$dest/$subpath" &&
+                rm -rf .git &&
                 git init -q -b main . &&
                 git config --global --add safe.directory "$(pwd)" &&
                 sed 's,^,:(literal),' "$listf" | git add -f --pathspec-from-file=- &&
@@ -601,7 +602,12 @@ pipeline:
                      GIT_AUTHOR_DATE="@$sdate" GIT_COMMITTER_DATE="@$sdate"
               restore_submodules "$cachebase" "$dest" ||
                   fail "a submodule archive in the cache for $expcommit does not authenticate; refusing to build from it"
+              # The archive is untrusted until restore_head authenticates it,
+              # and git reads .git/config before anything else: a smuggled
+              # config could name a clean filter that `git add` would run.
+              # Start from no repository at all.
               ( cd "$dest" &&
+                rm -rf .git &&
                 git init -q -b "${branch:-main}" . &&
                 git config --global --add safe.directory "$(pwd)" &&
                 sed 's,^,:(literal),' "$listf" | git add -f --pathspec-from-file=- &&

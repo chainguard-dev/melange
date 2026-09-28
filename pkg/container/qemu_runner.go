@@ -786,6 +786,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	} else {
 		cmdlineVar = ""
 	}
+	if tscCmdline := withTCGFallbackTSC(runtime.GOARCH, cfg.Arch.ToAPK(), cmdlineVar); tscCmdline != cmdlineVar {
+		log.Infof("qemu: x86_64 guest on arm64 host, adding tsc_early_khz=%d to kernel cmdline", qemuTCGFallbackTSCkHz)
+		cmdlineVar = tscCmdline
+	}
 
 	// ensure we disable unneeded devices, this is less needed if we use microvm machines
 	// but still useful otherwise
@@ -1846,6 +1850,26 @@ func convertHumanToKB(memory string) (int64, error) {
 
 	// Return the value in kilobytes
 	return num * multiplier / 1024, nil
+}
+
+// NANOSECONDS_PER_SECOND ticks/s, divided by 1000 to get kHz.
+const qemuTCGFallbackTSCkHz = 1_000_000_000 / 1_000
+
+// withTCGFallbackTSC prepends tsc_early_khz= to cmdline when running an
+// x86_64 guest on an arm64 host, unless the caller already set it.
+//
+// On arm64 hosts with PIT and HPET disabled, the guest kernel can't determine
+// the TSC frequency and panics with a divide-by-zero during calibration.
+func withTCGFallbackTSC(goarch, guestArch, cmdline string) string {
+	if goarch != "arm64" || guestArch != "x86_64" {
+		return cmdline
+	}
+	for f := range strings.FieldsSeq(cmdline) {
+		if strings.HasPrefix(f, "tsc_early_khz=") {
+			return cmdline
+		}
+	}
+	return strings.TrimSpace(fmt.Sprintf("tsc_early_khz=%d %s", qemuTCGFallbackTSCkHz, cmdline))
 }
 
 // cpuFallbackCap is the host-exhaustion safeguard cap (in vCPUs) applied

@@ -1189,3 +1189,48 @@ func TestEffectiveMemoryKB(t *testing.T) {
 		})
 	}
 }
+
+func TestWithTCGFallbackTSC(t *testing.T) {
+	tests := []struct {
+		name      string
+		goarch    string
+		guestArch string
+		cmdline   string
+		want      string
+	}{{
+		name:      "arm64 x86_64 guest, empty cmdline",
+		goarch:    "arm64",
+		guestArch: "x86_64",
+		want:      "tsc_early_khz=1000000",
+	}, {
+		name:      "arm64 x86_64 guest, user cmdline preserved",
+		goarch:    "arm64",
+		guestArch: "x86_64",
+		cmdline:   "loglevel=7",
+		want:      "tsc_early_khz=1000000 loglevel=7",
+	}, {
+		name:      "user-supplied tsc_early_khz takes precedence",
+		goarch:    "arm64",
+		guestArch: "x86_64",
+		cmdline:   "loglevel=7 tsc_early_khz=640000",
+		want:      "loglevel=7 tsc_early_khz=640000",
+	}, {
+		name:      "arm64 aarch64 guest unchanged",
+		goarch:    "arm64",
+		guestArch: "aarch64",
+		cmdline:   "loglevel=7",
+		want:      "loglevel=7",
+	}, {
+		name:      "amd64 x86_64 guest unchanged",
+		goarch:    "amd64",
+		guestArch: "x86_64",
+		want:      "",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := withTCGFallbackTSC(tt.goarch, tt.guestArch, tt.cmdline); got != tt.want {
+				t.Errorf("withTCGFallbackTSC() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

@@ -8,7 +8,7 @@ on:
 
 permissions: {}
 
-# Each push to a PR fans out one 8-core runner per e2e test, so don't leave
+# Each push to a PR fans out one runner per e2e test, so don't leave
 # superseded runs going.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -86,7 +86,7 @@ jobs:
 
   build-melange:
     name: Build melange and fetch the qemu kernel
-    runs-on: ubuntu-latest-8-core
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -155,7 +155,7 @@ jobs:
     needs:
       - discover
       - build-melange
-    runs-on: ubuntu-latest-8-core
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -267,7 +267,7 @@ jobs:
     name: Go tests ${{ matrix.pkg }}
     needs:
       - discover
-    runs-on: ubuntu-latest-8-core
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read

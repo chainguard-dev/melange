@@ -258,6 +258,29 @@ func TestSourcePackageAssemblyDiscardsWhatTheBuildLeft(t *testing.T) {
 	}
 }
 
+// A .git anywhere under the source directory never ships: it holds remote
+// URLs, credentials and hooks, not source.
+func TestSourcePackageAssemblySkipsGitDirectories(t *testing.T) {
+	b, src := sourceBuild(t, nil, true)
+	writeFileMode(t, src, "fix.patch", 0o644, "--- a\n+++ b\n")
+	writeFileMode(t, src, ".git/config", 0o644, "[remote \"origin\"]\n\turl = https://user:token@example.com/r.git\n")
+	writeFileMode(t, src, ".git/hooks/pre-commit", 0o755, "#!/bin/sh\n")
+	writeFileMode(t, src, "vendor/lib/.git", 0o644, "gitdir: ../../.git/modules/lib\n")
+	writeFileMode(t, src, "vendor/lib/keep.c", 0o644, "int x;\n")
+	manifest, err := b.assembleSourcePackage(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(manifest), ".git") {
+		t.Fatalf("a .git entry reached the manifest:\n%s", manifest)
+	}
+	for _, want := range []string{"foo/fix.patch", "foo/vendor/lib/keep.c"} {
+		if !strings.Contains(string(manifest), "  "+want+"\n") {
+			t.Fatalf("%s missing from the manifest:\n%s", want, manifest)
+		}
+	}
+}
+
 // melange-out itself replaced by a link is refused outright: nothing is
 // written through it.
 func TestSourcePackageAssemblyRefusesLinkedMelangeOut(t *testing.T) {

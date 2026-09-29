@@ -76,9 +76,36 @@ jobs:
           fi
           ./melange build "${path}" --arch=x86_64 --namespace=wolfi
 
+      # rebuild no longer takes the working directory as the source directory
+      # by default; melange.yaml, which builds this checkout, still needs it.
       - name: Rebuild package
+        env:
+          MATRIX_CFG: ${{ matrix.cfg }}
         run: |
-          ./melange rebuild ./packages/x86_64/*.apk
+          if [ "${MATRIX_CFG}" = "melange.yaml" ]; then
+            ./melange rebuild ./packages/x86_64/*.apk --source-dir=.
+          else
+            ./melange rebuild ./packages/x86_64/*.apk
+          fi
+
+      # The same package again, this time emitting its -source companion and
+      # rebuilding from nothing but that companion: its overlay is the source
+      # directory and its upstream artifacts are the cache, verified against
+      # the .source.sha256 pin every APK of the build carries. The rebuilt
+      # APKs, the re-emitted companion included, must match. melange.yaml is
+      # left out: it builds from alpine edge, whose packages move between
+      # the build and the rebuild, and the locked environment in
+      # .melange.yaml then no longer resolves.
+      - name: Build and rebuild from the -source package
+        if: matrix.cfg != 'melange.yaml'
+        env:
+          MATRIX_CFG: ${{ matrix.cfg }}
+        run: |
+          path="examples/${MATRIX_CFG}"
+          ./melange build "${path}" --arch=x86_64 --namespace=wolfi --source-package --out-dir=./packages-source
+          companion=$(ls ./packages-source/x86_64/*-source-*.apk)
+          ls -la ./packages-source/x86_64/
+          ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --out-dir=./rebuilt-from-source
 
       - name: Upload APKs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -87,4 +114,6 @@ jobs:
           path: |
             packages/**
             rebuilt-packages/**
+            packages-source/**
+            rebuilt-from-source/**
           name: rebuild-${{matrix.cfg}}

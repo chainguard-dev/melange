@@ -15,7 +15,9 @@
 package build
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -23,6 +25,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -404,14 +407,15 @@ func writeNormalized(fsys apkofs.FullFS, dst string, r io.Reader, mode fs.FileMo
 }
 
 // manifestOf lists every regular file under root with its SHA-256, sorted,
-// in sha256sum(1) format, so `sha256sum -c` inside root verifies it.
+// in sha256sum(1) format, so `sha256sum -c` inside root verifies it. The
+// manifest file itself, if present, is not listed.
 func manifestOf(root string) ([]byte, error) {
 	var paths []string
 	err := fs.WalkDir(os.DirFS(root), ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.Type().IsRegular() {
+		if d.Type().IsRegular() && p != sourceManifestFile {
 			paths = append(paths, p)
 		}
 		return nil
@@ -443,4 +447,160 @@ func fileSHA256(name string) ([]byte, error) {
 		return nil, err
 	}
 	return h.Sum(nil), nil
+}
+
+// SourcePackage is a companion unpacked and verified for a rebuild.
+type SourcePackage struct {
+	Origin    string // the package the companion belongs to
+	Root      string // usr/src/<origin> on disk
+	SourceDir string // the --source-dir overlay: Root/<origin>
+	CacheDir  string // the upstream artifacts: Root/upstream, a valid --cache-dir
+	Config    string // the resolved configuration: Root/<origin>.yaml
+}
+
+// ExtractSourcePackage unpacks a <origin>-source APK under dest and verifies
+// it: the manifest it carries must equal pin -- the .source.sha256 a binary
+// APK of the same build carries -- and every file must hash as the manifest
+// says, with none missing and none extra. Nothing from the companion is used
+// until that holds, so a companion is trusted only through the pin in a
+// signed binary package, never by its name or its own signature. pin may be
+// nil when the caller has no binary package to pin against; the manifest is
+// then verified only against the contents.
+func ExtractSourcePackage(apk string, pin []byte, dest string) (*SourcePackage, error) {
+	f, err := os.Open(apk) // #nosec G304 - the companion the caller named
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f) // multistream: signature, control and data sections in turn
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", apk, err)
+	}
+	defer gz.Close()
+
+	prefix := sourceInstallRoot + "/"
+	origin := ""
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			// An APK is several gzip members in one stream, each a tar
+			// section; a section may end with a tar trailer. Read on into
+			// the next section, and stop only when nothing follows.
+			tr = tar.NewReader(gz)
+			if hdr, err = tr.Next(); errors.Is(err, io.EOF) {
+				break
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", apk, err)
+		}
+		for part := range strings.SplitSeq(hdr.Name, "/") {
+			if part == ".." {
+				return nil, fmt.Errorf("%s: refusing entry %q", apk, hdr.Name)
+			}
+		}
+		name := path.Clean(hdr.Name)
+		if !strings.HasPrefix(name, prefix) {
+			continue // control section, SBOM
+		}
+		rel := strings.TrimPrefix(name, prefix)
+		if rel == "" || rel == "." {
+			return nil, fmt.Errorf("%s: refusing entry %q", apk, hdr.Name)
+		}
+		first, _, _ := strings.Cut(rel, "/")
+		switch {
+		case origin == "":
+			origin = first
+		case origin != first:
+			return nil, fmt.Errorf("%s: holds more than one package's source (%s, %s)", apk, origin, first)
+		}
+		target := filepath.Join(dest, filepath.FromSlash(rel))
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return nil, err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return nil, err
+			}
+			perm := fs.FileMode(0o644)
+			if hdr.Mode&0o111 != 0 {
+				perm = 0o755
+			}
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, perm) // #nosec G304 - under dest, no ".." (checked above)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := io.CopyN(out, tr, hdr.Size); err != nil { // bounded by the header, not the stream
+				out.Close()
+				return nil, fmt.Errorf("%s: %w", hdr.Name, err)
+			}
+			if err := out.Close(); err != nil {
+				return nil, err
+			}
+		default:
+			// a companion holds regular files only; anything else is not ours
+			return nil, fmt.Errorf("%s: refusing %q: not a regular file", apk, hdr.Name)
+		}
+	}
+	if origin == "" {
+		return nil, fmt.Errorf("%s: holds nothing under %s", apk, sourceInstallRoot)
+	}
+
+	root := filepath.Join(dest, origin)
+	manifest, err := os.ReadFile(filepath.Join(root, sourceManifestFile))
+	if err != nil {
+		return nil, fmt.Errorf("%s: no %s: %w", apk, sourceManifestFile, err)
+	}
+	if pin != nil && !bytes.Equal(manifest, pin) {
+		return nil, fmt.Errorf("%s: its %s is not the .source.sha256 the binary package pins; this is not the source of that build", apk, sourceManifestFile)
+	}
+	// every file hashes as the manifest says, and only those files exist
+	actual, err := manifestOf(root)
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(actual, manifest) {
+		return nil, fmt.Errorf("%s: contents do not match %s:\n%s", apk, sourceManifestFile, manifestDiff(manifest, actual))
+	}
+	sp := &SourcePackage{
+		Origin:    origin,
+		Root:      root,
+		SourceDir: filepath.Join(root, origin),
+		CacheDir:  filepath.Join(root, sourceUpstreamDir),
+		Config:    filepath.Join(root, origin+".yaml"),
+	}
+	for _, d := range []string{sp.SourceDir, sp.CacheDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil { // a package with no overlay or no fetches has none
+			return nil, err
+		}
+	}
+	return sp, nil
+}
+
+// manifestDiff names the lines present in one manifest and not the other.
+func manifestDiff(want, got []byte) string {
+	w := map[string]bool{}
+	for l := range strings.SplitSeq(strings.TrimSpace(string(want)), "\n") {
+		w[l] = true
+	}
+	g := map[string]bool{}
+	for l := range strings.SplitSeq(strings.TrimSpace(string(got)), "\n") {
+		g[l] = true
+	}
+	var out []string
+	for l := range w {
+		if !g[l] {
+			out = append(out, "-"+l)
+		}
+	}
+	for l := range g {
+		if !w[l] {
+			out = append(out, "+"+l)
+		}
+	}
+	slices.Sort(out)
+	return strings.Join(out, "\n")
 }

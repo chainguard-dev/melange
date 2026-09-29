@@ -15,9 +15,12 @@
 package build
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -419,4 +422,164 @@ func TestSbomConfigurationDeclaresTheCompanionOnlyWhenEmitting(t *testing.T) {
 	if len(b.Configuration.Subpackages) != 1 {
 		t.Fatal("the build configuration itself must not be modified")
 	}
+}
+
+// companionAPK writes a minimal <origin>-source APK: a control section with
+// .PKGINFO and .source.sha256, then a data section holding usr/src/<origin>/
+// with the given files plus a SOURCES.sha256 computed over them (unless
+// manifest is given, which is written as is). Returns the path and the
+// manifest.
+func companionAPK(t *testing.T, files map[string]string, manifest []byte, extra func(tw *tar.Writer)) (string, []byte) {
+	t.Helper()
+	const origin = "foo"
+	if manifest == nil {
+		names := make([]string, 0, len(files))
+		for n := range files {
+			names = append(names, n)
+		}
+		slices.Sort(names)
+		var buf bytes.Buffer
+		for _, n := range names {
+			fmt.Fprintf(&buf, "%x  %s\n", sha256.Sum256([]byte(files[n])), n)
+		}
+		manifest = buf.Bytes()
+	}
+	section := func(w io.Writer, write func(tw *tar.Writer)) {
+		gz := gzip.NewWriter(w)
+		tw := tar.NewWriter(gz)
+		write(tw)
+		if err := tw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := gz.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := func(tw *tar.Writer, name string, body []byte, mode int64) {
+		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var apk bytes.Buffer
+	section(&apk, func(tw *tar.Writer) {
+		reg(tw, ".PKGINFO", []byte("pkgname = "+origin+"-source\n"), 0o644)
+		reg(tw, sourceManifestName, manifest, 0o644)
+	})
+	section(&apk, func(tw *tar.Writer) {
+		root := sourceInstallRoot + "/" + origin + "/"
+		for n, body := range files {
+			mode := int64(0o644)
+			if strings.HasSuffix(n, ".sh") {
+				mode = 0o755
+			}
+			reg(tw, root+n, []byte(body), mode)
+		}
+		reg(tw, root+sourceManifestFile, manifest, 0o644)
+		if extra != nil {
+			extra(tw)
+		}
+	})
+	p := filepath.Join(t.TempDir(), origin+"-source-1.0-r0.apk")
+	if err := os.WriteFile(p, apk.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p, manifest
+}
+
+func TestExtractSourcePackage(t *testing.T) {
+	files := map[string]string{
+		"foo.yaml":                 "package:\n  name: foo\n",
+		"foo/fix.patch":            "--- a\n+++ b\n",
+		"foo/run.sh":               "#!/bin/sh\n",
+		"upstream/sha256:abc":      "tarball",
+		"upstream/sha256:abc.uri":  "https://example.com/foo.tar.gz\n",
+		"upstream/git:dead.tar.gz": "archive",
+	}
+	apk, manifest := companionAPK(t, files, nil, nil)
+
+	sp, err := ExtractSourcePackage(apk, manifest, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sp.Origin != "foo" || filepath.Base(sp.SourceDir) != "foo" || filepath.Base(sp.CacheDir) != sourceUpstreamDir || filepath.Base(sp.Config) != "foo.yaml" {
+		t.Fatalf("unexpected layout: %+v", sp)
+	}
+	for n, body := range files {
+		got, err := os.ReadFile(filepath.Join(sp.Root, filepath.FromSlash(n)))
+		if err != nil || string(got) != body {
+			t.Fatalf("%s: %q %v", n, got, err)
+		}
+	}
+	if fi, _ := os.Stat(filepath.Join(sp.SourceDir, "run.sh")); fi == nil || fi.Mode().Perm() != 0o755 {
+		t.Fatal("executable bit lost")
+	}
+	// no pin: contents are still verified against the manifest
+	if _, err := ExtractSourcePackage(apk, nil, t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestExtractSourcePackageRejects(t *testing.T) {
+	files := map[string]string{"foo.yaml": "x\n", "foo/fix.patch": "p\n"}
+	good, manifest := companionAPK(t, files, nil, nil)
+
+	t.Run("pin from another build", func(t *testing.T) {
+		other := append([]byte(nil), manifest...)
+		other[0] ^= 1
+		if _, err := ExtractSourcePackage(good, other, t.TempDir()); err == nil || !strings.Contains(err.Error(), "pins") {
+			t.Fatalf("expected the pin mismatch to be refused, got %v", err)
+		}
+	})
+	t.Run("tampered file", func(t *testing.T) {
+		bad := map[string]string{"foo.yaml": "x\n", "foo/fix.patch": "p; evil\n"}
+		apk, _ := companionAPK(t, bad, manifest, nil) // manifest of the genuine files
+		if _, err := ExtractSourcePackage(apk, manifest, t.TempDir()); err == nil || !strings.Contains(err.Error(), "do not match") {
+			t.Fatalf("expected the tampered file to be refused, got %v", err)
+		}
+	})
+	t.Run("extra file", func(t *testing.T) {
+		apk, _ := companionAPK(t, files, manifest, func(tw *tar.Writer) {
+			body := []byte("sneaky")
+			_ = tw.WriteHeader(&tar.Header{Name: "usr/src/foo/foo/extra.patch", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg})
+			_, _ = tw.Write(body)
+		})
+		if _, err := ExtractSourcePackage(apk, manifest, t.TempDir()); err == nil || !strings.Contains(err.Error(), "+") {
+			t.Fatalf("expected the unlisted file to be refused, got %v", err)
+		}
+	})
+	t.Run("symlink entry", func(t *testing.T) {
+		apk, _ := companionAPK(t, files, manifest, func(tw *tar.Writer) {
+			_ = tw.WriteHeader(&tar.Header{Name: "usr/src/foo/foo/link", Linkname: "/etc/passwd", Typeflag: tar.TypeSymlink})
+		})
+		if _, err := ExtractSourcePackage(apk, manifest, t.TempDir()); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+			t.Fatalf("expected the symlink to be refused, got %v", err)
+		}
+	})
+	t.Run("path escape", func(t *testing.T) {
+		apk, _ := companionAPK(t, files, manifest, func(tw *tar.Writer) {
+			body := []byte("x")
+			_ = tw.WriteHeader(&tar.Header{Name: "usr/src/foo/../../../escape", Mode: 0o644, Size: 1, Typeflag: tar.TypeReg})
+			_, _ = tw.Write(body)
+		})
+		dest := t.TempDir()
+		if _, err := ExtractSourcePackage(apk, manifest, dest); err == nil {
+			t.Fatal("expected the escaping entry to be refused")
+		}
+		if _, err := os.Stat(filepath.Join(dest, "..", "..", "escape")); err == nil {
+			t.Fatal("the escaping entry was written")
+		}
+	})
+	t.Run("two origins", func(t *testing.T) {
+		apk, _ := companionAPK(t, files, manifest, func(tw *tar.Writer) {
+			body := []byte("x")
+			_ = tw.WriteHeader(&tar.Header{Name: "usr/src/bar/bar.yaml", Mode: 0o644, Size: 1, Typeflag: tar.TypeReg})
+			_, _ = tw.Write(body)
+		})
+		if _, err := ExtractSourcePackage(apk, manifest, t.TempDir()); err == nil || !strings.Contains(err.Error(), "more than one") {
+			t.Fatalf("expected two origins to be refused, got %v", err)
+		}
+	})
 }

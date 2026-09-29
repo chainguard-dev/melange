@@ -255,14 +255,17 @@ pipeline:
           return $rc
       }
 
-      # Pack HEAD's tree objects (no blobs): a few kilobytes that let the
-      # restore path recreate the index exactly and check every file against
-      # the blob the pinned commit names for it, whatever git's clean filters
-      # would make of its bytes.
+      # Pack the tree objects (no blobs) of the given commits: kilobytes to a
+      # few megabytes that let the restore path recreate the index exactly
+      # and check every file against the blob the pinned commit names for
+      # it, whatever git's clean filters would make of its bytes.
       stash_trees() {
-          local dir=$1 out=$2
-          { git -C "$dir" rev-parse 'HEAD^{tree}'; git -C "$dir" ls-tree -r -d HEAD | awk '$2 == "tree" { print $3 }'; } |
-              git -C "$dir" pack-objects -q --stdout > "$out" || rm -f "$out"
+          local dir=$1 out=$2 c=""
+          shift 2
+          for c in "$@"; do
+              git -C "$dir" rev-parse "$c^{tree}"
+              git -C "$dir" ls-tree -r -d "$c" | awk '$2 == "tree" { print $3 }'
+          done | sort -u | git -C "$dir" pack-objects -q --stdout > "$out" || rm -f "$out"
       }
 
       # When the build emits a -source companion, archive the finished checkout
@@ -296,7 +299,6 @@ pipeline:
           printf '%s\n%s\n%s\n%s\n' "$(printf '%s' "$repo" | sed 's|://[^/@]*@|://|')" "$head" "$(git -C "$dest" log -1 --format=%ct)" \
               "$(git -C "$dest" symbolic-ref --short -q HEAD || true)" > "$stash/$key.uri"
           git -C "$dest" cat-file commit "$head" > "$stash/$key.commit" || rm -f "$stash/$key.commit"
-          stash_trees "$dest" "$stash/$key.trees"
           # the commits the checkout stacked on the expected one (cherry-picks)
           # and the expected commit itself, so a restored repository has the
           # same shape and `git describe` measures the same distance to the tag
@@ -309,6 +311,16 @@ pipeline:
           if [ -n "$tag" ] && [ "$(git -C "$dest" cat-file -t "refs/tags/$tag" 2>/dev/null)" = "tag" ]; then
               git -C "$dest" cat-file tag "refs/tags/$tag" > "$stash/$key.tag" || rm -f "$stash/$key.tag"
           fi
+          stash_describe_history "$dest" "$stash" "$key" "$head"
+          # Tree objects for HEAD and, so that `git log -- <path>` can walk it,
+          # for the stashed ancestry too (one pack, shared subtrees stored
+          # once; ancestors beyond a few hundred commits go without).
+          set -- HEAD
+          for f in "$stash/$key".obj.*; do
+              [ -f "$f" ] || continue
+              [ $# -le 300 ] && set -- "$@" "${f##*.obj.}"
+          done
+          stash_trees "$dest" "$stash/$key.trees" "$@"
           # every gitlink, checked out or not, as "path commit"
           git -C "$dest" ls-tree -r HEAD | awk '$2 == "commit" { print $4, $3 }' > "$stash/$key.gitlinks"
           if [ "$recurse" = "true" ]; then
@@ -322,7 +334,7 @@ pipeline:
                   if archive_tree "$dest/$subpath" "$subpath/" "$stash/$subkey.tar.gz"; then
                       printf '%s %s %s\n' "$subpath" "$subkey.tar.gz" "$subsha" >> "$stash/$key.submodules"
                       git -C "$dest/$subpath" cat-file commit HEAD > "$stash/$subkey.commit" || rm -f "$stash/$subkey.commit"
-                      stash_trees "$dest/$subpath" "$stash/$subkey.trees"
+                      stash_trees "$dest/$subpath" "$stash/$subkey.trees" HEAD
                       git -C "$dest/$subpath" ls-tree -r HEAD | awk -v p="$subpath/" '$2 == "commit" { print p $4, $3 }' >> "$stash/$key.gitlinks"
                   else
                       msg "Warning: archiving submodule $subpath failed"
@@ -330,6 +342,41 @@ pipeline:
                   fi
               done
           fi
+      }
+
+      # The history `git describe` walks from HEAD: every commit down to the
+      # nearest tag it would name, that tagged commit, and every tag on any
+      # of them. Commit and tag objects only (no trees), a few hundred bytes
+      # each; skipped when a repository is thousands of commits past its
+      # last tag. Builds derive versions from `git describe` (gnulib's
+      # git-version-gen: wget, coreutils, grep), and would otherwise see
+      # only HEAD.
+      stash_describe_history() {
+          local dir=$1 stash=$2 key=$3 head=$4 desc="" base="" n="" c="" name="" type="" obj="" target=""
+          desc=$(git -C "$dir" describe --tags --long HEAD 2>/dev/null) || desc=""
+          if [ -n "$desc" ]; then
+              base=$(git -C "$dir" rev-parse "${desc%-*-g*}^{commit}" 2>/dev/null) || base=""
+              n=$(git -C "$dir" rev-list --count HEAD "^$base" 2>/dev/null) || n=999999
+              if [ -n "$base" ] && [ "$n" -le 2000 ]; then
+                  for c in $(git -C "$dir" rev-list HEAD "^$base") "$base"; do
+                      [ "$c" = "$head" ] && continue
+                      [ -f "$stash/$key.obj.$c" ] ||
+                          git -C "$dir" cat-file commit "$c" > "$stash/$key.obj.$c" || rm -f "$stash/$key.obj.$c"
+                  done
+              fi
+          fi
+          : > "$stash/$key.tags"
+          git -C "$dir" for-each-ref refs/tags --format='%(refname:short) %(objecttype) %(objectname) %(*objectname)' |
+          while read -r name type obj target; do
+              c=$target; [ "$type" = "commit" ] && c=$obj
+              [ "$c" = "$head" ] || [ -f "$stash/$key.obj.$c" ] || continue
+              if [ "$type" = "tag" ]; then
+                  git -C "$dir" cat-file tag "$obj" > "$stash/$key.tagobj.$obj" || { rm -f "$stash/$key.tagobj.$obj"; continue; }
+                  printf '%s tag %s %s\n' "$name" "$obj" "$c" >> "$stash/$key.tags"
+              else
+                  printf '%s commit %s\n' "$name" "$c" >> "$stash/$key.tags"
+              fi
+          done
       }
 
       # Name the restored tree, and authenticate it. A git object's name is
@@ -402,8 +449,29 @@ pipeline:
                   case "$known" in *" $p "*) ;; *) echo "$c" >> "$(git rev-parse --git-dir)/shallow"; break ;; esac
               done
           done
+          recreate_tags "$cachebase" "$known" &&
           recreate_tag "$cachebase" "$tag" "$known" &&
           place_head "$cachebase" "$initial"
+      }
+
+      # Every tag the stash recorded on a restored commit: the tag object
+      # itself when annotated (content-addressed, so its name is checked),
+      # the ref alone when lightweight.
+      recreate_tags() {
+          local cachebase=$1 known=$2 name="" type="" obj="" target="" tsha=""
+          [ -f "$cachebase.tags" ] || return 0
+          while read -r name type obj target; do
+              [ -n "$name" ] || continue
+              if [ "$type" = "tag" ]; then
+                  case "$known" in *" $target "*) ;; *) continue ;; esac
+                  [ -f "$cachebase.tagobj.$obj" ] || continue
+                  tsha=$(git hash-object -t tag -w --literally --stdin < "$cachebase.tagobj.$obj") || continue
+                  [ "$tsha" = "$obj" ] && git update-ref "refs/tags/$name" "$tsha"
+              else
+                  case "$known" in *" $obj "*) git update-ref "refs/tags/$name" "$obj" ;; esac
+              fi
+          done < "$cachebase.tags"
+          return 0
       }
 
       # Every regular file and symlink the index names must be in the work
@@ -537,6 +605,7 @@ pipeline:
       recreate_tag() {
           local cachebase=$1 tag=$2 known=$3 p="" tsha=""
           [ -n "$tag" ] || return 0
+          git show-ref -q --verify "refs/tags/$tag" && return 0 # already recreated from the stash
           if [ -f "$cachebase.tag" ]; then
               p=$(sed -n 's/^object //p;1q' "$cachebase.tag")
               case "$known" in

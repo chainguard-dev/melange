@@ -217,6 +217,14 @@ func (b *Build) collectSourceDir(ctx context.Context) ([]sourceDirFile, int64, e
 		if err != nil {
 			return err
 		}
+		// A source directory that is (or contains) a git checkout: its .git
+		// holds remote URLs, credentials and hooks, not source. Never ship it.
+		if d.Name() == ".git" {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil // a gitfile
+		}
 		fi, err := d.Info()
 		if err != nil {
 			return err

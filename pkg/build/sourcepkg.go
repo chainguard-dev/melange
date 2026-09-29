@@ -255,7 +255,18 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("assembling %s: the workspace filesystem is not open", b.sourcePackageName())
 	}
 	origin := b.Configuration.Package.Name
-	root := filepath.Join(melangeOutputDirName, b.sourcePackageName(), sourceInstallRoot, origin) // workspace-relative
+	// The companion's output directory is melange's to create. Anything the
+	// guest left there -- a symlink, say, planted by a build step to make the
+	// writes below land elsewhere on the host -- is discarded first, and if it
+	// cannot be, the build fails rather than writing through it.
+	companion := filepath.Join(melangeOutputDirName, b.sourcePackageName())
+	if _, err := os.Lstat(filepath.Join(b.WorkspaceDir, companion)); err == nil {
+		log.Warnf("%s exists before assembly; discarding whatever the build left there", companion)
+		if err := os.RemoveAll(filepath.Join(b.WorkspaceDir, companion)); err != nil {
+			return nil, fmt.Errorf("refusing to assemble %s over the build's own output: %w", b.sourcePackageName(), err)
+		}
+	}
+	root := filepath.Join(companion, sourceInstallRoot, origin) // workspace-relative
 	if err := fsys.MkdirAll(root, 0o755); err != nil {
 		return nil, err
 	}
@@ -337,6 +348,11 @@ func writeNormalized(fsys apkofs.FullFS, dst string, r io.Reader, mode fs.FileMo
 	}
 	if err := fsys.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
+	}
+	// Never write through a link: the destination tree is freshly created,
+	// so a symlink here can only be something planted to redirect the write.
+	if fi, err := fsys.Lstat(dst); err == nil && fi.Mode()&fs.ModeSymlink != 0 {
+		return fmt.Errorf("refusing to write %s: it is a symlink", dst)
 	}
 	out, err := fsys.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
 	if err != nil {

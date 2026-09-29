@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	chainguard.dev/apko v1.4.5
+	chainguard.dev/license v0.1.1
 	github.com/chainguard-dev/clog v1.8.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20240404163941-6351b37b2a10
 	github.com/chainguard-dev/yam v0.2.65
@@ -17,7 +18,6 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/go-licenses/v2 v2.0.1
-	github.com/google/licenseclassifier/v2 v2.0.0
 	github.com/in-toto/attestation v1.2.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/joho/godotenv v1.5.1
@@ -102,6 +102,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	github.com/google/licenseclassifier/v2 v2.0.0 // indirect
 	github.com/google/martian/v3 v3.3.3 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect

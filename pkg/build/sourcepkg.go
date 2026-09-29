@@ -255,6 +255,14 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("assembling %s: the workspace filesystem is not open", b.sourcePackageName())
 	}
 	origin := b.Configuration.Package.Name
+	// melange-out is melange's own directory and everything below is written
+	// beneath it. A build that replaced it with a link would redirect those
+	// writes anywhere on the host; refuse to go on.
+	if fi, err := os.Lstat(filepath.Join(b.WorkspaceDir, melangeOutputDirName)); err != nil {
+		return nil, fmt.Errorf("assembling %s: %w", b.sourcePackageName(), err)
+	} else if !fi.IsDir() {
+		return nil, fmt.Errorf("refusing to assemble %s: %s is not a directory (mode %v)", b.sourcePackageName(), melangeOutputDirName, fi.Mode())
+	}
 	// The companion's output directory is melange's to create. Anything the
 	// guest left there -- a symlink, say, planted by a build step to make the
 	// writes below land elsewhere on the host -- is discarded first, and if it

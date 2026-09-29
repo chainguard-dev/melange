@@ -36,16 +36,22 @@ func addRebuildFlags(fs *pflag.FlagSet, flags *RebuildFlags) {
 	fs.BoolVar(&flags.Diff, "diff", true, "fail and show differences between the original and rebuilt packages")
 	fs.StringVar(&flags.OutDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	fs.StringVar(&flags.SourceDir, "source-dir", "", "directory where source code is located")
+	fs.StringVar(&flags.SourcePackage, "source-package", "", "the <origin>-source APK of the build to rebuild from: its overlay becomes --source-dir and its upstream artifacts the cache, after it is verified against the .source.sha256 the package carries")
 	fs.StringVar(&flags.SigningKey, "signing-key", "", "path to the signing key to use for signing the rebuilt packages")
 }
 
 // RebuildFlags holds all parsed rebuild command flags
 type RebuildFlags struct {
-	Runner     string
-	OutDir     string
-	SourceDir  string
-	SigningKey string
-	Diff       bool
+	Runner        string
+	OutDir        string
+	SourceDir     string
+	SourcePackage string
+	SigningKey    string
+	Diff          bool
+
+	// workDir holds what a rebuild unpacks for itself: the companion, or an
+	// empty directory standing in for a source directory nobody gave.
+	workDir string
 }
 
 // ParseRebuildFlags parses rebuild flags from the provided args and returns a RebuildFlags struct
@@ -65,6 +71,11 @@ func ParseRebuildFlags(args []string) (*RebuildFlags, []string, error) {
 // RebuildOptions converts RebuildFlags into a slice of build.Option
 // This includes all options needed for rebuilding a package from its embedded metadata.
 func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.PackageInfo, cfg *config.Configuration, cfgpkg *spdx.Package, cfgpurl purl.PackageURL) ([]build.Option, error) {
+	return flags.rebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl, nil)
+}
+
+func (flags *RebuildFlags) rebuildOptions(ctx context.Context, pkginfo *goapk.PackageInfo, cfg *config.Configuration, cfgpkg *spdx.Package, cfgpurl purl.PackageURL, pin []byte) ([]build.Option, error) {
+	log := clog.FromContext(ctx)
 	runner, err := getRunner(ctx, flags.Runner, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runner: %w", err)
@@ -81,8 +92,50 @@ func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.Pa
 		build.WithConfiguration(cfg, cfgpurl.Subpath),
 		build.WithSigningKey(flags.SigningKey),
 	}
-	if flags.SourceDir != "" {
+
+	switch {
+	case flags.SourcePackage != "":
+		// The companion is the source: its overlay is the source directory and
+		// its upstream artifacts are the cache, so the rebuild needs neither a
+		// checkout of the build repository nor the network. It is used only
+		// after it verifies against the pin the binary package carries.
+		if pin == nil {
+			return nil, fmt.Errorf("%s carries no %s; it was not built with a -source companion, so --source-package cannot be verified against it", pkginfo.Name, ".source.sha256")
+		}
+		if flags.workDir == "" {
+			return nil, fmt.Errorf("rebuild: no working directory for the companion")
+		}
+		dest, err := os.MkdirTemp(flags.workDir, "source-")
+		if err != nil {
+			return nil, err
+		}
+		sp, err := build.ExtractSourcePackage(flags.SourcePackage, pin, dest)
+		if err != nil {
+			return nil, fmt.Errorf("verifying --source-package: %w", err)
+		}
+		if sp.Origin != pkginfo.Origin {
+			return nil, fmt.Errorf("--source-package holds the source of %s, not of %s", sp.Origin, pkginfo.Origin)
+		}
+		log.Infof("rebuilding from %s: verified against the package's .source.sha256", flags.SourcePackage)
+		opts = append(opts,
+			build.WithSourceDir(sp.SourceDir),
+			build.WithCacheDir(sp.CacheDir),
+			build.WithSourcePackage(true), // re-emit the companion, so it can be compared too
+		)
+	case flags.SourceDir != "":
 		opts = append(opts, build.WithSourceDir(flags.SourceDir))
+	default:
+		// Not "." -- that would copy whatever the caller's working directory
+		// holds into the workspace. Absence means an empty overlay.
+		if flags.workDir == "" {
+			return nil, fmt.Errorf("rebuild: no working directory")
+		}
+		empty, err := os.MkdirTemp(flags.workDir, "empty-source-dir-")
+		if err != nil {
+			return nil, err
+		}
+		log.Infof("no --source-dir or --source-package given; the workspace starts empty")
+		opts = append(opts, build.WithSourceDir(empty))
 	}
 
 	return opts, nil
@@ -93,8 +146,15 @@ func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.Pa
 func RebuildCmd(ctx context.Context, flags *RebuildFlags, args []string) error {
 	origins := make(map[string]bool)
 
+	workDir, err := os.MkdirTemp("", "melange-rebuild-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(workDir)
+	flags.workDir = workDir
+
 	for _, a := range args {
-		cfg, pkginfo, cfgpkg, err := getConfig(a)
+		cfg, pkginfo, cfgpkg, pin, err := getConfig(a)
 		if err != nil {
 			return fmt.Errorf("failed to get config for %s: %w", a, err)
 		}
@@ -110,7 +170,7 @@ func RebuildCmd(ctx context.Context, flags *RebuildFlags, args []string) error {
 			clog.Warnf("not rebuilding %q because was already rebuilt", a)
 		} else {
 			clog.Infof("rebuilding %q", a)
-			opts, err := flags.RebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl)
+			opts, err := flags.rebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl, pin)
 			if err != nil {
 				return fmt.Errorf("getting rebuild options from flags: %w", err)
 			}
@@ -131,6 +191,19 @@ func RebuildCmd(ctx context.Context, flags *RebuildFlags, args []string) error {
 			if err := diffAPKs(old, new); err != nil {
 				return fmt.Errorf("failed to diff APKs %s and %s: %w", old, new, err)
 			}
+		}
+	}
+
+	// The companion the rebuild ran from should come out of it unchanged too.
+	if flags.Diff && flags.SourcePackage != "" {
+		_, pkginfo, _, _, err := getConfig(flags.SourcePackage)
+		if err != nil {
+			return fmt.Errorf("failed to get config for %s: %w", flags.SourcePackage, err)
+		}
+		new := filepath.Join(flags.OutDir, pkginfo.Arch, fmt.Sprintf("%s-%s.apk", pkginfo.Name, pkginfo.Version))
+		clog.Infof("diffing %s and %s", flags.SourcePackage, new)
+		if err := diffAPKs(flags.SourcePackage, new); err != nil {
+			return fmt.Errorf("failed to diff APKs %s and %s: %w", flags.SourcePackage, new, err)
 		}
 	}
 
@@ -162,20 +235,25 @@ func rebuild() *cobra.Command {
 	return cmd
 }
 
-func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Package, error) {
+// getConfig reads what a rebuild needs out of an APK's control section and
+// SBOM: the resolved configuration, the package info, the SBOM package
+// describing the configuration file, and the .source.sha256 pin (nil when the
+// package was built without a -source companion).
+func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Package, []byte, error) {
 	f, err := os.Open(fn) // #nosec G304 - User-specified APK package for rebuild verification
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to open file %s: %w", fn, err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to open file %s: %w", fn, err)
 	}
 	defer f.Close()
 
 	cfg := &config.Configuration{}
 	pkginfo := &goapk.PackageInfo{}
 	cfgpkg := &spdx.Package{}
+	var pin []byte
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer gz.Close()
 	tr := tar.NewReader(gz)
@@ -183,41 +261,47 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
 			if cfg.Package.Name == "" {
-				return nil, nil, nil, fmt.Errorf("failed to find .melange.yaml in %s", fn)
+				return nil, nil, nil, nil, fmt.Errorf("failed to find .melange.yaml in %s", fn)
 			}
 			if pkginfo.Name == "" {
-				return nil, nil, nil, fmt.Errorf("failed to find .PKGINFO in %s", fn)
+				return nil, nil, nil, nil, fmt.Errorf("failed to find .PKGINFO in %s", fn)
 			}
 			if len(cfgpkg.ExternalRefs) == 0 {
-				return nil, nil, nil, fmt.Errorf("failed to find SBOM in %s", fn)
+				return nil, nil, nil, nil, fmt.Errorf("failed to find SBOM in %s", fn)
 			}
-			return nil, nil, nil, fmt.Errorf("failed to find necessary rebuild information in %s", fn)
+			return nil, nil, nil, nil, fmt.Errorf("failed to find necessary rebuild information in %s", fn)
 		} else if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read tar header: %w", err)
+			return nil, nil, nil, nil, fmt.Errorf("failed to read tar header: %w", err)
 		}
 
 		switch hdr.Name {
 		case ".melange.yaml":
 			cfg = new(config.Configuration)
 			if err := yaml.NewDecoder(io.LimitReader(tr, hdr.Size)).Decode(cfg); err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to decode .melange.yaml: %w", err)
+				return nil, nil, nil, nil, fmt.Errorf("failed to decode .melange.yaml: %w", err)
 			}
 
 		case ".PKGINFO":
 			i, err := ini.ShadowLoad(tr)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to load .PKGINFO: %w", err)
+				return nil, nil, nil, nil, fmt.Errorf("failed to load .PKGINFO: %w", err)
 			}
 			pkginfo = new(goapk.PackageInfo)
 			if err = i.MapTo(pkginfo); err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to map .PKGINFO: %w", err)
+				return nil, nil, nil, nil, fmt.Errorf("failed to map .PKGINFO: %w", err)
+			}
+
+		case ".source.sha256":
+			pin, err = io.ReadAll(io.LimitReader(tr, hdr.Size))
+			if err != nil {
+				return nil, nil, nil, nil, fmt.Errorf("failed to read .source.sha256: %w", err)
 			}
 
 		case fmt.Sprintf("var/lib/db/sbom/%s-%s.spdx.json", pkginfo.Name, pkginfo.Version),
 			fmt.Sprintf("var/lib/db/sbom/%s-%s-r%d.spdx.json", cfg.Package.Name, cfg.Package.Version, cfg.Package.Epoch):
 			doc := new(spdx.Document)
 			if err := json.NewDecoder(io.LimitReader(tr, hdr.Size)).Decode(doc); err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to decode SBOM: %w", err)
+				return nil, nil, nil, nil, fmt.Errorf("failed to decode SBOM: %w", err)
 			}
 
 			for _, p := range doc.Packages {
@@ -230,8 +314,10 @@ func getConfig(fn string) (*config.Configuration, *goapk.PackageInfo, *spdx.Pack
 			continue
 		}
 
+		// The control section (and its pin) precedes the SBOM in the data
+		// section, so by the time the SBOM is found the pin has been seen.
 		if cfg.Package.Name != "" && pkginfo.Name != "" && len(cfgpkg.ExternalRefs) > 0 {
-			return cfg, pkginfo, cfgpkg, nil
+			return cfg, pkginfo, cfgpkg, pin, nil
 		}
 	}
 	// unreachable

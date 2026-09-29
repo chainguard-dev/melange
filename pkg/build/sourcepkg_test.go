@@ -227,6 +227,54 @@ func TestSourcePackageAssembly(t *testing.T) {
 // The stash is prepared as a nested repository so a recipe's `git clean` in
 // the workspace leaves it alone, and that marker never reaches the companion.
 func TestPrepareSourceStashIsARepositoryGitRecognises(t *testing.T) {
+	testPrepareSourceStash(t)
+}
+
+// Whatever the build left under melange-out/<origin>-source is discarded
+// before assembly, so a planted symlink cannot redirect the writes.
+func TestSourcePackageAssemblyDiscardsWhatTheBuildLeft(t *testing.T) {
+	b, src := sourceBuild(t, nil, true)
+	writeFileMode(t, src, "fix.patch", 0o644, "--- a\n+++ b\n")
+	outside := t.TempDir()
+	companion := filepath.Join(b.WorkspaceDir, melangeOutputDirName, "foo-source")
+	if err := os.MkdirAll(filepath.Join(companion, "usr", "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// melange-out/foo-source/usr/src/foo -> somewhere else on the host
+	if err := os.Symlink(outside, filepath.Join(companion, "usr", "src", "foo")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.assembleSourcePackage(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+		t.Fatalf("assembly wrote through the planted symlink: %v", entries)
+	}
+	if fi, err := os.Lstat(filepath.Join(companion, "usr", "src", "foo")); err != nil || fi.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("companion root should be a fresh directory, got %v %v", fi, err)
+	}
+	if _, err := os.Stat(filepath.Join(companion, "usr", "src", "foo", "foo", "fix.patch")); err != nil {
+		t.Fatalf("overlay not assembled into the fresh directory: %v", err)
+	}
+}
+
+func TestWriteNormalizedRefusesSymlinks(t *testing.T) {
+	ws := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "victim")
+	if err := os.Symlink(outside, filepath.Join(ws, "link")); err != nil {
+		t.Fatal(err)
+	}
+	fsys := apkofs.DirFS(t.Context(), ws)
+	if err := writeNormalized(fsys, "link", strings.NewReader("x"), 0o644); err == nil {
+		t.Fatal("expected a refusal to write through a symlink")
+	}
+	if _, err := os.Stat(outside); err == nil {
+		t.Fatal("the symlink target was written")
+	}
+}
+
+func testPrepareSourceStash(t *testing.T) {
+	t.Helper()
 	b, _ := sourceBuild(t, nil, true)
 	if err := b.prepareSourceStash(); err != nil {
 		t.Fatal(err)

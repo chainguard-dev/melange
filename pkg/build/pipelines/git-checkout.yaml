@@ -476,7 +476,8 @@ pipeline:
       }
 
       # Every regular file and symlink the index names must be in the work
-      # tree with bytes that hash to its blob: raw, or through git's clean
+      # tree with bytes that hash to its blob, and nothing else may be in the
+      # work tree: raw, or through git's clean
       # filters (either way the check is content against the pinned tree;
       # only the mapping differs, and repositories mix them -- CRLF committed
       # under text=auto beside LF committed and checked out as CRLF). The
@@ -511,6 +512,14 @@ pipeline:
                           printf '%s\n' "$path" >> "$bad" ;;
               esac
           done < "$entries"
+          # and nothing the tree does not name may be present: a git archive
+          # holds exactly the tree, so anything else was put there
+          git -c core.quotePath=false ls-files -o > "$paths"
+          if [ -s "$paths" ]; then
+              msg "archive holds files the tree does not name: $(head -3 "$paths" | tr '\n' ' ')$([ "$(wc -l < "$paths")" -gt 3 ] && echo '...')"
+              rm -f "$entries" "$paths" "$raw" "$clean" "$bad" "$assume"
+              return 1
+          fi
           if [ -s "$bad" ]; then
               msg "restored files do not match the tree the commit names: $(head -3 "$bad" | tr '\n' ' ')$([ "$(wc -l < "$bad")" -gt 3 ] && echo '...')"
               rm -f "$entries" "$paths" "$raw" "$clean" "$bad" "$assume"

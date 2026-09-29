@@ -236,6 +236,22 @@ pipeline:
         fi
       }
 
+      # Refuse an archive that could write outside the directory it is
+      # extracted into: an absolute or `..` path, or a path that descends
+      # through a symlink the same archive defines (tar follows it). A git
+      # archive of a tree never does either; tracked symlinks themselves
+      # are fine and stay.
+      archive_is_contained() {
+          tar -tzvf "$1" | awk '
+              { name = $0
+                sub(/^[^ ]+ +[^ ]+ +[0-9]+ +[0-9-]+ +[0-9:]+ /, "", name)
+                if (substr($1, 1, 1) == "l") { n = index(name, " -> "); if (n > 0) name = substr(name, 1, n - 1); sym[name "/"] = 1 }
+                if (name ~ /^\// || name ~ /(^|\/)\.\.(\/|$)/) { print "  refusing " name; bad = 1 }
+                for (s in sym) if (index(name, s) == 1) { print "  refusing " name " (through symlink " s ")"; bad = 1 }
+              }
+              END { exit bad }'
+      }
+
       # Archive the HEAD tree of the repository at $1 as the clone has it:
       # every path, unsubstituted. The attributes override in info/attributes
       # outranks the tree's own .gitattributes, so export-ignore and
@@ -738,11 +754,14 @@ pipeline:
               # the same way. The destination may be the whole workspace, and
               # what the archive holds must never be guessed from a listing.
               local stage; stage=$(mktemp -d)
+              archive_is_contained "$cachef" || fail "$cachef would write outside its directory; refusing it"
               tar -xzf "$cachef" --strip-components=1 --no-same-owner -C "$stage" ||
                   fail "restoring $cachef failed"
               if [ -f "$cachebase.submodules" ]; then
                   while read -r subpath subfile subsha; do
                       [ -n "$subpath" ] || continue
+                      archive_is_contained "/var/cache/melange/$subfile" ||
+                          fail "submodule archive $subfile would write outside its directory; refusing it"
                       tar -xzf "/var/cache/melange/$subfile" --no-same-owner -C "$stage" ||
                           fail "restoring submodule $subpath from $subfile failed"
                   done < "$cachebase.submodules"

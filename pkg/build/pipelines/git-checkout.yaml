@@ -292,7 +292,8 @@ pipeline:
           fi
           # url, head, head's commit time, and the branch HEAD is on (empty
           # when detached, as a tag checkout leaves it): builds read .git/HEAD
-          printf '%s\n%s\n%s\n%s\n' "$repo" "$head" "$(git -C "$dest" log -1 --format=%ct)" \
+          # the URL as provenance, without any credentials it carried
+          printf '%s\n%s\n%s\n%s\n' "$(printf '%s' "$repo" | sed 's|://[^/@]*@|://|')" "$head" "$(git -C "$dest" log -1 --format=%ct)" \
               "$(git -C "$dest" symbolic-ref --short -q HEAD || true)" > "$stash/$key.uri"
           git -C "$dest" cat-file commit "$head" > "$stash/$key.commit" || rm -f "$stash/$key.commit"
           stash_trees "$dest" "$stash/$key.trees"

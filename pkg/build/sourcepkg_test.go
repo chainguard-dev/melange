@@ -258,6 +258,27 @@ func TestSourcePackageAssemblyDiscardsWhatTheBuildLeft(t *testing.T) {
 	}
 }
 
+// melange-out itself replaced by a link is refused outright: nothing is
+// written through it.
+func TestSourcePackageAssemblyRefusesLinkedMelangeOut(t *testing.T) {
+	b, src := sourceBuild(t, nil, true)
+	writeFileMode(t, src, "fix.patch", 0o644, "--- a\n+++ b\n")
+	outside := t.TempDir()
+	out := filepath.Join(b.WorkspaceDir, melangeOutputDirName)
+	if err := os.RemoveAll(out); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.assembleSourcePackage(t.Context()); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("expected a refusal, got %v", err)
+	}
+	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+		t.Fatalf("assembly wrote through the linked melange-out: %v", entries)
+	}
+}
+
 func TestWriteNormalizedRefusesSymlinks(t *testing.T) {
 	ws := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "victim")

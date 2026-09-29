@@ -91,7 +91,7 @@ const vendoredIntoBuild = "vendor"
 // the same workspace and a license there is a copy of the answer this check is
 // producing.
 func describesPackage(p string) bool {
-	for _, seg := range strings.Split(p, "/") {
+	for seg := range strings.SplitSeq(p, "/") {
 		if seg == vendoredIntoBuild {
 			continue
 		}

@@ -88,12 +88,32 @@ pipeline:
           printf "fetch: found $fn in cache\n"
           cp $fn $bn
         fi
-      else
+      elif [ -n "${{inputs.expected-sha512}}" ]; then
         fn="/var/cache/melange/sha512:${{inputs.expected-sha512}}"
         if [ -f $fn ]; then
           printf "fetch: found $fn in cache\n"
           cp $fn $bn
         fi
+      elif [ -n "${MELANGE_SOURCE_RESTORE:-}" ]; then
+        # No checksum to look the artifact up by. A -source companion names
+        # such an artifact by the SHA-256 of what was fetched and records the
+        # URL beside it (below); find it by that URL, and take it only if its
+        # bytes still hash to its name, so a rebuild from the companion needs
+        # no network for it either. Nothing but the record vouches for the
+        # bytes, so only a build that asked to restore from a companion --
+        # whose cache the pin in the binary package has verified -- looks;
+        # an ordinary build with a cache it did not vet fetches as before.
+        uri=$(printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/@]*@|://|' -e 's|[?#].*$||')
+        for u in /var/cache/melange/sha256:*.uri; do
+          [ -f "$u" ] || continue
+          [ "$(head -n 1 "$u")" = "$uri" ] || continue
+          fn="${u%.uri}"
+          if [ -f "$fn" ] && [ "sha256:$(sha256sum "$fn" | awk '{print $1}')" = "$(basename "$fn")" ]; then
+            printf "fetch: found $fn in cache, by its URL\n"
+            cp "$fn" "$bn"
+            break
+          fi
+        done
       fi
 
       if [ ! -f $bn ]; then
@@ -116,6 +136,25 @@ pipeline:
           printf "fetch: Expected sha512 does not match found: $sum\n"
           exit 1
         fi
+      fi
+
+      # When the build emits a -source companion, keep the verified artifact
+      # for it, named exactly as the cache above names it: the companion's
+      # upstream directory is then a valid --cache-dir for an offline rebuild.
+      if [ -n "${MELANGE_SOURCE_STASH:-}" ]; then
+        if [ -n "${{inputs.expected-sha256}}" ]; then
+          key="sha256:${{inputs.expected-sha256}}"
+        elif [ -n "${{inputs.expected-sha512}}" ]; then
+          key="sha512:${{inputs.expected-sha512}}"
+        else
+          key="sha256:$(sha256sum $bn | awk '{print $1}')"
+        fi
+        mkdir -p "$MELANGE_SOURCE_STASH"
+        cp "$bn" "$MELANGE_SOURCE_STASH/$key"
+        # the URL as provenance: scheme, host and path only, since userinfo,
+        # query and fragment are where credentials travel
+        printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/@]*@|://|' -e 's|[?#].*$||' > "$MELANGE_SOURCE_STASH/$key.uri"
+        printf "fetch: kept $key for the -source package\n"
       fi
 
       if [ "${{inputs.extract}}" = "true" ]; then

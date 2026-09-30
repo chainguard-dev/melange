@@ -88,12 +88,29 @@ pipeline:
           printf "fetch: found $fn in cache\n"
           cp $fn $bn
         fi
-      else
+      elif [ -n "${{inputs.expected-sha512}}" ]; then
         fn="/var/cache/melange/sha512:${{inputs.expected-sha512}}"
         if [ -f $fn ]; then
           printf "fetch: found $fn in cache\n"
           cp $fn $bn
         fi
+      else
+        # No checksum to look the artifact up by. A -source companion names
+        # such an artifact by the SHA-256 of what was fetched and records the
+        # URL beside it (below); find it by that URL, and take it only if its
+        # bytes still hash to its name, so a rebuild from the companion needs
+        # no network for it either.
+        uri=$(printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/@]*@|://|' -e 's|[?#].*$||')
+        for u in /var/cache/melange/sha256:*.uri; do
+          [ -f "$u" ] || continue
+          [ "$(head -n 1 "$u")" = "$uri" ] || continue
+          fn="${u%.uri}"
+          if [ -f "$fn" ] && [ "sha256:$(sha256sum "$fn" | awk '{print $1}')" = "$(basename "$fn")" ]; then
+            printf "fetch: found $fn in cache, by its URL\n"
+            cp "$fn" "$bn"
+            break
+          fi
+        done
       fi
 
       if [ ! -f $bn ]; then

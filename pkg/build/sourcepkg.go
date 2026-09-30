@@ -311,10 +311,21 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 	}
 
 	// Whatever the fetch and git-checkout pipelines stashed: the pristine
-	// upstream artifacts, already named as a --cache-dir names them.
+	// upstream artifacts, already named as a --cache-dir names them. The
+	// stash is read from the host side of the workspace, so, like melange-out
+	// above, it must be the directory melange created: a build that replaced
+	// it with a link to somewhere on the host would have that read instead,
+	// and its files published as the package's source.
 	stash := filepath.Join(b.WorkspaceDir, melangeOutputDirName, sourceStashDir)
-	entries, err := os.ReadDir(stash)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	var entries []fs.DirEntry
+	if fi, err := os.Lstat(stash); err == nil {
+		if !fi.IsDir() {
+			return nil, fmt.Errorf("refusing to assemble %s: %s is not a directory (mode %v)", b.sourcePackageName(), sourceStashDir, fi.Mode())
+		}
+		if entries, err = os.ReadDir(stash); err != nil {
+			return nil, err
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
 	upstream := 0

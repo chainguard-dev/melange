@@ -131,7 +131,9 @@ pipeline:
         fi
         mkdir -p "$MELANGE_SOURCE_STASH"
         cp "$bn" "$MELANGE_SOURCE_STASH/$key"
-        printf '%s\n' '${{inputs.uri}}' > "$MELANGE_SOURCE_STASH/$key.uri"
+        # the URL as provenance: scheme, host and path only, since userinfo,
+        # query and fragment are where credentials travel
+        printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/@]*@|://|' -e 's|[?#].*$||' > "$MELANGE_SOURCE_STASH/$key.uri"
         printf "fetch: kept $key for the -source package\n"
       fi
 

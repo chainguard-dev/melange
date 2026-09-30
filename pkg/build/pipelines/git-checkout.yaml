@@ -252,6 +252,35 @@ pipeline:
               END { exit bad }'
       }
 
+      # A submodule archive is laid over what the main archive and earlier
+      # submodule archives left in the staging directory, so being contained
+      # in itself is not enough. Its entries may land nowhere but under the
+      # path the .submodules record declares for it; that path may not run
+      # through a symlink an earlier archive left, and nothing already under
+      # it may be one, or tar would follow the link out of the staging
+      # directory before anything is authenticated. The record comes from the
+      # cache too, so its fields are held to the shapes the stash writes.
+      submodule_archive_fits() {
+          local subfile=$1 subpath=$2 stage=$3 p="" c=""
+          case "$subfile" in
+              git:*.sub.*.tar.gz) [ "$subfile" = "${subfile##*/}" ] || { msg "  refusing submodule archive name $subfile"; return 1; } ;;
+              *) msg "  refusing submodule archive name $subfile"; return 1 ;;
+          esac
+          case "$subpath" in
+              ""|/*|.|..|./*|../*|*/.|*/..|*/./*|*/../*|*//*|*/) msg "  refusing submodule path $subpath"; return 1 ;;
+          esac
+          p=$stage
+          for c in $(printf '%s\n' "$subpath" | tr / '\n'); do
+              p="$p/$c"
+              [ ! -L "$p" ] || { msg "  refusing submodule path $subpath: $c is a symlink"; return 1; }
+          done
+          [ -z "$(find "$stage/$subpath" -type l 2>/dev/null | head -n 1)" ] ||
+              { msg "  refusing submodule path $subpath: it already holds a symlink"; return 1; }
+          tar -tzf "/var/cache/melange/$subfile" | awk -v p="$subpath/" '
+              { if ($0 != substr(p, 1, length(p) - 1) && index($0, p) != 1) { print "  refusing " $0 " (not under " p ")"; bad = 1 } }
+              END { exit bad }'
+      }
+
       # Archive the HEAD tree of the repository at $1 as the clone has it:
       # every path, unsubstituted. The attributes override in info/attributes
       # outranks the tree's own .gitattributes, so export-ignore and
@@ -760,6 +789,8 @@ pipeline:
               if [ -f "$cachebase.submodules" ]; then
                   while read -r subpath subfile subsha; do
                       [ -n "$subpath" ] || continue
+                      submodule_archive_fits "$subfile" "$subpath" "$stage" ||
+                          fail "submodule archive $subfile cannot be laid at $subpath over what is already restored; refusing it"
                       archive_is_contained "/var/cache/melange/$subfile" ||
                           fail "submodule archive $subfile would write outside its directory; refusing it"
                       tar -xzf "/var/cache/melange/$subfile" --no-same-owner -C "$stage" ||

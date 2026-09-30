@@ -94,12 +94,15 @@ pipeline:
           printf "fetch: found $fn in cache\n"
           cp $fn $bn
         fi
-      else
+      elif [ -n "${MELANGE_SOURCE_RESTORE:-}" ]; then
         # No checksum to look the artifact up by. A -source companion names
         # such an artifact by the SHA-256 of what was fetched and records the
         # URL beside it (below); find it by that URL, and take it only if its
         # bytes still hash to its name, so a rebuild from the companion needs
-        # no network for it either.
+        # no network for it either. Nothing but the record vouches for the
+        # bytes, so only a build that asked to restore from a companion --
+        # whose cache the pin in the binary package has verified -- looks;
+        # an ordinary build with a cache it did not vet fetches as before.
         uri=$(printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/@]*@|://|' -e 's|[?#].*$||')
         for u in /var/cache/melange/sha256:*.uri; do
           [ -f "$u" ] || continue

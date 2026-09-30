@@ -302,6 +302,32 @@ func TestSourcePackageAssemblyRefusesLinkedMelangeOut(t *testing.T) {
 	}
 }
 
+// A build can replace the stash, which lives in the guest-writable workspace,
+// with a link to a directory on the host. Following it would publish that
+// directory's files as the package's upstream source.
+func TestSourcePackageAssemblyRefusesLinkedStash(t *testing.T) {
+	b, _ := sourceBuild(t, nil, true)
+	if err := b.prepareSourceStash(); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	writeFileMode(t, outside, "credentials", 0o600, "secret\n")
+	stash := filepath.Join(b.WorkspaceDir, melangeOutputDirName, sourceStashDir)
+	if err := os.RemoveAll(stash); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, stash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.assembleSourcePackage(t.Context()); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("expected a refusal, got %v", err)
+	}
+	root := filepath.Join(b.WorkspaceDir, melangeOutputDirName, "foo-source", "usr", "src", "foo")
+	if _, err := os.Stat(filepath.Join(root, sourceUpstreamDir, "credentials")); err == nil {
+		t.Fatal("a host file was copied into the companion through the linked stash")
+	}
+}
+
 func TestWriteNormalizedRefusesSymlinks(t *testing.T) {
 	ws := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "victim")

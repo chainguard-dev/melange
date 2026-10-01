@@ -15,6 +15,9 @@
 package linter
 
 import (
+	"bytes"
+	"debug/elf"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -42,6 +45,33 @@ func TestLinters(t *testing.T) {
 			defer f.Close()
 			return d
 		}
+	}
+
+	mkelf := func(t *testing.T, path string) func() string {
+		return func() string {
+			d := t.TempDir()
+			full := filepath.Join(d, path)
+			assert.NoError(t, os.MkdirAll(filepath.Dir(full), 0o755))
+
+			var hdr elf.Header64
+			copy(hdr.Ident[:], []byte{0x7f, 'E', 'L', 'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+			hdr.Type = uint16(elf.ET_EXEC)
+			hdr.Machine = uint16(elf.EM_X86_64)
+			hdr.Version = uint32(elf.EV_CURRENT)
+			hdr.Ehsize = 64
+
+			var buf bytes.Buffer
+			assert.NoError(t, binary.Write(&buf, binary.LittleEndian, &hdr))
+			assert.NoError(t, os.WriteFile(full, buf.Bytes(), 0o755))
+			return d
+		}
+	}
+
+	noarchCfg := &config.Configuration{
+		Package: config.Package{
+			Name:               "noarch-pkg",
+			TargetArchitecture: []string{"noarch"},
+		},
 	}
 
 	cfg := &config.Configuration{
@@ -517,6 +547,25 @@ func TestLinters(t *testing.T) {
 		},
 		linter: "duplicate",
 		pass:   true, // LICENSE files should always be ignored
+	}, {
+		dirFunc: mkelf(t, "usr/bin/mybinary"),
+		linter:  "noarch",
+		cfg:     noarchCfg,
+		pass:    false,
+	}, {
+		dirFunc: mkelf(t, "usr/bin/mybinary"),
+		linter:  "noarch",
+		pass:    true,
+	}, {
+		dirFunc: mkelf(t, "usr/bin/mybinary"),
+		linter:  "noarch",
+		cfg:     cfg, // non-nil, non-noarch config: linter must still no-op
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/share/data.txt"),
+		linter:  "noarch",
+		cfg:     noarchCfg,
+		pass:    true,
 	}, {
 		dirFunc: mkfile(t, "usr/lib/i386/libfoo.so"),
 		linter:  "unsupportedarch",

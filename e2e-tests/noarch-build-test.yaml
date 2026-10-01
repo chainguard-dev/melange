@@ -1,0 +1,53 @@
+# Verify noarch packages build once on host architecture, execute real melange
+# tests, and contain only architecture-independent shell/text content.
+package:
+  name: noarch-test
+  version: 1.0
+  epoch: 0
+  target-architecture:
+    - noarch
+  dependencies:
+    runtime:
+      - busybox
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - name: install noarch script
+    runs: |
+      bdir=${{targets.destdir}}/usr/bin
+      mkdir -p "$bdir"
+      cat > "$bdir/noarch-test" <<"EOF"
+      #!/bin/sh
+      echo "noarch works"
+      EOF
+      chmod 755 "$bdir/noarch-test"
+
+test:
+  pipeline:
+    - name: test noarch script
+      runs: |
+        ${{vars.tester-blob}}
+        testrun noarch-test "noarch works"
+
+vars:
+  tester-blob: |
+    set +x
+    testfail() { echo "FAIL:" "$tname${1:+ - $*}" 1>&2; exit 1; }
+    testpass() { echo "PASS:" "$tname"; }
+    error() { echo "FATAL:" "$@" 1>&2; exit 1; }
+    testrun() {
+      local cmd="$1" expected="$2" tname="" out=""
+      [ -n "$cmd" ] || error "cmd must set cmd"
+
+      tname="'$cmd' is in PATH"
+      out=$(command -v "$cmd") && testpass || testfail
+
+      tname="'$cmd' outputs '$expected'"
+      out=$($cmd) || testfail "'$cmd' exited $?"
+      [ "$out" = "$expected" ] &&
+        testpass || testfail "found '$out'"
+    }

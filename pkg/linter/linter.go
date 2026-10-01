@@ -194,6 +194,11 @@ var linterMap = map[string]linter{
 		Explain:         "This package contains binaries compiled for unsupported architectures (only aarch64/arm64 and amd64/x86_64 binaries are supported)",
 		defaultBehavior: Warn,
 	},
+	"noarch": {
+		LinterFunc:      linters.NoArchLinter,
+		Explain:         "Remove compiled binaries from this noarch package, or remove the noarch designation if it needs to ship architecture-specific code",
+		defaultBehavior: Require,
+	},
 	"staticarchive": {
 		LinterFunc:      linters.StaticArchiveLinter,
 		Explain:         "This package contains static archives (.a files)",

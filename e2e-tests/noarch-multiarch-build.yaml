@@ -1,0 +1,26 @@
+# Verify one noarch build is copied and indexed for multiple requested arches.
+package:
+  name: noarch-multiarch-test
+  version: 1.0
+  epoch: 0
+  target-architecture:
+    - noarch
+  dependencies:
+    runtime:
+      - busybox
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - name: install noarch script
+    runs: |
+      bdir=${{targets.destdir}}/usr/bin
+      mkdir -p "$bdir"
+      cat > "$bdir/noarch-multiarch-test" <<"EOF"
+      #!/bin/sh
+      echo "noarch multiarch works"
+      EOF
+      chmod 755 "$bdir/noarch-multiarch-test"

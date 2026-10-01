@@ -7,6 +7,7 @@ This documents the melange build file structure, fields, when, and why to use va
 The following are the high level sections for the build file, with detailed descriptions for each of them, and their fields in the sections following.
 
 ## Required
+
 ### package
 
    Package metadata about this package, name, version, etc.
@@ -20,6 +21,7 @@ The following are the high level sections for the build file, with detailed desc
     Ordered list of pipelines that produce this package
 
 ## Optional
+
 ### subpackages
 
    List of subpackages that this package also produces. For example, docs.
@@ -49,20 +51,26 @@ The following are the high level sections for the build file, with detailed desc
 Details about the particular package that will be used to find and use it.
 
 ### name
+
 Unique name for the package. Convention is to use the same name as the YAML file without extension. This is what people will search for, so it's a good idea to keep it consistent with how the package is named in other distributions. for example:
+
 ```yaml
 name: python-3.10
 ```
 
 ### version
+
 Version of the package. For example:
+
 ```yaml
 version: 3.10.12
 ```
 
 ### epoch
+
 Monotonically increasing value (starting at 0) indicating same version of the
 package, but with changes (security patches for example) applied to it.
+
 ```yaml
 epoch: 0
 ```
@@ -72,40 +80,51 @@ form: `<name>-<version>-r<epoch>.apk` for our example above, this would be:
 `python-3.10-3.10.12-r0.apk`.
 
 ### description
+
 Human readable description of the package. Make this meaningful, as this information shows up when searching for the package with apk, for example:
+
 ```yaml
 description: "the Python programming language"
 ```
 
 ### url [optional]
+
 The URL to the packages homepage.
 
 ### commit [optional]
+
 The git commit of the package build configuration
   TODO(vaikas): is the 'is package build configuration' this file?
   TODO(vaikas): why would I use this? I did not see an example use.
 
 ### target-architecture [optional]
+
 List of architectures for which this package should be built for. Valid
 architectures are: `386`, `amd64`, `arm/v6`, `arm/v7`, `arm64`, `ppc64le`,
-`s390x`, `x86_64`, `aarch64`, special `all` that builds it for all of them.
-Leaving this out defaults to `all`.
+`s390x`, `x86_64`, `aarch64`, special `all` that builds it for all of them,
+and special `noarch` for architecture-independent packages. A `noarch`
+package is built once using the host's native architecture; `noarch` must be
+the only entry in the list when used. Leaving this out defaults to `all`.
   TODO(vaikas): rekor-cli.yaml sets this to all? So is that not the default?
   TODO(vaikas): Saw something about riscv64. Does all include that?
 
 ### copyright
+
 List of copyrights for this package. Each entry defines the scope (paths,
 and which license applies to it) and may include the following fields:
 
 #### license
+
 The license for either the package or part of the package (if there are multiple entries). It is important to note that only packages with OSI-approved licenses can be included in Wolfi. You can check the relevant package info in the licenses page at [opensource.org](https://opensource.org/licenses/).
 
 Supports variable substitution, which is useful for producing unique license references across version streamed packages.
 
 #### paths [optional]
+
 File globs (relative to the package root) that this license applies to.
 Defaults to `*` (the whole package). Use this when different parts of the
 package ship under different licenses:
+
 ```yaml
 copyright:
   - license: Apache-2.0
@@ -117,8 +136,10 @@ copyright:
 ```
 
 #### attestation [optional]
+
 Free-form attribution text appended to the package's copyright notice (for
 example, the upstream `NOTICE` contents):
+
 ```yaml
 copyright:
   - license: Apache-2.0
@@ -128,23 +149,27 @@ copyright:
 ```
 
 #### license-path [optional]
+
 Path (relative to the build workspace) to a file containing the license
 text to embed in the SBOM. Required for non-SPDX `license` values. Supports
 `${{package.*}}` and `${{vars.*}}` substitution. License must stay within
 the workspace.
 
 #### detection-override [optional]
+
 Overrides the result of automatic license detection for the file referenced
 by `license-path`. Use this when the on-disk text is misidentified by the
 classifier but the declared `license` is known to be correct.
 
 For example, saying that this entire package has license `PSF-2.0`
+
 ```yaml
 copyright:
   - license: PSF-2.0
 ```
 
 Another example using `license-path` with a versioned directory:
+
 ```yaml
 copyright:
   - license: CustomLicense
@@ -154,6 +179,7 @@ copyright:
 Variables in `license` are also substituted, which is helpful when the
 SPDX identifier itself is derived from a `var-transforms` rule (e.g.
 selecting `GPL-2.0-only` vs `GPL-3.0-only` based on the upstream version):
+
 ```yaml
 vars:
   license-version: "2.4"
@@ -164,10 +190,12 @@ copyright:
 ```
 
 ### dependencies
+
 List of packages that this package depends on at runtime, but not during build
 time. These will get installed by apk as system dependencies when the package is
 installed. For example, saying that a package depends on `openssl`, `socat`, and
 `curl` at runtime:
+
 ```yaml
 dependencies:
   runtime:
@@ -177,6 +205,7 @@ dependencies:
 ```
 
 #### provides
+
 Provides allows you to create "aliases" for a package. If your `package.name` is
 for example `php-8.1`, but you want somebody be able to get this package by
 `php`, you could provide a section like this:
@@ -192,6 +221,7 @@ provide a floating version, so that when the package gets upgraded, the user
 will get the latest one. For that melange provides a `${{package.full-version}}`
 variable. It gets expanded to `${{package.version}}-r${{package-epoch}}`. So for
 the example above, you could do this
+
 ```yaml
   dependencies:
     provides:
@@ -203,6 +233,7 @@ using our php example, there are 8.1.X and 8.2.X streams, so the condensed
 example here:
 
 `php-8.1.yaml`:
+
 ```yaml
 package:
   name: php-8.1
@@ -214,6 +245,7 @@ package:
 ```
 
 `php-8.2.yaml`:
+
 ```yaml
 package:
   name: php-8.2
@@ -232,6 +264,7 @@ they again explicitly asked for the 8.2 version. Now if they just ask for php
 no other additional constraints defined.
 
 ### options
+
 Options that describe the package functionality. Currently there are three
 options, and these are used by SCA tools to control their behaviour.
 
@@ -275,6 +308,7 @@ options:
 ```
 
 ### scriptlets
+
 List of executable scripts that run at various stages of the package lifecycle,
 triggered by configurable events. These are useful to handle tasks that only
 happen during install, uninstall, upgrade. The life-cycle events are:
@@ -310,6 +344,7 @@ TODO(vaikas): What does it mean to monitor, when new files are added/removed to
 those directories? Something else??
 
 ### timeout
+
 Optional timeout duration for the build. Specifies the maximum amount of time the build is allowed to take before timing out. The value is specified in seconds as an integer.
 
 ```yaml
@@ -318,6 +353,7 @@ package:
 ```
 
 ### resources
+
 Optional resource specifications for the build. Used by external schedulers (like elastic build) to provision appropriately-sized build pods/VMs. For local builds with the QEMU runner, these can be used as resource limits via CLI flags.
 
 **Resource Fields:**
@@ -328,11 +364,13 @@ Optional resource specifications for the build. Used by external schedulers (lik
 - `disk`: Disk space in Kubernetes format (e.g., `"50Gi"`, `"100Gi"`, `"1Ti"`)
 
 **Value Formats:**
+
 - CPU values are typically whole numbers as strings: `"1"`, `"2"`, `"4"`, `"8"`, etc.
 - Memory and disk use Kubernetes resource quantities: `Mi` (mebibytes), `Gi` (gibibytes), `Ti` (tebibytes)
 - All fields are optional and interpretation depends on the scheduler/runner
 
 **How resources are interpreted:**
+
 - **External schedulers**: Use these values to provision build pods/VMs
 - **QEMU runner** (via CLI flags like `--cpu`, `--memory`): Treats values as **maximum limits**
   - CPU: Defaults to all available cores, capped at the specified value if lower
@@ -348,9 +386,11 @@ package:
 ```
 
 ### test-resources
+
 Optional resource specifications for test execution. Used by external schedulers to provision test pods/VMs with different resource constraints than the build phase.
 
 **When to use test-resources:**
+
 - Tests require significantly different resources than builds
 - Integration tests need more CPU/memory than unit tests
 - Tests can run with fewer resources to optimize costs
@@ -361,10 +401,12 @@ Optional resource specifications for test execution. Used by external schedulers
 The `test-resources` field is primarily **informational** for external schedulers:
 
 **For external schedulers** (reading the YAML):
+
 - Use `test-resources` if specified, otherwise fall back to `resources`
 - This determines test pod/VM sizing
 
 **For local testing with `melange test`:**
+
 - The `test-resources` field in the YAML is **NOT automatically used** by melange
 - Resources must be explicitly specified via CLI flags: `--cpu`, `--memory`, `--disk`, `--cpumodel`, `--timeout`
 - Resource enforcement depends on the runner (same as `resources` field):
@@ -374,6 +416,7 @@ The `test-resources` field is primarily **informational** for external scheduler
 **Resource fields** are identical to `resources` (see above for formats and interpretation).
 
 Example where tests need less resources than build:
+
 ```yaml
 package:
   resources:
@@ -387,6 +430,7 @@ package:
 ```
 
 Example where tests need more resources than build:
+
 ```yaml
 package:
   resources:
@@ -399,6 +443,7 @@ package:
 ```
 
 Example with only test-resources specified:
+
 ```yaml
 package:
   test-resources:
@@ -408,6 +453,7 @@ package:
 ```
 
 # environment
+
 Environment defines the build environment, including what the dependencies are,
 including repositories, packages, etc.
 
@@ -418,6 +464,7 @@ from subpackage test definitions, where separate environments can be
 specified for each subpackage that differ from the main package.
 
 ## Local building
+
 When building locally, you'll also need to include information about where to find Wolfi packages. This is not needed when submitting the package to the Wolfi OS repository. The "contents" node is used for that:
 
 ```yaml
@@ -432,23 +479,28 @@ environment:
 ```
 
 ## contents
+
 Contents has 3 lists that define where to look for packages, how to validate the
 repository, and which packages to install.
 
 ### repositories
+
 Which repositories to fetch the packages from. **NOTE** Do not mix Alpine apk
 repositories with Wolfi apk repositories.
 
 ### keyring
+
 These are used to validate the authenticity of a repository.
 
 TODO(vaikas): Are there any constraints here, or if any key in the keyring
 matches a repository, then all is well. I'd assume so.
 
 ### packages
+
 Packages is the list of packages to install in the build environment for running the pipeline; in other words, these are the necessary build time dependencies for the package.
 
 For example:
+
 ```yaml
 environment:
   contents:
@@ -463,6 +515,7 @@ environment:
 ```
 
 To specify a version for packages, you can use the following syntax:
+
 ```yaml
 environment:
   packages:
@@ -470,14 +523,17 @@ environment:
     - foo=~4.5.6 # install any version with a name starting with "4.5.6" (e.g., 4.5.6-r7)
     - python3    # install the latest stable version of python3.
 ```
+
 For additional information, see the [Chainguard Academy article](https://edu.chainguard.dev/open-source/wolfi/apk-version-selection/).
 
 ## accounts
+
 Accounts support adding additional users and groups into the build
 environment, as well as running the build under a different user than
 the build runner's default.
 
 ### run-as
+
 Specifies which user to run the build under, the user must already
 exist or be created in the build environment using the `users` field.
 
@@ -491,24 +547,31 @@ Tests are more likely to be situations where running as the non-default
 user may be desired.
 
 ### users
+
 List of users to inject into the build image
 
 #### username
+
 The name of the user
 
 #### uid
+
 The uid of the user
 
 #### gid
+
 The primary gid of the user
 
 ### groups
+
 List of groups to inject into the build image
 
 #### groupname
+
 The name of the group
 
 #### gid
+
 The gid of the grpup
 
 An example creating two users in the same group, and running the build as
@@ -531,6 +594,7 @@ environment:
 ```
 
 ## environment
+
 environment allows you to control environmental variables to set while running
 the pipeline. For example, to set the env variable `CGO_ENABLED` to `0`:
 
@@ -541,10 +605,10 @@ environment:
 ```
 
 TODO(vaikas): melange config points to apko here:
- https://github.com/chainguard-dev/melange/blob/main/pkg/config/config.go#L256
+ <https://github.com/chainguard-dev/melange/blob/main/pkg/config/config.go#L256>
  which points to [ImageConfiguration](https://github.com/chainguard-dev/apko/blob/main/pkg/build/types/types.go#L106), which has a ton of stuff, is all that
  really supported, or just `environment`
 
 # pipeline
-Pipeline defines the ordered steps to build the package.
 
+Pipeline defines the ordered steps to build the package.

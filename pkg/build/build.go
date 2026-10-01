@@ -108,6 +108,8 @@ type Build struct {
 	EmptyWorkspace        bool
 	OutDir                string
 	Arch                  apko_types.Architecture
+	ReplicateArchs        []apko_types.Architecture
+	noArchStagingDir      string
 	Libc                  string
 	ExtraKeys             []string
 	ExtraRepos            []string
@@ -159,6 +161,93 @@ type Build struct {
 	PkgResolver *apk.PkgResolver
 }
 
+// PackageArch returns architecture recorded in package metadata and output.
+func (b *Build) PackageArch() string {
+	if b.Configuration != nil && b.Configuration.Package.IsNoArch() {
+		return "noarch"
+	}
+	return b.Arch.ToAPK()
+}
+
+func (b *Build) getNoArchStagingDir() (string, error) {
+	if b.noArchStagingDir == "" {
+		dir, err := os.MkdirTemp(os.TempDir(), "melange-noarch-*")
+		if err != nil {
+			return "", fmt.Errorf("creating noarch staging directory: %w", err)
+		}
+		b.noArchStagingDir = dir
+	}
+	return b.noArchStagingDir, nil
+}
+
+func (b *Build) replicateTargets() []apko_types.Architecture {
+	if b.Configuration != nil && b.Configuration.Package.IsNoArch() && len(b.ReplicateArchs) > 0 {
+		return b.ReplicateArchs
+	}
+	return []apko_types.Architecture{b.Arch}
+}
+
+func (b *Build) resolveConfiguration(ctx context.Context) error {
+	// If no config file is explicitly requested for the build context
+	// we check if .melange.yaml or melange.yaml exist.
+	checks := []string{".melange.yaml", ".melange.yml", "melange.yaml", "melange.yml"}
+	if b.ConfigFile == "" {
+		for _, chk := range checks {
+			if _, err := os.Stat(chk); err == nil {
+				clog.FromContext(ctx).Infof("no configuration file provided -- using %s", chk)
+				b.ConfigFile = chk
+				break
+			}
+		}
+	}
+
+	// If no config file could be automatically detected, error.
+	if b.ConfigFile == "" {
+		return fmt.Errorf("melange.yaml is missing")
+	}
+	if b.ConfigFileRepositoryURL == "" {
+		return fmt.Errorf("config file repository URL was not set")
+	}
+	if b.ConfigFileRepositoryCommit == "" {
+		return fmt.Errorf("config file repository commit was not set")
+	}
+
+	if b.Configuration == nil {
+		parsedCfg, err := config.ParseConfiguration(ctx,
+			b.ConfigFile,
+			config.WithEnvFilesForParsing(b.EnvFiles),
+			config.WithVarsFileForParsing(b.VarsFile),
+			config.WithDefaultCPU(b.DefaultCPU),
+			config.WithDefaultCPUModel(b.DefaultCPUModel),
+			config.WithDefaultDisk(b.DefaultDisk),
+			config.WithDefaultMemory(b.DefaultMemory),
+			config.WithDefaultTimeout(b.DefaultTimeout),
+			config.WithCommit(b.ConfigFileRepositoryCommit),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %w", err)
+		}
+		b.Configuration = parsedCfg
+	}
+
+	return nil
+}
+
+// PeekIsNoArch resolves just enough configuration to report whether the build
+// targets the noarch architecture, without doing New's heavier setup.
+func PeekIsNoArch(ctx context.Context, opts ...Option) (bool, error) {
+	b := &Build{}
+	for _, opt := range opts {
+		if err := opt(b); err != nil {
+			return false, err
+		}
+	}
+	if err := b.resolveConfiguration(ctx); err != nil {
+		return false, err
+	}
+	return b.Configuration.Package.IsNoArch(), nil
+}
+
 func New(ctx context.Context, opts ...Option) (*Build, error) {
 	b := Build{
 		WorkspaceIgnore: ".melangeignore",
@@ -180,6 +269,27 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 	log := clog.FromContext(ctx).With("arch", b.Arch.ToAPK())
 	ctx = clog.WithLogger(ctx, log)
 
+	if err := b.resolveConfiguration(ctx); err != nil {
+		return nil, err
+	}
+
+	switch {
+	case b.Configuration.Package.IsNoArch():
+		hostArch := apko_types.ParseArchitecture(runtime.GOARCH)
+		if b.Arch != hostArch {
+			log.Infof("ignoring requested architecture %s for noarch package; building once using host architecture %s", b.Arch.ToAPK(), hostArch.ToAPK())
+		}
+		b.Arch = hostArch
+		log = log.With("arch", b.Arch.ToAPK())
+		ctx = clog.WithLogger(ctx, log)
+	case len(b.Configuration.Package.TargetArchitecture) == 1 &&
+		b.Configuration.Package.TargetArchitecture[0] == "all":
+		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
+	case len(b.Configuration.Package.TargetArchitecture) != 0 &&
+		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()):
+		return nil, ErrSkipThisArch
+	}
+
 	// If no workspace directory is explicitly requested, create a
 	// temporary directory for it.  Otherwise, ensure we are in a
 	// subdir for this specific build context.
@@ -200,56 +310,6 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 			return nil, fmt.Errorf("unable to create workspace dir: %w", err)
 		}
 		b.WorkspaceDir = tmpdir
-	}
-
-	// If no config file is explicitly requested for the build context
-	// we check if .melange.yaml or melange.yaml exist.
-	checks := []string{".melange.yaml", ".melange.yml", "melange.yaml", "melange.yml"}
-	if b.ConfigFile == "" {
-		for _, chk := range checks {
-			if _, err := os.Stat(chk); err == nil {
-				log.Infof("no configuration file provided -- using %s", chk)
-				b.ConfigFile = chk
-				break
-			}
-		}
-	}
-
-	// If no config file could be automatically detected, error.
-	if b.ConfigFile == "" {
-		return nil, fmt.Errorf("melange.yaml is missing")
-	}
-	if b.ConfigFileRepositoryURL == "" {
-		return nil, fmt.Errorf("config file repository URL was not set")
-	}
-	if b.ConfigFileRepositoryCommit == "" {
-		return nil, fmt.Errorf("config file repository commit was not set")
-	}
-
-	if b.Configuration == nil {
-		parsedCfg, err := config.ParseConfiguration(ctx,
-			b.ConfigFile,
-			config.WithEnvFilesForParsing(b.EnvFiles),
-			config.WithVarsFileForParsing(b.VarsFile),
-			config.WithDefaultCPU(b.DefaultCPU),
-			config.WithDefaultCPUModel(b.DefaultCPUModel),
-			config.WithDefaultDisk(b.DefaultDisk),
-			config.WithDefaultMemory(b.DefaultMemory),
-			config.WithDefaultTimeout(b.DefaultTimeout),
-			config.WithCommit(b.ConfigFileRepositoryCommit),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load configuration: %w", err)
-		}
-		b.Configuration = parsedCfg
-	}
-
-	if len(b.Configuration.Package.TargetArchitecture) == 1 &&
-		b.Configuration.Package.TargetArchitecture[0] == "all" {
-		log.Warnf("target-architecture: ['all'] is deprecated and will become an error; remove this field to build for all available archs")
-	} else if len(b.Configuration.Package.TargetArchitecture) != 0 &&
-		!slices.Contains(b.Configuration.Package.TargetArchitecture, b.Arch.ToAPK()) {
-		return nil, ErrSkipThisArch
 	}
 
 	// SOURCE_DATE_EPOCH will always overwrite the build flag
@@ -804,7 +864,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			outDir = b.OutDir
 		}
 
-		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, require, warn, fsys, outDir, b.Arch.ToAPK()); err != nil {
+		if err := linter.LintBuild(ctx, b.Configuration, lt.pkgName, require, warn, fsys, outDir, b.PackageArch()); err != nil {
 			return fmt.Errorf("unable to lint package %s: %w", lt.pkgName, err)
 		}
 	}
@@ -834,7 +894,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		OutputFS:        outfs,
 		SourceDateEpoch: b.SourceDateEpoch,
 		Namespace:       namespace,
-		Arch:            b.Arch.ToAPK(),
+		Arch:            b.PackageArch(),
 		ConfigFile: &sbom.ConfigFile{
 			Path:          b.ConfigFile,
 			RepositoryURL: b.ConfigFileRepositoryURL,
@@ -848,6 +908,25 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		return fmt.Errorf("generating SBOMs: %w", err)
 	}
 
+	var noArchStagingDir string
+	// The staging dir is created and its cleanup deferred here, before any
+	// Emit call, rather than in Emit/package.go or after the Emit calls
+	// below. Emit is invoked once per package (main + each subpackage),
+	// each a separate function call with its own defer scope, so a defer
+	// inside Emit would fire after the FIRST Emit call and wipe the staging
+	// dir before later subpackages get emitted into it. Registering the
+	// defer here, before Emit runs at all, also ensures the staging dir is
+	// still cleaned up if any Emit call fails and this function returns
+	// early, instead of leaking a temp dir on every failed noarch build.
+	if b.Configuration.Package.IsNoArch() {
+		dir, err := b.getNoArchStagingDir()
+		if err != nil {
+			return err
+		}
+		noArchStagingDir = dir
+		defer os.RemoveAll(noArchStagingDir)
+	}
+
 	// emit main package
 	if err := b.Emit(ctx, pkg); err != nil {
 		return fmt.Errorf("unable to emit package: %w", err)
@@ -857,6 +936,33 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	for _, sp := range b.Configuration.Subpackages {
 		if err := b.Emit(ctx, pkgFromSub(&sp)); err != nil {
 			return fmt.Errorf("unable to emit package: %w", err)
+		}
+	}
+
+	if b.Configuration.Package.IsNoArch() {
+		stagingDir := noArchStagingDir
+
+		entries, err := os.ReadDir(stagingDir)
+		if err != nil {
+			return fmt.Errorf("reading noarch staging directory: %w", err)
+		}
+		for _, arch := range b.replicateTargets() {
+			packageDir := filepath.Join(b.OutDir, arch.ToAPK())
+			if err := os.MkdirAll(packageDir, 0o755); err != nil {
+				return fmt.Errorf("creating noarch package directory %s: %w", packageDir, err)
+			}
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				info, err := entry.Info()
+				if err != nil {
+					return fmt.Errorf("statting staged noarch package %s: %w", entry.Name(), err)
+				}
+				if err := copyFile(stagingDir, entry.Name(), packageDir, info.Mode().Perm()); err != nil {
+					return fmt.Errorf("replicating noarch package %s to %s: %w", entry.Name(), packageDir, err)
+				}
+			}
 		}
 	}
 
@@ -873,32 +979,35 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// generate APKINDEX.tar.gz and sign it
 	if b.GenerateIndex {
-		packageDir := filepath.Join(b.OutDir, b.Arch.ToAPK())
-		log.Infof("generating apk index from packages in %s", packageDir)
+		for _, arch := range b.replicateTargets() {
+			packageDir := filepath.Join(b.OutDir, arch.ToAPK())
+			log.Infof("generating apk index from packages in %s", packageDir)
 
-		var apkFiles []string
-		pkgFileName := fmt.Sprintf("%s-%s-r%d.apk", b.Configuration.Package.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
-		apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
+			var apkFiles []string
+			pkgFileName := fmt.Sprintf("%s-%s-r%d.apk", b.Configuration.Package.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
+			apkFiles = append(apkFiles, filepath.Join(packageDir, pkgFileName))
 
-		for _, subpkg := range b.Configuration.Subpackages {
-			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
-			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
-		}
+			for _, subpkg := range b.Configuration.Subpackages {
+				subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
+				apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
+			}
 
-		opts := []index.Option{
-			index.WithPackageFiles(apkFiles),
-			index.WithSigningKey(b.SigningKey),
-			index.WithMergeIndexFileFlag(true),
-			index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),
-		}
+			opts := []index.Option{
+				index.WithPackageFiles(apkFiles),
+				index.WithExpectedArch(arch.ToAPK()),
+				index.WithSigningKey(b.SigningKey),
+				index.WithMergeIndexFileFlag(true),
+				index.WithIndexFile(filepath.Join(packageDir, "APKINDEX.tar.gz")),
+			}
 
-		idx, err := index.New(opts...)
-		if err != nil {
-			return fmt.Errorf("unable to create index: %w", err)
-		}
+			idx, err := index.New(opts...)
+			if err != nil {
+				return fmt.Errorf("unable to create index: %w", err)
+			}
 
-		if err := idx.GenerateIndex(ctx); err != nil {
-			return fmt.Errorf("unable to generate index: %w", err)
+			if err := idx.GenerateIndex(ctx); err != nil {
+				return fmt.Errorf("unable to generate index: %w", err)
+			}
 		}
 	}
 

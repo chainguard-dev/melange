@@ -203,6 +203,14 @@ func WithArch(arch apko_types.Architecture) Option {
 	}
 }
 
+// WithReplicateArchs sets architectures that receive replicated noarch packages.
+func WithReplicateArchs(archs []apko_types.Architecture) Option {
+	return func(b *Build) error {
+		b.ReplicateArchs = archs
+		return nil
+	}
+}
+
 // WithExtraKeys adds a set of extra keys to the build context.
 func WithExtraKeys(extraKeys []string) Option {
 	return func(b *Build) error {

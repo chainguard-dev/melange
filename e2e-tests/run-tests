@@ -41,6 +41,8 @@ fails=""
 for yaml in "$@"; do
   args="${ARGS}"
   ops=""
+  arch_flag="${ARCH}"
+  multiarch=""
   base=${yaml%.yaml}
   case "$base" in
     *-build-test)
@@ -57,6 +59,11 @@ for yaml in "$@"; do
       ops="test"
       args="${base%-test}"
       args="$args --debug"
+      ;;
+    *-multiarch-build)
+      ops="build"
+      arch_flag="x86_64,aarch64"
+      multiarch="true"
       ;;
     *-build)
       ops="build"
@@ -77,17 +84,33 @@ for yaml in "$@"; do
         "test") opargs="--pipeline-dirs $PWD/pipelines";;
     esac
 
-    vrc "Testing $base from $yaml for $op" \
+    if vrc "Testing $base from $yaml for $op" \
       ${MELANGE} "$op" \
-        --arch=${ARCH} --source-dir=./test-fixtures \
+        --arch=${arch_flag} --source-dir=./test-fixtures \
         --runner=qemu \
         "$yaml" \
         ${args} $opargs \
         "--keyring-append=$PWD/$key.pub" \
         "--repository-append=$PWD/packages" \
         "--repository-append=https://packages.wolfi.dev/os" \
-        "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub" ||
-        fails="${fails} $yaml/$op"
+        "--keyring-append=https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"; then
+      if [ -n "$multiarch" ]; then
+        for arch in x86_64 aarch64; do
+          apk="packages/$arch/noarch-multiarch-test-1.0-r0.apk"
+          index="packages/$arch/APKINDEX.tar.gz"
+          if [ ! -f "$apk" ]; then
+            echo "ERROR: missing noarch package $apk"
+            fails="${fails} $yaml/$op"
+          fi
+          if [ ! -f "$index" ]; then
+            echo "ERROR: missing package index $index"
+            fails="${fails} $yaml/$op"
+          fi
+        done
+      fi
+    else
+      fails="${fails} $yaml/$op"
+    fi
   done
 done
 

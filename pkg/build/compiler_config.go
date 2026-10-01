@@ -25,7 +25,7 @@ import (
 	"github.com/chainguard-dev/clog"
 )
 
-var packageMetadataTemplate = `{"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.Arch.ToAPK}}"{{if .Configuration.Package.CPE.Vendor}},"appCpe":"{{.Configuration.Package.CPEString}}"{{end}}}`
+var packageMetadataTemplate = `{"type":"apk","os":"{{.Namespace}}","name":"{{.Configuration.Package.Name}}","version":"{{.Configuration.Package.FullVersion}}","architecture":"{{.PackageArch}}"{{if .Configuration.Package.CPE.Vendor}},"appCpe":"{{.Configuration.Package.CPEString}}"{{end}}}`
 
 var gccLinkTemplate = `*link:
 + %{!r:--package-metadata=` + packageMetadataTemplate + `}

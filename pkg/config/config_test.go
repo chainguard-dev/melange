@@ -107,6 +107,8 @@ var-transforms:
 
 subpackages:
   - name: subpackage-${{vars.short-package-version}}
+    copyright:
+      - license: Apache-2.0
     dependencies:
       runtime:
         - ${{package.name}}-config-${{package.version}}
@@ -181,6 +183,7 @@ test:
 	}, cfg.Test.Environment.Contents.Packages)
 
 	require.Equal(t, cfg.Subpackages[0].Name, "subpackage-0.0")
+	require.Equal(t, []Copyright{{License: "Apache-2.0"}}, cfg.Subpackages[0].Copyright)
 
 	require.Equal(t, "/usr/local/FOO", cfg.Test.Environment.Environment["LD_LIBRARY_PATH"])
 }

@@ -8,7 +8,7 @@ require (
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20260625083649-3332107431aa
 	github.com/chainguard-dev/yam v0.2.65
 	github.com/charmbracelet/log v1.0.0
-	github.com/docker/cli v29.8.1+incompatible
+	github.com/docker/cli v29.8.2+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dprotaso/go-yit v0.0.0-20250513224043-18a80f8f6df4
 	github.com/dustin/go-humanize v1.1.0
@@ -52,7 +52,7 @@ require (
 	gopkg.in/ini.v1 v1.67.3
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.14.1
-	sigs.k8s.io/release-utils v0.12.4
+	sigs.k8s.io/release-utils v0.12.5
 	sigs.k8s.io/yaml v1.6.0
 )
 

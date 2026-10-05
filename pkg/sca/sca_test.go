@@ -539,3 +539,28 @@ func TestIsInDir(t *testing.T) {
 		}
 	}
 }
+
+func TestGoSupportsLibcrypto4(t *testing.T) {
+	for _, tc := range []struct {
+		goPackage string
+		want      bool
+	}{
+		{"", false},
+		{"go-1.27-1.27.1-r0", false},
+		{"go-geomys-1.27-1.27.1-r0", false},
+		{"go-msft-1.26-1.26.5.1-r3", false},
+		{"go-msft-1.27-1.27.1.1-r9", false},
+		{"go-msft-1.27-1.27.1.2-r0", false},
+		{"go-msft-1.27-1.27.1.2-r1", true},
+		{"go-msft-1.27-1.27.1.2-r2", true},
+		{"go-msft-1.27-1.27.1.3-r0", true},
+		{"go-msft-1.27-1.27.2.1-r0", true},
+		{"go-msft-1.28-1.28.0.1-r0", true},
+		{"go-msft-1.30-1.30.0.1-r0", true},
+		{"go-msft-garbage", false},
+	} {
+		if got := goSupportsLibcrypto4(tc.goPackage); got != tc.want {
+			t.Errorf("goSupportsLibcrypto4(%q) = %v, want %v", tc.goPackage, got, tc.want)
+		}
+	}
+}

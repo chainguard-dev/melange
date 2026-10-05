@@ -88,14 +88,33 @@ func pkgFromSub(sub *config.Subpackage) *config.Package {
 	}
 }
 
+// encodeConfiguration renders the resolved configuration as every APK carries
+// it in .melange.yaml, and as the -source companion carries it as
+// <origin>.yaml: the two are byte for byte the same document.
+func encodeConfiguration(cfg *config.Configuration) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2) // To align with `yam` a little better.
+	if err := enc.Encode(cfg); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func (b *Build) Emit(ctx context.Context, pkg *config.Package) error {
+	return b.emitTo(ctx, pkg, b.OutDir)
+}
+
+// emitTo writes pkg's APK beneath outDir/<arch>. The -source companion may be
+// routed to a directory of its own, so it can be published to its own repo.
+func (b *Build) emitTo(ctx context.Context, pkg *config.Package, outDir string) error {
 	b.End = time.Now()
 	pc := PackageBuild{
 		Build:        b,
 		Origin:       &b.Configuration.Package,
 		PackageName:  pkg.Name,
 		OriginName:   pkg.Name,
-		OutDir:       filepath.Join(b.OutDir, b.Arch.ToAPK()),
+		OutDir:       filepath.Join(outDir, b.Arch.ToAPK()),
 		Dependencies: pkg.Dependencies,
 		Arch:         b.Arch.ToAPK(),
 		Options:      pkg.Options,
@@ -221,15 +240,23 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 		return nil, fmt.Errorf("unable to build control FS: %w", err)
 	}
 
-	var melangeBuf bytes.Buffer
-	enc := yaml.NewEncoder(&melangeBuf)
-	enc.SetIndent(2) // To align with `yam` a little better.
-
-	if err := enc.Encode(pc.Build.Configuration); err != nil {
+	melangeYAML, err := encodeConfiguration(pc.Build.Configuration)
+	if err != nil {
 		return nil, fmt.Errorf("marshalling config: %w", err)
 	}
-	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0o644); err != nil {
+	if err := fsys.WriteFile(".melange.yaml", melangeYAML, 0o644); err != nil {
 		return nil, fmt.Errorf("writing .melange.yaml: %w", err)
+	}
+
+	// The configuration names the files the build was given, patches among
+	// them, but naming them is not the same as providing them. The complete
+	// corresponding source travels as the <origin>-source companion package;
+	// this manifest of that package's contents, in every APK the build emits,
+	// is what ties the binaries to it.
+	if m := pc.Build.sourceManifest; m != nil {
+		if err := fsys.WriteFile(sourceManifestName, m, 0o644); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", sourceManifestName, err)
+		}
 	}
 
 	if scriptlets := pc.Scriptlets; scriptlets != nil {

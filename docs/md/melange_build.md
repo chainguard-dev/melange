@@ -68,6 +68,8 @@ melange build [flags]
       --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --signing-key string                                      key to use for signing
       --source-dir string                                       directory used for included sources
+      --source-out-dir string                                   directory where -source companions will be output (default: --out-dir)
+      --source-package                                          also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)
       --strip-origin-name                                       whether origin names should be stripped (for bootstrap)
       --timeout duration                                        default timeout for builds
       --trace string                                            where to write trace output

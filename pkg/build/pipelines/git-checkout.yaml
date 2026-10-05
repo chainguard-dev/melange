@@ -236,6 +236,489 @@ pipeline:
         fi
       }
 
+      # Refuse an archive that could write outside the directory it is
+      # extracted into: an absolute or `..` path, or a path that descends
+      # through a symlink the same archive defines (tar follows it). A git
+      # archive of a tree never does either; tracked symlinks themselves
+      # are fine and stay.
+      archive_is_contained() {
+          tar -tzvf "$1" | awk '
+              { name = $0
+                sub(/^[^ ]+ +[^ ]+ +[0-9]+ +[0-9-]+ +[0-9:]+ /, "", name)
+                if (substr($1, 1, 1) == "l") { n = index(name, " -> "); if (n > 0) name = substr(name, 1, n - 1); sym[name "/"] = 1 }
+                if (name ~ /^\// || name ~ /(^|\/)\.\.(\/|$)/) { print "  refusing " name; bad = 1 }
+                for (s in sym) if (index(name, s) == 1) { print "  refusing " name " (through symlink " s ")"; bad = 1 }
+              }
+              END { exit bad }'
+      }
+
+      # A submodule archive is laid over what the main archive and earlier
+      # submodule archives left in the staging directory, so being contained
+      # in itself is not enough. Its entries may land nowhere but under the
+      # path the .submodules record declares for it; that path may not run
+      # through a symlink an earlier archive left, and nothing already under
+      # it may be one, or tar would follow the link out of the staging
+      # directory before anything is authenticated. The record comes from the
+      # cache too, so its fields are held to the shapes the stash writes.
+      submodule_archive_fits() {
+          local subfile=$1 subpath=$2 stage=$3 p="" c=""
+          case "$subfile" in
+              git:*.sub.*.tar.gz) [ "$subfile" = "${subfile##*/}" ] || { msg "  refusing submodule archive name $subfile"; return 1; } ;;
+              *) msg "  refusing submodule archive name $subfile"; return 1 ;;
+          esac
+          case "$subpath" in
+              ""|/*|.|..|./*|../*|*/.|*/..|*/./*|*/../*|*//*|*/) msg "  refusing submodule path $subpath"; return 1 ;;
+          esac
+          p=$stage
+          for c in $(printf '%s\n' "$subpath" | tr / '\n'); do
+              p="$p/$c"
+              [ ! -L "$p" ] || { msg "  refusing submodule path $subpath: $c is a symlink"; return 1; }
+          done
+          [ -z "$(find "$stage/$subpath" -type l 2>/dev/null | head -n 1)" ] ||
+              { msg "  refusing submodule path $subpath: it already holds a symlink"; return 1; }
+          tar -tzf "/var/cache/melange/$subfile" | awk -v p="$subpath/" '
+              { if ($0 != substr(p, 1, length(p) - 1) && index($0, p) != 1) { print "  refusing " $0 " (not under " p ")"; bad = 1 } }
+              END { exit bad }'
+      }
+
+      # Archive the HEAD tree of the repository at $1 as the clone has it:
+      # every path, unsubstituted. The attributes override in info/attributes
+      # outranks the tree's own .gitattributes, so export-ignore and
+      # export-subst do not apply; a clone's work tree has neither. tar.umask
+      # records 644/755 like a clone under the build umask, not git's default
+      # 664/775. git archive uses the commit time and gzip -n drops the header
+      # timestamp, so the bytes are reproducible.
+      archive_tree() {
+          local dir=$1 prefix=$2 out=$3 attrs="" had=""
+          attrs="$(git -C "$dir" rev-parse --absolute-git-dir)/info/attributes"
+          mkdir -p "${attrs%/*}"
+          [ -f "$attrs" ] && had=1 && cp "$attrs" "$attrs.melange-save"
+          printf '* -export-ignore -export-subst\n' >> "$attrs"
+          ( set -o pipefail; git -C "$dir" -c tar.umask=022 archive --format=tar --prefix="$prefix" HEAD | gzip -n > "$out" )
+          local rc=$?
+          if [ -n "$had" ]; then mv "$attrs.melange-save" "$attrs"; else rm -f "$attrs"; fi
+          return $rc
+      }
+
+      # Pack the tree objects (no blobs) of the given commits: kilobytes to a
+      # few megabytes that let the restore path recreate the index exactly
+      # and check every file against the blob the pinned commit names for
+      # it, whatever git's clean filters would make of its bytes.
+      stash_trees() {
+          local dir=$1 out=$2 c=""
+          shift 2
+          for c in "$@"; do
+              git -C "$dir" rev-parse "$c^{tree}"
+              git -C "$dir" ls-tree -r -d "$c" | awk '$2 == "tree" { print $3 }'
+          done | sort -u | git -C "$dir" pack-objects -q --stdout > "$out" || rm -f "$out"
+      }
+
+      # When the build emits a -source companion, archive the finished checkout
+      # for it, named as the cache names it so the companion's upstream
+      # directory can stand in for the clone. Beside the archive go the raw
+      # commit and tag objects and the gitlinks of the tree, so the restore
+      # path can give the tree its real name rather than a synthetic one.
+      # git archive stops at gitlinks, so submodules are archived one by one
+      # and listed for the restore path.
+      stash_source() {
+          local dest=$1 expcommit=$2 repo=$3 recurse=$4 tag=$5
+          local stash="${MELANGE_SOURCE_STASH:-}" head="" key="" name=""
+          [ -n "$stash" ] || return 0
+          [ -d "$dest/.git" ] || dest=.
+          [ -d "$dest/.git" ] || return 0
+          head=$(git -C "$dest" rev-parse HEAD) || return 0
+          key="git:${expcommit:-$head}"
+          # restored from a companion: its archive is already in the stash
+          [ -f "$stash/$key.tar.gz" ] && return 0
+          name=$(basename "$repo" .git)
+          mkdir -p "$stash"
+          msg "archiving checkout as $key.tar.gz for the -source package"
+          if ! archive_tree "$dest" "$name-$head/" "$stash/$key.tar.gz"; then
+              msg "Warning: archiving the checkout failed; the -source package will not carry it"
+              rm -f "$stash/$key.tar.gz"
+              return 0
+          fi
+          # url, head, head's commit time, and the branch HEAD is on (empty
+          # when detached, as a tag checkout leaves it): builds read .git/HEAD
+          # the URL as provenance: scheme, host and path only, since userinfo,
+          # query and fragment are where credentials travel
+          printf '%s\n%s\n%s\n%s\n' "$(printf '%s' "$repo" | sed -e 's|://[^/@]*@|://|' -e 's|[?#].*$||')" "$head" "$(git -C "$dest" log -1 --format=%ct)" \
+              "$(git -C "$dest" symbolic-ref --short -q HEAD || true)" > "$stash/$key.uri"
+          git -C "$dest" cat-file commit "$head" > "$stash/$key.commit" || rm -f "$stash/$key.commit"
+          # the commits the checkout stacked on the expected one (cherry-picks)
+          # and the expected commit itself, so a restored repository has the
+          # same shape and `git describe` measures the same distance to the tag
+          if [ -n "$expcommit" ] && [ "$head" != "$expcommit" ]; then
+              for c in $(git -C "$dest" rev-list "$head" "^$expcommit" 2>/dev/null) "$expcommit"; do
+                  [ "$c" = "$head" ] && continue
+                  git -C "$dest" cat-file commit "$c" > "$stash/$key.obj.$c" || rm -f "$stash/$key.obj.$c"
+              done
+          fi
+          if [ -n "$tag" ] && [ "$(git -C "$dest" cat-file -t "refs/tags/$tag" 2>/dev/null)" = "tag" ]; then
+              git -C "$dest" cat-file tag "refs/tags/$tag" > "$stash/$key.tag" || rm -f "$stash/$key.tag"
+          fi
+          stash_describe_history "$dest" "$stash" "$key" "$head"
+          # Tree objects for HEAD and, so that `git log -- <path>` can walk it,
+          # for the stashed ancestry too (one pack, shared subtrees stored
+          # once; ancestors beyond a few hundred commits go without).
+          set -- HEAD
+          for f in "$stash/$key".obj.*; do
+              [ -f "$f" ] || continue
+              [ $# -le 300 ] && set -- "$@" "${f##*.obj.}"
+          done
+          stash_trees "$dest" "$stash/$key.trees" "$@"
+          # every gitlink, checked out or not, as "path commit"
+          git -C "$dest" ls-tree -r HEAD | awk '$2 == "commit" { print $4, $3 }' > "$stash/$key.gitlinks"
+          if [ "$recurse" = "true" ]; then
+              # one archive per checked-out path: the same commit may be
+              # checked out at two paths, so path, not commit, names it
+              : > "$stash/$key.submodules"
+              git -C "$dest" submodule foreach --recursive --quiet 'echo "$displaypath $sha1"' |
+              while read -r subpath subsha; do
+                  [ -n "$subpath" ] || continue
+                  subkey="$key.sub.$(printf '%s' "$subpath" | sha256sum | cut -c1-16)"
+                  if archive_tree "$dest/$subpath" "$subpath/" "$stash/$subkey.tar.gz"; then
+                      printf '%s %s %s\n' "$subpath" "$subkey.tar.gz" "$subsha" >> "$stash/$key.submodules"
+                      git -C "$dest/$subpath" cat-file commit HEAD > "$stash/$subkey.commit" || rm -f "$stash/$subkey.commit"
+                      stash_trees "$dest/$subpath" "$stash/$subkey.trees" HEAD
+                      git -C "$dest/$subpath" ls-tree -r HEAD | awk -v p="$subpath/" '$2 == "commit" { print p $4, $3 }' >> "$stash/$key.gitlinks"
+                  else
+                      msg "Warning: archiving submodule $subpath failed"
+                      rm -f "$stash/$subkey.tar.gz"
+                  fi
+              done
+          fi
+      }
+
+      # The history `git describe` walks from HEAD: every commit down to the
+      # nearest tag it would name, that tagged commit, and every tag on any
+      # of them. Commit and tag objects only (no trees), a few hundred bytes
+      # each; skipped when a repository is thousands of commits past its
+      # last tag. Builds derive versions from `git describe` (gnulib's
+      # git-version-gen: wget, coreutils, grep), and would otherwise see
+      # only HEAD.
+      stash_describe_history() {
+          local dir=$1 stash=$2 key=$3 head=$4 desc="" base="" n="" c="" name="" type="" obj="" target=""
+          desc=$(git -C "$dir" describe --tags --long HEAD 2>/dev/null) || desc=""
+          if [ -n "$desc" ]; then
+              base=$(git -C "$dir" rev-parse "${desc%-*-g*}^{commit}" 2>/dev/null) || base=""
+              n=$(git -C "$dir" rev-list --count HEAD "^$base" 2>/dev/null) || n=999999
+              if [ -n "$base" ] && [ "$n" -le 2000 ]; then
+                  for c in $(git -C "$dir" rev-list HEAD "^$base") "$base"; do
+                      [ "$c" = "$head" ] && continue
+                      [ -f "$stash/$key.obj.$c" ] ||
+                          git -C "$dir" cat-file commit "$c" > "$stash/$key.obj.$c" || rm -f "$stash/$key.obj.$c"
+                  done
+              fi
+          fi
+          : > "$stash/$key.tags"
+          git -C "$dir" for-each-ref refs/tags --format='%(refname:short) %(objecttype) %(objectname) %(*objectname)' |
+          while read -r name type obj target; do
+              c=$target; [ "$type" = "commit" ] && c=$obj
+              [ "$c" = "$head" ] || [ -f "$stash/$key.obj.$c" ] || continue
+              if [ "$type" = "tag" ]; then
+                  git -C "$dir" cat-file tag "$obj" > "$stash/$key.tagobj.$obj" || { rm -f "$stash/$key.tagobj.$obj"; continue; }
+                  printf '%s tag %s %s\n' "$name" "$obj" "$c" >> "$stash/$key.tags"
+              else
+                  printf '%s commit %s\n' "$name" "$c" >> "$stash/$key.tags"
+              fi
+          done
+      }
+
+      # Name the restored tree, and authenticate it. A git object's name is
+      # its content: writing the stashed raw commit object back over the
+      # restored tree yields a commit whose name binds the tree, parents,
+      # author and message. The archive is accepted only if that name is
+      # expected-commit -- or, with cherry-picks, if a chain of restored
+      # commits, each the `cherry-pick -x` of a configured hash, leads from
+      # it to expected-commit. A cache that does not authenticate to what
+      # the configuration pins is rejected, exactly as fetch rejects a cached
+      # tarball whose checksum does not match; nothing in the cache is
+      # trusted by its name. HEAD, `rev-parse`, `describe` and
+      # setuptools-scm's node then read as they did against the clone.
+      # Parents beyond the restored objects are absent, as in the depth-1
+      # clone, so the repository is shallow.
+      restore_head() {
+          local cachebase=$1 expcommit=$2 tag=$3 initial=$4 cpicksf=$5 parent=$6
+          local tree="" want="" sha="" f="" c="" p="" known=""
+          [ -f "$cachebase.commit" ] ||
+              { msg "$cachebase.commit is missing; the archive cannot be authenticated"; return 1; }
+          want=$(sed -n 's/^tree //p;1q' "$cachebase.commit")
+          if [ -f "$cachebase.trees" ] && git unpack-objects -q < "$cachebase.trees" 2>/dev/null &&
+             git cat-file -e "$want" 2>/dev/null; then
+              # The tree objects are named by the commit and name every blob:
+              # read them as the index, then check the file the archive
+              # delivered for each entry against its blob.
+              git read-tree "$want" || return 1
+              verify_worktree || return 1
+              tree=$want
+          else
+              # No tree objects (an older companion): index the work tree and
+              # compare the tree it makes. Clean filters (text=auto, eol,
+              # ident) may map the bytes differently from what upstream
+              # committed, so try git's mapping first and the raw bytes second.
+              git add -A -f . && add_gitlinks "$cachebase" "$parent" || return 1
+              tree=$(git write-tree) || return 1
+              if [ "$tree" != "$want" ]; then
+                  mkdir -p "$(git rev-parse --git-dir)/info"
+                  printf '* -text -eol -ident -filter\n' >> "$(git rev-parse --git-dir)/info/attributes"
+                  git add -A -f --renormalize . 2>/dev/null || return 1
+                  tree=$(git write-tree) || return 1
+              fi
+              [ "$tree" = "$want" ] ||
+                  { msg "restored tree $tree is not the tree of the stashed commit ($want); the archive does not match it"; return 1; }
+          fi
+          sha=$(git hash-object -t commit -w --literally --stdin < "$cachebase.commit") &&
+          git update-ref HEAD "$sha" || return 1
+          # the ancestry the checkout carried (cherry-picks and the commit
+          # they sit on): their trees are absent, which git tolerates for
+          # everything that walks commits -- describe, log, rev-list
+          known=" $sha "
+          for f in "$cachebase".obj.*; do
+              [ -f "$f" ] || continue
+              c=$(git hash-object -t commit -w --literally --stdin < "$f") && known="$known$c "
+          done
+          # A recipe may pin the annotated tag object rather than the commit
+          # (git-checkout allows it, with a warning). The tag object is
+          # content-addressed too: if the stashed one hashes to expected-commit,
+          # the commit it names is what the recipe pinned.
+          if [ -f "$cachebase.tag" ] && [ "$(git hash-object -t tag --literally --stdin < "$cachebase.tag")" = "$expcommit" ]; then
+              expcommit=$(sed -n 's/^object //p;1q' "$cachebase.tag")
+              msg "expected-commit named the tag object; it names commit $expcommit"
+          fi
+          authenticate_head "$sha" "$expcommit" "$cpicksf" "$known" || return 1
+          msg "restored tree is upstream commit $sha"
+          # shallow, as the clone was: every commit whose parents are absent
+          : > "$(git rev-parse --git-dir)/shallow"
+          for c in $known; do
+              for p in $(git cat-file commit "$c" | awk '/^$/ { exit } /^parent / { print $2 }'); do
+                  case "$known" in *" $p "*) ;; *) echo "$c" >> "$(git rev-parse --git-dir)/shallow"; break ;; esac
+              done
+          done
+          recreate_tags "$cachebase" "$known" &&
+          recreate_tag "$cachebase" "$tag" "$known" &&
+          place_head "$cachebase" "$initial"
+      }
+
+      # Every tag the stash recorded on a restored commit: the tag object
+      # itself when annotated (content-addressed, so its name is checked),
+      # the ref alone when lightweight.
+      recreate_tags() {
+          local cachebase=$1 known=$2 name="" type="" obj="" target="" tsha=""
+          [ -f "$cachebase.tags" ] || return 0
+          while read -r name type obj target; do
+              [ -n "$name" ] || continue
+              if [ "$type" = "tag" ]; then
+                  case "$known" in *" $target "*) ;; *) continue ;; esac
+                  [ -f "$cachebase.tagobj.$obj" ] || continue
+                  tsha=$(git hash-object -t tag -w --literally --stdin < "$cachebase.tagobj.$obj") || continue
+                  [ "$tsha" = "$obj" ] && git update-ref "refs/tags/$name" "$tsha"
+              else
+                  case "$known" in *" $obj "*) git update-ref "refs/tags/$name" "$obj" ;; esac
+              fi
+          done < "$cachebase.tags"
+          return 0
+      }
+
+      # Every regular file and symlink the index names must be in the work
+      # tree with bytes that hash to its blob, and nothing else may be in the
+      # work tree: raw, or through git's clean
+      # filters (either way the check is content against the pinned tree;
+      # only the mapping differs, and repositories mix them -- CRLF committed
+      # under text=auto beside LF committed and checked out as CRLF). The
+      # blobs are written, so the repository is complete. Files whose bytes
+      # match only raw are marked assume-unchanged, as a clone's stat cache
+      # would leave them, so status and describe --dirty read clean. Gitlinks
+      # are checked by verify_submodules.
+      verify_worktree() {
+          local entries="" paths="" raw="" clean="" tab="" bad="" assume="" n=0 line="" mode="" sha="" path="" r="" c=""
+          tab=$(printf '\t')
+          entries=$(mktemp); paths=$(mktemp); raw=$(mktemp); clean=$(mktemp); bad=$(mktemp); assume=$(mktemp)
+          git -c core.quotePath=false ls-files -s > "$entries"
+          awk -F"$tab" '$1 ~ /^100(644|755) / { print $2 }' "$entries" > "$paths"
+          if [ -s "$paths" ]; then
+              git hash-object -w --no-filters --stdin-paths < "$paths" > "$raw" || return 1
+              git hash-object -w --stdin-paths < "$paths" > "$clean" || return 1
+          fi
+          n=0
+          while IFS="$tab" read -r meta path; do
+              mode=${meta%% *}; sha=${meta#* }; sha=${sha%% *}
+              case "$mode" in
+                  100644|100755)
+                      n=$((n + 1))
+                      r=$(sed -n "${n}p" "$raw"); c=$(sed -n "${n}p" "$clean")
+                      if [ "$r" = "$sha" ]; then
+                          [ "$c" = "$sha" ] || printf '%s\n' "$path" >> "$assume"
+                      elif [ "$c" != "$sha" ]; then
+                          printf '%s\n' "$path" >> "$bad"
+                      fi ;;
+                  120000)
+                      [ "$(printf '%s' "$(readlink "$path")" | git hash-object -w --stdin)" = "$sha" ] ||
+                          printf '%s\n' "$path" >> "$bad" ;;
+              esac
+          done < "$entries"
+          # and nothing the tree does not name may be present: a git archive
+          # holds exactly the tree, so anything else was put there
+          git -c core.quotePath=false ls-files -o > "$paths"
+          if [ -s "$paths" ]; then
+              msg "archive holds files the tree does not name: $(head -3 "$paths" | tr '\n' ' ')$([ "$(wc -l < "$paths")" -gt 3 ] && echo '...')"
+              rm -f "$entries" "$paths" "$raw" "$clean" "$bad" "$assume"
+              return 1
+          fi
+          if [ -s "$bad" ]; then
+              msg "restored files do not match the tree the commit names: $(head -3 "$bad" | tr '\n' ' ')$([ "$(wc -l < "$bad")" -gt 3 ] && echo '...')"
+              rm -f "$entries" "$paths" "$raw" "$clean" "$bad" "$assume"
+              return 1
+          fi
+          [ -s "$assume" ] && git update-index --assume-unchanged --stdin < "$assume"
+          git update-index -q --refresh >/dev/null 2>&1 || true
+          rm -f "$entries" "$paths" "$raw" "$clean" "$bad" "$assume"
+      }
+
+      # HEAD must be expected-commit, or reach it through first parents that
+      # are, newest first, the `cherry-pick -x` of each configured hash --
+      # every one present, none extra. Each step is a content-addressed
+      # object already written, so a chain that ends at expected-commit
+      # could only have been produced from the pinned source.
+      authenticate_head() {
+          local head=$1 expcommit=$2 cpicksf=$3 known=$4 c=$1 want="" hash="" line="" from=""
+          if [ -n "$cpicksf" ] && [ -f "$cpicksf" ]; then
+              while IFS= read -r line; do
+                  line=${line%%#*}
+                  [ -n "$line" ] || continue
+                  hash=${line%%:*}; hash=${hash##*/}
+                  want="$hash $want"
+              done < "$cpicksf"
+          fi
+          while [ "$c" != "$expcommit" ]; do
+              case "$known" in *" $c "*) ;; *) msg "commit $c is not among the restored objects"; return 1 ;; esac
+              [ -n "$want" ] ||
+                  { msg "restored HEAD $head does not reach expected-commit $expcommit"; return 1; }
+              hash=${want%% *}; want=${want#"$hash"}; want=${want# }
+              from=$(git cat-file commit "$c" | sed -n 's/^(cherry picked from commit \([0-9a-f]*\))$/\1/p' | tail -1)
+              case "$from" in "$hash"*) ;; *) msg "commit $c is not the cherry-pick of configured $hash"; return 1 ;; esac
+              c=$(git cat-file commit "$c" | awk '/^$/ { exit } /^parent / { print $2; exit }')
+              [ -n "$c" ] || { msg "cherry-pick $hash has no parent"; return 1; }
+          done
+          [ -z "$want" ] ||
+              { msg "cherry-pick(s) configured but absent from the restored history: $want"; return 1; }
+      }
+
+      # Every submodule's restored HEAD must be the gitlink its parent tree
+      # records for that path. The parent was authenticated first, so this
+      # ties the archive each submodule was restored from to the pinned tree
+      # rather than to the file name that carried it.
+      verify_submodules() {
+          local cachebase=$1 dest=$2 subpath="" subfile="" parent="" other="" x="" rel="" want="" got=""
+          [ -f "$cachebase.submodules" ] || return 0
+          while read -r subpath subfile subsha; do
+              [ -n "$subpath" ] || continue
+              parent=""
+              while read -r other x y; do
+                  [ -n "$other" ] && [ "$other" != "$subpath" ] || continue
+                  case "$subpath" in "$other"/*) [ ${#other} -gt ${#parent} ] && parent=$other ;; esac
+              done < "$cachebase.submodules"
+              rel=$subpath
+              [ -z "$parent" ] || rel=${subpath#"$parent"/}
+              want=$(git -C "$dest/$parent" rev-parse -q --verify "HEAD:$rel") ||
+                  { msg "the tree records no gitlink at $subpath"; return 1; }
+              got=$(git -C "$dest/$subpath" rev-parse -q --verify HEAD) || return 1
+              [ "$want" = "$got" ] ||
+                  { msg "submodule $subpath restored as $got but the tree pins $want"; return 1; }
+          done < "$cachebase.submodules"
+      }
+
+      # Leave HEAD as the clone left it: on the branch the .uri sidecar names,
+      # or detached (a tag checkout, a reset to a commit, a submodule). Builds
+      # read .git/HEAD -- the git-version crate compiles its bytes in -- so
+      # the shape matters, not just the commit. The scaffolding branch the
+      # repository was initialised with goes away.
+      place_head() {
+          local cachebase=$1 initial=$2 sym="" repo="" when=""
+          [ -f "$cachebase.uri" ] && sym=$(sed -n 4p "$cachebase.uri")
+          if [ -n "$sym" ]; then
+              if [ "$sym" != "$initial" ]; then
+                  git branch -q -f "$sym" HEAD && git symbolic-ref HEAD "refs/heads/$sym" &&
+                  git branch -q -D "$initial" || return 1
+              fi
+          else
+              git checkout -q --detach && git branch -q -D "$initial" || return 1
+          fi
+          # one reflog line, shaped as a clone writes it (git-version's macro
+          # takes .git/logs/HEAD and .git/index as compile-time inputs)
+          if [ -f "$cachebase.uri" ]; then
+              repo=$(sed -n 1p "$cachebase.uri"); when=$(sed -n 3p "$cachebase.uri")
+              printf '%040d %s Melange Build <melange-build@cgr.dev> %s +0000\tclone: from %s\n' 0 "$(git rev-parse HEAD)" "${when:-0}" "$repo" > "$(git rev-parse --git-dir)/logs/HEAD"
+          fi
+      }
+
+      # Recreate the tag the checkout used as upstream had it: the stashed tag
+      # object itself when the commit it names was restored, otherwise an
+      # annotated tag if upstream's was annotated and a lightweight one if not.
+      # The kind matters: plain `git describe` sees only annotated tags, and
+      # builds embed its output.
+      recreate_tag() {
+          local cachebase=$1 tag=$2 known=$3 p="" tsha=""
+          [ -n "$tag" ] || return 0
+          git show-ref -q --verify "refs/tags/$tag" && return 0 # already recreated from the stash
+          if [ -f "$cachebase.tag" ]; then
+              p=$(sed -n 's/^object //p;1q' "$cachebase.tag")
+              case "$known" in
+                  *" $p "*)
+                      tsha=$(git hash-object -t tag -w --literally --stdin < "$cachebase.tag") &&
+                      git update-ref "refs/tags/$tag" "$tsha"
+                      return ;;
+              esac
+              git tag -a -m "$tag" "$tag"
+          else
+              git tag "$tag"
+          fi
+      }
+
+      # Record in the index of the repository at $parent ("" for the
+      # superproject) every gitlink the stash listed directly beneath it,
+      # checked out or not, so the tree written matches upstream's. Gitlinks
+      # inside a nested submodule belong to that one's index, not this one's.
+      add_gitlinks() {
+          local cachebase=$1 parent=$2 sub="" sha="" rel="" other="" x="" nested=""
+          [ -f "$cachebase.gitlinks" ] || return 0
+          while read -r sub sha; do
+              [ -n "$sub" ] || continue
+              if [ -z "$parent" ]; then rel=$sub
+              else case "$sub" in "$parent"/*) rel=${sub#"$parent"/} ;; *) continue ;; esac
+              fi
+              nested=""
+              while read -r other x; do
+                  [ -n "$other" ] && [ "$other" != "$sub" ] && [ "$other" != "$parent" ] || continue
+                  case "$sub" in "$other"/*) ;; *) continue ;; esac
+                  case "$parent" in "$other"/*) continue ;; esac
+                  nested=1
+              done < "$cachebase.gitlinks"
+              [ -z "$nested" ] || continue
+              git update-index --add --cacheinfo "160000,$sha,$rel" || return 1
+          done < "$cachebase.gitlinks"
+      }
+
+      # Recreate each submodule as a nested repository holding exactly its
+      # archived paths, deepest first so a nested one exists before its
+      # parent is named, each authenticated by restore_head against the
+      # commit its archive is named for (verify_submodules then ties that
+      # name to the parent's tree).
+      restore_submodules() {
+          local cachebase=$1 dest=$2 subpath="" subfile="" subsha=""
+          [ -f "$cachebase.submodules" ] || return 0
+          awk '{ n = gsub("/", "/", $1); print n, $0 }' "$cachebase.submodules" | sort -rn | cut -d' ' -f2- |
+          while read -r subpath subfile subsha; do
+              [ -n "$subpath" ] && [ -n "$subsha" ] || continue
+              ( cd "$dest/$subpath" &&
+                rm -rf .git &&
+                git init -q -b main . &&
+                git config --global --add safe.directory "$(pwd)" &&
+                restore_head "/var/cache/melange/${subfile%.tar.gz}" "$subsha" "" main "" "$subpath" ) ||
+                  { msg "submodule $subpath does not authenticate to $subsha"; exit 1; }
+          done || return 1
+      }
+
       main() {
           local repo=$1 dest=${2:-.} depth=${3:-"unset"} branch=$4
           local tag=$5 expcommit=$6 recurse=${7:-false}
@@ -285,6 +768,82 @@ pipeline:
 
           [ -n "$expcommit" ] ||
               msg "Warning: no expected-commit"
+
+          # A -source companion's upstream directory is a valid --cache-dir:
+          # if it holds this checkout, restore it instead of cloning. The
+          # archive already includes any cherry-picks. Only builds that ask
+          # for it (MELANGE_SOURCE_RESTORE: those emitting a companion, or a
+          # rebuild from one) take this path, so an ordinary build never
+          # silently switches from a fresh clone to a rebuilt repository.
+          local cachebase="/var/cache/melange/git:$expcommit" cachef="/var/cache/melange/git:$expcommit.tar.gz"
+          if [ -n "${MELANGE_SOURCE_RESTORE:-}" ] && [ -n "$expcommit" ] && [ -f "$cachef" ]; then
+              msg "found $cachef in cache; restoring instead of cloning"
+              # Rebuild the checkout in a staging directory of its own, as the
+              # clone path clones into one, then lay it into the destination
+              # the same way. The destination may be the whole workspace, and
+              # what the archive holds must never be guessed from a listing.
+              local stage; stage=$(mktemp -d)
+              archive_is_contained "$cachef" || fail "$cachef would write outside its directory; refusing it"
+              tar -xzf "$cachef" --strip-components=1 --no-same-owner -C "$stage" ||
+                  fail "restoring $cachef failed"
+              if [ -f "$cachebase.submodules" ]; then
+                  while read -r subpath subfile subsha; do
+                      [ -n "$subpath" ] || continue
+                      submodule_archive_fits "$subfile" "$subpath" "$stage" ||
+                          fail "submodule archive $subfile cannot be laid at $subpath over what is already restored; refusing it"
+                      archive_is_contained "/var/cache/melange/$subfile" ||
+                          fail "submodule archive $subfile would write outside its directory; refusing it"
+                      tar -xzf "/var/cache/melange/$subfile" --no-same-owner -C "$stage" ||
+                          fail "restoring submodule $subpath from $subfile failed"
+                  done < "$cachebase.submodules"
+              fi
+              # git archive carries no .git, but builds routinely ask git
+              # about the tree (gemspecs enumerate files with `git ls-files`,
+              # setuptools-scm and `git describe` derive versions from it,
+              # binaries embed `rev-parse HEAD`). Recreate a repository over
+              # the archived tree and give it the upstream commit's own name
+              # -- which is also what authenticates the archive against
+              # expected-commit (restore_head). Nothing found in the cache is
+              # trusted by its file name; a mismatch fails the build rather
+              # than building from it. The identity and date below serve only
+              # the annotated tag recreated when the stash holds no tag
+              # object.
+              local sdate=${SOURCE_DATE_EPOCH:-0}
+              [ -f "$cachebase.uri" ] && sdate=$(sed -n 3p "$cachebase.uri")
+              [ "${sdate:-0}" -ge 315532800 ] 2>/dev/null || sdate=315532800
+              export GIT_AUTHOR_NAME="Melange Build" GIT_AUTHOR_EMAIL="melange-build@cgr.dev" \
+                     GIT_COMMITTER_NAME="Melange Build" GIT_COMMITTER_EMAIL="melange-build@cgr.dev" \
+                     GIT_AUTHOR_DATE="@$sdate" GIT_COMMITTER_DATE="@$sdate"
+              restore_submodules "$cachebase" "$stage" ||
+                  fail "a submodule archive in the cache for $expcommit does not authenticate; refusing to build from it"
+              # The archive is untrusted until restore_head authenticates it,
+              # and git reads .git/config before anything else: a smuggled
+              # config could name a clean filter that `git add` would run.
+              # Start from no repository at all. Nested repositories become
+              # gitlinks; gitlinks the clone never checked out are recorded
+              # from the stash.
+              ( cd "$stage" &&
+                rm -rf .git &&
+                git init -q -b "${branch:-main}" . &&
+                git config --global --add safe.directory "$(pwd)" &&
+                restore_head "$cachebase" "$expcommit" "$tag" "${branch:-main}" "$cherry_pick" "" ) ||
+                  fail "$cachef does not authenticate to expected-commit $expcommit; refusing to build from it"
+              verify_submodules "$cachebase" "$stage" ||
+                  fail "a restored submodule is not the one the tree for $expcommit pins; refusing to build from it"
+              mkdir -p "$dest"
+              ( cd "$stage" && tar -c . ) | tar -C "$dest" -x --no-same-owner ||
+                  fail "laying the restored checkout into $dest failed"
+              rm -rf "$stage"
+              git config --global --add safe.directory "$(realpath "$dest")"
+              # Carry the archive and its sidecars (.uri, .commit, .tag,
+              # .gitlinks, .submodules, .sub.*) into this build's own -source
+              # package, so a rebuild's companion matches the original.
+              if [ -n "${MELANGE_SOURCE_STASH:-}" ]; then
+                  mkdir -p "$MELANGE_SOURCE_STASH"
+                  cp "$cachebase".* "$MELANGE_SOURCE_STASH/"
+              fi
+              return 0
+          fi
 
           local flags="" depthflag="" dest_fullpath="" workdir=""
           local remote="origin" rcfile="" rc="" quiet="--quiet"
@@ -457,5 +1016,8 @@ pipeline:
           "${{inputs.max-backoff}}" \
           "${{inputs.shallow-submodules}}" "${{inputs.submodule-jobs}}" \
           "${{inputs.expected-commit-is-branch-tip}}"
+
+      stash_source "${{inputs.destination}}" "${{inputs.expected-commit}}" \
+          "${{inputs.repository}}" "${{inputs.recurse-submodules}}" "${{inputs.tag}}"
 
       rm -f "$cpickf"

@@ -59,6 +59,8 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.BoolVar(&flags.EmptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	fs.BoolVar(&flags.StripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	fs.StringVar(&flags.OutDir, "out-dir", "./packages/", "directory where packages will be output")
+	fs.BoolVar(&flags.SourcePackage, "source-package", false, "also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)")
+	fs.StringVar(&flags.SourceOutDir, "source-out-dir", "", "directory where -source companions will be output (default: --out-dir)")
 	fs.StringVar(&flags.DependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	fs.StringVar(&flags.PurlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	fs.StringSliceVar(&flags.Archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
@@ -108,6 +110,8 @@ type BuildFlags struct {
 	EmptyWorkspace       bool
 	StripOriginName      bool
 	OutDir               string
+	SourcePackage        bool
+	SourceOutDir         string
 	Archstrs             []string
 	ExtraKeys            []string
 	ExtraRepos           []string
@@ -204,6 +208,8 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithGenerateIndex(flags.GenerateIndex),
 		build.WithEmptyWorkspace(flags.EmptyWorkspace),
 		build.WithOutDir(flags.OutDir),
+		build.WithSourcePackage(flags.SourcePackage),
+		build.WithSourceOutDir(flags.SourceOutDir),
 		build.WithExtraKeys(flags.ExtraKeys),
 		build.WithExtraRepos(flags.ExtraRepos),
 		build.WithExtraPackages(flags.ExtraPackages),

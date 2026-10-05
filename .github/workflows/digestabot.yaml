@@ -41,7 +41,7 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
 
       # .chainguard/source.yaml requires commits to be signed.
-      - uses: chainguard-dev/actions/setup-gitsign@805da2efdffdc42b8afd8880e575a48b471ef544 # v1.6.37
+      - uses: chainguard-dev/actions/setup-gitsign@84b1be4c638f12d4256ddddef17af98853b6d0d9 # v1.6.40
 
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts

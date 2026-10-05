@@ -3,7 +3,7 @@ module chainguard.dev/melange
 go 1.27.0
 
 require (
-	chainguard.dev/apko v1.4.6
+	chainguard.dev/apko v1.4.8
 	github.com/chainguard-dev/clog v1.8.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20260625083649-3332107431aa
 	github.com/chainguard-dev/yam v0.2.68
@@ -58,7 +58,7 @@ require (
 
 require (
 	chainguard.dev/go-grpc-kit v0.20.0 // indirect
-	chainguard.dev/sdk v0.1.305 // indirect
+	chainguard.dev/sdk v0.1.321 // indirect
 	cloud.google.com/go/auth v0.24.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.3.0 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
@@ -166,7 +166,7 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/tools v0.50.0 // indirect
-	google.golang.org/api v0.299.0 // indirect
+	google.golang.org/api v0.300.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/grpc v1.84.0 // indirect

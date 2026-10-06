@@ -706,6 +706,7 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			return nil
 		}
 		var dlopen, fipscrypto, fipsgeomys, geomysv1, geomysesv bool
+		libcrypto := "so:libcrypto.so.3"
 		fipsexperiments := []string{"boringcrypto", "systemcrypto", "opensslcrypto"}
 		geomysesvs := []string{"openssl+geomys", "geomys"}
 		for _, setting := range buildinfo.Settings {
@@ -738,12 +739,14 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if setting.Key == "microsoft_systemcrypto" && setting.Value == "1" {
 				fipscrypto = true
 			}
+			if setting.Key == "chainguard_go_package" && goSupportsLibcrypto4(setting.Value) {
+				libcrypto = "so:libcrypto.so.4"
+			}
 		}
 		// strong indication of go with openssl compiled binary, will dlopen the below at runtime
 		if dlopen && fipscrypto {
 			generated.Runtime = append(generated.Runtime, "openssl-config-fipshardened")
-			// likely need to move this to some virtual, because go-1.27 supports libcrypto.so.4 abi as well
-			generated.Runtime = append(generated.Runtime, "so:libcrypto.so.3")
+			generated.Runtime = append(generated.Runtime, libcrypto)
 		}
 		// geomysv1 by default or as a fallback
 		if fipsgeomys && geomysesv && geomysv1 {
@@ -757,6 +760,52 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 	}
 
 	return nil
+}
+
+// go-msft-1.27 gained the libcrypto.so.4 ABI in 1.27.1.2-r1; all later
+// streams have it.
+var (
+	goMsftLibcrypto4Stream = mustParseVersion("1.27")
+	minGoMsftLibcrypto4    = mustParseVersion("1.27.1.2-r1")
+)
+
+func mustParseVersion(v string) apk.Version {
+	ver, err := apk.ParseVersion(v)
+	if err != nil {
+		panic(err)
+	}
+	return ver
+}
+
+// goSupportsLibcrypto4 reports whether the go toolchain recorded in the
+// chainguard_go_package build setting (formatted as
+// <package-name>-<package-full-version>, e.g. go-msft-1.27-1.27.1.2-r1)
+// supports the libcrypto.so.4 ABI.
+func goSupportsLibcrypto4(goPackage string) bool {
+	rest, ok := strings.CutPrefix(goPackage, "go-msft-")
+	if !ok {
+		return false
+	}
+	// rest is <stream>-<full-version>, e.g. 1.27-1.27.1.2-r1
+	stream, fullVersion, ok := strings.Cut(rest, "-")
+	if !ok {
+		return false
+	}
+	streamVer, err := apk.ParseVersion(stream)
+	if err != nil {
+		return false
+	}
+	switch c := apk.CompareVersions(streamVer, goMsftLibcrypto4Stream); {
+	case c > 0:
+		return true
+	case c < 0:
+		return false
+	}
+	ver, err := apk.ParseVersion(fullVersion)
+	if err != nil {
+		return false
+	}
+	return apk.CompareVersions(ver, minGoMsftLibcrypto4) >= 0
 }
 
 // TODO(xnox): Note remove this feature flag, once successful

@@ -225,7 +225,7 @@ func (pc *PackageBuild) generateControlSection(ctx context.Context) ([]byte, err
 	enc := yaml.NewEncoder(&melangeBuf)
 	enc.SetIndent(2) // To align with `yam` a little better.
 
-	if err := enc.Encode(pc.Build.Configuration); err != nil {
+	if err := enc.Encode(pc.Build.recordedConfiguration()); err != nil {
 		return nil, fmt.Errorf("marshalling config: %w", err)
 	}
 	if err := fsys.WriteFile(".melange.yaml", melangeBuf.Bytes(), 0o644); err != nil {

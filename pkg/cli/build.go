@@ -54,6 +54,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringVar(&flags.ApkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
 	fs.StringVar(&flags.SigningKey, "signing-key", "", "key to use for signing")
 	fs.StringSliceVar(&flags.EnvFiles, "env-file", []string{}, "files to use for preloaded environment variables")
+	fs.StringSliceVar(&flags.ExcludeEnvFromRecordedConfig, "exclude-env-from-recorded-config", []string{}, "environment variable keys to omit from the build configuration recorded in built packages (the variables are still set in the build environment)")
 	fs.StringVar(&flags.VarsFile, "vars-file", "", "file to use for preloaded build configuration variables")
 	fs.BoolVar(&flags.GenerateIndex, "generate-index", true, "whether to generate APKINDEX.tar.gz")
 	fs.BoolVar(&flags.EmptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
@@ -139,6 +140,10 @@ type BuildFlags struct {
 	ConfigFileLicense    string
 	GenerateProvenance   bool
 	TraceFile            string
+
+	// ExcludeEnvFromRecordedConfig lists environment variable keys to omit
+	// from the build configuration recorded in built packages.
+	ExcludeEnvFromRecordedConfig []string
 }
 
 // ParseBuildFlags parses build flags from the provided args and returns a BuildFlags struct
@@ -210,6 +215,7 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithDependencyLog(flags.DependencyLog),
 		build.WithStripOriginName(flags.StripOriginName),
 		build.WithEnvFiles(flags.EnvFiles),
+		build.WithExcludedEnvFromRecordedConfig(flags.ExcludeEnvFromRecordedConfig),
 		build.WithVarsFile(flags.VarsFile),
 		build.WithNamespace(flags.PurlNamespace),
 		build.WithEnabledBuildOptions(flags.BuildOption),

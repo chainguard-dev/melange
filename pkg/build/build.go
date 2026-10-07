@@ -137,6 +137,11 @@ type Build struct {
 	Auth                  map[string]options.Auth
 	IgnoreSignatures      bool
 
+	// ExcludedEnvFromRecordedConfig lists environment variable keys to omit
+	// from the configuration recorded into built artifacts. The variables
+	// are still set in the build environment.
+	ExcludedEnvFromRecordedConfig []string
+
 	EnabledBuildOptions []string
 
 	// SBOMGenerator is the generator used to create SBOMs for this build.
@@ -157,6 +162,25 @@ type Build struct {
 	// This is only applicable when there's a build context.  It
 	// is filled by buildGuest.
 	PkgResolver *apk.PkgResolver
+}
+
+// recordedConfiguration returns the build configuration as it should be
+// persisted into built artifacts: the .melange.yaml embedded in each APK
+// and the SLSA provenance. Environment variable keys listed in
+// ExcludedEnvFromRecordedConfig are removed from a copy, leaving the
+// configuration used for the build environment itself untouched.
+func (b *Build) recordedConfiguration() *config.Configuration {
+	if len(b.ExcludedEnvFromRecordedConfig) == 0 {
+		return b.Configuration
+	}
+
+	cfg := *b.Configuration
+	cfg.Environment.Environment = maps.Clone(cfg.Environment.Environment)
+	for _, key := range b.ExcludedEnvFromRecordedConfig {
+		delete(cfg.Environment.Environment, key)
+	}
+
+	return &cfg
 }
 
 func New(ctx context.Context, opts ...Option) (*Build, error) {

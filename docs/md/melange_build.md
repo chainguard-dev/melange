@@ -44,6 +44,7 @@ melange build [flags]
       --disk string                                             disk size to use for builds
       --empty-workspace                                         whether the build workspace should be empty
       --env-file strings                                        files to use for preloaded environment variables
+      --exclude-env-from-recorded-config strings                environment variable keys to omit from the build configuration recorded in built packages (the variables are still set in the build environment)
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
       --generate-provenance                                     generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)
       --git-commit string                                       commit hash of the git repository containing the build config file (defaults to detecting HEAD)

@@ -263,6 +263,24 @@ func WithEnvFiles(envFiles []string) Option {
 	}
 }
 
+// WithExcludedEnvFromRecordedConfig specifies environment variable keys to
+// omit from the build configuration recorded into built artifacts (the
+// .melange.yaml embedded in each APK and the SLSA provenance).  The
+// variables are still exported into the build environment.  This is useful
+// when a build system injects environment variables describing build
+// infrastructure (such as paths to injected configuration files) that
+// should not be persisted in published packages.
+func WithExcludedEnvFromRecordedConfig(keys []string) Option {
+	return func(b *Build) error {
+		for _, key := range keys {
+			if key != "" {
+				b.ExcludedEnvFromRecordedConfig = append(b.ExcludedEnvFromRecordedConfig, key)
+			}
+		}
+		return nil
+	}
+}
+
 // WithVarsFile specifies a variables file to use to populate the build
 // configuration variables block.
 func WithVarsFile(varsFile string) Option {

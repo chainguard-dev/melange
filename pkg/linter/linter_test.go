@@ -309,6 +309,64 @@ func TestLinters(t *testing.T) {
 		pkgname: "regular-doc",
 		pass:    true,
 	}, {
+		// Plural. jujutsu-docs and squashfs-tools-docs both ship this way.
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "regular-docs",
+		pass:    true,
+	}, {
+		// Version-streamed doc subpackage, the shape split/manpages
+		// produces for a versioned package: podman-doc-6.1,
+		// pdns-auth-doc-5.0.
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "podman-doc-6.1",
+		pass:    true,
+	}, {
+		// A date, not a dotted version: dwarf-tools-doc-20210528.
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "dwarf-tools-doc-20210528",
+		pass:    true,
+	}, {
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "regular-docs-5.0",
+		pass:    true,
+	}, {
+		// A version before -doc is the common case and already worked:
+		// rust-1.95-doc.
+		dirFunc: mkfile(t, "usr/share/info/test.info"),
+		linter:  "maninfo",
+		pkgname: "rust-1.95-doc",
+		pass:    true,
+	}, {
+		// Must still fail. "-doc" has to be a whole trailing component,
+		// not a prefix of the last word.
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "foo-document",
+		pass:    false,
+	}, {
+		// Must still fail: no separator before "doc".
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "docker",
+		pass:    false,
+	}, {
+		// Must still fail: -man is deliberately not treated as a doc
+		// package. caddy-man is the only instance in the tree.
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "caddy-man",
+		pass:    false,
+	}, {
+		// Must still fail: a trailing version alone is not a doc package.
+		dirFunc: mkfile(t, "usr/share/man/man1/foo.1"),
+		linter:  "maninfo",
+		pkgname: "openstack-barbican-2026.1",
+		pass:    false,
+	}, {
 		dirFunc: mkfile(t, "usr/share/man/man8/bar.8.gz"),
 		linter:  "maninfo",
 		pkgname: "regular-package",

@@ -324,6 +324,24 @@ func dereferenceCrossPackageSymlink(hdl SCAHandle, path string, extraLibDirs []s
 	return "", "", nil
 }
 
+// providesVersionedShlib reports whether provides is a versioned
+// "so-ver:" entry for shlib, i.e. "so-ver:<shlib>=<version>" where
+// version parses as an APK version.
+func providesVersionedShlib(provides, shlib string) bool {
+	providedArtifact, providedVersion, found := strings.Cut(provides, "=")
+	if !found {
+		return false
+	}
+
+	if providedArtifact != "so-ver:"+shlib {
+		return false
+	}
+
+	// If we're able to parse the version, then it's a valid one.
+	_, err := apk.ParseVersion(providedVersion)
+	return err == nil
+}
+
 // determineShlibVersion tries to determine the exact version of the
 // package that provides the shared library shlib.  It does that by:
 //
@@ -458,19 +476,7 @@ func determineShlibVersion(ctx context.Context, hdl SCAHandle, shlib string) (st
 			// Check if the package actually provides a
 			// versioned shlib, otherwise we can't depend on it.
 			if slices.ContainsFunc(candidate.Provides, func(provides string) bool {
-				providedArtifact, providedVersion, found := strings.Cut(provides, "=")
-				if !found {
-					return false
-				}
-
-				if providedArtifact != "so-ver:"+shlib {
-					return false
-				}
-
-				_, err := apk.ParseVersion(providedVersion)
-				// If we're able to parse the version,
-				// then it's a valid one.
-				return err != nil
+				return providesVersionedShlib(provides, shlib)
 			}) {
 				return installedPackageVersionString, nil
 			}

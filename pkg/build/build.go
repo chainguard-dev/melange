@@ -99,31 +99,41 @@ type Build struct {
 	WorkspaceIgnore string
 	GuestFS         apkofs.FullFS
 	// Ordered directories where to find 'uses' pipelines.
-	PipelineDirs          []string
-	SourceDir             string
-	SigningKey            string
-	SigningPassphrase     string
-	Namespace             string
-	GenerateIndex         bool
-	EmptyWorkspace        bool
-	OutDir                string
-	Arch                  apko_types.Architecture
-	Libc                  string
-	ExtraKeys             []string
-	ExtraRepos            []string
-	ExtraPackages         []string
-	DependencyLog         string
-	BinShOverlay          string
-	CreateBuildLog        bool
-	PersistLintResults    bool
-	CacheDir              string
-	ApkCacheDir           string
-	CacheSource           string
-	StripOriginName       bool
-	EnvFiles              []string
-	VarsFile              string
-	Runner                container.Runner
-	containerConfig       *container.Config
+	PipelineDirs      []string
+	SourceDir         string
+	SigningKey        string
+	SigningPassphrase string
+	Namespace         string
+	GenerateIndex     bool
+	EmptyWorkspace    bool
+	OutDir            string
+	// SourcePackage emits an <origin>-source companion carrying the complete
+	// corresponding source; the source-package annotation overrides it per
+	// package.
+	SourcePackage bool
+	// SourceOutDir, when set, receives the companion instead of OutDir, so it
+	// can be published to a repository of its own.
+	SourceOutDir       string
+	Arch               apko_types.Architecture
+	Libc               string
+	ExtraKeys          []string
+	ExtraRepos         []string
+	ExtraPackages      []string
+	DependencyLog      string
+	BinShOverlay       string
+	CreateBuildLog     bool
+	PersistLintResults bool
+	CacheDir           string
+	ApkCacheDir        string
+	CacheSource        string
+	StripOriginName    bool
+	EnvFiles           []string
+	VarsFile           string
+	Runner             container.Runner
+	containerConfig    *container.Config
+	// sourceManifest lists the -source companion's contents once it is
+	// assembled; it is written into every APK's control section.
+	sourceManifest        []byte
 	Debug                 bool
 	DebugRunner           bool
 	Interactive           bool
@@ -642,6 +652,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	if err := os.MkdirAll(filepath.Join(b.WorkspaceDir, melangeOutputDirName, b.Configuration.Package.Name), 0o755); err != nil {
 		return err
 	}
+	if b.wantsSourcePackage(ctx) {
+		if err := b.prepareSourceStash(); err != nil {
+			return fmt.Errorf("preparing the source stash: %w", err)
+		}
+	}
 
 	linterQueue := []linterTarget{}
 	cfg := b.workspaceConfig(ctx)
@@ -770,6 +785,17 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	log.Infof("retrieved and wrote post-build workspace to: %s", b.WorkspaceDir)
 
+	// The complete corresponding source, as a companion package: the resolved
+	// configuration, the source directory overlay, and whatever the fetch and
+	// git-checkout pipelines stashed while the build ran.
+	if b.wantsSourcePackage(ctx) {
+		manifest, err := b.assembleSourcePackage(ctx)
+		if err != nil {
+			return fmt.Errorf("assembling %s: %w", b.sourcePackageName(), err)
+		}
+		b.sourceManifest = manifest
+	}
+
 	// Retrieve and log build observability events if the observability hook
 	// is installed. Only applicable to QEMU builds which run in a full VM.
 	if b.Runner.Name() == container.QemuName {
@@ -829,7 +855,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 
 	// Generate SBOMs post-build using the configured generator
 	genCtx := &sbom.GeneratorContext{
-		Configuration:   b.Configuration,
+		Configuration:   b.sbomConfiguration(),
 		WorkspaceDir:    b.WorkspaceDir,
 		OutputFS:        outfs,
 		SourceDateEpoch: b.SourceDateEpoch,
@@ -860,6 +886,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 	}
 
+	// emit the -source companion
+	if b.sourceManifest != nil {
+		if err := b.emitTo(ctx, b.sourcePackage(), b.sourceOutDir()); err != nil {
+			return fmt.Errorf("unable to emit %s: %w", b.sourcePackageName(), err)
+		}
+	}
+
 	// clean build environment
 	log.Debugf("cleaning workspacedir")
 	cleanEnv := map[string]string{}
@@ -883,6 +916,11 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		for _, subpkg := range b.Configuration.Subpackages {
 			subpkgFileName := fmt.Sprintf("%s-%s-r%d.apk", subpkg.Name, b.Configuration.Package.Version, b.Configuration.Package.Epoch)
 			apkFiles = append(apkFiles, filepath.Join(packageDir, subpkgFileName))
+		}
+		// The -source companion joins the index only when it lands beside the
+		// binaries; routed to its own directory, it is its own repository's.
+		if b.sourceManifest != nil && b.sourceOutDir() == b.OutDir {
+			apkFiles = append(apkFiles, filepath.Join(packageDir, fmt.Sprintf("%s-%s-r%d.apk", b.sourcePackageName(), b.Configuration.Package.Version, b.Configuration.Package.Epoch)))
 		}
 
 		opts := []index.Option{
@@ -1028,9 +1066,7 @@ func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {
 		PackageName:  b.Configuration.Package.Name,
 		Mounts:       mounts,
 		Capabilities: caps,
-		Environment: map[string]string{
-			"SOURCE_DATE_EPOCH": fmt.Sprintf("%d", b.SourceDateEpoch.Unix()),
-		},
+		Environment:  b.guestEnvironment(ctx),
 		WorkspaceDir: b.WorkspaceDir,
 		CacheDir:     b.CacheDir,
 		Timeout:      b.Configuration.Package.Timeout,

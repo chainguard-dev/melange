@@ -16,10 +16,16 @@ package renovate
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 
+	"github.com/chainguard-dev/yam/pkg/util"
 	"github.com/chainguard-dev/yam/pkg/yam/formatted"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -127,11 +133,56 @@ func (rc *RenovationContext) WriteConfig() error {
 	}
 	defer configFile.Close()
 
-	enc := formatted.NewEncoder(configFile).AutomaticConfig()
+	enc, err := rc.encoder(configFile)
+	if err != nil {
+		return err
+	}
 
 	if err := enc.Encode(rc.Configuration.Root().Content[0]); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// encoder returns a yam encoder configured from the nearest .yam.yaml at or
+// above the config file's directory, so the output follows the formatting
+// rules of the repository the file lives in rather than whatever happens to
+// be in the process working directory. Callers such as bots run with a
+// working directory outside the checkout; without this they wrote with no
+// gap expressions, which drops the blank line before a comment block and
+// makes yaml.v3 re-attach the block to the next item on the next parse.
+// When no .yam.yaml is found, fall back to yam's own lookup in the working
+// directory to preserve the existing CLI behaviour.
+func (rc *RenovationContext) encoder(w io.Writer) (formatted.Encoder, error) {
+	dir, err := filepath.Abs(filepath.Dir(rc.Context.ConfigFile))
+	if err != nil {
+		return formatted.Encoder{}, err
+	}
+
+	for {
+		path := filepath.Join(dir, util.ConfigFileName)
+		f, err := os.Open(path)
+		if err == nil {
+			defer f.Close()
+			opts, err := formatted.ReadConfigFrom(f)
+			if err != nil {
+				return formatted.Encoder{}, fmt.Errorf("reading %s: %w", path, err)
+			}
+			if opts.Indent == 0 {
+				// Match the yam CLI default when the config omits indent.
+				opts.Indent = 2
+			}
+			return formatted.NewEncoder(w).UseOptions(*opts)
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return formatted.Encoder{}, err
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return formatted.NewEncoder(w).AutomaticConfig(), nil
+		}
+		dir = parent
+	}
 }

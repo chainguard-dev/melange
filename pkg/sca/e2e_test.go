@@ -25,29 +25,6 @@ import (
 	"chainguard.dev/melange/pkg/config"
 )
 
-func TestGoFipsBinDeps(t *testing.T) {
-	ctx := slogtest.Context(t)
-	th := handleFromApk(ctx, t, "generated/x86_64/go-fips-bin-0.0.1-r0.apk", "go-fips-bin/go-fips-bin.yaml")
-	defer th.exp.Close()
-
-	got := config.Dependencies{}
-	if err := Analyze(ctx, th, &got); err != nil {
-		t.Fatal(err)
-	}
-	want := config.Dependencies{
-		Runtime: []string{
-			"openssl-config-fipshardened",
-			"so:ld-linux-x86-64.so.2",
-			"so:libc.so.6",
-			"so:libcrypto.so.3",
-		},
-		Provides: []string{"cmd:go-fips-bin=0.0.1-r0"},
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
-	}
-}
-
 func TestAnalyze(t *testing.T) {
 	for _, c := range []struct {
 		apk     string

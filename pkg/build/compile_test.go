@@ -396,3 +396,93 @@ func Test_stripComments(t *testing.T) {
 		t.Errorf("want:\n%s\ngot:\n%s", wantErr, err)
 	}
 }
+
+func TestPinnedTestPackage(t *testing.T) {
+	pkg := config.Package{Name: "ncurses", Version: "6.6.20260926", Epoch: 1}
+	for _, tc := range []struct {
+		name string
+		pkg  config.Package
+		want string
+	}{
+		{"ncurses", pkg, "ncurses=6.6.20260926-r1"},
+		{"ncurses-doc", pkg, "ncurses-doc=6.6.20260926-r1"},
+		// Names that already carry a constraint are left alone.
+		{"ncurses=6.6.20261010-r0", pkg, "ncurses=6.6.20261010-r0"},
+		{"ncurses>6", pkg, "ncurses>6"},
+		{"ncurses~6.6", pkg, "ncurses~6.6"},
+		// Without a version there is nothing to pin to.
+		{"ncurses", config.Package{Name: "ncurses"}, "ncurses"},
+	} {
+		if got := pinnedTestPackage(tc.name, tc.pkg); got != tc.want {
+			t.Errorf("pinnedTestPackage(%q, %+v) = %q, want %q", tc.name, tc.pkg, got, tc.want)
+		}
+	}
+}
+
+func TestCompileTestPinsBuiltVersion(t *testing.T) {
+	newTest := func(pkgArg string) *Test {
+		return &Test{
+			Package: pkgArg,
+			Configuration: config.Configuration{
+				Package: config.Package{Name: "main", Version: "1.2.3", Epoch: 4},
+				Test: &config.Test{
+					Pipeline: []config.Pipeline{{
+						Needs: &config.Needs{Packages: []string{"main-need"}},
+					}},
+				},
+				Subpackages: []config.Subpackage{{
+					Name: "subpackage",
+					Test: &config.Test{
+						Pipeline: []config.Pipeline{{
+							Needs: &config.Needs{Packages: []string{"subpackage-need"}},
+						}},
+					},
+				}},
+			},
+		}
+	}
+
+	// No package on the command line: pin the main package and subpackage
+	// to the version the configuration builds.
+	test := newTest("")
+	if err := test.Compile(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main-need", "main=1.2.3-r4"}; !slices.Equal(got, want) {
+		t.Errorf("main test packages: want %v, got %v", want, got)
+	}
+	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage-need", "subpackage=1.2.3-r4"}; !slices.Equal(got, want) {
+		t.Errorf("subpackage test packages: want %v, got %v", want, got)
+	}
+
+	// An explicit package on the command line is used as given.
+	test = newTest("main")
+	if err := test.Compile(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main", "main-need"}; !slices.Equal(got, want) {
+		t.Errorf("main test packages with explicit package: want %v, got %v", want, got)
+	}
+}
+
+func TestCompileBuildPinsBuiltVersion(t *testing.T) {
+	build := &Build{
+		Configuration: &config.Configuration{
+			Package: config.Package{Name: "main", Version: "1.2.3", Epoch: 4},
+			Test:    &config.Test{},
+			Subpackages: []config.Subpackage{{
+				Name: "subpackage",
+				Test: &config.Test{},
+			}},
+		},
+	}
+	if err := build.Compile(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, want := build.Configuration.Test.Environment.Contents.Packages, []string{"main=1.2.3-r4"}; !slices.Equal(got, want) {
+		t.Errorf("main test packages: want %v, got %v", want, got)
+	}
+	if got, want := build.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage=1.2.3-r4"}; !slices.Equal(got, want) {
+		t.Errorf("subpackage test packages: want %v, got %v", want, got)
+	}
+}

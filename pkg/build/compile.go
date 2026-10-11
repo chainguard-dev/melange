@@ -99,8 +99,9 @@ func (t *Test) Compile(ctx context.Context) error {
 
 		te := &cfg.Subpackages[i].Test.Environment.Contents
 
-		// Append the subpackage that we're testing to be installed.
-		te.Packages = append(te.Packages, sp.Name)
+		// Append the subpackage that we're testing to be installed, pinned to
+		// the version this configuration builds.
+		te.Packages = append(te.Packages, pinnedTestPackage(sp.Name, cfg.Package))
 
 		if err := test.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
@@ -125,10 +126,12 @@ func (t *Test) Compile(ctx context.Context) error {
 		te := &t.Configuration.Test.Environment.Contents
 
 		// Append the main test package to be installed unless explicitly specified by the command line.
+		// An explicit package is used as given; otherwise pin the main package
+		// to the version this configuration builds.
 		if t.Package != "" {
 			te.Packages = append(te.Packages, t.Package)
 		} else {
-			te.Packages = append(te.Packages, t.Configuration.Package.Name)
+			te.Packages = append(te.Packages, pinnedTestPackage(t.Configuration.Package.Name, t.Configuration.Package))
 		}
 
 		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
@@ -186,8 +189,9 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 
 		te := &cfg.Subpackages[i].Test.Environment.Contents
 
-		// Append the subpackage that we're testing to be installed.
-		te.Packages = append(te.Packages, sp.Name)
+		// Append the subpackage that we're testing to be installed, pinned to
+		// the version this configuration builds.
+		te.Packages = append(te.Packages, pinnedTestPackage(sp.Name, cfg.Package))
 
 		// Append anything this subpackage test needs.
 		te.Packages = append(te.Packages, tc.Needs...)
@@ -222,8 +226,9 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 		te := &b.Configuration.Test.Environment.Contents
 		te.Packages = append(te.Packages, tc.Needs...)
 
-		// This can be overridden by the command line but in the context of a build, just use the main package.
-		te.Packages = append(te.Packages, b.Configuration.Package.Name)
+		// This can be overridden by the command line but in the context of a build, just use the main package,
+		// pinned to the version this configuration builds.
+		te.Packages = append(te.Packages, pinnedTestPackage(b.Configuration.Package.Name, b.Configuration.Package))
 
 		// Sort and remove duplicates.
 		te.Packages = slices.Compact(slices.Sorted(slices.Values(te.Packages)))
@@ -234,6 +239,21 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 	}
 
 	return nil
+}
+
+// pinnedTestPackage returns the package to install when testing name: name
+// pinned to the full version (version and epoch) that pkg builds. Without the
+// pin, apk installs the newest name it can find in any repository, and the
+// freshly built packages are just one more repository, so a newer build of the
+// same package elsewhere would be tested instead of the one just built.
+//
+// Names that already carry a version constraint, and configurations without a
+// version, are returned unchanged.
+func pinnedTestPackage(name string, pkg config.Package) string {
+	if pkg.Version == "" || strings.ContainsAny(name, "=<>~") {
+		return name
+	}
+	return name + "=" + pkg.FullVersion()
 }
 
 type Compiled struct {

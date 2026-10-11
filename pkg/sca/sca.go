@@ -707,7 +707,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 		}
 		var dlopen, fipscrypto, fipsgeomys, geomysv1, geomysesv bool
 		libcrypto := "so:libcrypto.so.3"
-		fipsexperiments := []string{"boringcrypto", "systemcrypto", "opensslcrypto"}
 		geomysesvs := []string{"openssl+geomys", "geomys"}
 		for _, setting := range buildinfo.Settings {
 			// go-msft-1.26 imlements dlopen with cgo
@@ -731,10 +730,6 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			// geomysv1 version detection
 			if setting.Key == "GOFIPS140" && setting.Value == "v1.0.0-c2097c7c" {
 				geomysv1 = true
-			}
-			// obsolete and now removed, keep for now
-			if setting.Key == "GOEXPERIMENT" && slices.Contains(fipsexperiments, setting.Value) {
-				fipscrypto = true
 			}
 			if setting.Key == "microsoft_systemcrypto" && setting.Value == "1" {
 				fipscrypto = true

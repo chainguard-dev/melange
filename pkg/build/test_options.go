@@ -241,6 +241,15 @@ func WithTestMemory(memory string) TestOption {
 	}
 }
 
+// WithTestPinPackages sets whether the package and subpackages under test are
+// pinned to the version the configuration builds. See Test.PinTestPackages.
+func WithTestPinPackages(pin bool) TestOption {
+	return func(t *Test) error {
+		t.PinTestPackages = pin
+		return nil
+	}
+}
+
 func WithTestTimeout(dur time.Duration) TestOption {
 	return func(t *Test) error {
 		t.DefaultTimeout = dur

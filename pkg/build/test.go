@@ -71,12 +71,18 @@ type Test struct {
 	DefaultDisk       string
 	DefaultMemory     string
 	DefaultTimeout    time.Duration
+	// PinTestPackages pins the package (and subpackages) under test to the
+	// version the configuration builds, so tests exercise the freshly built
+	// packages rather than a newer build of the same package in another
+	// repository. On by default.
+	PinTestPackages bool
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 	t := Test{
 		WorkspaceIgnore: ".melangeignore",
 		Arch:            apko_types.ParseArchitecture(runtime.GOARCH),
+		PinTestPackages: true,
 	}
 
 	for _, opt := range opts {

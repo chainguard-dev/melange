@@ -420,9 +420,10 @@ func TestPinnedTestPackage(t *testing.T) {
 }
 
 func TestCompileTestPinsBuiltVersion(t *testing.T) {
-	newTest := func(pkgArg string) *Test {
+	newTest := func(pkgArg string, pin bool) *Test {
 		return &Test{
-			Package: pkgArg,
+			Package:         pkgArg,
+			PinTestPackages: pin,
 			Configuration: config.Configuration{
 				Package: config.Package{Name: "main", Version: "1.2.3", Epoch: 4},
 				Test: &config.Test{
@@ -442,30 +443,50 @@ func TestCompileTestPinsBuiltVersion(t *testing.T) {
 		}
 	}
 
-	// No package on the command line: pin the main package and subpackage
-	// to the version the configuration builds.
-	test := newTest("")
-	if err := test.Compile(context.Background()); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main-need", "main=1.2.3-r4"}; !slices.Equal(got, want) {
-		t.Errorf("main test packages: want %v, got %v", want, got)
-	}
-	if got, want := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage-need", "subpackage=1.2.3-r4"}; !slices.Equal(got, want) {
-		t.Errorf("subpackage test packages: want %v, got %v", want, got)
-	}
-
-	// An explicit package on the command line is used as given.
-	test = newTest("main")
-	if err := test.Compile(context.Background()); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got, want := test.Configuration.Test.Environment.Contents.Packages, []string{"main", "main-need"}; !slices.Equal(got, want) {
-		t.Errorf("main test packages with explicit package: want %v, got %v", want, got)
+	for _, tc := range []struct {
+		desc     string
+		pkgArg   string
+		pin      bool
+		wantMain []string
+		wantSub  []string
+	}{{
+		desc:     "pinning on, no package on the command line",
+		pin:      true,
+		wantMain: []string{"main-need", "main=1.2.3-r4"},
+		wantSub:  []string{"subpackage-need", "subpackage=1.2.3-r4"},
+	}, {
+		desc:     "pinning off",
+		pin:      false,
+		wantMain: []string{"main", "main-need"},
+		wantSub:  []string{"subpackage", "subpackage-need"},
+	}, {
+		// An explicit package usually means a published package is being
+		// tested, so nothing is pinned, subpackages included.
+		desc:     "pinning on, explicit package on the command line",
+		pkgArg:   "main",
+		pin:      true,
+		wantMain: []string{"main", "main-need"},
+		wantSub:  []string{"subpackage", "subpackage-need"},
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			test := newTest(tc.pkgArg, tc.pin)
+			if err := test.Compile(context.Background()); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := test.Configuration.Test.Environment.Contents.Packages; !slices.Equal(got, tc.wantMain) {
+				t.Errorf("main test packages: want %v, got %v", tc.wantMain, got)
+			}
+			if got := test.Configuration.Subpackages[0].Test.Environment.Contents.Packages; !slices.Equal(got, tc.wantSub) {
+				t.Errorf("subpackage test packages: want %v, got %v", tc.wantSub, got)
+			}
+		})
 	}
 }
 
-func TestCompileBuildPinsBuiltVersion(t *testing.T) {
+// Build.Compile records the test environment in the compiled configuration,
+// which can be reused by `melange test` later. It must not pin, so that
+// pinning stays controlled by the --pin-test-packages flag at test time.
+func TestCompileBuildDoesNotPin(t *testing.T) {
 	build := &Build{
 		Configuration: &config.Configuration{
 			Package: config.Package{Name: "main", Version: "1.2.3", Epoch: 4},
@@ -479,10 +500,29 @@ func TestCompileBuildPinsBuiltVersion(t *testing.T) {
 	if err := build.Compile(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got, want := build.Configuration.Test.Environment.Contents.Packages, []string{"main=1.2.3-r4"}; !slices.Equal(got, want) {
+	if got, want := build.Configuration.Test.Environment.Contents.Packages, []string{"main"}; !slices.Equal(got, want) {
 		t.Errorf("main test packages: want %v, got %v", want, got)
 	}
-	if got, want := build.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage=1.2.3-r4"}; !slices.Equal(got, want) {
+	if got, want := build.Configuration.Subpackages[0].Test.Environment.Contents.Packages, []string{"subpackage"}; !slices.Equal(got, want) {
 		t.Errorf("subpackage test packages: want %v, got %v", want, got)
+	}
+}
+
+func TestNewTestPinsByDefault(t *testing.T) {
+	cfg := WithTestConfig(filepath.Join("testdata", "test_configuration_load", "py3-pandas.melange.yaml"))
+	test, err := NewTest(context.Background(), cfg, WithTestWorkspaceDir(t.TempDir()))
+	if err != nil {
+		t.Fatalf("NewTest: %v", err)
+	}
+	if !test.PinTestPackages {
+		t.Errorf("PinTestPackages: want true by default, got false")
+	}
+
+	test, err = NewTest(context.Background(), cfg, WithTestWorkspaceDir(t.TempDir()), WithTestPinPackages(false))
+	if err != nil {
+		t.Fatalf("NewTest: %v", err)
+	}
+	if test.PinTestPackages {
+		t.Errorf("PinTestPackages: want false with WithTestPinPackages(false), got true")
 	}
 }

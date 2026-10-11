@@ -49,6 +49,10 @@ for yaml in "$@"; do
       ;;
     *-nopkg-test)
       ops="test"
+      # These test packages already published in the repository rather
+      # than ones built from the configuration, so don't pin the package
+      # under test to the configuration's version.
+      args="$args --pin-test-packages=false"
       args="$args --test-package-append busybox"
       args="$args --test-package-append=python-3"
       args="$args --debug"

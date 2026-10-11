@@ -57,6 +57,7 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 	fs.StringVar(&flags.Disk, "disk", "", "disk size to use for tests")
 	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for tests")
 	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for tests")
+	fs.BoolVar(&flags.PinTestPackages, "pin-test-packages", true, "pin the package and subpackages under test to the version the configuration builds; ignored when a package is given on the command line")
 }
 
 // TestFlags holds all parsed test command flags
@@ -78,6 +79,7 @@ type TestFlags struct {
 	Runner            string
 	ExtraTestPackages []string
 	Remove            bool
+	PinTestPackages   bool
 	IgnoreSignatures  bool
 	CPU               string
 	CPUModel          string
@@ -128,6 +130,7 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestMemory(flags.Memory),
 		build.WithTestDisk(flags.Disk),
 		build.WithTestTimeout(flags.Timeout),
+		build.WithTestPinPackages(flags.PinTestPackages),
 	}
 
 	if len(args) > 0 {

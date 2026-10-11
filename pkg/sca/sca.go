@@ -742,6 +742,9 @@ func generateSharedObjectNameDeps(ctx context.Context, hdl SCAHandle, generated 
 			if setting.Key == "chainguard_go_package" && goSupportsLibcrypto4(setting.Value) {
 				libcrypto = "so:libcrypto.so.4"
 			}
+			if setting.Key == "microsoft_toolset_version" && msftToolsetSupportsLibcrypto4(setting.Value) {
+				libcrypto = "so:libcrypto.so.4"
+			}
 		}
 		// strong indication of go with openssl compiled binary, will dlopen the below at runtime
 		if dlopen && fipscrypto {
@@ -806,6 +809,38 @@ func goSupportsLibcrypto4(goPackage string) bool {
 		return false
 	}
 	return apk.CompareVersions(ver, minGoMsftLibcrypto4) >= 0
+}
+
+// go-msft-1.26 gained the libcrypto.so.4 ABI in 1.26.9.
+var (
+	goMsft126Stream        = mustParseVersion("1.26")
+	minGoMsft126Libcrypto4 = mustParseVersion("1.26.9")
+)
+
+// msftToolsetSupportsLibcrypto4 reports whether the go toolchain recorded in
+// the microsoft_toolset_version build setting (e.g. go1.26.9-microsoft)
+// supports the libcrypto.so.4 ABI. Only the 1.26 stream is handled here;
+// 1.27 and later are detected via chainguard_go_package instead.
+func msftToolsetSupportsLibcrypto4(toolset string) bool {
+	rest, ok := strings.CutPrefix(toolset, "go")
+	if !ok {
+		return false
+	}
+	version, _, _ := strings.Cut(rest, "-")
+	major, minor, ok := strings.Cut(version, ".")
+	if !ok {
+		return false
+	}
+	minor, _, _ = strings.Cut(minor, ".")
+	streamVer, err := apk.ParseVersion(major + "." + minor)
+	if err != nil || apk.CompareVersions(streamVer, goMsft126Stream) != 0 {
+		return false
+	}
+	ver, err := apk.ParseVersion(version)
+	if err != nil {
+		return false
+	}
+	return apk.CompareVersions(ver, minGoMsft126Libcrypto4) >= 0
 }
 
 // TODO(xnox): Note remove this feature flag, once successful

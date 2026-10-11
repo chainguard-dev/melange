@@ -1099,20 +1099,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		} else {
 			// 9p: readonly with overlay for write support
 			clog.FromContext(ctx).Infof("qemu: setting up 9p cache mount (read-only with overlay): %s", cfg.CacheDir)
-			setupMountCommand = fmt.Sprintf(
-				"mkdir -p %s %s /mount/upper /mount/work && "+
-					"chmod 1777 /mount/upper && "+
-					"mount -t 9p -o ro melange_cache %s && "+
-					"mount -t overlay overlay -o lowerdir=%s,upperdir=/mount/upper,workdir=/mount/work %s",
-				DefaultCacheDir,
-				filepath.Join("/mount", DefaultCacheDir),
-				DefaultCacheDir,
-				DefaultCacheDir,
-				filepath.Join("/mount", DefaultCacheDir),
-			)
+			setupMountCommand = cacheOverlayMountCommand()
 		}
 
-		err = sendSSHCommand(ctx,
+		if err := sendSSHCommand(ctx,
 			cfg.SSHControlClient,
 			cfg,
 			nil,
@@ -1120,16 +1110,15 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			stdout,
 			false,
 			[]string{"sh", "-c", setupMountCommand},
-		)
-		if err != nil {
+		); err != nil {
 			// Clean up virtiofsd on failure
 			if cfg.VirtiofsEnabled {
 				stopVirtiofsd(ctx, cfg)
 			}
-			err = qemuCmd.Process.Kill()
-			if err != nil {
-				return err
-			}
+			return errors.Join(
+				fmt.Errorf("qemu: unable to set up cache mount: %w", err),
+				qemuCmd.Process.Kill(),
+			)
 		}
 	}
 
@@ -1152,10 +1141,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", setupMountCommand},
 	)
 	if err != nil {
-		err = qemuCmd.Process.Kill()
-		if err != nil {
-			return err
-		}
+		return errors.Join(
+			fmt.Errorf("qemu: unable to mount workspace: %w", err),
+			qemuCmd.Process.Kill(),
+		)
 	}
 
 	// This has to happen as the user we are building as, so
@@ -1177,10 +1166,10 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 		[]string{"sh", "-c", copyFilesCommand},
 	)
 	if err != nil {
-		err = qemuCmd.Process.Kill()
-		if err != nil {
-			return err
-		}
+		return errors.Join(
+			fmt.Errorf("qemu: unable to copy workspace into guest: %w", err),
+			qemuCmd.Process.Kill(),
+		)
 	}
 
 	clog.FromContext(ctx).Info("qemu: unmounting host workspace from guest")
@@ -1209,6 +1198,35 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	cfg.QemuProcess = qemuCmd.Process
 	return nil
+}
+
+// cacheOverlayDir is a melange-reserved directory on the guest root disk
+// that holds the overlayfs upper and work directories for the 9p cache
+// mount. It must not be a path that packages are likely to ship: during
+// "melange test" the guest root disk contains the packages under test, and
+// a package shipping e.g. /work or /upper as a file or symlink would
+// otherwise prevent the cache mount from being set up. It lives on the same
+// filesystem as the previous /mount/{upper,work} paths because overlayfs
+// requires upperdir and workdir to be on the same filesystem.
+const cacheOverlayDir = "/mount/.melange-cache-overlay"
+
+// cacheOverlayMountCommand returns the shell command that mounts the host
+// cache directory read-only over 9p and layers a writable overlay on top of
+// it at the chroot cache path.
+func cacheOverlayMountCommand() string {
+	chrootCacheDir := filepath.Join("/mount", DefaultCacheDir)
+	upperDir := filepath.Join(cacheOverlayDir, "upper")
+	workDir := filepath.Join(cacheOverlayDir, "work")
+	return fmt.Sprintf(
+		"mkdir -p %s %s %s %s && "+
+			"chmod 1777 %s && "+
+			"mount -t 9p -o ro melange_cache %s && "+
+			"mount -t overlay overlay -o lowerdir=%s,upperdir=%s,workdir=%s %s",
+		DefaultCacheDir, chrootCacheDir, upperDir, workDir,
+		upperDir,
+		DefaultCacheDir,
+		DefaultCacheDir, upperDir, workDir, chrootCacheDir,
+	)
 }
 
 func setupSSHClients(ctx context.Context, cfg *Config) error {

@@ -1,0 +1,69 @@
+# Regression test for https://github.com/chainguard-dev/melange/issues/2695.
+#
+# With --cache-dir set, the qemu runner mounts the cache read-only over 9p and
+# layers a writable overlay on top. The overlay's upper and work directories
+# live on the guest root disk, which during 'melange test' also contains the
+# packages under test. They used to be created at /mount/upper and
+# /mount/work, i.e. /upper and /work in the test rootfs, so a package shipping
+# either path as a non-directory stopped the test VM from starting.
+#
+# The -compat subpackage ships /work as a symlink and /upper as a regular
+# file. run-tests passes --cache-dir to 'melange test', so testing it
+# exercises the cache overlay against those paths.
+package:
+  name: cache-overlay-collision-build-test
+  description: Test that the qemu cache overlay does not collide with package contents
+  version: 0.1.0
+  epoch: 0
+  dependencies:
+    runtime:
+      - busybox
+
+environment:
+  contents:
+    packages:
+      - busybox
+
+pipeline:
+  - name: install work
+    runs: |
+      mkdir -p "${{targets.destdir}}"/usr/bin
+      cat > "${{targets.destdir}}"/usr/bin/work <<"EOF"
+      #!/bin/sh
+      echo "work: ok"
+      EOF
+      chmod 755 "${{targets.destdir}}"/usr/bin/work
+
+subpackages:
+  - name: ${{package.name}}-compat
+    description: Top-level paths that used to collide with the cache overlay
+    dependencies:
+      runtime:
+        - ${{package.name}}
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.contextdir}}"
+          ln -s ./usr/bin/work "${{targets.contextdir}}"/work
+          echo "not a directory" > "${{targets.contextdir}}"/upper
+    test:
+      pipeline:
+        - name: /work is the packaged symlink
+          runs: |
+            [ -L /work ]
+            [ "$(readlink /work)" = "./usr/bin/work" ]
+            [ "$(/work)" = "work: ok" ]
+        - name: /upper is the packaged regular file
+          runs: |
+            [ -f /upper ] && [ ! -L /upper ]
+            [ "$(cat /upper)" = "not a directory" ]
+        - name: cache dir is mounted and writable
+          runs: |
+            grep -q " /var/cache/melange " /proc/mounts
+            touch /var/cache/melange/.cache-overlay-collision-test
+            rm /var/cache/melange/.cache-overlay-collision-test
+
+test:
+  pipeline:
+    - name: work runs
+      runs: |
+        [ "$(work)" = "work: ok" ]

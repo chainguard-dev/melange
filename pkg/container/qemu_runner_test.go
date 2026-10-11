@@ -23,7 +23,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/chainguard-dev/clog"
@@ -1232,5 +1234,43 @@ func TestWithTCGFallbackTSC(t *testing.T) {
 				t.Errorf("withTCGFallbackTSC() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestCacheOverlayMountCommand guards against the 9p cache overlay creating
+// its upper/work directories at top-level paths of the guest rootfs, where
+// they can collide with the contents of the packages under test (e.g. a
+// package that ships /work as a symlink).
+func TestCacheOverlayMountCommand(t *testing.T) {
+	cmd := cacheOverlayMountCommand()
+
+	chrootCacheDir := filepath.Join("/mount", DefaultCacheDir)
+	upperDir := filepath.Join(cacheOverlayDir, "upper")
+	workDir := filepath.Join(cacheOverlayDir, "work")
+
+	// Every /mount/... path referenced must either be the chroot cache
+	// directory or live under the melange-reserved overlay directory.
+	for _, p := range regexp.MustCompile(`/mount/[^\s,]+`).FindAllString(cmd, -1) {
+		if p == chrootCacheDir || strings.HasPrefix(p, cacheOverlayDir+"/") {
+			continue
+		}
+		t.Errorf("command references unexpected guest path %q: %s", p, cmd)
+	}
+
+	for _, want := range []string{
+		"mkdir -p " + DefaultCacheDir + " " + chrootCacheDir + " " + upperDir + " " + workDir + " ",
+		"chmod 1777 " + upperDir + " ",
+		"mount -t 9p -o ro melange_cache " + DefaultCacheDir + " ",
+		"lowerdir=" + DefaultCacheDir + ",upperdir=" + upperDir + ",workdir=" + workDir + " " + chrootCacheDir,
+	} {
+		if !strings.Contains(cmd, want) {
+			t.Errorf("command missing %q: %s", want, cmd)
+		}
+	}
+
+	for _, bad := range []string{"/mount/upper", "/mount/work"} {
+		if regexp.MustCompile(regexp.QuoteMeta(bad) + `(\s|,|$)`).MatchString(cmd) {
+			t.Errorf("command references colliding path %q: %s", bad, cmd)
+		}
 	}
 }

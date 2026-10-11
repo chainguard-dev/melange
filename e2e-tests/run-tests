@@ -74,7 +74,10 @@ for yaml in "$@"; do
         # --pipeline-dirs. And we need to pass both to compile the
         # melange file
         "build") opargs="--signing-key=$PWD/$key --pipeline-dir $PWD/pipelines";;
-        "test") opargs="--pipeline-dirs $PWD/pipelines";;
+        # 'melange build' defaults --cache-dir to ./melange-cache/, but
+        # 'melange test' has no default. Pass one so tests also exercise the
+        # runner's cache mount.
+        "test") opargs="--pipeline-dirs $PWD/pipelines --cache-dir=$PWD/melange-cache";;
     esac
 
     vrc "Testing $base from $yaml for $op" \

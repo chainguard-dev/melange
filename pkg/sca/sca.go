@@ -811,7 +811,17 @@ func goSupportsLibcrypto4(goPackage string) bool {
 	return apk.CompareVersions(ver, minGoMsftLibcrypto4) >= 0
 }
 
-// go-msft-1.26 gained the libcrypto.so.4 ABI in 1.26.9.
+// 1.26.9 is the first go-msft-1.26 toolset version where every Chainguard
+// build carries the libcrypto.so.4 backport. The backport landed in
+// 1.26.8.1-r2, but microsoft_toolset_version can't tell 1.26.8.1-r1 from -r2
+// (both report go1.26.8-microsoft), so 1.26.8 binaries keep libcrypto.so.3.
+// That's safe at runtime: the backport probes libcrypto.so.4 first and falls
+// back to libcrypto.so.3.
+//
+// microsoft_toolset_version is emitted by upstream microsoft/go too, while the
+// libcrypto.so.4 support in 1.26 is a Chainguard backport. A prebuilt upstream
+// Microsoft Go 1.26.9+ FIPS binary vendored into a package would therefore be
+// tagged libcrypto.so.4 even though it only loads libcrypto.so.3.
 var (
 	goMsft126Stream        = mustParseVersion("1.26")
 	minGoMsft126Libcrypto4 = mustParseVersion("1.26.9")

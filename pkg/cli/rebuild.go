@@ -70,7 +70,13 @@ func ParseRebuildFlags(args []string) (*RebuildFlags, []string, error) {
 
 // RebuildOptions converts RebuildFlags into a slice of build.Option
 // This includes all options needed for rebuilding a package from its embedded metadata.
+// With no SourceDir, the workspace starts from an empty temporary directory.
+// SourcePackage is not supported here: the companion is verified against the
+// .source.sha256 pin read from the package itself, which only RebuildCmd does.
 func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.PackageInfo, cfg *config.Configuration, cfgpkg *spdx.Package, cfgpurl purl.PackageURL) ([]build.Option, error) {
+	if flags.SourcePackage != "" {
+		return nil, fmt.Errorf("--source-package needs the .source.sha256 pin from the package being rebuilt; use RebuildCmd")
+	}
 	return flags.rebuildOptions(ctx, pkginfo, cfg, cfgpkg, cfgpurl, nil)
 }
 
@@ -127,10 +133,9 @@ func (flags *RebuildFlags) rebuildOptions(ctx context.Context, pkginfo *goapk.Pa
 	default:
 		// Not "." -- that would copy whatever the caller's working directory
 		// holds into the workspace. Absence means an empty overlay.
-		if flags.workDir == "" {
-			return nil, fmt.Errorf("rebuild: no working directory")
-		}
-		empty, err := os.MkdirTemp(flags.workDir, "empty-source-dir-")
+		// flags.workDir is set only by RebuildCmd, which removes it after;
+		// any other caller gets an empty directory of its own.
+		empty, err := os.MkdirTemp(flags.workDir, "melange-rebuild-empty-source-dir-")
 		if err != nil {
 			return nil, err
 		}
@@ -150,8 +155,12 @@ func RebuildCmd(ctx context.Context, flags *RebuildFlags, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(workDir)
+	prevWorkDir := flags.workDir
 	flags.workDir = workDir
+	defer func() {
+		flags.workDir = prevWorkDir
+		os.RemoveAll(workDir)
+	}()
 
 	for _, a := range args {
 		cfg, pkginfo, cfgpkg, pin, err := getConfig(a)

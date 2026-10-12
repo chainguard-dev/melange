@@ -320,10 +320,17 @@ pipeline:
       # path can give the tree its real name rather than a synthetic one.
       # git archive stops at gitlinks, so submodules are archived one by one
       # and listed for the restore path.
+      # A sparse checkout is not stashed: git archive would lazily fetch every
+      # blob the sparse clone skipped, and the restored tree would hold
+      # directories the original build never saw.
       stash_source() {
-          local dest=$1 expcommit=$2 repo=$3 recurse=$4 tag=$5
+          local dest=$1 expcommit=$2 repo=$3 recurse=$4 tag=$5 sparse_paths=$6
           local stash="${MELANGE_SOURCE_STASH:-}" head="" key="" name=""
           [ -n "$stash" ] || return 0
+          if [ -n "$sparse_paths" ]; then
+              msg "Warning: sparse-paths is set; the -source package will not carry this checkout"
+              return 0
+          fi
           [ -d "$dest/.git" ] || dest=.
           [ -d "$dest/.git" ] || return 0
           head=$(git -C "$dest" rev-parse HEAD) || return 0
@@ -775,8 +782,10 @@ pipeline:
           # for it (MELANGE_SOURCE_RESTORE: those emitting a companion, or a
           # rebuild from one) take this path, so an ordinary build never
           # silently switches from a fresh clone to a rebuilt repository.
+          # A sparse checkout is never stashed, and a full tree restored in
+          # its place would not be the input the build asked for.
           local cachebase="/var/cache/melange/git:$expcommit" cachef="/var/cache/melange/git:$expcommit.tar.gz"
-          if [ -n "${MELANGE_SOURCE_RESTORE:-}" ] && [ -n "$expcommit" ] && [ -f "$cachef" ]; then
+          if [ -n "${MELANGE_SOURCE_RESTORE:-}" ] && [ -z "$sparse_paths" ] && [ -n "$expcommit" ] && [ -f "$cachef" ]; then
               msg "found $cachef in cache; restoring instead of cloning"
               # Rebuild the checkout in a staging directory of its own, as the
               # clone path clones into one, then lay it into the destination
@@ -1018,6 +1027,7 @@ pipeline:
           "${{inputs.expected-commit-is-branch-tip}}"
 
       stash_source "${{inputs.destination}}" "${{inputs.expected-commit}}" \
-          "${{inputs.repository}}" "${{inputs.recurse-submodules}}" "${{inputs.tag}}"
+          "${{inputs.repository}}" "${{inputs.recurse-submodules}}" "${{inputs.tag}}" \
+          "${{inputs.sparse-paths}}"
 
       rm -f "$cpickf"

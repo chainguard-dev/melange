@@ -15,9 +15,17 @@
 package build
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
+
+	apkofs "chainguard.dev/apko/pkg/apk/fs"
 
 	"chainguard.dev/melange/pkg/config"
 
@@ -136,5 +144,113 @@ datahash = baadf00d
 				t.Errorf("GenerateControlData() = %s, wanted %s", got, test.want)
 			}
 		})
+	}
+}
+
+// hardlinkPackage lays out a package with usr/bin/tool hard linked as
+// usr/bin/alias and usr/lib/tool, next to an unrelated usr/lib/other, and
+// returns the filesystem EmitPackage reads it through.
+func hardlinkPackage(t *testing.T) (*PackageBuild, apkofs.FullFS) {
+	t.Helper()
+	pc := &PackageBuild{
+		Build: &Build{
+			SourceDateEpoch: time.Unix(0, 0),
+			WorkspaceDir:    t.TempDir(),
+		},
+		PackageName: "hardlinks",
+	}
+	dir := pc.WorkspaceSubdir()
+	for _, d := range []string{"usr/bin", "usr/lib"} {
+		if err := os.MkdirAll(filepath.Join(dir, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tool := filepath.Join(dir, "usr/bin/tool")
+	if err := os.WriteFile(tool, []byte("tool contents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range []string{"usr/bin/alias", "usr/lib/tool"} {
+		if err := os.Link(tool, filepath.Join(dir, l)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	other := filepath.Join(dir, "usr/lib/other")
+	if err := os.WriteFile(other, []byte("other contents"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fsys, err := apkofs.Sub(
+		apkofs.DirFS(t.Context(), pc.Build.WorkspaceDir),
+		filepath.Join(melangeOutputDirName, pc.PackageName),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pc, fsys
+}
+
+// Files hard linked in the workspace are written once, with every other path
+// to the same inode as a link to the first one in walk order.
+func Test_emitDataSection_Hardlinks(t *testing.T) {
+	pc, fsys := hardlinkPackage(t)
+
+	out, err := os.Create(filepath.Join(t.TempDir(), "data.tar.gz"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	if err := pc.emitDataSection(t.Context(), fsys, fsys, nil, nil, out); err != nil {
+		t.Fatal(err)
+	}
+
+	zr, err := gzip.NewReader(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := tar.NewReader(zr)
+	got := map[string]*tar.Header{}
+	contents := map[string]string{}
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(tr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got[hdr.Name] = hdr
+		contents[hdr.Name] = string(body)
+	}
+
+	// usr/bin/alias sorts first, so it carries the contents
+	regular := map[string]string{
+		"usr/bin/alias": "tool contents",
+		"usr/lib/other": "other contents",
+	}
+	for name, want := range regular {
+		hdr, ok := got[name]
+		if !ok {
+			t.Fatalf("%s: missing", name)
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			t.Errorf("%s: type %q, want regular file", name, hdr.Typeflag)
+		}
+		if contents[name] != want {
+			t.Errorf("%s: contents %q, want %q", name, contents[name], want)
+		}
+	}
+	for _, name := range []string{"usr/bin/tool", "usr/lib/tool"} {
+		hdr, ok := got[name]
+		if !ok {
+			t.Fatalf("%s: missing", name)
+		}
+		if hdr.Typeflag != tar.TypeLink || hdr.Linkname != "usr/bin/alias" || hdr.Size != 0 {
+			t.Errorf("%s: type %q linkname %q size %d, want a link to usr/bin/alias with size 0",
+				name, hdr.Typeflag, hdr.Linkname, hdr.Size)
+		}
 	}
 }

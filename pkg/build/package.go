@@ -434,6 +434,7 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS,
 		tarball.WithRemapUIDs(remapUIDs),
 		tarball.WithRemapGIDs(remapGIDs),
 		tarball.WithUseChecksums(true),
+		tarball.WithDiskDir(pc.WorkspaceSubdir()),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to build tarball context: %w", err)

@@ -19,10 +19,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"go.opentelemetry.io/otel"
@@ -78,6 +80,47 @@ func getInodeFromFileInfo(fi fs.FileInfo) (uint64, error) {
 	return 0, fmt.Errorf("unable to stat underlying file")
 }
 
+// DiskLinks finds regular files with several hard links under a directory
+// on disk.
+type DiskLinks struct {
+	root *os.Root
+}
+
+// OpenDiskLinks opens dir to look for hardlinks in. Call Close when done.
+func OpenDiskLinks(dir string) (*DiskLinks, error) {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("opening %s to detect hardlinks: %w", dir, err)
+	}
+	return &DiskLinks{root: root}, nil
+}
+
+func (d *DiskLinks) Close() error {
+	return d.root.Close()
+}
+
+// Inode returns the inode of the regular file at name, a slash-separated path
+// relative to the directory, if it has more than one link. A file missing
+// from disk (kept only in memory by an fs.FS such as apko's DirFS) is not
+// linked to anything.
+func (d *DiskLinks) Inode(name string) (uint64, bool, error) {
+	fi, err := d.root.Lstat(filepath.FromSlash(name))
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	if !fi.Mode().IsRegular() || !hasHardlinks(fi) {
+		return 0, false, nil
+	}
+	inode, err := getInodeFromFileInfo(fi)
+	if err != nil {
+		return 0, false, err
+	}
+	return inode, true, nil
+}
+
 func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, users, groups map[int]string) error { //nolint:gocyclo
 	if users == nil {
 		users = map[int]string{}
@@ -86,6 +129,14 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 		groups = map[int]string{}
 	}
 	seenFiles := map[uint64]string{}
+	var disk *DiskLinks
+	if c.diskDir != "" {
+		var err error
+		if disk, err = OpenDiskLinks(c.diskDir); err != nil {
+			return err
+		}
+		defer disk.Close()
+	}
 	// set this once, to make it easy to look up later
 	if c.overridePerms == nil {
 		c.overridePerms = map[string]tar.Header{}
@@ -211,18 +262,32 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 		if link != "" {
 			header.Typeflag = tar.TypeSymlink
 		}
-		if !info.IsDir() && hasHardlinks(info) {
-			inode, err := getInodeFromFileInfo(info)
-			if err != nil {
-				return err
+		// only regular files become links: a link entry carries no target or
+		// device number of its own
+		if info.Mode().IsRegular() {
+			var (
+				inode  uint64
+				linked bool
+			)
+			if disk != nil {
+				if inode, linked, err = disk.Inode(path); err != nil {
+					return err
+				}
+			} else if hasHardlinks(info) {
+				if inode, err = getInodeFromFileInfo(info); err != nil {
+					return err
+				}
+				linked = true
 			}
 
-			if oldpath, ok := seenFiles[inode]; ok {
-				header.Typeflag = tar.TypeLink
-				header.Linkname = oldpath
-				header.Size = 0
-			} else {
-				seenFiles[inode] = header.Name
+			if linked {
+				if oldpath, ok := seenFiles[inode]; ok {
+					header.Typeflag = tar.TypeLink
+					header.Linkname = oldpath
+					header.Size = 0
+				} else {
+					seenFiles[inode] = header.Name
+				}
 			}
 		}
 

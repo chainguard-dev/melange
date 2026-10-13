@@ -29,6 +29,7 @@ import (
 	"github.com/spdx/tools-golang/spdx/v2/common"
 
 	build "chainguard.dev/melange/pkg/build/sbom"
+	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/sbom"
 )
 
@@ -121,13 +122,14 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 	// Add APK packages to their respective SBOMs
 	for _, sp := range gc.Configuration.Subpackages {
 		spSBOM := sg.Document(sp.Name)
+		spPkg := packageForSubpackage(pkg, &sp)
 
 		apkSubPkg := &sbom.Package{
 			IDComponents:    []string{"apk", sp.Name, pkg.FullVersion()},
 			Name:            sp.Name,
 			Version:         pkg.FullVersion(),
-			Copyright:       pkg.FullCopyright(),
-			LicenseDeclared: pkg.LicenseExpression(),
+			Copyright:       spPkg.FullCopyright(),
+			LicenseDeclared: spPkg.LicenseExpression(),
 			Namespace:       gc.Namespace,
 			Arch:            arch,
 			PURL:            pkg.PackageURLForSubpackage(gc.Namespace, arch, sp.Name),
@@ -139,7 +141,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		// Add upstream source packages from subpackage pipelines
 		for i, p := range sp.Pipeline {
 			uniqueID := strconv.Itoa(i)
-			upstreamPkg, err := p.SBOMPackageForUpstreamSource(pkg.LicenseExpression(), gc.Namespace, uniqueID)
+			upstreamPkg, err := p.SBOMPackageForUpstreamSource(spPkg.LicenseExpression(), gc.Namespace, uniqueID)
 			if err != nil {
 				return nil, fmt.Errorf("creating SBOM package for upstream source in subpackage %s: %w", sp.Name, err)
 			}
@@ -206,7 +208,7 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 	}
 
 	// Add licensing information
-	li, err := gc.Configuration.Package.LicensingInfos(ctx, gc.WorkspaceDir)
+	li, err := licensingInfos(ctx, gc)
 	if err != nil {
 		return nil, fmt.Errorf("gathering licensing infos: %w", err)
 	}
@@ -224,6 +226,40 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 	}
 
 	out[pkg.Name] = pSBOM.ToSPDX(ctx, releaseData)
+	return out, nil
+}
+
+func packageForSubpackage(pkg *config.Package, sp *config.Subpackage) config.Package {
+	copyright := sp.Copyright
+	if len(copyright) == 0 {
+		copyright = pkg.Copyright
+	}
+
+	return config.Package{
+		Name:      sp.Name,
+		Version:   pkg.Version,
+		Epoch:     pkg.Epoch,
+		Copyright: copyright,
+	}
+}
+
+func licensingInfos(ctx context.Context, gc *build.GeneratorContext) (map[string]string, error) {
+	out, err := gc.Configuration.Package.LicensingInfos(ctx, gc.WorkspaceDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, sp := range gc.Configuration.Subpackages {
+		spPkg := packageForSubpackage(&gc.Configuration.Package, &sp)
+		li, err := spPkg.LicensingInfos(ctx, gc.WorkspaceDir)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range li {
+			out[k] = v
+		}
+	}
+
 	return out, nil
 }
 

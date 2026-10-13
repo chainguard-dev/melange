@@ -148,8 +148,9 @@ datahash = baadf00d
 }
 
 // hardlinkPackage lays out a package with usr/bin/tool hard linked as
-// usr/bin/alias and usr/lib/tool, next to an unrelated usr/lib/other, and
-// returns the filesystem EmitPackage reads it through.
+// usr/bin/alias and usr/lib/tool, usr/lib/libfoo.so.1 hard linked as
+// usr/lib/libfoo.so, and an unrelated usr/lib/other. It returns the
+// filesystem EmitPackage reads it through, a view of pc.Build.WorkspaceDirFS.
 func hardlinkPackage(t *testing.T) (*PackageBuild, apkofs.FullFS) {
 	t.Helper()
 	pc := &PackageBuild{
@@ -174,13 +175,21 @@ func hardlinkPackage(t *testing.T) (*PackageBuild, apkofs.FullFS) {
 			t.Fatal(err)
 		}
 	}
+	lib := filepath.Join(dir, "usr/lib/libfoo.so.1")
+	if err := os.WriteFile(lib, []byte("lib contents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(lib, filepath.Join(dir, "usr/lib/libfoo.so")); err != nil {
+		t.Fatal(err)
+	}
 	other := filepath.Join(dir, "usr/lib/other")
 	if err := os.WriteFile(other, []byte("other contents"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
+	pc.Build.WorkspaceDirFS = apkofs.DirFS(t.Context(), pc.Build.WorkspaceDir)
 	fsys, err := apkofs.Sub(
-		apkofs.DirFS(t.Context(), pc.Build.WorkspaceDir),
+		pc.Build.WorkspaceDirFS,
 		filepath.Join(melangeOutputDirName, pc.PackageName),
 	)
 	if err != nil {
@@ -193,7 +202,7 @@ func hardlinkPackage(t *testing.T) (*PackageBuild, apkofs.FullFS) {
 func Test_calculateInstalledSize_Hardlinks(t *testing.T) {
 	pc, fsys := hardlinkPackage(t)
 
-	want := int64(len("tool contents") + len("other contents"))
+	want := int64(len("tool contents") + len("lib contents") + len("other contents"))
 	for _, d := range []string{".", "usr", "usr/bin", "usr/lib"} {
 		fi, err := os.Lstat(filepath.Join(pc.WorkspaceSubdir(), d))
 		if err != nil {
@@ -214,7 +223,43 @@ func Test_calculateInstalledSize_Hardlinks(t *testing.T) {
 // to the same inode as a link to the first one in walk order.
 func Test_emitDataSection_Hardlinks(t *testing.T) {
 	pc, fsys := hardlinkPackage(t)
+	got, contents := readDataSection(t, pc, fsys)
 
+	// usr/bin/alias sorts first, so it carries the contents
+	regular := map[string]string{
+		"usr/bin/alias": "tool contents",
+		"usr/lib/other": "other contents",
+	}
+	for name, want := range regular {
+		hdr, ok := got[name]
+		if !ok {
+			t.Fatalf("%s: missing", name)
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			t.Errorf("%s: type %q, want regular file", name, hdr.Typeflag)
+		}
+		if contents[name] != want {
+			t.Errorf("%s: contents %q, want %q", name, contents[name], want)
+		}
+	}
+	for _, name := range []string{"usr/bin/tool", "usr/lib/tool"} {
+		hdr, ok := got[name]
+		if !ok {
+			t.Fatalf("%s: missing", name)
+		}
+		if hdr.Typeflag != tar.TypeLink || hdr.Linkname != "usr/bin/alias" || hdr.Size != 0 {
+			t.Errorf("%s: type %q linkname %q size %d, want a link to usr/bin/alias with size 0",
+				name, hdr.Typeflag, hdr.Linkname, hdr.Size)
+		}
+	}
+}
+
+// readDataSection writes the data section of the package and returns its
+// headers and contents by path.
+func readDataSection(
+	t *testing.T, pc *PackageBuild, fsys apkofs.FullFS,
+) (map[string]*tar.Header, map[string]string) {
+	t.Helper()
 	out, err := os.Create(filepath.Join(t.TempDir(), "data.tar.gz"))
 	if err != nil {
 		t.Fatal(err)
@@ -246,32 +291,112 @@ func Test_emitDataSection_Hardlinks(t *testing.T) {
 		got[hdr.Name] = hdr
 		contents[hdr.Name] = string(body)
 	}
+	return got, contents
+}
 
-	// usr/bin/alias sorts first, so it carries the contents
-	regular := map[string]string{
-		"usr/bin/alias": "tool contents",
-		"usr/lib/other": "other contents",
+// setCapability sets a capability on path in the package the way the build
+// does for package.setcap, through the workspace filesystem.
+func setCapability(t *testing.T, pc *PackageBuild, path string) []byte {
+	t.Helper()
+	capability := config.EncodeCapability(1<<13, 1<<13, 0) // cap_net_raw=ep
+	name := filepath.Join(melangeOutputDirName, pc.PackageName, path)
+	err := pc.Build.WorkspaceDirFS.SetXattr(name, "security.capability", capability)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for name, want := range regular {
-		hdr, ok := got[name]
-		if !ok {
-			t.Fatalf("%s: missing", name)
-		}
-		if hdr.Typeflag != tar.TypeReg {
-			t.Errorf("%s: type %q, want regular file", name, hdr.Typeflag)
-		}
-		if contents[name] != want {
-			t.Errorf("%s: contents %q, want %q", name, contents[name], want)
-		}
+	return capability
+}
+
+// A path with xattrs is installed as a file of its own, so it counts in full.
+func Test_calculateInstalledSize_HardlinksXattrs(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		xattr string
+		tools int64 // times "tool contents" is counted
+	}{
+		// usr/bin/alias is the first path of its inode in walk order
+		{name: "first path", xattr: "usr/bin/alias", tools: 3},
+		{name: "later path", xattr: "usr/lib/tool", tools: 2},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			pc, fsys := hardlinkPackage(t)
+			setCapability(t, pc, tt.xattr)
+
+			want := tt.tools*int64(len("tool contents")) +
+				int64(len("lib contents")+len("other contents"))
+			for _, d := range []string{".", "usr", "usr/bin", "usr/lib"} {
+				fi, err := os.Lstat(filepath.Join(pc.WorkspaceSubdir(), d))
+				if err != nil {
+					t.Fatal(err)
+				}
+				want += fi.Size()
+			}
+
+			if err := pc.calculateInstalledSize(fsys); err != nil {
+				t.Fatal(err)
+			}
+			if pc.InstalledSize != want {
+				t.Errorf("installed size %d, want %d", pc.InstalledSize, want)
+			}
+		})
 	}
-	for _, name := range []string{"usr/bin/tool", "usr/lib/tool"} {
-		hdr, ok := got[name]
-		if !ok {
-			t.Fatalf("%s: missing", name)
-		}
-		if hdr.Typeflag != tar.TypeLink || hdr.Linkname != "usr/bin/alias" || hdr.Size != 0 {
-			t.Errorf("%s: type %q linkname %q size %d, want a link to usr/bin/alias with size 0",
-				name, hdr.Typeflag, hdr.Linkname, hdr.Size)
-		}
+}
+
+// A path with xattrs is never written as a link entry nor used as the target
+// of one: apk-tools chowns a link after creating it, and the chown clears
+// security.capability on the inode the link shares.
+func Test_emitDataSection_HardlinksXattrs(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		xattr   string
+		regular []string          // paths of usr/bin/tool's inode with contents
+		links   map[string]string // link entry to target
+	}{{
+		name:    "first path",
+		xattr:   "usr/bin/alias",
+		regular: []string{"usr/bin/alias", "usr/bin/tool", "usr/lib/tool"},
+		links:   map[string]string{"usr/lib/libfoo.so.1": "usr/lib/libfoo.so"},
+	}, {
+		name:    "later path",
+		xattr:   "usr/lib/tool",
+		regular: []string{"usr/bin/alias", "usr/lib/tool"},
+		links: map[string]string{
+			"usr/bin/tool":        "usr/bin/alias",
+			"usr/lib/libfoo.so.1": "usr/lib/libfoo.so",
+		},
+	}} {
+		t.Run(tt.name, func(t *testing.T) {
+			pc, fsys := hardlinkPackage(t)
+			capability := setCapability(t, pc, tt.xattr)
+			got, contents := readDataSection(t, pc, fsys)
+
+			for _, name := range tt.regular {
+				hdr, ok := got[name]
+				if !ok {
+					t.Fatalf("%s: missing", name)
+				}
+				if hdr.Typeflag != tar.TypeReg || contents[name] != "tool contents" {
+					t.Errorf("%s: type %q contents %q, want a regular file with %q",
+						name, hdr.Typeflag, contents[name], "tool contents")
+				}
+				xattr, ok := hdr.PAXRecords["SCHILY.xattr.security.capability"]
+				if name == tt.xattr && (!ok || xattr != string(capability)) {
+					t.Errorf("%s: capability %q, want %q", name, xattr, capability)
+				}
+				if name != tt.xattr && ok {
+					t.Errorf("%s: capability %q, want none", name, xattr)
+				}
+			}
+			for name, target := range tt.links {
+				hdr, ok := got[name]
+				if !ok {
+					t.Fatalf("%s: missing", name)
+				}
+				if hdr.Typeflag != tar.TypeLink || hdr.Linkname != target {
+					t.Errorf("%s: type %q linkname %q, want a link to %s",
+						name, hdr.Typeflag, hdr.Linkname, target)
+				}
+			}
+		})
 	}
 }

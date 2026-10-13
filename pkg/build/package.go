@@ -408,14 +408,14 @@ func combine(out io.Writer, inputs ...io.Reader) error {
 
 // TODO(kaniini): generate APKv3 packages
 func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
-	// a file with several hard links is counted once, as the data section
-	// stores it once
+	// a file with several hard links is counted once for the paths the data
+	// section writes as links to it
 	links, err := tarball.OpenDiskLinks(pc.WorkspaceSubdir())
 	if err != nil {
 		return err
 	}
 	defer links.Close()
-	seen := map[uint64]bool{}
+	var targets tarball.LinkTargets
 
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -433,10 +433,11 @@ func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
 				return err
 			}
 			if linked {
-				if seen[inode] {
+				// the writer ignores errors listing xattrs too
+				xattrs, _ := fsys.ListXattrs(path)
+				if _, ok := targets.Target(inode, path, xattrs); ok {
 					return nil
 				}
-				seen[inode] = true
 			}
 		}
 

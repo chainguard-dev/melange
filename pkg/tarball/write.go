@@ -121,6 +121,37 @@ func (d *DiskLinks) Inode(name string) (uint64, bool, error) {
 	return inode, true, nil
 }
 
+// LinkTargets decides which paths of hard linked files are written as link
+// entries. Every path of an inode links to the first one seen, unless either
+// of the two has xattrs: apk-tools chowns a link after creating it, which
+// makes the kernel clear security.capability on the inode the link shares.
+// A path with xattrs is written as a file of its own and is not linked to.
+type LinkTargets struct {
+	seen map[uint64]linkTarget
+}
+
+type linkTarget struct {
+	name   string
+	xattrs bool
+}
+
+// Target records name as a path of inode, with the xattrs listed for name, and
+// returns the path name is to be written as a link to, if any.
+func (l *LinkTargets) Target(inode uint64, name string, xattrs map[string][]byte) (string, bool) {
+	if l.seen == nil {
+		l.seen = map[uint64]linkTarget{}
+	}
+	target, ok := l.seen[inode]
+	if !ok {
+		l.seen[inode] = linkTarget{name: name, xattrs: len(xattrs) > 0}
+		return "", false
+	}
+	if target.xattrs || len(xattrs) > 0 {
+		return "", false
+	}
+	return target.name, true
+}
+
 func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, users, groups map[int]string) error { //nolint:gocyclo
 	if users == nil {
 		users = map[int]string{}
@@ -128,7 +159,7 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 	if groups == nil {
 		groups = map[int]string{}
 	}
-	seenFiles := map[uint64]string{}
+	var targets LinkTargets
 	var disk *DiskLinks
 	if c.diskDir != "" {
 		var err error
@@ -262,6 +293,17 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 		if link != "" {
 			header.Typeflag = tar.TypeSymlink
 		}
+		// only capture xattrs for real objects in the FS
+		var xattrs map[string][]byte
+		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeDir {
+			if xfs, ok := fsys.(apkfs.XattrFS); ok {
+				// we can ignore errors
+				if x, err := xfs.ListXattrs(path); err == nil {
+					xattrs = x
+				}
+			}
+		}
+
 		// only regular files become links: a link entry carries no target or
 		// device number of its own
 		if info.Mode().IsRegular() {
@@ -281,12 +323,10 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 			}
 
 			if linked {
-				if oldpath, ok := seenFiles[inode]; ok {
+				if oldpath, ok := targets.Target(inode, header.Name, xattrs); ok {
 					header.Typeflag = tar.TypeLink
 					header.Linkname = oldpath
 					header.Size = 0
-				} else {
-					seenFiles[inode] = header.Name
 				}
 			}
 		}
@@ -325,18 +365,10 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 			}
 		}
 
-		// only capture xattrs for real objects in the FS
-		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeDir {
-			xfs, ok := fsys.(apkfs.XattrFS)
-			if ok {
-				xattrs, err := xfs.ListXattrs(path)
-				// we can ignore errors
-				if err == nil && xattrs != nil {
-					for name, value := range xattrs {
-						header.PAXRecords[xattrTarPAXRecordsPrefix+name] = string(value)
-					}
-				}
-			}
+		// a link entry has no xattrs: LinkTargets keeps paths with xattrs as
+		// regular entries
+		for name, value := range xattrs {
+			header.PAXRecords[xattrTarPAXRecordsPrefix+name] = string(value)
 		}
 
 		if err := tw.WriteHeader(header); err != nil {

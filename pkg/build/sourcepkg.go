@@ -71,6 +71,13 @@ const (
 	// pays nothing for the feature.
 	sourceStashEnv = "MELANGE_SOURCE_STASH"
 
+	// sourceRestoreEnv lets git-checkout restore a checkout from the
+	// git:<commit>.tar.gz a companion placed in --cache-dir instead of
+	// cloning. It is exported only for builds that emit a companion (and,
+	// later, for a rebuild that asks for it), so an ordinary build never
+	// silently switches from a fresh clone to a rebuilt repository.
+	sourceRestoreEnv = "MELANGE_SOURCE_RESTORE"
+
 	sourceInstallRoot  = "usr/src"
 	sourceUpstreamDir  = "upstream"
 	sourceManifestFile = "SOURCES.sha256"
@@ -156,6 +163,7 @@ func (b *Build) guestEnvironment(ctx context.Context) map[string]string {
 	}
 	if b.wantsSourcePackage(ctx) {
 		env[sourceStashEnv] = sourceStashPath()
+		env[sourceRestoreEnv] = "1"
 	}
 	return env
 }

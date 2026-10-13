@@ -189,6 +189,27 @@ func hardlinkPackage(t *testing.T) (*PackageBuild, apkofs.FullFS) {
 	return pc, fsys
 }
 
+// A file with several hard links is installed once, so it counts once.
+func Test_calculateInstalledSize_Hardlinks(t *testing.T) {
+	pc, fsys := hardlinkPackage(t)
+
+	want := int64(len("tool contents") + len("other contents"))
+	for _, d := range []string{".", "usr", "usr/bin", "usr/lib"} {
+		fi, err := os.Lstat(filepath.Join(pc.WorkspaceSubdir(), d))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want += fi.Size()
+	}
+
+	if err := pc.calculateInstalledSize(fsys); err != nil {
+		t.Fatal(err)
+	}
+	if pc.InstalledSize != want {
+		t.Errorf("installed size %d, want %d", pc.InstalledSize, want)
+	}
+}
+
 // Files hard linked in the workspace are written once, with every other path
 // to the same inode as a link to the first one in walk order.
 func Test_emitDataSection_Hardlinks(t *testing.T) {

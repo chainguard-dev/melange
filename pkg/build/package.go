@@ -408,6 +408,15 @@ func combine(out io.Writer, inputs ...io.Reader) error {
 
 // TODO(kaniini): generate APKv3 packages
 func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
+	// a file with several hard links is counted once, as the data section
+	// stores it once
+	links, err := tarball.OpenDiskLinks(pc.WorkspaceSubdir())
+	if err != nil {
+		return err
+	}
+	defer links.Close()
+	seen := map[uint64]bool{}
+
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -416,6 +425,19 @@ func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
 		fi, err := d.Info()
 		if err != nil {
 			return err
+		}
+
+		if fi.Mode().IsRegular() {
+			inode, linked, err := links.Inode(path)
+			if err != nil {
+				return err
+			}
+			if linked {
+				if seen[inode] {
+					return nil
+				}
+				seen[inode] = true
+			}
 		}
 
 		pc.InstalledSize += fi.Size()

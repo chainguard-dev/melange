@@ -195,6 +195,23 @@ func WithOutDir(outDir string) Option {
 	}
 }
 
+// WithSourcePackage emits an <origin>-source companion carrying the complete
+// corresponding source alongside the binaries.
+func WithSourcePackage(enabled bool) Option {
+	return func(b *Build) error {
+		b.SourcePackage = enabled
+		return nil
+	}
+}
+
+// WithSourceOutDir routes the -source companion to its own output directory.
+func WithSourceOutDir(dir string) Option {
+	return func(b *Build) error {
+		b.SourceOutDir = dir
+		return nil
+	}
+}
+
 // WithArch sets the build architecture to use for this build context.
 func WithArch(arch apko_types.Architecture) Option {
 	return func(b *Build) error {

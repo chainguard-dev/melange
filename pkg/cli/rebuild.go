@@ -300,7 +300,7 @@ type entry struct{ digest, contents string }
 // Other paths which may have a diff will just be shown as digest changes, and users should inspect those diffs manually.
 func isImportantPath(path string) bool {
 	switch path {
-	case ".PKGINFO", ".melange.yaml":
+	case ".PKGINFO", ".melange.yaml", ".source.sha256":
 		return true
 	}
 	return strings.HasPrefix(path, "var/lib/db/sbom/")

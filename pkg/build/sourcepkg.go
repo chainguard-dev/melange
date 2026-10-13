@@ -185,8 +185,12 @@ type sourceDirFile struct {
 
 // collectSourceDir lists the files populateWorkspace copies into the
 // workspace: regular files only, with the .melangeignore rules applied. What
-// ships is exactly what the build saw, no more and no less.
+// ships is exactly what the build saw, no more and no less: with
+// --empty-workspace, that is nothing.
 func (b *Build) collectSourceDir(ctx context.Context) ([]sourceDirFile, int64, error) {
+	if b.EmptyWorkspace {
+		return nil, 0, nil
+	}
 	// A read-only view. apko's DirFS probes a directory by creating and
 	// deleting a temporary file in it, which is a side effect on the user's
 	// source tree and a race for any other process walking the same directory

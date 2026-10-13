@@ -401,6 +401,23 @@ func TestSourcePackageAssemblyConfigurationOnly(t *testing.T) {
 	}
 }
 
+// --empty-workspace skips populateWorkspace, so the build never sees the
+// source directory; the companion must not carry it either.
+func TestSourcePackageAssemblyEmptyWorkspace(t *testing.T) {
+	b, src := sourceBuild(t, nil, true)
+	b.EmptyWorkspace = true
+	writeFileMode(t, src, "fix.patch", 0o644, "--- a\n+++ b\n")
+	writeFileMode(t, src, ".env", 0o600, "TOKEN=secret\n")
+	manifest, err := b.assembleSourcePackage(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(manifest)), "\n")
+	if len(lines) != 1 || !strings.HasSuffix(lines[0], "  foo.yaml") {
+		t.Fatalf("expected a manifest of just foo.yaml, got %q", manifest)
+	}
+}
+
 func TestSbomConfigurationDeclaresTheCompanionOnlyWhenEmitting(t *testing.T) {
 	b, _ := sourceBuild(t, nil, true)
 	if got := b.sbomConfiguration(); got != b.Configuration {

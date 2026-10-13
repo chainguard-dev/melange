@@ -100,7 +100,7 @@ func (t *Test) Compile(ctx context.Context) error {
 		te := &cfg.Subpackages[i].Test.Environment.Contents
 
 		// Append the subpackage that we're testing to be installed.
-		te.Packages = append(te.Packages, sp.Name)
+		te.Packages = append(te.Packages, t.testPackage(sp.Name))
 
 		if err := test.CompilePipelines(ctx, sm, sp.Test.Pipeline); err != nil {
 			return fmt.Errorf("compiling subpackage %q tests: %w", sp.Name, err)
@@ -128,7 +128,7 @@ func (t *Test) Compile(ctx context.Context) error {
 		if t.Package != "" {
 			te.Packages = append(te.Packages, t.Package)
 		} else {
-			te.Packages = append(te.Packages, t.Configuration.Package.Name)
+			te.Packages = append(te.Packages, t.testPackage(t.Configuration.Package.Name))
 		}
 
 		if err := test.CompilePipelines(ctx, sm, cfg.Test.Pipeline); err != nil {
@@ -223,6 +223,8 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 		te.Packages = append(te.Packages, tc.Needs...)
 
 		// This can be overridden by the command line but in the context of a build, just use the main package.
+		// It is deliberately not pinned here: pinning is decided when the test
+		// runs (see Test.testPackage), so it can be turned off at that point.
 		te.Packages = append(te.Packages, b.Configuration.Package.Name)
 
 		// Sort and remove duplicates.
@@ -234,6 +236,33 @@ func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 	}
 
 	return nil
+}
+
+// testPackage returns the package to install when testing name. When
+// PinTestPackages is set and no package was given on the command line, name is
+// pinned to the version the configuration builds. An explicit package on the
+// command line usually means a published package is being tested, so nothing
+// is pinned, subpackages included.
+func (t *Test) testPackage(name string) string {
+	if !t.PinTestPackages || t.Package != "" {
+		return name
+	}
+	return pinnedTestPackage(name, t.Configuration.Package)
+}
+
+// pinnedTestPackage returns the package to install when testing name: name
+// pinned to the full version (version and epoch) that pkg builds. Without the
+// pin, apk installs the newest name it can find in any repository, and the
+// freshly built packages are just one more repository, so a newer build of the
+// same package elsewhere would be tested instead of the one just built.
+//
+// Names that already carry a version constraint, and configurations without a
+// version, are returned unchanged.
+func pinnedTestPackage(name string, pkg config.Package) string {
+	if pkg.Version == "" || strings.ContainsAny(name, "=<>~") {
+		return name
+	}
+	return name + "=" + pkg.FullVersion()
 }
 
 type Compiled struct {

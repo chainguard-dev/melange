@@ -426,6 +426,48 @@ func TestSourcePackageAssemblyEmptyWorkspace(t *testing.T) {
 	}
 }
 
+// The companion is published: a private key in the source directory is
+// refused rather than shipped, and .melangeignore is the way to keep it out.
+func TestSourcePackageAssemblyRefusesPrivateKeys(t *testing.T) {
+	const rsa = "-----BEGIN RSA PRIVATE KEY-----\nMIIB\n-----END RSA PRIVATE KEY-----\n"
+	for _, tc := range []struct {
+		name, file, body, ignore, wantErr string
+		signingKey                        bool
+	}{
+		{name: "signing key", file: "local-melange.rsa", body: rsa, signingKey: true, wantErr: "the signing key"},
+		{name: "pkcs8 key", file: "certs/server.key", body: "-----BEGIN PRIVATE KEY-----\nMIIE\n", wantErr: "certs/server.key in the source directory"},
+		{name: "openssh key", file: "id_ed25519", body: "-----BEGIN OPENSSH PRIVATE KEY-----\nb3Bl\n", wantErr: "id_ed25519 in the source directory"},
+		{name: "ignored key", file: "local-melange.rsa", body: rsa, signingKey: true, ignore: "local-melange.rsa\n"},
+		{name: "key in a patch", file: "add-test-key.patch", body: "+++ b/test.key\n+-----BEGIN RSA PRIVATE KEY-----\n"},
+		{name: "public key", file: "local-melange.rsa.pub", body: "-----BEGIN PUBLIC KEY-----\nMIIB\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b, src := sourceBuild(t, nil, true)
+			writeFileMode(t, src, "fix.patch", 0o644, "--- a\n+++ b\n")
+			writeFileMode(t, src, tc.file, 0o600, tc.body)
+			if tc.ignore != "" {
+				writeFileMode(t, src, ".melangeignore", 0o644, tc.ignore)
+			}
+			if tc.signingKey {
+				b.SigningKey = filepath.Join(src, tc.file)
+			}
+			manifest, err := b.assembleSourcePackage(t.Context())
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("want an error containing %q, got %v", tc.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.ignore != "" && strings.Contains(string(manifest), tc.file) {
+				t.Fatalf("%s reached the manifest:\n%s", tc.file, manifest)
+			}
+		})
+	}
+}
+
 func TestSbomConfigurationDeclaresTheCompanionOnlyWhenEmitting(t *testing.T) {
 	b, _ := sourceBuild(t, nil, true)
 	if got := b.sbomConfiguration(); got != b.Configuration {

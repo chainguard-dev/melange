@@ -27,6 +27,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -264,6 +265,50 @@ func (b *Build) collectSourceDir(ctx context.Context) ([]sourceDirFile, int64, e
 	return files, total, nil
 }
 
+// pemPrivateKey matches the armor line of a PEM private key (PKCS#1, PKCS#8,
+// EC, OpenSSH, ...) at the start of a line, so a patch adding one ("+-----")
+// or a recipe embedding one in an indented block is not mistaken for a key.
+var pemPrivateKey = regexp.MustCompile(`(?m)^-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----`)
+
+// maxKeySniff bounds the files read for a private key: key files are a few
+// kilobytes, and source directories can hold large vendored artifacts.
+const maxKeySniff = 64 << 10
+
+// refusePrivateKeys fails when the source directory holds a private key: the
+// companion is published, and a key beside the recipe (the signing key, by
+// default, when --source-dir is the recipe's directory) would ship with it.
+// The key is refused rather than dropped, so that what ships stays exactly
+// what the build saw; .melangeignore keeps it out of both.
+func (b *Build) refusePrivateKeys(files []sourceDirFile) error {
+	var signingKey string
+	if b.SigningKey != "" {
+		if abs, err := filepath.Abs(b.SigningKey); err == nil {
+			signingKey = abs
+		}
+	}
+	srcDir, err := filepath.Abs(b.SourceDir)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		p := filepath.Join(srcDir, filepath.FromSlash(f.path))
+		if p == signingKey {
+			return fmt.Errorf("the signing key %s is in the source directory %s; move it out, or list %s in %s", b.SigningKey, b.SourceDir, f.path, b.WorkspaceIgnore)
+		}
+		if f.size > maxKeySniff {
+			continue
+		}
+		data, err := os.ReadFile(p) // #nosec G304 - a file of the build's own source directory
+		if err != nil {
+			return err
+		}
+		if pemPrivateKey.Match(data) {
+			return fmt.Errorf("%s in the source directory %s holds a private key; move it out, or list it in %s", f.path, b.SourceDir, b.WorkspaceIgnore)
+		}
+	}
+	return nil
+}
+
 // assembleSourcePackage lays the companion out under melange-out, where
 // every other package's contents already are, and returns the manifest of
 // what it contains.
@@ -317,6 +362,9 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 	files, total, err := b.collectSourceDir(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing source directory %s: %w", b.SourceDir, err)
+	}
+	if err := b.refusePrivateKeys(files); err != nil {
+		return nil, fmt.Errorf("refusing to assemble %s: %w", b.sourcePackageName(), err)
 	}
 	for _, f := range files {
 		rel := filepath.FromSlash(f.path)

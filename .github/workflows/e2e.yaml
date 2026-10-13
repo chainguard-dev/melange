@@ -107,6 +107,17 @@ jobs:
           ls -la ./packages-source/x86_64/
           ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --out-dir=./rebuilt-from-source
 
+      # The companion's upstream directory as --cache-dir: git-checkout must
+      # restore the intact checkout instead of cloning, and refuse every
+      # tampered one (file contents, commit sidecar rewritten or missing)
+      # rather than build from it. go-build checks out a pinned commit.
+      - name: Restore git checkouts from the -source package, and refuse tampered ones
+        if: matrix.cfg == 'go-build.yaml'
+        run: |
+          apk add tar
+          companion=$(ls ./packages-source/x86_64/*-source-*.apk)
+          MELANGE=./melange ./e2e-tests/source-package-restore-test examples/go-build.yaml "${companion}"
+
       - name: Upload APKs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

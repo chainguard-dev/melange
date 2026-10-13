@@ -1,0 +1,82 @@
+#!/bin/sh
+# Exercise the git-checkout restore path against a -source companion's
+# upstream directory used as --cache-dir: the intact cache must be restored
+# in place of a clone, and each tampered cache must be refused rather than
+# built from.
+#
+# usage: source-package-restore-test <config.yaml> <companion.apk>
+#
+# MELANGE names the melange binary, ARGS any extra build arguments.
+set -u
+
+MELANGE=${MELANGE:-melange}
+ARGS=${ARGS:-""}
+cfg=$1
+companion=$2
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+fail() { echo "FAIL: $*"; exit 1; }
+
+# The companion is an APK: concatenated gzip streams of one tar.
+mkdir "$work/companion"
+tar -xzf "$companion" -C "$work/companion" 2>/dev/null ||
+    fail "unpacking $companion"
+upstream=$(find "$work/companion/usr/src" -mindepth 2 -maxdepth 2 -type d -name upstream)
+[ -n "$upstream" ] || fail "$companion has no upstream directory"
+archive=$(find "$upstream" -maxdepth 1 -name 'git:*.tar.gz' | head -n 1)
+[ -n "$archive" ] || fail "$companion carries no git checkout archive"
+key=$(basename "$archive" .tar.gz)
+echo "companion carries $key"
+
+# build <name>: build from $work/<name> as the cache, logging to $work/<name>.log
+build() {
+    # shellcheck disable=SC2086 # ARGS is a list of arguments
+    "$MELANGE" build "$cfg" --arch=x86_64 --namespace=wolfi --source-package \
+        --cache-dir="$work/$1" --out-dir="$work/out-$1" $ARGS > "$work/$1.log" 2>&1
+}
+
+refused() {
+    if build "$1"; then
+        cat "$work/$1.log"
+        fail "$1: built from a tampered cache"
+    fi
+    grep -q "does not authenticate to expected-commit" "$work/$1.log" || {
+        cat "$work/$1.log"
+        fail "$1: failed, but not because the cache did not authenticate"
+    }
+    echo "PASS: $1 refused"
+}
+
+# The intact cache stands in for the clone.
+cp -a "$upstream" "$work/intact"
+build intact || { cat "$work/intact.log"; fail "intact: build failed"; }
+grep -q "in cache; restoring instead of cloning" "$work/intact.log" || {
+    cat "$work/intact.log"
+    fail "intact: the cache was not restored"
+}
+echo "PASS: intact cache restored"
+
+# One file's contents changed, the archive otherwise as git archive made it.
+cp -a "$upstream" "$work/tampered-file"
+mkdir "$work/unpacked"
+tar -xzf "$archive" -C "$work/unpacked" || fail "unpacking $archive"
+prefix=$(ls "$work/unpacked")
+victim=$(find "$work/unpacked/$prefix" -type f | sort | head -n 1)
+[ -n "$victim" ] || fail "$archive holds no files"
+echo "tampered" >> "$victim"
+tar -czf "$work/tampered-file/$key.tar.gz" -C "$work/unpacked" "$prefix" ||
+    fail "repacking $archive"
+refused tampered-file
+
+# The commit sidecar rewritten: a different commit, whose name is no longer
+# expected-commit.
+cp -a "$upstream" "$work/tampered-commit"
+sed -i '$s/$/ (tampered)/' "$work/tampered-commit/$key.commit"
+refused tampered-commit
+
+# The commit sidecar gone: nothing to authenticate the archive against.
+cp -a "$upstream" "$work/missing-commit"
+rm -f "$work/missing-commit/$key.commit"
+refused missing-commit

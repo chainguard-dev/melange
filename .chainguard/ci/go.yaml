@@ -22,6 +22,9 @@ checks:
       vars:
         GOTOOLCHAIN: local
         GOTMPDIR: /var/tmp
+        # Checks intercepts egress TLS with a CA the guest trusts; the build
+        # guests the integration tests start trust the same bundle.
+        MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
     user: build
     trigger:
       - presubmit

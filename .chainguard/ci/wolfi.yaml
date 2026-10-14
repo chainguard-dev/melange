@@ -23,6 +23,9 @@ environment:
   vars:
     GOTOOLCHAIN: local
     GOTMPDIR: /var/tmp
+    # Checks intercepts egress TLS with a CA the guest trusts; melange's build
+    # and test guests trust the same bundle through this.
+    MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
 
 checks:
   melange-x86_64:
@@ -46,8 +49,8 @@ checks:
 
   melange-aarch64:
     description: >-
-      Builds the melange the qemu leg runs, and fetches the Alpine linux-virt
-      kernel once for every qemu instance to share.
+      Builds the melange the qemu leg runs, and picks the Alpine linux-virt
+      kernel build once for every qemu instance to fetch.
     trigger:
       - presubmit
       - postsubmit
@@ -59,16 +62,15 @@ checks:
         - sum.golang.org
         - storage.googleapis.com
         - dl-cdn.alpinelinux.org
-    # Only the image and the modules tree: the .apk they came from would
-    # double the output, which overruns the workspace quota. Tar rather than
-    # outputting kernel/ directly: the modules tree has symlinks in it.
+    # The kernel itself overruns the workspace quota as an output, so only
+    # its version is handed on; each instance fetches that same build with
+    # QEMU_KERNEL_VERSION.
     script: |
       make melange
-      make fetch-kernel
+      make kernel/aarch64/chosen
       mkdir -p dist
       mv melange dist/
-      tar -czf dist/kernel.tar.gz kernel/aarch64/vmlinuz kernel/aarch64/modules
-      rm -rf kernel
+      cp kernel/aarch64/chosen dist/kernel-version
     outputs:
       dist: {path: dist}
 
@@ -103,6 +105,7 @@ checks:
     vars:
       ARCH: x86_64
       TMPDIR: /var/tmp
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
     foreach: &foreach
       # - rust-1.86 # takes ~35-40 minutes to build; used for testing LICENSE file functionality
       # - gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
@@ -176,21 +179,21 @@ checks:
           - -c
           - 'wolfictl bump "${PACKAGE}"'
       - name: build
-        # wolfi-dev/os's Makefile reads SOURCE_DATE_EPOCH from git log, which
-        # git refuses in a checkout another user owns; the command line
-        # overrides its := assignment.
+        # wolfi-dev/os's Makefile reads SOURCE_DATE_EPOCH from git log, but
+        # its input tree carries no .git, so the epoch is this checkout's
+        # commit; the command line overrides the Makefile's := assignment.
         script: |
-          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          sde=$(git -C .. log -1 --pretty=%ct)
           make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" MELANGE=melange MELANGE_RUNNER=bubblewrap \
             MELANGE_EXTRA_OPTS=--generate-provenance "package/${PACKAGE}"
       - name: test with the docker runner
         script: |
-          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          sde=$(git -C .. log -1 --pretty=%ct)
           make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" MELANGE=melange MELANGE_RUNNER=docker "test/${PACKAGE}"
       - name: test fping's xattrs with the bubblewrap runner
         script: |
           [ "${PACKAGE}" = fping ] || exit 0
-          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          sde=$(git -C .. log -1 --pretty=%ct)
           make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" MELANGE=melange MELANGE_RUNNER=bubblewrap "test/${PACKAGE}"
       - &provenance
         name: SLSA provenance
@@ -241,6 +244,7 @@ checks:
       packages:
         - bash
         - busybox
+        - curl # make fetch-kernel
         - git
         - gnutar
         - jq
@@ -259,6 +263,7 @@ checks:
     vars:
       ARCH: aarch64
       TMPDIR: /var/tmp
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
     foreach: *foreach
     inputs:
       - path: os
@@ -274,26 +279,24 @@ checks:
           test -c /dev/kvm
           install -m 0755 ../.melange-dist/melange /usr/bin/melange
           melange version
-          mkdir -p /var/tmp/qemu
-          tar -xzf ../.melange-dist/kernel.tar.gz -C /var/tmp/qemu
-          test -f "/var/tmp/qemu/kernel/${ARCH}/vmlinuz"
+          make -C .. fetch-kernel ARCH="${ARCH}" QEMU_KERNEL_VERSION="$(cat ../.melange-dist/kernel-version)"
       - *bump
       - name: build
         script: |
-          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          sde=$(git -C .. log -1 --pretty=%ct)
           make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" \
-            QEMU_KERNEL_IMAGE="/var/tmp/qemu/kernel/${ARCH}/vmlinuz" \
-            QEMU_KERNEL_MODULES="/var/tmp/qemu/kernel/${ARCH}/modules/" \
+            QEMU_KERNEL_IMAGE="$(cd .. && pwd)/kernel/${ARCH}/vmlinuz" \
+            QEMU_KERNEL_MODULES="$(cd .. && pwd)/kernel/${ARCH}/modules/" \
             MELANGE=melange \
             MELANGE_EXTRA_OPTS="--runner qemu --generate-provenance" \
             "package/${PACKAGE}"
       - *provenance
       - name: test
         script: |
-          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          sde=$(git -C .. log -1 --pretty=%ct)
           make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" \
-            QEMU_KERNEL_IMAGE="/var/tmp/qemu/kernel/${ARCH}/vmlinuz" \
-            QEMU_KERNEL_MODULES="/var/tmp/qemu/kernel/${ARCH}/modules/" \
+            QEMU_KERNEL_IMAGE="$(cd .. && pwd)/kernel/${ARCH}/vmlinuz" \
+            QEMU_KERNEL_MODULES="$(cd .. && pwd)/kernel/${ARCH}/modules/" \
             MELANGE=melange \
             MELANGE_EXTRA_OPTS="--runner qemu" \
             "test/${PACKAGE}"

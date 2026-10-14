@@ -189,6 +189,13 @@ kernel/%/APKINDEX: kernel/%/APKINDEX.tar.gz
 	tar -x -C kernel --to-stdout -f $< APKINDEX > $@.tmp.$$$$ && mv $@.tmp.$$$$ $@
 	touch $@
 
+# QEMU_KERNEL_VERSION pins the linux-virt build instead of taking the newest,
+# so separate fetches get the same kernel.
+ifdef QEMU_KERNEL_VERSION
+kernel/%/chosen:
+	mkdir -p $(dir $@)
+	echo '$(QEMU_KERNEL_VERSION)' > $@
+else
 kernel/%/chosen: kernel/%/APKINDEX
 	# Extract lines with 'P:linux-qemu-generic' and the following line that contains the version
 	# This approach is compatible with both GNU and BSD sed
@@ -198,6 +205,7 @@ kernel/%/chosen: kernel/%/APKINDEX
 	# Sanity check that this looks like an apk version
 	grep -E '^([0-9]+\.)+[0-9]+-r[0-9]+$$' $@.tmp
 	mv $@.tmp $@
+endif
 
 kernel/%/linux.apk: kernel/%/chosen
 	@$(call curlget,$@,$(QEMU_KERNEL_REPO)/$*/linux-virt-$(shell cat kernel/$*/chosen).apk)

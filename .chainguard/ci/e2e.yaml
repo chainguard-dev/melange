@@ -19,6 +19,9 @@ environment:
   vars:
     GOTOOLCHAIN: local
     GOTMPDIR: /var/tmp
+    # Checks intercepts egress TLS with a CA the guest trusts; melange's build
+    # and test guests trust the same bundle through this.
+    MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
 
 checks:
   rebuild:

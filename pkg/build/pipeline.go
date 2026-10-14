@@ -155,24 +155,36 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 		if data[k] == "" {
 			data[k] = v.Default
 		}
-		if data[k] != "" {
-			switch k {
-			case "expected-sha256", "expected-sha512":
-				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
-					return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
-				}
-			case "expected-commit":
-				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
-					return data, fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha length", k)
-				}
-			}
-		}
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
 	}
 
 	return data, nil
+}
+
+// validateDigests checks the format of digest inputs once substitutions have
+// been applied, so that a pipeline can forward a digest it was given (e.g.
+// `expected-sha256: ${{inputs.sha256}}`) to a nested pipeline.
+func validateDigests(mutated map[string]string, inputs map[string]config.Input) error {
+	for k := range inputs {
+		v := mutated[fmt.Sprintf("${{inputs.%s}}", k)]
+		if v == "" {
+			continue
+		}
+		switch k {
+		case "expected-sha256", "expected-sha512":
+			if !matchValidShaChars(v) || len(v) != expectedShaLength(k) {
+				return fmt.Errorf("checksum input %q for pipeline, invalid length", k)
+			}
+		case "expected-commit":
+			if !matchValidShaChars(v) || len(v) != expectedShaLength(k) {
+				return fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha length", k)
+			}
+		}
+	}
+
+	return nil
 }
 
 func matchValidShaChars(s string) bool {

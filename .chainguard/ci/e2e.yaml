@@ -79,7 +79,12 @@ checks:
         - registry.npmjs.org
     steps:
       - name: build melange
+        # The Checks checkout has a detached HEAD and an empty refs/, which
+        # melange drops when it copies the workspace into the guest, and
+        # git refuses a .git without refs/. A branch at HEAD keeps it; the
+        # build of melange.yaml stamps its VCS status from it.
         script: |
+          git branch -f checks-head HEAD
           make melange
           ./melange keygen
       - name: build

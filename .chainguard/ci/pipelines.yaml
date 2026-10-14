@@ -154,8 +154,9 @@ checks:
     description: >-
       Runs make test-e2e-unit for one Go package: go generate, which builds
       the pkg/sca testdata packages with the bubblewrap runner, then
-      go test -tags e2e -race. As root: go generate writes into the
-      checkout, which root owns.
+      go test -tags e2e -race. Unprivileged, as on GitHub's runners, in a
+      copy of the checkout: go generate writes into the tree, and the
+      checkout is root's.
     environment:
       packages:
         - go-1.27~1.27
@@ -170,6 +171,10 @@ checks:
         GOTOOLCHAIN: local
         GOTMPDIR: /var/tmp
         MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+        # /tmp is a tmpfs sized from guest RAM, which pkg/sca's linux
+        # checkout fills.
+        TMPDIR: /var/tmp
+    user: build
     trigger:
       - presubmit
       - postsubmit
@@ -192,7 +197,7 @@ checks:
         - release-assets.githubusercontent.com
         - pypi.org
         - files.pythonhosted.org
-    cmd:
-      - sh
-      - -c
-      - 'make test-e2e-unit E2E_PKG="${E2E_PKG}"'
+    script: |
+      cp -a . /var/tmp/src
+      cd /var/tmp/src
+      make test-e2e-unit E2E_PKG="${E2E_PKG}"

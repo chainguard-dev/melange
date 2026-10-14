@@ -45,6 +45,7 @@ checks:
         - release-assets.githubusercontent.com
         # pkg/source and pkg/renovate fetch real upstream sources.
         - git.savannah.gnu.org
+        - https.git.savannah.gnu.org # savannah redirects clones here
         - git.sv.gnu.org
         - translationproject.org
         - pypi.org

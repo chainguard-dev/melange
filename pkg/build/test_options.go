@@ -98,6 +98,16 @@ func WithTestExtraKeys(extraKeys []string) TestOption {
 	}
 }
 
+// WithTestExtraCACertificates adds PEM files of CA certificates for the test
+// guest to trust, such as a TLS-intercepting proxy's. They override
+// MELANGE_EXTRA_CA_CERTS.
+func WithTestExtraCACertificates(paths []string) TestOption {
+	return func(t *Test) error {
+		t.ExtraCACertificates = paths
+		return nil
+	}
+}
+
 // WithTestDebug indicates whether debug logging of pipelines should be enabled.
 func WithTestDebug(debug bool) TestOption {
 	return func(t *Test) error {

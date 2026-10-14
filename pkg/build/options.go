@@ -228,6 +228,16 @@ func WithExtraKeys(extraKeys []string) Option {
 	}
 }
 
+// WithExtraCACertificates adds PEM files of CA certificates for the build
+// guest to trust, such as a TLS-intercepting proxy's. They override
+// MELANGE_EXTRA_CA_CERTS.
+func WithExtraCACertificates(paths []string) Option {
+	return func(b *Build) error {
+		b.ExtraCACertificates = paths
+		return nil
+	}
+}
+
 // WithExtraRepos adds a set of extra repos to the build context.
 func WithExtraRepos(extraRepos []string) Option {
 	return func(b *Build) error {

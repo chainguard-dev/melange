@@ -113,24 +113,27 @@ type Build struct {
 	SourcePackage bool
 	// SourceOutDir, when set, receives the companion instead of OutDir, so it
 	// can be published to a repository of its own.
-	SourceOutDir       string
-	Arch               apko_types.Architecture
-	Libc               string
-	ExtraKeys          []string
-	ExtraRepos         []string
-	ExtraPackages      []string
-	DependencyLog      string
-	BinShOverlay       string
-	CreateBuildLog     bool
-	PersistLintResults bool
-	CacheDir           string
-	ApkCacheDir        string
-	CacheSource        string
-	StripOriginName    bool
-	EnvFiles           []string
-	VarsFile           string
-	Runner             container.Runner
-	containerConfig    *container.Config
+	SourceOutDir  string
+	Arch          apko_types.Architecture
+	Libc          string
+	ExtraKeys     []string
+	ExtraRepos    []string
+	ExtraPackages []string
+	// ExtraCACertificates are PEM files the build guest trusts on top of
+	// its own roots; they are never recorded in the package.
+	ExtraCACertificates []string
+	DependencyLog       string
+	BinShOverlay        string
+	CreateBuildLog      bool
+	PersistLintResults  bool
+	CacheDir            string
+	ApkCacheDir         string
+	CacheSource         string
+	StripOriginName     bool
+	EnvFiles            []string
+	VarsFile            string
+	Runner              container.Runner
+	containerConfig     *container.Config
 	// sourceManifest lists the -source companion's contents once it is
 	// assembled; it is written into every APK's control section.
 	sourceManifest        []byte
@@ -209,6 +212,10 @@ func New(ctx context.Context, opts ...Option) (*Build, error) {
 		if err := opt(&b); err != nil {
 			return nil, err
 		}
+	}
+
+	if b.ExtraCACertificates == nil {
+		b.ExtraCACertificates = extraCACertsFromEnv()
 	}
 
 	log := clog.FromContext(ctx).With("arch", b.Arch.ToAPK())
@@ -378,7 +385,11 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	// Overwrite the environment with the locked one.
 	b.Configuration.Environment = *locked
 
-	opts = append(opts, apko_build.WithImageConfiguration(*locked))
+	guestConfig, err := withExtraCACertificates(*locked, b.ExtraCACertificates)
+	if err != nil {
+		return "", err
+	}
+	opts = append(opts, apko_build.WithImageConfiguration(guestConfig))
 
 	bc, err := apko_build.New(ctx, guestFS, opts...)
 	if err != nil {

@@ -167,9 +167,17 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 // been applied, so that a pipeline can forward a digest it was given (e.g.
 // `expected-sha256: ${{inputs.sha256}}`) to a nested pipeline.
 func validateDigests(mutated map[string]string, inputs map[string]config.Input) error {
-	for k := range inputs {
+	for k, input := range inputs {
+		if expectedShaLength(k) == 0 {
+			continue
+		}
 		v := mutated[fmt.Sprintf("${{inputs.%s}}", k)]
 		if v == "" {
+			// validateWith only sees the unsubstituted value, so a forwarded
+			// reference that resolves to nothing must be caught here.
+			if input.Required {
+				return fmt.Errorf("required input %q for pipeline is missing", k)
+			}
 			continue
 		}
 		switch k {

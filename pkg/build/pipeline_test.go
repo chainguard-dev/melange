@@ -420,6 +420,7 @@ func Test_validateDigests(t *testing.T) {
 
 	for _, tt := range []struct {
 		name     string
+		inputs   map[string]config.Input // defaults to inputs above
 		mutated  map[string]string
 		errorMsg string
 	}{{
@@ -447,9 +448,22 @@ func Test_validateDigests(t *testing.T) {
 		name:     "invalid commit",
 		mutated:  map[string]string{"${{inputs.expected-commit}}": "abcdef"},
 		errorMsg: `expected commit "expected-commit" for pipeline contains invalid characters or invalid sha length`,
+	}, {
+		name:     "required digest that resolved to empty",
+		inputs:   map[string]config.Input{"expected-sha256": {Required: true}},
+		mutated:  map[string]string{"${{inputs.expected-sha256}}": ""},
+		errorMsg: `required input "expected-sha256" for pipeline is missing`,
+	}, {
+		name:    "required non-digest input is left to validateWith",
+		inputs:  map[string]config.Input{"other": {Required: true}},
+		mutated: map[string]string{"${{inputs.other}}": ""},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateDigests(tt.mutated, inputs)
+			in := inputs
+			if tt.inputs != nil {
+				in = tt.inputs
+			}
+			err := validateDigests(tt.mutated, in)
 			if tt.errorMsg != "" {
 				require.EqualError(t, err, tt.errorMsg)
 				return
@@ -459,58 +473,180 @@ func Test_validateDigests(t *testing.T) {
 	}
 }
 
-// A pipeline that takes per-arch digests and forwards one to a nested
-// pipeline's expected-sha256 must compile; digests used to be validated
-// before substitution, so the literal "${{inputs...}}" failed the length check.
+// Digest inputs are validated after substitution, so a digest may be
+// forwarded to a nested pipeline or come from vars or another input; the
+// result must still be a well-formed digest. They used to be validated before
+// substitution, so the literal "${{inputs...}}" failed the length check.
 func Test_CompilePipelines_ForwardedDigest(t *testing.T) {
 	ctx := slogtest.Context(t)
-	dir := t.TempDir()
-	write := func(name, body string) {
-		t.Helper()
-		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644))
-	}
-	write("wrapper.yaml", `
+	sha256 := strings.Repeat("a", 64)
+	commit := strings.Repeat("c", 40)
+
+	// wrapper forwards its "digest" input to checker's "<name>" input, which
+	// echoes it from a runs step.
+	wrapper := func(name string) string {
+		return `
 inputs:
-  sha256-x86_64:
-    required: true
+  digest: {}
 pipeline:
   - uses: checker
     with:
-      expected-sha256: ${{inputs.sha256-x86_64}}
-`)
-	write("checker.yaml", `
+      ` + name + `: ${{inputs.digest}}
+`
+	}
+	checker := func(name, input string) string {
+		return `
 inputs:
-  expected-sha256:
-    required: true
+  ` + name + `:
+` + input + `
 pipeline:
   - runs: |
-      echo "sha=${{inputs.expected-sha256}}"
-`)
-
-	compile := func(sha string) (config.Configuration, error) {
-		cfg := config.Configuration{
-			Package: config.Package{Name: "foo", Version: "1.2.3"},
-			Pipeline: []config.Pipeline{{
-				Uses: "wrapper",
-				With: map[string]string{"sha256-x86_64": sha},
-			}},
-		}
-		c := &Compiled{PipelineDirs: []string{dir}}
-		sm, err := NewSubstitutionMap(&cfg, "", "", nil)
-		require.NoError(t, err)
-		return cfg, c.CompilePipelines(ctx, sm, cfg.Pipeline)
+      echo "digest=${{inputs.` + name + `}}"
+`
 	}
 
-	t.Run("valid digest is forwarded", func(t *testing.T) {
-		sha := strings.Repeat("a", 64)
-		cfg, err := compile(sha)
-		require.NoError(t, err)
-		// wrapper -> checker -> runs step
-		require.Contains(t, cfg.Pipeline[0].Pipeline[0].Pipeline[0].Runs, "sha="+sha)
-	})
+	for _, tt := range []struct {
+		name      string
+		pipelines map[string]string
+		with      map[string]string // passed to the top-level step
+		vars      map[string]string
+		want      string // value expected in checker's runs step
+		errorMsg  string
+	}{{
+		name: "sha256 forwarded through a nested pipeline",
+		pipelines: map[string]string{
+			"top":     wrapper("expected-sha256"),
+			"checker": checker("expected-sha256", "    required: true"),
+		},
+		with: map[string]string{"digest": sha256},
+		want: sha256,
+	}, {
+		name: "invalid forwarded sha256 is rejected",
+		pipelines: map[string]string{
+			"top":     wrapper("expected-sha256"),
+			"checker": checker("expected-sha256", "    required: true"),
+		},
+		with:     map[string]string{"digest": "abcdef"},
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+	}, {
+		name: "commit forwarded through a nested pipeline",
+		pipelines: map[string]string{
+			"top":     wrapper("expected-commit"),
+			"checker": checker("expected-commit", "    required: true"),
+		},
+		with: map[string]string{"digest": commit},
+		want: commit,
+	}, {
+		name: "invalid forwarded commit is rejected",
+		pipelines: map[string]string{
+			"top":     wrapper("expected-commit"),
+			"checker": checker("expected-commit", "    required: true"),
+		},
+		with:     map[string]string{"digest": "zz"},
+		errorMsg: `expected commit "expected-commit" for pipeline contains invalid characters or invalid sha length`,
+	}, {
+		name: "sha256 from vars in a with value",
+		pipelines: map[string]string{
+			"top": checker("expected-sha256", "    required: true"),
+		},
+		with: map[string]string{"expected-sha256": "${{vars.sha}}"},
+		vars: map[string]string{"sha": sha256},
+		want: sha256,
+	}, {
+		name: "invalid sha256 from vars in a with value is rejected",
+		pipelines: map[string]string{
+			"top": checker("expected-sha256", "    required: true"),
+		},
+		with:     map[string]string{"expected-sha256": "${{vars.sha}}"},
+		vars:     map[string]string{"sha": "abcdef"},
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+	}, {
+		name: "sha256 from vars in an input default",
+		pipelines: map[string]string{
+			"top": checker("expected-sha256", "    default: ${{vars.sha}}"),
+		},
+		vars: map[string]string{"sha": sha256},
+		want: sha256,
+	}, {
+		name: "invalid sha256 from vars in an input default is rejected",
+		pipelines: map[string]string{
+			"top": checker("expected-sha256", "    default: ${{vars.sha}}"),
+		},
+		vars:     map[string]string{"sha": "abcdef"},
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+	}, {
+		name: "sha256 defaulting to a sibling input",
+		pipelines: map[string]string{
+			"top": `
+inputs:
+  other: {}
+  expected-sha256:
+    default: ${{inputs.other}}
+pipeline:
+  - runs: |
+      echo "digest=${{inputs.expected-sha256}}"
+`,
+		},
+		with: map[string]string{"other": sha256},
+		want: sha256,
+	}, {
+		name: "invalid sha256 defaulting to a sibling input is rejected",
+		pipelines: map[string]string{
+			"top": `
+inputs:
+  other: {}
+  expected-sha256:
+    default: ${{inputs.other}}
+pipeline:
+  - runs: |
+      echo "digest=${{inputs.expected-sha256}}"
+`,
+		},
+		with:     map[string]string{"other": "abcdef"},
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+	}, {
+		name: "required sha256 forwarded from an unset input is rejected",
+		pipelines: map[string]string{
+			"top":     wrapper("expected-sha256"),
+			"checker": checker("expected-sha256", "    required: true"),
+		},
+		errorMsg: `required input "expected-sha256" for pipeline is missing`,
+	}, {
+		name: "optional sha256 forwarded from an unset input is allowed",
+		pipelines: map[string]string{
+			"top":     wrapper("expected-sha256"),
+			"checker": checker("expected-sha256", "    default: \"\""),
+		},
+		want: "",
+	}} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for name, body := range tt.pipelines {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, name+".yaml"), []byte(body), 0o644))
+			}
+			cfg := config.Configuration{
+				Package:  config.Package{Name: "foo", Version: "1.2.3"},
+				Vars:     tt.vars,
+				Pipeline: []config.Pipeline{{Uses: "top", With: tt.with}},
+			}
+			c := &Compiled{PipelineDirs: []string{dir}}
+			sm, err := NewSubstitutionMap(&cfg, "", "", nil)
+			require.NoError(t, err)
 
-	t.Run("invalid forwarded digest is rejected", func(t *testing.T) {
-		_, err := compile("abcdef")
-		require.ErrorContains(t, err, `checksum input "expected-sha256" for pipeline, invalid length`)
-	})
+			err = c.CompilePipelines(ctx, sm, cfg.Pipeline)
+			if tt.errorMsg != "" {
+				require.ErrorContains(t, err, tt.errorMsg)
+				return
+			}
+			require.NoError(t, err)
+
+			// Descend to the runs step, which is the innermost pipeline.
+			p := &cfg.Pipeline[0]
+			for len(p.Pipeline) > 0 {
+				p = &p.Pipeline[0]
+			}
+			require.Contains(t, p.Runs, `digest=`+tt.want+`"`)
+			require.NotContains(t, p.Runs, "${{")
+		})
+	}
 }

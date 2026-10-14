@@ -44,6 +44,7 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 	fs.StringSliceVar(&flags.TestOption, "test-option", []string{}, "build options to enable")
 	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	fs.StringSliceVar(&flags.ExtraCACertificates, "ca-certificate-append", nil, "path to a PEM file of extra CA certificates for the guest to trust (overrides $MELANGE_EXTRA_CA_CERTS)")
 	fs.StringSliceVar(&flags.EnvFiles, "env-file", []string{}, "files to use for preloaded environment variables")
 	fs.BoolVar(&flags.Debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	fs.BoolVar(&flags.DebugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
@@ -61,29 +62,30 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 
 // TestFlags holds all parsed test command flags
 type TestFlags struct {
-	WorkspaceDir      string
-	SourceDir         string
-	CacheDir          string
-	CacheSource       string
-	ApkCacheDir       string
-	Archstrs          []string
-	PipelineDirs      []string
-	ExtraKeys         []string
-	ExtraRepos        []string
-	EnvFiles          []string
-	TestOption        []string
-	Debug             bool
-	DebugRunner       bool
-	Interactive       bool
-	Runner            string
-	ExtraTestPackages []string
-	Remove            bool
-	IgnoreSignatures  bool
-	CPU               string
-	CPUModel          string
-	Memory            string
-	Disk              string
-	Timeout           time.Duration
+	WorkspaceDir        string
+	SourceDir           string
+	CacheDir            string
+	CacheSource         string
+	ApkCacheDir         string
+	Archstrs            []string
+	PipelineDirs        []string
+	ExtraKeys           []string
+	ExtraCACertificates []string
+	ExtraRepos          []string
+	EnvFiles            []string
+	TestOption          []string
+	Debug               bool
+	DebugRunner         bool
+	Interactive         bool
+	Runner              string
+	ExtraTestPackages   []string
+	Remove              bool
+	IgnoreSignatures    bool
+	CPU                 string
+	CPUModel            string
+	Memory              string
+	Disk                string
+	Timeout             time.Duration
 }
 
 // ParseTestFlags parses test flags from the provided args and returns a TestFlags struct
@@ -114,6 +116,7 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestCacheSource(flags.CacheSource),
 		build.WithTestPackageCacheDir(flags.ApkCacheDir),
 		build.WithTestExtraKeys(flags.ExtraKeys),
+		build.WithTestExtraCACertificates(flags.ExtraCACertificates),
 		build.WithTestExtraRepos(flags.ExtraRepos),
 		build.WithExtraTestPackages(flags.ExtraTestPackages),
 		build.WithTestRunner(r),

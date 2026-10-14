@@ -32,6 +32,7 @@ melange build [flags]
       --arch strings                                            architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
       --build-date string                                       date used for the timestamps of the files inside the image
       --build-option strings                                    build options to enable
+      --ca-certificate-append strings                           path to a PEM file of extra CA certificates for the guest to trust (overrides $MELANGE_EXTRA_CA_CERTS)
       --cache-dir string                                        directory used for cached inputs (default "./melange-cache/")
       --cache-source string                                     directory or bucket used for preloading the cache
       --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)

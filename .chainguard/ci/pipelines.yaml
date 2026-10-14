@@ -165,6 +165,7 @@ checks:
         - build-base
         - busybox
         - cue
+        - curl # pkg/sca's go:generate fetches testdata
         - git
         - make
       vars:

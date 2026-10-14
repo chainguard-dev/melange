@@ -197,6 +197,7 @@ checks:
         - release-assets.githubusercontent.com
         - pypi.org
         - files.pythonhosted.org
+        - us.download.nvidia.com # pkg/sca's nvidia-driver testdata
     script: |
       cp -a . /var/tmp/src
       cd /var/tmp/src

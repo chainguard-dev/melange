@@ -4,9 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 set -eu
-# Containers inherit the daemon's umask, and the guest starts services with
-# 000: a test that writes /etc/sudoers.d then finds it world writable.
-umask 022
 if [ "$(id -u)" != 0 ]; then
   echo "docker service requires a root job" >&2
   exit 1

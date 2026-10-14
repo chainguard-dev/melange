@@ -1,0 +1,300 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Builds and tests a set of real wolfi-dev/os packages with this melange,
+# once with the bubblewrap runner and once with the qemu runner. The set
+# covers basic and exotic uses of the built-in pipelines; add a package
+# that exercises melange in a new way (a new pipeline, say) to both lists.
+#
+# The qemu leg runs on arm64, so it builds aarch64 packages: that pool is
+# bare metal and the guest has hardware KVM to hand to qemu, which the
+# nested amd64 guests do not.
+version: 1
+
+environment:
+  packages:
+    - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+    - bash
+    - busybox
+    - curl
+    - git
+    - gnutar
+    - make
+  vars:
+    GOTOOLCHAIN: local
+    GOTMPDIR: /var/tmp
+
+checks:
+  melange-x86_64:
+    description: Builds the melange the bubblewrap leg runs.
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-amd64
+    timeout: 15m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+    script: |
+      make melange
+      mkdir -p dist
+      mv melange dist/
+    outputs:
+      dist: {path: dist}
+
+  melange-aarch64:
+    description: >-
+      Builds the melange the qemu leg runs, and fetches the Alpine linux-virt
+      kernel once for every qemu instance to share.
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-arm64
+    timeout: 15m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - dl-cdn.alpinelinux.org
+    # Tar rather than outputting kernel/ directly: the modules tree has
+    # symlinks in it.
+    script: |
+      make melange
+      make fetch-kernel
+      mkdir -p dist
+      mv melange dist/
+      tar -czf dist/kernel.tar.gz kernel
+    outputs:
+      dist: {path: dist}
+
+  bubblewrap:
+    description: >-
+      Bumps a wolfi-dev/os package's epoch, builds it with the bubblewrap
+      runner with provenance, tests it with the docker runner, installs it
+      into wolfi-base, and scans it for CVEs. fping is also tested under
+      bubblewrap, to check its file capabilities survive; sudo's mode bits
+      are listed.
+    environment:
+      packages:
+        - bash
+        - bubblewrap
+        - busybox
+        - git
+        - gnutar
+        - jq
+        - libcap-utils
+        - make
+        - wolfictl~0.39
+      services:
+        - docker
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-amd64
+    timeout: 45m
+    # Every step runs in the wolfi-dev/os tree; this checkout's melange is
+    # ../.melange-dist.
+    workdir: os
+    vars:
+      ARCH: x86_64
+      TMPDIR: /var/tmp
+    foreach: &foreach
+      # - rust-1.86 # takes ~35-40 minutes to build; used for testing LICENSE file functionality
+      # - gdk-pixbuf # Looks like this is broken again, see: https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/515
+      # - glibc # takes ~35-40 minutes to build; not an all-encompassing signal of Melange functionality; TODO: replace with a smaller, related package
+      # - xmlto # TODO: https://github.com/wolfi-dev/os/issues/26442
+      - {name: bubblewrap, vars: {PACKAGE: bubblewrap}}
+      - {name: dpkg, vars: {PACKAGE: dpkg}}
+      - {name: fixuid, vars: {PACKAGE: fixuid}} # uses a diff test user
+      - {name: fping, vars: {PACKAGE: fping}} # uses get/setcaps
+      - {name: gitsign, vars: {PACKAGE: gitsign}}
+      - {name: guac, vars: {PACKAGE: guac}}
+      - {name: lzo, vars: {PACKAGE: lzo}}
+      - {name: ncurses, vars: {PACKAGE: ncurses}}
+      - {name: perl-yaml-syck, vars: {PACKAGE: perl-yaml-syck}}
+      - {name: postfix, vars: {PACKAGE: postfix}}
+      - {name: py3-pyelftools, vars: {PACKAGE: py3-pyelftools}} # uses license-path
+      - {name: py3-supported-python, vars: {PACKAGE: py3-supported-python}}
+      - {name: s3cmd, vars: {PACKAGE: s3cmd}}
+      - {name: subversion, vars: {PACKAGE: subversion}}
+      - {name: sudo, vars: {PACKAGE: sudo}}
+      - {name: tini, vars: {PACKAGE: tini}}
+    inputs:
+      - path: os
+        git: {repo: https://github.com/wolfi-dev/os, ref: main}
+      - path: .melange-dist
+        from: {check: melange-x86_64, output: dist}
+    network:
+      egress: &egress
+        - packages.wolfi.dev
+        - apk.cgr.dev
+        - cgr.dev
+        - 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com
+        - ghcr.io
+        - pkg-containers.githubusercontent.com
+        - github.com
+        - codeload.github.com
+        - objects.githubusercontent.com
+        - raw.githubusercontent.com
+        - release-assets.githubusercontent.com
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - dl.google.com
+        - pypi.org
+        - files.pythonhosted.org
+        - cpan.metacpan.org
+        - de.postfix.org
+        - ftp.fu-berlin.de
+        - ftp.de.debian.org
+        - git.dpkg.org
+        - invisible-mirror.net
+        - www.oberhumer.com
+        - www.sudo.ws
+        - registry.npmjs.org
+        - registry.yarnpkg.com
+        - index.crates.io
+        - static.crates.io
+        - dl-cdn.alpinelinux.org
+        # wolfictl scan's vulnerability database.
+        - grype.anchore.io
+        - toolbox-data.anchore.io
+    steps:
+      - name: install melange
+        script: |
+          install -m 0755 ../.melange-dist/melange /usr/bin/melange
+          melange version
+      - &bump
+        name: bump
+        cmd:
+          - sh
+          - -c
+          - 'wolfictl bump "${PACKAGE}"'
+      - name: build
+        script: |
+          make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap \
+            MELANGE_EXTRA_OPTS=--generate-provenance "package/${PACKAGE}"
+      - name: test with the docker runner
+        cmd:
+          - sh
+          - -c
+          - 'make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=docker "test/${PACKAGE}"'
+      - name: test fping's xattrs with the bubblewrap runner
+        script: |
+          [ "${PACKAGE}" = fping ] || exit 0
+          make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap "test/${PACKAGE}"
+      - &provenance
+        name: SLSA provenance
+        script: |
+          for pkg in "packages/${ARCH}"/*.attest.tar.gz; do
+            dir="$(basename "${pkg}" .attest.tar.gz)"
+            mkdir -p "packages/${ARCH}/${dir}"
+            tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C "packages/${ARCH}/${dir}"
+            jq . "packages/${ARCH}/${dir}/${dir}.attestation"
+          done
+      - &sudo-mode
+        name: sudo's mode bits
+        script: |
+          [ "${PACKAGE}" = sudo ] || exit 0
+          for pkg in "packages/${ARCH}"/*.apk; do
+            tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C "packages/${ARCH}/"
+          done
+          ls -hal "packages/${ARCH}/usr/bin/sudo"
+      - &install-and-scan
+        name: install into wolfi-base and scan for CVEs
+        # wolfictl scan left wolfictl after 0.39; the scan runs the wolfictl
+        # in the wolfi-dev/sdk image wolfi-dev/actions' install-wolfictl
+        # pinned, the last that had it. Pinned by digest alone, not
+        # tag@digest, so the digest updater does not move it to an sdk
+        # without scan. grype's database init is a large fixed cost, so it
+        # scans every APK of the build in one invocation.
+        script: |
+          install="sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/${ARCH}/${PACKAGE}-*.apk"
+          case "${PACKAGE}" in
+            fping)   verify="apk add libcap-utils; getcap /usr/sbin/fping";;
+            sudo)    verify="ls -hal /usr/bin/sudo";;
+            postfix) verify="ls -hal /var/spool/postfix; ls -hal /var/lib/postfix";;
+            *)       verify="true";;
+          esac
+          docker run --rm -v "${PWD}":/work --workdir /work \
+            cgr.dev/chainguard/wolfi-base /bin/sh -c "${install}; ${verify}"
+          docker run --rm -v "${PWD}/packages":/packages --entrypoint /bin/sh \
+            ghcr.io/wolfi-dev/sdk@sha256:7e7af7997a87f3d490cc5b4e8d1f96b0635e716317cfdc6e5a42bc06151d8971 \
+            -c "wolfictl scan /packages/${ARCH}/${PACKAGE}-*.apk 2> /dev/null"
+
+  qemu:
+    description: >-
+      Bumps a wolfi-dev/os package's epoch, builds and tests it with the
+      qemu runner on aarch64, installs it into wolfi-base, and scans it for
+      CVEs. fping's file capabilities and sudo's mode bits are checked in
+      the built APKs.
+    environment:
+      packages:
+        - bash
+        - busybox
+        - git
+        - gnutar
+        - jq
+        - libcap-utils
+        - make
+        - qemu-system-aarch64
+        - wolfictl~0.39
+      services:
+        - docker
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-arm64
+    timeout: 45m
+    workdir: os
+    vars:
+      ARCH: aarch64
+      TMPDIR: /var/tmp
+    foreach: *foreach
+    inputs:
+      - path: os
+        git: {repo: https://github.com/wolfi-dev/os, ref: main}
+      - path: .melange-dist
+        from: {check: melange-aarch64, output: dist}
+    network:
+      egress: *egress
+    steps:
+      - name: install melange and the kernel
+        # Fail on a missing KVM device rather than on a qemu error further in.
+        script: |
+          test -c /dev/kvm
+          install -m 0755 ../.melange-dist/melange /usr/bin/melange
+          melange version
+          mkdir -p /var/tmp/qemu
+          tar -xzf ../.melange-dist/kernel.tar.gz -C /var/tmp/qemu
+          test -f "/var/tmp/qemu/kernel/${ARCH}/vmlinuz"
+      - *bump
+      - name: build
+        script: |
+          make SHELL=/bin/bash \
+            QEMU_KERNEL_IMAGE="/var/tmp/qemu/kernel/${ARCH}/vmlinuz" \
+            QEMU_KERNEL_MODULES="/var/tmp/qemu/kernel/${ARCH}/modules/" \
+            MELANGE=melange \
+            MELANGE_EXTRA_OPTS="--runner qemu --generate-provenance" \
+            "package/${PACKAGE}"
+      - *provenance
+      - name: test
+        script: |
+          make SHELL=/bin/bash \
+            QEMU_KERNEL_IMAGE="/var/tmp/qemu/kernel/${ARCH}/vmlinuz" \
+            QEMU_KERNEL_MODULES="/var/tmp/qemu/kernel/${ARCH}/modules/" \
+            MELANGE=melange \
+            MELANGE_EXTRA_OPTS="--runner qemu" \
+            "test/${PACKAGE}"
+      - name: fping's xattrs
+        script: |
+          [ "${PACKAGE}" = fping ] || exit 0
+          for pkg in "packages/${ARCH}"/*.apk; do
+            tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C "packages/${ARCH}/"
+          done
+          getcap "packages/${ARCH}/usr/sbin/fping"
+      - *sudo-mode
+      - *install-and-scan

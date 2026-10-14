@@ -1,0 +1,125 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Unit and integration tests, lint, and the build with its goreleaser
+# snapshot.
+version: 1
+
+checks:
+  test:
+    description: >-
+      Runs make integration (go test -race -tags=integration ./...) as an
+      unprivileged user, as on GitHub's runners: under root, file modes deny
+      nothing and the tests that rely on a permission error pass vacuously.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - build-base # cgo for -race
+        - git
+        - make
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    user: build
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-amd64
+    timeout: 30m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        - apk.cgr.dev
+        - github.com
+        - codeload.github.com
+        - objects.githubusercontent.com
+        - raw.githubusercontent.com
+        - release-assets.githubusercontent.com
+        # pkg/source and pkg/renovate fetch real upstream sources.
+        - git.savannah.gnu.org
+        - git.sv.gnu.org
+        - translationproject.org
+        - pypi.org
+        - files.pythonhosted.org
+        - 7-zip.org
+    cmd: make integration
+
+  lint:
+    description: >-
+      golangci-lint over the module, then make docs-repo, make
+      docs-pipeline and go mod tidy, failing if any of them leaves the tree
+      dirty.
+    environment:
+      packages:
+        - go-1.27~1.27
+        - bash
+        - build-base
+        - git
+        - make
+        # Wolfi's 2.13 builds predate Go 1.27 and cannot read its export
+        # data. The Makefile's setup-golangci-lint reads this pin.
+        - golangci-lint~2.14
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium
+    timeout: 15m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+    steps:
+      - name: golangci-lint
+        cmd: golangci-lint run --timeout=5m
+      - name: docs, pipeline docs and tidy
+        script: |
+          make docs-repo
+          git diff --exit-code
+          make docs-pipeline
+          git diff --exit-code
+          go mod tidy
+          git diff --exit-code
+
+  build:
+    description: >-
+      Builds melange and an unsigned goreleaser snapshot for every release
+      platform, and runs the linux/amd64 snapshot binary.
+    environment:
+      packages:
+        - go-1.27~1.27
+        - bash
+        - git
+        - make
+        - goreleaser~2.18
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-amd64
+    timeout: 30m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+    steps:
+      - name: build
+        cmd:
+          - sh
+          - -c
+          - "make melange && ./melange version"
+      - name: snapshot
+        cmd:
+          - sh
+          - -c
+          - "make snapshot && ./dist/melange-build_linux_amd64_v1/melange version"

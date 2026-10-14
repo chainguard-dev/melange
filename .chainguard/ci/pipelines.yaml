@@ -1,0 +1,190 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# The e2e-tests/ pipeline tests under the qemu runner, and the Go tests
+# behind the e2e build tag. Both are fanned out one instance per test or
+# package, discovered by the plans below rather than hand-listed, so adding
+# a test or a package needs no change here.
+#
+# The qemu checks run on arm64: that pool is bare metal, so the guest has
+# hardware KVM to hand to qemu. On the amd64 pools the guest is nested with
+# no accelerated virtualization, and melange's qemu runner asks for
+# -accel kvm on a native-arch build.
+version: 1
+
+environment:
+  packages:
+    - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+    - bash
+    - busybox
+    - curl
+    - git
+    - gnutar
+    - make
+  vars:
+    GOTOOLCHAIN: local
+    GOTMPDIR: /var/tmp
+
+plans:
+  tests:
+    environment:
+      packages:
+        - busybox
+        - findutils
+        - jq
+    # run-tests defaults to '*.yaml', so match that: anything else in
+    # e2e-tests/ (*.yaml-DISABLED, for example) is not a test. An empty
+    # list would select no instances and pass, so fail instead.
+    cmd:
+      - sh
+      - -eu
+      - -c
+      - |
+        find e2e-tests -maxdepth 1 -name '*.yaml' -printf '%f\n' | sort > /var/tmp/tests
+        test -s /var/tmp/tests
+        jq -Rsc 'split("\n") | map(select(length > 0) | {name: rtrimstr(".yaml"), vars: {E2E_TEST: .}})' \
+          /var/tmp/tests > "$CG_PLAN"
+  gopkgs:
+    environment:
+      packages:
+        - busybox
+        - findutils
+        - grep
+        - jq
+        - sed
+    # Packages holding tests, plus packages holding //go:generate
+    # directives, so between them the instances still cover everything a
+    # 'go generate ./...' would.
+    cmd:
+      - sh
+      - -eu
+      - -c
+      - |
+        {
+          find . -name '*_test.go' -not -path './pkg/sca/sca_private_test.go' -not -path './.git/*' -printf '%h\n'
+          grep -rl '^//go:generate' --include='*.go' . | sed 's|/[^/]*$||'
+        } | sed 's|^\./||' | sort -u > /var/tmp/gopkgs
+        test -s /var/tmp/gopkgs
+        jq -Rsc 'split("\n") | map(select(length > 0) | {name: ., vars: {E2E_PKG: ("./" + .)}})' \
+          /var/tmp/gopkgs > "$CG_PLAN"
+
+checks:
+  melange-aarch64:
+    description: >-
+      Builds melange and fetches the Alpine linux-virt kernel once, for every
+      e2e-tests instance to share. Fetching it per instance would hammer the
+      Alpine CDN and, since make fetch-kernel takes the newest edge build,
+      could hand different instances different kernels within one run.
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-arm64
+    timeout: 15m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - dl-cdn.alpinelinux.org
+    # Tar rather than outputting kernel/ directly: the modules tree has
+    # symlinks in it.
+    script: |
+      make melange
+      make fetch-kernel
+      mkdir -p dist
+      mv melange dist/
+      tar -czf dist/kernel.tar.gz kernel
+    outputs:
+      dist: {path: dist}
+
+  e2e-tests:
+    description: >-
+      Runs one e2e-tests/ yaml through e2e-tests/run-tests under the qemu
+      runner, with the melange and kernel melange-aarch64 built.
+    environment:
+      packages:
+        - bash
+        - busybox
+        - git
+        - gnutar
+        - make
+        - qemu-system-aarch64
+    trigger:
+      - presubmit
+      - postsubmit
+    foreach: plans.tests
+    resources: medium-arm64
+    timeout: 30m
+    inputs:
+      - path: .melange-dist
+        from: {check: melange-aarch64, output: dist}
+    network:
+      egress:
+        - packages.wolfi.dev
+        - apk.cgr.dev
+        - 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com
+        - dl-cdn.alpinelinux.org
+        - github.com
+        - codeload.github.com
+        - objects.githubusercontent.com
+        - raw.githubusercontent.com
+        - release-assets.githubusercontent.com
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - pypi.org
+        - files.pythonhosted.org
+        - git.netfilter.org
+    script: |
+      # Fail on a missing KVM device rather than on a qemu error further in.
+      test -c /dev/kvm
+      tar -xzf .melange-dist/kernel.tar.gz
+      test -f "kernel/$(uname -m)/vmlinuz"
+      chmod +x .melange-dist/melange
+      make test-e2e-pipelines MELANGE_BIN="${PWD}/.melange-dist/melange" E2E_TESTS="${E2E_TEST}"
+
+  go-e2e:
+    description: >-
+      Runs make test-e2e-unit for one Go package: go generate, which builds
+      the pkg/sca testdata packages with the bubblewrap runner, then
+      go test -tags e2e -race. Unprivileged, as on GitHub's runners.
+    environment:
+      packages:
+        - go-1.27~1.27
+        - bash
+        - bubblewrap
+        - build-base
+        - busybox
+        - cue
+        - git
+        - make
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    user: build
+    trigger:
+      - presubmit
+      - postsubmit
+    foreach: plans.gopkgs
+    resources: medium-amd64
+    timeout: 30m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        - apk.cgr.dev
+        - 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com
+        - dl-cdn.alpinelinux.org
+        - github.com
+        - codeload.github.com
+        - objects.githubusercontent.com
+        - raw.githubusercontent.com
+        - release-assets.githubusercontent.com
+        - pypi.org
+        - files.pythonhosted.org
+    cmd:
+      - sh
+      - -c
+      - 'make test-e2e-unit E2E_PKG="${E2E_PKG}"'

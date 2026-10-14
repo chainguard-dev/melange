@@ -1,0 +1,117 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Build and rebuild examples/ with the bubblewrap runner, and rebuild them
+# again from their -source companion.
+version: 1
+
+environment:
+  packages:
+    - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+    - bubblewrap
+    - build-base
+    - busybox
+    - cue
+    - git
+    - gnutar # source-package-restore-test rewrites the companion with tar
+    - jq
+    - make
+  vars:
+    GOTOOLCHAIN: local
+    GOTMPDIR: /var/tmp
+
+checks:
+  rebuild:
+    description: >-
+      Builds an example, rebuilds it with melange rebuild, then builds it
+      again with --source-package and rebuilds it from nothing but that
+      companion. go-build.yaml also checks that git-checkout restores its
+      checkout from the companion and refuses tampered ones. melange.yaml
+      builds this checkout from Alpine edge, whose packages move between the
+      build and the rebuild, so it skips the -source rebuild.
+    trigger:
+      - presubmit
+      - postsubmit
+    resources: medium-amd64 # the builds are --arch=x86_64
+    timeout: 30m
+    vars:
+      SOURCE_DATE_EPOCH: "1669683910"
+      # /tmp is a tmpfs sized from guest RAM, which the cargo and npm builds
+      # can fill.
+      TMPDIR: /var/tmp
+    foreach:
+      - name: cargo-build
+        vars: {CFG: cargo-build.yaml}
+      - name: gnu-hello
+        vars: {CFG: gnu-hello.yaml}
+      - name: go-build
+        vars: {CFG: go-build.yaml}
+      - name: minimal
+        vars: {CFG: minimal.yaml}
+      - name: npm-install
+        vars: {CFG: npm-install.yaml}
+      - name: pnpm-install
+        vars: {CFG: pnpm-install.yaml}
+      - name: melange
+        vars: {CFG: melange.yaml}
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - dl.google.com
+        - packages.wolfi.dev
+        - apk.cgr.dev
+        - dl-cdn.alpinelinux.org
+        - github.com
+        - codeload.github.com
+        - objects.githubusercontent.com
+        - release-assets.githubusercontent.com
+        - ftp.gnu.org
+        - ftpmirror.gnu.org
+        - mirrors.ocf.berkeley.edu
+        - index.crates.io
+        - static.crates.io
+        - registry.npmjs.org
+    steps:
+      - name: build melange
+        script: |
+          make melange
+          ./melange keygen
+      - name: build
+        # melange.yaml builds this checkout itself, so it lives at the root.
+        script: |
+          path="examples/${CFG}"
+          if [ "${CFG}" = melange.yaml ]; then
+            path=melange.yaml
+          fi
+          ./melange build "${path}" --arch=x86_64 --namespace=wolfi
+      - name: rebuild
+        # rebuild no longer takes the working directory as the source
+        # directory by default; melange.yaml, which builds this checkout,
+        # still needs it.
+        script: |
+          if [ "${CFG}" = melange.yaml ]; then
+            ./melange rebuild ./packages/x86_64/*.apk --source-dir=.
+          else
+            ./melange rebuild ./packages/x86_64/*.apk
+          fi
+      - name: build and rebuild from the -source package
+        # The rebuilt APKs, the re-emitted companion included, must match.
+        script: |
+          if [ "${CFG}" = melange.yaml ]; then
+            echo "melange.yaml resolves from Alpine edge; skipping"
+            exit 0
+          fi
+          ./melange build "examples/${CFG}" --arch=x86_64 --namespace=wolfi --source-package --out-dir=./packages-source
+          companion=$(ls ./packages-source/x86_64/*-source-*.apk)
+          ls -la ./packages-source/x86_64/
+          ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --out-dir=./rebuilt-from-source
+      - name: restore git checkouts from the -source package
+        # go-build checks out a pinned commit.
+        script: |
+          if [ "${CFG}" != go-build.yaml ]; then
+            exit 0
+          fi
+          companion=$(ls ./packages-source/x86_64/*-source-*.apk)
+          MELANGE=./melange ./e2e-tests/source-package-restore-test examples/go-build.yaml "${companion}"

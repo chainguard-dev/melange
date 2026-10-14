@@ -15,6 +15,7 @@ checks:
       packages:
         - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
         - bash
+        - bubblewrap # pkg/build's integration tests build with it
         - build-base # cgo for -race
         - git
         - make

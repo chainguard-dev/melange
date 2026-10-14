@@ -86,14 +86,16 @@ checks:
         - sum.golang.org
         - storage.googleapis.com
         - dl-cdn.alpinelinux.org
-    # Tar rather than outputting kernel/ directly: the modules tree has
-    # symlinks in it.
+    # Only the image and the modules tree: the .apk they came from would
+    # double the output, which overruns the workspace quota. Tar rather than
+    # outputting kernel/ directly: the modules tree has symlinks in it.
     script: |
       make melange
       make fetch-kernel
       mkdir -p dist
       mv melange dist/
-      tar -czf dist/kernel.tar.gz kernel
+      tar -czf dist/kernel.tar.gz kernel/aarch64/vmlinuz kernel/aarch64/modules
+      rm -rf kernel
     outputs:
       dist: {path: dist}
 
@@ -141,7 +143,14 @@ checks:
       tar -xzf .melange-dist/kernel.tar.gz
       test -f "kernel/$(uname -m)/vmlinuz"
       chmod +x .melange-dist/melange
-      make test-e2e-pipelines MELANGE_BIN="${PWD}/.melange-dist/melange" E2E_TESTS="${E2E_TEST}"
+      # What make test-e2e-pipelines runs, without its kernel prerequisites,
+      # which would fetch the kernel again.
+      arch=$(uname -m)
+      cd e2e-tests
+      QEMU_KERNEL_IMAGE="${PWD}/../kernel/${arch}/vmlinuz" \
+        QEMU_KERNEL_MODULES="${PWD}/../kernel/${arch}/modules/" \
+        MELANGE="${PWD}/../.melange-dist/melange" \
+        ./run-tests "${E2E_TEST}"
 
   go-e2e:
     description: >-

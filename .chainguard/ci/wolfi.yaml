@@ -59,14 +59,16 @@ checks:
         - sum.golang.org
         - storage.googleapis.com
         - dl-cdn.alpinelinux.org
-    # Tar rather than outputting kernel/ directly: the modules tree has
-    # symlinks in it.
+    # Only the image and the modules tree: the .apk they came from would
+    # double the output, which overruns the workspace quota. Tar rather than
+    # outputting kernel/ directly: the modules tree has symlinks in it.
     script: |
       make melange
       make fetch-kernel
       mkdir -p dist
       mv melange dist/
-      tar -czf dist/kernel.tar.gz kernel
+      tar -czf dist/kernel.tar.gz kernel/aarch64/vmlinuz kernel/aarch64/modules
+      rm -rf kernel
     outputs:
       dist: {path: dist}
 
@@ -174,18 +176,22 @@ checks:
           - -c
           - 'wolfictl bump "${PACKAGE}"'
       - name: build
+        # wolfi-dev/os's Makefile reads SOURCE_DATE_EPOCH from git log, which
+        # git refuses in a checkout another user owns; the command line
+        # overrides its := assignment.
         script: |
-          make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap \
+          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" MELANGE=melange MELANGE_RUNNER=bubblewrap \
             MELANGE_EXTRA_OPTS=--generate-provenance "package/${PACKAGE}"
       - name: test with the docker runner
-        cmd:
-          - sh
-          - -c
-          - 'make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=docker "test/${PACKAGE}"'
+        script: |
+          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" MELANGE=melange MELANGE_RUNNER=docker "test/${PACKAGE}"
       - name: test fping's xattrs with the bubblewrap runner
         script: |
           [ "${PACKAGE}" = fping ] || exit 0
-          make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap "test/${PACKAGE}"
+          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" MELANGE=melange MELANGE_RUNNER=bubblewrap "test/${PACKAGE}"
       - &provenance
         name: SLSA provenance
         script: |
@@ -274,7 +280,8 @@ checks:
       - *bump
       - name: build
         script: |
-          make SHELL=/bin/bash \
+          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" \
             QEMU_KERNEL_IMAGE="/var/tmp/qemu/kernel/${ARCH}/vmlinuz" \
             QEMU_KERNEL_MODULES="/var/tmp/qemu/kernel/${ARCH}/modules/" \
             MELANGE=melange \
@@ -283,7 +290,8 @@ checks:
       - *provenance
       - name: test
         script: |
-          make SHELL=/bin/bash \
+          sde=$(git -c safe.directory='*' log -1 --pretty=%ct)
+          make SHELL=/bin/bash SOURCE_DATE_EPOCH="${sde}" \
             QEMU_KERNEL_IMAGE="/var/tmp/qemu/kernel/${ARCH}/vmlinuz" \
             QEMU_KERNEL_MODULES="/var/tmp/qemu/kernel/${ARCH}/modules/" \
             MELANGE=melange \

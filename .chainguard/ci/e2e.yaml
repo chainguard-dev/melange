@@ -63,6 +63,7 @@ checks:
         - packages.wolfi.dev
         - apk.cgr.dev
         - dl-cdn.alpinelinux.org
+        - alpinelinux.org # melange.yaml's Alpine keys
         - github.com
         - codeload.github.com
         - objects.githubusercontent.com

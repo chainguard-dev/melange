@@ -31,10 +31,8 @@ checks:
     resources: medium-amd64
     timeout: 30m
     network:
-      # go/test's hosts: the same test, under the other runner.
       egress:
         - proxy.golang.org
-        - sum.golang.org
         - storage.googleapis.com
         - packages.wolfi.dev
         - github.com

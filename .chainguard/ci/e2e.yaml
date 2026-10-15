@@ -31,7 +31,17 @@ checks:
     resources: medium-amd64
     timeout: 30m
     network:
-      egress: ["*"] # PROOF RUN: narrowed from the egress report
+      # go/test's hosts: the same test, under the other runner.
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        - github.com
+        - git.savannah.gnu.org
+        - https.git.savannah.gnu.org # Savannah redirects git clones here
+        - git.sv.gnu.org # sed's gnulib submodule, over git:// (port 9418)
+        - 7-zip.org
     script: |
       set -eux
       # getRunner prefers bubblewrap; without it the test builds under docker.

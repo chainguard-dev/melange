@@ -31,7 +31,10 @@ checks:
     resources: medium-amd64
     timeout: 20m
     network:
-      egress: ["*"] # PROOF RUN: narrowed from the egress report
+      egress:
+        - proxy.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
     script: |
       set -eux
       make melange

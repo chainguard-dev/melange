@@ -222,7 +222,9 @@ jobs:
       - run: |
           sudo apt-get update
           sudo apt-get -y install bubblewrap
-      - uses: ./.github/actions/setup-bubblewrap
+      # The audit wants the `uses: $/...` self-repository form, which
+      # actionlint 1.7.12 (the newest Wolfi packages) rejects as a missing ref.
+      - uses: ./.github/actions/setup-bubblewrap # zizmor: ignore[self-repository]
 
       - name: Install QEMU/KVM
         run: |

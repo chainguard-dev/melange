@@ -8,8 +8,3 @@ rules:
     disable: true
   concurrency-limits:
     disable: true
-  # GitHub's `uses: $/...` self-repository form is what this audit wants, but
-  # actionlint 1.7.12 (the newest Wolfi packages) refuses it as a missing ref.
-  # Re-enable once the workflows/actionlint check's actionlint accepts it.
-  self-repository:
-    disable: true

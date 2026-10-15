@@ -29,7 +29,10 @@ checks:
       make integration: go test -race -tags=integration ./..., which builds
       packages (crane, 7zip, sed and others) with the bubblewrap runner,
       fetching their sources upstream and trusting the guest's egress CA
-      through MELANGE_EXTRA_CA_CERTS.
+      through MELANGE_EXTRA_CA_CERTS. TestBuild_BuildPackage's getRunner
+      prefers bubblewrap, which go-tests.yaml never installed, so it ran
+      under docker there; e2e/docker-build keeps the docker build path
+      covered.
     environment:
       packages:
         - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
@@ -128,6 +131,7 @@ checks:
         - git
         - make
         # Wolfi's 2.13 builds predate Go 1.27 and cannot read its export data.
+        # The Makefile's setup-golangci-lint target reads this pin.
         - golangci-lint~2.14
       vars:
         GOTOOLCHAIN: local

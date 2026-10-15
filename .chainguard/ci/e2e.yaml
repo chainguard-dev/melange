@@ -1,11 +1,43 @@
 # Copyright 2026 Chainguard, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Builds packages with melange's bubblewrap runner and rebuilds them, and
-# builds real wolfi-dev/os packages with the melange from the tree.
+# Builds packages with melange's bubblewrap and docker runners and rebuilds
+# them, and builds real wolfi-dev/os packages with the melange from the tree.
 version: 1
 
 checks:
+  docker-build:
+    description: >-
+      Builds examples/minimal.yaml with melange build --runner docker, the
+      one place CI builds a package under the docker runner: go/test's
+      TestBuild_BuildPackage and the other builds use bubblewrap, and
+      wolfi-packages uses docker only for melange test.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - git
+        - make
+      services: [docker]
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+        TMPDIR: /var/tmp
+    # The guest's full CA bundle, which includes the sandbox's egress CA:
+    # melange adds it to every build and test guest.
+    vars:
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+    trigger: [presubmit, postsubmit]
+    resources: medium-amd64
+    timeout: 20m
+    network:
+      egress: ["*"] # PROOF RUN: narrowed from the egress report
+    script: |
+      set -eux
+      make melange
+      ./melange keygen
+      ./melange build examples/minimal.yaml --runner docker --arch=x86_64
+
   rebuild:
     description: >-
       Builds each config with melange from the tree (bubblewrap runner,

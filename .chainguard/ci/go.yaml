@@ -60,6 +60,7 @@ checks:
         # TestBuild_BuildPackage's crane, sed and 7zip sources.
         - github.com
         - git.savannah.gnu.org
+        - https.git.savannah.gnu.org # Savannah redirects git clones here
         - 7-zip.org
     cmd: make integration
 

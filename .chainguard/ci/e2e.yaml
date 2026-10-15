@@ -43,7 +43,11 @@ checks:
     script: |
       set -eux
       # getRunner prefers bubblewrap; without it the test builds under docker.
-      ! command -v bwrap
+      # (set -e ignores a failing command that starts with !, so test it.)
+      if command -v bwrap; then
+        echo "bwrap found: getRunner would pick bubblewrap over docker" >&2
+        exit 1
+      fi
       go test -tags=integration -count=1 -v -run '^TestBuild_BuildPackage$' ./pkg/build
 
   rebuild:

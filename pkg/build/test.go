@@ -55,22 +55,25 @@ type Test struct {
 	ExtraKeys         []string
 	ExtraRepos        []string
 	ExtraTestPackages []string
-	BinShOverlay      string
-	CacheDir          string
-	ApkCacheDir       string
-	CacheSource       string
-	EnvFiles          []string
-	Runner            container.Runner
-	Debug             bool
-	DebugRunner       bool
-	Interactive       bool
-	Auth              map[string]options.Auth
-	IgnoreSignatures  bool
-	DefaultCPU        string
-	DefaultCPUModel   string
-	DefaultDisk       string
-	DefaultMemory     string
-	DefaultTimeout    time.Duration
+	// ExtraCACertificates are PEM files the test guest trusts on top of its
+	// own roots.
+	ExtraCACertificates []string
+	BinShOverlay        string
+	CacheDir            string
+	ApkCacheDir         string
+	CacheSource         string
+	EnvFiles            []string
+	Runner              container.Runner
+	Debug               bool
+	DebugRunner         bool
+	Interactive         bool
+	Auth                map[string]options.Auth
+	IgnoreSignatures    bool
+	DefaultCPU          string
+	DefaultCPUModel     string
+	DefaultDisk         string
+	DefaultMemory       string
+	DefaultTimeout      time.Duration
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -83,6 +86,10 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		if err := opt(&t); err != nil {
 			return nil, err
 		}
+	}
+
+	if t.ExtraCACertificates == nil {
+		t.ExtraCACertificates = extraCACertsFromEnv()
 	}
 
 	log := clog.FromContext(ctx).With("arch", t.Arch)
@@ -150,6 +157,11 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		return "", fmt.Errorf("creating apko tempdir: %w", err)
 	}
 	defer os.RemoveAll(tmp)
+
+	imgConfig, err = withExtraCACertificates(imgConfig, t.ExtraCACertificates)
+	if err != nil {
+		return "", err
+	}
 
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),

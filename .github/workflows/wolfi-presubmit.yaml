@@ -69,8 +69,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The bubblewrap leg runs as a Chainguard Check
+        # (.chainguard/ci/e2e.yaml, wolfi-packages); QEMU needs KVM, which
+        # check guests lack.
         runner:
-          - bubblewrap
           - qemu
         package:
           # - rust-1.86 # takes ~35-40 minutes to build; used for testing LICENSE file functionality
@@ -130,7 +132,6 @@ jobs:
             git.dpkg.org:443
             github.com:443
             go.dev:443
-            grype.anchore.io:443
             index.crates.io:443
             invisible-mirror.net:443
             motd.ubuntu.com:443
@@ -157,7 +158,6 @@ jobs:
             time3.google.com:443
             time4.google.com:123
             time4.google.com:443
-            toolbox-data.anchore.io:443
             www.oberhumer.com:443
             www.sudo.ws:443
             yarnpkg.com:443
@@ -180,38 +180,17 @@ jobs:
           sudo chmod a+x /usr/bin/melange
           melange version
 
-      # needed to run tests for Bubblewrap packages
+      # needed by the Test installable step
       - uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5.5.0
 
-      # this need to point to main to always get the latest action
-      - uses: wolfi-dev/actions/install-wolfictl@d8faf0b2bf2a7c6eefc571567ef370faae5baed2 # last commit that had the scan command
+      # Installs wolfictl 0.39.28 from the action's ghcr.io/wolfi-dev/sdk
+      # digest. Keep in step with wolfictl in .chainguard/ci/e2e.yaml.
+      - uses: wolfi-dev/actions/install-wolfictl@e67944ee870ccd65490539b08cae7ff5df9eca35
 
       - env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
           wolfictl bump "${MATRIX_PACKAGE}"
-
-      - if: matrix.runner == 'bubblewrap'
-        run: |
-          sudo apt-get update
-          sudo apt-get -y install bubblewrap
-      - if: matrix.runner == 'bubblewrap'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: melange-src
-          persist-credentials: false
-      - if: matrix.runner == 'bubblewrap'
-        uses: ./melange-src/.github/actions/setup-bubblewrap
-      - if: matrix.runner == 'bubblewrap'
-        env:
-          MATRIX_PACKAGE: ${{ matrix.package }}
-        run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" MELANGE_EXTRA_OPTS="--generate-provenance" package/"${MATRIX_PACKAGE}"
-      - if: matrix.runner == 'bubblewrap'
-        env:
-          MATRIX_PACKAGE: ${{ matrix.package }}
-        run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="docker" test/"${MATRIX_PACKAGE}"
 
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
@@ -256,13 +235,6 @@ jobs:
             jq . packages/x86_64/"${dir}"/"${dir}.attestation"
           done
 
-      - name: Run tests to verify xattrs with bubblewrap runner
-        if: matrix.runner == 'bubblewrap' && matrix.package == 'fping'
-        env:
-          MATRIX_PACKAGE: ${{ matrix.package }}
-        run: |
-          make SHELL="/bin/bash" MELANGE="sudo melange" MELANGE_RUNNER="bubblewrap" test/"${MATRIX_PACKAGE}"
-
       - name: Run tests with QEMU runner
         if: matrix.runner == 'qemu'
         env:
@@ -292,7 +264,7 @@ jobs:
           done
           ls -hal packages/x86_64/usr/bin/sudo
 
-      - name: Test installable and Scan for CVEs
+      - name: Test installable
         env:
           MATRIX_PACKAGE: ${{ matrix.package }}
         run: |
@@ -307,9 +279,3 @@ jobs:
           esac
           docker run --rm -v "${PWD}":/work --workdir /work \
             cgr.dev/chainguard/wolfi-base /bin/sh -c "${install}; ${verify}"
-
-          # There is a huge fixed cost for every wolfictl scan invocation for grype DB init.
-          # Do this outside of the loop in one invocation with every package.
-          wolfictl scan \
-          packages/x86_64/"${MATRIX_PACKAGE}"-*.apk \
-          2> /dev/null # The error message renders strangely on GitHub Actions, and the important information is already being sent to stdout.

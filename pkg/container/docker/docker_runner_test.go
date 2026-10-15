@@ -15,6 +15,8 @@
 package docker
 
 import (
+	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -74,5 +76,33 @@ func TestUniqueImageTag_ShapeAndPrefix(t *testing.T) {
 		if !isHex {
 			t.Errorf("non-hex character %q in suffix of %q", r, tag)
 		}
+	}
+}
+
+func TestWithUmask(t *testing.T) {
+	// The wrapped command keeps its argv exactly, quoting and all: $0 and
+	// "$@" hand it on untouched.
+	args := []string{"/bin/sh", "-c", `echo "a b" '$HOME'`}
+	got := withUmask(args)
+	want := append([]string{"/bin/sh", "-c", `umask 022 && exec "$0" "$@"`}, args...)
+	if !slices.Equal(got, want) {
+		t.Fatalf("withUmask(%q) = %q, want %q", args, got, want)
+	}
+
+	out, err := exec.Command(got[0], got[1:]...).Output()
+	if err != nil {
+		t.Fatalf("running %q: %v", got, err)
+	}
+	if string(out) != "a b $HOME\n" {
+		t.Fatalf("output = %q, want %q", out, "a b $HOME\n")
+	}
+
+	probe := withUmask([]string{"sh", "-c", "umask"})
+	out, err = exec.Command(probe[0], probe[1:]...).Output()
+	if err != nil {
+		t.Fatalf("running umask: %v", err)
+	}
+	if strings.TrimSpace(string(out)) != "0022" {
+		t.Fatalf("umask = %q, want 0022", strings.TrimSpace(string(out)))
 	}
 }

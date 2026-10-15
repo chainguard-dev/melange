@@ -41,6 +41,8 @@ checks:
         - bubblewrap~0.13
         - git
         - make
+        - patch # TestPatchPipelineEndToEnd skips without it
+        - dash # the patch pipeline's syntax check also runs under dash, as on ubuntu-latest
       vars:
         GOTOOLCHAIN: local
         GOTMPDIR: /var/tmp
@@ -85,6 +87,8 @@ checks:
         - curl # pkg/sca's go generate fetches two wolfi-dev/os configs
         - git
         - make
+        - patch # TestPatchPipelineEndToEnd skips without it
+        - dash # the patch pipeline's syntax check also runs under dash, as on ubuntu-latest
       vars:
         GOTOOLCHAIN: local
         GOTMPDIR: /var/tmp

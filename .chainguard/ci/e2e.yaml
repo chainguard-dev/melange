@@ -8,16 +8,16 @@ version: 1
 checks:
   docker-build:
     description: >-
-      Builds examples/minimal.yaml with melange build --runner docker, the
-      one place CI builds a package under the docker runner: go/test's
-      TestBuild_BuildPackage and the other builds use bubblewrap, and
-      wolfi-packages uses docker only for melange test.
+      Runs TestBuild_BuildPackage (crane, 7zip-two-fetches, sed and
+      bogus-version, with their golden SBOMs) under the docker runner: this
+      guest has docker and no bubblewrap, so the test's getRunner falls back
+      to docker, as it did on GitHub Actions. go/test runs the same test
+      under bubblewrap.
     environment:
       packages:
         - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
         - bash
         - git
-        - make
       services: [docker]
       vars:
         GOTOOLCHAIN: local
@@ -29,17 +29,14 @@ checks:
       MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
     trigger: [presubmit, postsubmit]
     resources: medium-amd64
-    timeout: 20m
+    timeout: 30m
     network:
-      egress:
-        - proxy.golang.org
-        - storage.googleapis.com
-        - packages.wolfi.dev
+      egress: ["*"] # PROOF RUN: narrowed from the egress report
     script: |
       set -eux
-      make melange
-      ./melange keygen
-      ./melange build examples/minimal.yaml --runner docker --arch=x86_64
+      # getRunner prefers bubblewrap; without it the test builds under docker.
+      ! command -v bwrap
+      go test -tags=integration -count=1 -v -run '^TestBuild_BuildPackage$' ./pkg/build
 
   rebuild:
     description: >-

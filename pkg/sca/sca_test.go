@@ -537,3 +537,26 @@ func TestGoSupportsLibcrypto4(t *testing.T) {
 		}
 	}
 }
+
+func TestMsftToolsetSupportsLibcrypto4(t *testing.T) {
+	for _, tc := range []struct {
+		toolset string
+		want    bool
+	}{
+		{"", false},
+		{"go1.26.9", true},
+		{"go1.26.8-microsoft", false},
+		{"go1.26.9-microsoft", true},
+		{"go1.26.10-microsoft", true},
+		{"go1.26.9.1-microsoft", true},
+		{"go1.25.20-microsoft", false},
+		{"go1.27.1-microsoft", false},
+		{"go1.260.1-microsoft", false},
+		{"1.26.9-microsoft", false},
+		{"gogarbage", false},
+	} {
+		if got := msftToolsetSupportsLibcrypto4(tc.toolset); got != tc.want {
+			t.Errorf("msftToolsetSupportsLibcrypto4(%q) = %v, want %v", tc.toolset, got, tc.want)
+		}
+	}
+}

@@ -60,6 +60,8 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.BoolVar(&flags.EmptyWorkspace, "empty-workspace", false, "whether the build workspace should be empty")
 	fs.BoolVar(&flags.StripOriginName, "strip-origin-name", false, "whether origin names should be stripped (for bootstrap)")
 	fs.StringVar(&flags.OutDir, "out-dir", "./packages/", "directory where packages will be output")
+	fs.BoolVar(&flags.SourcePackage, "source-package", false, "also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)")
+	fs.StringVar(&flags.SourceOutDir, "source-out-dir", "", "directory where -source companions will be output (default: --out-dir)")
 	fs.StringVar(&flags.DependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	fs.StringVar(&flags.PurlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
 	fs.StringSliceVar(&flags.Archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
@@ -67,6 +69,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringSliceVar(&flags.BuildOption, "build-option", []string{}, "build options to enable")
 	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	fs.StringSliceVar(&flags.ExtraCACertificates, "ca-certificate-append", nil, "path to a PEM file of extra CA certificates for the guest to trust (overrides $MELANGE_EXTRA_CA_CERTS)")
 	fs.StringSliceVarP(&flags.ExtraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	fs.StringSliceVar(&flags.ExtraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
 	fs.BoolVar(&flags.CreateBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
@@ -109,8 +112,11 @@ type BuildFlags struct {
 	EmptyWorkspace       bool
 	StripOriginName      bool
 	OutDir               string
+	SourcePackage        bool
+	SourceOutDir         string
 	Archstrs             []string
 	ExtraKeys            []string
+	ExtraCACertificates  []string
 	ExtraRepos           []string
 	DependencyLog        string
 	EnvFiles             []string
@@ -209,7 +215,10 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithGenerateIndex(flags.GenerateIndex),
 		build.WithEmptyWorkspace(flags.EmptyWorkspace),
 		build.WithOutDir(flags.OutDir),
+		build.WithSourcePackage(flags.SourcePackage),
+		build.WithSourceOutDir(flags.SourceOutDir),
 		build.WithExtraKeys(flags.ExtraKeys),
+		build.WithExtraCACertificates(flags.ExtraCACertificates),
 		build.WithExtraRepos(flags.ExtraRepos),
 		build.WithExtraPackages(flags.ExtraPackages),
 		build.WithDependencyLog(flags.DependencyLog),

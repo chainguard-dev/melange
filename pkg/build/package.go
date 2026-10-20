@@ -408,6 +408,15 @@ func combine(out io.Writer, inputs ...io.Reader) error {
 
 // TODO(kaniini): generate APKv3 packages
 func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
+	// a file with several hard links is counted once for the paths the data
+	// section writes as links to it
+	links, err := tarball.OpenDiskLinks(pc.WorkspaceSubdir())
+	if err != nil {
+		return err
+	}
+	defer links.Close()
+	var targets tarball.LinkTargets
+
 	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -416,6 +425,20 @@ func (pc *PackageBuild) calculateInstalledSize(fsys apkofs.FullFS) error {
 		fi, err := d.Info()
 		if err != nil {
 			return err
+		}
+
+		if fi.Mode().IsRegular() {
+			inode, linked, err := links.Inode(path)
+			if err != nil {
+				return err
+			}
+			if linked {
+				// the writer ignores errors listing xattrs too
+				xattrs, _ := fsys.ListXattrs(path)
+				if _, ok := targets.Target(inode, path, xattrs); ok {
+					return nil
+				}
+			}
 		}
 
 		pc.InstalledSize += fi.Size()
@@ -434,6 +457,7 @@ func (pc *PackageBuild) emitDataSection(ctx context.Context, fsys apkofs.FullFS,
 		tarball.WithRemapUIDs(remapUIDs),
 		tarball.WithRemapGIDs(remapGIDs),
 		tarball.WithUseChecksums(true),
+		tarball.WithDiskDir(pc.WorkspaceSubdir()),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to build tarball context: %w", err)

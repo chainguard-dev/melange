@@ -32,6 +32,7 @@ type Context struct {
 	remapUIDs      map[int]int
 	remapGIDs      map[int]int
 	overridePerms  map[string]tar.Header
+	diskDir        string
 }
 
 type Option func(*Context) error
@@ -127,6 +128,17 @@ func WithSkipClose(skipClose bool) Option {
 func WithUseChecksums(useChecksums bool) Option {
 	return func(ctx *Context) error {
 		ctx.UseChecksums = useChecksums
+		return nil
+	}
+}
+
+// WithDiskDir sets the directory on disk that the fs.FS being written is a
+// view of. Hardlinks are then detected by stat-ing the files under it, for
+// filesystems whose FileInfo.Sys() is not a *syscall.Stat_t (apko's DirFS
+// returns a *tar.Header even for files kept on disk).
+func WithDiskDir(dir string) Option {
+	return func(ctx *Context) error {
+		ctx.diskDir = dir
 		return nil
 	}
 }

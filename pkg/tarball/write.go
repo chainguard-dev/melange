@@ -343,7 +343,7 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 				}
 				linkChecksum := hex.EncodeToString(linkDigest[:])
 				header.PAXRecords["APK-TOOLS.checksum.SHA1"] = linkChecksum
-			} else if info.Mode().IsRegular() {
+			} else if header.Typeflag == tar.TypeReg {
 				data, err := fsys.Open(path)
 				if err != nil {
 					return err
@@ -375,7 +375,7 @@ func (c *Context) writeTar(ctx context.Context, tw *tar.Writer, fsys fs.FS, user
 			return err
 		}
 
-		if info.Mode().IsRegular() && header.Size > 0 {
+		if header.Typeflag == tar.TypeReg && header.Size > 0 {
 			data, err := fsys.Open(path)
 			if err != nil {
 				return err

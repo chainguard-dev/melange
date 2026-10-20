@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	iofs "io/fs"
 	"os"
@@ -85,7 +86,7 @@ func writeEntries(t *testing.T, c *Context, fsys iofs.FS) map[string]entry {
 	tr := tar.NewReader(&buf)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return got
 		}
 		require.NoError(t, err)

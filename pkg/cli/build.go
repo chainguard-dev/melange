@@ -69,6 +69,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringSliceVar(&flags.BuildOption, "build-option", []string{}, "build options to enable")
 	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	fs.StringSliceVar(&flags.ExtraCACertificates, "ca-certificate-append", nil, "path to a PEM file of extra CA certificates for the guest to trust (overrides $MELANGE_EXTRA_CA_CERTS)")
 	fs.StringSliceVarP(&flags.ExtraRepos, "repository-append", "r", []string{}, "path to extra repositories to include in the build environment")
 	fs.StringSliceVar(&flags.ExtraPackages, "package-append", []string{}, "extra packages to install for each of the build environments")
 	fs.BoolVar(&flags.CreateBuildLog, "create-build-log", false, "creates a package.log file containing a list of packages that were built by the command")
@@ -115,6 +116,7 @@ type BuildFlags struct {
 	SourceOutDir         string
 	Archstrs             []string
 	ExtraKeys            []string
+	ExtraCACertificates  []string
 	ExtraRepos           []string
 	DependencyLog        string
 	EnvFiles             []string
@@ -216,6 +218,7 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithSourcePackage(flags.SourcePackage),
 		build.WithSourceOutDir(flags.SourceOutDir),
 		build.WithExtraKeys(flags.ExtraKeys),
+		build.WithExtraCACertificates(flags.ExtraCACertificates),
 		build.WithExtraRepos(flags.ExtraRepos),
 		build.WithExtraPackages(flags.ExtraPackages),
 		build.WithDependencyLog(flags.DependencyLog),

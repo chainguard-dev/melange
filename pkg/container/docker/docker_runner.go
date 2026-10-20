@@ -53,7 +53,19 @@ const (
 	DockerName = "docker"
 
 	runnerWorkdir = "/home/build"
+
+	// execUmask is the umask a docker run container starts with. An exec
+	// task inherits the umask of the runtime's exec path instead, which is
+	// 0000 under some containerd and runc versions: every file a pipeline
+	// step creates is then world writable, which sudo, for one, refuses.
+	execUmask = "022"
 )
+
+// withUmask wraps args so they run under execUmask, as a pipeline step
+// would in a freshly started container.
+func withUmask(args []string) []string {
+	return append([]string{"/bin/sh", "-c", "umask " + execUmask + ` && exec "$0" "$@"`}, args...)
+}
 
 // docker is a Runner implementation that uses the docker library.
 type docker struct {
@@ -227,7 +239,7 @@ func (dk *docker) Run(ctx context.Context, cfg *mcontainer.Config, envOverride m
 
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
 		User:         cfg.RunAsUID,
-		Cmd:          args,
+		Cmd:          withUmask(args),
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
 		Tty:          false,
@@ -281,7 +293,7 @@ func (dk *docker) Debug(ctx context.Context, cfg *mcontainer.Config, envOverride
 	size := [2]uint{h, w}
 
 	taskIDResp, err := dk.cli.ContainerExecCreate(ctx, cfg.PodID, container.ExecOptions{
-		Cmd:          args,
+		Cmd:          withUmask(args),
 		WorkingDir:   runnerWorkdir,
 		Env:          environ,
 		Tty:          true,

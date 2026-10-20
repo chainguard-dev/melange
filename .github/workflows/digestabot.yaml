@@ -21,7 +21,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: step-security/harden-runner@351661ca32ac09a36dc5ee2d536e3128f2a3c8ed # v2.22.0
+      - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -41,7 +41,7 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
 
       # .chainguard/source.yaml requires commits to be signed.
-      - uses: chainguard-dev/actions/setup-gitsign@84b1be4c638f12d4256ddddef17af98853b6d0d9 # v1.6.40
+      - uses: chainguard-dev/actions/setup-gitsign@3403a578b543fd3f0debdaef9dd989ae54e3fcef # v1.6.41
 
       - uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
         id: octo-sts

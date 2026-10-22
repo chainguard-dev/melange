@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -350,5 +351,68 @@ func TestCreateCompilerConfigFiles(t *testing.T) {
 		// Verify at least one clang driver config exists
 		clangMinX86ClangCfg := filepath.Join(tmpDir, ".config", fmt.Sprintf("clang-%d", minClangVer), "x86_64-unknown-linux-gnu-clang.cfg")
 		assert.FileExists(t, clangMinX86ClangCfg)
+	})
+}
+
+func runLinkClangConfigs(t *testing.T, workspace, home string) {
+	t.Helper()
+	args := append(append([]string{}, shellLinkClangConfigs[1:]...), workspace)
+	cmd := exec.Command(shellLinkClangConfigs[0], args...)
+	cmd.Env = []string{"HOME=" + home, "PATH=" + os.Getenv("PATH")}
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+}
+
+func TestShellLinkClangConfigs(t *testing.T) {
+	t.Run("links each clang config dir into a separate home", func(t *testing.T) {
+		workspace, home := t.TempDir(), t.TempDir()
+		for _, v := range []string{"clang-22", "clang-23"} {
+			require.NoError(t, os.MkdirAll(filepath.Join(workspace, ".config", v), 0o755))
+		}
+		require.NoError(t, os.MkdirAll(filepath.Join(workspace, ".config", "other"), 0o755))
+
+		runLinkClangConfigs(t, workspace, home)
+
+		for _, v := range []string{"clang-22", "clang-23"} {
+			target, err := os.Readlink(filepath.Join(home, ".config", v))
+			require.NoError(t, err)
+			assert.Equal(t, filepath.Join(workspace, ".config", v), target)
+		}
+		_, err := os.Lstat(filepath.Join(home, ".config", "other"))
+		assert.True(t, os.IsNotExist(err), "only clang-* dirs are linked")
+	})
+
+	t.Run("home is the workspace", func(t *testing.T) {
+		workspace := t.TempDir()
+		dir := filepath.Join(workspace, ".config", "clang-23")
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+
+		runLinkClangConfigs(t, workspace, workspace)
+
+		fi, err := os.Lstat(dir)
+		require.NoError(t, err)
+		assert.True(t, fi.IsDir(), "the workspace's own config dir is left as is")
+	})
+
+	t.Run("an existing entry in home is kept", func(t *testing.T) {
+		workspace, home := t.TempDir(), t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(workspace, ".config", "clang-23"), 0o755))
+		own := filepath.Join(home, ".config", "clang-23")
+		require.NoError(t, os.MkdirAll(own, 0o755))
+
+		runLinkClangConfigs(t, workspace, home)
+
+		fi, err := os.Lstat(own)
+		require.NoError(t, err)
+		assert.True(t, fi.IsDir())
+	})
+
+	t.Run("no clang configs in the workspace", func(t *testing.T) {
+		workspace, home := t.TempDir(), t.TempDir()
+
+		runLinkClangConfigs(t, workspace, home)
+
+		_, err := os.Lstat(filepath.Join(home, ".config"))
+		assert.True(t, os.IsNotExist(err))
 	})
 }

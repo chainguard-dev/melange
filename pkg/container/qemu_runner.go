@@ -83,6 +83,13 @@ const (
 	// sshKeepaliveRequestTimeout is how long to wait for a single keepalive
 	// response before counting it as missed.
 	sshKeepaliveRequestTimeout = 10 * time.Second
+
+	// defaultSSHWaitTimeout is how long to wait for the guest's SSH server
+	// to come up after starting the VM. Before sshd starts, the guest
+	// extracts the whole rootfs tarball onto its scratch disk, so large
+	// build/test environments take well over a minute to boot. Can be
+	// overridden with QEMU_SSH_WAIT_TIMEOUT.
+	defaultSSHWaitTimeout = 5 * time.Minute
 )
 
 type qemu struct{}
@@ -633,6 +640,15 @@ func (b qemuOCILoader) RemoveImage(ctx context.Context, ref string) error {
 
 func createMicroVM(ctx context.Context, cfg *Config) error {
 	log := clog.FromContext(ctx)
+
+	// Validate the SSH wait timeout before any side effects, so a bad
+	// QEMU_SSH_WAIT_TIMEOUT fails the VM start instead of leaking a
+	// running VM and its disks.
+	sshWaitTimeout, err := sshWaitTimeoutFromEnv()
+	if err != nil {
+		return err
+	}
+
 	log.Debug("qemu: ssh - create ssh key pair")
 	pubKey, err := generateSSHKeys(ctx, cfg)
 	if err != nil {
@@ -957,7 +973,11 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	// qemu-system-x86_64 or qemu-system-aarch64...
 	// #nosec G204 - Architecture is from validated configuration, not user input
 	qemuCmd := exec.CommandContext(ctx, fmt.Sprintf("qemu-system-%s", cfg.Arch.ToAPK()), baseargs...)
-	clog.FromContext(ctx).Infof("qemu: VM resources: arch=%s cpus=%d memory=%dMiB", cfg.Arch.ToAPK(), nproc, mem/1024)
+	rootfsSize := int64(0)
+	if fi, err := os.Stat(cfg.ImgRef); err == nil {
+		rootfsSize = fi.Size()
+	}
+	clog.FromContext(ctx).Infof("qemu: VM resources: arch=%s cpus=%d memory=%dMiB rootfs=%dMiB", cfg.Arch.ToAPK(), nproc, mem/1024, rootfsSize/1024/1024)
 	clog.FromContext(ctx).Info("qemu: starting VM")
 	clog.FromContext(ctx).Debugf("qemu: executing - %s", strings.Join(qemuCmd.Args, " "))
 
@@ -1011,12 +1031,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 
 	started := make(chan struct{})
 
-	clog.FromContext(ctx).Info("qemu: waiting for SSH")
+	log.Infof("qemu: waiting for SSH (timeout %s)", sshWaitTimeout)
+	sshWaitStart := time.Now()
 	go func() {
-		// 100ms timeout with a 100ms sleep
-		retries := 60
+		deadline := sshWaitStart.Add(sshWaitTimeout)
 		try := 0
-		for try < retries {
+		for time.Now().Before(deadline) {
 			if logCtx.Err() != nil {
 				return
 			}
@@ -1024,9 +1044,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			try++
 			time.Sleep(time.Millisecond * 100)
 
-			log.Debugf("qemu: waiting for ssh to come up, try %d of %d", try, retries)
-			err = checkSSHServer(cfg.SSHAddress)
-			if err == nil {
+			log.Debugf("qemu: waiting for ssh to come up, try %d", try)
+			if err := checkSSHServer(cfg.SSHAddress); err == nil {
 				close(started)
 				return
 			} else {
@@ -1034,12 +1053,12 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 			}
 		}
 
-		cancel(fmt.Errorf("ssh server never came up"))
+		cancel(fmt.Errorf("ssh server never came up within %s", sshWaitTimeout))
 	}()
 
 	select {
 	case <-started:
-		log.Info("qemu: VM started successfully, SSH server is up")
+		log.Infof("qemu: VM started successfully, SSH server is up after %.1fs", time.Since(sshWaitStart).Seconds())
 	case err := <-qemuExit:
 		defer os.Remove(cfg.ImgRef)
 		defer os.Remove(cfg.Disk)
@@ -1520,6 +1539,24 @@ func generateDiskFile(ctx context.Context, diskSize string) (string, error) {
 
 	clog.FromContext(ctx).Debugf("qemu: generating disk image, name %s, size %s:", diskName.Name(), diskSize)
 	return diskName.Name(), os.Truncate(diskName.Name(), size)
+}
+
+// sshWaitTimeoutFromEnv returns how long to wait for the guest's SSH
+// server to come up, honoring the QEMU_SSH_WAIT_TIMEOUT environment
+// variable (a time.ParseDuration string, e.g. "90s" or "10m").
+func sshWaitTimeoutFromEnv() (time.Duration, error) {
+	v, ok := os.LookupEnv("QEMU_SSH_WAIT_TIMEOUT")
+	if !ok || v == "" {
+		return defaultSSHWaitTimeout, nil
+	}
+	d, err := time.ParseDuration(v)
+	if err == nil && d <= 0 {
+		err = errors.New("must be positive")
+	}
+	if err != nil {
+		return 0, fmt.Errorf("invalid QEMU_SSH_WAIT_TIMEOUT value %q: %w", v, err)
+	}
+	return d, nil
 }
 
 // qemu will open the port way before the ssh daemon is ready to listen

@@ -1036,6 +1036,8 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 	go func() {
 		deadline := sshWaitStart.Add(sshWaitTimeout)
 		try := 0
+		var lastErr error
+		lastHeartbeat := sshWaitStart
 		for time.Now().Before(deadline) {
 			if logCtx.Err() != nil {
 				return
@@ -1049,11 +1051,21 @@ func createMicroVM(ctx context.Context, cfg *Config) error {
 				close(started)
 				return
 			} else {
-				log.Info(err.Error())
+				log.Debug(err.Error())
+				lastErr = err
+			}
+
+			if time.Since(lastHeartbeat) >= 30*time.Second {
+				log.Infof("qemu: still waiting for SSH after %.0fs (last probe error: %s)", time.Since(sshWaitStart).Seconds(), lastErr)
+				lastHeartbeat = time.Now()
 			}
 		}
 
-		cancel(fmt.Errorf("ssh server never came up within %s", sshWaitTimeout))
+		if lastErr != nil {
+			cancel(fmt.Errorf("ssh server never came up within %s (last probe error: %w)", sshWaitTimeout, lastErr))
+		} else {
+			cancel(fmt.Errorf("ssh server never came up within %s", sshWaitTimeout))
+		}
 	}()
 
 	select {

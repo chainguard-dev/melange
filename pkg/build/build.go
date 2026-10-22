@@ -714,6 +714,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}()
 	}
 
+	if err := pr.runner.Run(ctx, pr.config, map[string]string{}, append(shellLinkClangConfigs, WorkDir)...); err != nil {
+		log.Warnf("unable to link clang configs into $HOME, clang links will miss --package-metadata: %v", err)
+	}
+
 	// run the main pipeline
 	log.Debug("running the main pipeline")
 	pipelines := b.Configuration.Pipeline

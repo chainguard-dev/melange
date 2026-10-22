@@ -112,6 +112,7 @@ jobs:
             api.github.com:443
             api.ipify.org:443
             apk.cgr.dev:443
+            archive.ubuntu.com:443
             archive.ubuntu.com:80
             azure.archive.ubuntu.com:80
             broker.actions.githubusercontent.com:443
@@ -147,6 +148,7 @@ jobs:
             registry.yarnpkg.com:443
             release-assets.githubusercontent.com:443
             results-receiver.actions.githubusercontent.com:443
+            security.ubuntu.com:443
             security.ubuntu.com:80
             static.crates.io:443
             storage.googleapis.com:443

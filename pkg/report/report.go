@@ -180,8 +180,10 @@ func New(kind string, cfg *config.Configuration, arch, configFile, runner string
 	}
 }
 
-type stageKey struct{}
-type stepKey struct{}
+type (
+	stageKey struct{}
+	stepKey  struct{}
+)
 
 // Attach returns a context whose logger also records into the report.
 func (r *Report) Attach(ctx context.Context) context.Context {

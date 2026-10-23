@@ -35,7 +35,7 @@ type reportView struct {
 
 // flatten lists steps depth-first; their IDs carry the nesting.
 func flatten(steps []*Step) []*Step {
-	var out []*Step
+	out := make([]*Step, 0, len(steps))
 	for _, st := range steps {
 		out = append(out, st)
 		out = append(out, flatten(st.Steps)...)

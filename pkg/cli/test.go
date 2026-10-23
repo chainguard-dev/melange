@@ -58,6 +58,7 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 	fs.StringVar(&flags.Disk, "disk", "", "disk size to use for tests")
 	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for tests")
 	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for tests")
+	addReportFlag(fs, &flags.ReportDir)
 }
 
 // TestFlags holds all parsed test command flags
@@ -86,6 +87,7 @@ type TestFlags struct {
 	Memory              string
 	Disk                string
 	Timeout             time.Duration
+	ReportDir           string
 }
 
 // ParseTestFlags parses test flags from the provided args and returns a TestFlags struct
@@ -131,6 +133,7 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestMemory(flags.Memory),
 		build.WithTestDisk(flags.Disk),
 		build.WithTestTimeout(flags.Timeout),
+		build.WithTestReportDir(flags.ReportDir),
 	}
 
 	if len(args) > 0 {

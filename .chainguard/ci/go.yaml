@@ -38,6 +38,7 @@ checks:
         - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
         - bash
         - build-base # cgo for -race
+        - busybox # the pipeline script tests run the scripts under its sh
         - bubblewrap~0.13
         - git
         - make
@@ -53,6 +54,8 @@ checks:
     # melange adds it to every build and test guest.
     vars:
       MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+      # the pipeline script tests fail, rather than skip, without git and busybox
+      MELANGE_REQUIRE_SCRIPT_TOOLS: "1"
     trigger: [presubmit, postsubmit]
     resources: medium-amd64
     timeout: 40m

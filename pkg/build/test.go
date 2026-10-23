@@ -55,6 +55,10 @@ type Test struct {
 	ExtraKeys         []string
 	ExtraRepos        []string
 	ExtraTestPackages []string
+	// StrictSourcesFromCache lists the step kinds (see strictSourceKinds) whose
+	// steps take their sources only from CacheDir, failing instead of reaching
+	// the network.
+	StrictSourcesFromCache []string
 	// ExtraCACertificates are PEM files the test guest trusts on top of its
 	// own roots.
 	ExtraCACertificates []string
@@ -327,12 +331,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
 
-	pr := &pipelineRunner{
-		interactive: t.Interactive,
-		debug:       t.Debug,
-		config:      cfg,
-		runner:      t.Runner,
-	}
+	pr := t.newPipelineRunner(cfg)
 
 	if !t.IsTestless() {
 		// use anonymous function so that deferring will actually run
@@ -388,12 +387,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 			subCfg.Arch = t.Arch
 
-			pr := &pipelineRunner{
-				interactive: t.Interactive,
-				debug:       t.Debug,
-				config:      subCfg,
-				runner:      t.Runner,
-			}
+			pr := t.newPipelineRunner(subCfg)
 
 			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
 				return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
@@ -422,6 +416,19 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
 	return nil
+}
+
+// newPipelineRunner returns the runner for the steps of one of this test's
+// pods, the package's or a subpackage's, passing --strict-sources-from-cache on so the
+// runner can keep it in force.
+func (t *Test) newPipelineRunner(cfg *container.Config) *pipelineRunner {
+	return &pipelineRunner{
+		interactive:   t.Interactive,
+		debug:         t.Debug,
+		config:        cfg,
+		runner:        t.Runner,
+		strictSources: t.StrictSourcesFromCache,
+	}
 }
 
 func (t *Test) SummarizePaths(ctx context.Context) {

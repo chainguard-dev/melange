@@ -80,3 +80,47 @@ refused tampered-commit
 cp -a "$upstream" "$work/missing-commit"
 rm -f "$work/missing-commit/$key.commit"
 refused missing-commit
+
+# With --strict-sources-from-cache=git-checkout, an empty cache must fail
+# before any clone, and the intact one must still build, for the configuration
+# and for the companion's own compiled copy of it.
+#
+# sources_build <config> <name>: as build, without --source-package but taking
+# the sources only from the cache.
+sources_build() {
+    # shellcheck disable=SC2086 # ARGS is a list of arguments
+    "$MELANGE" build "$1" --arch=x86_64 --namespace=wolfi --strict-sources-from-cache=git-checkout \
+        --cache-dir="$work/$2" --out-dir="$work/out-$2" $ARGS > "$work/$2.log" 2>&1
+}
+
+# The companion's copy of the configuration, as compiled. That the embedded
+# definitions replace its inline scripts is shown by the unit tests, not here.
+root=$(dirname "$upstream")
+compiled="$root/$(basename "$root").yaml"
+[ -f "$compiled" ] || fail "$companion carries no compiled configuration"
+
+mkdir "$work/empty"
+for c in "$cfg" "$compiled"; do
+    if sources_build "$c" empty; then
+        cat "$work/empty.log"
+        fail "empty cache: $c built without its sources in the cache"
+    fi
+    if ! grep -q -- "--strict-sources-from-cache: refusing to clone" "$work/empty.log"; then
+        cat "$work/empty.log"
+        fail "empty cache: $c failed, but not on the strict refusal"
+    fi
+    ! grep -q "Attempting git clone" "$work/empty.log" || fail "empty cache: $c tried to clone"
+    echo "PASS: empty cache refused for $c"
+done
+
+n=0
+for c in "$cfg" "$compiled"; do
+    n=$((n + 1))
+    cp -a "$upstream" "$work/sources-intact-$n"
+    sources_build "$c" "sources-intact-$n" || { cat "$work/sources-intact-$n.log"; fail "intact cache: $c failed"; }
+    grep -q "in cache; restoring instead of cloning" "$work/sources-intact-$n.log" || {
+        cat "$work/sources-intact-$n.log"
+        fail "intact cache: $c did not restore"
+    }
+    echo "PASS: intact cache restored for $c"
+done

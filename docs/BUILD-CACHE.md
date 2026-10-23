@@ -217,6 +217,18 @@ No additional configuration is required in your Melange config. The Maven pipeli
 
 On subsequent builds, Maven will reuse the downloaded dependencies from the cache, avoiding redundant downloads.
 
+## Sources only from the cache
+
+`--strict-sources-from-cache=git-checkout` on `melange build`, `melange test` and `melange rebuild` makes `git-checkout` steps take their checkouts only from `--cache-dir`, and the build fails instead of cloning. The value is a list of step kinds, comma-separated or in repeated flags, and `git-checkout` is the only one accepted; an empty or any other value is an error, and without the flag nothing changes. The cache is the `upstream/` directory of a `--source-package` companion, or a directory prepared to the same layout. A `rebuild` has no `--cache-dir` and needs `--source-package`, whose cache it uses; without it the flag is an error.
+
+The cache content is still authenticated: `git-checkout` authenticates the archive against `expected-commit`. The flag sets `MELANGE_SOURCE_RESTORE=1` and `MELANGE_SOURCE_STRICT=1` in the environment of every `git-checkout` step and of the steps nested in it, and no configuration, step or `--env-file` value can change either. Every other step keeps the environment it would have without the flag.
+
+A strict `git-checkout` step never clones. It fails when the step has `sparse-paths` or no `expected-commit`, or when the cache lacks `git:<expected-commit>.tar.gz` or `git:<expected-commit>.commit`, so a missing cache file fails the step.
+
+With the flag, a `git-checkout` step always uses the definition built into the running melange, whatever a compiled configuration or a `--pipeline-dir` carries for it, so inputs a compiled step leaves out take that melange's defaults, and `rebuild --diff` can report the `.melange.yaml` as changed. A compiled step that passes an input this melange's definition lacks fails to compile, with an error saying so, and so does a `git-checkout` step with a `pipeline:` of its own that is not the single `runs:` step compiling leaves. With the flag, `uses` must name the step exactly as `git-checkout`; spellings such as `./git-checkout` or `Git-Checkout` are refused, so the recorded configuration stays the same as a build without the flag would record.
+
+The configuration is trusted. The flag stops the `git-checkout` script's own network fallback; it does not stop code a configuration injects through input values or runs in `runs:` steps, such as a step that calls `curl` or `git`, which has the same trust as any `runs:` step. Language package managers can still use the network.
+
 ## Cache Persistence by Runner
 
 The cache directory mount behavior varies depending on which runner you use:

@@ -111,6 +111,10 @@ type Build struct {
 	// corresponding source; the source-package annotation overrides it per
 	// package.
 	SourcePackage bool
+	// StrictSourcesFromCache lists the step kinds (see strictSourceKinds) whose
+	// steps take their sources only from CacheDir, failing instead of reaching
+	// the network.
+	StrictSourcesFromCache []string
 	// SourceOutDir, when set, receives the companion instead of OutDir, so it
 	// can be published to a repository of its own.
 	SourceOutDir  string
@@ -660,12 +664,7 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 	b.SBOMGroup = NewSBOMGroup(pkgNames...)
 
-	pr := &pipelineRunner{
-		interactive: b.Interactive,
-		debug:       b.Debug,
-		config:      b.workspaceConfig(ctx),
-		runner:      b.Runner,
-	}
+	pr := b.newPipelineRunner(b.workspaceConfig(ctx))
 
 	if b.EmptyWorkspace {
 		log.Debugf("empty workspace requested")
@@ -1068,6 +1067,18 @@ func runAsGID(accts apko_types.ImageAccounts) string {
 	// TODO(stevebeattie): we should probably log this fact, but we
 	// don't have the context to do so
 	return ""
+}
+
+// newPipelineRunner returns the runner for the steps of one of this build's
+// pods, passing --strict-sources-from-cache on so the runner can keep it in force.
+func (b *Build) newPipelineRunner(cfg *container.Config) *pipelineRunner {
+	return &pipelineRunner{
+		interactive:   b.Interactive,
+		debug:         b.Debug,
+		config:        cfg,
+		runner:        b.Runner,
+		strictSources: b.StrictSourcesFromCache,
+	}
 }
 
 func (b *Build) buildWorkspaceConfig(ctx context.Context) *container.Config {

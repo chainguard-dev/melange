@@ -195,6 +195,17 @@ func WithOutDir(outDir string) Option {
 	}
 }
 
+// WithStrictSourcesFromCache makes the steps of the listed kinds take their
+// sources only from the cache directory, failing rather than fetching them.
+// Each kind must be one of strictSourceKinds.
+func WithStrictSourcesFromCache(kinds []string) Option {
+	return func(b *Build) error {
+		var err error
+		b.StrictSourcesFromCache, err = normalizeStrictSources(kinds)
+		return err
+	}
+}
+
 // WithSourcePackage emits an <origin>-source companion carrying the complete
 // corresponding source alongside the binaries.
 func WithSourcePackage(enabled bool) Option {

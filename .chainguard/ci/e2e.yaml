@@ -57,8 +57,10 @@ checks:
       melange.yaml is also built with --source-package and rebuilt from that
       -source companion; go-build.yaml also runs
       e2e-tests/source-package-restore-test, which restores git checkouts
-      from the companion and refuses tampered ones. The builds fetch their
-      sources upstream, trusting the guest's egress CA through
+      from the companion, refuses tampered ones, and builds with
+      --strict-sources-from-cache=git-checkout on an empty and on the intact
+      cache. The builds fetch their sources upstream, trusting the guest's
+      egress CA through
       MELANGE_EXTRA_CA_CERTS, which melange build and melange rebuild both
       read.
     environment:

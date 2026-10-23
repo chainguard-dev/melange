@@ -854,6 +854,11 @@ pipeline:
               return 0
           fi
 
+          # Whatever kept the restore above from returning, strict mode
+          # (--strict-sources-from-cache) never clones.
+          [ -z "${MELANGE_SOURCE_STRICT:-}" ] ||
+              fail "--strict-sources-from-cache: refusing to clone; restoring needs MELANGE_SOURCE_RESTORE, expected-commit, no sparse-paths and git:<expected-commit>.tar.gz in the cache (--cache-dir)"
+
           local flags="" depthflag="" dest_fullpath="" workdir=""
           local remote="origin" rcfile="" rc="" quiet="--quiet"
           flags="--config=advice.detachedHead=false"

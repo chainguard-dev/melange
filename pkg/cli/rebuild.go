@@ -37,6 +37,7 @@ func addRebuildFlags(fs *pflag.FlagSet, flags *RebuildFlags) {
 	fs.StringVar(&flags.OutDir, "out-dir", "./rebuilt-packages/", "directory where packages will be output")
 	fs.StringVar(&flags.SourceDir, "source-dir", "", "directory where source code is located")
 	fs.StringVar(&flags.SourcePackage, "source-package", "", "the <origin>-source APK of the build to rebuild from: its overlay becomes --source-dir and its upstream artifacts the cache, after it is verified against the .source.sha256 the package carries")
+	fs.StringSliceVar(&flags.StrictSourcesFromCache, "strict-sources-from-cache", nil, "step kinds (git-checkout) whose sources are taken only from the cache that --source-package provides (the flag needs --source-package); the rebuild fails instead of fetching them (runs: steps and language package managers are not restricted; see docs/BUILD-CACHE.md)")
 	fs.StringVar(&flags.SigningKey, "signing-key", "", "path to the signing key to use for signing the rebuilt packages")
 }
 
@@ -48,6 +49,8 @@ type RebuildFlags struct {
 	SourcePackage string
 	SigningKey    string
 	Diff          bool
+
+	StrictSourcesFromCache []string
 
 	// workDir holds what a rebuild unpacks for itself: the companion, or an
 	// empty directory standing in for a source directory nobody gave.
@@ -82,6 +85,9 @@ func (flags *RebuildFlags) RebuildOptions(ctx context.Context, pkginfo *goapk.Pa
 
 func (flags *RebuildFlags) rebuildOptions(ctx context.Context, pkginfo *goapk.PackageInfo, cfg *config.Configuration, cfgpkg *spdx.Package, cfgpurl purl.PackageURL, pin []byte) ([]build.Option, error) {
 	log := clog.FromContext(ctx)
+	if flags.StrictSourcesFromCache != nil && flags.SourcePackage == "" {
+		return nil, fmt.Errorf("--strict-sources-from-cache needs --source-package; rebuild has no other cache")
+	}
 	runner, err := getRunner(ctx, flags.Runner, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runner: %w", err)
@@ -97,6 +103,7 @@ func (flags *RebuildFlags) rebuildOptions(ctx context.Context, pkginfo *goapk.Pa
 		build.WithOutDir(flags.OutDir),
 		build.WithConfiguration(cfg, cfgpurl.Subpath),
 		build.WithSigningKey(flags.SigningKey),
+		build.WithStrictSourcesFromCache(flags.StrictSourcesFromCache),
 	}
 
 	switch {

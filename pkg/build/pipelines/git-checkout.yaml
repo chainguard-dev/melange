@@ -538,7 +538,7 @@ pipeline:
       # would leave them, so status and describe --dirty read clean. Gitlinks
       # are checked by verify_submodules.
       verify_worktree() {
-          local entries="" paths="" raw="" clean="" tab="" bad="" assume="" n=0 line="" mode="" sha="" path="" r="" c=""
+          local entries="" paths="" raw="" clean="" tab="" bad="" assume="" line="" mode="" sha="" path="" r="" c=""
           tab=$(printf '\t')
           entries=$(mktemp); paths=$(mktemp); raw=$(mktemp); clean=$(mktemp); bad=$(mktemp); assume=$(mktemp)
           git -c core.quotePath=false ls-files -s > "$entries"
@@ -547,13 +547,13 @@ pipeline:
               git hash-object -w --no-filters --stdin-paths < "$paths" > "$raw" || return 1
               git hash-object -w --stdin-paths < "$paths" > "$clean" || return 1
           fi
-          n=0
+          # line i of raw and clean hashes the i-th regular file, so read
+          # them in step with the entries
           while IFS="$tab" read -r meta path; do
               mode=${meta%% *}; sha=${meta#* }; sha=${sha%% *}
               case "$mode" in
                   100644|100755)
-                      n=$((n + 1))
-                      r=$(sed -n "${n}p" "$raw"); c=$(sed -n "${n}p" "$clean")
+                      r=""; c=""; read -r r <&3 || :; read -r c <&4 || :
                       if [ "$r" = "$sha" ]; then
                           [ "$c" = "$sha" ] || printf '%s\n' "$path" >> "$assume"
                       elif [ "$c" != "$sha" ]; then
@@ -563,7 +563,7 @@ pipeline:
                       [ "$(printf '%s' "$(readlink "$path")" | git hash-object -w --stdin)" = "$sha" ] ||
                           printf '%s\n' "$path" >> "$bad" ;;
               esac
-          done < "$entries"
+          done < "$entries" 3< "$raw" 4< "$clean"
           # and nothing the tree does not name may be present: a git archive
           # holds exactly the tree, so anything else was put there
           git -c core.quotePath=false ls-files -o > "$paths"

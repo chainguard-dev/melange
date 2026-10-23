@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/chainguard-dev/clog"
 	"github.com/chainguard-dev/clog/slogtest"
@@ -1230,6 +1231,89 @@ func TestWithTCGFallbackTSC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := withTCGFallbackTSC(tt.goarch, tt.guestArch, tt.cmdline); got != tt.want {
 				t.Errorf("withTCGFallbackTSC() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSSHWaitTimeoutFromEnv(t *testing.T) {
+	tests := []struct {
+		name          string
+		envValue      string
+		envSet        bool
+		expectTimeout time.Duration
+		expectError   bool
+	}{
+		{
+			name:          "env not set",
+			envSet:        false,
+			expectTimeout: defaultSSHWaitTimeout,
+		},
+		{
+			name:          "env set to empty string",
+			envValue:      "",
+			envSet:        true,
+			expectTimeout: defaultSSHWaitTimeout,
+		},
+		{
+			name:          "env set to seconds",
+			envValue:      "90s",
+			envSet:        true,
+			expectTimeout: 90 * time.Second,
+		},
+		{
+			name:          "env set to minutes",
+			envValue:      "10m",
+			envSet:        true,
+			expectTimeout: 10 * time.Minute,
+		},
+		{
+			name:        "env set to invalid value",
+			envValue:    "invalid",
+			envSet:      true,
+			expectError: true,
+		},
+		{
+			name:        "env set to bare number",
+			envValue:    "300",
+			envSet:      true,
+			expectError: true,
+		},
+		{
+			name:        "env set to zero",
+			envValue:    "0s",
+			envSet:      true,
+			expectError: true,
+		},
+		{
+			name:        "env set to negative duration",
+			envValue:    "-30s",
+			envSet:      true,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envSet {
+				t.Setenv("QEMU_SSH_WAIT_TIMEOUT", tt.envValue)
+			} else {
+				// t.Setenv registers the cleanup that restores the
+				// original value after the subtest.
+				t.Setenv("QEMU_SSH_WAIT_TIMEOUT", "")
+				os.Unsetenv("QEMU_SSH_WAIT_TIMEOUT")
+			}
+
+			timeout, err := sshWaitTimeoutFromEnv()
+
+			if tt.expectError && err == nil {
+				t.Error("expected error but got nil")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if !tt.expectError && timeout != tt.expectTimeout {
+				t.Errorf("sshWaitTimeoutFromEnv() = %v, expected %v", timeout, tt.expectTimeout)
 			}
 		})
 	}

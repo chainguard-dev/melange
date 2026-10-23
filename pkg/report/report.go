@@ -460,7 +460,10 @@ func (r *Report) Write(dir string) ([]string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("creating report dir: %w", err)
 	}
-	base := filepath.Join(dir, fmt.Sprintf("%s-%s-r%d-%s.%s", r.Package, r.Version, r.Epoch, r.Arch, r.Kind))
+	// The UTC start time keeps reports from repeated runs apart and sorts
+	// them chronologically.
+	stamp := r.StartedAt.UTC().Format("20060102T150405Z")
+	base := filepath.Join(dir, fmt.Sprintf("%s-%s-r%d-%s.%s.%s", r.Package, r.Version, r.Epoch, r.Arch, r.Kind, stamp))
 
 	data, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {

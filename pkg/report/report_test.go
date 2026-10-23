@@ -103,7 +103,8 @@ func TestReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(paths) != 3 || !strings.HasSuffix(paths[0], "foo-1.2.3-r4-aarch64.build.json") {
+	wantJSON := "foo-1.2.3-r4-aarch64.build." + r.StartedAt.UTC().Format("20060102T150405Z") + ".json"
+	if len(paths) != 3 || !strings.HasSuffix(paths[0], wantJSON) {
 		t.Fatalf("paths = %v", paths)
 	}
 	data, err := os.ReadFile(paths[0])

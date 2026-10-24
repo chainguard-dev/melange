@@ -1774,6 +1774,9 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 			return nil, fmt.Errorf("loading variables file: %w", err)
 		}
 
+		if cfg.Vars == nil {
+			cfg.Vars = make(map[string]string, len(vars))
+		}
 		maps.Copy(cfg.Vars, vars)
 	}
 

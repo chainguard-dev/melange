@@ -1,0 +1,247 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Builds packages with melange's bubblewrap and docker runners and rebuilds
+# them, and builds real wolfi-dev/os packages with the melange from the tree.
+version: 1
+
+checks:
+  docker-build:
+    description: >-
+      Runs TestBuild_BuildPackage (crane, 7zip-two-fetches, sed and
+      bogus-version, with their golden SBOMs) under the docker runner: this
+      guest has docker and no bubblewrap, so the test's getRunner falls back
+      to docker, as it did on GitHub Actions. go/test runs the same test
+      under bubblewrap.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - git
+      services: [docker]
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+        TMPDIR: /var/tmp
+    # The guest's full CA bundle, which includes the sandbox's egress CA:
+    # melange adds it to every build and test guest.
+    vars:
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+    trigger: [presubmit, postsubmit]
+    resources: medium-amd64
+    timeout: 30m
+    network:
+      egress:
+        - proxy.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        - github.com
+        - git.savannah.gnu.org
+        - https.git.savannah.gnu.org # Savannah redirects git clones here
+        - git.sv.gnu.org # sed's gnulib submodule, over git:// (port 9418)
+        - 7-zip.org
+    script: |
+      set -eux
+      # getRunner prefers bubblewrap; without it the test builds under docker.
+      # (set -e ignores a failing command that starts with !, so test it.)
+      if command -v bwrap; then
+        echo "bwrap found: getRunner would pick bubblewrap over docker" >&2
+        exit 1
+      fi
+      go test -tags=integration -count=1 -v -run '^TestBuild_BuildPackage$' ./pkg/build
+
+  rebuild:
+    description: >-
+      Builds each config with melange from the tree (bubblewrap runner,
+      x86_64), then melange rebuild on the result. Every example but
+      melange.yaml is also built with --source-package and rebuilt from that
+      -source companion; go-build.yaml also runs
+      e2e-tests/source-package-restore-test, which restores git checkouts
+      from the companion, refuses tampered ones, and builds with
+      --strict-sources-from-cache=git-checkout on an empty and on the intact
+      cache; go-build.yaml is also rebuilt from its companion with
+      --strict-sources-from-cache=git-checkout. The builds fetch their
+      sources upstream, trusting the guest's egress CA through
+      MELANGE_EXTRA_CA_CERTS, which melange build and melange rebuild both
+      read.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - build-base
+        - bubblewrap~0.13
+        - coreutils
+        - cue~0.17
+        - git
+        - jq
+        - make
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+        SOURCE_DATE_EPOCH: "1669683910"
+        # melange's workspaces go under TMPDIR; /tmp is a tmpfs sized from
+        # guest RAM.
+        TMPDIR: /var/tmp
+    # The guest's full CA bundle, which includes the sandbox's egress CA:
+    # melange adds it to every build and test guest.
+    vars:
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+    trigger: [presubmit, postsubmit]
+    # x86_64 only: the bubblewrap runner cannot cross-build.
+    resources: medium-amd64
+    timeout: 45m
+    foreach:
+      - {name: cargo-build, vars: {CFG: examples/cargo-build.yaml}}
+      - {name: gnu-hello, vars: {CFG: examples/gnu-hello.yaml}}
+      - {name: go-build, vars: {CFG: examples/go-build.yaml}}
+      - {name: minimal, vars: {CFG: examples/minimal.yaml}}
+      - {name: npm-install, vars: {CFG: examples/npm-install.yaml}}
+      - {name: pnpm-install, vars: {CFG: examples/pnpm-install.yaml}}
+      - {name: melange, vars: {CFG: melange.yaml}}
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        - alpinelinux.org
+        - dl-cdn.alpinelinux.org
+        - github.com # cargo-build and go-build clone their sources
+        - index.crates.io
+        - static.crates.io
+        - mirrors.ocf.berkeley.edu # gnu-hello
+        - registry.npmjs.org # npm-install and pnpm-install
+    shell: bash
+    script: |
+      set -eux
+      # melange.yaml builds this tree, and its go build stamps VCS status
+      # from .git. melange copies only regular files into the build
+      # workspace, so a .git whose refs/ holds no loose ref (the check's
+      # detached checkout, or a clone of it) arrives without refs/ and git
+      # refuses it. Build from a clone on a branch, whose ref is a file.
+      git clone --quiet --no-local "$PWD" /var/tmp/src
+      cd /var/tmp/src
+      git checkout --quiet -b rebuild
+      make melange
+      ./melange keygen
+      ./melange build "${CFG}" --arch=x86_64 --namespace=wolfi
+      if [ "${CFG}" = melange.yaml ]; then
+        ./melange rebuild ./packages/x86_64/*.apk --source-dir=.
+        exit 0
+      fi
+      ./melange rebuild ./packages/x86_64/*.apk
+      ./melange build "${CFG}" --arch=x86_64 --namespace=wolfi --source-package --out-dir=./packages-source
+      companion=$(ls ./packages-source/x86_64/*-source-*.apk)
+      ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --out-dir=./rebuilt-from-source
+      if [ "${CFG}" = examples/go-build.yaml ]; then
+        MELANGE=./melange ./e2e-tests/source-package-restore-test examples/go-build.yaml "${companion}"
+        ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --strict-sources-from-cache=git-checkout --out-dir=./rebuilt-strict > rebuild-strict.log 2>&1 || { cat rebuild-strict.log; exit 1; }
+        grep -q "in cache; restoring instead of cloning" rebuild-strict.log || { cat rebuild-strict.log; echo "strict rebuild did not restore from the companion cache"; exit 1; }
+      fi
+
+  wolfi-packages:
+    description: >-
+      Builds and tests real packages from wolfi-dev/os main with melange from
+      the tree, using the bubblewrap runner with --generate-provenance, then
+      tests them under the docker runner, prints the SLSA provenance, checks
+      fping's file capabilities and sudo's mode bits, and installs each
+      package in wolfi-base under Docker. The builds fetch their sources
+      upstream, trusting the guest's egress CA through MELANGE_EXTRA_CA_CERTS.
+      wolfi-presubmit.yaml runs the same packages under the QEMU runner,
+      which needs KVM.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - coreutils
+        - bubblewrap~0.13
+        - findutils
+        - git
+        - grep
+        - jq
+        - libcap-utils
+        - make
+        - sed
+        # Keep in step with install-wolfictl in .github/workflows/wolfi-presubmit.yaml.
+        - wolfictl~0.39
+      services: [docker]
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+        # wolfi-dev/os's Makefile keeps its melange cache under TMPDIR; /tmp
+        # is a tmpfs sized from guest RAM.
+        TMPDIR: /var/tmp
+    # The guest's full CA bundle, which includes the sandbox's egress CA:
+    # melange adds it to every build and test guest.
+    vars:
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+    trigger: [presubmit, postsubmit]
+    resources: medium-amd64
+    timeout: 60m
+    parallelism: 8
+    foreach:
+      - vars: {PACKAGE: bubblewrap}
+      - vars: {PACKAGE: dpkg}
+      - vars: {PACKAGE: fixuid}
+      - vars: {PACKAGE: fping}
+      - vars: {PACKAGE: gitsign}
+      - vars: {PACKAGE: guac}
+      - vars: {PACKAGE: lzo}
+      - vars: {PACKAGE: ncurses}
+      - vars: {PACKAGE: perl-yaml-syck}
+      - vars: {PACKAGE: postfix}
+      - vars: {PACKAGE: py3-pyelftools}
+      - vars: {PACKAGE: py3-supported-python}
+      - vars: {PACKAGE: s3cmd}
+      - vars: {PACKAGE: subversion}
+      - vars: {PACKAGE: sudo}
+      - vars: {PACKAGE: tini}
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - github.com # wolfi-dev/os, and the packages' sources
+        - apk.cgr.dev
+        - cgr.dev # wolfi-base for the install check
+        - 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com
+        - git.dpkg.org # dpkg
+        - www.oberhumer.com # lzo
+    shell: bash
+    script: |
+      set -eux
+      make melange
+      install -m 0755 melange /usr/bin/melange
+      melange version
+      # The GitHub workflow checked out wolfi-dev/os at its tip, which a git
+      # input cannot name; clone it here instead.
+      git clone --depth 1 https://github.com/wolfi-dev/os /var/tmp/os
+      cd /var/tmp/os
+      wolfictl bump "${PACKAGE}"
+      make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap \
+        MELANGE_EXTRA_OPTS=--generate-provenance package/"${PACKAGE}"
+      make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=docker test/"${PACKAGE}"
+      for pkg in packages/x86_64/*.attest.tar.gz; do
+        dir="$(basename "${pkg}" .attest.tar.gz)"
+        mkdir -p packages/x86_64/"${dir}"
+        tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/"${dir}"
+        jq . packages/x86_64/"${dir}"/"${dir}.attestation"
+      done
+      if [ "${PACKAGE}" = fping ]; then
+        make SHELL=/bin/bash MELANGE=melange MELANGE_RUNNER=bubblewrap test/"${PACKAGE}"
+      fi
+      if [ "${PACKAGE}" = sudo ]; then
+        for pkg in packages/x86_64/*.apk; do
+          tar --xattrs --xattrs-include='*.*' -xf "${pkg}" -C packages/x86_64/
+        done
+        ls -hal packages/x86_64/usr/bin/sudo
+      fi
+      install="sed 's|=.*||' -i /etc/apk/world; apk add --allow-untrusted -X ./packages/ packages/x86_64/${PACKAGE}-*.apk"
+      case "${PACKAGE}" in
+        fping)   verify="apk add libcap-utils; getcap /usr/sbin/fping";;
+        sudo)    verify="ls -hal /usr/bin/sudo";;
+        postfix) verify="ls -hal /var/spool/postfix; ls -hal /var/lib/postfix";;
+        *)       verify="true";;
+      esac
+      docker run --rm -v "${PWD}":/work --workdir /work \
+        cgr.dev/chainguard/wolfi-base /bin/sh -c "${install}; ${verify}"

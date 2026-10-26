@@ -41,9 +41,11 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 	fs.StringVar(&flags.CacheSource, "cache-source", "", "directory or bucket used for preloading the cache")
 	fs.StringVar(&flags.ApkCacheDir, "apk-cache-dir", "", "directory used for cached apk packages (default is system-defined cache directory)")
 	fs.StringSliceVar(&flags.Archstrs, "arch", nil, "architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config")
+	fs.StringSliceVar(&flags.StrictSourcesFromCache, "strict-sources-from-cache", nil, "step kinds (git-checkout) whose steps take their sources only from --cache-dir; the test fails instead of fetching them (runs: steps and language package managers are not restricted; see docs/BUILD-CACHE.md)")
 	fs.StringSliceVar(&flags.TestOption, "test-option", []string{}, "build options to enable")
 	fs.StringVar(&flags.Runner, "runner", "", fmt.Sprintf("which runner to use to enable running commands, default is based on your platform. Options are %q", build.GetAllRunners()))
 	fs.StringSliceVarP(&flags.ExtraKeys, "keyring-append", "k", []string{}, "path to extra keys to include in the build environment keyring")
+	fs.StringSliceVar(&flags.ExtraCACertificates, "ca-certificate-append", nil, "path to a PEM file of extra CA certificates for the guest to trust (overrides $MELANGE_EXTRA_CA_CERTS)")
 	fs.StringSliceVar(&flags.EnvFiles, "env-file", []string{}, "files to use for preloaded environment variables")
 	fs.BoolVar(&flags.Debug, "debug", false, "enables debug logging of test pipelines (sets -x for steps)")
 	fs.BoolVar(&flags.DebugRunner, "debug-runner", false, "when enabled, the builder pod will persist after the build succeeds or fails")
@@ -61,29 +63,34 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 
 // TestFlags holds all parsed test command flags
 type TestFlags struct {
-	WorkspaceDir      string
-	SourceDir         string
-	CacheDir          string
-	CacheSource       string
-	ApkCacheDir       string
-	Archstrs          []string
-	PipelineDirs      []string
-	ExtraKeys         []string
-	ExtraRepos        []string
-	EnvFiles          []string
-	TestOption        []string
-	Debug             bool
-	DebugRunner       bool
-	Interactive       bool
-	Runner            string
-	ExtraTestPackages []string
-	Remove            bool
-	IgnoreSignatures  bool
-	CPU               string
-	CPUModel          string
-	Memory            string
-	Disk              string
-	Timeout           time.Duration
+	WorkspaceDir        string
+	SourceDir           string
+	CacheDir            string
+	CacheSource         string
+	ApkCacheDir         string
+	Archstrs            []string
+	PipelineDirs        []string
+	ExtraKeys           []string
+	ExtraCACertificates []string
+	ExtraRepos          []string
+	EnvFiles            []string
+	TestOption          []string
+	Debug               bool
+	DebugRunner         bool
+	Interactive         bool
+	Runner              string
+	ExtraTestPackages   []string
+	Remove              bool
+	IgnoreSignatures    bool
+	CPU                 string
+	CPUModel            string
+	Memory              string
+	Disk                string
+	Timeout             time.Duration
+
+	// StrictSourcesFromCache lists the step kinds whose sources must come from
+	// the cache directory; see --strict-sources-from-cache.
+	StrictSourcesFromCache []string
 }
 
 // ParseTestFlags parses test flags from the provided args and returns a TestFlags struct
@@ -114,6 +121,7 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestCacheSource(flags.CacheSource),
 		build.WithTestPackageCacheDir(flags.ApkCacheDir),
 		build.WithTestExtraKeys(flags.ExtraKeys),
+		build.WithTestExtraCACertificates(flags.ExtraCACertificates),
 		build.WithTestExtraRepos(flags.ExtraRepos),
 		build.WithExtraTestPackages(flags.ExtraTestPackages),
 		build.WithTestRunner(r),
@@ -128,6 +136,7 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestMemory(flags.Memory),
 		build.WithTestDisk(flags.Disk),
 		build.WithTestTimeout(flags.Timeout),
+		build.WithTestStrictSourcesFromCache(flags.StrictSourcesFromCache),
 	}
 
 	if len(args) > 0 {

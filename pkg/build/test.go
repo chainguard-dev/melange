@@ -55,22 +55,29 @@ type Test struct {
 	ExtraKeys         []string
 	ExtraRepos        []string
 	ExtraTestPackages []string
-	BinShOverlay      string
-	CacheDir          string
-	ApkCacheDir       string
-	CacheSource       string
-	EnvFiles          []string
-	Runner            container.Runner
-	Debug             bool
-	DebugRunner       bool
-	Interactive       bool
-	Auth              map[string]options.Auth
-	IgnoreSignatures  bool
-	DefaultCPU        string
-	DefaultCPUModel   string
-	DefaultDisk       string
-	DefaultMemory     string
-	DefaultTimeout    time.Duration
+	// StrictSourcesFromCache lists the step kinds (see strictSourceKinds) whose
+	// steps take their sources only from CacheDir, failing instead of reaching
+	// the network.
+	StrictSourcesFromCache []string
+	// ExtraCACertificates are PEM files the test guest trusts on top of its
+	// own roots.
+	ExtraCACertificates []string
+	BinShOverlay        string
+	CacheDir            string
+	ApkCacheDir         string
+	CacheSource         string
+	EnvFiles            []string
+	Runner              container.Runner
+	Debug               bool
+	DebugRunner         bool
+	Interactive         bool
+	Auth                map[string]options.Auth
+	IgnoreSignatures    bool
+	DefaultCPU          string
+	DefaultCPUModel     string
+	DefaultDisk         string
+	DefaultMemory       string
+	DefaultTimeout      time.Duration
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -83,6 +90,10 @@ func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
 		if err := opt(&t); err != nil {
 			return nil, err
 		}
+	}
+
+	if t.ExtraCACertificates == nil {
+		t.ExtraCACertificates = extraCACertsFromEnv()
 	}
 
 	log := clog.FromContext(ctx).With("arch", t.Arch)
@@ -150,6 +161,11 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 		return "", fmt.Errorf("creating apko tempdir: %w", err)
 	}
 	defer os.RemoveAll(tmp)
+
+	imgConfig, err = withExtraCACertificates(imgConfig, t.ExtraCACertificates)
+	if err != nil {
+		return "", err
+	}
 
 	bc, err := apko_build.New(ctx, guestFS,
 		apko_build.WithImageConfiguration(imgConfig),
@@ -315,12 +331,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
 
-	pr := &pipelineRunner{
-		interactive: t.Interactive,
-		debug:       t.Debug,
-		config:      cfg,
-		runner:      t.Runner,
-	}
+	pr := t.newPipelineRunner(cfg)
 
 	if !t.IsTestless() {
 		// use anonymous function so that deferring will actually run
@@ -376,12 +387,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 			subCfg.Arch = t.Arch
 
-			pr := &pipelineRunner{
-				interactive: t.Interactive,
-				debug:       t.Debug,
-				config:      subCfg,
-				runner:      t.Runner,
-			}
+			pr := t.newPipelineRunner(subCfg)
 
 			if err := t.Runner.StartPod(ctx, subCfg); err != nil {
 				return fmt.Errorf("unable to start subpackage test pod for %s: %w", sp.Name, err)
@@ -410,6 +416,19 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
 	return nil
+}
+
+// newPipelineRunner returns the runner for the steps of one of this test's
+// pods, the package's or a subpackage's, passing --strict-sources-from-cache on so the
+// runner can keep it in force.
+func (t *Test) newPipelineRunner(cfg *container.Config) *pipelineRunner {
+	return &pipelineRunner{
+		interactive:   t.Interactive,
+		debug:         t.Debug,
+		config:        cfg,
+		runner:        t.Runner,
+		strictSources: t.StrictSourcesFromCache,
+	}
 }
 
 func (t *Test) SummarizePaths(ctx context.Context) {

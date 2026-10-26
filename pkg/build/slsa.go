@@ -41,7 +41,7 @@ func (pc *PackageBuild) generateSLSA() ([]byte, error) {
 		},
 	}
 
-	cfg, err := structToMap(pc.Build.Configuration)
+	cfg, err := structToMap(pc.Build.recordedConfiguration())
 	if err != nil {
 		return nil, fmt.Errorf("converting contents to generic map: %w", err)
 	}

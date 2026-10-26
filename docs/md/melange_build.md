@@ -32,6 +32,7 @@ melange build [flags]
       --arch strings                                            architectures to build for (e.g., x86_64,ppc64le,arm64) -- default is all, unless specified in config
       --build-date string                                       date used for the timestamps of the files inside the image
       --build-option strings                                    build options to enable
+      --ca-certificate-append strings                           path to a PEM file of extra CA certificates for the guest to trust (overrides $MELANGE_EXTRA_CA_CERTS)
       --cache-dir string                                        directory used for cached inputs (default "./melange-cache/")
       --cache-source string                                     directory or bucket used for preloading the cache
       --cleanup                                                 when enabled, the temp dir used for the guest will be cleaned up after completion (default true)
@@ -44,6 +45,7 @@ melange build [flags]
       --disk string                                             disk size to use for builds
       --empty-workspace                                         whether the build workspace should be empty
       --env-file strings                                        files to use for preloaded environment variables
+      --exclude-env-from-recorded-config strings                environment variable keys to omit from the build configuration recorded in built packages (the variables are still set in the build environment)
       --generate-index                                          whether to generate APKINDEX.tar.gz (default true)
       --generate-provenance                                     generate SLSA provenance for builds (included in a separate .attest.tar.gz file next to the APK)
       --git-commit string                                       commit hash of the git repository containing the build config file (defaults to detecting HEAD)
@@ -68,6 +70,9 @@ melange build [flags]
       --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --signing-key string                                      key to use for signing
       --source-dir string                                       directory used for included sources
+      --source-out-dir string                                   directory where -source companions will be output (default: --out-dir)
+      --source-package                                          also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)
+      --strict-sources-from-cache strings                       step kinds (git-checkout) whose steps take their sources only from --cache-dir; the build fails instead of fetching them (runs: steps and language package managers are not restricted; see docs/BUILD-CACHE.md)
       --strip-origin-name                                       whether origin names should be stripped (for bootstrap)
       --timeout duration                                        default timeout for builds
       --trace string                                            where to write trace output

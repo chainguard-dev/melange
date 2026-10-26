@@ -195,6 +195,34 @@ func WithOutDir(outDir string) Option {
 	}
 }
 
+// WithStrictSourcesFromCache makes the steps of the listed kinds take their
+// sources only from the cache directory, failing rather than fetching them.
+// Each kind must be one of strictSourceKinds.
+func WithStrictSourcesFromCache(kinds []string) Option {
+	return func(b *Build) error {
+		var err error
+		b.StrictSourcesFromCache, err = normalizeStrictSources(kinds)
+		return err
+	}
+}
+
+// WithSourcePackage emits an <origin>-source companion carrying the complete
+// corresponding source alongside the binaries.
+func WithSourcePackage(enabled bool) Option {
+	return func(b *Build) error {
+		b.SourcePackage = enabled
+		return nil
+	}
+}
+
+// WithSourceOutDir routes the -source companion to its own output directory.
+func WithSourceOutDir(dir string) Option {
+	return func(b *Build) error {
+		b.SourceOutDir = dir
+		return nil
+	}
+}
+
 // WithArch sets the build architecture to use for this build context.
 func WithArch(arch apko_types.Architecture) Option {
 	return func(b *Build) error {
@@ -207,6 +235,16 @@ func WithArch(arch apko_types.Architecture) Option {
 func WithExtraKeys(extraKeys []string) Option {
 	return func(b *Build) error {
 		b.ExtraKeys = extraKeys
+		return nil
+	}
+}
+
+// WithExtraCACertificates adds PEM files of CA certificates for the build
+// guest to trust, such as a TLS-intercepting proxy's. They override
+// MELANGE_EXTRA_CA_CERTS.
+func WithExtraCACertificates(paths []string) Option {
+	return func(b *Build) error {
+		b.ExtraCACertificates = paths
 		return nil
 	}
 }
@@ -257,6 +295,24 @@ func WithEnvFiles(envFiles []string) Option {
 		for _, envFile := range envFiles {
 			if envFile != "" {
 				b.EnvFiles = append(b.EnvFiles, envFile)
+			}
+		}
+		return nil
+	}
+}
+
+// WithExcludedEnvFromRecordedConfig specifies environment variable keys to
+// omit from the build configuration recorded into built artifacts (the
+// .melange.yaml embedded in each APK and the SLSA provenance).  The
+// variables are still exported into the build environment.  This is useful
+// when a build system injects environment variables describing build
+// infrastructure (such as paths to injected configuration files) that
+// should not be persisted in published packages.
+func WithExcludedEnvFromRecordedConfig(keys []string) Option {
+	return func(b *Build) error {
+		for _, key := range keys {
+			if key != "" {
+				b.ExcludedEnvFromRecordedConfig = append(b.ExcludedEnvFromRecordedConfig, key)
 			}
 		}
 		return nil

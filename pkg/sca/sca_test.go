@@ -15,7 +15,6 @@
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/nvidia-driver.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/ld-so-conf-d-test.yaml --arch=x86_64
 //go:generate go run ./../../ build --generate-index=false --out-dir=./testdata/generated ./testdata/shbang-test.yaml --arch=x86_64
-//go:generate go run ./../../ build --generate-index=false --source-dir=./testdata/go-fips-bin/ --out-dir=./testdata/generated ./testdata/go-fips-bin/go-fips-bin.yaml --arch=x86_64
 //go:generate curl -s -o ./testdata/py3-seaborn.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/py3-seaborn.yaml
 //go:generate curl -s -o ./testdata/systemd.yaml https://raw.githubusercontent.com/wolfi-dev/os/7a39ac1d0603a3561790ea2201dd8ad7c2b7e51e/systemd.yaml
 
@@ -335,32 +334,6 @@ func TestNvidiaLibrarySca(t *testing.T) {
 	}
 }
 
-func TestGoFipsSca(t *testing.T) {
-	ctx := slogtest.Context(t)
-	th := handleFromApk(ctx, t, "generated/x86_64/go-fips-bin-0.0.1-r0.apk", "go-fips-bin/go-fips-bin.yaml")
-	defer th.exp.Close()
-
-	got := config.Dependencies{}
-	if err := Analyze(ctx, th, &got); err != nil {
-		t.Fatal(err)
-	}
-
-	want := config.Dependencies{
-		Runtime: []string{
-			"openssl-config-fipshardened",
-			"so:ld-linux-x86-64.so.2",
-			"so:libc.so.6",
-			"so:libcrypto.so.3",
-		},
-		Provides: []string{
-			"cmd:go-fips-bin=0.0.1-r0",
-		},
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Analyze(): (-want, +got):\n%s", diff)
-	}
-}
-
 func TestGoMsftSca(t *testing.T) {
 	ctx := slogtest.Context(t)
 	th := handleFromApk(ctx, t, "generated/x86_64/go-msft-bin-0.0.1-r0.apk", "go-fips-bin/go-msft-bin.yaml")
@@ -536,6 +509,54 @@ func TestIsInDir(t *testing.T) {
 		result := isInDir(tt.path, tt.dirs)
 		if result != tt.expected {
 			t.Errorf("isInDir(%q, %v) = %v, expected %v", tt.path, tt.dirs, result, tt.expected)
+		}
+	}
+}
+
+func TestGoSupportsLibcrypto4(t *testing.T) {
+	for _, tc := range []struct {
+		goPackage string
+		want      bool
+	}{
+		{"", false},
+		{"go-1.27-1.27.1-r0", false},
+		{"go-geomys-1.27-1.27.1-r0", false},
+		{"go-msft-1.26-1.26.5.1-r3", false},
+		{"go-msft-1.27-1.27.1.1-r9", false},
+		{"go-msft-1.27-1.27.1.2-r0", false},
+		{"go-msft-1.27-1.27.1.2-r1", true},
+		{"go-msft-1.27-1.27.1.2-r2", true},
+		{"go-msft-1.27-1.27.1.3-r0", true},
+		{"go-msft-1.27-1.27.2.1-r0", true},
+		{"go-msft-1.28-1.28.0.1-r0", true},
+		{"go-msft-1.30-1.30.0.1-r0", true},
+		{"go-msft-garbage", false},
+	} {
+		if got := goSupportsLibcrypto4(tc.goPackage); got != tc.want {
+			t.Errorf("goSupportsLibcrypto4(%q) = %v, want %v", tc.goPackage, got, tc.want)
+		}
+	}
+}
+
+func TestMsftToolsetSupportsLibcrypto4(t *testing.T) {
+	for _, tc := range []struct {
+		toolset string
+		want    bool
+	}{
+		{"", false},
+		{"go1.26.9", true},
+		{"go1.26.8-microsoft", false},
+		{"go1.26.9-microsoft", true},
+		{"go1.26.10-microsoft", true},
+		{"go1.26.9.1-microsoft", true},
+		{"go1.25.20-microsoft", false},
+		{"go1.27.1-microsoft", false},
+		{"go1.260.1-microsoft", false},
+		{"1.26.9-microsoft", false},
+		{"gogarbage", false},
+	} {
+		if got := msftToolsetSupportsLibcrypto4(tc.toolset); got != tc.want {
+			t.Errorf("msftToolsetSupportsLibcrypto4(%q) = %v, want %v", tc.toolset, got, tc.want)
 		}
 	}
 }

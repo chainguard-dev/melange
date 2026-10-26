@@ -1,0 +1,192 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Unit and integration tests, the e2e-tagged Go tests, lint, and the build.
+version: 1
+
+plans:
+  e2e-unit:
+    environment:
+      packages: [busybox, jq]
+    # Packages holding tests, plus packages holding //go:generate directives,
+    # so between them the instances cover everything 'go generate ./...'
+    # would.
+    cmd:
+      - sh
+      - -eu
+      - -c
+      - |
+        {
+          find . -name '*_test.go' -not -path './pkg/sca/sca_private_test.go' -not -path './.git/*' -exec dirname {} \;
+          grep -rl '^//go:generate' --include='*.go' . | sed 's|/[^/]*$||'
+        } | sed 's|^\./||' | sort -u |
+          jq -Rsc 'split("\n") | map(select(length > 0)) | map({name: gsub("/"; "-"), vars: {E2E_PKG: ("./" + .)}})' > "$CG_PLAN"
+        test "$(jq length "$CG_PLAN")" -gt 0
+
+checks:
+  test:
+    description: >-
+      make integration: go test -race -tags=integration ./..., which builds
+      packages (crane, 7zip, sed and others) with the bubblewrap runner,
+      fetching their sources upstream and trusting the guest's egress CA
+      through MELANGE_EXTRA_CA_CERTS. TestBuild_BuildPackage's getRunner
+      prefers bubblewrap, which go-tests.yaml never installed, so it ran
+      under docker there; e2e/docker-build keeps the docker build path
+      covered.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - build-base # cgo for -race
+        - busybox # the pipeline script tests run the scripts under its sh
+        - bubblewrap~0.13
+        - git
+        - make
+        - patch # TestPatchPipelineEndToEnd skips without it
+        - dash # the patch pipeline's syntax check also runs under dash, as on ubuntu-latest
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    # Unprivileged, as on a GitHub runner: as root, melange's bubblewrap
+    # runner leaves out --unshare-user and TestBubblewrapCmd fails.
+    user: build
+    # The guest's full CA bundle, which includes the sandbox's egress CA:
+    # melange adds it to every build and test guest.
+    vars:
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+      # the pipeline script tests fail, rather than skip, without git and busybox
+      MELANGE_REQUIRE_SCRIPT_TOOLS: "1"
+    trigger: [presubmit, postsubmit]
+    resources: medium-amd64
+    timeout: 40m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        # TestBuild_BuildPackage's crane, sed and 7zip sources.
+        - github.com
+        - git.savannah.gnu.org
+        - https.git.savannah.gnu.org # Savannah redirects git clones here
+        - git.sv.gnu.org # sed's gnulib submodule, over git:// (port 9418)
+        - 7-zip.org
+    cmd: make integration
+
+  e2e-unit:
+    description: >-
+      make test-e2e-unit for one Go package per instance: go generate, then
+      go test -tags e2e -race. pkg/sca's go generate builds its testdata
+      packages (linux, linux-rpi, nvidia-driver) from upstream with the
+      bubblewrap runner, trusting the guest's egress CA through
+      MELANGE_EXTRA_CA_CERTS.
+    environment:
+      packages:
+        - go-1.27~1.27
+        - bash
+        - build-base
+        - bubblewrap~0.13
+        - cue~0.17
+        - curl # pkg/sca's go generate fetches two wolfi-dev/os configs
+        - git
+        - make
+        - patch # TestPatchPipelineEndToEnd skips without it
+        - dash # the patch pipeline's syntax check also runs under dash, as on ubuntu-latest
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    user: build
+    vars:
+      # The guest's full CA bundle, which includes the sandbox's egress CA:
+      # melange adds it to every build and test guest.
+      MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+      # melange's workspaces go under TMPDIR, and pkg/sca's linux checkout
+      # outgrows /tmp, a tmpfs sized from guest RAM.
+      TMPDIR: /var/tmp
+    foreach: plans.e2e-unit
+    parallelism: 8
+    trigger: [presubmit, postsubmit]
+    resources: medium-amd64
+    timeout: 30m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+        - packages.wolfi.dev
+        # pkg/sca's go generate: linux and linux-rpi, the nvidia driver, and
+        # two wolfi-dev/os configs.
+        - github.com
+        - us.download.nvidia.com
+        - raw.githubusercontent.com
+    script: |
+      # go generate writes pkg/sca/testdata/generated, and the checkout's
+      # files belong to root, not the build user: work in a clone.
+      git clone --quiet --no-local "$PWD" /var/tmp/src
+      cd /var/tmp/src
+      make test-e2e-unit
+
+  lint:
+    description: >-
+      golangci-lint with .golangci.yml, then make docs-repo, make
+      docs-pipeline and go mod tidy, failing if any leaves the tree dirty.
+    environment:
+      packages:
+        - go-1.27~1.27 # go.mod's go directive; GOTOOLCHAIN=local refuses an older one
+        - bash
+        - build-base
+        - git
+        - make
+        # Wolfi's 2.13 builds predate Go 1.27 and cannot read its export data.
+        # The Makefile's setup-golangci-lint target reads this pin.
+        - golangci-lint~2.14
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    trigger: [presubmit, postsubmit]
+    resources: medium
+    timeout: 15m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+    steps:
+      - name: golangci-lint
+        cmd: golangci-lint run --timeout=5m --config=.golangci.yml
+      - name: docs and tidy
+        script: |
+          make docs-repo
+          git diff --exit-code
+          make docs-pipeline
+          git diff --exit-code
+          go mod tidy
+          git diff --exit-code
+
+  build:
+    description: >-
+      Builds melange and an unsigned goreleaser snapshot, and runs the
+      snapshot's linux/amd64 binary.
+    environment:
+      packages:
+        - go-1.27~1.27
+        - bash
+        - git
+        - make
+        - goreleaser~2.18
+      vars:
+        GOTOOLCHAIN: local
+        GOTMPDIR: /var/tmp
+    trigger: [presubmit, postsubmit]
+    resources: medium-amd64
+    timeout: 30m
+    network:
+      egress:
+        - proxy.golang.org
+        - sum.golang.org
+        - storage.googleapis.com
+    steps:
+      - name: build
+        cmd: [sh, -c, "make melange && ./melange version"]
+      - name: snapshot
+        cmd: [sh, -c, "make snapshot && ./dist/melange-build_linux_amd64_v1/melange version"]

@@ -57,7 +57,10 @@ checks:
       melange.yaml is also built with --source-package and rebuilt from that
       -source companion; go-build.yaml also runs
       e2e-tests/source-package-restore-test, which restores git checkouts
-      from the companion and refuses tampered ones. The builds fetch their
+      from the companion, refuses tampered ones, and builds with
+      --strict-sources-from-cache=git-checkout on an empty and on the intact
+      cache; go-build.yaml is also rebuilt from its companion with
+      --strict-sources-from-cache=git-checkout. The builds fetch their
       sources upstream, trusting the guest's egress CA through
       MELANGE_EXTRA_CA_CERTS, which melange build and melange rebuild both
       read.
@@ -132,6 +135,8 @@ checks:
       ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --out-dir=./rebuilt-from-source
       if [ "${CFG}" = examples/go-build.yaml ]; then
         MELANGE=./melange ./e2e-tests/source-package-restore-test examples/go-build.yaml "${companion}"
+        ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --strict-sources-from-cache=git-checkout --out-dir=./rebuilt-strict > rebuild-strict.log 2>&1 || { cat rebuild-strict.log; exit 1; }
+        grep -q "in cache; restoring instead of cloning" rebuild-strict.log || { cat rebuild-strict.log; echo "strict rebuild did not restore from the companion cache"; exit 1; }
       fi
 
   wolfi-packages:

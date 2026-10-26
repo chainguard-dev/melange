@@ -15,15 +15,22 @@
 package license
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	apkofs "chainguard.dev/apko/pkg/apk/fs"
+	"chainguard.dev/license/detect"
 	"github.com/chainguard-dev/clog"
+	"github.com/google/go-cmp/cmp"
 
 	"chainguard.dev/melange/pkg/config"
 )
@@ -433,5 +440,282 @@ func TestLicenseCheck_withOverrides(t *testing.T) {
 		if !found {
 			t.Errorf("Expected license difference %+v not found", expected)
 		}
+	}
+}
+
+func TestFindLicenseFiles_scope(t *testing.T) {
+	outside := filepath.Join(t.TempDir(), "LICENSE")
+	if err := os.WriteFile(outside, nil, 0o644); err != nil {
+		t.Fatalf("writing %s: %v", outside, err)
+	}
+
+	tests := []struct {
+		path        string
+		linkTo      string
+		wantShallow bool
+		wantDeep    bool
+	}{
+		{path: "LICENSE", wantShallow: true, wantDeep: true},
+		{path: "PATENTS", wantShallow: true, wantDeep: true},
+		{path: "tests/LICENSE", wantShallow: true, wantDeep: true},
+		// A link is followed while it stays inside the tree, and skipped once
+		// it leaves it.
+		{path: "COPYING", linkTo: "LICENSE", wantShallow: true, wantDeep: true},
+		{path: "LICENSE.outside", linkTo: outside},
+		// Vendored source counts in a deep scan; a shallow scan does not enter it.
+		{path: "vendor/github.com/x/y/LICENSE", wantDeep: true},
+		{path: "third_party/LICENSE", wantDeep: true},
+		{path: "third_party/protobuf/LICENSE", wantDeep: true},
+		{path: "deps/zlib/LICENSE", wantDeep: true},
+		{path: "external/COPYING", wantDeep: true},
+		// What a build installed or produced never counts.
+		{path: "node_modules/a/LICENSE"},
+		{path: "venv/LICENSE"},
+		{path: "rust-1.86.0-src/LICENSE-MIT"},
+		{path: "melange-out/pkg/LICENSE"},
+	}
+
+	dir := t.TempDir()
+	var wantShallow, wantDeep []string
+	for _, tc := range tests {
+		p := filepath.Join(dir, tc.path)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("creating the directory for %s: %v", tc.path, err)
+		}
+		var err error
+		if tc.linkTo != "" {
+			err = os.Symlink(tc.linkTo, p)
+		} else {
+			err = os.WriteFile(p, nil, 0o644)
+		}
+		if err != nil {
+			t.Fatalf("creating %s: %v", tc.path, err)
+		}
+		if tc.wantShallow {
+			wantShallow = append(wantShallow, tc.path)
+		}
+		if tc.wantDeep {
+			wantDeep = append(wantDeep, tc.path)
+		}
+	}
+	slices.Sort(wantShallow)
+	slices.Sort(wantDeep)
+
+	fsys := apkofs.DirFS(t.Context(), dir)
+	for _, scan := range []struct {
+		name string
+		deep bool
+		want []string
+	}{
+		{name: "shallow", want: wantShallow},
+		{name: "deep", deep: true, want: wantDeep},
+	} {
+		t.Run(scan.name, func(t *testing.T) {
+			files, err := FindLicenseFiles(fsys, scan.deep)
+			if err != nil {
+				t.Fatalf("FindLicenseFiles: %v", err)
+			}
+			got := make([]string, 0, len(files))
+			for _, f := range files {
+				got = append(got, f.Path)
+			}
+			slices.Sort(got)
+			if diff := cmp.Diff(scan.want, got); diff != "" {
+				t.Errorf("FindLicenseFiles (-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestIsLicenseFile(t *testing.T) {
+	// Paths are written as the QEMU runner's find(1) prints them.
+	tests := []struct {
+		path         string
+		want         bool
+		wantOverride bool
+	}{
+		{path: "./LICENSE", want: true, wantOverride: true},
+		{path: "./PATENTS", want: true, wantOverride: true},
+		{path: "./tests/LICENSE", want: true, wantOverride: true},
+		{path: "./vendor/github.com/x/y/LICENSE", want: true, wantOverride: true},
+		{path: "./third_party/zlib/COPYING", want: true, wantOverride: true},
+		{path: "./node_modules/a/LICENSE", wantOverride: true},
+		{path: "./venv/lib/LICENSE", wantOverride: true},
+		{path: "./rust-1.86.0-src/LICENSE-MIT", wantOverride: true},
+		{path: "./README.md"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.path, func(t *testing.T) {
+			if got, _ := IsLicenseFile(tc.path, false); got != tc.want {
+				t.Errorf("IsLicenseFile(%q, false): got = %v, want = %v", tc.path, got, tc.want)
+			}
+			if got, _ := IsLicenseFile(tc.path, true); got != tc.wantOverride {
+				t.Errorf("IsLicenseFile(%q, true): got = %v, want = %v", tc.path, got, tc.wantOverride)
+			}
+		})
+	}
+}
+
+func TestCollectLicenseInfo_declaredUnderInstalledTree(t *testing.T) {
+	bsd, err := os.ReadFile(filepath.Join("testdata", "LICENSE-BSD"))
+	if err != nil {
+		t.Fatalf("reading the BSD fixture: %v", err)
+	}
+	const declared = "node_modules/bundled/COPYING"
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(declared)), 0o755); err != nil {
+		t.Fatalf("creating the directory for %s: %v", declared, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, declared), bsd, 0o644); err != nil {
+		t.Fatalf("writing %s: %v", declared, err)
+	}
+	fsys := apkofs.DirFS(t.Context(), dir)
+
+	for _, licensePath := range []string{declared, "./" + declared} {
+		for _, deep := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/deep=%v", licensePath, deep), func(t *testing.T) {
+				cfg := &config.Configuration{Package: config.Package{Copyright: []config.Copyright{
+					{License: "BSD-3-Clause", LicensePath: licensePath},
+				}}}
+				licenses, err := CollectLicenseInfo(t.Context(), fsys, deep, cfg)
+				if err != nil {
+					t.Fatalf("CollectLicenseInfo: %v", err)
+				}
+				var got []string
+				for _, l := range licenses {
+					if l.Source == path.Clean(licensePath) {
+						got = append(got, l.Name)
+					}
+				}
+				if diff := cmp.Diff([]string{"BSD-3-Clause"}, got); diff != "" {
+					t.Errorf("licenses detected in %s (-want, +got):\n%s", declared, diff)
+				}
+			})
+		}
+	}
+}
+
+// lockedDirFS returns a tree whose locked/ directory cannot be listed, and skips
+// the test where permissions are not enforced, as they are not for root.
+func lockedDirFS(t *testing.T) fs.FS {
+	t.Helper()
+	dir := t.TempDir()
+	locked := filepath.Join(dir, "locked")
+	if err := os.Mkdir(locked, 0o755); err != nil {
+		t.Fatalf("creating %s: %v", locked, err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "LICENSE"), nil, 0o644); err != nil {
+		t.Fatalf("writing into %s: %v", locked, err)
+	}
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatalf("locking %s: %v", locked, err)
+	}
+	// Registered after t.TempDir, so it runs first: the directory cannot be
+	// removed while it stays locked.
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	if _, err := os.ReadDir(locked); err == nil {
+		t.Skip("directory permissions are not enforced for this user")
+	}
+	return apkofs.DirFS(t.Context(), dir)
+}
+
+func TestFindLicenseFiles_unreadable(t *testing.T) {
+	for _, deep := range []bool{false, true} {
+		t.Run(fmt.Sprintf("deep=%v", deep), func(t *testing.T) {
+			_, err := FindLicenseFiles(lockedDirFS(t), deep)
+			if err == nil || !strings.Contains(err.Error(), "locked") {
+				t.Errorf("FindLicenseFiles: got error %v, want one naming locked", err)
+			}
+		})
+	}
+}
+
+func TestCollectLicenseInfo_unreadable(t *testing.T) {
+	tests := []struct {
+		name    string
+		fsys    func(t *testing.T) fs.FS
+		cfg     *config.Configuration
+		wantErr string
+	}{
+		{
+			name: "declared license-path missing",
+			fsys: func(t *testing.T) fs.FS { return apkofs.DirFS(t.Context(), "testdata") },
+			cfg: &config.Configuration{Package: config.Package{Copyright: []config.Copyright{
+				{License: "MIT", LicensePath: "does-not-exist"},
+			}}},
+			wantErr: "does-not-exist",
+		},
+		{
+			name:    "directory unreadable",
+			fsys:    lockedDirFS,
+			wantErr: "locked",
+		},
+	}
+	for _, tc := range tests {
+		for _, deep := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/deep=%v", tc.name, deep), func(t *testing.T) {
+				_, err := CollectLicenseInfo(t.Context(), tc.fsys(t), deep, tc.cfg)
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("CollectLicenseInfo: got error %v, want one naming %s", err, tc.wantErr)
+				}
+			})
+		}
+	}
+}
+
+func TestCollectLicenseInfo_warnsPastClassifiedBytes(t *testing.T) {
+	apache, err := os.ReadFile(filepath.Join("testdata", "LICENSE-APACHE"))
+	if err != nil {
+		t.Fatalf("reading the Apache fixture: %v", err)
+	}
+	tests := []struct {
+		name     string
+		content  []byte
+		wantWarn bool
+	}{
+		{name: "within the bound", content: apache},
+		{
+			name:     "past the bound",
+			content:  append(slices.Clone(apache), bytes.Repeat([]byte("x"), detect.MaxTextBytes)...),
+			wantWarn: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "LICENSE"), tc.content, 0o644); err != nil {
+				t.Fatalf("writing LICENSE: %v", err)
+			}
+			var logBuf strings.Builder
+			ctx := clog.WithLogger(t.Context(), clog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+
+			if _, err := CollectLicenseInfo(ctx, apkofs.DirFS(ctx, dir), false, nil); err != nil {
+				t.Fatalf("CollectLicenseInfo: %v", err)
+			}
+			if got := strings.Contains(logBuf.String(), "are classified"); got != tc.wantWarn {
+				t.Errorf("warned that only part of LICENSE is classified: got = %v, want = %v\nlog:\n%s", got, tc.wantWarn, logBuf.String())
+			}
+		})
+	}
+}
+
+func TestLicenseCheck_declaredPathForms(t *testing.T) {
+	// ATYPICAL-FILENAME is reached only through its declaration; LICENSE-APACHE
+	// is also found by name.
+	for _, licensePath := range []string{"ATYPICAL-FILENAME", "./ATYPICAL-FILENAME", "LICENSE-APACHE", "./LICENSE-APACHE"} {
+		t.Run(licensePath, func(t *testing.T) {
+			cfg := &config.Configuration{Package: config.Package{Copyright: []config.Copyright{
+				{License: "Apache-2.0", LicensePath: licensePath},
+			}}}
+			_, diffs, err := LicenseCheck(t.Context(), cfg, apkofs.DirFS(t.Context(), "testdata"), false)
+			if err != nil {
+				t.Fatalf("LicenseCheck: %v", err)
+			}
+			for _, d := range diffs {
+				if d.Path == path.Clean(licensePath) {
+					t.Errorf("declared %s as Apache-2.0, got difference %+v", licensePath, d)
+				}
+			}
+		})
 	}
 }

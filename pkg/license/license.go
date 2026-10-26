@@ -19,8 +19,8 @@
 // chainguard.dev/license, which melange shares with Chainguard's other license
 // tooling so that the same tree yields the same answer everywhere. What stays
 // here is melange's own: reading declarations out of a melange configuration,
-// ranking a license by restrictiveness, and deciding what disagreement is worth
-// warning about.
+// deciding which parts of a tree belong to the package, ranking a license by
+// restrictiveness, and deciding what disagreement is worth warning about.
 package license
 
 import (
@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"strings"
 
 	"chainguard.dev/license/detect"
@@ -65,7 +66,9 @@ type LicenseDiff struct {
 
 // scopeFor maps melange's shallow/deep choice onto a discovery scope.
 // A shallow scan reads the root and one directory below it, which is where a
-// package keeps its own license; a deep scan reads the whole tree.
+// package keeps its own license, and skips the directories the module
+// attributes to other components, vendor/ and third_party/ among them. A deep
+// scan reads the whole tree.
 func scopeFor(deep bool) detect.Scope {
 	if deep {
 		return detect.ScopeTree
@@ -73,50 +76,78 @@ func scopeFor(deep bool) detect.Scope {
 	return detect.ScopeProject
 }
 
-// vendoredIntoBuild is the one dependency directory melange counts as part of
-// the package. Vendoring copies a dependency's source into the build, so its
-// terms are obligations the package carries and a deep scan reports them. A
-// shallow scan still skips the directory, because it looks no deeper than one
-// level below the root.
-const vendoredIntoBuild = "vendor"
+// installedTrees are the directories a build installs into rather than builds
+// from: a virtualenv, node_modules, a Rust standard library. The licenses
+// there belong to what was installed, not to the package.
+//
+// Vendored source under vendor/, third_party/ and the like is deliberately
+// absent. It is built into the package, so its terms are obligations the
+// package carries and a deep scan reports them. The module classifies both
+// kinds as ExclusionVendored, which is why melange keeps this list itself.
+var installedTrees = map[string]struct{}{
+	".virtualenv":  {},
+	"env":          {},
+	"node_modules": {},
+	"rust-src":     {},
+	"rustc-src":    {},
+	"venv":         {},
+}
+
+// embeddedVersionRe collapses a version embedded in a directory name, so that
+// rust-1.86.0-src matches rust-src.
+var embeddedVersionRe = regexp.MustCompile(`-\d+\.\d+\.\d+-`)
+
+func inInstalledTree(p string) bool {
+	for seg := range strings.SplitSeq(p, "/") {
+		if _, ok := installedTrees[embeddedVersionRe.ReplaceAllString(seg, "-")]; ok {
+			return true
+		}
+	}
+	return false
+}
 
 // describesPackage reports whether a discovered path describes the package
-// being built rather than something sitting beside it.
-//
-// The dependency directories are the module's list rather than a copy of it,
-// asked one segment at a time so that vendoring can be admitted without
-// admitting the trees a build installed: a virtualenv, node_modules or a Rust
-// standard library carries terms that are not this package's. Build output is
-// refused outright, since melange stages each subpackage under melange-out/ in
-// the same workspace and a license there is a copy of the answer this check is
+// being built rather than something installed beside it. Build output is
+// refused too: melange stages each subpackage under melange-out/ in the same
+// workspace, and a license there is a copy of the answer this check is
 // producing.
 func describesPackage(p string) bool {
+	if inInstalledTree(p) {
+		return false
+	}
+	// One segment at a time: for a whole path the module reports only the
+	// first dependency or build-output directory, so a vendored directory
+	// above melange-out/ would hide it.
 	for seg := range strings.SplitSeq(p, "/") {
-		if seg == vendoredIntoBuild {
-			continue
-		}
-		if detect.ClassifyDirExclusion(seg) == detect.ExclusionVendored {
+		if detect.ClassifyDirExclusion(seg) == detect.ExclusionBuildOutput {
 			return false
 		}
 	}
-	return detect.ClassifyExclusion(p) != detect.ExclusionBuildOutput
+	return true
 }
 
 // IsLicenseFile checks if a file is a license file based on its name.
 // Returns true/false if the file is a license file, and the weight value
 // associated with the match, as some matches are potentially more relevant.
-// overrideIgnore considers the name alone, so that a caller asking "is this a
-// license file" about a path outside the package's own source gets an answer
-// about the name rather than about the location.
+// A file under a directory a build installs into, such as node_modules or a
+// virtualenv, is not counted unless overrideIgnore is set, which lets a linter
+// ask about the name alone (e.g., to avoid listing each instance of a given
+// LICENSE file as a duplicate).
 func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
-	is, weight := detect.IsLicenseFile(filename)
-	if !is {
+	if !overrideIgnore && inInstalledTree(filename) {
 		return false, 0.0
 	}
-	if !overrideIgnore && detect.ClassifyExclusion(filename) != detect.ExclusionNone {
-		return false, 0.0
+	return detect.IsLicenseFile(filename)
+}
+
+// requireReadable fails a scan that could not read all of its tree. A tree read
+// only in part has no trustworthy answer, so the scan reports none rather than
+// whatever it reached.
+func requireReadable(unreadable []string) error {
+	if len(unreadable) == 0 {
+		return nil
 	}
-	return true, weight
+	return fmt.Errorf("finding license files: cannot read %q", unreadable)
 }
 
 // FindLicenseFiles returns a list of license files in a directory, sorted by their relevance score.
@@ -126,6 +157,9 @@ func FindLicenseFiles(fsys fs.FS, deep bool) ([]LicenseFile, error) {
 	found, err := detect.Find(fsys, scopeFor(deep))
 	if err != nil {
 		return nil, fmt.Errorf("finding license files: %w", err)
+	}
+	if err := requireReadable(found.Unreadable); err != nil {
+		return nil, err
 	}
 
 	licenseFiles := make([]LicenseFile, 0, len(found.Candidates))
@@ -167,29 +201,40 @@ func declarationsFrom(cfg *config.Configuration) []detect.Declaration {
 func CollectLicenseInfo(ctx context.Context, fsys fs.FS, deep bool, cfg *config.Configuration) ([]License, error) {
 	log := clog.FromContext(ctx)
 
+	decls := declarationsFrom(cfg)
 	res, err := detect.Detect(ctx, detect.Request{
 		FS:       fsys,
 		Scope:    scopeFor(deep),
-		Declared: declarationsFrom(cfg),
+		Declared: decls,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("detecting licenses: %w", err)
 	}
+	if err := requireReadable(res.Unreadable); err != nil {
+		return nil, err
+	}
 
-	for _, p := range res.Unreadable {
-		log.Warnf("could not read %s while looking for license files", p)
+	// A declared file is read wherever it sits: naming it is the package's own
+	// statement about its licensing, and skipping it would leave that
+	// statement unchecked.
+	declared := make(map[string]struct{}, len(decls))
+	for _, d := range decls {
+		if d.Path != "" {
+			declared[path.Clean(d.Path)] = struct{}{}
+		}
 	}
 
 	detectedLicenses := []License{}
 	for _, f := range res.Files {
-		if !describesPackage(f.Path) {
+		if _, ok := declared[f.Path]; !ok && !describesPackage(f.Path) {
 			continue
 		}
-		// One unreadable file is not a reason to discard what the others carry,
-		// so the failure is reported and the scan continues.
 		if f.Err != "" {
-			log.Warnf("could not classify %s: %s", f.Path, f.Err)
-			continue
+			return nil, fmt.Errorf("reading license file %q: %s", f.Path, f.Err)
+		}
+		// The classifier reads no more than detect.MaxTextBytes of a file.
+		if f.SizeBytes > detect.MaxTextBytes {
+			log.Warnf("only the first %d bytes of %q are classified; a license past that point is not detected", detect.MaxTextBytes, f.Path)
 		}
 
 		// A file can carry more than one license text, and they are separate
@@ -325,10 +370,18 @@ func gatherMelangeLicenses(ctx context.Context, cfg *config.Configuration) []Lic
 			log.Warnf("could not parse declared license %q: %v", ml.License, err)
 		}
 
+		// Detection reports a declared file under its cleaned path, so the
+		// declaration is compared under the same one. An empty path stays
+		// empty: it marks a declaration for the whole package, and path.Clean
+		// would make it ".".
+		source := ml.LicensePath
+		if source != "" {
+			source = path.Clean(source)
+		}
 		for _, id := range ids {
 			mls = append(mls, License{
 				Name:      id,
-				Source:    ml.LicensePath,
+				Source:    source,
 				Overrides: ml.DetectionOverride,
 			})
 		}

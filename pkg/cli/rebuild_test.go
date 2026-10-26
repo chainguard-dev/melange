@@ -15,8 +15,12 @@
 package cli
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
+	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	goapk "chainguard.dev/apko/pkg/apk/apk"
@@ -88,4 +92,53 @@ func TestRebuildCmd_RestoresWorkDir(t *testing.T) {
 
 	require.NoError(t, RebuildCmd(context.Background(), flags, nil))
 	require.Empty(t, flags.workDir)
+}
+
+// A rebuild takes its sources from the cache of its --source-package, so the
+// flag has to reach the Build the rebuild runs.
+func TestRebuildOptions_StrictSourcesFromCache(t *testing.T) {
+	ctx := context.Background()
+	pkginfo := &goapk.PackageInfo{Name: "hello", Origin: "hello"}
+	cfg := &config.Configuration{Package: config.Package{Name: "hello"}}
+	cfgpurl := purl.PackageURL{Namespace: "wolfi-dev", Name: "os", Subpath: "hello.yaml"}
+
+	// The smallest companion that verifies: one empty manifest, which pins to
+	// itself.
+	companion := filepath.Join(t.TempDir(), "hello-source-1-r0.apk")
+	f, err := os.Create(companion)
+	require.NoError(t, err)
+	gz := gzip.NewWriter(f)
+	tw := tar.NewWriter(gz)
+	require.NoError(t, tw.WriteHeader(&tar.Header{Name: "usr/src/hello/SOURCES.sha256", Typeflag: tar.TypeReg, Mode: 0o644}))
+	require.NoError(t, tw.Close())
+	require.NoError(t, gz.Close())
+	require.NoError(t, f.Close())
+
+	for _, tt := range []struct {
+		value   string
+		want    []string
+		wantErr string
+	}{
+		{value: "git-checkout", want: []string{"git-checkout"}},
+		{value: "Git-Checkout", wantErr: `unknown step kind "Git-Checkout"`},
+	} {
+		flags, _, err := ParseRebuildFlags([]string{"--runner=bubblewrap", "--source-package=" + companion, "--strict-sources-from-cache=" + tt.value})
+		require.NoError(t, err)
+		flags.workDir = t.TempDir()
+
+		opts, err := flags.rebuildOptions(ctx, pkginfo, cfg, &spdx.Package{}, cfgpurl, []byte{})
+		require.NoError(t, err, tt.value)
+
+		b := &build.Build{}
+		var applyErr error
+		for _, opt := range opts {
+			applyErr = errors.Join(applyErr, opt(b))
+		}
+		if tt.wantErr != "" {
+			require.ErrorContains(t, applyErr, tt.wantErr)
+			continue
+		}
+		require.NoError(t, applyErr)
+		require.Equal(t, tt.want, b.StrictSourcesFromCache)
+	}
 }

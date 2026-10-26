@@ -210,9 +210,18 @@ type pipelineRunner struct {
 	interactive bool
 	config      *container.Config
 	runner      container.Runner
+
+	// strictSources lists the step kinds that get MELANGE_SOURCE_RESTORE and
+	// MELANGE_SOURCE_STRICT set to "1". They are set after all environment
+	// merging, so nothing the configuration, a pipeline or the guest image sets
+	// can lower them. Steps of other kinds keep the value they would otherwise
+	// have.
+	strictSources []string
 }
 
-func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline) (ran bool, err error) {
+// runPipeline runs pipeline and its children. inStrict is set for the children
+// of a step that is strict, which are part of it.
+func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline, inStrict bool) (ran bool, err error) {
 	if result, err := shouldRun(pipeline.If); !result {
 		if err == nil {
 			_, step := report.StartStep(ctx, pipeline, nil)
@@ -233,6 +242,11 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	}
 
 	maps.Copy(envOverride, pipeline.Environment)
+	strict := inStrict || strictStep(r.strictSources, pipeline.Uses) != ""
+	if strict {
+		envOverride[sourceRestoreEnv] = "1"
+		envOverride[sourceStrictEnv] = "1"
+	}
 
 	workdir := WorkDir
 	if pipeline.WorkDir != "" {
@@ -283,7 +297,7 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 		mergedEnv := maps.Clone(envOverride)
 		maps.Copy(mergedEnv, p.Environment)
 		p.Environment = mergedEnv
-		if ran, err := r.runPipeline(ctx, &p); err != nil {
+		if ran, err := r.runPipeline(ctx, &p, strict); err != nil {
 			return false, fmt.Errorf("unable to run pipeline: %w", err)
 		} else if ran {
 			steps++
@@ -361,7 +375,7 @@ func (r *pipelineRunner) maybeDebug(ctx context.Context, fragment string, envOve
 
 func (r *pipelineRunner) runPipelines(ctx context.Context, pipelines []config.Pipeline) error {
 	for _, p := range pipelines {
-		if _, err := r.runPipeline(ctx, &p); err != nil {
+		if _, err := r.runPipeline(ctx, &p, false); err != nil {
 			return fmt.Errorf("unable to run pipeline: %w", err)
 		}
 	}

@@ -73,6 +73,7 @@ melange build [flags]
       --source-dir string                                       directory used for included sources
       --source-out-dir string                                   directory where -source companions will be output (default: --out-dir)
       --source-package                                          also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)
+      --strict-sources-from-cache strings                       step kinds (git-checkout) whose steps take their sources only from --cache-dir; the build fails instead of fetching them (runs: steps and language package managers are not restricted; see docs/BUILD-CACHE.md)
       --strip-origin-name                                       whether origin names should be stripped (for bootstrap)
       --timeout duration                                        default timeout for builds
       --trace string                                            where to write trace output

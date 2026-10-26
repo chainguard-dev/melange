@@ -66,9 +66,17 @@ func (t *Test) Compile(ctx context.Context) error {
 		return err
 	}
 
+	// ignore does not force the embedded definitions: it only evaluates the
+	// build pipelines, which a test never runs.
 	ignore := &Compiled{
 		PipelineDirs: t.PipelineDirs,
 	}
+	kinds, err := normalizeStrictSources(t.StrictSourcesFromCache)
+	if err != nil {
+		return err
+	}
+	t.StrictSourcesFromCache = kinds
+	opts := []CompileOption{withEmbeddedSources(kinds)}
 
 	// We want to evaluate this but not accumulate its deps.
 	if err := ignore.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
@@ -93,9 +101,7 @@ func (t *Test) Compile(ctx context.Context) error {
 			continue
 		}
 
-		test := &Compiled{
-			PipelineDirs: t.PipelineDirs,
-		}
+		test := newCompiled(t.PipelineDirs, opts)
 
 		te := &cfg.Subpackages[i].Test.Environment.Contents
 
@@ -118,9 +124,7 @@ func (t *Test) Compile(ctx context.Context) error {
 	}
 
 	if cfg.Test != nil {
-		test := &Compiled{
-			PipelineDirs: t.PipelineDirs,
-		}
+		test := newCompiled(t.PipelineDirs, opts)
 
 		te := &t.Configuration.Test.Environment.Contents
 
@@ -150,6 +154,12 @@ func (t *Test) Compile(ctx context.Context) error {
 // Compile compiles all configuration, including tests, by loading any pipelines and substituting all variables.
 func (b *Build) Compile(ctx context.Context, opts ...CompileOption) error {
 	cfg := b.Configuration
+	kinds, err := normalizeStrictSources(b.StrictSourcesFromCache)
+	if err != nil {
+		return err
+	}
+	b.StrictSourcesFromCache = kinds
+	opts = append(opts, withEmbeddedSources(kinds))
 	sm, err := NewSubstitutionMap(cfg, b.Arch, b.buildFlavor(), b.EnabledBuildOptions)
 	if err != nil {
 		return err
@@ -247,6 +257,10 @@ type Compiled struct {
 	// dependenciesOnly skips producing runnable `runs:` bodies. See
 	// WithDependenciesOnly.
 	dependenciesOnly bool
+
+	// embeddedSources lists the source step kinds that take their definitions
+	// from the ones built into melange.
+	embeddedSources []string
 }
 
 func newCompiled(pipelineDirs []string, opts []CompileOption) *Compiled {
@@ -277,17 +291,33 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 
 	// When compiling an already-compiled config, `uses` will be redundant and FYI only,
 	// so ignore it if there is also a `pipelines` spelled out.
-	if uses != "" && len(pipeline.Pipeline) == 0 {
+	//
+	// A source step's script is what keeps it off the network, so a compiled
+	// configuration's inline copy, like a pipeline directory's, is not trusted.
+	embedded := strictStep(c.embeddedSources, uses)
+	if uses != "" && (len(pipeline.Pipeline) == 0 || embedded != "") {
 		// Validate that 'uses' does not contain path traversal sequences or absolute paths.
 		if filepath.IsAbs(uses) || strings.Contains(uses, "..") {
 			return fmt.Errorf("invalid pipeline 'uses' value %q: must not contain absolute paths or '..' sequences", uses)
 		}
+		// Any other spelling of the name would reach a file of a pipeline
+		// directory on a case-insensitive file system, and the recorded
+		// configuration would differ from a build without the flag.
+		if embedded != "" && uses != embedded {
+			return fmt.Errorf("with --strict-sources-from-cache, pipeline 'uses' value %q does not name %s exactly; spell it %s", uses, embedded, embedded)
+		}
 
-		// Reading and parsing the definition only happens the first time it
-		// is used; see usesDocument.
-		doc, err := usesDocument(c.PipelineDirs, uses, func() ([]byte, error) {
-			return c.readUses(ctx, uses)
-		})
+		arrivedCompiled := len(pipeline.Pipeline) > 0
+		arrivedNeeds := pipeline.Needs
+		if embedded != "" {
+			// Only a step melange compiled is replaced; anything else with
+			// children of its own would lose them without a word.
+			if arrivedCompiled && !compiledShape(pipeline) {
+				return fmt.Errorf("pipeline %q has a pipeline of its own that is not the compiled shape of that step (one `runs:` step); with --strict-sources-from-cache its definition comes from melange, so remove it", embedded)
+			}
+			pipeline.Runs, pipeline.Pipeline, pipeline.Inputs, pipeline.Needs = "", nil, nil, nil
+		}
+		doc, err := c.document(ctx, uses, embedded != "")
 		if err != nil {
 			return err
 		}
@@ -299,12 +329,21 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 
 		for k := range with {
 			if _, ok := pipeline.Inputs[k]; !ok {
+				if embedded != "" && arrivedCompiled {
+					return fmt.Errorf("undefined input %q to pipeline %q: the step was compiled by a melange whose %s inputs differ from this one's", k, pipeline.Uses, embedded)
+				}
 				return fmt.Errorf("undefined input %q to pipeline %q", k, pipeline.Uses)
 			}
 		}
 
 		// We want to keep the original name here because loading the pipeline will overwrite it.
 		pipeline.Name = name
+
+		// A step that arrived compiled keeps the packages its compiled
+		// configuration recorded for it, as it does without the flag.
+		if embedded != "" && arrivedCompiled {
+			pipeline.Needs = arrivedNeeds
+		}
 	}
 
 	if parent != nil {

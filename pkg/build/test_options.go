@@ -266,3 +266,12 @@ func WithTestTimeout(dur time.Duration) TestOption {
 		return nil
 	}
 }
+
+// WithTestStrictSourcesFromCache is WithStrictSourcesFromCache for a test.
+func WithTestStrictSourcesFromCache(kinds []string) TestOption {
+	return func(t *Test) error {
+		var err error
+		t.StrictSourcesFromCache, err = normalizeStrictSources(kinds)
+		return err
+	}
+}

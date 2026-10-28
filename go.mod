@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	chainguard.dev/apko v1.4.13
-	chainguard.dev/license v0.1.1
+	chainguard.dev/license v0.1.2
 	github.com/chainguard-dev/clog v1.8.1
 	github.com/chainguard-dev/go-pkgconfig v0.0.0-20260625083649-3332107431aa
 	github.com/chainguard-dev/yam v0.2.69

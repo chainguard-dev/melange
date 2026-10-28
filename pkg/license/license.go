@@ -12,48 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package license checks a package's declared licensing against the license
+// files its source tree actually ships.
+//
+// Discovery, classification and SPDX expression handling come from
+// chainguard.dev/license, which melange shares with Chainguard's other license
+// tooling so that the same tree yields the same answer everywhere. What stays
+// here is melange's own: reading declarations out of a melange configuration,
+// deciding which parts of a tree belong to the package, ranking a license by
+// restrictiveness, and deciding what disagreement is worth warning about.
 package license
 
 import (
 	"context"
 	"fmt"
 	"io/fs"
-	"path/filepath"
+	"path"
 	"regexp"
-	"slices"
-	"sort"
 	"strings"
 
+	"chainguard.dev/license/detect"
+	"chainguard.dev/license/spdx"
 	"github.com/chainguard-dev/clog"
 	golicenses "github.com/google/go-licenses/v2/licenses"
-	licenseclassifier "github.com/google/licenseclassifier/v2"
-	"github.com/google/licenseclassifier/v2/assets"
 
 	"chainguard.dev/melange/pkg/config"
 )
 
-// NOTE: the detection logic is done via a Classifier type as this is how it was
-// implemented, for instance, in the go-licenses project (also using licenseclassifier).
-
-// Classifier can detect the type of a software license.
-type Classifier interface {
-	Identify(fsys fs.FS, licensePath string) ([]License, error)
-}
-
-type melangeClassifier struct {
-	classifier *licenseclassifier.Classifier
-}
-
-// NewClassifier creates a license classifier.
-func NewClassifier() (Classifier, error) {
-	c, err := assets.DefaultClassifier()
-	if err != nil {
-		return nil, err
-	}
-	return &melangeClassifier{classifier: c}, nil
-}
-
-// License represents a software license, as detected by licenseclassifier.
+// License represents a software license, as detected by the classifier.
 type License struct {
 	Name       string
 	Type       golicenses.Type
@@ -78,163 +64,136 @@ type LicenseDiff struct {
 	NewType  golicenses.Type
 }
 
-// Identify identifies the license of a file on a filesystem using the licenseclassifier.
-func (c *melangeClassifier) Identify(fsys fs.FS, licensePath string) ([]License, error) {
-	file, err := fsys.Open(licensePath)
-	if err != nil {
-		return nil, err
+// scopeFor maps melange's shallow/deep choice onto a discovery scope.
+// A shallow scan reads the root and one directory below it, which is where a
+// package keeps its own license, and skips the directories the module
+// attributes to other components, vendor/ and third_party/ among them. A deep
+// scan reads the whole tree.
+func scopeFor(deep bool) detect.Scope {
+	if deep {
+		return detect.ScopeTree
 	}
-	defer file.Close()
+	return detect.ScopeProject
+}
 
-	matches, err := c.classifier.MatchFrom(file)
-	if err != nil {
-		return nil, err
-	}
+// installedTrees are the directories a build installs into rather than builds
+// from: a virtualenv, node_modules, a Rust standard library. The licenses
+// there belong to what was installed, not to the package.
+//
+// Vendored source under vendor/, third_party/ and the like is deliberately
+// absent. It is built into the package, so its terms are obligations the
+// package carries and a deep scan reports them. The module classifies both
+// kinds as ExclusionVendored, which is why melange keeps this list itself.
+var installedTrees = map[string]struct{}{
+	".virtualenv":  {},
+	"env":          {},
+	"node_modules": {},
+	"rust-src":     {},
+	"rustc-src":    {},
+	"venv":         {},
+}
 
-	// Go through all the matches and filter out the ones that are not licenses
-	// and also filter out duplicates
-	foundLicenseNames := map[string]struct{}{}
-	licenses := []License{}
-	for _, match := range matches.Matches {
-		if match.MatchType != "License" {
-			continue
+// embeddedVersionRe collapses a version embedded in a directory name, so that
+// rust-1.86.0-src matches rust-src.
+var embeddedVersionRe = regexp.MustCompile(`-\d+\.\d+\.\d+-`)
+
+func inInstalledTree(p string) bool {
+	for seg := range strings.SplitSeq(p, "/") {
+		if _, ok := installedTrees[embeddedVersionRe.ReplaceAllString(seg, "-")]; ok {
+			return true
 		}
+	}
+	return false
+}
 
-		// Skip duplicate licenses
-		if _, ok := foundLicenseNames[match.Name]; ok {
-			continue
+// describesPackage reports whether a discovered path describes the package
+// being built rather than something installed beside it. Build output is
+// refused too: melange stages each subpackage under melange-out/ in the same
+// workspace, and a license there is a copy of the answer this check is
+// producing.
+func describesPackage(p string) bool {
+	if inInstalledTree(p) {
+		return false
+	}
+	// One segment at a time: for a whole path the module reports only the
+	// first dependency or build-output directory, so a vendored directory
+	// above melange-out/ would hide it.
+	for seg := range strings.SplitSeq(p, "/") {
+		if detect.ClassifyDirExclusion(seg) == detect.ExclusionBuildOutput {
+			return false
 		}
-		foundLicenseNames[match.Name] = struct{}{}
-
-		licenses = append(licenses, License{
-			Name:       match.Name,
-			Type:       golicenses.LicenseType(match.Name),
-			Confidence: match.Confidence,
-			Source:     licensePath,
-			Overrides:  "",
-		})
 	}
+	return true
+}
 
-	// No license found, append a no-assertion entry
-	if len(licenses) == 0 {
-		licenses = append(licenses, License{
-			Name:       "NOASSERTION",
-			Confidence: 0.0,
-			Source:     licensePath,
-		})
+// IsLicenseFile checks if a file is a license file based on its name.
+// Returns true/false if the file is a license file, and the weight value
+// associated with the match, as some matches are potentially more relevant.
+// A file under a directory a build installs into, such as node_modules or a
+// virtualenv, is not counted unless overrideIgnore is set, which lets a linter
+// ask about the name alone (e.g., to avoid listing each instance of a given
+// LICENSE file as a duplicate).
+func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
+	if !overrideIgnore && inInstalledTree(filename) {
+		return false, 0.0
 	}
+	return detect.IsLicenseFile(filename)
+}
 
-	return licenses, nil
+// requireReadable fails a scan that could not read all of its tree. A tree read
+// only in part has no trustworthy answer, so the scan reports none rather than
+// whatever it reached.
+func requireReadable(unreadable []string) error {
+	if len(unreadable) == 0 {
+		return nil
+	}
+	return fmt.Errorf("finding license files: cannot read %q", unreadable)
 }
 
 // FindLicenseFiles returns a list of license files in a directory, sorted by their relevance score.
 // If deep is true, the entire tree is scanned. If deep is false, only the top directory and one level down are scanned,
 // returning the list of most likely licenses of the project itself (not vendored dependencies)
 func FindLicenseFiles(fsys fs.FS, deep bool) ([]LicenseFile, error) {
-	// This file is using regular expressions defined in the regexp.go file
-	var licenseFiles []LicenseFile
-	err := fs.WalkDir(fsys, ".", func(filePath string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// If shallow scan, limit depth and skip vendor directories
-		if !deep {
-			pathParts := strings.Split(filePath, string(filepath.Separator))
-			depth := len(pathParts)
-			if slices.Contains(pathParts, "vendor") {
-				return nil
-			}
-			if depth > 2 {
-				return nil
-			}
-		}
-
-		// Skip directories and non-regular files, like symlinks
-		if !info.Type().IsRegular() {
-			return nil
-		}
-		// Let's ignore all files in the melange-out/ directory, as it's not part of the source
-		if strings.Contains(filePath, "melange-out") {
-			return nil
-		}
-
-		is, weight := IsLicenseFile(filePath, false)
-		if is {
-			// Licenses in the top level directory have a higher weight so that they
-			// always appear first
-			if filepath.Dir(filePath) == "." {
-				weight += 0.5
-			}
-			licenseFiles = append(licenseFiles, LicenseFile{
-				Name:   info.Name(),
-				Path:   filePath,
-				Weight: weight,
-			})
-		}
-
-		return nil
-	})
+	found, err := detect.Find(fsys, scopeFor(deep))
 	if err != nil {
+		return nil, fmt.Errorf("finding license files: %w", err)
+	}
+	if err := requireReadable(found.Unreadable); err != nil {
 		return nil, err
 	}
 
-	// Sort the license files by their 'score' (weight)
-	// The order isn't necesasrily important, but we want to have the most relevant files first
-	sort.SliceStable(licenseFiles, func(i, j int) bool {
-		return licenseFiles[i].Weight > licenseFiles[j].Weight
-	})
-
+	licenseFiles := make([]LicenseFile, 0, len(found.Candidates))
+	for _, c := range found.Candidates {
+		if !describesPackage(c.Path) {
+			continue
+		}
+		licenseFiles = append(licenseFiles, LicenseFile{
+			Name:   path.Base(c.Path),
+			Path:   c.Path,
+			Weight: c.Weight,
+		})
+	}
 	return licenseFiles, nil
 }
 
-// IsLicenseFile checks if a file is a license file based on its name.
-// Returns true/fals if the file is a license file, and the weight value
-// associated with the match, as some matches are potentially more relevant.
-// overrideIgnore skips over ignored paths to allow linters
-// to correctly determine whether a path is a valid license file
-// (e.g., to avoid listing each instance of a given LICENSE file as a duplicate)
-func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
-	// Ignore files in these paths
-
-	// Packages like Rust embed the semver in certain paths, so replace the segment with `-`
-	// rust-1.86.0-src -> rust-src
-	re := regexp.MustCompile(`\-\d+\.\d+\.\d+\-`)
-	filename = re.ReplaceAllString(filename, "-")
-
-	ignoredPaths := []string{
-		".virtualenv",
-		"env",
-		"node_modules",
-		"rust-src",
-		"rustc-src",
-		"venv",
+// declarationsFrom reads the licenses a melange configuration declares.
+//
+// A declaration naming a path is what lets a package whose license lives in an
+// unconventionally named file say so: discovery does not select such a file by
+// name, and the declaration makes it read and classified anyway.
+func declarationsFrom(cfg *config.Configuration) []detect.Declaration {
+	if cfg == nil {
+		return nil
 	}
-	if !overrideIgnore {
-		for _, i := range ignoredPaths {
-			if slices.Contains(strings.Split(filename, string(filepath.Separator)), i) {
-				return false, 0.0
-			}
-		}
+	decls := make([]detect.Declaration, 0, len(cfg.Package.Copyright))
+	for _, cp := range cfg.Package.Copyright {
+		decls = append(decls, detect.Declaration{
+			License:  cp.License,
+			Path:     cp.LicensePath,
+			Override: cp.DetectionOverride,
+		})
 	}
-
-	// normalize to file name only
-	filename = filepath.Base(filename)
-
-	filenameExt := filepath.Ext(filename)
-	// Check if the file matches any of the license-related regex patterns
-	for regex, weight := range filenameRegexes {
-		if !regex.MatchString(filename) {
-			continue
-		}
-		// licensee does this check as part of the regex, but in go we don't have
-		// the same regex capabilities
-		if slices.Contains(ignoredExt, filenameExt) {
-			continue
-		}
-		return true, weight
-	}
-	return false, 0.0
+	return decls
 }
 
 // CollectLicenseInfo collects license information from the given filesystem.
@@ -242,66 +201,74 @@ func IsLicenseFile(filename string, overrideIgnore bool) (bool, float64) {
 func CollectLicenseInfo(ctx context.Context, fsys fs.FS, deep bool, cfg *config.Configuration) ([]License, error) {
 	log := clog.FromContext(ctx)
 
-	// Find all license-text files
-	licenseFiles, err := FindLicenseFiles(fsys, deep)
+	decls := declarationsFrom(cfg)
+	res, err := detect.Detect(ctx, detect.Request{
+		FS:       fsys,
+		Scope:    scopeFor(deep),
+		Declared: decls,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("finding license files: %w", err)
+		return nil, fmt.Errorf("detecting licenses: %w", err)
+	}
+	if err := requireReadable(res.Unreadable); err != nil {
+		return nil, err
 	}
 
-	// If configuration is provided, add any license-paths from the config
-	if cfg != nil {
-		// Build a set of existing paths to avoid duplicates
-		existingPaths := make(map[string]struct{})
-		for _, lf := range licenseFiles {
-			existingPaths[lf.Path] = struct{}{}
-		}
-
-		// Add license paths from the configuration
-		for _, cp := range cfg.Package.Copyright {
-			if cp.LicensePath != "" {
-				if _, exists := existingPaths[cp.LicensePath]; !exists {
-					licenseFiles = append(licenseFiles, LicenseFile{
-						Name:   filepath.Base(cp.LicensePath),
-						Path:   cp.LicensePath,
-						Weight: 1.0, // Neutral weight
-					})
-					existingPaths[cp.LicensePath] = struct{}{}
-				}
-			}
+	// A declared file is read wherever it sits: naming it is the package's own
+	// statement about its licensing, and skipping it would leave that
+	// statement unchecked.
+	declared := make(map[string]struct{}, len(decls))
+	for _, d := range decls {
+		if d.Path != "" {
+			declared[path.Clean(d.Path)] = struct{}{}
 		}
 	}
 
-	if len(licenseFiles) == 0 {
+	detectedLicenses := []License{}
+	for _, f := range res.Files {
+		if _, ok := declared[f.Path]; !ok && !describesPackage(f.Path) {
+			continue
+		}
+		if f.Err != "" {
+			return nil, fmt.Errorf("reading license file %q: %s", f.Path, f.Err)
+		}
+		// The classifier reads no more than detect.MaxTextBytes of a file.
+		if f.SizeBytes > detect.MaxTextBytes {
+			log.Warnf("only the first %d bytes of %q are classified; a license past that point is not detected", detect.MaxTextBytes, f.Path)
+		}
+
+		// A file can carry more than one license text, and they are separate
+		// licenses: a LICENSE that appends a bundled dependency's terms is the
+		// common shape. Reporting only the strongest would hide the other.
+		detectedLicenses = append(detectedLicenses, licenseFor(f.License, f.Confidence, f.Path))
+		for _, m := range f.AdditionalLicenses {
+			detectedLicenses = append(detectedLicenses, licenseFor(m.Name, m.Confidence, f.Path))
+		}
+		log.Debugf("detected license %s in %s", f.License, f.Path)
+	}
+
+	if len(detectedLicenses) == 0 {
 		// No license files detected, no linting performed.
 		log.Debugf("no license files detected")
 		return nil, nil
 	}
-
-	classifier, err := NewClassifier()
-	if err != nil {
-		return nil, fmt.Errorf("creating classifier: %w", err)
-	}
-
-	melangeClassifier := classifier.(*melangeClassifier)
-	detectedLicenses := []License{}
-	for _, lf := range licenseFiles {
-		dl, err := melangeClassifier.Identify(fsys, lf.Path)
-		if err != nil {
-			return nil, fmt.Errorf("identifying license: %w", err)
-		}
-
-		log.Debugf("detected licenses %v in %s", dl, lf.Path)
-		detectedLicenses = append(detectedLicenses, dl...)
-	}
-
 	return detectedLicenses, nil
+}
+
+// licenseFor describes one classified license text. A file nothing recognized
+// carries no license type, since there is no license to rank.
+func licenseFor(name string, confidence float64, source string) License {
+	l := License{Name: name, Confidence: confidence, Source: source}
+	if name != detect.NoAssertion {
+		l.Type = golicenses.LicenseType(name)
+	}
+	return l
 }
 
 // IsLicenseMatchConfident checks if the license match is confident enough to be considered valid.
 func IsLicenseMatchConfident(dl License) bool {
 	// This is heuristics, but we want to ignore licenses with a confidence lower than a threshold
-	// We'll make this configurable in the future
-	return dl.Confidence >= 0.9
+	return dl.Confidence >= detect.ConfidenceThreshold
 }
 
 // LicenseCheck checks the licenses of the files in the given filesystem against the melange configuration.
@@ -338,10 +305,8 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS, de
 	if cfg != nil {
 		log.Infof("checking gathered license information against the configuration")
 
-		// Let's first turn the melange licensing information into a coherent licensing list, similar to what Identify returns
-		// We first start off by splitting license information that has OR and AND into separate license entries
-		// Every entry can have multiple AND or ORs
-		melangeLicenses := gatherMelangeLicenses(cfg)
+		// Turn the melange licensing information into a coherent licensing list, similar to what detection returns
+		melangeLicenses := gatherMelangeLicenses(ctx, cfg)
 
 		// Now let's check if the detected licenses are in the configuration
 		diffs = getLicenseDifferences(detectedLicenses, melangeLicenses)
@@ -382,28 +347,43 @@ func LicenseCheck(ctx context.Context, cfg *config.Configuration, fsys fs.FS, de
 	return detectedLicenses, diffs, nil
 }
 
-// gatherMelangeLicenses gathers the licenses from the melange configuration and splits them into separate entries.
-func gatherMelangeLicenses(cfg *config.Configuration) []License {
+// gatherMelangeLicenses gathers the licenses from the melange configuration and
+// splits them into separate entries.
+//
+// A declaration is an SPDX expression, so the identifiers it exposes a consumer
+// to are read by parsing it rather than by splitting on the operators. That
+// keeps a parenthesised or WITH-qualified expression readable, and it takes
+// every branch of an OR, because the declaration does not say which branch the
+// package was taken under.
+func gatherMelangeLicenses(ctx context.Context, cfg *config.Configuration) []License {
+	log := clog.FromContext(ctx)
+
 	mls := []License{}
 	for _, ml := range cfg.Package.Copyright {
-		if strings.Contains(ml.License, " OR ") || strings.Contains(ml.License, " AND ") {
-			// Split the license into separate entries using regexp
-			sls := regexp.MustCompile(`\s+(AND|OR)\s+`).Split(ml.License, -1)
-			for _, sl := range sls {
-				mls = append(mls,
-					License{
-						Name:      sl,
-						Source:    ml.LicensePath,
-						Overrides: ml.DetectionOverride,
-					})
-			}
-		} else {
-			mls = append(mls,
-				License{
-					Name:      ml.License,
-					Source:    ml.LicensePath,
-					Overrides: ml.DetectionOverride,
-				})
+		ids := []string{ml.License}
+		if expr, err := spdx.Parse(ml.License); err == nil {
+			ids = expr.Identifiers()
+		} else if ml.License != "" {
+			// An unparseable declaration is still reported as declared, so the
+			// disagreement is attributed to what was written rather than
+			// disappearing.
+			log.Warnf("could not parse declared license %q: %v", ml.License, err)
+		}
+
+		// Detection reports a declared file under its cleaned path, so the
+		// declaration is compared under the same one. An empty path stays
+		// empty: it marks a declaration for the whole package, and path.Clean
+		// would make it ".".
+		source := ml.LicensePath
+		if source != "" {
+			source = path.Clean(source)
+		}
+		for _, id := range ids {
+			mls = append(mls, License{
+				Name:      id,
+				Source:    source,
+				Overrides: ml.DetectionOverride,
+			})
 		}
 	}
 	return mls

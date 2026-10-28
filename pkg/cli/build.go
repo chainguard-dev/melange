@@ -42,6 +42,16 @@ import (
 
 const BuiltinPipelineDir = "/usr/share/melange/pipelines"
 
+// defaultReportDir is where --report writes when no directory is given.
+const defaultReportDir = "melange-report"
+
+// addReportFlag registers --report. A bare --report writes to
+// defaultReportDir; --report=DIR writes to DIR.
+func addReportFlag(fs *pflag.FlagSet, dir *string) {
+	fs.StringVar(dir, "report", "", fmt.Sprintf("write JSON, Markdown and HTML reports of every stage, step, guest environment and log to a directory (bare --report uses %q; use --report=DIR to choose)", defaultReportDir))
+	fs.Lookup("report").NoOptDefVal = defaultReportDir
+}
+
 // addBuildFlags registers all build command flags to the provided FlagSet using the BuildFlags struct
 func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringVar(&flags.BuildDate, "build-date", "", "date used for the timestamps of the files inside the image")
@@ -85,6 +95,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for builds")
 	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for builds")
 	fs.StringVar(&flags.TraceFile, "trace", "", "where to write trace output")
+	addReportFlag(fs, &flags.ReportDir)
 	fs.StringSliceVar(&flags.LintRequire, "lint-require", linter.DefaultRequiredLinters(), "linters that must pass")
 	fs.StringSliceVar(&flags.LintWarn, "lint-warn", linter.DefaultWarnLinters(), "linters that will generate warnings")
 	fs.BoolVar(&flags.IgnoreSignatures, "ignore-signatures", false, "ignore repository signature verification")
@@ -147,6 +158,7 @@ type BuildFlags struct {
 	ConfigFileLicense    string
 	GenerateProvenance   bool
 	TraceFile            string
+	ReportDir            string
 
 	// ExcludeEnvFromRecordedConfig lists environment variable keys to omit
 	// from the build configuration recorded in built packages.
@@ -236,6 +248,7 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithEnabledBuildOptions(flags.BuildOption),
 		build.WithCreateBuildLog(flags.CreateBuildLog),
 		build.WithPersistLintResults(flags.PersistLintResults),
+		build.WithReportDir(flags.ReportDir),
 		build.WithDebug(flags.Debug),
 		build.WithDebugRunner(flags.DebugRunner),
 		build.WithInteractive(flags.Interactive),

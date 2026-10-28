@@ -59,6 +59,7 @@ func addTestFlags(fs *pflag.FlagSet, flags *TestFlags) {
 	fs.StringVar(&flags.Disk, "disk", "", "disk size to use for tests")
 	fs.StringVar(&flags.Memory, "memory", "", "default memory resources to use for tests")
 	fs.DurationVar(&flags.Timeout, "timeout", 0, "default timeout for tests")
+	addReportFlag(fs, &flags.ReportDir)
 }
 
 // TestFlags holds all parsed test command flags
@@ -87,6 +88,7 @@ type TestFlags struct {
 	Memory              string
 	Disk                string
 	Timeout             time.Duration
+	ReportDir           string
 
 	// StrictSourcesFromCache lists the step kinds whose sources must come from
 	// the cache directory; see --strict-sources-from-cache.
@@ -136,6 +138,7 @@ func (flags *TestFlags) TestOptions(ctx context.Context, args ...string) ([]buil
 		build.WithTestMemory(flags.Memory),
 		build.WithTestDisk(flags.Disk),
 		build.WithTestTimeout(flags.Timeout),
+		build.WithTestReportDir(flags.ReportDir),
 		build.WithTestStrictSourcesFromCache(flags.StrictSourcesFromCache),
 	}
 

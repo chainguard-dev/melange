@@ -105,10 +105,12 @@ jobs:
             *.githubapp.com:443
             9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
             _http._tcp.azure.archive.ubuntu.com:443
+            _https._tcp.archive.ubuntu.com:443
             _https._tcp.dl.google.com:443
             _https._tcp.esm.ubuntu.com:443
             _https._tcp.motd.ubuntu.com:443
             _https._tcp.packages.microsoft.com:443
+            _https._tcp.security.ubuntu.com:443
             api.github.com:443
             api.ipify.org:443
             apk.cgr.dev:443
@@ -160,6 +162,7 @@ jobs:
             time3.google.com:443
             time4.google.com:123
             time4.google.com:443
+            tuf-repo-cdn.sigstore.dev:443
             www.oberhumer.com:443
             www.sudo.ws:443
             yarnpkg.com:443

@@ -160,6 +160,33 @@ pipeline:
 ...
 ```
 
+### OpenTelemetry traces
+
+`melange build --trace trace.json` keeps its existing JSON file output. To export
+build spans to an OpenTelemetry collector instead, explicitly enable OTLP:
+
+```sh
+OTEL_TRACES_EXPORTER=otlp \
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+melange build melange.yaml
+```
+
+Export is disabled by default. `OTEL_SDK_DISABLED=true` also disables the OTLP
+setup. The existing `--trace` file output takes precedence when supplied, including
+when OTLP environment variables are set. Library callers continue to configure
+their own TracerProvider.
+
+The default service name is `melange`. Use `OTEL_SERVICE_NAME` to override it and
+`OTEL_RESOURCE_ATTRIBUTES` to add resource attributes. The exporters use the
+standard OTLP endpoint, header, timeout, and TLS environment variables.
+`OTEL_EXPORTER_OTLP_PROTOCOL` selects `grpc` (the default) or `http/protobuf`;
+`OTEL_EXPORTER_OTLP_TRACES_PROTOCOL` takes precedence for traces. For HTTP, use an
+endpoint such as `http://localhost:4318`.
+
+The CLI ends the build span and gives pending spans up to five seconds to flush,
+including after an error or cancellation. Telemetry failures are reported without
+changing the build result or exit code.
+
 ## Default Substitutions
 
 Melange provides the following default substitutions which can be referenced in the build file pipeline:

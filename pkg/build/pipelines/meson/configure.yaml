@@ -19,8 +19,19 @@ pipeline:
   # provided by the project, and if any subprojects are needed we should
   # provide them ourselves.
   # Ref: https://mesonbuild.com/Subprojects.html#commandline-options
+  #
+  # --buildtype=plain: meson's own default build type is `debug` (-O0 -g) for
+  # every project whose meson.build declares no default_options, and GCC's
+  # -fhardened defines _FORTIFY_SOURCE only when optimising, so such packages
+  # came out unoptimised and unfortified. `plain` makes meson add no
+  # optimisation or debug flags of its own and leaves them to the toolchain
+  # (the distribution's CFLAGS or spec file), which is how Fedora, Debian, Arch
+  # and Alpine configure meson. A --buildtype given in `opts` comes later on
+  # the command line and still wins; a recipe that splits debug info can pass
+  # -Ddebug=true.
   - runs: |
       meson setup . ${{inputs.output-dir}} \
         --prefix=/usr \
         --wrap-mode=nodownload \
+        --buildtype=plain \
         ${{inputs.opts}}

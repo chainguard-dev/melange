@@ -187,6 +187,26 @@ func (b *Build) createClangConfigFiles(ctx context.Context) error {
 	return nil
 }
 
+// shellLinkClangConfigs links the clang driver configs createClangConfigFiles
+// wrote under the workspace into $HOME/.config, where clang reads user
+// configs. Under a runner whose $HOME is not the workspace (the qemu runner
+// builds with HOME=/root), clang would otherwise never read them and every
+// clang link would miss --package-metadata. It leaves an existing entry alone.
+var shellLinkClangConfigs = []string{
+	"sh", "-c",
+	`w="$1"
+[ $# -eq 1 ] || { echo "must provide workspace dir. got $# args."; exit 1; }
+[ -n "$HOME" ] && [ -d "$w/.config" ] || exit 0
+[ "$(cd "$HOME" 2>/dev/null && pwd -P)" = "$(cd "$w" && pwd -P)" ] && exit 0
+mkdir -p "$HOME/.config"
+for d in "$w"/.config/clang-*; do
+  [ -d "$d" ] || continue
+  t="$HOME/.config/${d##*/}"
+  [ -e "$t" ] || [ -L "$t" ] || ln -s "$d" "$t"
+done`,
+	"shellLinkClangConfigs",
+}
+
 // For now, just the gcc spec file and clang config files with link settings.
 // In the future can control debug symbol generation, march/mtune, etc.
 func (b *Build) createCompilerConfigFiles(ctx context.Context) error {

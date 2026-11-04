@@ -33,6 +33,15 @@ func WithTestConfig(configFile string) TestOption {
 	}
 }
 
+// WithTestReportDir sets the directory a report of the test is written to.
+// An empty dir disables the report.
+func WithTestReportDir(dir string) TestOption {
+	return func(t *Test) error {
+		t.ReportDir = dir
+		return nil
+	}
+}
+
 // WithWorkspaceDir sets the workspace directory to use.
 func WithTestWorkspaceDir(workspaceDir string) TestOption {
 	return func(t *Test) error {

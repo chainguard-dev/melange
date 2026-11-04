@@ -368,6 +368,15 @@ func WithPersistLintResults(persistLintResults bool) Option {
 	}
 }
 
+// WithReportDir sets the directory a report of the build is written to.
+// An empty dir disables the report.
+func WithReportDir(dir string) Option {
+	return func(b *Build) error {
+		b.ReportDir = dir
+		return nil
+	}
+}
+
 // WithDebug indicates whether debug logging of pipelines should be enabled.
 func WithDebug(debug bool) Option {
 	return func(b *Build) error {

@@ -54,6 +54,7 @@ import (
 	"chainguard.dev/melange/pkg/index"
 	"chainguard.dev/melange/pkg/license"
 	"chainguard.dev/melange/pkg/linter"
+	"chainguard.dev/melange/pkg/report"
 )
 
 const melangeOutputDirName = "melange-out"
@@ -173,6 +174,9 @@ type Build struct {
 
 	// Opt-in SLSA provenance generation for initial rollout/testing
 	GenerateProvenance bool
+
+	// ReportDir, when set, is where a report of the build is written.
+	ReportDir string
 
 	// The package resolver associated with this build.
 	//
@@ -414,6 +418,7 @@ func (b *Build) buildGuest(ctx context.Context, imgConfig apko_types.ImageConfig
 	if err := bc.BuildImage(ctx); err != nil {
 		return "", fmt.Errorf("unable to generate image: %w", err)
 	}
+	recordGuestPackages(ctx, bc, locked.Contents, b.ExtraRepos)
 
 	// if the runner needs an image, create an OCI image from the directory and load it.
 	loader := b.Runner.OCIImageLoader()
@@ -608,14 +613,22 @@ type linterTarget struct {
 	disabled []string // checks that are downgraded from required -> warn
 }
 
-func (b *Build) BuildPackage(ctx context.Context) error {
-	log := clog.FromContext(ctx)
-	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
-	defer span.End()
-
+func (b *Build) BuildPackage(ctx context.Context) (err error) {
 	if b.Runner == nil {
 		return fmt.Errorf("no runner was specified")
 	}
+
+	var rep *report.Report
+	if b.ReportDir != "" {
+		rep = report.New("build", b.Configuration, b.Arch.ToAPK(), b.ConfigFile, b.Runner.Name(), b.ExcludedEnvFromRecordedConfig)
+		ctx = rep.Attach(ctx)
+		rctx := ctx
+		defer func() { b.writeReport(rctx, rep, err) }()
+	}
+
+	log := clog.FromContext(ctx)
+	ctx, span := otel.Tracer("melange").Start(ctx, "BuildPackage")
+	defer span.End()
 
 	b.summarize(ctx)
 
@@ -695,7 +708,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	linterQueue := []linterTarget{}
 	cfg := b.workspaceConfig(ctx)
 
-	imgRef, err := b.buildGuest(ctx, b.Configuration.Environment, b.GuestFS)
+	mainCtx, mainStage := rep.StartStage(ctx, "build "+pkg.Name, pkg.Name)
+	mainStage.SetEnv(cfg.Environment)
+
+	imgRef, err := b.buildGuest(mainCtx, b.Configuration.Environment, b.GuestFS)
 	if err != nil {
 		return fmt.Errorf("unable to build guest: %w", err)
 	}
@@ -717,9 +733,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	// run the main pipeline
 	log.Debug("running the main pipeline")
 	pipelines := b.Configuration.Pipeline
-	if err := pr.runPipelines(ctx, pipelines); err != nil {
+	if err := pr.runPipelines(mainCtx, pipelines); err != nil {
 		return fmt.Errorf("unable to run package %s pipeline: %w", b.Configuration.Name(), err)
 	}
+	mainStage.Finish(nil)
 
 	// add the main package to the linter queue
 	lintTarget := linterTarget{
@@ -737,10 +754,13 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		log.Infof("running pipeline for subpackage %s", sp.Name)
 
 		ctx := clog.WithLogger(ctx, log.With("subpackage", sp.Name))
+		ctx, spStage := rep.StartStage(ctx, "build subpackage "+sp.Name, sp.Name)
+		spStage.ShareEnvironment(mainStage)
 
 		if err := pr.runPipelines(ctx, sp.Pipeline); err != nil {
 			return fmt.Errorf("unable to run subpackage %s pipeline: %w", sp.Name, err)
 		}
+		spStage.Finish(nil)
 
 		// add the subpackage to the linter queue
 		lintTarget := linterTarget{
@@ -749,6 +769,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}
 		linterQueue = append(linterQueue, lintTarget)
 	}
+
+	// Linting, license checks, SBOMs and emitting packages are recorded as
+	// one stage so their logs (e.g. linter findings) are kept together.
+	ctx, postStage := rep.StartStage(ctx, "post-build (lint, sbom, emit)", pkg.Name)
 
 	// Store metadata for use after the workspace is loaded into memory
 	xattrs, modes, owners, err := storeMetadata(b.WorkspaceDir)
@@ -973,8 +997,22 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			return fmt.Errorf("unable to generate index: %w", err)
 		}
 	}
+	postStage.Finish(nil)
 
 	return nil
+}
+
+// writeReport finalizes rep with the build outcome and writes it out. A
+// failure to write the report is logged rather than failing the build.
+func (b *Build) writeReport(ctx context.Context, rep *report.Report, buildErr error) {
+	log := clog.FromContext(ctx)
+	rep.Finish(buildErr)
+	paths, err := rep.Write(b.ReportDir)
+	if err != nil {
+		log.Errorf("unable to write build report: %v", err)
+		return
+	}
+	log.Infof("wrote build report to %s", strings.Join(paths, ", "))
 }
 
 func (b *Build) SummarizePaths(ctx context.Context) {

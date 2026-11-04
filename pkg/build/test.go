@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"chainguard.dev/apko/pkg/apk/apk"
@@ -38,6 +39,7 @@ import (
 
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/report"
 )
 
 type Test struct {
@@ -78,6 +80,8 @@ type Test struct {
 	DefaultDisk         string
 	DefaultMemory       string
 	DefaultTimeout      time.Duration
+	// ReportDir, when set, is where a report of the test is written.
+	ReportDir string
 }
 
 func NewTest(ctx context.Context, opts ...TestOption) (*Test, error) {
@@ -187,6 +191,9 @@ func (t *Test) BuildGuest(ctx context.Context, imgConfig apko_types.ImageConfigu
 	if err := bc.BuildImage(ctx); err != nil {
 		return "", fmt.Errorf("unable to generate image: %w", err)
 	}
+	contents := imgConfig.Contents
+	contents.Packages = append(slices.Clone(contents.Packages), t.ExtraTestPackages...)
+	recordGuestPackages(ctx, bc, contents, t.ExtraRepos)
 	// if the runner needs an image, create an OCI image from the directory and load it.
 	loader := t.Runner.OCIImageLoader()
 	if loader == nil {
@@ -255,7 +262,15 @@ func (t *Test) PopulateWorkspace(ctx context.Context, src fs.FS) error {
 	})
 }
 
-func (t *Test) TestPackage(ctx context.Context) error {
+func (t *Test) TestPackage(ctx context.Context) (err error) {
+	var rep *report.Report
+	if t.ReportDir != "" {
+		rep = report.New("test", &t.Configuration, t.Arch.ToAPK(), t.ConfigFile, t.Runner.Name(), nil)
+		ctx = rep.Attach(ctx)
+		rctx := ctx
+		defer func() { t.writeReport(rctx, rep, err) }()
+	}
+
 	log := clog.FromContext(ctx)
 	ctx, span := otel.Tracer("melange").Start(ctx, "testPackage")
 	defer span.End()
@@ -295,13 +310,15 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	}
 
 	imgRef := ""
-	var err error
 
 	guestFS := t.guestFS(ctx)
 
-	// If there are no 'main' test pipelines, we can skip building the guest.
+	// If there are no 'main' test pipelines, we can skip building the guest
+	// (and there is no main test stage to report).
+	mainCtx, mainStage := ctx, (*report.Stage)(nil)
 	if !t.IsTestless() {
-		imgRef, err = t.BuildGuest(ctx, t.Configuration.Test.Environment, guestFS)
+		mainCtx, mainStage = rep.StartStage(ctx, "test "+pkg.Name, pkg.Name)
+		imgRef, err = t.BuildGuest(mainCtx, t.Configuration.Test.Environment, guestFS)
 		if err != nil {
 			return fmt.Errorf("unable to build guest: %w", err)
 		}
@@ -330,6 +347,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to build workspace config: %w", err)
 	}
+	mainStage.SetEnv(cfg.Environment)
 
 	pr := t.newPipelineRunner(cfg)
 
@@ -351,9 +369,10 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			}
 
 			log.Infof("running the main test pipeline")
-			if err := pr.runPipelines(ctx, t.Configuration.Test.Pipeline); err != nil {
+			if err := pr.runPipelines(mainCtx, t.Configuration.Test.Pipeline); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
+			mainStage.Finish(nil)
 			return nil
 		}()
 		if err != nil {
@@ -374,6 +393,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 				return nil
 			}
 			log.Infof("running test pipeline for subpackage %s", sp.Name)
+			ctx, spStage := rep.StartStage(ctx, "test subpackage "+sp.Name, sp.Name)
 
 			guestFS := t.guestFS(ctx)
 
@@ -386,6 +406,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 				return fmt.Errorf("unable to build workspace config: %w", err)
 			}
 			subCfg.Arch = t.Arch
+			spStage.SetEnv(subCfg.Environment)
 
 			pr := t.newPipelineRunner(subCfg)
 
@@ -403,6 +424,7 @@ func (t *Test) TestPackage(ctx context.Context) error {
 			if err := pr.runPipelines(ctx, sp.Test.Pipeline); err != nil {
 				return fmt.Errorf("unable to run pipeline: %w", err)
 			}
+			spStage.Finish(nil)
 
 			return nil
 		}()
@@ -416,6 +438,19 @@ func (t *Test) TestPackage(ctx context.Context) error {
 		log.Warnf("unable to clean workspace: %s", err)
 	}
 	return nil
+}
+
+// writeReport finalizes rep with the test outcome and writes it out. A
+// failure to write the report is logged rather than failing the test.
+func (t *Test) writeReport(ctx context.Context, rep *report.Report, testErr error) {
+	log := clog.FromContext(ctx)
+	rep.Finish(testErr)
+	paths, err := rep.Write(t.ReportDir)
+	if err != nil {
+		log.Errorf("unable to write test report: %v", err)
+		return
+	}
+	log.Infof("wrote test report to %s", strings.Join(paths, ", "))
 }
 
 // newPipelineRunner returns the runner for the steps of one of this test's

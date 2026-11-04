@@ -1,0 +1,72 @@
+# melange {{.Kind}} report: {{.Package}}-{{.Version}}-r{{.Epoch}} ({{.Arch}}): {{upper .Status}}
+
+- config: `{{.ConfigFile}}`
+- runner: {{.Runner}}
+- started: {{.StartedAt.Format "2006-01-02T15:04:05Z07:00"}}, took {{ms .DurationMS}}
+- full report: `{{.JSONFile}}` (every step's script, env and logs, plus the full run log at `.logs`)
+{{- with .Failure}}
+
+## Failure
+{{if .Stage}}
+- stage: {{.Stage}} (package `{{.Package}}`)
+{{- end}}
+{{- if .StepID}}
+- step: {{.StepID}} `{{.StepPath}}`
+{{- end}}
+{{- if .Uses}}
+- uses: `{{.Uses}}`
+{{- end}}
+{{- if .WorkDir}}
+- workdir: `{{.WorkDir}}`
+{{- end}}
+- error: `{{.Error}}`
+{{- if .With}}
+
+Inputs:
+{{range keys .With}}
+- `{{.}}`: `{{index $.Failure.With .}}`
+{{- end}}
+{{- end}}
+{{- if .Runs}}
+
+Script that failed:
+
+```sh
+{{trim .Runs}}
+```
+{{- end}}
+
+{{if .LogTail -}}
+Last {{len .LogTail}} log lines{{if .StepID}} of the step{{end}}:
+
+```
+{{range .LogTail}}{{.}}
+{{end}}```
+{{- else -}}
+The step logged nothing. Rerun with `--debug` to trace each command it runs.
+{{- end}}
+{{- end}}
+
+## Stages
+{{range .Stages}}
+### {{.Name}}: {{.Status}} ({{ms .DurationMS}})
+{{if .Error}}
+error: `{{.Error}}`
+{{end}}
+{{- with .Environment}}
+- installed packages ({{len .Installed}}): {{range $i, $p := .Installed}}{{if $i}}, {{end}}{{$p.Name}}={{$p.Version}}{{end}}
+{{- if .Repositories}}
+- repositories: {{range $i, $r := .Repositories}}{{if $i}}, {{end}}`{{$r}}`{{end}}
+{{- end}}
+{{- if .Env}}
+- env: {{$env := .Env}}{{range $i, $k := keys $env}}{{if $i}}, {{end}}`{{$k}}={{index $env $k}}`{{end}}
+{{- end}}
+{{end}}
+{{- if .Steps}}
+| id | step | status | duration | log lines |
+|---|---|---|---|---|
+{{- range flat .Steps}}
+| {{.ID}} | {{cell .Title}} | {{.Status}} | {{ms .DurationMS}} | {{len .Logs}} |
+{{- end}}
+{{end}}
+{{- end}}

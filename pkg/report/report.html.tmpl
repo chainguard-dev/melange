@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>melange {{.Kind}} report: {{.Package}}-{{.Version}}-r{{.Epoch}} ({{.Arch}})</title>
+<style>
+  :root { --ok: #1a7f37; --fail: #cf222e; --skip: #8c959f; --run: #9a6700; --bg: #f6f8fa; --border: #d0d7de; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 2rem; color: #1f2328; }
+  h1 { margin-bottom: .25rem; }
+  .meta { color: #57606a; margin-bottom: 1.5rem; }
+  .badge { display: inline-block; padding: 0 .5rem; border-radius: 1rem; color: #fff; font-size: .8rem; font-weight: 600; vertical-align: middle; }
+  .success { background: var(--ok); } .failed { background: var(--fail); } .skipped { background: var(--skip); } .running { background: var(--run); }
+  details { border: 1px solid var(--border); border-radius: 6px; margin: .4rem 0; background: #fff; }
+  details > summary { cursor: pointer; padding: .4rem .6rem; list-style-position: inside; }
+  details > .body { padding: .2rem .8rem .6rem 1.2rem; }
+  details.stage > summary { font-size: 1.1rem; font-weight: 600; background: var(--bg); }
+  .dur { color: #57606a; font-size: .85rem; margin-left: .4rem; }
+  pre { background: #0d1117; color: #e6edf3; padding: .6rem; border-radius: 6px; overflow-x: auto; font-size: .8rem; max-height: 32rem; }
+  pre .WARN { color: #f0b72f; } pre .ERROR { color: #ff7b72; } pre .ts { color: #7d8590; }
+  table { border-collapse: collapse; font-size: .85rem; margin: .3rem 0; }
+  td, th { border: 1px solid var(--border); padding: .15rem .5rem; text-align: left; vertical-align: top; }
+  th { background: var(--bg); }
+  .error { color: var(--fail); font-weight: 600; }
+  .label { font-weight: 600; margin-top: .5rem; }
+  code { font-size: .85rem; }
+  .failure { border: 2px solid var(--fail); border-radius: 6px; padding: .2rem 1rem .8rem; margin-bottom: 1rem; background: #fff8f8; }
+  .failure h2 { color: var(--fail); margin: .4rem 0; }
+  .id { color: #57606a; font-family: ui-monospace, monospace; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>{{.Package}}-{{.Version}}-r{{.Epoch}} <span class="badge {{.Status}}">{{.Status}}</span></h1>
+<div class="meta">
+  melange {{.Kind}} &middot; arch <b>{{.Arch}}</b> &middot; runner <b>{{.Runner}}</b> &middot; config <code>{{.ConfigFile}}</code><br>
+  started {{.StartedAt.Format "2006-01-02 15:04:05 MST"}} &middot; took {{ms .DurationMS}}
+</div>
+{{with .Failure}}
+<div class="failure">
+  <h2>Failure</h2>
+  <table>
+    {{if .Stage}}<tr><th>stage</th><td>{{.Stage}} (package <code>{{.Package}}</code>)</td></tr>{{end}}
+    {{if .StepID}}<tr><th>step</th><td>{{.StepID}} <code>{{.StepPath}}</code></td></tr>{{end}}
+    {{if .Uses}}<tr><th>uses</th><td><code>{{.Uses}}</code></td></tr>{{end}}
+    <tr><th>error</th><td class="error">{{.Error}}</td></tr>
+  </table>
+  {{if .With}}<div class="label">with</div>{{template "env" .With}}{{end}}
+  {{if .Runs}}<div class="label">Script that failed</div><pre>{{.Runs}}</pre>{{end}}
+  <div class="label">Last {{len .LogTail}} log lines</div>
+  <pre>{{range .LogTail}}{{.}}
+{{end}}</pre>
+</div>
+{{else}}{{if .Error}}<p class="error">{{.Error}}</p>{{end}}{{end}}
+
+{{range .Stages}}
+<details class="stage" open>
+  <summary>{{.Name}} <span class="badge {{.Status}}">{{.Status}}</span><span class="dur">{{ms .DurationMS}}</span></summary>
+  <div class="body">
+  {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+  {{with .Environment}}
+  <details>
+    <summary>Environment: {{len .Installed}} packages installed, {{len .Env}} env vars</summary>
+    <div class="body">
+      <div class="label">Requested packages</div>
+      <table>{{range .Requested}}<tr><td><code>{{.}}</code></td></tr>{{end}}</table>
+      {{if .Repositories}}<div class="label">Repositories</div>
+      <table>{{range .Repositories}}<tr><td><code>{{.}}</code></td></tr>{{end}}</table>{{end}}
+      <div class="label">Installed packages</div>
+      <table><tr><th>name</th><th>version</th></tr>{{range .Installed}}<tr><td>{{.Name}}</td><td>{{.Version}}</td></tr>{{end}}</table>
+      <div class="label">Environment variables</div>
+      {{template "env" .Env}}
+    </div>
+  </details>
+  {{end}}
+  {{range .Steps}}{{template "step" .}}{{end}}
+  </div>
+</details>
+{{end}}
+
+<details>
+  <summary>Full log ({{len .Logs}} lines)</summary>
+  <div class="body">{{template "logs" .Logs}}</div>
+</details>
+</body>
+</html>
+
+{{define "env"}}<table>{{$m := .}}{{range keys $m}}<tr><td><code>{{.}}</code></td><td><code>{{index $m .}}</code></td></tr>{{end}}</table>{{end}}
+
+{{define "logs"}}<pre>{{range .}}<span class="ts">{{clock .Time}}</span> <span class="{{.Level}}">{{.Message}}</span>
+{{end}}</pre>{{end}}
+
+{{define "step"}}
+<details{{if eq .Status "failed"}} open{{end}}>
+  <summary><span class="id">{{.ID}}</span> {{.Title}} <span class="badge {{.Status}}">{{.Status}}</span><span class="dur">{{ms .DurationMS}}</span></summary>
+  <div class="body">
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+    {{if .If}}<div class="label">if</div><code>{{.If}}</code>{{end}}
+    {{if .With}}<div class="label">with</div>{{template "env" .With}}{{end}}
+    {{if .WorkDir}}<div class="label">working-directory</div><code>{{.WorkDir}}</code>{{end}}
+    {{if .Runs}}<div class="label">runs</div><pre>{{.Runs}}</pre>{{end}}
+    {{if .Env}}<details><summary>Environment variables differing from the stage ({{len .Env}})</summary><div class="body">{{template "env" .Env}}</div></details>{{end}}
+    {{if .Logs}}<div class="label">Logs ({{len .Logs}} lines)</div>{{template "logs" .Logs}}{{end}}
+    {{range .Steps}}{{template "step" .}}{{end}}
+  </div>
+</details>
+{{end}}

@@ -209,7 +209,7 @@ jobs:
         if: matrix.runner == 'qemu'
         run: |
           sudo apt-get update
-          sudo apt-get -y install qemu-system-x86-64 qemu-kvm
+          sudo apt-get -y install qemu-system-x86
 
       - name: Enable KVM group perms
         if: matrix.runner == 'qemu'

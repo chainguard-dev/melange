@@ -298,7 +298,7 @@ func buildCmd() *cobra.Command {
 		Long:    `Build a package from a YAML configuration file.`,
 		Example: `  melange build [config.yaml]`,
 		Args:    cobra.MinimumNArgs(0),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withBuildTracing(flags, func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			log := clog.FromContext(ctx)
 
@@ -334,7 +334,7 @@ func buildCmd() *cobra.Command {
 			}
 
 			return BuildCmd(ctx, archs, options...)
-		},
+		}),
 	}
 
 	// Register all flags using the helper function

@@ -2526,6 +2526,38 @@ var-transforms:
 	require.Equal(t, "licenses/1.0/COPYING", cfg.Package.Copyright[2].LicensePath)
 }
 
+func TestVarsFileWithoutVarsBlock(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	dir := t.TempDir()
+	fp := filepath.Join(dir, "melange.yaml")
+	if err := os.WriteFile(fp, []byte(`
+package:
+  name: vars-file
+  version: 1.2.3
+  epoch: 0
+  description: a configuration with no vars block, fed a vars file
+
+pipeline:
+  - runs: echo ${{vars.greeting}}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	vf := filepath.Join(dir, "vars.yaml")
+	if err := os.WriteFile(vf, []byte("greeting: hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := ParseConfiguration(ctx, fp, WithVarsFileForParsing(vf))
+	if err != nil {
+		t.Fatalf("failed to parse configuration: %s", err)
+	}
+
+	require.Equal(t, map[string]string{"greeting": "hello"}, cfg.Vars)
+	require.Len(t, cfg.Pipeline, 1)
+	require.Equal(t, "echo hello", cfg.Pipeline[0].Runs)
+}
+
 func TestLineNumbersInError(t *testing.T) {
 	ctx := slogtest.Context(t)
 

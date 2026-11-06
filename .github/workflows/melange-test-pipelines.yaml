@@ -29,7 +29,7 @@ jobs:
       tests: ${{ steps.e2e.outputs.tests }}
 
     steps:
-      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -69,7 +69,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -143,7 +143,7 @@ jobs:
         test: ${{ fromJSON(needs.discover.outputs.tests) }}
 
     steps:
-      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -151,10 +151,12 @@ jobs:
             *.githubapp.com:443
             9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
             _http._tcp.azure.archive.ubuntu.com:443
+            _https._tcp.archive.ubuntu.com:443
             _https._tcp.dl.google.com:443
             _https._tcp.esm.ubuntu.com:443
             _https._tcp.motd.ubuntu.com:443
             _https._tcp.packages.microsoft.com:443
+            _https._tcp.security.ubuntu.com:443
             api.github.com:443
             apk.cgr.dev:443
             archive.ubuntu.com:443
@@ -231,7 +233,7 @@ jobs:
       - name: Install QEMU/KVM
         run: |
           sudo apt-get update
-          sudo apt-get -y install qemu-system-x86-64 qemu-kvm
+          sudo apt-get -y install qemu-system-x86
 
       - name: Enable KVM group perms
         run: |
@@ -257,7 +259,7 @@ jobs:
     permissions: {}
 
     steps:
-      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >

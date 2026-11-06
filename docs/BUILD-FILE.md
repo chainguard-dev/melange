@@ -470,7 +470,7 @@ environment:
     - foo=~4.5.6 # install any version with a name starting with "4.5.6" (e.g., 4.5.6-r7)
     - python3    # install the latest stable version of python3.
 ```
-For additional information, see the [Chainguard Academy article](https://edu.chainguard.dev/open-source/wolfi/apk-version-selection/).
+For additional information, see the [Chainguard Academy article](https://www.chainguard.dev/docs/open-source/wolfi/apk-version-selection).
 
 ## accounts
 Accounts support adding additional users and groups into the build

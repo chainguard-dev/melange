@@ -17,7 +17,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -97,7 +97,7 @@ jobs:
           - tini
 
     steps:
-      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -105,10 +105,12 @@ jobs:
             *.githubapp.com:443
             9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
             _http._tcp.azure.archive.ubuntu.com:443
+            _https._tcp.archive.ubuntu.com:443
             _https._tcp.dl.google.com:443
             _https._tcp.esm.ubuntu.com:443
             _https._tcp.motd.ubuntu.com:443
             _https._tcp.packages.microsoft.com:443
+            _https._tcp.security.ubuntu.com:443
             api.github.com:443
             api.ipify.org:443
             apk.cgr.dev:443
@@ -160,6 +162,7 @@ jobs:
             time3.google.com:443
             time4.google.com:123
             time4.google.com:443
+            tuf-repo-cdn.sigstore.dev:443
             www.oberhumer.com:443
             www.sudo.ws:443
             yarnpkg.com:443
@@ -206,7 +209,7 @@ jobs:
         if: matrix.runner == 'qemu'
         run: |
           sudo apt-get update
-          sudo apt-get -y install qemu-system-x86-64 qemu-kvm
+          sudo apt-get -y install qemu-system-x86
 
       - name: Enable KVM group perms
         if: matrix.runner == 'qemu'

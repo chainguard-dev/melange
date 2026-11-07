@@ -288,15 +288,49 @@ pipeline:
       # records 644/755 like a clone under the build umask, not git's default
       # 664/775. git archive uses the commit time and gzip -n drops the header
       # timestamp, so the bytes are reproducible.
+      # With $4 set the checkout is sparse, and only the paths it checked out
+      # are archived (archive_sparse_tree).
       archive_tree() {
-          local dir=$1 prefix=$2 out=$3 attrs="" had=""
+          local dir=$1 prefix=$2 out=$3 sparse=${4:-} attrs="" had=""
           attrs="$(git -C "$dir" rev-parse --absolute-git-dir)/info/attributes"
           mkdir -p "${attrs%/*}"
           [ -f "$attrs" ] && had=1 && cp "$attrs" "$attrs.melange-save"
           printf '* -export-ignore -export-subst\n' >> "$attrs"
-          ( set -o pipefail; git -C "$dir" -c tar.umask=022 archive --format=tar --prefix="$prefix" HEAD | gzip -n > "$out" )
+          if [ -n "$sparse" ]; then
+              archive_sparse_tree "$dir" "$prefix" "$out"
+          else
+              ( set -o pipefail; git -C "$dir" -c tar.umask=022 archive --format=tar --prefix="$prefix" HEAD | gzip -n > "$out" )
+          fi
           local rc=$?
           if [ -n "$had" ]; then mv "$attrs.melange-save" "$attrs"; else rm -f "$attrs"; fi
+          return $rc
+      }
+
+      # A sparse checkout holds only the index entries outside the
+      # skip-worktree set, and a blob:none clone has only their blobs:
+      # `git archive HEAD` would lazily fetch every other blob and archive a
+      # tree the build never saw. Write those entries, exactly the files the
+      # work tree holds, as a tree of their own and archive that, dated as
+      # git archive dates a commit. The tree goes to an object directory of
+      # its own, so the checkout's repository is left as the clone made it,
+      # and lazy fetching is off, so a blob that is not there fails the
+      # archive instead of being fetched.
+      archive_sparse_tree() {
+          local dir=$1 prefix=$2 out=$3 tmp="" objects="" when="" tree="" rc=0
+          tmp=$(mktemp -d)
+          objects="$(git -C "$dir" rev-parse --absolute-git-dir)/objects"
+          when=$(git -C "$dir" log -1 --format=%ct HEAD) || when=""
+          ( set -o pipefail
+            [ -n "$when" ] &&
+            git -C "$dir" ls-files -s -t > "$tmp/entries" &&
+            export GIT_NO_LAZY_FETCH=1 GIT_INDEX_FILE="$tmp/index" \
+                   GIT_OBJECT_DIRECTORY="$tmp/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="$objects" &&
+            mkdir "$GIT_OBJECT_DIRECTORY" &&
+            sed -n 's/^H //p' "$tmp/entries" | git -C "$dir" update-index --index-info &&
+            tree=$(git -C "$dir" write-tree) &&
+            git -C "$dir" -c tar.umask=022 archive --format=tar --prefix="$prefix" \
+                --mtime="@$when" "$tree" | gzip -n > "$out" ) || rc=1
+          rm -rf "$tmp"
           return $rc
       }
 
@@ -320,17 +354,15 @@ pipeline:
       # path can give the tree its real name rather than a synthetic one.
       # git archive stops at gitlinks, so submodules are archived one by one
       # and listed for the restore path.
-      # A sparse checkout is not stashed: git archive would lazily fetch every
-      # blob the sparse clone skipped, and the restored tree would hold
-      # directories the original build never saw.
+      # A sparse checkout is archived as the paths it checked out
+      # (archive_sparse_tree), and its cone, as `git sparse-checkout list`
+      # names it, goes in a .sparse sidecar; the tree objects, which a
+      # blob:none clone has in full, let the restore path recreate the index
+      # with the rest of the tree marked skip-worktree.
       stash_source() {
           local dest=$1 expcommit=$2 repo=$3 recurse=$4 tag=$5 sparse_paths=$6
           local stash="${MELANGE_SOURCE_STASH:-}" head="" key="" name=""
           [ -n "$stash" ] || return 0
-          if [ -n "$sparse_paths" ]; then
-              msg "Warning: sparse-paths is set; the -source package will not carry this checkout"
-              return 0
-          fi
           [ -d "$dest/.git" ] || dest=.
           [ -d "$dest/.git" ] || return 0
           head=$(git -C "$dest" rev-parse HEAD) || return 0
@@ -340,7 +372,7 @@ pipeline:
           name=$(basename "$repo" .git)
           mkdir -p "$stash"
           msg "archiving checkout as $key.tar.gz for the -source package"
-          if ! archive_tree "$dest" "$name-$head/" "$stash/$key.tar.gz"; then
+          if ! archive_tree "$dest" "$name-$head/" "$stash/$key.tar.gz" "$sparse_paths"; then
               msg "Warning: archiving the checkout failed; the -source package will not carry it"
               rm -f "$stash/$key.tar.gz"
               return 0
@@ -374,6 +406,16 @@ pipeline:
               [ $# -le 300 ] && set -- "$@" "${f##*.obj.}"
           done
           stash_trees "$dest" "$stash/$key.trees" "$@"
+          # A sparse checkout is restored from its cone and its tree objects;
+          # an archive without either could not be restored as the checkout
+          # the build saw.
+          if [ -n "$sparse_paths" ]; then
+              if [ ! -s "$stash/$key.trees" ] || ! git -C "$dest" sparse-checkout list > "$stash/$key.sparse"; then
+                  msg "Warning: recording the sparse checkout failed; the -source package will not carry it"
+                  rm -f "$stash/$key".*
+                  return 0
+              fi
+          fi
           # every gitlink, checked out or not, as "path commit"
           git -C "$dest" ls-tree -r HEAD | awk '$2 == "commit" { print $4, $3 }' > "$stash/$key.gitlinks"
           if [ "$recurse" = "true" ]; then
@@ -446,12 +488,16 @@ pipeline:
       # Parents beyond the restored objects are absent, as in the depth-1
       # clone, so the repository is shallow.
       restore_head() {
-          local cachebase=$1 expcommit=$2 tag=$3 initial=$4 cpicksf=$5 parent=$6
+          local cachebase=$1 expcommit=$2 tag=$3 initial=$4 cpicksf=$5 parent=$6 sparse_paths=${7:-}
           local tree="" want="" sha="" f="" c="" p="" known=""
           [ -f "$cachebase.commit" ] ||
               { msg "$cachebase.commit is missing; the archive cannot be authenticated"; return 1; }
           want=$(sed -n 's/^tree //p;1q' "$cachebase.commit")
-          if [ -f "$cachebase.trees" ] && git unpack-objects -q < "$cachebase.trees" 2>/dev/null &&
+          if [ -n "$sparse_paths" ]; then
+              restore_sparse "$cachebase" "$want" "$sparse_paths" || return 1
+              verify_worktree || return 1
+              tree=$want
+          elif [ -f "$cachebase.trees" ] && git unpack-objects -q < "$cachebase.trees" 2>/dev/null &&
              git cat-file -e "$want" 2>/dev/null; then
               # The tree objects are named by the commit and name every blob:
               # read them as the index, then check the file the archive
@@ -507,6 +553,40 @@ pipeline:
           place_head "$cachebase" "$initial"
       }
 
+      # Recreate the sparse checkout the stash was made from: the cone the
+      # configuration names, which must be the cone the stash recorded,
+      # over an index of the whole tree the commit names, with every path
+      # outside the cone marked skip-worktree, as the clone's index has it.
+      # The archive must hold exactly the paths inside the cone; their bytes
+      # are checked by verify_worktree. Without the tree objects there is no
+      # index to recreate, so a sparse stash without them is refused.
+      restore_sparse() {
+          local cachebase=$1 want=$2 sparse_paths=$3 cone="" n=""
+          [ -f "$cachebase.trees" ] && git unpack-objects -q < "$cachebase.trees" 2>/dev/null &&
+          git cat-file -e "$want" 2>/dev/null ||
+              { msg "$cachebase.trees does not hold the tree of the stashed commit; a sparse checkout cannot be restored without it"; return 1; }
+          # the index is still empty, so setting the cone touches no file
+          # shellcheck disable=SC2086
+          git sparse-checkout set --cone $sparse_paths || return 1
+          [ -f "$cachebase.sparse" ] && [ "$(git sparse-checkout list)" = "$(cat "$cachebase.sparse")" ] ||
+              { msg "the stash was made with another sparse-paths ($(tr '\n' ' ' < "$cachebase.sparse" 2>/dev/null))"; return 1; }
+          git read-tree "$want" || return 1
+          cone=$(mktemp)
+          git ls-files | git sparse-checkout check-rules > "$cone" &&
+          git ls-files | git update-index --skip-worktree --stdin &&
+          git update-index --no-skip-worktree --stdin < "$cone" || { rm -f "$cone"; return 1; }
+          # git clears skip-worktree from every path the work tree holds, so
+          # any entry not in the cone that lacks it is a path the archive added
+          n=$(git ls-files -t | grep -c '^H ') || n=0
+          if [ "$n" -ne "$(wc -l < "$cone")" ]; then
+              msg "archive holds paths outside the sparse checkout: $(git ls-files -t | sed -n 's/^H //p' | grep -vxF -f "$cone" | head -3 | tr '\n' ' ')"
+              rm -f "$cone"; return 1
+          fi
+          rm -f "$cone"
+          [ -z "$(git ls-files -d | head -n 1)" ] ||
+              { msg "archive lacks paths the sparse checkout holds: $(git ls-files -d | head -3 | tr '\n' ' ')"; return 1; }
+      }
+
       # Every tag the stash recorded on a restored commit: the tag object
       # itself when annotated (content-addressed, so its name is checked),
       # the ref alone when lightweight.
@@ -541,7 +621,8 @@ pipeline:
           local entries="" paths="" raw="" clean="" tab="" bad="" assume="" line="" mode="" sha="" path="" r="" c=""
           tab=$(printf '\t')
           entries=$(mktemp); paths=$(mktemp); raw=$(mktemp); clean=$(mktemp); bad=$(mktemp); assume=$(mktemp)
-          git -c core.quotePath=false ls-files -s > "$entries"
+          # entries a sparse checkout marks skip-worktree are not in the work tree
+          git -c core.quotePath=false ls-files -s -t | sed -n 's/^H //p' > "$entries"
           awk -F"$tab" '$1 ~ /^100(644|755) / { print $2 }' "$entries" > "$paths"
           if [ -s "$paths" ]; then
               git hash-object -w --no-filters --stdin-paths < "$paths" > "$raw" || return 1
@@ -782,10 +863,15 @@ pipeline:
           # for it (MELANGE_SOURCE_RESTORE: those emitting a companion, or a
           # rebuild from one) take this path, so an ordinary build never
           # silently switches from a fresh clone to a rebuilt repository.
-          # A sparse checkout is never stashed, and a full tree restored in
-          # its place would not be the input the build asked for.
+          # A sparse checkout is restored only from a sparse stash (one with
+          # a .sparse sidecar) and a full one only from a full stash: either
+          # tree restored in place of the other would not be the input the
+          # build asked for.
           local cachebase="/var/cache/melange/git:$expcommit" cachef="/var/cache/melange/git:$expcommit.tar.gz"
-          if [ -n "${MELANGE_SOURCE_RESTORE:-}" ] && [ -z "$sparse_paths" ] && [ -n "$expcommit" ] && [ -f "$cachef" ]; then
+          local sparse="" stashed_sparse=""
+          [ -n "$sparse_paths" ] && sparse=1
+          [ -f "$cachebase.sparse" ] && stashed_sparse=1
+          if [ -n "${MELANGE_SOURCE_RESTORE:-}" ] && [ -n "$expcommit" ] && [ -f "$cachef" ] && [ "$sparse" = "$stashed_sparse" ]; then
               msg "found $cachef in cache; restoring instead of cloning"
               # Rebuild the checkout in a staging directory of its own, as the
               # clone path clones into one, then lay it into the destination
@@ -835,7 +921,7 @@ pipeline:
                 rm -rf .git &&
                 git init -q -b "${branch:-main}" . &&
                 git config --global --add safe.directory "$(pwd)" &&
-                restore_head "$cachebase" "$expcommit" "$tag" "${branch:-main}" "$cherry_pick" "" ) ||
+                restore_head "$cachebase" "$expcommit" "$tag" "${branch:-main}" "$cherry_pick" "" "$sparse_paths" ) ||
                   fail "$cachef does not authenticate to expected-commit $expcommit; refusing to build from it"
               verify_submodules "$cachebase" "$stage" ||
                   fail "a restored submodule is not the one the tree for $expcommit pins; refusing to build from it"
@@ -845,8 +931,8 @@ pipeline:
               rm -rf "$stage"
               git config --global --add safe.directory "$(realpath "$dest")"
               # Carry the archive and its sidecars (.uri, .commit, .tag,
-              # .gitlinks, .submodules, .sub.*) into this build's own -source
-              # package, so a rebuild's companion matches the original.
+              # .gitlinks, .sparse, .submodules, .sub.*) into this build's own
+              # -source package, so a rebuild's companion matches the original.
               if [ -n "${MELANGE_SOURCE_STASH:-}" ]; then
                   mkdir -p "$MELANGE_SOURCE_STASH"
                   cp "$cachebase".* "$MELANGE_SOURCE_STASH/"
@@ -857,7 +943,7 @@ pipeline:
           # Whatever kept the restore above from returning, strict mode
           # (--strict-sources-from-cache) never clones.
           [ -z "${MELANGE_SOURCE_STRICT:-}" ] ||
-              fail "--strict-sources-from-cache: refusing to clone; restoring needs MELANGE_SOURCE_RESTORE, expected-commit, no sparse-paths and git:<expected-commit>.tar.gz in the cache (--cache-dir)"
+              fail "--strict-sources-from-cache: refusing to clone; restoring needs MELANGE_SOURCE_RESTORE, expected-commit, and git:<expected-commit>.tar.gz in the cache (--cache-dir) stashed from a checkout with sparse-paths exactly when this step has them"
 
           local flags="" depthflag="" dest_fullpath="" workdir=""
           local remote="origin" rcfile="" rc="" quiet="--quiet"

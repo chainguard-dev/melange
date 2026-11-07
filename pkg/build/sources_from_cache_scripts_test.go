@@ -15,12 +15,19 @@
 package build
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"io"
 	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -192,6 +199,431 @@ func TestGitCheckoutStrictSourcesFromCache(t *testing.T) {
 			require.NoError(t, err, out)
 			require.Equal(t, tt.cloned, strings.Contains(out, sourcesFromCacheCloneAttempt), out)
 			require.Equal(t, commit, sourcesFromCacheGit(t, dest, "rev-parse", "HEAD"))
+		})
+	}
+}
+
+// sourcesFromCacheMonorepo is a two-commit repository, the first commit
+// tagged, laid out so that a cone of a/b holds the root's files, a's own
+// files and all of a/b, and leaves out d and e. It serves partial clones, as
+// a forge does. It returns the repository, its file:// URL and its commit.
+func sourcesFromCacheMonorepo(t *testing.T) (string, string, string) {
+	t.Helper()
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	sourcesFromCacheGit(t, repo, "config", "uploadpack.allowFilter", "true")
+	for name, body := range map[string]string{
+		"root.txt": "root\n", "a/x": "x\n", "a/b/y": "y\n", "a/b/c/z": "z\n", "d/w": "w\n", "e/v": "v\n",
+	} {
+		require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(repo, name)), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(repo, name), []byte(body), 0o644))
+	}
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "one")
+	sourcesFromCacheGit(t, repo, "tag", "-a", "-m", "v1", "v1")
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "d", "w2"), []byte("w2\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "a", "b", "y2"), []byte("y2\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	// committed in the past, so an archive dated now is told apart
+	cmd := exec.CommandContext(t.Context(), "git", "commit", "-q", "-m", "two")
+	cmd.Dir, cmd.Env = repo, append(sourcesFromCacheEnv(t.TempDir()), "GIT_COMMITTER_DATE=@1669683910 +0000")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+	return repo, "file://" + repo, sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
+}
+
+// sourcesFromCacheArchive lists the regular files of a stashed archive, with
+// their contents, the leading directory stripped.
+func sourcesFromCacheArchive(t *testing.T, path string) map[string]string {
+	t.Helper()
+	f, err := os.Open(path)
+	require.NoError(t, err)
+	defer f.Close()
+	zr, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	files := map[string]string{}
+	tr := tar.NewReader(zr)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+		body, err := io.ReadAll(tr)
+		require.NoError(t, err)
+		_, name, _ := strings.Cut(hdr.Name, "/")
+		files[name] = string(body)
+	}
+	return files
+}
+
+// sourcesFromCacheArchiveTimes is the modification time of every entry of a
+// stashed archive.
+func sourcesFromCacheArchiveTimes(t *testing.T, path string) map[string]time.Time {
+	t.Helper()
+	f, err := os.Open(path)
+	require.NoError(t, err)
+	defer f.Close()
+	zr, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	times := map[string]time.Time{}
+	tr := tar.NewReader(zr)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		times[hdr.Name] = hdr.ModTime
+	}
+	require.NotEmpty(t, times)
+	return times
+}
+
+// sourcesFromCacheRewrite rewrites a stashed archive, keeping the regular
+// files keep accepts and appending the files add names under the same
+// leading directory.
+func sourcesFromCacheRewrite(t *testing.T, path string, keep func(name string) bool, add map[string]string) {
+	t.Helper()
+	in, err := os.ReadFile(path)
+	require.NoError(t, err)
+	zr, err := gzip.NewReader(bytes.NewReader(in))
+	require.NoError(t, err)
+	var out bytes.Buffer
+	zw := gzip.NewWriter(&out)
+	tw := tar.NewWriter(zw)
+	tr := tar.NewReader(zr)
+	prefix := ""
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		if hdr.Typeflag == tar.TypeXGlobalHeader {
+			continue
+		}
+		dir, name, _ := strings.Cut(hdr.Name, "/")
+		prefix = dir + "/"
+		if hdr.Typeflag == tar.TypeReg && !keep(name) {
+			continue
+		}
+		require.NoError(t, tw.WriteHeader(hdr))
+		_, err = io.Copy(tw, tr)
+		require.NoError(t, err)
+	}
+	for name, body := range add {
+		require.NoError(t, tw.WriteHeader(&tar.Header{Name: prefix + name, Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg}))
+		_, err = tw.Write([]byte(body))
+		require.NoError(t, err)
+	}
+	require.NoError(t, tw.Close())
+	require.NoError(t, zw.Close())
+	require.NoError(t, os.WriteFile(path, out.Bytes(), 0o644))
+}
+
+// sourcesFromCacheCopy copies a stash, so a case can tamper with its own.
+func sourcesFromCacheCopy(t *testing.T, stash string) string {
+	t.Helper()
+	dst := t.TempDir()
+	entries, err := os.ReadDir(stash)
+	require.NoError(t, err)
+	for _, e := range entries {
+		b, err := os.ReadFile(filepath.Join(stash, e.Name()))
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(dst, e.Name()), b, 0o644))
+	}
+	return dst
+}
+
+// sourcesFromCacheView is what a build can see of a checkout: HEAD and its
+// shape, the index, the sparse cone, version and status as builds derive
+// them, and every file in the work tree with its contents.
+func sourcesFromCacheView(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	view := map[string]string{
+		"rev-parse":            sourcesFromCacheGit(t, dir, "rev-parse", "HEAD"),
+		"HEAD":                 sourcesFromCacheGit(t, dir, "rev-parse", "--symbolic-full-name", "HEAD"),
+		"describe":             sourcesFromCacheGit(t, dir, "describe", "--tags", "--long", "--dirty"),
+		"ls-files -s -t":       sourcesFromCacheGit(t, dir, "ls-files", "-s", "-t"),
+		"status":               sourcesFromCacheGit(t, dir, "status", "--porcelain"),
+		"sparse-checkout":      sourcesFromCacheGit(t, dir, "config", "--get", "core.sparseCheckout"),
+		"sparse-cone":          sourcesFromCacheGit(t, dir, "config", "--get", "core.sparseCheckoutCone"),
+		"sparse-checkout list": sourcesFromCacheGit(t, dir, "sparse-checkout", "list"),
+	}
+	var files []string
+	require.NoError(t, filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		require.NoError(t, err)
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+		if !d.IsDir() {
+			rel, err := filepath.Rel(dir, path)
+			require.NoError(t, err)
+			body, err := os.ReadFile(path)
+			require.NoError(t, err)
+			files = append(files, rel+"="+string(body))
+		}
+		return nil
+	}))
+	slices.Sort(files)
+	view["files"] = strings.Join(files, "\n")
+	return view
+}
+
+// A sparse checkout is stashed as the paths it checked out, with its cone,
+// and restored from the stash alone, without the repository, as the same
+// checkout: the same files, index, skip-worktree bits, cone, HEAD and
+// describe. A tampered or mismatched stash is refused.
+func TestGitCheckoutSparseSourcePackage(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo, url, commit := sourcesFromCacheMonorepo(t)
+	with := func(dest, sparse string) map[string]string {
+		w := map[string]string{
+			"repository": url, "destination": dest, "branch": "main",
+			"expected-commit": commit, "max-retries": "0",
+		}
+		if sparse != "" {
+			w["sparse-paths"] = sparse
+		}
+		return w
+	}
+	capture := func(sparse string) (string, string) {
+		dest, stash := filepath.Join(t.TempDir(), "out"), t.TempDir()
+		out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with(dest, sparse), map[string]string{"MELANGE_SOURCE_STASH": stash})
+		require.NoError(t, err, out)
+		return dest, stash
+	}
+	key := "git:" + commit
+
+	built, stash := capture("a/b\n")
+	require.Equal(t, map[string]string{
+		"root.txt": "root\n", "a/x": "x\n", "a/b/y": "y\n", "a/b/y2": "y2\n", "a/b/c/z": "z\n",
+	}, sourcesFromCacheArchive(t, filepath.Join(stash, key+".tar.gz")), "the archive holds the cone and nothing else")
+	sparse, err := os.ReadFile(filepath.Join(stash, key+".sparse"))
+	require.NoError(t, err)
+	require.Equal(t, "a/b\n", string(sparse))
+	for _, sidecar := range []string{".uri", ".commit", ".trees", ".tags"} {
+		require.FileExists(t, filepath.Join(stash, key+sidecar))
+	}
+	// the clone fetched no blob outside the cone, then or while stashing
+	missing := sourcesFromCacheGit(t, built, "rev-list", "--objects", "--missing=print", "HEAD")
+	for _, path := range []string{"d/w", "d/w2", "e/v"} {
+		require.Contains(t, missing, "?"+sourcesFromCacheGit(t, built, "rev-parse", "HEAD:"+path), path)
+	}
+	// the tree archived was written beside the clone's repository, not in it
+	require.Contains(t, sourcesFromCacheGit(t, built, "count-objects", "-v"), "count: 0\n")
+	// dated as git archive dates a commit
+	when, err := strconv.ParseInt(sourcesFromCacheGit(t, built, "log", "-1", "--format=%ct"), 10, 64)
+	require.NoError(t, err)
+	for name, mtime := range sourcesFromCacheArchiveTimes(t, filepath.Join(stash, key+".tar.gz")) {
+		require.Equal(t, when, mtime.Unix(), name)
+	}
+	_, again := capture("a/b\n")
+	b1, err := os.ReadFile(filepath.Join(stash, key+".tar.gz"))
+	require.NoError(t, err)
+	b2, err := os.ReadFile(filepath.Join(again, key+".tar.gz"))
+	require.NoError(t, err)
+	require.Equal(t, b1, b2, "the archive bytes are reproducible")
+	want := sourcesFromCacheView(t, built)
+	require.Contains(t, want["ls-files -s -t"], "S 100644", "the clone left paths outside the cone skip-worktree")
+
+	gone := filepath.Join(t.TempDir(), "no-such-repository")
+	strict := map[string]string{"MELANGE_SOURCE_RESTORE": "1", "MELANGE_SOURCE_STRICT": "1"}
+	restore := func(cache, sparse string, environ map[string]string) (string, string, error) {
+		dest := filepath.Join(t.TempDir(), "out")
+		w := with(dest, sparse)
+		w["repository"] = "file://" + gone
+		out, err := sourcesFromCacheRun(t, "git-checkout", cache, w, environ)
+		return dest, out, err
+	}
+
+	t.Run("restored as the build saw it", func(t *testing.T) {
+		t.Parallel()
+		restash := t.TempDir()
+		environ := maps.Clone(strict)
+		environ["MELANGE_SOURCE_STASH"] = restash
+		dest, out, err := restore(stash, "a/b\n", environ)
+		require.NoError(t, err, out)
+		require.Contains(t, out, "restoring instead of cloning")
+		require.Equal(t, want, sourcesFromCacheView(t, dest))
+		// and a rebuild's companion carries the same stash
+		for _, sidecar := range []string{".tar.gz", ".sparse", ".commit", ".trees", ".uri"} {
+			a, err := os.ReadFile(filepath.Join(stash, key+sidecar))
+			require.NoError(t, err)
+			b, err := os.ReadFile(filepath.Join(restash, key+sidecar))
+			require.NoError(t, err)
+			require.Equal(t, a, b, sidecar)
+		}
+	})
+
+	tests := []struct {
+		name    string
+		sparse  string
+		tamper  func(t *testing.T, cache string)
+		wantMsg string
+	}{{
+		name: "a path outside the cone added", sparse: "a/b",
+		tamper: func(t *testing.T, cache string) {
+			sourcesFromCacheRewrite(t, filepath.Join(cache, key+".tar.gz"), func(string) bool { return true }, map[string]string{"d/w": "w\n"})
+		},
+		wantMsg: "archive holds paths outside the sparse checkout: d/w",
+	}, {
+		name: "an untracked path added", sparse: "a/b",
+		tamper: func(t *testing.T, cache string) {
+			sourcesFromCacheRewrite(t, filepath.Join(cache, key+".tar.gz"), func(string) bool { return true }, map[string]string{"a/b/new": "new\n"})
+		},
+		wantMsg: "archive holds files the tree does not name",
+	}, {
+		name: "a path inside the cone dropped", sparse: "a/b",
+		tamper: func(t *testing.T, cache string) {
+			sourcesFromCacheRewrite(t, filepath.Join(cache, key+".tar.gz"), func(name string) bool { return name != "a/b/y" }, nil)
+		},
+		wantMsg: "archive lacks paths the sparse checkout holds: a/b/y",
+	}, {
+		name: "a file inside the cone changed", sparse: "a/b",
+		tamper: func(t *testing.T, cache string) {
+			sourcesFromCacheRewrite(t, filepath.Join(cache, key+".tar.gz"), func(name string) bool { return name != "a/b/y" }, map[string]string{"a/b/y": "tampered\n"})
+		},
+		wantMsg: "restored files do not match the tree the commit names: a/b/y",
+	}, {
+		name: "no tree objects", sparse: "a/b",
+		tamper: func(t *testing.T, cache string) {
+			require.NoError(t, os.Remove(filepath.Join(cache, key+".trees")))
+		},
+		wantMsg: "a sparse checkout cannot be restored without it",
+	}, {
+		name: "another cone", sparse: "a",
+		wantMsg: "the stash was made with another sparse-paths (a/b )",
+	}, {
+		name:    "the configuration has no sparse-paths",
+		wantMsg: "--strict-sources-from-cache: refusing to clone",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cache := sourcesFromCacheCopy(t, stash)
+			if tt.tamper != nil {
+				tt.tamper(t, cache)
+			}
+			dest, out, err := restore(cache, tt.sparse, strict)
+			require.Error(t, err, out)
+			require.Contains(t, out, tt.wantMsg)
+			require.NotContains(t, out, sourcesFromCacheCloneAttempt)
+			require.NoDirExists(t, dest)
+		})
+	}
+
+	t.Run("a tag checkout restores detached", func(t *testing.T) {
+		t.Parallel()
+		w := with(filepath.Join(t.TempDir(), "out"), "a/b")
+		delete(w, "branch")
+		w["tag"], w["expected-commit"] = "v1", sourcesFromCacheGit(t, repo, "rev-parse", "v1^{commit}")
+		stash := t.TempDir()
+		out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), w, map[string]string{"MELANGE_SOURCE_STASH": stash})
+		require.NoError(t, err, out)
+		want := sourcesFromCacheView(t, w["destination"])
+		require.Equal(t, "HEAD", want["HEAD"], "a tag checkout is detached")
+		require.Equal(t, "v1-0-g"+w["expected-commit"][:7], want["describe"])
+
+		w["destination"], w["repository"] = filepath.Join(t.TempDir(), "out"), "file://"+gone
+		out, err = sourcesFromCacheRun(t, "git-checkout", stash, w, strict)
+		require.NoError(t, err, out)
+		require.Equal(t, want, sourcesFromCacheView(t, w["destination"]))
+	})
+
+	t.Run("a sparse step does not restore a full stash", func(t *testing.T) {
+		t.Parallel()
+		_, full := capture("")
+		_, out, err := restore(full, "a/b", strict)
+		require.Error(t, err, out)
+		require.Contains(t, out, "--strict-sources-from-cache: refusing to clone")
+	})
+}
+
+// A checkout without sparse-paths is stashed as before: the archive is git
+// archive of HEAD, there is no .sparse sidecar, and it restores as a full
+// checkout with no sparse configuration.
+func TestGitCheckoutFullSourcePackageUnchanged(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo, url, commit := sourcesFromCacheMonorepo(t)
+	key := "git:" + commit
+	built, stash := filepath.Join(t.TempDir(), "out"), t.TempDir()
+	with := map[string]string{"repository": url, "destination": built, "branch": "main", "expected-commit": commit, "max-retries": "0"}
+	out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, map[string]string{"MELANGE_SOURCE_STASH": stash})
+	require.NoError(t, err, out)
+	require.NoFileExists(t, filepath.Join(stash, key+".sparse"))
+
+	cmd := exec.CommandContext(t.Context(), "sh", "-c", "git -c tar.umask=022 archive --format=tar --prefix=\"$1\" HEAD | gzip -n", "sh", filepath.Base(repo)+"-"+commit+"/")
+	cmd.Dir, cmd.Env = repo, sourcesFromCacheEnv(t.TempDir())
+	archive, err := cmd.Output()
+	require.NoError(t, err)
+	got, err := os.ReadFile(filepath.Join(stash, key+".tar.gz"))
+	require.NoError(t, err)
+	require.Equal(t, archive, got, "the archive is git archive of HEAD, byte for byte")
+
+	dest := filepath.Join(t.TempDir(), "out")
+	with["destination"], with["repository"] = dest, "file://"+filepath.Join(t.TempDir(), "no-such-repository")
+	out, err = sourcesFromCacheRun(t, "git-checkout", stash, with, map[string]string{"MELANGE_SOURCE_RESTORE": "1", "MELANGE_SOURCE_STRICT": "1"})
+	require.NoError(t, err, out)
+	require.Equal(t, sourcesFromCacheGit(t, built, "ls-files", "-s", "-t"), sourcesFromCacheGit(t, dest, "ls-files", "-s", "-t"))
+	require.NotContains(t, sourcesFromCacheGit(t, dest, "ls-files", "-t"), "S ")
+	require.Equal(t, commit, sourcesFromCacheGit(t, dest, "rev-parse", "HEAD"))
+	require.Equal(t, sourcesFromCacheGit(t, built, "describe", "--tags", "--long", "--dirty"), sourcesFromCacheGit(t, dest, "describe", "--tags", "--long", "--dirty"))
+	cmd = exec.CommandContext(t.Context(), "git", "config", "--get", "core.sparseCheckout")
+	cmd.Dir, cmd.Env = dest, sourcesFromCacheEnv(t.TempDir())
+	require.Error(t, cmd.Run(), "a full checkout restores with no sparse configuration")
+}
+
+// sourcesFromCacheFailingGit is a PATH entry whose git fails every command
+// that names the given subcommand, and runs the real git for the rest.
+func sourcesFromCacheFailingGit(t *testing.T, subcommand string) string {
+	t.Helper()
+	git, err := exec.LookPath("git")
+	require.NoError(t, err)
+	dir := t.TempDir()
+	script := "#!/bin/sh\nfor a in \"$@\"; do [ \"$a\" = " + subcommand + " ] && exit 1; done\nexec " + git + " \"$@\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755))
+	return dir + ":" + os.Getenv("PATH")
+}
+
+// A checkout whose archive or, for a sparse checkout, whose tree objects
+// cannot be written leaves nothing of itself in the stash, so the -source
+// package never carries an archive the restore path cannot use.
+func TestGitCheckoutSourceStashFailure(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	_, url, commit := sourcesFromCacheMonorepo(t)
+	for _, tt := range []struct {
+		name, sparse, fail, wantMsg string
+	}{
+		{name: "archive", fail: "archive", wantMsg: "archiving the checkout failed"},
+		{name: "sparse archive", sparse: "a/b", fail: "archive", wantMsg: "archiving the checkout failed"},
+		{name: "sparse tree objects", sparse: "a/b", fail: "pack-objects", wantMsg: "recording the sparse checkout failed"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			stash := t.TempDir()
+			with := map[string]string{
+				"repository": url, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+				"expected-commit": commit, "max-retries": "0",
+			}
+			if tt.sparse != "" {
+				with["sparse-paths"] = tt.sparse
+			}
+			out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, map[string]string{
+				"MELANGE_SOURCE_STASH": stash, "PATH": sourcesFromCacheFailingGit(t, tt.fail),
+			})
+			require.NoError(t, err, out)
+			require.Contains(t, out, "Warning: "+tt.wantMsg)
+			left, err := filepath.Glob(filepath.Join(stash, "git:"+commit+".*"))
+			require.NoError(t, err)
+			require.Empty(t, left, "nothing of the checkout is left in the stash")
 		})
 	}
 }

@@ -154,6 +154,45 @@ pipeline:
         # the URL as provenance: scheme, host and path only, since userinfo,
         # query and fragment are where credentials travel
         printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/?#]*@|://|' -e 's|[?#].*$||' > "$MELANGE_SOURCE_STASH/$key.uri"
+        # Whether the artifact was obtained with credentials, recorded as
+        # $key.credentials: one "<signal> <host>" line for each way wget would
+        # send them, never a value. A publisher that serves source publicly
+        # refuses a companion holding any such file. wget's debug output
+        # prints headers unredacted, so the signals come from the URL and
+        # wget's configuration instead, which also covers an artifact the
+        # cache supplied without a fetch: userinfo or a credential-like query
+        # parameter in the URL, a netrc entry for the host (or a default
+        # one), a user, password or header in a wgetrc. A record that came
+        # with a cached artifact is kept.
+        host=$(printf '%s\n' '${{inputs.uri}}' | sed -e 's|^[^:/?#]*://||' -e 's|[/?#].*$||' -e 's|^.*@||' -e 's|:[0-9]*$||')
+        creds=$(mktemp)
+        {
+          if printf '%s\n' '${{inputs.uri}}' | grep -q '^[^:/?#]*://[^/?#]*@'; then
+            echo "userinfo $host"
+          fi
+          if printf '%s\n' '${{inputs.uri}}' | grep -Eiq '[?&;](access_token|private_token|job_token|token|api_key|apikey|key|auth|password|passwd|secret|client_secret|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|x-goog-signature|x-goog-credential)='; then
+            echo "query $host"
+          fi
+          for f in "${NETRC:-}" "${HOME:-/root}/.netrc"; do
+            if [ -n "$f" ] && [ -f "$f" ] && awk -v h="$host" '{ for (i = 1; i <= NF; i++) if ($i == "default" || ($i == "machine" && $(i + 1) == h)) found = 1 } END { exit !found }' "$f"; then
+              echo "netrc $host"
+            fi
+          done
+          for f in "${SYSTEM_WGETRC:-/etc/wgetrc}" "${WGETRC:-${HOME:-/root}/.wgetrc}"; do
+            if [ -f "$f" ] && grep -Eiq '^[[:space:]]*(header|user|password|http_user|http_password|http_passwd|ask_password|use_askpass)[[:space:]]*=' "$f"; then
+              echo "wgetrc $host"
+            fi
+          done
+          if [ -n "${fn:-}" ] && [ -f "$fn.credentials" ]; then
+            cat "$fn.credentials"
+          fi
+        } | LC_ALL=C sort -u > "$creds"
+        if [ -s "$creds" ]; then
+          cp "$creds" "$MELANGE_SOURCE_STASH/$key.credentials"
+          printf 'fetch: Warning: %s was obtained with credentials (%s); recorded in %s.credentials for the -source package\n' \
+            "$key" "$(awk 'NR > 1 { printf ", " } { printf "%s", $0 }' "$creds")" "$key"
+        fi
+        rm -f "$creds"
         printf "fetch: kept $key for the -source package\n"
       fi
 

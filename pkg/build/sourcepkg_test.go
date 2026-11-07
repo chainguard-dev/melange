@@ -394,6 +394,31 @@ func TestSourcePackageAssemblyIsDeterministic(t *testing.T) {
 	}
 }
 
+// A record of credentials a step obtained an artifact with ships beside it
+// and is listed in the manifest every APK carries: that listing is what a
+// public publisher refuses the companion by.
+func TestSourcePackageAssemblyListsCredentialRecords(t *testing.T) {
+	b, _ := sourceBuild(t, nil, true)
+	stash := filepath.Join(b.WorkspaceDir, melangeOutputDirName, sourceStashDir)
+	writeFileMode(t, stash, "git:deadbeef.tar.gz", 0o644, "archive bytes")
+	writeFileMode(t, stash, "git:deadbeef"+sourceCredentialsSuffix, 0o600, "authorization github.com\n")
+	manifest, err := b.assembleSourcePackage(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("%x  upstream/git:deadbeef.credentials\n", sha256.Sum256([]byte("authorization github.com\n")))
+	if !strings.Contains(string(manifest), want) {
+		t.Fatalf("manifest does not list the record:\n%s", manifest)
+	}
+	fi, err := os.Stat(filepath.Join(b.WorkspaceDir, melangeOutputDirName, "foo-source", "usr", "src", "foo", sourceUpstreamDir, "git:deadbeef.credentials"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o644 {
+		t.Errorf("record mode %o, want 644", fi.Mode().Perm())
+	}
+}
+
 // A package with no source directory and no fetched artifacts still gets a
 // companion: the configuration alone records inline runs: edits.
 func TestSourcePackageAssemblyConfigurationOnly(t *testing.T) {

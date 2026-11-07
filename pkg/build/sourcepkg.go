@@ -85,6 +85,15 @@ const (
 	sourceInstallRoot  = "usr/src"
 	sourceUpstreamDir  = "upstream"
 	sourceManifestFile = "SOURCES.sha256"
+
+	// sourceCredentialsSuffix names the record a fetch or git-checkout step
+	// leaves beside a stashed artifact it obtained with credentials,
+	// <key>.credentials: one "<signal> <host>" line for each way credentials
+	// reached the remote, never a value. It ships in upstream/ like every
+	// other stashed file, so it is listed in the manifest every APK of the
+	// build carries, and a publisher that serves source publicly can refuse
+	// the companion by that listing alone.
+	sourceCredentialsSuffix = ".credentials"
 )
 
 func (b *Build) sourcePackageName() string {
@@ -392,6 +401,7 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	upstream := 0
+	var credentialed []string
 	for _, e := range entries {
 		if !e.Type().IsRegular() {
 			continue
@@ -400,6 +410,15 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 			return nil, err
 		}
 		upstream++
+		if key, ok := strings.CutSuffix(e.Name(), sourceCredentialsSuffix); ok {
+			credentialed = append(credentialed, key)
+		}
+	}
+	if len(credentialed) > 0 {
+		// Not an error: a companion published only to those entitled to the
+		// private source is fine. The record ships, so a public publisher
+		// can refuse it.
+		log.Warnf("%s carries upstream artifacts obtained with credentials, which a public source repository will refuse: %s", b.sourcePackageName(), strings.Join(credentialed, ", "))
 	}
 	// The stash stays where it is: the workspace filesystem the later stages
 	// walk was seeded from the tree as the guest left it, and the runner

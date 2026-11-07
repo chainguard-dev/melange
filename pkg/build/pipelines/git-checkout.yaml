@@ -372,10 +372,12 @@ pipeline:
           name=$(basename "$repo" .git)
           mkdir -p "$stash"
           msg "archiving checkout as $key.tar.gz for the -source package"
+          # A -source package without its upstream is not the complete
+          # source it claims to be, so a checkout that cannot be stashed
+          # fails the build rather than leaving the companion short.
           if ! archive_tree "$dest" "$name-$head/" "$stash/$key.tar.gz" "$sparse_paths"; then
-              msg "Warning: archiving the checkout failed; the -source package will not carry it"
               rm -f "$stash/$key.tar.gz"
-              return 0
+              fail "archiving the checkout for the -source package failed"
           fi
           # url, head, head's commit time, and the branch HEAD is on (empty
           # when detached, as a tag checkout leaves it): builds read .git/HEAD
@@ -411,9 +413,8 @@ pipeline:
           # the build saw.
           if [ -n "$sparse_paths" ]; then
               if [ ! -s "$stash/$key.trees" ] || ! git -C "$dest" sparse-checkout list > "$stash/$key.sparse"; then
-                  msg "Warning: recording the sparse checkout failed; the -source package will not carry it"
                   rm -f "$stash/$key".*
-                  return 0
+                  fail "recording the sparse checkout for the -source package failed"
               fi
           fi
           # every gitlink, checked out or not, as "path commit"
@@ -432,8 +433,8 @@ pipeline:
                       stash_trees "$dest/$subpath" "$stash/$subkey.trees" HEAD
                       git -C "$dest/$subpath" ls-tree -r HEAD | awk -v p="$subpath/" '$2 == "commit" { print p $4, $3 }' >> "$stash/$key.gitlinks"
                   else
-                      msg "Warning: archiving submodule $subpath failed"
                       rm -f "$stash/$subkey.tar.gz"
+                      fail "archiving submodule $subpath for the -source package failed"
                   fi
               done
           fi

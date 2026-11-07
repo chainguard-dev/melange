@@ -580,21 +580,30 @@ func TestGitCheckoutFullSourcePackageUnchanged(t *testing.T) {
 	require.Error(t, cmd.Run(), "a full checkout restores with no sparse configuration")
 }
 
-// sourcesFromCacheFailingGit is a PATH entry whose git fails every command
-// that names the given subcommand, and runs the real git for the rest.
-func sourcesFromCacheFailingGit(t *testing.T, subcommand string) string {
+// sourcesFromCacheFailingGit is a PATH whose git fails every command that
+// names the given subcommand and, if within is set, an argument ending in
+// it, and runs the real git for the rest.
+func sourcesFromCacheFailingGit(t *testing.T, subcommand, within string) string {
 	t.Helper()
 	git, err := exec.LookPath("git")
 	require.NoError(t, err)
 	dir := t.TempDir()
-	script := "#!/bin/sh\nfor a in \"$@\"; do [ \"$a\" = " + subcommand + " ] && exit 1; done\nexec " + git + " \"$@\"\n"
+	script := "#!/bin/sh\nsubcommand='" + subcommand + "' within='" + within + "' git='" + git + "'\n" + `sub= in=
+[ -z "$within" ] && in=1
+for a in "$@"; do
+	[ "$a" = "$subcommand" ] && sub=1
+	case "$a" in *"$within") [ -n "$within" ] && in=1 ;; esac
+done
+[ -n "$sub" ] && [ -n "$in" ] && exit 1
+exec "$git" "$@"
+`
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755))
 	return dir + ":" + os.Getenv("PATH")
 }
 
 // A checkout whose archive or, for a sparse checkout, whose tree objects
-// cannot be written leaves nothing of itself in the stash, so the -source
-// package never carries an archive the restore path cannot use.
+// cannot be written fails the step, leaving nothing of itself in the stash:
+// a -source package without its upstream is incomplete source.
 func TestGitCheckoutSourceStashFailure(t *testing.T) {
 	t.Parallel()
 	sourcesFromCacheRequireTools(t)
@@ -602,9 +611,9 @@ func TestGitCheckoutSourceStashFailure(t *testing.T) {
 	for _, tt := range []struct {
 		name, sparse, fail, wantMsg string
 	}{
-		{name: "archive", fail: "archive", wantMsg: "archiving the checkout failed"},
-		{name: "sparse archive", sparse: "a/b", fail: "archive", wantMsg: "archiving the checkout failed"},
-		{name: "sparse tree objects", sparse: "a/b", fail: "pack-objects", wantMsg: "recording the sparse checkout failed"},
+		{name: "archive", fail: "archive", wantMsg: "archiving the checkout for the -source package failed"},
+		{name: "sparse archive", sparse: "a/b", fail: "archive", wantMsg: "archiving the checkout for the -source package failed"},
+		{name: "sparse tree objects", sparse: "a/b", fail: "pack-objects", wantMsg: "recording the sparse checkout for the -source package failed"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -617,13 +626,44 @@ func TestGitCheckoutSourceStashFailure(t *testing.T) {
 				with["sparse-paths"] = tt.sparse
 			}
 			out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, map[string]string{
-				"MELANGE_SOURCE_STASH": stash, "PATH": sourcesFromCacheFailingGit(t, tt.fail),
+				"MELANGE_SOURCE_STASH": stash, "PATH": sourcesFromCacheFailingGit(t, tt.fail, ""),
 			})
-			require.NoError(t, err, out)
-			require.Contains(t, out, "Warning: "+tt.wantMsg)
+			require.Error(t, err, out)
+			require.Contains(t, out, "FAIL "+tt.wantMsg)
 			left, err := filepath.Glob(filepath.Join(stash, "git:"+commit+".*"))
 			require.NoError(t, err)
 			require.Empty(t, left, "nothing of the checkout is left in the stash")
 		})
 	}
+}
+
+// A submodule whose archive cannot be written fails the step too.
+func TestGitCheckoutSourceStashSubmoduleFailure(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	_, sub, _ := sourcesFromCacheMonorepo(t)
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "top.txt"), []byte("top\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "-c", "protocol.file.allow=always", "submodule", "add", "-q", sub, "vendor/sub")
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "with a submodule")
+	commit := sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
+	with := map[string]string{
+		"repository": "file://" + repo, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+		"expected-commit": commit, "max-retries": "0", "recurse-submodules": "true",
+	}
+	environ := map[string]string{
+		"MELANGE_SOURCE_STASH": t.TempDir(),
+		"GIT_CONFIG_COUNT":     "2", "GIT_CONFIG_KEY_1": "protocol.file.allow", "GIT_CONFIG_VALUE_1": "always",
+	}
+	out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, environ)
+	require.NoError(t, err, out)
+	require.FileExists(t, filepath.Join(environ["MELANGE_SOURCE_STASH"], "git:"+commit+".submodules"))
+
+	environ["MELANGE_SOURCE_STASH"], environ["PATH"] = t.TempDir(), sourcesFromCacheFailingGit(t, "archive", "/vendor/sub")
+	with["destination"] = filepath.Join(t.TempDir(), "out")
+	out, err = sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, environ)
+	require.Error(t, err, out)
+	require.Contains(t, out, "FAIL archiving submodule vendor/sub for the -source package failed")
 }

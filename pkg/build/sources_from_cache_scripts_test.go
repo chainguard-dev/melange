@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"maps"
 	"os"
@@ -76,11 +77,11 @@ func sourcesFromCacheGit(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// sourcesFromCacheRun compiles the pipeline named by uses with the given
+// sourcesFromCacheRun compiles the git-checkout pipeline with the given
 // inputs and runs its script.
-func sourcesFromCacheRun(t *testing.T, uses, cache string, with, environ map[string]string) (string, error) {
+func sourcesFromCacheRun(t *testing.T, cache string, with, environ map[string]string) (string, error) {
 	t.Helper()
-	p := config.Pipeline{Uses: uses, With: with}
+	p := config.Pipeline{Uses: "git-checkout", With: with}
 	sm := &SubstitutionMap{Substitutions: map[string]string{
 		config.SubstitutionPackageName: "hello", config.SubstitutionPackageVersion: "1.0",
 	}}
@@ -113,7 +114,7 @@ func sourcesFromCacheUpstream(t *testing.T) (string, string, string) {
 	commit := sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
 
 	stash := t.TempDir()
-	out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), map[string]string{
+	out, err := sourcesFromCacheRun(t, t.TempDir(), map[string]string{
 		"repository": repo, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
 		"expected-commit": commit, "max-retries": "0",
 	}, map[string]string{"MELANGE_SOURCE_STASH": stash})
@@ -184,7 +185,7 @@ func TestGitCheckoutStrictSourcesFromCache(t *testing.T) {
 			default:
 				environ["MELANGE_SOURCE_RESTORE"] = tt.mode
 			}
-			out, err := sourcesFromCacheRun(t, "git-checkout", tt.cache, with, environ)
+			out, err := sourcesFromCacheRun(t, tt.cache, with, environ)
 
 			if tt.wantErr {
 				require.Error(t, err, out)
@@ -245,7 +246,7 @@ func sourcesFromCacheArchive(t *testing.T, path string) map[string]string {
 	tr := tar.NewReader(zr)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err)
@@ -273,7 +274,7 @@ func sourcesFromCacheArchiveTimes(t *testing.T, path string) map[string]time.Tim
 	tr := tar.NewReader(zr)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err)
@@ -299,7 +300,7 @@ func sourcesFromCacheRewrite(t *testing.T, path string, keep func(name string) b
 	prefix := ""
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err)
@@ -394,7 +395,7 @@ func TestGitCheckoutSparseSourcePackage(t *testing.T) {
 	}
 	capture := func(sparse string) (string, string) {
 		dest, stash := filepath.Join(t.TempDir(), "out"), t.TempDir()
-		out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with(dest, sparse), map[string]string{"MELANGE_SOURCE_STASH": stash})
+		out, err := sourcesFromCacheRun(t, t.TempDir(), with(dest, sparse), map[string]string{"MELANGE_SOURCE_STASH": stash})
 		require.NoError(t, err, out)
 		return dest, stash
 	}
@@ -438,7 +439,7 @@ func TestGitCheckoutSparseSourcePackage(t *testing.T) {
 		dest := filepath.Join(t.TempDir(), "out")
 		w := with(dest, sparse)
 		w["repository"] = "file://" + gone
-		out, err := sourcesFromCacheRun(t, "git-checkout", cache, w, environ)
+		out, err := sourcesFromCacheRun(t, cache, w, environ)
 		return dest, out, err
 	}
 
@@ -524,14 +525,14 @@ func TestGitCheckoutSparseSourcePackage(t *testing.T) {
 		delete(w, "branch")
 		w["tag"], w["expected-commit"] = "v1", sourcesFromCacheGit(t, repo, "rev-parse", "v1^{commit}")
 		stash := t.TempDir()
-		out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), w, map[string]string{"MELANGE_SOURCE_STASH": stash})
+		out, err := sourcesFromCacheRun(t, t.TempDir(), w, map[string]string{"MELANGE_SOURCE_STASH": stash})
 		require.NoError(t, err, out)
 		want := sourcesFromCacheView(t, w["destination"])
 		require.Equal(t, "HEAD", want["HEAD"], "a tag checkout is detached")
 		require.Equal(t, "v1-0-g"+w["expected-commit"][:7], want["describe"])
 
 		w["destination"], w["repository"] = filepath.Join(t.TempDir(), "out"), "file://"+gone
-		out, err = sourcesFromCacheRun(t, "git-checkout", stash, w, strict)
+		out, err = sourcesFromCacheRun(t, stash, w, strict)
 		require.NoError(t, err, out)
 		require.Equal(t, want, sourcesFromCacheView(t, w["destination"]))
 	})
@@ -555,7 +556,7 @@ func TestGitCheckoutFullSourcePackageUnchanged(t *testing.T) {
 	key := "git:" + commit
 	built, stash := filepath.Join(t.TempDir(), "out"), t.TempDir()
 	with := map[string]string{"repository": url, "destination": built, "branch": "main", "expected-commit": commit, "max-retries": "0"}
-	out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, map[string]string{"MELANGE_SOURCE_STASH": stash})
+	out, err := sourcesFromCacheRun(t, t.TempDir(), with, map[string]string{"MELANGE_SOURCE_STASH": stash})
 	require.NoError(t, err, out)
 	require.NoFileExists(t, filepath.Join(stash, key+".sparse"))
 
@@ -569,7 +570,7 @@ func TestGitCheckoutFullSourcePackageUnchanged(t *testing.T) {
 
 	dest := filepath.Join(t.TempDir(), "out")
 	with["destination"], with["repository"] = dest, "file://"+filepath.Join(t.TempDir(), "no-such-repository")
-	out, err = sourcesFromCacheRun(t, "git-checkout", stash, with, map[string]string{"MELANGE_SOURCE_RESTORE": "1", "MELANGE_SOURCE_STRICT": "1"})
+	out, err = sourcesFromCacheRun(t, stash, with, map[string]string{"MELANGE_SOURCE_RESTORE": "1", "MELANGE_SOURCE_STRICT": "1"})
 	require.NoError(t, err, out)
 	require.Equal(t, sourcesFromCacheGit(t, built, "ls-files", "-s", "-t"), sourcesFromCacheGit(t, dest, "ls-files", "-s", "-t"))
 	require.NotContains(t, sourcesFromCacheGit(t, dest, "ls-files", "-t"), "S ")
@@ -625,7 +626,7 @@ func TestGitCheckoutSourceStashFailure(t *testing.T) {
 			if tt.sparse != "" {
 				with["sparse-paths"] = tt.sparse
 			}
-			out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, map[string]string{
+			out, err := sourcesFromCacheRun(t, t.TempDir(), with, map[string]string{
 				"MELANGE_SOURCE_STASH": stash, "PATH": sourcesFromCacheFailingGit(t, tt.fail, ""),
 			})
 			require.Error(t, err, out)
@@ -657,13 +658,13 @@ func TestGitCheckoutSourceStashSubmoduleFailure(t *testing.T) {
 		"MELANGE_SOURCE_STASH": t.TempDir(),
 		"GIT_CONFIG_COUNT":     "2", "GIT_CONFIG_KEY_1": "protocol.file.allow", "GIT_CONFIG_VALUE_1": "always",
 	}
-	out, err := sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, environ)
+	out, err := sourcesFromCacheRun(t, t.TempDir(), with, environ)
 	require.NoError(t, err, out)
 	require.FileExists(t, filepath.Join(environ["MELANGE_SOURCE_STASH"], "git:"+commit+".submodules"))
 
 	environ["MELANGE_SOURCE_STASH"], environ["PATH"] = t.TempDir(), sourcesFromCacheFailingGit(t, "archive", "/vendor/sub")
 	with["destination"] = filepath.Join(t.TempDir(), "out")
-	out, err = sourcesFromCacheRun(t, "git-checkout", t.TempDir(), with, environ)
+	out, err = sourcesFromCacheRun(t, t.TempDir(), with, environ)
 	require.Error(t, err, out)
 	require.Contains(t, out, "FAIL archiving submodule vendor/sub for the -source package failed")
 }

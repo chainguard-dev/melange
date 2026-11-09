@@ -19,8 +19,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -416,6 +418,69 @@ func TestSourcePackageAssemblyListsCredentialRecords(t *testing.T) {
 	}
 	if fi.Mode().Perm() != 0o644 {
 		t.Errorf("record mode %o, want 644", fi.Mode().Perm())
+	}
+}
+
+// An Authorization the caller sent to a host it named as exempt (EBS's own
+// mirror of public upstreams) is not recorded: a record naming only exempt
+// hosts is dropped, and one naming others keeps every other line.
+func TestSourcePackageAssemblyExemptCredentialHosts(t *testing.T) {
+	b, _ := sourceBuild(t, nil, true)
+	if err := WithSourceCredentialExemptHosts([]string{"mirror.example.dev"})(b); err != nil {
+		t.Fatal(err)
+	}
+	stash := filepath.Join(b.WorkspaceDir, melangeOutputDirName, sourceStashDir)
+	upstream := filepath.Join(b.WorkspaceDir, melangeOutputDirName, "foo-source", "usr", "src", "foo", sourceUpstreamDir)
+	writeFileMode(t, stash, "git:aaaa.tar.gz", 0o644, "archive bytes")
+	writeFileMode(t, stash, "git:aaaa"+sourceCredentialsSuffix, 0o644, "authorization Mirror.Example.Dev\n")
+	writeFileMode(t, stash, "git:bbbb.tar.gz", 0o644, "archive bytes")
+	mixed := "authorization github.com\nauthorization mirror.example.dev\nauthorization mirror.example.dev.evil\ncookie mirror.example.dev\nuserinfo mirror.example.dev\n"
+	writeFileMode(t, stash, "git:bbbb"+sourceCredentialsSuffix, 0o644, mixed)
+	manifest, err := b.assembleSourcePackage(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(manifest), "git:aaaa.credentials") {
+		t.Errorf("a record naming only an exempt host is listed:\n%s", manifest)
+	}
+	if _, err := os.Stat(filepath.Join(upstream, "git:aaaa.credentials")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("a record naming only an exempt host ships: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(upstream, "git:bbbb.credentials"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "authorization github.com\nauthorization mirror.example.dev.evil\ncookie mirror.example.dev\nuserinfo mirror.example.dev\n"
+	if string(got) != want {
+		t.Errorf("record = %q, want %q", got, want)
+	}
+	if !strings.Contains(string(manifest), fmt.Sprintf("%x  upstream/git:bbbb.credentials\n", sha256.Sum256([]byte(want)))) {
+		t.Errorf("manifest does not list the filtered record:\n%s", manifest)
+	}
+}
+
+// Without exempt hosts a record ships byte for byte.
+func TestSourcePackageAssemblyNoExemptHostsKeepsRecord(t *testing.T) {
+	b, _ := sourceBuild(t, nil, true)
+	stash := filepath.Join(b.WorkspaceDir, melangeOutputDirName, sourceStashDir)
+	writeFileMode(t, stash, "git:cccc"+sourceCredentialsSuffix, 0o644, "authorization mirror.example.dev\n")
+	if _, err := b.assembleSourcePackage(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(b.WorkspaceDir, melangeOutputDirName, "foo-source", "usr", "src", "foo", sourceUpstreamDir, "git:cccc.credentials"))
+	if err != nil || string(got) != "authorization mirror.example.dev\n" {
+		t.Fatalf("record %q, %v", got, err)
+	}
+}
+
+func TestWithSourceCredentialExemptHostsRejectsNonHosts(t *testing.T) {
+	for _, h := range []string{"", "https://mirror.example.dev", "mirror.example.dev/x", "user@mirror.example.dev", "mirror.example.dev:443", "a b"} {
+		if err := WithSourceCredentialExemptHosts([]string{h})(&Build{}); err == nil {
+			t.Errorf("%q accepted", h)
+		}
+	}
+	if err := WithSourceCredentialExemptHosts([]string{"mirror.example.dev"})(&Build{}); err != nil {
+		t.Error(err)
 	}
 }
 

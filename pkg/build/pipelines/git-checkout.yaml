@@ -331,7 +331,9 @@ pipeline:
       # cache, which sends no request: userinfo, an ssh transport, an
       # http.extraHeader configured for the URL. A trace that is missing is
       # recorded as "unverified", so the record fails closed; lines already
-      # in the record (restored with the archive) are kept.
+      # in the record (restored with the archive) are kept. When melange
+      # assembles the companion it drops the authorization lines for hosts
+      # named by --source-credential-exempt-host, which a recipe cannot set.
       stash_credentials() {
           local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" u=""
           tmp=$(mktemp) || return 1

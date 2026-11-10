@@ -37,6 +37,10 @@ import (
 
 const WorkDir = "/home/build"
 
+// defaultPath is the PATH of a step when neither the configuration's
+// environment nor the step sets one.
+const defaultPath = "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin"
+
 func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string, error) {
 	nw := maps.Clone(sm.Substitutions)
 
@@ -233,9 +237,13 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 	}
 
 	// Pipelines can have their own environment variables, which override the global ones.
-	envOverride := map[string]string{
-		// NOTE: This does not currently override PATH in the qemu runner, that's set at openssh build time
-		"PATH": "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
+	envOverride := map[string]string{}
+
+	// The runners apply envOverride on top of the global environment, so only
+	// fall back to the default PATH when the global environment has none.
+	// NOTE: This does not currently override PATH in the qemu runner, that's set at openssh build time
+	if _, ok := r.config.Environment["PATH"]; !ok {
+		envOverride["PATH"] = defaultPath
 	}
 
 	maps.Copy(envOverride, pipeline.Environment)

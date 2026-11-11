@@ -59,11 +59,13 @@ func TestSplitPipelinesRemoveEmptiedDirs(t *testing.T) {
 	tests := []struct {
 		name     string
 		pipeline string
+		with     map[string]string
 		tree     splitTree
 		links    []splitLink
 		wantSub  []string // files that must be in the subpackage
 		wantPkg  []string // files that must stay in the parent package
 		wantDirs []string // exact set of directories left in the parent
+		wantLink []string // symlinks that must still be in the parent
 	}{
 		{
 			// The case this exists for: a library-only package whose
@@ -154,12 +156,60 @@ func TestSplitPipelinesRemoveEmptiedDirs(t *testing.T) {
 			tree:     splitTree{"usr/lib/libfoo.a": "a", "usr/lib/foo/libbar.a": "a"},
 			wantSub:  []string{"usr/lib/libfoo.a", "usr/lib/foo/libbar.a"},
 		},
+		{
+			// rmdir cannot remove a symlink, so the cleanup must skip it
+			// rather than fail the build.
+			name:     "lib: symlinked lib directory is left alone",
+			pipeline: "lib",
+			tree:     splitTree{"usr/lib/libfoo.so.1": "lib", "usr/bin/foo": "bin"},
+			links:    []splitLink{{from: "lib", to: "usr/lib"}},
+			wantSub:  []string{"lib/libfoo.so.1"},
+			wantPkg:  []string{"usr/bin/foo"},
+			wantDirs: []string{"usr", "usr/bin"},
+			wantLink: []string{"lib"},
+		},
+		{
+			name:     "lib: symlinked custom path is left alone",
+			pipeline: "lib",
+			with:     map[string]string{"paths": "usr/lib64"},
+			tree:     splitTree{"lib/libfoo.so.1": "lib", "lib/libfoo.a": "a", "usr/bin/foo": "bin"},
+			links:    []splitLink{{from: "usr/lib64", to: "../lib"}},
+			wantSub:  []string{"lib/libfoo.so.1"},
+			wantPkg:  []string{"lib/libfoo.a", "usr/bin/foo"},
+			wantDirs: []string{"lib", "usr", "usr/bin"},
+			wantLink: []string{"usr/lib64"},
+		},
+		{
+			name:     "dev: symlinked lib directory is left alone",
+			pipeline: "dev",
+			tree: splitTree{
+				"usr/include/foo.h": "h",
+				"usr/lib/libfoo.a":  "a",
+				"usr/bin/foo":       "bin",
+			},
+			links:    []splitLink{{from: "lib", to: "usr/lib"}},
+			wantSub:  []string{"usr/include/foo.h", "lib/libfoo.a"},
+			wantPkg:  []string{"usr/bin/foo"},
+			wantDirs: []string{"usr", "usr/bin"},
+			wantLink: []string{"lib"},
+		},
+		{
+			// The walk up from lib/sub must stop at the symlinked lib.
+			name:     "static: walk up stops at a symlinked parent",
+			pipeline: "static",
+			tree:     splitTree{"usr/lib/sub/libfoo.a": "a", "usr/bin/foo": "bin"},
+			links:    []splitLink{{from: "lib", to: "usr/lib"}},
+			wantSub:  []string{"lib/sub/libfoo.a"},
+			wantPkg:  []string{"usr/bin/foo"},
+			wantDirs: []string{"usr", "usr/bin", "usr/lib"},
+			wantLink: []string{"lib"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmp := t.TempDir()
-			script, pkgDir, subDir := compileSplitPipeline(t, tt.pipeline, nil, tmp)
+			script, pkgDir, subDir := compileSplitPipeline(t, tt.pipeline, tt.with, tmp)
 			writeSplitTree(t, pkgDir, tt.tree, tt.links)
 
 			if out, err := runSplitPipeline(t, script, tmp); err != nil {
@@ -179,6 +229,11 @@ func TestSplitPipelinesRemoveEmptiedDirs(t *testing.T) {
 			for _, want := range tt.wantPkg {
 				if !hasPath(pkg, want) {
 					t.Errorf("package is missing %s; has %v", want, pkg)
+				}
+			}
+			for _, l := range tt.wantLink {
+				if fi, err := os.Lstat(filepath.Join(pkgDir, l)); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+					t.Errorf("symlink %s is missing from the package: %v", l, err)
 				}
 			}
 			dirs := relDirs(t, pkgDir)

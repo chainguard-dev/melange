@@ -42,6 +42,19 @@ pipeline:
 
       cd "$PACKAGE_DIR" || exit 0
 
+      # Remove a directory and its parents while empty, stopping at a symlink.
+      prune_empty_dirs() {
+        _pd="${1#./}"
+        _pd="${_pd%/}"
+        while [ -n "$_pd" ] && [ "$_pd" != "." ] && [ -d "$_pd" ] && [ ! -L "$_pd" ] && [ -z "$(ls -A "$_pd")" ]; do
+          rmdir "$_pd"
+          case "$_pd" in
+            */*) _pd="${_pd%/*}" ;;
+            *) break ;;
+          esac
+        done
+      }
+
       # Build the find patterns (newline-separated)
       if [ -n "${{inputs.patterns}}" ]; then
         PATTERNS="${{inputs.patterns}}"
@@ -91,15 +104,6 @@ pipeline:
         done
       done
 
-      # Remove each library directory the moves emptied, then each parent
-      # that the removal empties, so a package left with no files does not
-      # ship a bare usr/lib or usr. Directories that still hold anything stay,
-      # since split/lib may run for several subpackages. The path is relative
-      # to $PACKAGE_DIR, so --parents stops there.
       for libdir in $libdirs; do
-        libdir="${libdir#/}"
-        libdir="${libdir%/}"
-        if [ -d "$libdir" ]; then
-          rmdir --parents --ignore-fail-on-non-empty "$libdir"
-        fi
+        prune_empty_dirs "${libdir#/}"
       done

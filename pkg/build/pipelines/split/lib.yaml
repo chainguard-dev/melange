@@ -91,10 +91,15 @@ pipeline:
         done
       done
 
-      # Only clean up directories if they are actually empty
-      # This is important since split might be used in multiple subpackages
+      # Remove each library directory the moves emptied, then each parent
+      # that the removal empties, so a package left with no files does not
+      # ship a bare usr/lib or usr. Directories that still hold anything stay,
+      # since split/lib may run for several subpackages. The path is relative
+      # to $PACKAGE_DIR, so --parents stops there.
       for libdir in $libdirs; do
-        if [ -d "$PACKAGE_DIR/$libdir" ] && [ -z "$(ls -A "$PACKAGE_DIR/$libdir" 2>/dev/null)" ]; then
-          rmdir "$PACKAGE_DIR/$libdir" 2>/dev/null || :
+        libdir="${libdir#/}"
+        libdir="${libdir%/}"
+        if [ -d "$libdir" ]; then
+          rmdir --parents --ignore-fail-on-non-empty "$libdir"
         fi
       done

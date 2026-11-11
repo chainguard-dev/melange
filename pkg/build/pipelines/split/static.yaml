@@ -32,6 +32,9 @@ pipeline:
               d="${{targets.contextdir}}/${i%/*}" # dirname $i
               mkdir -p "$d"
               mv "$PACKAGE_DIR/$i" "$d"
-              rmdir "$PACKAGE_DIR/${i%/*}" 2>/dev/null || :
+              # Remove the directory the move emptied, then each parent that
+              # becomes empty in turn. The path is relative to $PACKAGE_DIR,
+              # so --parents stops there.
+              rmdir --parents --ignore-fail-on-non-empty "${i%/*}"
             fi
         done

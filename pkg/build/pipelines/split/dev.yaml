@@ -52,7 +52,17 @@ pipeline:
               d="${{targets.contextdir}}/${i%/*}" # dirname $i
               mkdir -p "$d"
               mv "$PACKAGE_DIR/$i" "$d"
-              rmdir "$PACKAGE_DIR/${i%/*}" 2>/dev/null || :
+              # Remove the directory the move emptied, then each parent that
+              # becomes empty in turn. The path is relative to $PACKAGE_DIR,
+              # so --parents stops there. Entries from `find .` start with
+              # "./", and GNU rmdir fails on "." with EINVAL, so strip that
+              # prefix, and skip the package directory itself.
+              parent="${i%/*}"
+              parent="${parent#./}"
+              case "$parent" in
+                .|"$i") ;;
+                *) rmdir --parents --ignore-fail-on-non-empty "$parent" ;;
+              esac
             fi
         done
 
@@ -75,4 +85,9 @@ pipeline:
               mv "$i" "${{targets.contextdir}}/$i" || return 1
             fi
           done
+          # As above: drop the library directory and its parents if moving
+          # the links emptied them.
+          if [ -d "$sodir" ]; then
+            rmdir --parents --ignore-fail-on-non-empty "$sodir"
+          fi
         done

@@ -241,8 +241,10 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 
 	// The runners apply envOverride on top of the global environment, so only
 	// fall back to the default PATH when the global environment has none.
+	// An empty PATH counts as none: a shell reads it as "search the current
+	// directory", which is the workspace holding the fetched source.
 	// NOTE: This does not currently override PATH in the qemu runner, that's set at openssh build time
-	if _, ok := r.config.Environment["PATH"]; !ok {
+	if r.config.Environment["PATH"] == "" {
 		envOverride["PATH"] = defaultPath
 	}
 

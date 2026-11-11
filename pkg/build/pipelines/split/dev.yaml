@@ -27,6 +27,19 @@ pipeline:
 
       cd "$PACKAGE_DIR" || exit 0
 
+      # Remove a directory and its parents while empty, stopping at a symlink.
+      prune_empty_dirs() {
+        _pd="${1#./}"
+        _pd="${_pd%/}"
+        while [ -n "$_pd" ] && [ "$_pd" != "." ] && [ -d "$_pd" ] && [ ! -L "$_pd" ] && [ -z "$(ls -A "$_pd")" ]; do
+          rmdir "$_pd"
+          case "$_pd" in
+            */*) _pd="${_pd%/*}" ;;
+            *) break ;;
+          esac
+        done
+      }
+
       prefix="${{inputs.prefix}}"
       # trim leading /
       while [ "${prefix#/}" != "$prefix" ]; do
@@ -52,7 +65,9 @@ pipeline:
               d="${{targets.contextdir}}/${i%/*}" # dirname $i
               mkdir -p "$d"
               mv "$PACKAGE_DIR/$i" "$d"
-              rmdir "$PACKAGE_DIR/${i%/*}" 2>/dev/null || :
+              case "$i" in
+                */*) prune_empty_dirs "${i%/*}" ;;
+              esac
             fi
         done
 
@@ -75,4 +90,5 @@ pipeline:
               mv "$i" "${{targets.contextdir}}/$i" || return 1
             fi
           done
+          prune_empty_dirs "$sodir"
         done

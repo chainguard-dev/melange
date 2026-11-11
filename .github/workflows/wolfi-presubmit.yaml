@@ -200,8 +200,8 @@ jobs:
       - name: Download kernel for VMs
         if: matrix.runner == 'qemu'
         run: |
-          KERNEL_PKG="$(curl -sL https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$1 == "P" {printf "%s-", $2} $1 == "V" {printf "%s.apk\n", $2}' | grep "linux-virt" | grep -v dev)"
-          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/${KERNEL_PKG}"
+          KERNEL_PKG="$(curl -sL https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/APKINDEX.tar.gz | tar -Oxz APKINDEX | awk -F':' '$1 == "P" {printf "%s-", $2} $1 == "V" {printf "%s.apk\n", $2}' | grep "linux-virt" | grep -v dev)"
+          curl -LSo linux-virt.apk "https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/${KERNEL_PKG}"
           mkdir -p /tmp/kernel
           tar -xf ./linux-virt.apk -C /tmp/kernel/
 

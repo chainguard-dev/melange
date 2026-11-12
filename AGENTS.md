@@ -140,8 +140,8 @@ workflows run qemu, which needs KVM.
 ### Go and commits
 
 - golangci-lint runs with `.golangci.yml`. Code MUST log with the `clog`
-  logger from the context and MUST NOT use `fmt.Print*`. Lint does not
-  catch this today. Imports group `chainguard.dev/melange` last.
+  logger from the context and MUST NOT use `fmt.Print*` (forbidigo rejects
+  it). Imports group `chainguard.dev/melange` last.
 - Errors SHOULD be wrapped with `%w` and say what was being done.
 - Commits MUST follow Conventional Commits, and SHOULD be scoped by area:
   `fix(qemu): ...`, `feat(build): ...`, `fix(pipelines): ...`,

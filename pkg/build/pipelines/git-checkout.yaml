@@ -319,28 +319,36 @@ pipeline:
       # that serves source publicly refuses a companion holding any such file.
       #
       # What git sent over http(s) is read from the curl trace this step
-      # writes (credtrace below; GIT_TRACE_CURL redacts header values): an
-      # Authorization or Cookie header on any request, the submodules'
-      # included, whatever supplied it -- a credential helper, askpass, a
-      # .git-credentials read through the store helper, a netrc, URL
-      # userinfo, http.extraHeader. That is credentials used, not merely
-      # configured: a helper for github.com that a public clone never needed
-      # sends nothing and marks nothing. The URLs themselves, after
-      # url.*.insteadOf, are checked too, for what the trace cannot show (ssh
-      # authenticates outside curl) and for a checkout restored from the
-      # cache, which sends no request: userinfo, an ssh transport, an
-      # http.extraHeader configured for the URL. A trace that is missing is
-      # recorded as "unverified", so the record fails closed; lines already
-      # in the record (restored with the archive) are kept. When melange
-      # assembles the companion it drops the authorization lines for hosts
-      # named by --source-credential-exempt-host, which a recipe cannot set.
+      # writes (credtrace below; GIT_TRACE_REDACT redacts the Authorization,
+      # Proxy-Authorization and Cookie values only): an Authorization or
+      # Cookie header on any request, the submodules' included, whatever
+      # supplied it -- a credential helper, askpass, a .git-credentials read
+      # through the store helper, a netrc, URL userinfo, http.extraHeader.
+      # That is credentials used, not merely configured: a helper for
+      # github.com that a public clone never needed sends nothing and marks
+      # nothing. Each header is attributed to the Host line before it; when
+      # submodules are cloned in parallel (submodule-jobs > 1) several git
+      # processes append to the trace and their lines interleave, so the
+      # host is not known and the line names "-", which no exemption
+      # matches. The URLs themselves, after url.*.insteadOf, are checked
+      # too, for what the trace cannot show (ssh authenticates outside curl;
+      # a TLS client certificate sends no header) and for a checkout
+      # restored from the cache, which sends no request: userinfo, an ssh
+      # transport, an http.extraHeader or a client certificate (http.sslCert,
+      # http.sslKey, GIT_SSL_CERT, GIT_SSL_KEY) configured for the URL.
+      # git-lfs downloads outside git's curl and is not seen. A trace that
+      # is missing is recorded as "unverified", so the record fails closed;
+      # lines already in the record (restored with the archive) are kept.
+      # When melange assembles the companion it drops the authorization
+      # lines for hosts named by --source-credential-exempt-host, which a
+      # recipe cannot set.
       stash_credentials() {
           local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" u=""
           tmp=$(mktemp) || return 1
           {
               if [ -n "${credtrace:-}" ] && [ -f "$credtrace" ]; then
-                  awk '{ l = tolower($0) }
-                      l ~ /=> send header: host:/ { h = $NF; sub(/:[0-9]+$/, "", h) }
+                  awk -v parallel="${credparallel:-}" '{ l = tolower($0) }
+                      l ~ /=> send header: host:/ { h = (parallel != "" ? "" : $NF); sub(/:[0-9]+$/, "", h) }
                       l ~ /=> send header: authorization:/ { print "authorization", (h == "" ? "-" : h) }
                       l ~ /=> send header: cookie:/ { print "cookie", (h == "" ? "-" : h) }' "$credtrace"
               else
@@ -388,6 +396,11 @@ pipeline:
               http://*|https://*)
                   if [ -n "$(git config --get-urlmatch http.extraheader "$url" 2>/dev/null)" ]; then
                       echo "extraheader $host"
+                  fi
+                  if [ -n "${GIT_SSL_CERT:-}${GIT_SSL_KEY:-}" ] ||
+                      [ -n "$(git config --get-urlmatch http.sslcert "$url" 2>/dev/null)" ] ||
+                      [ -n "$(git config --get-urlmatch http.sslkey "$url" 2>/dev/null)" ]; then
+                      echo "sslcert $host"
                   fi ;;
           esac
           return 0
@@ -1104,12 +1117,18 @@ pipeline:
 
       # When the build emits a -source companion, trace this step's http(s)
       # requests so stash_credentials can tell whether any carried
-      # credentials. Header values are redacted, so no secret is written, and
-      # the trace is removed however the step ends.
-      credtrace=""
+      # credentials. git redacts only the Authorization, Proxy-Authorization
+      # and Cookie values: any other http.extraHeader and a request line's
+      # query string are written in clear. The trace is removed however the
+      # step ends, so only a killed step can leave one behind.
+      credtrace="" credparallel=""
       if [ -n "${MELANGE_SOURCE_STASH:-}" ] && credtrace=$(mktemp); then
           trap 'rm -f "$credtrace"' EXIT
           export GIT_TRACE_CURL="$credtrace" GIT_TRACE_CURL_NO_DATA=1 GIT_TRACE_REDACT=1
+          credjobs='${{inputs.submodule-jobs}}'
+          if [ '${{inputs.recurse-submodules}}' = "true" ] && [ "${credjobs:-1}" != "1" ]; then
+              credparallel=1
+          fi
       fi
 
       main \

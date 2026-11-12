@@ -88,8 +88,8 @@ shown here.
   - The rest, including `replacePackage`, `replaceSubpackage`,
     `replaceDependencies`, `replaceScriptlets`, `replaceCopyright`,
     `replaceEntrypoint` and the `replaceImage*` functions, build a new struct
-    from an explicit field list. A new field on one of those types MUST be added to that list, or
-    it is dropped silently.
+    from an explicit field list. A new field on one of those types MUST be
+    added to that list, or it is dropped silently.
 - A field MUST also survive compilation. `melange compile` output, and the
   `.melange.yaml` embedded in every APK, are run again by `melange test` and
   `melange rebuild`, so what `Compile` gathers MUST land in the compiled

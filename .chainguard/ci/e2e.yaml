@@ -55,11 +55,11 @@ checks:
       Builds each config with melange from the tree (bubblewrap runner,
       x86_64), then melange rebuild on the result. Every example but
       melange.yaml is also built with --source-package and rebuilt from that
-      -source companion; go-build.yaml also runs
-      e2e-tests/source-package-restore-test, which restores git checkouts
-      from the companion, refuses tampered ones, and builds with
-      --strict-sources-from-cache=git-checkout on an empty and on the intact
-      cache; go-build.yaml is also rebuilt from its companion with
+      -source companion; go-build.yaml and git-checkout-sparse.yaml (a
+      sparse checkout) also run e2e-tests/source-package-restore-test, which
+      restores git checkouts from the companion, refuses tampered ones, and
+      builds with --strict-sources-from-cache=git-checkout on an empty and
+      on the intact cache, and are rebuilt from their companions with
       --strict-sources-from-cache=git-checkout. The builds fetch their
       sources upstream, trusting the guest's egress CA through
       MELANGE_EXTRA_CA_CERTS, which melange build and melange rebuild both
@@ -94,6 +94,7 @@ checks:
       - {name: cargo-build, vars: {CFG: examples/cargo-build.yaml}}
       - {name: gnu-hello, vars: {CFG: examples/gnu-hello.yaml}}
       - {name: go-build, vars: {CFG: examples/go-build.yaml}}
+      - {name: git-checkout-sparse, vars: {CFG: examples/git-checkout-sparse.yaml}}
       - {name: minimal, vars: {CFG: examples/minimal.yaml}}
       - {name: npm-install, vars: {CFG: examples/npm-install.yaml}}
       - {name: pnpm-install, vars: {CFG: examples/pnpm-install.yaml}}
@@ -106,7 +107,7 @@ checks:
         - packages.wolfi.dev
         - alpinelinux.org
         - dl-cdn.alpinelinux.org
-        - github.com # cargo-build and go-build clone their sources
+        - github.com # cargo-build, go-build and git-checkout-sparse clone their sources
         - index.crates.io
         - static.crates.io
         - mirrors.ocf.berkeley.edu # gnu-hello
@@ -133,8 +134,8 @@ checks:
       ./melange build "${CFG}" --arch=x86_64 --namespace=wolfi --source-package --out-dir=./packages-source
       companion=$(ls ./packages-source/x86_64/*-source-*.apk)
       ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --out-dir=./rebuilt-from-source
-      if [ "${CFG}" = examples/go-build.yaml ]; then
-        MELANGE=./melange ./e2e-tests/source-package-restore-test examples/go-build.yaml "${companion}"
+      if [ "${CFG}" = examples/go-build.yaml ] || [ "${CFG}" = examples/git-checkout-sparse.yaml ]; then
+        MELANGE=./melange ./e2e-tests/source-package-restore-test "${CFG}" "${companion}"
         ./melange rebuild ./packages-source/x86_64/*.apk --source-package "${companion}" --strict-sources-from-cache=git-checkout --out-dir=./rebuilt-strict > rebuild-strict.log 2>&1 || { cat rebuild-strict.log; exit 1; }
         grep -q "in cache; restoring instead of cloning" rebuild-strict.log || { cat rebuild-strict.log; echo "strict rebuild did not restore from the companion cache"; exit 1; }
       fi

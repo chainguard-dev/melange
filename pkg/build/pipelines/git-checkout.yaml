@@ -335,8 +335,10 @@ pipeline:
       # a TLS client certificate sends no header) and for a checkout
       # restored from the cache, which sends no request: userinfo, an ssh
       # transport, an http.extraHeader or a client certificate (http.sslCert,
-      # http.sslKey, GIT_SSL_CERT, GIT_SSL_KEY) configured for the URL.
-      # git-lfs downloads outside git's curl and is not seen. A trace that
+      # http.sslKey, GIT_SSL_CERT, GIT_SSL_KEY) configured for the URL. A
+      # client certificate is recorded when configured, even if never
+      # requested: a deliberate fail-closed exception to "used, not
+      # configured", since nothing in the trace shows its use. git-lfs downloads outside git's curl and is not seen. A trace that
       # is missing is recorded as "unverified", so the record fails closed;
       # lines already in the record (restored with the archive) are kept.
       # When melange assembles the companion it drops the authorization
@@ -397,6 +399,11 @@ pipeline:
                   if [ -n "$(git config --get-urlmatch http.extraheader "$url" 2>/dev/null)" ]; then
                       echo "extraheader $host"
                   fi
+                  # A client certificate is recorded when it is configured,
+                  # even if the server never requested it. That is a
+                  # deliberate fail-closed exception to the "used, not
+                  # configured" rule above: curl sends no header for it, so
+                  # the trace cannot show whether it was used.
                   if [ -n "${GIT_SSL_CERT:-}${GIT_SSL_KEY:-}" ] ||
                       [ -n "$(git config --get-urlmatch http.sslcert "$url" 2>/dev/null)" ] ||
                       [ -n "$(git config --get-urlmatch http.sslkey "$url" 2>/dev/null)" ]; then

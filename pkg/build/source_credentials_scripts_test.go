@@ -587,3 +587,58 @@ func TestGitCheckoutMirrorCredentialIsExempt(t *testing.T) {
 	require.Empty(t, (&Build{SourceCredentialExemptHosts: []string{mirror.Hostname()}}).withoutExemptCredentials(data))
 	require.Equal(t, string(data), string((&Build{SourceCredentialExemptHosts: []string{"other.example"}}).withoutExemptCredentials(data)))
 }
+
+// A second step that checks out a commit an earlier step of the same build
+// already stashed under the same name still records its own credentials:
+// stash_credentials runs before stash_source returns for an archive that is
+// already there, so the companion is not left with an unmarked checkout.
+func TestGitCheckoutSecondStepKeepsTheRecord(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	require.NoError(t, os.MkdirAll(filepath.Join(repo, "a", "b"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "a", "b", "f.txt"), []byte("f\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "top.txt"), []byte("top\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "one")
+	commit := sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
+
+	public := credentialsGitServer(t, repo, false)
+	withUser := *credentialsGitServer(t, repo, true)
+	withUser.User = url.UserPassword("u", credentialsTestSecret)
+	host := withUser.Hostname()
+
+	for _, tt := range []struct{ name, sparse, key string }{
+		{name: "full", key: "git:" + commit},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			stash := t.TempDir()
+			environ := credentialsHome(t, "")
+			environ["MELANGE_SOURCE_STASH"] = stash
+			step := func(repository string) string {
+				with := map[string]string{
+					"repository": repository, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+					"expected-commit": commit, "max-retries": "0",
+				}
+				if tt.sparse != "" {
+					with["sparse-paths"] = tt.sparse
+				}
+				out, err := credentialsRun(t, "git-checkout", t.TempDir(), with, environ)
+				require.NoError(t, err, out)
+				return out
+			}
+			out := step(public.String())
+			archive := mustGlob(t, filepath.Join(stash, tt.key+".tar.gz"))
+			require.Len(t, archive, 1, out)
+			record := strings.TrimSuffix(archive[0], ".tar.gz") + sourceCredentialsSuffix
+			requireRecord(t, record, nil, out)
+
+			out = step(withUser.String())
+			require.NotContains(t, out, "archiving checkout as", "the second step should find the archive already stashed")
+			requireRecord(t, record, []string{"authorization " + host, "userinfo " + host}, out)
+			requireNoSecret(t, stash, out)
+		})
+	}
+}

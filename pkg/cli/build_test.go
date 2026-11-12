@@ -131,6 +131,41 @@ func TestStrictSourcesFromCacheFlag(t *testing.T) {
 	}
 }
 
+// TestSourceCredentialExemptHostFlag checks that --source-credential-exempt-host
+// reaches Build through BuildOptions. EBS passes it on every mirrored build, so
+// a lost wiring line would drop the hosts and refuse every mirrored companion.
+func TestSourceCredentialExemptHostFlag(t *testing.T) {
+	for _, tt := range []struct {
+		args    []string
+		want    []string
+		wantErr string
+	}{
+		{args: nil, want: nil},
+		{args: []string{"--source-credential-exempt-host=mirror.example.dev"}, want: []string{"mirror.example.dev"}},
+		{args: []string{"--source-credential-exempt-host=mirror.example.dev,other.example.dev"}, want: []string{"mirror.example.dev", "other.example.dev"}},
+		{args: []string{"--source-credential-exempt-host=mirror.example.dev", "--source-credential-exempt-host=other.example.dev"}, want: []string{"mirror.example.dev", "other.example.dev"}},
+		{args: []string{"--source-credential-exempt-host=mirror.example.dev:443"}, wantErr: `source credential exempt host "mirror.example.dev:443" must be a bare host name`},
+		{args: []string{"--source-credential-exempt-host=https://mirror.example.dev"}, wantErr: "must be a bare host name"},
+	} {
+		t.Run(fmt.Sprint(tt.args), func(t *testing.T) {
+			fs := pflag.NewFlagSet("build", pflag.ContinueOnError)
+			flags := &BuildFlags{}
+			addBuildFlags(fs, flags)
+			require.NoError(t, fs.Parse(tt.args))
+			opts, err := flags.BuildOptions(t.Context())
+			require.NoError(t, err)
+			b := &build.Build{}
+			err = applyAll(b, opts)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, b.SourceCredentialExemptHosts)
+		})
+	}
+}
+
 func applyAll(b *build.Build, opts []build.Option) error {
 	for _, o := range opts {
 		if err := o(b); err != nil {

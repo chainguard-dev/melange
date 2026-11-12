@@ -79,9 +79,17 @@ shown here.
 
 ### Configuration
 
-- A new field in `pkg/config` MUST survive parsing. The `replace*` functions
-  in `config.go` copy their input and override only the substituted fields;
-  a change to them MUST keep that shape, or the field is dropped silently.
+- A new field in `pkg/config` MUST survive parsing, which runs every
+  configuration through the `replace*` substitution functions in
+  `config.go`. Two shapes exist:
+  - `replaceNeeds`, `replacePipeline`, `replaceTest` and `replaceUpdate` copy
+    their input and override only the substituted fields, so a new field is
+    carried through. A change to them MUST keep that shape.
+  - The rest, including `replacePackage`, `replaceSubpackage`,
+    `replaceDependencies`, `replaceScriptlets`, `replaceCopyright`,
+    `replaceEntrypoint` and the `replaceImage*` functions, build a new struct
+    from an explicit field list. A new field on one of those types MUST be added to that list, or
+    it is dropped silently.
 - A field MUST also survive compilation. `melange compile` output, and the
   `.melange.yaml` embedded in every APK, are run again by `melange test` and
   `melange rebuild`, so what `Compile` gathers MUST land in the compiled
@@ -132,8 +140,8 @@ workflows run qemu, which needs KVM.
 ### Go and commits
 
 - golangci-lint runs with `.golangci.yml`. Code MUST log with the `clog`
-  logger from the context and MUST NOT use `fmt.Print*` (forbidigo rejects
-  it). Imports group `chainguard.dev/melange` last.
+  logger from the context and MUST NOT use `fmt.Print*`. Lint does not
+  catch this today. Imports group `chainguard.dev/melange` last.
 - Errors SHOULD be wrapped with `%w` and say what was being done.
 - Commits MUST follow Conventional Commits, and SHOULD be scoped by area:
   `fix(qemu): ...`, `feat(build): ...`, `fix(pipelines): ...`,

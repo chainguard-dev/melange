@@ -21,7 +21,7 @@ linters:
   settings:
     forbidigo:
       forbid:
-        - pattern: ^fmt.print.*$
+        - pattern: ^fmt\.Print.*$
     goheader:
       values:
         regexp:

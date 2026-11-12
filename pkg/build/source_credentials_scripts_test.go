@@ -637,6 +637,7 @@ func TestGitCheckoutSecondStepKeepsTheRecord(t *testing.T) {
 
 	for _, tt := range []struct{ name, sparse, key string }{
 		{name: "full", key: "git:" + commit},
+		{name: "sparse", sparse: "a/b", key: "git:" + commit + "-sparse-*"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

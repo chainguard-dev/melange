@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -113,7 +112,7 @@ func TestFetchSourceFromMelange(t *testing.T) {
 	originalSourceRunStep := sourceRunStep
 	defer func() { sourceRunStep = originalSourceRunStep }()
 	sourceRunStep = func(ctx context.Context, step config.Pipeline, sm *build.SubstitutionMap, isApk bool, destDir string) error {
-		fmt.Printf("Running step: %s\n", step.Uses)
+		t.Logf("Running step: %s", step.Uses)
 		stepsRun = append(stepsRun, step.Uses)
 		return nil
 	}

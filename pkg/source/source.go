@@ -304,7 +304,7 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	// make sure we change it back to the original working directory afterwards.
 	wd, err := os.Getwd()
 	if err != nil {
-		fmt.Println(err)
+		log.Warn("getting the working directory", "err", err)
 	}
 	defer os.Chdir(wd) //nolint:errcheck
 

@@ -138,7 +138,7 @@ func writeFile(path string, doc []*PipelineDoc) error {
 
 	// Append to the end
 	content = append(content, out.Bytes()...)
-	fmt.Println("Wrote", path)
+	fmt.Println("Wrote", path) //nolint:forbidigo // a command-line generator reporting to its user
 	// #nosec G306,G703 - Documentation file should be world-readable; path derived from pipeline-dir flag walked by filepath.Walk
 	return os.WriteFile(path, content, 0o644)
 }

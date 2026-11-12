@@ -505,14 +505,15 @@ func TestGitCheckoutRecordsClientCertificate(t *testing.T) {
 	require.NoError(t, os.WriteFile(combined, append(certPEM, keyPEM...), 0o600))
 
 	for _, tt := range []struct {
-		name, repo, ca            string
-		config, environ, certOnly bool
-		want                      []string
+		name, repo, ca                            string
+		config, configCertOnly, environ, certOnly bool
+		want                                      []string
 	}{
 		{name: "no client certificate", repo: public, ca: publicCA},
 		{name: "http.sslCert and http.sslKey", repo: private, ca: privateCA, config: true, want: []string{"sslcert " + host}},
 		{name: "GIT_SSL_CERT and GIT_SSL_KEY", repo: private, ca: privateCA, environ: true, want: []string{"sslcert " + host}},
 		{name: "GIT_SSL_CERT alone", repo: private, ca: privateCA, certOnly: true, want: []string{"sslcert " + host}},
+		{name: "http.sslCert alone", repo: private, ca: privateCA, configCertOnly: true, want: []string{"sslcert " + host}},
 		// The documented fail-closed exception: a configured certificate is
 		// recorded even when the server never requests one.
 		{name: "a certificate a public server never requests", repo: public, ca: publicCA, config: true, want: []string{"sslcert " + host}},
@@ -522,6 +523,9 @@ func TestGitCheckoutRecordsClientCertificate(t *testing.T) {
 			gitconfig := fmt.Sprintf("[http]\n\tsslCAInfo = %s\n", tt.ca)
 			if tt.config {
 				gitconfig += fmt.Sprintf("[http %q]\n\tsslCert = %s\n\tsslKey = %s\n", tt.repo, clientCert, clientKey)
+			}
+			if tt.configCertOnly {
+				gitconfig += fmt.Sprintf("[http %q]\n\tsslCert = %s\n", tt.repo, combined)
 			}
 			stash := t.TempDir()
 			environ := credentialsHome(t, gitconfig)

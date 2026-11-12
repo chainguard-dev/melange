@@ -338,9 +338,12 @@ pipeline:
       # http.sslKey, GIT_SSL_CERT, GIT_SSL_KEY) configured for the URL. A
       # client certificate is recorded when configured, even if never
       # requested: a deliberate fail-closed exception to "used, not
-      # configured", since nothing in the trace shows its use. git-lfs downloads outside git's curl and is not seen. A trace that
-      # is missing is recorded as "unverified", so the record fails closed;
-      # lines already in the record (restored with the archive) are kept.
+      # configured", since nothing in the trace shows its use. git-lfs
+      # downloads outside git's curl and is not seen. A missing trace is
+      # recorded as "unverified -": a defensive branch, not the fail-closed
+      # path, since the trace and this function's temporary file come from
+      # the same TMPDIR, so a failed mktemp stops the step first. Lines
+      # already in the record (restored with the archive) are kept.
       # When melange assembles the companion it drops the authorization
       # lines for hosts named by --source-credential-exempt-host, which a
       # recipe cannot set.

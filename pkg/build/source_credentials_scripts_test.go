@@ -172,6 +172,8 @@ func TestGitCheckoutRecordsCredentials(t *testing.T) {
 	withUser := *private
 	withUser.User = url.UserPassword("u", credentialsTestSecret)
 	helper := "[credential]\n\thelper = \"!f() { test \\\"$1\\\" = get && echo username=u && echo password=" + credentialsTestSecret + "; }; f\"\n"
+	cookies := filepath.Join(t.TempDir(), "cookies.txt")
+	require.NoError(t, os.WriteFile(cookies, []byte(host+"\tFALSE\t/\tFALSE\t0\tsession\t"+credentialsTestSecret+"\n"), 0o600))
 
 	tests := []struct {
 		name      string
@@ -196,6 +198,11 @@ func TestGitCheckoutRecordsCredentials(t *testing.T) {
 			name: "userinfo through insteadOf", repo: "https://example.invalid/r.git",
 			gitconfig: fmt.Sprintf("[url %q]\n\tinsteadOf = https://example.invalid/\n", strings.TrimSuffix(withUser.String(), "r.git")),
 			want:      []string{"authorization " + host, "userinfo " + host},
+		},
+		{
+			name: "a cookie file", repo: public.String(),
+			gitconfig: fmt.Sprintf("[http]\n\tcookieFile = %s\n", cookies),
+			want:      []string{"cookie " + host},
 		},
 		{
 			name: "an extra header", repo: public.String(),

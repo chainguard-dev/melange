@@ -495,15 +495,27 @@ func TestGitCheckoutRecordsClientCertificate(t *testing.T) {
 	private, privateCA := serve(true)
 	public, publicCA := serve(false)
 	host := "127.0.0.1"
+	// A PEM holding both the certificate and its key, so GIT_SSL_CERT can be
+	// set on its own: curl reads the key from the certificate file.
+	combined := filepath.Join(certs, "client-combined.pem")
+	certPEM, err := os.ReadFile(clientCert)
+	require.NoError(t, err)
+	keyPEM, err := os.ReadFile(clientKey)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(combined, append(certPEM, keyPEM...), 0o600))
 
 	for _, tt := range []struct {
-		name, repo, ca  string
-		config, environ bool
-		want            []string
+		name, repo, ca            string
+		config, environ, certOnly bool
+		want                      []string
 	}{
 		{name: "no client certificate", repo: public, ca: publicCA},
 		{name: "http.sslCert and http.sslKey", repo: private, ca: privateCA, config: true, want: []string{"sslcert " + host}},
 		{name: "GIT_SSL_CERT and GIT_SSL_KEY", repo: private, ca: privateCA, environ: true, want: []string{"sslcert " + host}},
+		{name: "GIT_SSL_CERT alone", repo: private, ca: privateCA, certOnly: true, want: []string{"sslcert " + host}},
+		// The documented fail-closed exception: a configured certificate is
+		// recorded even when the server never requests one.
+		{name: "a certificate a public server never requests", repo: public, ca: publicCA, config: true, want: []string{"sslcert " + host}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -516,6 +528,9 @@ func TestGitCheckoutRecordsClientCertificate(t *testing.T) {
 			environ["MELANGE_SOURCE_STASH"] = stash
 			if tt.environ {
 				environ["GIT_SSL_CERT"], environ["GIT_SSL_KEY"] = clientCert, clientKey
+			}
+			if tt.certOnly {
+				environ["GIT_SSL_CERT"] = combined
 			}
 			out, err := credentialsRun(t, "git-checkout", t.TempDir(), map[string]string{
 				"repository": tt.repo, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",

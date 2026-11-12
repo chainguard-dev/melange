@@ -17,7 +17,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -97,7 +97,7 @@ jobs:
           - tini
 
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -186,7 +186,7 @@ jobs:
           melange version
 
       # needed by the Test installable step
-      - uses: docker/setup-docker-action@7ec28a010822b4626af4874f9448a4b05ac6f3e5 # v5.6.0
+      - uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5.7.0
 
       # Installs wolfictl 0.39.28 from the action's ghcr.io/wolfi-dev/sdk
       # digest. Keep in step with wolfictl in .chainguard/ci/e2e.yaml.

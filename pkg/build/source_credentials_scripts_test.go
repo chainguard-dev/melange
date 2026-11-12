@@ -293,7 +293,7 @@ func TestFetchRecordsCredentials(t *testing.T) {
 		{name: "a public URL", uri: "https://example.com/foo-1.tar.gz"},
 		{name: "an empty netrc", uri: "https://example.com/foo-1.tar.gz", netrc: "# nothing\n"},
 		{name: "a commented wgetrc command", uri: "https://example.com/foo-1.tar.gz", wgetrc: "  # http-user = u\ntimeout = 5\n"},
-		{name: "NETRC, which wget does not read", uri: "https://example.com/foo-1.tar.gz", netrcEnv: "default login u password " + credentialsTestSecret + "\n"},
+		{name: "a NETRC file, checked to fail closed", uri: "https://example.com/foo-1.tar.gz", netrcEnv: "default login u password " + credentialsTestSecret + "\n", want: []string{"netrc example.com"}},
 		// wget follows redirects to hosts the URL does not name
 		{name: "a netrc for another host", uri: "https://example.com/foo-1.tar.gz", netrc: "machine other.example login u password " + credentialsTestSecret + "\n", want: []string{"netrc -"}},
 		{name: "a netrc for the host in another case", uri: "https://EXAMPLE.com/foo-1.tar.gz", netrc: "machine example.COM login u password " + credentialsTestSecret + "\n", want: []string{"netrc example.com"}},

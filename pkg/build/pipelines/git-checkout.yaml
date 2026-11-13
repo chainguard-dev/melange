@@ -367,6 +367,109 @@ pipeline:
           echo "git:$commit-sparse-$(printf '%s\n' "$cone" | sha256sum | cut -c1-16)"
       }
 
+      # Record whether the checkout was obtained with credentials, as
+      # <key>.credentials beside its archive: one "<signal> <host>" line for
+      # each way credentials reached the remote, never a value. A publisher
+      # that serves source publicly refuses a companion holding any such file.
+      #
+      # What git sent over http(s) is read from the curl trace this step
+      # writes (credtrace below; GIT_TRACE_REDACT redacts the Authorization,
+      # Proxy-Authorization and Cookie values only): an Authorization or
+      # Cookie header on any request, the submodules' included, whatever
+      # supplied it -- a credential helper, askpass, a .git-credentials read
+      # through the store helper, a netrc, URL userinfo, http.extraHeader.
+      # That is credentials used, not merely configured: a helper for
+      # github.com that a public clone never needed sends nothing and marks
+      # nothing. Each header is attributed to the Host line before it; when
+      # submodules are cloned in parallel (submodule-jobs > 1) several git
+      # processes append to the trace and their lines interleave, so the
+      # host is not known and the line names "-", which no exemption
+      # matches. The URLs themselves, after url.*.insteadOf, are checked
+      # too, for what the trace cannot show (ssh authenticates outside curl;
+      # a TLS client certificate sends no header) and for a checkout
+      # restored from the cache, which sends no request: userinfo, an ssh
+      # transport, an http.extraHeader or a client certificate (http.sslCert,
+      # http.sslKey, GIT_SSL_CERT, GIT_SSL_KEY) configured for the URL. A
+      # client certificate is recorded when configured, even if never
+      # requested: a deliberate fail-closed exception to "used, not
+      # configured", since nothing in the trace shows its use. git-lfs
+      # downloads outside git's curl and is not seen. A missing trace is
+      # recorded as "unverified -": a defensive branch, not the fail-closed
+      # path, since the trace and this function's temporary file come from
+      # the same TMPDIR, so a failed mktemp stops the step first. Lines
+      # already in the record (restored with the archive) are kept.
+      # When melange assembles the companion it drops the authorization
+      # lines for hosts named by --source-credential-exempt-host, which a
+      # recipe cannot set.
+      stash_credentials() {
+          local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" u=""
+          tmp=$(mktemp) || return 1
+          {
+              if [ -n "${credtrace:-}" ] && [ -f "$credtrace" ]; then
+                  awk -v parallel="${credparallel:-}" '{ l = tolower($0) }
+                      l ~ /=> send header: host:/ { h = (parallel != "" ? "" : $NF); sub(/:[0-9]+$/, "", h) }
+                      l ~ /=> send header: authorization:/ { print "authorization", (h == "" ? "-" : h) }
+                      l ~ /=> send header: cookie:/ { print "cookie", (h == "" ? "-" : h) }' "$credtrace"
+              else
+                  echo "unverified -"
+              fi
+              url_credential_signals "$repo"
+              if [ "$recurse" = "true" ]; then
+                  git -C "$dest" submodule foreach --recursive --quiet 'git config --get remote.origin.url || :' 2>/dev/null |
+                  while read -r u; do
+                      [ -z "$u" ] || url_credential_signals "$u"
+                  done
+              fi
+              if [ -f "$out" ]; then cat "$out"; fi
+          } | LC_ALL=C sort -u > "$tmp" || { rm -f "$tmp"; return 1; }
+          if [ -s "$tmp" ]; then
+              { mkdir -p "$(dirname "$out")" && cat "$tmp" > "$out"; } || { rm -f "$tmp"; return 1; }
+              msg "Warning: this checkout was obtained with credentials" \
+                  "($(awk 'NR > 1 { printf ", " } { printf "%s", $0 }' "$out"));" \
+                  "recorded in $(basename "$out") for the -source package"
+          fi
+          rm -f "$tmp"
+      }
+
+      # The credential signals in a URL as git would use it (insteadOf
+      # applied), one "<signal> <host>" line each.
+      url_credential_signals() {
+          local url="" host=""
+          url=$(git ls-remote --get-url "$1" 2>/dev/null) || url=""
+          [ -n "$url" ] || url=$1
+          case "$url" in
+              *://*) host=$(printf '%s\n' "$url" | sed -e 's|^[^:]*://||' -e 's|[/?#].*$||' -e 's|^.*@||' -e 's|:[0-9]*$||') ;;
+              *) host=$(printf '%s\n' "$url" | sed -e 's|:.*$||' -e 's|^.*@||') ;;
+          esac
+          case "$url" in
+              ssh://*|git+ssh://*|ssh+git://*) echo "ssh $host" ;;
+              *://*|/*|./*|../*) ;;
+              # scp-like [user@]host:path, as git reads it: no slash before
+              # the first colon
+              *:*) case "${url%%:*}" in */*) ;; *) echo "ssh $host" ;; esac ;;
+          esac
+          if printf '%s\n' "$url" | grep -q '^[^:/?#]*://[^/?#]*@'; then
+              echo "userinfo $host"
+          fi
+          case "$url" in
+              http://*|https://*)
+                  if [ -n "$(git config --get-urlmatch http.extraheader "$url" 2>/dev/null)" ]; then
+                      echo "extraheader $host"
+                  fi
+                  # A client certificate is recorded when it is configured,
+                  # even if the server never requested it. That is a
+                  # deliberate fail-closed exception to the "used, not
+                  # configured" rule above: curl sends no header for it, so
+                  # the trace cannot show whether it was used.
+                  if [ -n "${GIT_SSL_CERT:-}${GIT_SSL_KEY:-}" ] ||
+                      [ -n "$(git config --get-urlmatch http.sslcert "$url" 2>/dev/null)" ] ||
+                      [ -n "$(git config --get-urlmatch http.sslkey "$url" 2>/dev/null)" ]; then
+                      echo "sslcert $host"
+                  fi ;;
+          esac
+          return 0
+      }
+
       # When the build emits a -source companion, archive the finished checkout
       # for it, named as the cache names it so the companion's upstream
       # directory can stand in for the clone. Beside the archive go the raw
@@ -390,6 +493,8 @@ pipeline:
           head=$(git -C "$dest" rev-parse HEAD) || return 0
           key=$(source_key "${expcommit:-$head}" "$sparse_paths") ||
               fail "naming the sparse checkout for the -source package failed"
+          stash_credentials "$repo" "$dest" "$recurse" "$stash/$key.credentials" ||
+              fail "could not record whether the checkout was obtained with credentials; refusing to stash it unmarked"
           # Already in the stash: restored from a companion, or stashed by an
           # earlier step of this build from the same commit and cone. Either
           # is this checkout only if it has the same HEAD and submodules;
@@ -1171,6 +1276,22 @@ pipeline:
       cat >"$cpickf" <<"END_CHERRY_PICKS"
       ${{inputs.cherry-picks}}
       END_CHERRY_PICKS
+
+      # When the build emits a -source companion, trace this step's http(s)
+      # requests so stash_credentials can tell whether any carried
+      # credentials. git redacts only the Authorization, Proxy-Authorization
+      # and Cookie values: any other http.extraHeader and a request line's
+      # query string are written in clear. The trace is removed however the
+      # step ends, so only a killed step can leave one behind.
+      credtrace="" credparallel=""
+      if [ -n "${MELANGE_SOURCE_STASH:-}" ] && credtrace=$(mktemp); then
+          trap 'rm -f "$credtrace"' EXIT
+          export GIT_TRACE_CURL="$credtrace" GIT_TRACE_CURL_NO_DATA=1 GIT_TRACE_REDACT=1
+          credjobs='${{inputs.submodule-jobs}}'
+          if [ '${{inputs.recurse-submodules}}' = "true" ] && [ "${credjobs:-1}" != "1" ]; then
+              credparallel=1
+          fi
+      fi
 
       main \
           "${{inputs.repository}}" "${{inputs.destination}}" \

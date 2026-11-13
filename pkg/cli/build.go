@@ -62,6 +62,7 @@ func addBuildFlags(fs *pflag.FlagSet, flags *BuildFlags) {
 	fs.StringVar(&flags.OutDir, "out-dir", "./packages/", "directory where packages will be output")
 	fs.BoolVar(&flags.SourcePackage, "source-package", false, "also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)")
 	fs.StringSliceVar(&flags.StrictSourcesFromCache, "strict-sources-from-cache", nil, "step kinds (git-checkout) whose steps take their sources only from --cache-dir; the build fails instead of fetching them (runs: steps and language package managers are not restricted; see docs/BUILD-CACHE.md)")
+	fs.StringSliceVar(&flags.SourceCredentialExemptHosts, "source-credential-exempt-host", nil, "hosts whose Authorization, sent by a git checkout, the -source package does not record as credentials (hosts the caller supplies a credential for itself, such as a mirror of public upstreams); exact match")
 	fs.StringVar(&flags.SourceOutDir, "source-out-dir", "", "directory where -source companions will be output (default: --out-dir)")
 	fs.StringVar(&flags.DependencyLog, "dependency-log", "", "log dependencies to a specified file")
 	fs.StringVar(&flags.PurlNamespace, "namespace", "unknown", "namespace to use in package URLs in SBOM (eg wolfi, alpine)")
@@ -155,6 +156,9 @@ type BuildFlags struct {
 	// StrictSourcesFromCache lists the step kinds whose sources must come from
 	// the cache directory; see --strict-sources-from-cache.
 	StrictSourcesFromCache []string
+	// SourceCredentialExemptHosts are hosts whose checkout Authorization the
+	// companion does not record.
+	SourceCredentialExemptHosts []string
 }
 
 // ParseBuildFlags parses build flags from the provided args and returns a BuildFlags struct
@@ -222,6 +226,7 @@ func (flags *BuildFlags) BuildOptions(ctx context.Context, args ...string) ([]bu
 		build.WithOutDir(flags.OutDir),
 		build.WithSourcePackage(flags.SourcePackage),
 		build.WithStrictSourcesFromCache(flags.StrictSourcesFromCache),
+		build.WithSourceCredentialExemptHosts(flags.SourceCredentialExemptHosts),
 		build.WithSourceOutDir(flags.SourceOutDir),
 		build.WithExtraKeys(flags.ExtraKeys),
 		build.WithExtraCACertificates(flags.ExtraCACertificates),

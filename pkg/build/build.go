@@ -117,12 +117,17 @@ type Build struct {
 	StrictSourcesFromCache []string
 	// SourceOutDir, when set, receives the companion instead of OutDir, so it
 	// can be published to a repository of its own.
-	SourceOutDir  string
-	Arch          apko_types.Architecture
-	Libc          string
-	ExtraKeys     []string
-	ExtraRepos    []string
-	ExtraPackages []string
+	SourceOutDir string
+	// SourceCredentialExemptHosts names hosts whose Authorization, sent by a
+	// git checkout, is not recorded as credentials in the companion: hosts the
+	// caller itself supplies a credential for, such as a mirror of public
+	// upstreams.
+	SourceCredentialExemptHosts []string
+	Arch                        apko_types.Architecture
+	Libc                        string
+	ExtraKeys                   []string
+	ExtraRepos                  []string
+	ExtraPackages               []string
 	// ExtraCACertificates are PEM files the build guest trusts on top of
 	// its own roots; they are never recorded in the package.
 	ExtraCACertificates []string

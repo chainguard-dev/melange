@@ -180,6 +180,68 @@ func TestBump_withMultipleCheckouts(t *testing.T) {
 	assert.Equal(t, rs.Pipeline[1].With["expected-commit"], "bar")
 }
 
+func TestBump_withDuplicateCheckouts(t *testing.T) {
+	tests := []struct {
+		name string
+		// want lists expected-commit values for the main pipeline, the
+		// test pipeline, then each subpackage's pipeline and test pipeline.
+		want []string
+	}{{
+		name: "duplicate_checkouts.yaml",
+		want: []string{
+			"1234abcd", "bar",
+			"1234abcd", "bar", "foo", "foo", "baz",
+			"1234abcd", "qux", "1234abcd",
+		},
+	}, {
+		name: "duplicate_lone_checkout.yaml",
+		want: []string{"1234abcd", "1234abcd"},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			data, err := os.ReadFile(filepath.Join("testdata", tt.name))
+			require.NoError(t, err)
+
+			err = os.WriteFile(filepath.Join(dir, tt.name), data, 0o755)
+			require.NoError(t, err)
+
+			rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, tt.name)))
+			require.NoError(t, err)
+
+			ctx := slogtest.Context(t)
+			bumpRenovator := New(ctx,
+				WithTargetVersion("6.9"),
+				WithExpectedCommit("1234abcd"),
+			)
+
+			err = rctx.Renovate(ctx, bumpRenovator)
+			require.NoError(t, err)
+
+			rs, err := config.ParseConfiguration(ctx, filepath.Join(dir, tt.name))
+			require.NoError(t, err)
+
+			pipelines := [][]config.Pipeline{rs.Pipeline}
+			if rs.Test != nil {
+				pipelines = append(pipelines, rs.Test.Pipeline)
+			}
+			for _, sp := range rs.Subpackages {
+				pipelines = append(pipelines, sp.Pipeline)
+				if sp.Test != nil {
+					pipelines = append(pipelines, sp.Test.Pipeline)
+				}
+			}
+			var got []string
+			for _, pipeline := range pipelines {
+				for _, step := range pipeline {
+					got = append(got, step.With["expected-commit"])
+				}
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestBump_withCustomVarTransformGitTag(t *testing.T) {
 	dir := t.TempDir()
 

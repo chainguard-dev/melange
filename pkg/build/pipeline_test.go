@@ -23,6 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"chainguard.dev/melange/pkg/config"
+	"chainguard.dev/melange/pkg/container"
 	"chainguard.dev/melange/pkg/util"
 
 	"github.com/chainguard-dev/clog/slogtest"
@@ -398,6 +399,62 @@ func Test_validateWith(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// A PATH set in environment.environment reaches every step, as other
+// variables there do. Steps that set their own PATH still win, and without
+// either the steps get the default PATH. See #1956.
+func TestRunPipelineHonorsConfiguredPath(t *testing.T) {
+	const steps = `
+pipeline:
+  - runs: "true"
+    pipeline:
+      - runs: "true"
+  - runs: "true"
+    environment:
+      PATH: /opt/step/bin
+`
+	const head = "package:\n  name: hello\n  version: \"1.0.0\"\n  epoch: 0\n"
+	const stdPath = "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin"
+	for _, tt := range []struct {
+		name, yaml string
+		want       []string // PATH of the step, its nested step, the step with its own PATH
+	}{
+		{
+			name: "configuration sets PATH",
+			yaml: head + "environment:\n  environment:\n    PATH: /usr/bin\n" + steps,
+			want: []string{"/usr/bin", "/usr/bin", "/opt/step/bin"},
+		},
+		{
+			name: "nothing sets PATH",
+			yaml: head + steps,
+			want: []string{stdPath, stdPath, "/opt/step/bin"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfgPath := filepath.Join(t.TempDir(), "c.yaml")
+			require.NoError(t, os.WriteFile(cfgPath, []byte(tt.yaml), 0o644))
+			cfg, err := config.ParseConfiguration(t.Context(), cfgPath)
+			require.NoError(t, err)
+
+			for _, mk := range []func(container.Runner) *pipelineRunner{
+				func(r container.Runner) *pipelineRunner {
+					return (&Build{Runner: r}).newPipelineRunner(&container.Config{Environment: cfg.Environment.Environment})
+				},
+				func(r container.Runner) *pipelineRunner {
+					return (&Test{Runner: r}).newPipelineRunner(&container.Config{Environment: cfg.Environment.Environment})
+				},
+			} {
+				r := &sourcesFromCacheEnvRunner{}
+				require.NoError(t, mk(r).runPipelines(t.Context(), cfg.Pipeline))
+				got := make([]string, 0, len(r.steps))
+				for _, env := range r.steps {
+					got = append(got, env["PATH"])
+				}
+				require.Equal(t, tt.want, got)
+			}
 		})
 	}
 }

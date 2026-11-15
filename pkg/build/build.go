@@ -1321,7 +1321,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			if strings.HasPrefix(attrName, "trusted.") {
 				continue
 			}
-			fmt.Println("setting xattr", attrName, "on", hdr.Name)
+			clog.FromContext(ctx).Debug("setting xattr", "attr", attrName, "path", hdr.Name)
 			if err := fs.SetXattr(hdr.Name, attrName, []byte(v)); err != nil {
 				return fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
 			}

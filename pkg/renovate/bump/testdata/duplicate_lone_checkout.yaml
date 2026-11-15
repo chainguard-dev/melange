@@ -1,0 +1,21 @@
+package:
+  name: cheese
+  version: 6.8
+  epoch: 2
+  description: "a cheesy library"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: cheese/crisps
+      expected-commit: foo
+      tag: crackers
+
+test:
+  pipeline:
+    # Same source as the lone main checkout, which bump always moves: moves.
+    - uses: git-checkout
+      with:
+        repository: cheese/crisps
+        expected-commit: foo
+        tag: crackers

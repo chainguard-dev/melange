@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 Chainguard, Inc
+# SPDX-License-Identifier: Apache-2.0
+package:
+  name: git-checkout-sparse
+  version: 0.63.2
+  epoch: 0
+  description: "A sparse git checkout, recording what the build sees of it"
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - busybox
+      - git
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: https://github.com/chainguard-dev/melange
+      tag: v${{package.version}}
+      expected-commit: 402004649f817966440662612d0ea7302b95a858
+      sparse-paths: |
+        examples
+        pkg/build/pipelines/go
+
+  # What a build reads of the checkout. A rebuild from the -source companion
+  # restores the checkout from it, so this must come out the same.
+  - runs: |
+      out="${{targets.destdir}}/usr/share/${{package.name}}"
+      mkdir -p "$out"
+      git describe --tags --long --dirty > "$out/describe"
+      git rev-parse HEAD > "$out/head"
+      git sparse-checkout list > "$out/cone"
+      git status --porcelain --untracked-files=no > "$out/status"
+      git ls-files -s -t > "$out/ls-files"
+      # every file the checkout holds, and nothing else of the tree
+      git ls-files -t | sed -n 's/^H //p' | xargs sha256sum > "$out/files"
+      find examples pkg -type f | sort > "$out/find"

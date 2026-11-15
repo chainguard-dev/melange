@@ -70,8 +70,7 @@ func UsrmergeLinter(ctx context.Context, _ *config.Configuration, _ string, fsys
 		return nil
 	})
 	if err != nil {
-		fmt.Print("Returned error?")
-		return err
+		return fmt.Errorf("walking the package filesystem: %w", err)
 	}
 
 	if len(paths) > 0 {

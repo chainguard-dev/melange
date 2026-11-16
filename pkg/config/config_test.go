@@ -328,6 +328,42 @@ update:
 	require.Equal(t, "release-", cfg.Update.GitMonitor.TagFilterPrefix)
 }
 
+func Test_versionedShlibDepsOption(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	for _, tc := range []struct {
+		name string
+		opt  string
+		want bool
+	}{
+		{name: "unset", opt: "no-commands: true", want: false},
+		{name: "opt out", opt: "no-versioned-shlib-deps: true", want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fp := filepath.Join(t.TempDir(), "melange.yaml")
+			if err := os.WriteFile(fp, []byte(`
+package:
+  name: versioned-shlib-deps
+  version: 0.0.1
+  epoch: 0
+  description: example toggling versioned shlib depends
+  options:
+    `+tc.opt+`
+`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			cfg, err := ParseConfiguration(ctx, fp)
+			if err != nil {
+				t.Fatalf("failed to parse configuration: %s", err)
+			}
+
+			require.NotNil(t, cfg.Package.Options)
+			require.Equal(t, tc.want, cfg.Package.Options.NoVersionedShlibDeps)
+		})
+	}
+}
+
 func Test_rangeSubstitutions(t *testing.T) {
 	ctx := slogtest.Context(t)
 

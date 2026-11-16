@@ -432,6 +432,11 @@ pipeline:
 			yaml: head + steps,
 			want: []string{stdPath, stdPath, "/opt/step/bin"},
 		},
+		{
+			name: "configuration sets an empty PATH",
+			yaml: head + "environment:\n  environment:\n    PATH: \"\"\n" + steps,
+			want: []string{stdPath, stdPath, "/opt/step/bin"},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			cfgPath := filepath.Join(t.TempDir(), "c.yaml")

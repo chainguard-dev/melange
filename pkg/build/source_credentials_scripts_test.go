@@ -594,6 +594,7 @@ func TestGitCheckoutRecordsCredentialsOverHTTP2(t *testing.T) {
 		{name: "a credential helper over h2", repo: private, ca: privateCA, gitconfig: helper, h2: privateH2, want: []string{"authorization 127.0.0.1"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			stash := t.TempDir()
 			environ := credentialsHome(t, fmt.Sprintf("[http]\n\tsslCAInfo = %s\n", tt.ca)+tt.gitconfig)
 			environ["MELANGE_SOURCE_STASH"] = stash

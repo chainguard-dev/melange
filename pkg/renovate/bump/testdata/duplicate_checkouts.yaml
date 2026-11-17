@@ -1,0 +1,74 @@
+package:
+  name: cheese
+  version: 6.8
+  epoch: 2
+  description: "a cheesy library"
+
+pipeline:
+  - uses: git-checkout
+    with:
+      repository: cheese/crisps
+      expected-commit: foo
+      tag: v${{package.version}}
+  - uses: git-checkout
+    with:
+      repository: cheese/cheese
+      expected-commit: bar
+      tag: crackers
+
+subpackages:
+  - name: cheese-dev
+    pipeline:
+      # Same source as the first main checkout: moves.
+      - uses: git-checkout
+        with:
+          repository: cheese/crisps
+          expected-commit: foo
+          tag: v${{package.version}}
+      # Another repository on a branch: stays.
+      - uses: git-checkout
+        with:
+          repository: cheese/board
+          expected-commit: qux
+          branch: main
+    test:
+      pipeline:
+        # Same source as the first main checkout: moves.
+        - uses: git-checkout
+          with:
+            repository: cheese/crisps
+            expected-commit: foo
+            tag: v${{package.version}}
+
+test:
+  pipeline:
+    # Same source as the first main checkout: moves.
+    - uses: git-checkout
+      with:
+        repository: cheese/crisps
+        expected-commit: foo
+        tag: v${{package.version}}
+    # Same source as the second main checkout, which bump skips: stays.
+    - uses: git-checkout
+      with:
+        repository: cheese/cheese
+        expected-commit: bar
+        tag: crackers
+    # Another repository with a version tag and the same commit: stays.
+    - uses: git-checkout
+      with:
+        repository: cheese/wine
+        expected-commit: foo
+        tag: v${{package.version}}
+    # Same repository and commit on a fixed tag: stays.
+    - uses: git-checkout
+      with:
+        repository: cheese/crisps
+        expected-commit: foo
+        tag: v6.8
+    # Same repository and tag on another commit: stays.
+    - uses: git-checkout
+      with:
+        repository: cheese/crisps
+        expected-commit: baz
+        tag: v${{package.version}}

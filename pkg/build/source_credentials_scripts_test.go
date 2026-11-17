@@ -35,6 +35,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -543,6 +544,67 @@ func TestGitCheckoutRecordsClientCertificate(t *testing.T) {
 			require.NoError(t, err, out)
 			require.FileExists(t, filepath.Join(stash, "git:"+commit+".tar.gz"), out)
 			requireRecord(t, filepath.Join(stash, "git:"+commit+sourceCredentialsSuffix), tt.want, out)
+		})
+	}
+}
+
+// Production remotes (github.com, the GitLab mirror) speak HTTP/2 with git's
+// curl, and curl traces an h2 request through a different path than an
+// HTTP/1.1 one. The authorization match must hold there too, or a private
+// clone over h2 would ship with no record.
+func TestGitCheckoutRecordsCredentialsOverHTTP2(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "one")
+	commit := sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
+
+	certs := t.TempDir()
+	// serve starts an HTTP/2 TLS server and returns its URL, a CA file that
+	// trusts it, and whether any request it served used HTTP/2.
+	serve := func(auth bool) (string, string, *atomic.Bool) {
+		var h2 atomic.Bool
+		inner := credentialsGitHandler(t, repo, auth)
+		srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.ProtoMajor == 2 {
+				h2.Store(true)
+			}
+			inner.ServeHTTP(w, r)
+		}))
+		srv.EnableHTTP2 = true
+		srv.StartTLS()
+		t.Cleanup(srv.Close)
+		ca := filepath.Join(certs, strings.TrimPrefix(srv.URL, "https://127.0.0.1:")+".pem")
+		require.NoError(t, os.WriteFile(ca, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srv.Certificate().Raw}), 0o644))
+		return srv.URL + "/r.git", ca, &h2
+	}
+	private, privateCA, privateH2 := serve(true)
+	public, publicCA, publicH2 := serve(false)
+	helper := "[credential]\n\thelper = \"!f() { test \\\"$1\\\" = get && echo username=u && echo password=" + credentialsTestSecret + "; }; f\"\n"
+
+	for _, tt := range []struct {
+		name, repo, ca, gitconfig string
+		h2                        *atomic.Bool
+		want                      []string
+	}{
+		{name: "public over h2", repo: public, ca: publicCA, h2: publicH2},
+		{name: "a credential helper over h2", repo: private, ca: privateCA, gitconfig: helper, h2: privateH2, want: []string{"authorization 127.0.0.1"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stash := t.TempDir()
+			environ := credentialsHome(t, fmt.Sprintf("[http]\n\tsslCAInfo = %s\n", tt.ca)+tt.gitconfig)
+			environ["MELANGE_SOURCE_STASH"] = stash
+			out, err := credentialsRun(t, "git-checkout", t.TempDir(), map[string]string{
+				"repository": tt.repo, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+				"expected-commit": commit, "max-retries": "0",
+			}, environ)
+			require.NoError(t, err, out)
+			require.True(t, tt.h2.Load(), "the clone did not use HTTP/2; this test would prove nothing")
+			requireRecord(t, filepath.Join(stash, "git:"+commit+sourceCredentialsSuffix), tt.want, out)
+			requireNoSecret(t, stash, out)
 		})
 	}
 }

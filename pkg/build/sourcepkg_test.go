@@ -474,7 +474,7 @@ func TestSourcePackageAssemblyNoExemptHostsKeepsRecord(t *testing.T) {
 }
 
 func TestWithSourceCredentialExemptHostsRejectsNonHosts(t *testing.T) {
-	for _, h := range []string{"", "https://mirror.example.dev", "mirror.example.dev/x", "user@mirror.example.dev", "mirror.example.dev:443", "a b"} {
+	for _, h := range []string{"", "-", "https://mirror.example.dev", "mirror.example.dev/x", "user@mirror.example.dev", "mirror.example.dev:443", "a b"} {
 		if err := WithSourceCredentialExemptHosts([]string{h})(&Build{}); err == nil {
 			t.Errorf("%q accepted", h)
 		}

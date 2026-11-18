@@ -2578,3 +2578,61 @@ finalize:
 	require.Len(t, cfg.Finalize, 1)
 	require.Equal(t, "echo test-finalize-1.2.3", cfg.Finalize[0].Runs)
 }
+
+func Test_finalizePropagation(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(t.TempDir(), "finalize.yaml")
+	require.NoError(t, os.WriteFile(fp, []byte(`
+package:
+  name: test-finalize-propagate
+  version: 0.0.1
+  epoch: 0
+  description: finalize child pipelines inherit parent settings
+
+finalize:
+  - working-directory: /tmp
+    environment:
+      foo: FOO
+      bar: BAR
+    pipeline:
+      - environment:
+          foo: BAR
+          baz: BAZ
+`), 0o644))
+
+	cfg, err := ParseConfiguration(ctx, fp)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"foo": "FOO", "bar": "BAR"}, cfg.Finalize[0].Environment)
+	child := cfg.Finalize[0].Pipeline[0]
+	require.Equal(t, map[string]string{"foo": "BAR", "bar": "BAR", "baz": "BAZ"}, child.Environment)
+	require.Equal(t, "/tmp", child.WorkDir)
+}
+
+func Test_finalizeValidation(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	for name, step := range map[string]string{
+		"uses and runs":    "uses: fetch\n    runs: echo hi",
+		"with without use": "with:\n      a: b",
+		"nested uses/runs": "pipeline:\n      - uses: fetch\n        runs: echo hi",
+	} {
+		t.Run(name, func(t *testing.T) {
+			fp := filepath.Join(t.TempDir(), "finalize.yaml")
+			require.NoError(t, os.WriteFile(fp, []byte(`
+package:
+  name: test-finalize-validate
+  version: 0.0.1
+  epoch: 0
+  description: invalid finalize steps are rejected
+
+finalize:
+  - `+step+"\n"), 0o644))
+
+			_, err := ParseConfiguration(ctx, fp)
+			require.Error(t, err)
+			var invalid ErrInvalidConfiguration
+			require.ErrorAs(t, err, &invalid)
+		})
+	}
+}

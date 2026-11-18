@@ -162,6 +162,13 @@
           "type": "array",
           "description": "Optional: The list of subpackages that this package also produces."
         },
+        "finalize": {
+          "items": {
+            "$ref": "#/$defs/Pipeline"
+          },
+          "type": "array",
+          "description": "Optional: The list of finalize pipelines to execute after the main\npipeline and the subpackage pipelines, for adjusting the files that are\nabout to be packaged (for example, adding or fixing up symlinks). Finalize\npipelines are not scanned for upstream sources, so a fetch or git-checkout\nstep here is not recorded in the SBOM or the -source package."
+        },
         "data": {
           "items": {
             "$ref": "#/$defs/RangeData"
@@ -485,6 +492,9 @@
         "layering": {
           "$ref": "#/$defs/Layering"
         },
+        "format": {
+          "type": "string"
+        },
         "certificates": {
           "$ref": "#/$defs/ImageCertificates"
         }
@@ -515,6 +525,12 @@
         "keyring": {
           "items": {
             "type": "string"
+          },
+          "type": "array"
+        },
+        "runtime_keyring": {
+          "items": {
+            "$ref": "#/$defs/RuntimeKeyringEntry"
           },
           "type": "array"
         },
@@ -947,6 +963,18 @@
           "type": "string"
         },
         "disk": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "RuntimeKeyringEntry": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "content": {
           "type": "string"
         }
       },

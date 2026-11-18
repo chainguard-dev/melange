@@ -18,8 +18,8 @@
 	Environment!: #EnvironmentOption
 })
 
-// CPE stores values used to produce a CPE to describe the
-// package, suitable for matching against NVD records.
+// CPE stores values used to produce a CPE to describe the package, suitable for
+// matching against NVD records.
 #CPE: close({
 	part?:       string
 	vendor?:     string
@@ -32,8 +32,7 @@
 	other?:      string
 })
 
-// Capabilities is the configuration for Linux capabilities for
-// the runner.
+// Capabilities is the configuration for Linux capabilities for the runner.
 #Capabilities: close({
 	// Linux process capabilities to add to the pipeline container.
 	add?: [...string]
@@ -42,8 +41,8 @@
 	drop?: [...string]
 })
 
-// Capability stores paths and an associated map of capabilities
-// and justification to include in a package.
+// Capability stores paths and an associated map of capabilities and
+// justification to include in a package.
 #Capability: close({
 	path?: string
 	add?: [string]: string
@@ -51,8 +50,7 @@
 })
 
 #Checks: close({
-	// Optional: disable these linters that are not enabled by
-	// default.
+	// Optional: disable these linters that are not enabled by default.
 	disabled?: [...string]
 })
 
@@ -65,33 +63,30 @@
 	// Optional: environment variables to override apko
 	environment!: #ImageConfiguration
 
-	// Optional: Linux capabilities configuration to apply to the
-	// melange runner.
+	// Optional: Linux capabilities configuration to apply to the melange runner.
 	capabilities!: #Capabilities
 
 	// Required: The list of pipelines that produce the package.
 	pipeline?: [...#Pipeline]
 
-	// Optional: The list of subpackages that this package also
-	// produces.
+	// Optional: The list of subpackages that this package also produces.
 	subpackages?: [...#Subpackage]
 
-	// Optional: An arbitrary list of data that can be used via
-	// templating in the
+	// Optional: The list of finalize pipelines to execute
+	finalize?: [...#Pipeline]
+
+	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline
 	data?: [...#RangeData]
 
-	// Optional: The update block determining how this package is auto
-	// updated
+	// Optional: The update block determining how this package is auto updated
 	update!: #Update
 
-	// Optional: A map of arbitrary variables that can be used via
-	// templating in
+	// Optional: A map of arbitrary variables that can be used via templating in
 	// the pipeline
 	vars?: [string]: string
 
-	// Optional: A list of transformations to create for the builtin
-	// template
+	// Optional: A list of transformations to create for the builtin template
 	// variables
 	"var-transforms"?: [...#VarTransforms]
 
@@ -102,8 +97,7 @@
 	test?: #Test
 })
 
-// ContentsOption describes an optional deviation to an apko
-// environment's contents block.
+// ContentsOption describes an optional deviation to an apko environment's contents block.
 #ContentsOption: close({
 	Packages!: #ListOption
 })
@@ -137,19 +131,16 @@
 	// Optional: List of replace objectives
 	replaces?: [...string]
 
-	// Optional: An integer string compared against other equal
-	// package provides used to
+	// Optional: An integer string compared against other equal package provides used to
 	// determine priority of provides
 	"provider-priority"?: string
 
-	// Optional: An integer string compared against other equal
-	// package provides used to
+	// Optional: An integer string compared against other equal package provides used to
 	// determine priority of file replacements
 	"replaces-priority"?: string
 })
 
-// EnvironmentOption describes an optional deviation to an apko
-// environment.
+// EnvironmentOption describes an optional deviation to an apko environment.
 #EnvironmentOption: close({
 	Contents!: #ContentsOption
 })
@@ -159,12 +150,10 @@
 	// Org/repo for GitHub
 	identifier!: string
 
-	// If the version in GitHub contains a prefix which should be
-	// ignored
+	// If the version in GitHub contains a prefix which should be ignored
 	"strip-prefix"?: string
 
-	// If the version in GitHub contains a suffix which should be
-	// ignored
+	// If the version in GitHub contains a suffix which should be ignored
 	"strip-suffix"?: string
 
 	// Filter to apply when searching tags on a GitHub repository
@@ -172,15 +161,13 @@
 	// Deprecated: Use TagFilterPrefix instead
 	"tag-filter"?: string
 
-	// Prefix filter to apply when searching tags on a GitHub
-	// repository
+	// Prefix filter to apply when searching tags on a GitHub repository
 	"tag-filter-prefix"?: string
 
 	// Filter to apply when searching tags on a GitHub repository
 	"tag-filter-contains"?: string
 
-	// Override the default of using a GitHub release to identify
-	// related tag to
+	// Override the default of using a GitHub release to identify related tag to
 	// fetch. Not all projects use GitHub releases but just use tags
 	"use-tag"?: bool
 })
@@ -190,12 +177,10 @@
 	// StripPrefix is the prefix to strip from the version
 	"strip-prefix"?: string
 
-	// If the version in GitHub contains a suffix which should be
-	// ignored
+	// If the version in GitHub contains a suffix which should be ignored
 	"strip-suffix"?: string
 
-	// Prefix filter to apply when searching tags on a GitHub
-	// repository
+	// Prefix filter to apply when searching tags on a GitHub repository
 	"tag-filter-prefix"?: string
 
 	// Filter to apply when searching tags on a GitHub repository
@@ -234,6 +219,7 @@
 	include?: string
 	volumes?: [...string]
 	layering?:     #Layering
+	format?:       string
 	certificates?: #ImageCertificates
 })
 
@@ -242,6 +228,7 @@
 	runtime_repositories?: [...string]
 	repositories?: [...string]
 	keyring?: [...string]
+	runtime_keyring?: [...#RuntimeKeyringEntry]
 	packages?: [...string]
 	baseimage?: #BaseImageDescriptor
 })
@@ -257,12 +244,10 @@
 	// Optional: The human-readable description of the input
 	description?: string
 
-	// Optional: The default value of the input. Required when the
-	// input is.
+	// Optional: The default value of the input. Required when the input is.
 	default?: string
 
-	// Optional: A toggle denoting whether the input is required or
-	// not
+	// Optional: A toggle denoting whether the input is required or not
 	required?: bool
 })
 
@@ -271,8 +256,7 @@
 	budget?:   int
 })
 
-// ListOption describes an optional deviation to a list, for
-// example, a list of packages.
+// ListOption describes an optional deviation to a list, for example, a list of packages.
 #ListOption: close({
 	Add!: [...string]
 	Remove!: [...string]
@@ -282,10 +266,10 @@
 	// Optional: A list of packages needed by this pipeline
 	Packages?: [...string]
 
-	// Optional: Linux capabilities needed by this pipeline. They are added
-	// to the runner of the test or build that uses the pipeline. Only
-	// additions are supported: a pipeline declares what it needs, it cannot
-	// drop a capability from the steps that share its container.
+	// Optional: Linux capabilities needed by this pipeline. They are added to
+	// the runner of the test or build that uses the pipeline. Only additions
+	// are supported: a pipeline declares what it needs, it cannot drop a
+	// capability from the steps that share its container.
 	capabilities?: #NeedsCapabilities
 })
 
@@ -300,12 +284,10 @@
 	// Required: OCI image reference (e.g. cgr.dev/chainguard/node)
 	identifier!: string
 
-	// If the version in the tag contains a prefix which should be
-	// ignored
+	// If the version in the tag contains a prefix which should be ignored
 	"strip-prefix"?: string
 
-	// If the version in the tag contains a suffix which should be
-	// ignored
+	// If the version in the tag contains a suffix which should be ignored
 	"strip-suffix"?: string
 
 	// Prefix filter to apply when searching tags
@@ -337,8 +319,7 @@
 	// Optional: The git commit of the package build configuration
 	commit?: string
 
-	// List of target architectures for which this package should be
-	// build for
+	// List of target architectures for which this package should be build for
 	"target-architecture"?: [...string]
 
 	// The list of copyrights for this package
@@ -350,25 +331,21 @@
 	// Optional: Options that alter the packages behavior
 	options?: #PackageOption
 
-	// Optional: Executable scripts that run at various stages of the
-	// package
+	// Optional: Executable scripts that run at various stages of the package
 	// lifecycle, triggered by configurable events
 	scriptlets?: #Scriptlets
 
-	// Optional: enabling, disabling, and configuration of build
-	// checks
+	// Optional: enabling, disabling, and configuration of build checks
 	checks!: #Checks
 
-	// The CPE field values to be used for matching against NVD
-	// vulnerability
+	// The CPE field values to be used for matching against NVD vulnerability
 	// records, if known.
 	cpe!: #CPE
 
 	// Capabilities to set after the pipeline completes.
 	setcap?: [...#Capability]
 
-	// Optional: The amount of time to allow this build to take before
-	// timing out.
+	// Optional: The amount of time to allow this build to take before timing out.
 	timeout?: int
 
 	// Optional: Resources to allocate to the build.
@@ -382,14 +359,11 @@
 })
 
 #PackageOption: close({
-	// Optional: Signify this package as a virtual package which does
-	// not provide
-	// any files, executables, libraries, etc... and is otherwise
-	// empty
+	// Optional: Signify this package as a virtual package which does not provide
+	// any files, executables, libraries, etc... and is otherwise empty
 	"no-provides"?: bool
 
-	// Optional: Mark this package as a self contained package that
-	// does not
+	// Optional: Mark this package as a self contained package that does not
 	// depend on any other package
 	"no-depends"?: bool
 
@@ -419,43 +393,35 @@
 
 	// Optional: A named reusable pipeline to run
 	//
-	// This can be either a pipeline builtin to melange, or a user
-	// defined named pipeline.
+	// This can be either a pipeline builtin to melange, or a user defined named pipeline.
 	// For example, to use a builtin melange pipeline:
 	// uses: autoconf/make
 	uses?: string
 
-	// Optional: Arguments passed to the reusable pipelines defined in
-	// `uses`
+	// Optional: Arguments passed to the reusable pipelines defined in `uses`
 	with?: [string]: string
 
-	// Optional: The command to run using the builder's shell
-	// (/bin/sh)
+	// Optional: The command to run using the builder's shell (/bin/sh)
 	runs?: string
 
 	// Optional: The list of pipelines to run.
 	//
-	// Each pipeline runs in its own context that is not shared
-	// between other
-	// pipelines. To share context between pipelines, nest a pipeline
-	// within an
-	// existing pipeline. This can be useful when you wish to share
-	// common
+	// Each pipeline runs in its own context that is not shared between other
+	// pipelines. To share context between pipelines, nest a pipeline within an
+	// existing pipeline. This can be useful when you wish to share common
 	// configuration, such as an alternative `working-directory`.
 	pipeline?: [...#Pipeline]
 
 	// Optional: A map of inputs to the pipeline
 	inputs?: [string]: #Input
 
-	// Optional: Configuration to determine any explicit dependencies
-	// this pipeline may have
+	// Optional: Configuration to determine any explicit dependencies this pipeline may have
 	needs?: #Needs
 
 	// Optional: Labels to apply to the pipeline
 	label?: string
 
-	// Optional: Assertions to evaluate whether the pipeline was
-	// successful
+	// Optional: Assertions to evaluate whether the pipeline was successful
 	assertions?: #PipelineAssertions
 
 	// Optional: The working directory of the pipeline
@@ -468,8 +434,7 @@
 })
 
 #PipelineAssertions: close({
-	// The number (an int) of required steps that must complete
-	// successfully
+	// The number (an int) of required steps that must complete successfully
 	// within the asserted pipeline.
 	"required-steps"?: int
 })
@@ -479,18 +444,15 @@
 	items!: #DataItems
 })
 
-// ReleaseMonitor indicates using the API for
-// https://release-monitoring.org/
+// ReleaseMonitor indicates using the API for https://release-monitoring.org/
 #ReleaseMonitor: close({
 	// Required: ID number for release monitor
 	identifier!: int
 
-	// If the version in release monitor contains a prefix which
-	// should be ignored
+	// If the version in release monitor contains a prefix which should be ignored
 	"strip-prefix"?: string
 
-	// If the version in release monitor contains a suffix which
-	// should be ignored
+	// If the version in release monitor contains a suffix which should be ignored
 	"strip-suffix"?: string
 
 	// Filter to apply when searching version on a Release Monitoring
@@ -507,6 +469,11 @@
 	disk?:     string
 })
 
+#RuntimeKeyringEntry: close({
+	name?:    string
+	content?: string
+})
+
 // Schedule defines the schedule for the update check to run
 #Schedule: close({
 	// The reason scheduling is being used
@@ -518,40 +485,33 @@
 	// Optional: A script to run on a custom trigger
 	trigger!: #Trigger
 
-	// Optional: The script to run pre install. The script should
-	// contain the
+	// Optional: The script to run pre install. The script should contain the
 	// shebang interpreter.
 	"pre-install"?: string
 
-	// Optional: The script to run post install. The script should
-	// contain the
+	// Optional: The script to run post install. The script should contain the
 	// shebang interpreter.
 	"post-install"?: string
 
-	// Optional: The script to run before uninstalling. The script
-	// should contain
+	// Optional: The script to run before uninstalling. The script should contain
 	// the shebang interpreter.
 	"pre-deinstall"?: string
 
-	// Optional: The script to run after uninstalling. The script
-	// should contain
+	// Optional: The script to run after uninstalling. The script should contain
 	// the shebang interpreter.
 	"post-deinstall"?: string
 
-	// Optional: The script to run before upgrading. The script should
-	// contain
+	// Optional: The script to run before upgrading. The script should contain
 	// the shebang interpreter.
 	"pre-upgrade"?: string
 
-	// Optional: The script to run after upgrading. The script should
-	// contain the
+	// Optional: The script to run after upgrading. The script should contain the
 	// shebang interpreter.
 	"post-upgrade"?: string
 })
 
 #Subpackage: close({
-	// Optional: A conditional statement to evaluate for the
-	// subpackage
+	// Optional: A conditional statement to evaluate for the subpackage
 	if?: string
 
 	// Optional: The iterable used to generate multiple subpackages
@@ -582,8 +542,7 @@
 	// Optional: The git commit of the subpackage build configuration
 	commit?: string
 
-	// Optional: enabling, disabling, and configuration of build
-	// checks
+	// Optional: enabling, disabling, and configuration of build checks
 	checks!: #Checks
 
 	// Test section for the subpackage.
@@ -596,16 +555,15 @@
 #Test: close({
 	// Additional Environment necessary for test.
 	// Environment.Contents.Packages automatically get
-	// package.dependencies.runtime added to it. So, if your test
-	// needs
+	// package.dependencies.runtime added to it. So, if your test needs
 	// no additional packages, you can leave it blank.
 	// Optional: Additional Environment the test needs to run
 	environment!: #ImageConfiguration
 
-	// Optional: Linux capabilities to apply to this test's runner.
-	// Capabilities required by the test pipelines are gathered here during
-	// compilation, so they are scoped to this test's container rather than
-	// shared across every test in the configuration.
+	// Optional: Linux capabilities to apply to this test's runner. Capabilities
+	// required by the test pipelines are gathered here during compilation, so
+	// they are scoped to this test's container rather than shared across every
+	// test in the configuration.
 	capabilities?: #Capabilities
 
 	// Required: The list of pipelines that test the produced package.
@@ -620,36 +578,30 @@
 	paths?: [...string]
 })
 
-// Update provides information used to describe how to keep the
-// package up to date
+// Update provides information used to describe how to keep the package up to date
 #Update: close({
 	// Toggle if updates should occur
 	enabled!: bool
 
-	// Indicates that this package should be manually updated, usually
-	// taking
+	// Indicates that this package should be manually updated, usually taking
 	// care over special version numbers
 	manual?: bool
 
-	// Indicates that automated pull requests should be merged in
-	// order rather than superseding and closing previous unmerged
-	// PRs
+	// Indicates that automated pull requests should be merged in order rather than
+	// superseding and closing previous unmerged PRs
 	"require-sequential"?: bool
 
-	// Indicate that an update to this package requires an epoch bump
-	// of
+	// Indicate that an update to this package requires an epoch bump of
 	// downstream dependencies, e.g. golang, java
 	shared?: bool
 
 	// Override the version separator if it is nonstandard
 	"version-separator"?: string
 
-	// A slice of regex patterns to match an upstream version and
-	// ignore
+	// A slice of regex patterns to match an upstream version and ignore
 	"ignore-regex-patterns"?: [...string]
 
-	// The configuration block for updates tracked via
-	// release-monitoring.org
+	// The configuration block for updates tracked via release-monitoring.org
 	"release-monitor"?: #ReleaseMonitor
 
 	// The configuration block for updates tracked via the Github API
@@ -661,16 +613,13 @@
 	// The configuration block for updates tracked via OCI image tags
 	oci?: #OCIMonitor
 
-	// The configuration block for updates tracked via chainguard
-	// version data
+	// The configuration block for updates tracked via chainguard version data
 	version_data?: #VersionDataMonitor
 
-	// The configuration block for transforming the `package.version`
-	// into an APK version
+	// The configuration block for transforming the `package.version` into an APK version
 	"version-transform"?: [...#VersionTransform]
 
-	// ExcludeReason is required if enabled=false, to explain why
-	// updates are disabled.
+	// ExcludeReason is required if enabled=false, to explain why updates are disabled.
 	"exclude-reason"?: string
 
 	// Schedule defines the schedule for the update check to run
@@ -694,8 +643,7 @@
 	// Example: ${{package.version}}
 	from!: string
 
-	// Required: The regular expression to match against the `from`
-	// variable
+	// Required: The regular expression to match against the `from` variable
 	match!: string
 
 	// Required: The repl to replace on all `match` matches
@@ -709,42 +657,34 @@
 
 // VersionDataMonitor indicates using chainguard version data
 #VersionDataMonitor: close({
-	// Format string for composing the version, using
-	// ${{source_name.field}} placeholders
+	// Format string for composing the version, using ${{source_name.field}} placeholders
 	version_format!: string
 
 	// The list of upstream sources to fetch version data from
 	sources!: [...#VersionDataSource]
 })
 
-// VersionDataSource defines an individual upstream source for
-// version data
+// VersionDataSource defines an individual upstream source for version data
 #VersionDataSource: close({
-	// The name of the source, used to reference it in the format
-	// string
+	// The name of the source, used to reference it in the format string
 	name!: string
 
 	// The stream to track for updates (e.g. "12.6", "9")
 	stream!: string
 
-	// A list of regex patterns to ignore when matching upstream
-	// versions
+	// A list of regex patterns to ignore when matching upstream versions
 	ignore?: [...string]
 
-	// The source whose commits to use when multiple sources are
-	// configured
+	// The source whose commits to use when multiple sources are configured
 	commit_source?: string
 
-	// Whether to use GitHub releases as the tag source instead of git
-	// tags
+	// Whether to use GitHub releases as the tag source instead of git tags
 	use_release?: bool
 })
 
-// VersionTransform allows mapping the package version to an APK
-// version
+// VersionTransform allows mapping the package version to an APK version
 #VersionTransform: close({
-	// Required: The regular expression to match against the
-	// `package.version` variable
+	// Required: The regular expression to match against the `package.version` variable
 	match!: string
 
 	// Required: The repl to replace on all `match` matches

@@ -2554,3 +2554,27 @@ environment:
 	// but what we use doesn't expose the line number in a structured way.
 	require.Contains(t, err.Error(), "line 10")
 }
+
+func Test_finalizeSubstitution(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	fp := filepath.Join(t.TempDir(), "finalize.yaml")
+	require.NoError(t, os.WriteFile(fp, []byte(`
+package:
+  name: test-finalize
+  version: 1.2.3
+  epoch: 0
+  description: test finalize substitution
+
+pipeline:
+  - runs: echo build
+
+finalize:
+  - runs: echo ${{package.name}}-${{package.version}}
+`), 0o644))
+
+	cfg, err := ParseConfiguration(ctx, fp)
+	require.NoError(t, err)
+	require.Len(t, cfg.Finalize, 1)
+	require.Equal(t, "echo test-finalize-1.2.3", cfg.Finalize[0].Runs)
+}

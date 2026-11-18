@@ -755,10 +755,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 	}
 
 	// Run finalize pipelines
-	if !b.isBuildLess() && len(b.Configuration.Finalize) > 0 {
+	if len(b.Configuration.Finalize) > 0 {
 		log.Infof("running finalize pipelines for %s", pkg.Name)
 		if err := pr.runPipelines(ctx, b.Configuration.Finalize); err != nil {
-			return fmt.Errorf("unable to run finalize pipelines for %s: %v", pkg.Name, err)
+			return fmt.Errorf("unable to run finalize pipelines for %s: %w", pkg.Name, err)
 		}
 	}
 

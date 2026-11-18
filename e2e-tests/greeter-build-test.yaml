@@ -64,6 +64,9 @@ finalize:
   - name: "write /etc/finalized"
     runs: |
       ( cd "${{targets.outdir}}" && find . ! -type d )
+      # finalize must run after the subpackage pipelines, so their output exists.
+      [ -L "${{targets.outdir}}/${{package.name}}-latvian/usr/bin/sveiki" ] ||
+        { echo "FAIL: finalize ran before subpackage pipelines"; exit 1; }
       etcd="${{targets.outdir}}/${{package.name}}/etc"
       mkdir -p "$etcd"
       echo "finalized-${{package.name}}" > "$etcd/finalized"

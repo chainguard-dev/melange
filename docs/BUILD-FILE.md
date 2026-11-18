@@ -550,4 +550,8 @@ Pipeline defines the ordered steps to build the package.
 
 # finalize
 Finalize defines a series of pipelines that are executed
-after the build and subpackages are processed.
+after the build and subpackages are processed. Use it to adjust the files
+that are about to be packaged, such as adding or fixing up symlinks.
+
+Finalize pipelines are not scanned for upstream sources: a `fetch` or
+`git-checkout` step here is not recorded in the SBOM or the `-source` package.

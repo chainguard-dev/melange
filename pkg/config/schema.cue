@@ -72,7 +72,11 @@
 	// Optional: The list of subpackages that this package also produces.
 	subpackages?: [...#Subpackage]
 
-	// Optional: The list of finalize pipelines to execute
+	// Optional: The list of finalize pipelines to execute after the main
+	// pipeline and the subpackage pipelines, for adjusting the files that are
+	// about to be packaged (for example, adding or fixing up symlinks). Finalize
+	// pipelines are not scanned for upstream sources, so a fetch or git-checkout
+	// step here is not recorded in the SBOM or the -source package.
 	finalize?: [...#Pipeline]
 
 	// Optional: An arbitrary list of data that can be used via templating in the

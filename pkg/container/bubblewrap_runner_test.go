@@ -15,11 +15,17 @@
 package container
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
+	apko_types "chainguard.dev/apko/pkg/build/types"
 	"github.com/chainguard-dev/clog/slogtest"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 func TestBubblewrapCmd(t *testing.T) {
@@ -57,5 +63,45 @@ func TestBubblewrapCmd(t *testing.T) {
 				t.Fatalf("expected %v, found %v", tt.expectedArgs, cmd.Args)
 			}
 		})
+	}
+}
+
+// tarLayer is a v1.Layer that serves only Uncompressed, which is all
+// LoadImage reads.
+type tarLayer struct {
+	v1.Layer
+	tarball []byte
+}
+
+func (l tarLayer) Uncompressed() (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader(l.tarball)), nil
+}
+
+// TestBubblewrapLoadImageRootMode verifies that the guest dir, which bwrap
+// binds as the build environment's /, can be traversed by accounts other than
+// its owner. The layer has no entry for its own root, so only LoadImage can
+// set that mode.
+func TestBubblewrapLoadImageRootMode(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{Name: "usr/", Typeflag: tar.TypeDir, Mode: 0o755}); err != nil {
+		t.Fatalf("writing header: %v", err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatalf("closing tar: %v", err)
+	}
+
+	ref, err := (&bubblewrapOCILoader{}).LoadImage(t.Context(), tarLayer{tarball: buf.Bytes()}, apko_types.ParseArchitecture("amd64"), nil)
+	if err != nil {
+		t.Fatalf("LoadImage: %v", err)
+	}
+	fi, err := os.Stat(ref)
+	if err != nil {
+		t.Fatalf("stat guest dir: %v", err)
+	}
+	if got := fi.Mode().Perm(); got != 0o755 {
+		t.Errorf("guest dir mode = %04o, want 0755", got)
 	}
 }

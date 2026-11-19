@@ -300,6 +300,13 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
+	// MkdirTemp creates the directory 0700. It is the build environment's /,
+	// and the layer carries no entry for its own root, so nothing else sets
+	// its mode. Left at 0700, a step that drops to another account under a
+	// melange running as root could not traverse /.
+	if err := os.Chmod(guestDir, 0o755); err != nil {
+		return ref, fmt.Errorf("failed to chmod guest dir: %w", err)
+	}
 	b.guestDir = guestDir
 	rc, err := layer.Uncompressed()
 	if err != nil {

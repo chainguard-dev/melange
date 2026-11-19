@@ -46,6 +46,10 @@ const (
 	// specialModeBits are the mode bits that Mkdir/MkdirAll cannot set,
 	// since they take only permission bits.
 	specialModeBits = os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+
+	// guestRootName is the directory, inside the per-build temp dir, that
+	// bwrap binds as the build environment's /.
+	guestRootName = "rootfs"
 )
 
 // defaultCapabilities is the set of Linux capabilities granted by the
@@ -296,18 +300,24 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
-	guestDir, err := os.MkdirTemp("", "bubblewrap-guest-*")
+	guestParent, err := os.MkdirTemp("", "bubblewrap-guest-*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
-	// MkdirTemp creates the directory 0700. It is the build environment's /,
-	// and the layer carries no entry for its own root, so nothing else sets
-	// its mode. Left at 0700, a step that drops to another account under a
-	// melange running as root could not traverse /.
-	if err := os.Chmod(guestDir, 0o755); err != nil {
-		return ref, fmt.Errorf("failed to chmod guest dir: %w", err)
+	// The guest root is a child of the MkdirTemp directory, which stays 0700
+	// and keeps other host users out of the build environment. The child is
+	// the build environment's /, and the layer carries no entry for its own
+	// root, so nothing else sets its mode. At 0700, a step that drops to
+	// another account under a melange running as root could not traverse /.
+	guestDir := filepath.Join(guestParent, guestRootName)
+	if err := os.Mkdir(guestDir, 0o755); err != nil {
+		return ref, fmt.Errorf("failed to create guest root: %w", err)
 	}
-	b.guestDir = guestDir
+	// Mkdir applies the umask.
+	if err := os.Chmod(guestDir, 0o755); err != nil {
+		return ref, fmt.Errorf("failed to chmod guest root: %w", err)
+	}
+	b.guestDir = guestParent
 	rc, err := layer.Uncompressed()
 	if err != nil {
 		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
@@ -463,6 +473,10 @@ func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error
 		if err := os.RemoveAll(b.guestDir); err != nil {
 			clog.FromContext(ctx).Warnf("failed to remove guest dir %s: %v", b.guestDir, err)
 		}
+	}
+	// ref is the guest root that LoadImage returned; its parent goes with it.
+	if filepath.Base(ref) == guestRootName {
+		ref = filepath.Dir(ref)
 	}
 	return os.RemoveAll(ref)
 }

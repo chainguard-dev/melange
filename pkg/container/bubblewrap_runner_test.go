@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -77,10 +78,10 @@ func (l tarLayer) Uncompressed() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(l.tarball)), nil
 }
 
-// TestBubblewrapLoadImageRootMode verifies that the guest dir, which bwrap
+// TestBubblewrapLoadImageRootMode verifies that the guest root, which bwrap
 // binds as the build environment's /, can be traversed by accounts other than
-// its owner. The layer has no entry for its own root, so only LoadImage can
-// set that mode.
+// its owner, while its parent on the host cannot. The layer has no entry for
+// its own root, so only LoadImage can set that mode.
 func TestBubblewrapLoadImageRootMode(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 
@@ -93,7 +94,8 @@ func TestBubblewrapLoadImageRootMode(t *testing.T) {
 		t.Fatalf("closing tar: %v", err)
 	}
 
-	ref, err := (&bubblewrapOCILoader{}).LoadImage(t.Context(), tarLayer{tarball: buf.Bytes()}, apko_types.ParseArchitecture("amd64"), nil)
+	loader := &bubblewrapOCILoader{}
+	ref, err := loader.LoadImage(t.Context(), tarLayer{tarball: buf.Bytes()}, apko_types.ParseArchitecture("amd64"), nil)
 	if err != nil {
 		t.Fatalf("LoadImage: %v", err)
 	}
@@ -102,6 +104,22 @@ func TestBubblewrapLoadImageRootMode(t *testing.T) {
 		t.Fatalf("stat guest dir: %v", err)
 	}
 	if got := fi.Mode().Perm(); got != 0o755 {
-		t.Errorf("guest dir mode = %04o, want 0755", got)
+		t.Errorf("guest root mode = %04o, want 0755", got)
+	}
+
+	parent := filepath.Dir(ref)
+	fi, err = os.Stat(parent)
+	if err != nil {
+		t.Fatalf("stat guest parent: %v", err)
+	}
+	if got := fi.Mode().Perm(); got != 0o700 {
+		t.Errorf("guest parent mode = %04o, want 0700", got)
+	}
+
+	if err := loader.RemoveImage(t.Context(), ref); err != nil {
+		t.Fatalf("RemoveImage: %v", err)
+	}
+	if _, err := os.Stat(parent); !os.IsNotExist(err) {
+		t.Errorf("guest parent still exists after RemoveImage: %v", err)
 	}
 }

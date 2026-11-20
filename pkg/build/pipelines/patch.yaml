@@ -13,7 +13,7 @@ inputs:
   fuzz:
     description: |
       Sets the maximum fuzz factor. This option only applies to context diffs, and causes patch to ignore up to that many lines in looking for places to install a hunk.
-    default: 2
+    default: 0
 
   patches:
     description: |

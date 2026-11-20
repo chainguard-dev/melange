@@ -1,0 +1,88 @@
+name: Test a Ruby package require, with optional load clause
+
+needs:
+  packages:
+    - ruby-${{inputs.version}}
+
+inputs:
+  ruby:
+    description: Which Ruby to use
+    default: DEFAULT
+  version:
+    description: Which Ruby version to use
+    default: 3.2
+  require:
+    description: |
+      The package to require.
+    required: false
+  requires:
+    description: |
+      Commands to require packages, each line is a separate command. Example:
+        require 'foo'
+        # test that otherthing can be required from asdf
+        require 'asdf'
+        require 'bark' # this is like woof
+
+      full-line and inline comments are supported via '#'
+    required: false
+
+pipeline:
+  - runs: |
+      set +x
+      RUBY="${{inputs.ruby}}"
+      SINGLE_REQUIRE="${{inputs.require}}"
+      MULTIPLE_REQUIRES="${{inputs.requires}}"
+
+      perform_require() {
+        command="$1"
+        if $RUBY -e "$command"; then
+          echo "$RUBY -e \"$command\": PASS"
+        else
+          echo "$RUBY -e \"$command\": FAIL"
+          return 1
+        fi
+      }
+
+      if [ "$RUBY" = "DEFAULT" ]; then
+          glob="/usr/bin/ruby-3.[0-9][0-9] /usr/bin/ruby-3.[789] /usr/bin/ruby"
+          n=0
+          for p in $glob; do
+            [ -x "$p" ] && n=$((n+1)) && rb=$p
+          done
+          if [ "$n" -ne 1 ]; then
+            echo "FAIL: must set inputs.ruby: " \
+               "found $n executables matching $glob"
+            [ "$n" -eq 0 ] || echo "found:" $glob
+            exit 1
+          fi
+          echo "using ruby $rb"
+          RUBY=$rb
+      fi
+
+      if [ -n "$SINGLE_REQUIRE" ] && [ -n "$MULTIPLE_REQUIRES" ]; then
+        echo "Error: Cannot mix 'require' with 'requires'."
+        exit 1
+      fi
+
+      fail_flag=0
+      if [ -n "$MULTIPLE_REQUIRES" ]; then
+        requiref=$(mktemp) || { echo "failed mktemp"; exit 1; }
+        printf "%s\n" "$MULTIPLE_REQUIRES" > "$requiref" ||
+            { echo "failed to write to temp file"; exit 1; }
+
+        while read line; do
+          # Drop anything after #
+          line=${line%%#*}
+          cmd=$(set -f; echo $line) # normalize/trim whitespace
+          [ -z "$cmd" ] && continue
+          perform_require "$cmd" || fail_flag=1
+        done < "$requiref"
+        rm -f "$requiref"
+      elif [ -n "$SINGLE_REQUIRE" ]; then
+        perform_require "require '$SINGLE_REQUIRE'" || fail_flag=1
+      else
+        echo "No package specified for require."
+        fail_flag=1
+      fi
+
+      exit $fail_flag

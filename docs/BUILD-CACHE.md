@@ -205,7 +205,7 @@ This caching support helps significantly speed up Node.js builds by avoiding rep
 
 ### Example: Maven Dependencies
 
-Maven caching is automatically enabled when using the `maven/configure-mirror` or `maven/pombump` pipelines. When a cache directory is mounted at `/var/cache/melange`, the pipelines automatically symlink `~/.m2/repository` to `/var/cache/melange/m2repository` so that Maven's default local repository is backed by the cache.
+Maven caching is automatically enabled when using the `maven/configure-mirror` pipeline. When a cache directory is mounted at `/var/cache/melange`, the pipeline automatically symlinks `~/.m2/repository` to `/var/cache/melange/m2repository` so that Maven's default local repository is backed by the cache.
 
 To use Maven caching, simply provide a cache directory:
 

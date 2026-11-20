@@ -30,7 +30,8 @@ inputs:
 
   vendor:
     description: |
-      If true, the go mod command will also update the vendor directory
+      If true, build using vendored dependencies. An existing module or workspace
+      vendor tree is preserved; otherwise one is generated with go mod vendor or go work vendor.
     default: "false"
 
   modroot:
@@ -118,7 +119,23 @@ pipeline:
       # Take advantage of melange's buid cache for downloaded modules
       export GOMODCACHE=/var/cache/melange/gomodcache
 
-      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.extra-args}} ${{inputs.packages}}
+      set --
+      if [ "${{inputs.vendor}}" = "true" ]; then
+        # Preserve existing vendor trees because recipes may patch vendored sources.
+        # Generate one only when absent, using the active workspace when present.
+        GOWORK=$(go env GOWORK)
+        if [ -n "$GOWORK" ] && [ "$GOWORK" != "off" ]; then
+          VENDOR_DIR=$(dirname "$GOWORK")/vendor
+          if [ ! -f "$VENDOR_DIR/modules.txt" ]; then
+            go work vendor
+          fi
+        elif [ ! -f vendor/modules.txt ]; then
+          go mod vendor
+        fi
+        set -- -mod=vendor
+      fi
+
+      GOAMD64="${{inputs.amd64}}" GOARM64="${{inputs.arm64}}" GOEXPERIMENT="${{inputs.experiments}}" go build -o "${{targets.contextdir}}"/${BASE_PATH} -tags "${{inputs.toolchaintags}},${{inputs.tags}}" -ldflags "${LDFLAGS}" -trimpath -buildmode ${{inputs.buildmode}} ${{inputs.extra-args}} "$@" ${{inputs.packages}}
 
       # Clean up the gitignore file we created to avoid interfering with subsequent builds
       if [ "${{inputs.ignore-untracked-files}}" = "true" ]; then

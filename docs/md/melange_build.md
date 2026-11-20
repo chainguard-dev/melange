@@ -65,6 +65,7 @@ melange build [flags]
       --persist-lint-results                                    persist lint results to JSON files in packages/{arch}/ directory
       --pipeline-dir string                                     directory used to extend defined built-in pipelines
       --pipeline-dirs strings                                   directories used to extend defined built-in pipelines
+      --report string[="melange-report"]                        write JSON, Markdown and HTML reports of every stage, step, guest environment and log to a directory (bare --report uses "melange-report"; use --report=DIR to choose)
   -r, --repository-append strings                               path to extra repositories to include in the build environment
       --rm                                                      clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
       --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]

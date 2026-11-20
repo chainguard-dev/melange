@@ -32,6 +32,7 @@ import (
 	"chainguard.dev/melange/pkg/cond"
 	"chainguard.dev/melange/pkg/config"
 	"chainguard.dev/melange/pkg/container"
+	"chainguard.dev/melange/pkg/report"
 	"chainguard.dev/melange/pkg/util"
 )
 
@@ -220,10 +221,12 @@ type pipelineRunner struct {
 
 // runPipeline runs pipeline and its children. inStrict is set for the children
 // of a step that is strict, which are part of it.
-func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline, inStrict bool) (bool, error) {
-	log := clog.FromContext(ctx)
-
+func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipeline, inStrict bool) (ran bool, err error) {
 	if result, err := shouldRun(pipeline.If); !result {
+		if err == nil {
+			_, step := report.StartStep(ctx, pipeline, nil)
+			step.Skip()
+		}
 		return result, err
 	}
 
@@ -253,6 +256,20 @@ func (r *pipelineRunner) runPipeline(ctx context.Context, pipeline *config.Pipel
 			workdir = filepath.Join(WorkDir, pipeline.WorkDir)
 		}
 	}
+
+	// The full step environment is only assembled when a report is being
+	// recorded; without --report this is a no-op.
+	var stepEnv map[string]string
+	if report.StageFromContext(ctx) != nil {
+		stepEnv = maps.Clone(r.config.Environment)
+		if stepEnv == nil {
+			stepEnv = map[string]string{}
+		}
+		maps.Copy(stepEnv, envOverride)
+	}
+	ctx, step := report.StartStep(ctx, pipeline, stepEnv)
+	defer func() { step.Finish(err) }()
+	log := clog.FromContext(ctx)
 
 	// We might have called signal.Ignore(os.Interrupt) as part of a previous debug step,
 	// so create a new context to make it possible to cancel the Run.

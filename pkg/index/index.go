@@ -249,10 +249,11 @@ func (idx *Index) WriteArchiveIndex(ctx context.Context, destinationFile string)
 	if err != nil {
 		return fmt.Errorf("failed to create archive file: %w", err)
 	}
-	defer outFile.Close()
+
 	if _, err = io.Copy(outFile, archive); err != nil {
 		return fmt.Errorf("failed to write contents to archive file: %w", err)
 	}
+	outFile.Close()
 
 	if idx.SigningKey != "" {
 		log.Infof("signing apk index at %s", idx.IndexFile)

@@ -1,0 +1,17 @@
+name: Create cli subpackage for redis/valkey
+
+inputs:
+  project:
+    description: |
+      The project name (redis or valkey)
+    required: true
+
+pipeline:
+  - runs: |
+      mkdir -p "${{targets.subpkgdir}}"/usr/bin
+      mv "${{targets.destdir}}"/usr/bin/${{inputs.project}}-cli "${{targets.subpkgdir}}"/usr/bin/${{inputs.project}}-cli
+  
+description: ${{inputs.project}}-cli is the command line interface utility to talk with ${{inputs.project}}.
+
+provides:
+  - ${{inputs.project}}-cli=${{package.full-version}}

@@ -171,7 +171,7 @@ func signCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&o.Key, "signing-key", "k", "local-melange.rsa", "The signing key to use.")
+	cmd.Flags().StringVarP(&o.Key, "signing-key", "k", "melange.rsa", "The signing key to use.")
 
 	return cmd
 }

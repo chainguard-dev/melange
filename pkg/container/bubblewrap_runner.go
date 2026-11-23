@@ -50,6 +50,9 @@ const (
 	// guestRootName is the directory, inside the per-build temp dir, that
 	// bwrap binds as the build environment's /.
 	guestRootName = "rootfs"
+
+	// guestParentPrefix names the per-build temp dir that holds the guest root.
+	guestParentPrefix = "bubblewrap-guest-"
 )
 
 // defaultCapabilities is the set of Linux capabilities granted by the
@@ -300,10 +303,17 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
-	guestParent, err := os.MkdirTemp("", "bubblewrap-guest-*")
+	guestParent, err := os.MkdirTemp("", guestParentPrefix+"*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
+	// The caller gets no ref from a failed load, so nothing else could remove
+	// the parent.
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(guestParent)
+		}
+	}()
 	// The guest root is a child of the MkdirTemp directory, which stays 0700
 	// and keeps other host users out of the build environment. The child is
 	// the build environment's /, and the layer carries no entry for its own
@@ -317,6 +327,7 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 	if err := os.Chmod(guestDir, 0o755); err != nil {
 		return ref, fmt.Errorf("failed to chmod guest root: %w", err)
 	}
+	// Only RemoveImage reads this field, to delete the parent with the root.
 	b.guestDir = guestParent
 	rc, err := layer.Uncompressed()
 	if err != nil {
@@ -474,9 +485,10 @@ func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error
 			clog.FromContext(ctx).Warnf("failed to remove guest dir %s: %v", b.guestDir, err)
 		}
 	}
-	// ref is the guest root that LoadImage returned; its parent goes with it.
-	if filepath.Base(ref) == guestRootName {
-		ref = filepath.Dir(ref)
+	// A ref that LoadImage returned is the guest root; its parent goes with it.
+	// Any other path is removed as given.
+	if parent := filepath.Dir(ref); filepath.Base(ref) == guestRootName && strings.HasPrefix(filepath.Base(parent), guestParentPrefix) {
+		ref = parent
 	}
 	return os.RemoveAll(ref)
 }

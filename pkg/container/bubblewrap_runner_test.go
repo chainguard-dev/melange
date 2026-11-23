@@ -112,6 +112,9 @@ func TestBubblewrapLoadImageRootMode(t *testing.T) {
 			if got := filepath.Base(ref); got != guestRootName {
 				t.Errorf("guest root name = %q, want %q", got, guestRootName)
 			}
+			if _, err := os.Stat(filepath.Join(filepath.Dir(ref), guestMarkerName)); err != nil {
+				t.Errorf("LoadImage left no marker: %v", err)
+			}
 			if !isGuestRoot(ref) {
 				t.Errorf("isGuestRoot(%q) = false for a ref LoadImage returned", ref)
 			}
@@ -150,49 +153,127 @@ func TestBubblewrapLoadImageRootMode(t *testing.T) {
 }
 
 // TestBubblewrapRemoveImageScope verifies that RemoveImage removes the parent
-// only for a ref shaped like the one LoadImage returns, and removes any other
-// path as given.
+// only when the ref has the shape LoadImage returns, the marker LoadImage left
+// is there, and nothing else is in the parent. Every other path is removed as
+// given, and a parent that is not proven stays.
 func TestBubblewrapRemoveImageScope(t *testing.T) {
+	// layout creates parent/rootfs under a fresh temp dir and returns the paths.
+	layout := func(t *testing.T, parentName string, parentMode os.FileMode, marker bool) (parent, ref string) {
+		t.Helper()
+		parent = filepath.Join(t.TempDir(), parentName)
+		ref = filepath.Join(parent, "rootfs")
+		if err := os.MkdirAll(ref, 0o755); err != nil {
+			t.Fatalf("creating ref: %v", err)
+		}
+		if marker {
+			if err := os.WriteFile(filepath.Join(parent, guestMarkerName), nil, 0o600); err != nil {
+				t.Fatalf("creating marker: %v", err)
+			}
+		}
+		if err := os.Chmod(parent, parentMode); err != nil {
+			t.Fatalf("chmod parent: %v", err)
+		}
+		return parent, ref
+	}
+	remove := func(t *testing.T, ref string) {
+		t.Helper()
+		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), ref); err != nil {
+			t.Fatalf("RemoveImage: %v", err)
+		}
+	}
+
+	t.Run("ref with the marker removes the parent", func(t *testing.T) {
+		parent, ref := layout(t, "bubblewrap-guest-123", 0o700, true)
+		remove(t, ref)
+		if _, err := os.Stat(parent); !os.IsNotExist(err) {
+			t.Errorf("parent still exists: %v", err)
+		}
+	})
+
+	// Each case is a ref whose rootfs goes and whose parent must stay.
 	tests := []struct {
 		name       string
-		parent     string // directory holding the ref, relative to a fresh temp dir
+		parentName string
 		parentMode os.FileMode
-		ref        string // last path element of the ref
-		wantParent bool   // whether the parent survives
+		marker     bool
+		extra      string // a file that shares the parent
 	}{
-		{name: "foreign rootfs", parent: "other", parentMode: 0o700, ref: "rootfs", wantParent: true},
-		{name: "same-named parent, not private", parent: "bubblewrap-guest-notes", parentMode: 0o755, ref: "rootfs", wantParent: true},
-		{name: "legacy guest dir", parent: "legacy", parentMode: 0o755, ref: "bubblewrap-guest-123", wantParent: true},
-		{name: "issued ref", parent: "bubblewrap-guest-123", parentMode: 0o700, ref: "rootfs", wantParent: false},
+		{name: "foreign rootfs", parentName: "other", parentMode: 0o700, marker: true},
+		{name: "same-named parent, no marker", parentName: "bubblewrap-guest-notes", parentMode: 0o700},
+		{name: "same-named parent, not private", parentName: "bubblewrap-guest-notes", parentMode: 0o755, marker: true},
+		{name: "issued shape with another file in the parent", parentName: "bubblewrap-guest-123", parentMode: 0o700, marker: true, extra: "todo.txt"},
+		{name: "same-named parent with a file and no marker", parentName: "bubblewrap-guest-notes", parentMode: 0o700, extra: "todo.txt"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			base := t.TempDir()
-			parent := filepath.Join(base, tt.parent)
-			ref := filepath.Join(parent, tt.ref)
-			if err := os.MkdirAll(ref, 0o755); err != nil {
-				t.Fatalf("creating ref: %v", err)
-			}
-			if err := os.Chmod(parent, tt.parentMode); err != nil {
-				t.Fatalf("chmod parent: %v", err)
-			}
-			sibling := filepath.Join(parent, "sibling")
-			if err := os.WriteFile(sibling, nil, 0o600); err != nil {
-				t.Fatalf("creating sibling: %v", err)
+			parent, ref := layout(t, tt.parentName, tt.parentMode, tt.marker)
+			var extra string
+			if tt.extra != "" {
+				extra = filepath.Join(parent, tt.extra)
+				if err := os.WriteFile(extra, nil, 0o600); err != nil {
+					t.Fatalf("creating %s: %v", extra, err)
+				}
 			}
 
-			if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), ref); err != nil {
-				t.Fatalf("RemoveImage: %v", err)
-			}
+			remove(t, ref)
 			if _, err := os.Stat(ref); !os.IsNotExist(err) {
 				t.Errorf("ref still exists: %v", err)
 			}
-			_, err := os.Stat(sibling)
-			if survived := err == nil; survived != tt.wantParent {
-				t.Errorf("parent survived = %v, want %v", survived, tt.wantParent)
+			if _, err := os.Stat(parent); err != nil {
+				t.Errorf("parent was removed: %v", err)
+			}
+			if extra != "" {
+				if _, err := os.Stat(extra); err != nil {
+					t.Errorf("file in the parent was removed: %v", err)
+				}
 			}
 		})
 	}
+
+	t.Run("legacy guest dir", func(t *testing.T) {
+		base := t.TempDir()
+		ref := filepath.Join(base, "bubblewrap-guest-123")
+		if err := os.MkdirAll(ref, 0o755); err != nil {
+			t.Fatalf("creating ref: %v", err)
+		}
+		sibling := filepath.Join(base, "sibling")
+		if err := os.WriteFile(sibling, nil, 0o600); err != nil {
+			t.Fatalf("creating sibling: %v", err)
+		}
+		remove(t, ref)
+		if _, err := os.Stat(ref); !os.IsNotExist(err) {
+			t.Errorf("ref still exists: %v", err)
+		}
+		if _, err := os.Stat(sibling); err != nil {
+			t.Errorf("sibling was removed: %v", err)
+		}
+	})
+
+	t.Run("rootfs that is a symlink", func(t *testing.T) {
+		parent, ref := layout(t, "bubblewrap-guest-123", 0o700, true)
+		if err := os.Remove(ref); err != nil {
+			t.Fatalf("removing rootfs: %v", err)
+		}
+		target := filepath.Join(t.TempDir(), "target")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("creating target: %v", err)
+		}
+		kept := filepath.Join(target, "kept")
+		if err := os.WriteFile(kept, nil, 0o600); err != nil {
+			t.Fatalf("creating file: %v", err)
+		}
+		if err := os.Symlink(target, ref); err != nil {
+			t.Fatalf("creating symlink: %v", err)
+		}
+
+		remove(t, ref)
+		if _, err := os.Stat(kept); err != nil {
+			t.Errorf("the symlink target was removed: %v", err)
+		}
+		if _, err := os.Stat(parent); !os.IsNotExist(err) {
+			t.Errorf("parent still exists: %v", err)
+		}
+	})
 
 	t.Run("symlinked parent", func(t *testing.T) {
 		base := t.TempDir()
@@ -205,9 +286,7 @@ func TestBubblewrapRemoveImageScope(t *testing.T) {
 			t.Fatalf("creating symlink: %v", err)
 		}
 
-		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), filepath.Join(link, "rootfs")); err != nil {
-			t.Fatalf("RemoveImage: %v", err)
-		}
+		remove(t, filepath.Join(link, "rootfs"))
 		if _, err := os.Stat(filepath.Join(real, "rootfs")); !os.IsNotExist(err) {
 			t.Errorf("rootfs behind the symlink still exists: %v", err)
 		}
@@ -228,6 +307,9 @@ func TestBubblewrapRemoveImageScope(t *testing.T) {
 			}
 		}
 		for _, dir := range []string{filepath.Dir(target), filepath.Dir(decoy)} {
+			if err := os.WriteFile(filepath.Join(dir, guestMarkerName), nil, 0o600); err != nil {
+				t.Fatalf("creating marker: %v", err)
+			}
 			if err := os.Chmod(dir, 0o700); err != nil {
 				t.Fatalf("chmod %s: %v", dir, err)
 			}
@@ -236,10 +318,7 @@ func TestBubblewrapRemoveImageScope(t *testing.T) {
 			t.Fatalf("creating symlink: %v", err)
 		}
 
-		ref := base + "/link/../bubblewrap-guest-1/rootfs"
-		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), ref); err != nil {
-			t.Fatalf("RemoveImage: %v", err)
-		}
+		remove(t, base+"/link/../bubblewrap-guest-1/rootfs")
 		if _, err := os.Stat(target); !os.IsNotExist(err) {
 			t.Errorf("the path the kernel resolves still exists: %v", err)
 		}
@@ -249,9 +328,7 @@ func TestBubblewrapRemoveImageScope(t *testing.T) {
 	})
 
 	t.Run("missing ref", func(t *testing.T) {
-		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), filepath.Join(t.TempDir(), "gone")); err != nil {
-			t.Errorf("RemoveImage on a missing ref: %v", err)
-		}
+		remove(t, filepath.Join(t.TempDir(), "gone"))
 	})
 }
 
@@ -288,13 +365,21 @@ func TestIsGuestRoot(t *testing.T) {
 		t.Cleanup(func() { _ = os.Chmod(p, 0o700) })
 		return p
 	}
+	// mark writes the marker file into parent.
+	mark := func(t *testing.T, parent string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(parent, guestMarkerName), nil, 0o600); err != nil {
+			t.Fatalf("creating marker: %v", err)
+		}
+	}
 	// guest creates a bubblewrap-guest-1 directory with the given mode that
-	// holds a rootfs, and returns the rootfs path.
+	// holds a rootfs and the marker, and returns the rootfs path.
 	guest := func(mode os.FileMode) func(*testing.T, string) string {
 		return func(t *testing.T, base string) string {
 			t.Helper()
 			parent := dir(t, base, "bubblewrap-guest-1", 0o755)
 			root := dir(t, parent, "rootfs", 0o755)
+			mark(t, parent)
 			if err := os.Chmod(parent, mode); err != nil {
 				t.Fatalf("chmod %s: %v", parent, err)
 			}
@@ -307,6 +392,7 @@ func TestIsGuestRoot(t *testing.T) {
 		return func(t *testing.T, base string) string {
 			t.Helper()
 			root := dir(t, base, rel, 0o755)
+			mark(t, filepath.Dir(root))
 			if err := os.Chmod(filepath.Dir(root), 0o700); err != nil {
 				t.Fatalf("chmod parent: %v", err)
 			}
@@ -325,7 +411,12 @@ func TestIsGuestRoot(t *testing.T) {
 		{name: "issued shape in a setgid temp dir", setup: guest(0o700 | os.ModeSetgid), want: true},
 		{name: "name with a space", setup: at("bubblewrap-guest-a b/rootfs", same), want: true},
 		{name: "rootfs missing, parent present", setup: func(t *testing.T, base string) string {
-			return filepath.Join(dir(t, base, "bubblewrap-guest-1", 0o700), "rootfs")
+			parent := dir(t, base, "bubblewrap-guest-1", 0o755)
+			mark(t, parent)
+			if err := os.Chmod(parent, 0o700); err != nil {
+				t.Fatalf("chmod parent: %v", err)
+			}
+			return filepath.Join(parent, "rootfs")
 		}, want: true},
 		{name: "temp dir reached through a symlink", setup: func(t *testing.T, base string) string {
 			real := dir(t, base, "real", 0o755)
@@ -333,11 +424,43 @@ func TestIsGuestRoot(t *testing.T) {
 				t.Fatalf("creating symlink: %v", err)
 			}
 			dir(t, real, "bubblewrap-guest-1/rootfs", 0o755)
+			mark(t, filepath.Join(real, "bubblewrap-guest-1"))
 			if err := os.Chmod(filepath.Join(real, "bubblewrap-guest-1"), 0o700); err != nil {
 				t.Fatalf("chmod parent: %v", err)
 			}
 			return filepath.Join(base, "tmp", "bubblewrap-guest-1", "rootfs")
 		}, want: true},
+
+		// The marker LoadImage leaves is missing or is not a regular file.
+		{name: "marker missing", setup: func(t *testing.T, base string) string {
+			root := dir(t, base, "bubblewrap-guest-1/rootfs", 0o755)
+			if err := os.Chmod(filepath.Dir(root), 0o700); err != nil {
+				t.Fatalf("chmod parent: %v", err)
+			}
+			return root
+		}},
+		{name: "marker is a directory", setup: func(t *testing.T, base string) string {
+			root := dir(t, base, "bubblewrap-guest-1/rootfs", 0o755)
+			dir(t, filepath.Dir(root), guestMarkerName, 0o700)
+			if err := os.Chmod(filepath.Dir(root), 0o700); err != nil {
+				t.Fatalf("chmod parent: %v", err)
+			}
+			return root
+		}},
+		{name: "marker is a symlink to a file", setup: func(t *testing.T, base string) string {
+			root := dir(t, base, "bubblewrap-guest-1/rootfs", 0o755)
+			target := filepath.Join(base, "elsewhere")
+			if err := os.WriteFile(target, nil, 0o600); err != nil {
+				t.Fatalf("creating target: %v", err)
+			}
+			if err := os.Symlink(target, filepath.Join(filepath.Dir(root), guestMarkerName)); err != nil {
+				t.Fatalf("creating symlink: %v", err)
+			}
+			if err := os.Chmod(filepath.Dir(root), 0o700); err != nil {
+				t.Fatalf("chmod parent: %v", err)
+			}
+			return root
+		}},
 
 		// The parent has the right name but the wrong mode.
 		{name: "parent 0755", setup: guest(0o755), want: false},

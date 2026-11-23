@@ -53,6 +53,10 @@ const (
 
 	// guestParentPrefix names the per-build temp dir that holds the guest root.
 	guestParentPrefix = "bubblewrap-guest-"
+
+	// guestMarkerName is the file LoadImage leaves next to the guest root, as
+	// the proof that RemoveImage needs before it removes the temp dir.
+	guestMarkerName = ".melange-guest"
 )
 
 // defaultCapabilities is the set of Linux capabilities granted by the
@@ -324,6 +328,10 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 		_ = os.RemoveAll(guestParent)
 		return ref, fmt.Errorf("failed to chmod guest root: %w", err)
 	}
+	// Without the marker, RemoveImage leaves the temp dir in place.
+	if err := os.WriteFile(filepath.Join(guestParent, guestMarkerName), nil, 0o600); err != nil {
+		clog.FromContext(ctx).Warnf("failed to mark guest dir %s, it will not be removed with the image: %v", guestParent, err)
+	}
 	// Only RemoveImage reads this field, to delete the parent with the root.
 	b.guestDir = guestParent
 	rc, err := layer.Uncompressed()
@@ -482,20 +490,37 @@ func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error
 			clog.FromContext(ctx).Warnf("failed to remove guest dir %s: %v", b.guestDir, err)
 		}
 	}
-	// The temp dir that holds a guest root goes with it. Any other path is
-	// removed as given.
-	if isGuestRoot(ref) {
-		ref = filepath.Dir(ref)
+	guestRoot := isGuestRoot(ref)
+	if err := os.RemoveAll(ref); err != nil {
+		return err
 	}
-	return os.RemoveAll(ref)
+	if guestRoot {
+		removeGuestParent(filepath.Dir(ref))
+	}
+	return nil
+}
+
+// removeGuestParent removes the temp dir that held a guest root, but only when
+// the marker is all that is left in it. Anything else in the directory is
+// something LoadImage did not put there, so the directory stays.
+func removeGuestParent(parent string) {
+	entries, err := os.ReadDir(parent)
+	if err != nil || len(entries) != 1 || entries[0].Name() != guestMarkerName {
+		return
+	}
+	// Remove, not RemoveAll: a file that appears after the check keeps the
+	// directory.
+	if os.Remove(filepath.Join(parent, guestMarkerName)) == nil {
+		_ = os.Remove(parent)
+	}
 }
 
 // isGuestRoot reports whether ref has the shape LoadImage returns: a clean
 // path to a rootfs directory inside a real bubblewrap-guest-* directory with
-// mode 0700. The mode and Lstat checks keep a symlink, or a directory that
-// only shares the name, from passing. A path that is not clean is excluded
-// because Dir would resolve its ".." lexically, where the kernel resolves
-// them through symlinks.
+// mode 0700 that holds the marker file. The Lstat checks keep a symlink, or a
+// directory that only shares the name, from passing. A path that is not clean
+// is excluded because Dir would resolve its ".." lexically, where the kernel
+// resolves them through symlinks.
 func isGuestRoot(ref string) bool {
 	if filepath.Clean(ref) != ref || filepath.Base(ref) != guestRootName {
 		return false
@@ -505,5 +530,9 @@ func isGuestRoot(ref string) bool {
 		return false
 	}
 	fi, err := os.Lstat(parent)
-	return err == nil && fi.IsDir() && fi.Mode().Perm() == 0o700
+	if err != nil || !fi.IsDir() || fi.Mode().Perm() != 0o700 {
+		return false
+	}
+	fi, err = os.Lstat(filepath.Join(parent, guestMarkerName))
+	return err == nil && fi.Mode().IsRegular()
 }

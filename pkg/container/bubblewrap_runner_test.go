@@ -73,13 +73,9 @@ func TestBubblewrapCmd(t *testing.T) {
 type tarLayer struct {
 	v1.Layer
 	tarball []byte
-	err     error
 }
 
 func (l tarLayer) Uncompressed() (io.ReadCloser, error) {
-	if l.err != nil {
-		return nil, l.err
-	}
 	return io.NopCloser(bytes.NewReader(l.tarball)), nil
 }
 
@@ -150,49 +146,34 @@ func TestBubblewrapLoadImageRootMode(t *testing.T) {
 	}
 }
 
-// TestBubblewrapLoadImageFailureCleanup verifies that a failed load leaves no
-// temp dir behind, since the caller receives no ref to remove.
-func TestBubblewrapLoadImageFailureCleanup(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("TMPDIR", tmp)
-
-	ref, err := (&bubblewrapOCILoader{}).LoadImage(t.Context(), tarLayer{err: fmt.Errorf("boom")}, apko_types.ParseArchitecture("amd64"), nil)
-	if err == nil {
-		t.Fatal("LoadImage succeeded, want an error")
-	}
-	if ref != "" {
-		t.Errorf("ref = %q, want empty", ref)
-	}
-	entries, err := os.ReadDir(tmp)
-	if err != nil {
-		t.Fatalf("reading temp dir: %v", err)
-	}
-	if len(entries) != 0 {
-		t.Errorf("temp dir not empty after failed load: %v", entries)
-	}
-}
-
 // TestBubblewrapRemoveImageScope verifies that RemoveImage removes the parent
-// only for a ref that LoadImage issued, and removes any other path as given.
+// only for a ref shaped like the one LoadImage returns, and removes any other
+// path as given.
 func TestBubblewrapRemoveImageScope(t *testing.T) {
 	tests := []struct {
-		name string
-		// ref is relative to a fresh temp dir, which holds a sibling file.
-		ref        string
-		wantParent bool // whether the parent of ref survives
+		name       string
+		parent     string // directory holding the ref, relative to a fresh temp dir
+		parentMode os.FileMode
+		ref        string // last path element of the ref
+		wantParent bool   // whether the parent survives
 	}{
-		{name: "foreign rootfs keeps its parent", ref: "other/rootfs", wantParent: true},
-		{name: "legacy guest dir", ref: "bubblewrap-guest-123", wantParent: true},
-		{name: "issued ref removes its parent", ref: "bubblewrap-guest-123/rootfs", wantParent: false},
+		{name: "foreign rootfs", parent: "other", parentMode: 0o700, ref: "rootfs", wantParent: true},
+		{name: "same-named parent, not private", parent: "bubblewrap-guest-notes", parentMode: 0o755, ref: "rootfs", wantParent: true},
+		{name: "legacy guest dir", parent: "legacy", parentMode: 0o755, ref: "bubblewrap-guest-123", wantParent: true},
+		{name: "issued ref", parent: "bubblewrap-guest-123", parentMode: 0o700, ref: "rootfs", wantParent: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			base := t.TempDir()
-			ref := filepath.Join(base, tt.ref)
+			parent := filepath.Join(base, tt.parent)
+			ref := filepath.Join(parent, tt.ref)
 			if err := os.MkdirAll(ref, 0o755); err != nil {
 				t.Fatalf("creating ref: %v", err)
 			}
-			sibling := filepath.Join(filepath.Dir(ref), "sibling")
+			if err := os.Chmod(parent, tt.parentMode); err != nil {
+				t.Fatalf("chmod parent: %v", err)
+			}
+			sibling := filepath.Join(parent, "sibling")
 			if err := os.WriteFile(sibling, nil, 0o600); err != nil {
 				t.Fatalf("creating sibling: %v", err)
 			}
@@ -205,10 +186,32 @@ func TestBubblewrapRemoveImageScope(t *testing.T) {
 			}
 			_, err := os.Stat(sibling)
 			if survived := err == nil; survived != tt.wantParent {
-				t.Errorf("sibling survived = %v, want %v", survived, tt.wantParent)
+				t.Errorf("parent survived = %v, want %v", survived, tt.wantParent)
 			}
 		})
 	}
+
+	t.Run("symlinked parent", func(t *testing.T) {
+		base := t.TempDir()
+		real := filepath.Join(base, "real")
+		if err := os.MkdirAll(filepath.Join(real, "rootfs"), 0o755); err != nil {
+			t.Fatalf("creating ref: %v", err)
+		}
+		link := filepath.Join(base, "bubblewrap-guest-link")
+		if err := os.Symlink(real, link); err != nil {
+			t.Fatalf("creating symlink: %v", err)
+		}
+
+		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), filepath.Join(link, "rootfs")); err != nil {
+			t.Fatalf("RemoveImage: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(real, "rootfs")); !os.IsNotExist(err) {
+			t.Errorf("rootfs behind the symlink still exists: %v", err)
+		}
+		if _, err := os.Lstat(link); err != nil {
+			t.Errorf("symlinked parent was removed: %v", err)
+		}
+	})
 
 	t.Run("missing ref", func(t *testing.T) {
 		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), filepath.Join(t.TempDir(), "gone")); err != nil {

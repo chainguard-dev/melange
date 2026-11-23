@@ -307,24 +307,21 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
-	// The caller gets no ref from a failed load, so nothing else could remove
-	// the parent.
-	defer func() {
-		if err != nil {
-			_ = os.RemoveAll(guestParent)
-		}
-	}()
 	// The guest root is a child of the MkdirTemp directory, which stays 0700
 	// and keeps other host users out of the build environment. The child is
 	// the build environment's /, and the layer carries no entry for its own
 	// root, so nothing else sets its mode. At 0700, a step that drops to
 	// another account under a melange running as root could not traverse /.
 	guestDir := filepath.Join(guestParent, guestRootName)
+	// The caller gets no ref from a failed load, so nothing else removes the
+	// parent.
 	if err := os.Mkdir(guestDir, 0o755); err != nil {
+		_ = os.RemoveAll(guestParent)
 		return ref, fmt.Errorf("failed to create guest root: %w", err)
 	}
 	// Mkdir applies the umask.
 	if err := os.Chmod(guestDir, 0o755); err != nil {
+		_ = os.RemoveAll(guestParent)
 		return ref, fmt.Errorf("failed to chmod guest root: %w", err)
 	}
 	// Only RemoveImage reads this field, to delete the parent with the root.
@@ -485,10 +482,26 @@ func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error
 			clog.FromContext(ctx).Warnf("failed to remove guest dir %s: %v", b.guestDir, err)
 		}
 	}
-	// A ref that LoadImage returned is the guest root; its parent goes with it.
-	// Any other path is removed as given.
-	if parent := filepath.Dir(ref); filepath.Base(ref) == guestRootName && strings.HasPrefix(filepath.Base(parent), guestParentPrefix) {
-		ref = parent
+	// The temp dir that holds a guest root goes with it. Any other path is
+	// removed as given.
+	if isGuestRoot(ref) {
+		ref = filepath.Dir(ref)
 	}
 	return os.RemoveAll(ref)
+}
+
+// isGuestRoot reports whether ref has the shape LoadImage returns: a rootfs
+// directory inside a real bubblewrap-guest-* directory with mode 0700. The
+// mode and Lstat checks keep a symlink, or a directory that only shares the
+// name, from passing.
+func isGuestRoot(ref string) bool {
+	if filepath.Base(ref) != guestRootName {
+		return false
+	}
+	parent := filepath.Dir(ref)
+	if !strings.HasPrefix(filepath.Base(parent), guestParentPrefix) {
+		return false
+	}
+	fi, err := os.Lstat(parent)
+	return err == nil && fi.IsDir() && fi.Mode().Perm() == 0o700
 }

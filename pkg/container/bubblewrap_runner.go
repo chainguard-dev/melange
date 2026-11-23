@@ -490,12 +490,14 @@ func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error
 	return os.RemoveAll(ref)
 }
 
-// isGuestRoot reports whether ref has the shape LoadImage returns: a rootfs
-// directory inside a real bubblewrap-guest-* directory with mode 0700. The
-// mode and Lstat checks keep a symlink, or a directory that only shares the
-// name, from passing.
+// isGuestRoot reports whether ref has the shape LoadImage returns: a clean
+// path to a rootfs directory inside a real bubblewrap-guest-* directory with
+// mode 0700. The mode and Lstat checks keep a symlink, or a directory that
+// only shares the name, from passing. A path that is not clean is excluded
+// because Dir would resolve its ".." lexically, where the kernel resolves
+// them through symlinks.
 func isGuestRoot(ref string) bool {
-	if filepath.Base(ref) != guestRootName {
+	if filepath.Clean(ref) != ref || filepath.Base(ref) != guestRootName {
 		return false
 	}
 	parent := filepath.Dir(ref)

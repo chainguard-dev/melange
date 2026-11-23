@@ -213,6 +213,38 @@ func TestBubblewrapRemoveImageScope(t *testing.T) {
 		}
 	})
 
+	t.Run("ref that is not clean", func(t *testing.T) {
+		base := t.TempDir()
+		// base/link points at base/sub/deep, so the kernel resolves
+		// base/link/.. to base/sub, while Dir resolves it to base.
+		target := filepath.Join(base, "sub", "bubblewrap-guest-1", "rootfs")
+		decoy := filepath.Join(base, "bubblewrap-guest-1", "rootfs")
+		for _, dir := range []string{target, decoy, filepath.Join(base, "sub", "deep")} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatalf("creating %s: %v", dir, err)
+			}
+		}
+		for _, dir := range []string{filepath.Dir(target), filepath.Dir(decoy)} {
+			if err := os.Chmod(dir, 0o700); err != nil {
+				t.Fatalf("chmod %s: %v", dir, err)
+			}
+		}
+		if err := os.Symlink(filepath.Join(base, "sub", "deep"), filepath.Join(base, "link")); err != nil {
+			t.Fatalf("creating symlink: %v", err)
+		}
+
+		ref := base + "/link/../bubblewrap-guest-1/rootfs"
+		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), ref); err != nil {
+			t.Fatalf("RemoveImage: %v", err)
+		}
+		if _, err := os.Stat(target); !os.IsNotExist(err) {
+			t.Errorf("the path the kernel resolves still exists: %v", err)
+		}
+		if _, err := os.Stat(decoy); err != nil {
+			t.Errorf("a different directory was removed: %v", err)
+		}
+	})
+
 	t.Run("missing ref", func(t *testing.T) {
 		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), filepath.Join(t.TempDir(), "gone")); err != nil {
 			t.Errorf("RemoveImage on a missing ref: %v", err)

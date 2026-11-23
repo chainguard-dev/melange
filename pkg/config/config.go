@@ -947,8 +947,8 @@ type Configuration struct {
 	// Optional: The list of finalize pipelines to execute after the main
 	// pipeline and the subpackage pipelines, for adjusting the files that are
 	// about to be packaged (for example, adding or fixing up symlinks). Finalize
-	// pipelines are not scanned for upstream sources, so a fetch or git-checkout
-	// step here is not recorded in the SBOM or the -source package.
+	// steps that fetch or git-checkout upstream sources are recorded in the SBOM
+	// like those of the main pipeline.
 	Finalize []Pipeline `json:"finalize,omitempty" yaml:"finalize,omitempty"`
 	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline

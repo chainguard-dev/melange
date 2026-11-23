@@ -167,7 +167,7 @@
             "$ref": "#/$defs/Pipeline"
           },
           "type": "array",
-          "description": "Optional: The list of finalize pipelines to execute after the main\npipeline and the subpackage pipelines, for adjusting the files that are\nabout to be packaged (for example, adding or fixing up symlinks). Finalize\npipelines are not scanned for upstream sources, so a fetch or git-checkout\nstep here is not recorded in the SBOM or the -source package."
+          "description": "Optional: The list of finalize pipelines to execute after the main\npipeline and the subpackage pipelines, for adjusting the files that are\nabout to be packaged (for example, adding or fixing up symlinks). Finalize\nsteps that fetch or git-checkout upstream sources are recorded in the SBOM\nlike those of the main pipeline."
         },
         "data": {
           "items": {

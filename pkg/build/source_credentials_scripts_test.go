@@ -26,6 +26,8 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/cgi"
@@ -297,6 +299,7 @@ func TestFetchRecordsCredentials(t *testing.T) {
 
 	for _, tt := range []struct {
 		name, uri, netrc, netrcEnv, wgetrc, prior string
+		environ                                   map[string]string
 		want                                      []string
 	}{
 		{name: "a public URL", uri: "https://example.com/foo-1.tar.gz"},
@@ -329,6 +332,13 @@ func TestFetchRecordsCredentials(t *testing.T) {
 		{name: "a client certificate in a wgetrc", uri: "https://example.com/foo-1.tar.gz", wgetrc: "certificate = /c.pem\nprivate-key = /k.pem\n", want: []string{"wgetrc example.com"}},
 		{name: "ftp_user in a wgetrc", uri: "https://example.com/foo-1.tar.gz", wgetrc: "ftp_user = u\n", want: []string{"wgetrc example.com"}},
 		{name: "a record from the cache", uri: "https://example.com/foo-1.tar.gz", prior: "netrc example.com\n", want: []string{"netrc example.com"}},
+		{name: "https_proxy with userinfo", uri: "https://example.com/foo-1.tar.gz", environ: map[string]string{"https_proxy": "http://u:" + credentialsTestSecret + "@proxy.example:3128/"}, want: []string{"proxy proxy.example"}},
+		{name: "HTTP_PROXY with userinfo and no scheme", uri: "https://example.com/foo-1.tar.gz", environ: map[string]string{"HTTP_PROXY": "u:" + credentialsTestSecret + "@proxy.example:3128"}, want: []string{"proxy proxy.example"}},
+		{name: "ftp_proxy with userinfo", uri: "https://example.com/foo-1.tar.gz", environ: map[string]string{"ftp_proxy": "http://u:" + credentialsTestSecret + "@proxy.example"}, want: []string{"proxy proxy.example"}},
+		{name: "a proxy without credentials", uri: "https://example.com/foo-1.tar.gz", environ: map[string]string{"https_proxy": "http://proxy.example:3128", "no_proxy": "example.com"}},
+		{name: "proxy_user in a wgetrc", uri: "https://example.com/foo-1.tar.gz", wgetrc: "use_proxy = on\nhttps_proxy = http://proxy.example:3128/\nproxy_user = u\nproxy_password = " + credentialsTestSecret + "\n", want: []string{"proxy -"}},
+		{name: "a proxy URL with userinfo in a wgetrc", uri: "https://example.com/foo-1.tar.gz", wgetrc: "https-proxy = http://u:" + credentialsTestSecret + "@proxy.example:3128/\n", want: []string{"proxy proxy.example"}},
+		{name: "a proxy without credentials in a wgetrc", uri: "https://example.com/foo-1.tar.gz", wgetrc: "use_proxy = on\nhttps_proxy = http://proxy.example:3128/\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -340,7 +350,10 @@ func TestFetchRecordsCredentials(t *testing.T) {
 			if tt.netrc != "" {
 				require.NoError(t, os.WriteFile(filepath.Join(home, ".netrc"), []byte(tt.netrc), 0o600))
 			}
-			environ := map[string]string{}
+			environ := maps.Clone(tt.environ)
+			if environ == nil {
+				environ = map[string]string{}
+			}
 			if tt.netrcEnv != "" {
 				environ["NETRC"] = filepath.Join(home, "netrc-env")
 				require.NoError(t, os.WriteFile(environ["NETRC"], []byte(tt.netrcEnv), 0o600))
@@ -888,6 +901,99 @@ func TestGitCheckoutKilledStepLeavesNoTrace(t *testing.T) {
 			var exitErr *exec.ExitError
 			require.ErrorAs(t, err, &exitErr)
 			require.Equal(t, tt.status, exitErr.ExitCode(), string(b))
+		})
+	}
+}
+
+// credentialsProxy is a forward http proxy that, with auth set, requires the
+// test's basic credentials in Proxy-Authorization. It counts the requests it
+// forwarded.
+func credentialsProxy(t *testing.T, auth bool) (*url.URL, *atomic.Int32) {
+	t.Helper()
+	var forwarded atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if auth {
+			got := r.Header.Get("Proxy-Authorization")
+			if got != "Basic "+base64.StdEncoding.EncodeToString([]byte("u:"+credentialsTestSecret)) {
+				w.Header().Set("Proxy-Authenticate", `Basic realm="proxy"`)
+				http.Error(w, "proxy authentication required", http.StatusProxyAuthRequired)
+				return
+			}
+		}
+		out := r.Clone(r.Context())
+		out.RequestURI = ""
+		out.Header.Del("Proxy-Authorization")
+		resp, err := http.DefaultTransport.RoundTrip(out)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		forwarded.Add(1)
+		for k, v := range resp.Header {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(resp.StatusCode)
+		_, _ = io.Copy(w, resp.Body)
+	}))
+	t.Cleanup(srv.Close)
+	u, err := url.Parse(srv.URL)
+	require.NoError(t, err)
+	return u, &forwarded
+}
+
+// A public clone through a proxy that takes credentials sends them in
+// Proxy-Authorization, which the trace match does not read: userinfo in the
+// proxy URL, from the environment or git's configuration, is the signal.
+func TestGitCheckoutRecordsProxyCredentials(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "one")
+	commit := sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
+	public := credentialsGitServer(t, repo, false)
+
+	for _, tt := range []struct {
+		name, env, config string
+		auth              bool
+		want              []string
+	}{
+		{name: "http_proxy with userinfo", env: "http_proxy", auth: true, want: []string{"proxy 127.0.0.1"}},
+		{name: "ALL_PROXY with userinfo", env: "ALL_PROXY", auth: true, want: []string{"proxy 127.0.0.1"}},
+		{name: "http.proxy with userinfo", config: "http", auth: true, want: []string{"proxy 127.0.0.1"}},
+		{name: "remote.origin.proxy with userinfo", config: "remote", auth: true, want: []string{"proxy 127.0.0.1"}},
+		{name: "a proxy without credentials", env: "http_proxy"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			proxy, forwarded := credentialsProxy(t, tt.auth)
+			if tt.auth {
+				proxy.User = url.UserPassword("u", credentialsTestSecret)
+			}
+			gitconfig := ""
+			switch tt.config {
+			case "http":
+				gitconfig = fmt.Sprintf("[http]\n\tproxy = %s\n", proxy)
+			case "remote":
+				gitconfig = fmt.Sprintf("[remote \"origin\"]\n\tproxy = %s\n", proxy)
+			}
+			stash := t.TempDir()
+			environ := credentialsHome(t, gitconfig)
+			environ["MELANGE_SOURCE_STASH"], environ["no_proxy"], environ["NO_PROXY"] = stash, "", ""
+			if tt.env != "" {
+				environ[tt.env] = proxy.String()
+			}
+			out, err := credentialsRun(t, "git-checkout", t.TempDir(), map[string]string{
+				"repository": public.String(), "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+				"expected-commit": commit, "max-retries": "0",
+			}, environ)
+			require.NoError(t, err, out)
+			require.NotZero(t, forwarded.Load(), "the clone did not go through the proxy; this case would prove nothing\n%s", out)
+			requireRecord(t, filepath.Join(stash, "git:"+commit+sourceCredentialsSuffix), tt.want, out)
+			requireNoSecret(t, stash, out)
 		})
 	}
 }

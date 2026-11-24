@@ -171,8 +171,17 @@ pipeline:
         # key in a wgetrc, whose command names wget reads ignoring case, "-"
         # and "_". ~/.netrc and $NETRC are both checked: GNU wget reads only
         # ~/.netrc, but a $NETRC costs nothing to check and fails closed if
-        # some wget honours it. A record that came with a cached artifact is
-        # kept.
+        # some wget honours it. Proxy credentials (below). A record that came
+        # with a cached artifact is kept.
+        # "proxy <host>" when the proxy URL $1 holds userinfo
+        fetch_proxy_signal() {
+          fp="${1#*://}"
+          fp=${fp%%/*}
+          case "$fp" in
+            *@*) printf 'proxy %s\n' "$(printf '%s\n' "${fp##*@}" | sed 's|:[0-9]*$||')" ;;
+          esac
+          return 0
+        }
         host=$(printf '%s\n' "$uri_in" | sed -e 's|^[^:/?#]*://||' -e 's|[/?#].*$||' -e 's|^.*@||' -e 's|:[0-9]*$||')
         creds=$(mktemp)
         {
@@ -190,6 +199,25 @@ pipeline:
                   else if ($i == "machine") other = 1 } }
               END { if (own) print "netrc", h; else if (other) print "netrc -" }' "$f"
           fi
+          done
+          # proxy credentials: userinfo in a proxy URL from the environment
+          # or a wgetrc, as "proxy <proxy host>", or a wgetrc proxy-user or
+          # proxy-password, as "proxy -"; whether or not no_proxy exempts
+          # the host
+          for p in "${http_proxy:-}" "${https_proxy:-}" "${ftp_proxy:-}" \
+              "${HTTP_PROXY:-}" "${HTTPS_PROXY:-}" "${FTP_PROXY:-}" "${all_proxy:-}" "${ALL_PROXY:-}"; do
+            fetch_proxy_signal "$p"
+          done
+          for f in "${SYSTEM_WGETRC:-/etc/wgetrc}" "${WGETRC:-${HOME:-/root}/.wgetrc}"; do
+            [ -f "$f" ] || continue
+            awk '/^[[:space:]]*#/ || index($0, "=") == 0 { next }
+                { k = tolower(substr($0, 1, index($0, "=") - 1)); gsub(/[-_[:space:]]/, "", k)
+                  v = substr($0, index($0, "=") + 1); gsub(/^[[:space:]]+|[[:space:]]+$/, "", v) }
+                k ~ /^proxy(user|password|passwd)$/ { print "-" }
+                k ~ /^(http|https|ftp)proxy$/ { print v }' "$f" |
+            while read -r p; do
+              if [ "$p" = "-" ]; then echo "proxy -"; else fetch_proxy_signal "$p"; fi
+            done
           done
           for f in "${SYSTEM_WGETRC:-/etc/wgetrc}" "${WGETRC:-${HOME:-/root}/.wgetrc}"; do
             if [ -f "$f" ] && awk '/^[[:space:]]*#/ || index($0, "=") == 0 { next }

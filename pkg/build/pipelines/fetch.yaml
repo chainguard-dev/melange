@@ -162,9 +162,9 @@ pipeline:
         # refuses a companion holding any such file. wget's debug output
         # prints headers unredacted, so the signals come from the URL and
         # wget's configuration instead, which also covers an artifact the
-        # cache supplied without a fetch: userinfo in the URL; a query
-        # parameter whose name looks like a credential (a substring match, so
-        # it fails closed); a netrc entry for the host, compared
+        # cache supplied without a fetch: userinfo in the URL; any query
+        # string, since signed URLs and tokens travel there under too many
+        # names to list; a netrc entry for the host, compared
         # case-insensitively, or a default one; any other netrc entry, as
         # "netrc -", since wget follows redirects to hosts the URL does not
         # name; a user, password, header, cookie file, client certificate or
@@ -179,8 +179,7 @@ pipeline:
           if printf '%s\n' "$uri_in" | grep -q '^[^:/?#]*://[^/?#]*@'; then
             echo "userinfo $host"
           fi
-          if printf '%s\n' "$uri_in" | sed -n -e 's|#.*$||' -e 's|^[^?]*?||p' | tr '&;' '\n\n' | sed 's|=.*$||' |
-              grep -Eiq 'token|key|sig|secret|auth|pass|cred|jwt'; then
+          if [ -n "$(printf '%s\n' "$uri_in" | sed -n -e 's|#.*$||' -e 's|^[^?]*?||p')" ]; then
             echo "query $host"
           fi
           for f in "${HOME:-/root}/.netrc" "${NETRC:-}"; do

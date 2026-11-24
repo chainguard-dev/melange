@@ -94,11 +94,13 @@ func usrTarball(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
-// TestBubblewrapLoadImageRootMode verifies that the guest root, which bwrap
+// TestBubblewrapLoadImageCreatesGuestRoot verifies that the guest root, which bwrap
 // binds as the build environment's /, can be traversed by accounts other than
 // its owner, while its parent on the host cannot. The layer has no entry for
-// its own root, so only LoadImage can set that mode.
-func TestBubblewrapLoadImageRootMode(t *testing.T) {
+// its own root, so only LoadImage can set that mode. It covers the Mkdir and
+// Chmod of the rootfs directory: the umask 077 run fails unless Chmod
+// overrides the mode Mkdir applied.
+func TestBubblewrapLoadImageCreatesGuestRoot(t *testing.T) {
 	for _, umask := range []int{0o022, 0o077} {
 		t.Run(fmt.Sprintf("umask %04o", umask), func(t *testing.T) {
 			t.Setenv("TMPDIR", t.TempDir())

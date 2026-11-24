@@ -442,6 +442,16 @@ func TestIsGuestRoot(t *testing.T) {
 			}
 			return root
 		}},
+		{name: "marker is not empty", setup: func(t *testing.T, base string) string {
+			root := dir(t, base, "bubblewrap-guest-1/rootfs", 0o755)
+			if err := os.WriteFile(filepath.Join(filepath.Dir(root), guestMarkerName), []byte("x"), 0o600); err != nil {
+				t.Fatalf("creating marker: %v", err)
+			}
+			if err := os.Chmod(filepath.Dir(root), 0o700); err != nil {
+				t.Fatalf("chmod parent: %v", err)
+			}
+			return root
+		}},
 		{name: "marker is a directory", setup: func(t *testing.T, base string) string {
 			root := dir(t, base, "bubblewrap-guest-1/rootfs", 0o755)
 			dir(t, filepath.Dir(root), guestMarkerName, 0o700)
@@ -733,10 +743,14 @@ func TestBubblewrapLoadImageFailedMkdirLeavesNothing(t *testing.T) {
 	// cannot be created.
 	base := deepDir(t, 4095-guestParentFixed-10)
 	t.Setenv("TMPDIR", base)
+	var empty bytes.Buffer
+	if err := tar.NewWriter(&empty).Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	for range 20 {
 		loader := &bubblewrapOCILoader{}
-		ref, err := loader.LoadImage(t.Context(), tarLayer{tarball: usrTarball(t)}, apko_types.ParseArchitecture("amd64"), nil)
+		ref, err := loader.LoadImage(t.Context(), tarLayer{tarball: empty.Bytes()}, apko_types.ParseArchitecture("amd64"), nil)
 		if err == nil {
 			// A short suffix left room for rootfs; remove it and draw again.
 			_ = os.RemoveAll(filepath.Dir(ref))

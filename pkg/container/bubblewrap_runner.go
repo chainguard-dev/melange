@@ -531,7 +531,7 @@ func isPrivateDir(fi os.FileInfo) bool {
 
 // isGuestRoot reports whether ref has the shape LoadImage returns: a clean
 // path to a rootfs directory inside a real bubblewrap-guest-* directory with
-// mode 0700 owned by the current user that holds the marker file. The Lstat
+// mode 0700 owned by the current user that holds the empty marker file. The Lstat
 // checks keep a symlink, or a directory that only shares the name, from
 // passing. A path that is not clean
 // is excluded because Dir would resolve its ".." lexically, where the kernel
@@ -549,5 +549,5 @@ func isGuestRoot(ref string) bool {
 		return false
 	}
 	fi, err = os.Lstat(filepath.Join(parent, guestMarkerName))
-	return err == nil && fi.Mode().IsRegular()
+	return err == nil && fi.Mode().IsRegular() && fi.Size() == 0
 }

@@ -73,34 +73,27 @@ Currently only supports git-checkout.
 				return fmt.Errorf("failed to parse melange config: %w", err)
 			}
 
-			// Look for git-checkout and patch/git-am pipelines in every stage of
-			// the build: the main pipeline, then the finalize pipelines.
-			stages := slices.Concat(cfg.Pipeline, cfg.Finalize)
-			gitCheckoutIndex := -1
+			// Look for git-checkout and patch/git-am pipelines. The git-checkout
+			// may be in the main pipeline or in a finalize pipeline; the patches
+			// are the ones in the same stage, after it.
+			stage, gitCheckoutIndex := gitCheckoutStage(cfg)
 			var patches string
 			var recurseSubmodules bool
 
-			// First pass: find git-checkout step
-			for i, step := range stages {
-				if step.Uses == "git-checkout" {
-					gitCheckoutIndex = i
-					if step.With["recurse-submodules"] == "true" {
-						recurseSubmodules = true
-					}
-					break
-				}
-			}
-
+			// First pass: the git-checkout step
 			if gitCheckoutIndex == -1 {
 				return fmt.Errorf("no git-checkout pipeline found in configuration")
+			}
+			if stage[gitCheckoutIndex].With["recurse-submodules"] == "true" {
+				recurseSubmodules = true
 			}
 
 			// Second pass: find patch or git-am steps that come after git-checkout.
 			// We check for both: 'patch' is the original melange pipeline, 'git-am'
 			// is what 'source pop' writes back. Supporting both means 'source get'
 			// can be re-run after 'source pop' has already converted the YAML.
-			for i := gitCheckoutIndex + 1; i < len(stages); i++ {
-				step := stages[i]
+			for i := gitCheckoutIndex + 1; i < len(stage); i++ {
+				step := stage[i]
 				if step.Uses == "patch" || step.Uses == "git-am" {
 					if patchList := step.With["patches"]; patchList != "" {
 						patches = patchList
@@ -110,7 +103,7 @@ Currently only supports git-checkout.
 			}
 
 			// Now perform the git checkout with patches
-			step := stages[gitCheckoutIndex]
+			step := stage[gitCheckoutIndex]
 			log.Infof("Found git-checkout step")
 
 			// Construct destination: outputDir/packageName
@@ -179,11 +172,8 @@ This command:
 
 			// Find git-checkout step to get expected-commit
 			var expectedCommit string
-			for _, step := range slices.Concat(cfg.Pipeline, cfg.Finalize) {
-				if step.Uses == "git-checkout" {
-					expectedCommit = step.With["expected-commit"]
-					break
-				}
+			if stage, i := gitCheckoutStage(cfg); i != -1 {
+				expectedCommit = stage[i].With["expected-commit"]
 			}
 
 			if expectedCommit == "" {
@@ -278,17 +268,33 @@ This command:
 	return cmd
 }
 
+// gitCheckoutStage returns the stage holding the first git-checkout of the
+// build, and its index in that stage: the main pipeline is searched first, then
+// the finalize pipelines. The index is -1 when no stage has one. 'source get'
+// and 'source pop' act on the patch steps of that stage only; a patch in the
+// other stage may aim at something else and is neither applied nor removed.
+func gitCheckoutStage(cfg *config.Configuration) ([]config.Pipeline, int) {
+	for _, stage := range [][]config.Pipeline{cfg.Pipeline, cfg.Finalize} {
+		for i, step := range stage {
+			if step.Uses == "git-checkout" {
+				return stage, i
+			}
+		}
+	}
+	return nil, -1
+}
+
 // buildStageKeys are the top-level keys of the stages that make up the main
 // build, in the order they run.
 var buildStageKeys = []string{"pipeline", "finalize"}
 
 // updatePipelineWithGitAm finds the pipeline and finalize arrays in the YAML
-// node tree and replaces all 'patch' pipeline steps with a single 'git-am'
-// step using the given patch files. The step goes in the stage that holds the
-// 'git-checkout' (the first stage when none does); 'patch' steps in the other
-// stage are dropped, as the patches they applied are in the 'git-am' step too.
-// If no 'patch' step exists, a 'git-am' step is inserted immediately after the
-// 'git-checkout' step.
+// node tree and, in the stage that holds the 'git-checkout' (the main pipeline
+// when none does), replaces all 'patch' pipeline steps with a single 'git-am'
+// step using the given patch files. If that stage has no 'patch' step, a
+// 'git-am' step is inserted immediately after the 'git-checkout' step. The
+// other stage is left as it is: its steps may aim at something other than the
+// checkout, and 'source get' did not apply them.
 func updatePipelineWithGitAm(doc *yaml.Node, patchFiles []string) error {
 	if len(doc.Content) == 0 || len(doc.Content[0].Content) == 0 {
 		return fmt.Errorf("invalid YAML structure")
@@ -312,10 +318,10 @@ func updatePipelineWithGitAm(doc *yaml.Node, patchFiles []string) error {
 	}
 
 	// The stage that holds the git-checkout hosts the git-am step.
-	host := stages[0]
+	pipelineNode := stages[0]
 	for _, stage := range stages {
 		if slices.ContainsFunc(stage.Content, func(step *yaml.Node) bool { return isPipelineStep(step, "git-checkout") }) {
-			host = stage
+			pipelineNode = stage
 			break
 		}
 	}
@@ -337,34 +343,42 @@ func updatePipelineWithGitAm(doc *yaml.Node, patchFiles []string) error {
 		},
 	}
 
-	// Whether the host stage has a 'patch' step to replace in place. If it
-	// does not, git-am goes right after its 'git-checkout' instead.
-	hostHasPatch := slices.ContainsFunc(host.Content, func(step *yaml.Node) bool { return isPipelineStep(step, "patch") })
+	// Build new content: replace the first 'patch' step with 'git-am' and
+	// drop any additional 'patch' steps (all patches are now in the single
+	// git-am step produced by format-patch).
+	newContent := make([]*yaml.Node, 0, len(pipelineNode.Content))
+	insertedGitAm := false
+	foundPatch := false
 
-	for _, stage := range stages {
-		// Replace the first 'patch' step of the host with 'git-am' and drop
-		// any additional 'patch' steps (all patches are now in the single
-		// git-am step produced by format-patch). With no 'patch' step in the
-		// host, insert git-am immediately after its 'git-checkout'.
-		newContent := make([]*yaml.Node, 0, len(stage.Content)+1)
-		inserted := false
-		for _, step := range stage.Content {
-			switch {
-			case isPipelineStep(step, "patch"):
-				if stage == host && !inserted {
-					newContent = append(newContent, gitAmStep)
-					inserted = true
-				}
-				// Drop additional 'patch' steps: their patches are now in git-am.
-			default:
-				newContent = append(newContent, step)
-				if !hostHasPatch && stage == host && isPipelineStep(step, "git-checkout") {
-					newContent = append(newContent, gitAmStep)
-				}
+	for _, step := range pipelineNode.Content {
+		isPatchStep := isPipelineStep(step, "patch")
+
+		if isPatchStep {
+			foundPatch = true
+			if !insertedGitAm {
+				newContent = append(newContent, gitAmStep)
+				insertedGitAm = true
 			}
+			// Drop additional 'patch' steps — their patches are now in git-am
+			continue
 		}
-		stage.Content = newContent
+		newContent = append(newContent, step)
 	}
+
+	if foundPatch {
+		pipelineNode.Content = newContent
+		return nil
+	}
+
+	// No 'patch' step found — insert git-am immediately after git-checkout
+	newContent = make([]*yaml.Node, 0, len(pipelineNode.Content)+1)
+	for _, step := range pipelineNode.Content {
+		newContent = append(newContent, step)
+		if isPipelineStep(step, "git-checkout") {
+			newContent = append(newContent, gitAmStep)
+		}
+	}
+	pipelineNode.Content = newContent
 
 	return nil
 }

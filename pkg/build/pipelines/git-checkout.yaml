@@ -394,8 +394,12 @@ pipeline:
       # environment, http.proxy or remote.*.proxy). A
       # client certificate is recorded when configured, even if never
       # requested: a deliberate fail-closed exception to "used, not
-      # configured", since nothing in the trace shows its use. git-lfs
-      # downloads outside git's curl and is not seen. A trace that is
+      # configured", since nothing in the trace shows its use. A transport
+      # other than http(s), git://, file:// or a local path (ftp, which can
+      # read a netrc; a remote helper; s3:// and the like), the
+      # submodules' included, is recorded as "unverified -", as is a
+      # worktree git-lfs may have filled (lfs_in_checkout): git-lfs
+      # downloads outside git's curl, unseen by the trace. A trace that is
       # missing, or that shows no request at all although the step cloned
       # an http(s) URL, is recorded as "unverified -", so a trace git did
       # not write (GIT_CURL_VERBOSE, say, sends it to stderr instead) is
@@ -406,13 +410,16 @@ pipeline:
       # lines for hosts named by --source-credential-exempt-host, which a
       # recipe cannot set.
       stash_credentials() {
-          local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" urls="" u=""
+          local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" urls="" dirs="" u=""
           tmp=$(mktemp) || return 1
-          # the repository's URL and each submodule's, one per line
-          urls=$repo
+          # the repository's URL and each submodule's, and their worktrees,
+          # one per line
+          urls=$repo dirs=$dest
           if [ "$recurse" = "true" ]; then
               urls=$(printf '%s\n' "$repo"
                   git -C "$dest" submodule foreach --recursive --quiet 'git config --get remote.origin.url || :' 2>/dev/null || :)
+              dirs=$(printf '%s\n' "$dest"
+                  git -C "$dest" submodule foreach --recursive --quiet pwd 2>/dev/null || :)
           fi
           {
               if [ -n "${credtrace:-}" ] && [ -f "$credtrace" ]; then
@@ -431,6 +438,9 @@ pipeline:
               printf '%s\n' "$urls" | while read -r u; do
                   [ -z "$u" ] || url_credential_signals "$u"
               done
+              printf '%s\n' "$dirs" | while read -r u; do
+                  if [ -n "$u" ] && lfs_in_checkout "$u"; then echo "unverified -"; fi
+              done
               if [ -f "$out" ]; then cat "$out"; fi
           } | LC_ALL=C sort -u > "$tmp" || { rm -f "$tmp"; return 1; }
           if [ -s "$tmp" ]; then
@@ -440,6 +450,16 @@ pipeline:
                   "recorded in $(basename "$out") for the -source package"
           fi
           rm -f "$tmp"
+      }
+
+      # Whether git-lfs, which downloads with an http client of its own
+      # that the trace does not see, can have fetched content into the
+      # worktree $1: its filter is configured and applies to a path there.
+      lfs_in_checkout() {
+          [ -n "$(git -C "$1" config --get filter.lfs.process 2>/dev/null)$(git -C "$1" config --get filter.lfs.smudge 2>/dev/null)" ] ||
+              return 1
+          git -C "$1" ls-files 2>/dev/null | git -C "$1" check-attr --stdin filter 2>/dev/null |
+              awk '$NF == "lfs" { f = 1 } END { exit !f }'
       }
 
       # A URL as git would use it, url.*.insteadOf applied (no network).
@@ -460,9 +480,13 @@ pipeline:
           esac
           case "$url" in
               ssh://*|git+ssh://*|ssh+git://*) echo "ssh $host" ;;
-              *://*|/*|./*|../*) ;;
+              # the transports these checks and the trace cover
+              http://*|https://*|git://*|file://*|/*|./*|../*) ;;
+              # any other is not seen: ftp(s), which reads a netrc, and a
+              # remote helper (<transport>::<address>, or s3:// and the like)
+              *://*|*::*) echo "unverified -" ;;
               # scp-like [user@]host:path, as git reads it: no slash before
-              # the first colon
+              # the first colon; a relative local path otherwise
               *:*) case "${url%%:*}" in */*) ;; *) echo "ssh $host" ;; esac ;;
           esac
           if printf '%s\n' "$url" | grep -q '^[^:/?#]*://[^/?#]*@'; then

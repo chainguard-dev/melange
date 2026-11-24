@@ -258,6 +258,13 @@ func TestGitCheckoutRestoreKeepsTheRecord(t *testing.T) {
 		},
 		{name: "an ssh URL", repo: "git@example.invalid:o/r.git", want: []string{"ssh example.invalid"}},
 		{name: "an ssh:// URL", repo: "ssh://git@example.invalid/o/r.git", want: []string{"ssh example.invalid", "userinfo example.invalid"}},
+		// only http(s), git://, file:// and local paths are covered
+		{name: "a git:// URL", repo: "git://example.invalid/o/r.git"},
+		{name: "a file:// URL", repo: "file:///srv/git/r.git"},
+		{name: "a relative path", repo: "r.git"},
+		{name: "an ftp URL", repo: "ftp://example.invalid/o/r.git", want: []string{"unverified -"}},
+		{name: "an s3:// remote", repo: "s3://bucket/o/r.git", want: []string{"unverified -"}},
+		{name: "a remote helper", repo: "codecommit::us-east-1://r", want: []string{"unverified -"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -994,6 +1001,72 @@ func TestGitCheckoutRecordsProxyCredentials(t *testing.T) {
 			require.NotZero(t, forwarded.Load(), "the clone did not go through the proxy; this case would prove nothing\n%s", out)
 			requireRecord(t, filepath.Join(stash, "git:"+commit+sourceCredentialsSuffix), tt.want, out)
 			requireNoSecret(t, stash, out)
+		})
+	}
+}
+
+// Transports other than http(s), git://, file:// and local paths, and
+// git-lfs, which downloads with a client of its own, are not seen by the
+// trace or the URL checks, so a checkout through them, a submodule's
+// included, is "unverified -".
+func TestGitCheckoutRecordsUnseenTransports(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	// newRepo commits files (name to contents) to a new repository.
+	newRepo := func(files map[string]string) (string, string) {
+		r := t.TempDir()
+		sourcesFromCacheGit(t, r, "init", "-q", "-b", "main")
+		for name, body := range files {
+			require.NoError(t, os.WriteFile(filepath.Join(r, name), []byte(body), 0o644))
+		}
+		sourcesFromCacheGit(t, r, "add", "-A")
+		sourcesFromCacheGit(t, r, "commit", "-q", "-m", "one")
+		return r, sourcesFromCacheGit(t, r, "rev-parse", "HEAD")
+	}
+	plain, plainCommit := newRepo(map[string]string{"a.txt": "a\n"})
+	lfs, lfsCommit := newRepo(map[string]string{".gitattributes": "*.bin filter=lfs diff=lfs merge=lfs -text\n", "a.bin": "a\n"})
+	plainURL, lfsURL := credentialsGitServer(t, plain, false).String(), credentialsGitServer(t, lfs, false).String()
+	// a stand-in for git-lfs's filter: the check reads only that one is
+	// configured and applies
+	lfsFilter := "[filter \"lfs\"]\n\tsmudge = cat\n\tclean = cat\n"
+	ext := "[protocol \"ext\"]\n\tallow = always\n"
+	// withSubmodule is a superproject with sub as a submodule, at subURL.
+	withSubmodule := func(sub, subURL string) (string, string) {
+		super, _ := newRepo(map[string]string{"top.txt": "top\n"})
+		sourcesFromCacheGit(t, super, "-c", "protocol.file.allow=always", "submodule", "add", "-q", sub, "vendor/s")
+		require.NoError(t, os.WriteFile(filepath.Join(super, ".gitmodules"),
+			[]byte("[submodule \"vendor/s\"]\n\tpath = vendor/s\n\turl = "+subURL+"\n"), 0o644))
+		sourcesFromCacheGit(t, super, "add", "-A")
+		sourcesFromCacheGit(t, super, "commit", "-q", "-m", "super")
+		return super, sourcesFromCacheGit(t, super, "rev-parse", "HEAD")
+	}
+	extSuper, extSuperCommit := withSubmodule(plain, "ext::git %s "+plain)
+	lfsSuper, lfsSuperCommit := withSubmodule(lfs, lfsURL)
+
+	for _, tt := range []struct {
+		name, repo, commit, gitconfig string
+		recurse                       bool
+		want                          []string
+	}{
+		{name: "a remote helper (ext::)", repo: "ext::git %s " + plain, commit: plainCommit, gitconfig: ext, want: []string{"unverified -"}},
+		{name: "a submodule through a remote helper", repo: extSuper, commit: extSuperCommit, gitconfig: ext, recurse: true, want: []string{"unverified -"}},
+		{name: "git-lfs content", repo: lfsURL, commit: lfsCommit, gitconfig: lfsFilter, want: []string{"unverified -"}},
+		{name: "git-lfs content in a submodule", repo: lfsSuper, commit: lfsSuperCommit, gitconfig: lfsFilter, recurse: true, want: []string{"unverified -"}},
+		{name: "git-lfs configured, no lfs content", repo: plainURL, commit: plainCommit, gitconfig: lfsFilter},
+		{name: "lfs attributes, git-lfs not configured", repo: lfsURL, commit: lfsCommit},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			stash := t.TempDir()
+			environ := credentialsHome(t, tt.gitconfig)
+			environ["MELANGE_SOURCE_STASH"] = stash
+			out, err := credentialsRun(t, "git-checkout", t.TempDir(), map[string]string{
+				"repository": tt.repo, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+				"expected-commit": tt.commit, "max-retries": "0", "recurse-submodules": fmt.Sprint(tt.recurse),
+			}, environ)
+			require.NoError(t, err, out)
+			require.FileExists(t, filepath.Join(stash, "git:"+tt.commit+".tar.gz"), out)
+			requireRecord(t, filepath.Join(stash, "git:"+tt.commit+sourceCredentialsSuffix), tt.want, out)
 		})
 	}
 }

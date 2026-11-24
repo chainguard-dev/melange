@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 
@@ -46,6 +47,17 @@ const (
 	// specialModeBits are the mode bits that Mkdir/MkdirAll cannot set,
 	// since they take only permission bits.
 	specialModeBits = os.ModeSetuid | os.ModeSetgid | os.ModeSticky
+
+	// guestRootName is the directory, inside the per-build temp dir, that
+	// bwrap binds as the build environment's /.
+	guestRootName = "rootfs"
+
+	// guestParentPrefix names the per-build temp dir that holds the guest root.
+	guestParentPrefix = "bubblewrap-guest-"
+
+	// guestMarkerName is the file LoadImage leaves next to the guest root, as
+	// the proof that RemoveImage needs before it removes the temp dir.
+	guestMarkerName = ".melange-guest"
 )
 
 // defaultCapabilities is the set of Linux capabilities granted by the
@@ -296,11 +308,33 @@ func (b *bubblewrapOCILoader) LoadImage(ctx context.Context, layer v1.Layer, arc
 
 	// bubblewrap does not have the idea of container images or layers or such, just
 	// straight out chroot, so we create the guest dir
-	guestDir, err := os.MkdirTemp("", "bubblewrap-guest-*")
+	guestParent, err := os.MkdirTemp("", guestParentPrefix+"*")
 	if err != nil {
 		return ref, fmt.Errorf("failed to create guest dir: %w", err)
 	}
-	b.guestDir = guestDir
+	// The guest root is a child of the MkdirTemp directory, which stays 0700
+	// and keeps other host users out of the build environment. The child is
+	// the build environment's /, and the layer carries no entry for its own
+	// root, so nothing else sets its mode. At 0700, a step that drops to
+	// another account under a melange running as root could not traverse /.
+	guestDir := filepath.Join(guestParent, guestRootName)
+	// The caller gets no ref from a failed load, so nothing else removes the
+	// parent.
+	if err := os.Mkdir(guestDir, 0o755); err != nil {
+		_ = os.RemoveAll(guestParent)
+		return ref, fmt.Errorf("failed to create guest root: %w", err)
+	}
+	// Mkdir applies the umask.
+	if err := os.Chmod(guestDir, 0o755); err != nil {
+		_ = os.RemoveAll(guestParent)
+		return ref, fmt.Errorf("failed to chmod guest root: %w", err)
+	}
+	// Without the marker, RemoveImage leaves the temp dir in place.
+	if err := os.WriteFile(filepath.Join(guestParent, guestMarkerName), nil, 0o600); err != nil {
+		clog.FromContext(ctx).Warnf("failed to mark guest dir %s, it will not be removed with the image: %v", guestParent, err)
+	}
+	// Only RemoveImage reads this field, to delete the parent with the root.
+	b.guestDir = guestParent
 	rc, err := layer.Uncompressed()
 	if err != nil {
 		return ref, fmt.Errorf("failed to read layer tarball: %w", err)
@@ -457,5 +491,63 @@ func (b *bubblewrapOCILoader) RemoveImage(ctx context.Context, ref string) error
 			clog.FromContext(ctx).Warnf("failed to remove guest dir %s: %v", b.guestDir, err)
 		}
 	}
-	return os.RemoveAll(ref)
+	guestRoot := isGuestRoot(ref)
+	if err := os.RemoveAll(ref); err != nil {
+		return err
+	}
+	if guestRoot {
+		removeGuestParent(filepath.Dir(ref))
+	}
+	return nil
+}
+
+// removeGuestParent removes the temp dir that held a guest root, but only when
+// the marker is all that is left in it. Anything else in the directory is
+// something LoadImage did not put there, so the directory stays.
+func removeGuestParent(parent string) {
+	entries, err := os.ReadDir(parent)
+	if err != nil || len(entries) != 1 || entries[0].Name() != guestMarkerName {
+		return
+	}
+	// Remove, not RemoveAll: a file that appears after the check keeps the
+	// directory.
+	if os.Remove(filepath.Join(parent, guestMarkerName)) == nil {
+		_ = os.Remove(parent)
+	}
+}
+
+// ownedByCurrentUser reports whether fi is owned by the user that MkdirTemp
+// creates directories as. A file whose owner is unknown is not.
+func ownedByCurrentUser(fi os.FileInfo) bool {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	return ok && int(st.Uid) == os.Geteuid()
+}
+
+// isPrivateDir reports whether fi is a real directory, not a symlink to one,
+// that only the current user can enter.
+func isPrivateDir(fi os.FileInfo) bool {
+	return fi.IsDir() && fi.Mode().Perm() == 0o700 && ownedByCurrentUser(fi)
+}
+
+// isGuestRoot reports whether ref has the shape LoadImage returns: a clean
+// path to a rootfs directory inside a real bubblewrap-guest-* directory with
+// mode 0700 owned by the current user that holds the empty marker file. The Lstat
+// checks keep a symlink, or a directory that only shares the name, from
+// passing. A path that is not clean
+// is excluded because Dir would resolve its ".." lexically, where the kernel
+// resolves them through symlinks.
+func isGuestRoot(ref string) bool {
+	if filepath.Clean(ref) != ref || filepath.Base(ref) != guestRootName {
+		return false
+	}
+	parent := filepath.Dir(ref)
+	if !strings.HasPrefix(filepath.Base(parent), guestParentPrefix) {
+		return false
+	}
+	fi, err := os.Lstat(parent)
+	if err != nil || !isPrivateDir(fi) {
+		return false
+	}
+	fi, err = os.Lstat(filepath.Join(parent, guestMarkerName))
+	return err == nil && fi.Mode().IsRegular() && fi.Size() == 0
 }

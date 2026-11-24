@@ -33,9 +33,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -70,6 +72,13 @@ func credentialsRequire(t *testing.T, err error, tool string) {
 // separate so these tests do not depend on that helper's signature.
 func credentialsRun(t *testing.T, uses, cache string, with, environ map[string]string) (string, error) {
 	t.Helper()
+	out, err := credentialsCommand(t, uses, cache, with, environ).CombinedOutput()
+	return string(out), err
+}
+
+// credentialsCommand is the command credentialsRun runs, not yet started.
+func credentialsCommand(t *testing.T, uses, cache string, with, environ map[string]string) *exec.Cmd {
+	t.Helper()
 	p := config.Pipeline{Uses: uses, With: with}
 	sm := &SubstitutionMap{Substitutions: map[string]string{
 		config.SubstitutionPackageName: "hello", config.SubstitutionPackageVersion: "1.0",
@@ -86,8 +95,7 @@ func credentialsRun(t *testing.T, uses, cache string, with, environ map[string]s
 	for k, v := range environ {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return cmd
 }
 
 // credentialsGitServer serves a bare copy of repo over smart http through
@@ -787,6 +795,92 @@ func TestGitCheckoutEmptyTraceIsUnverified(t *testing.T) {
 			require.FileExists(t, filepath.Join(stash, "git:"+commit+".tar.gz"), out)
 			requireRecord(t, filepath.Join(stash, "git:"+commit+sourceCredentialsSuffix), tt.want, out)
 			requireNoSecret(t, stash, out)
+		})
+	}
+}
+
+// A step killed while it waits to retry a clone that sent credentials still
+// removes its trace, which holds every header other than Authorization,
+// Proxy-Authorization and Cookie in clear, and still fails. busybox sh does
+// not run an EXIT trap on a signal.
+func TestGitCheckoutKilledStepLeavesNoTrace(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "one")
+	// every request is refused, so the clone fails after sending the header
+	// and the step waits to retry
+	private := credentialsGitServer(t, repo, true)
+
+	for _, tt := range []struct {
+		name   string
+		sig    syscall.Signal
+		status int
+	}{
+		{name: "TERM", sig: syscall.SIGTERM, status: 143},
+		{name: "INT", sig: syscall.SIGINT, status: 130},
+		{name: "HUP", sig: syscall.SIGHUP, status: 129},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if signal.Ignored(tt.sig) {
+				// the script inherits the disposition, and sh cannot trap a
+				// signal ignored on entry (go test under nohup, say)
+				t.Skipf("SIG%s is ignored in this process", tt.name)
+			}
+			tmp := t.TempDir()
+			environ := credentialsHome(t, "[http]\n\textraHeader = \"X-Token: wrong\"\n")
+			environ["MELANGE_SOURCE_STASH"], environ["TMPDIR"], environ["GIT_TERMINAL_PROMPT"] = t.TempDir(), tmp, "0"
+			cmd := credentialsCommand(t, "git-checkout", t.TempDir(), map[string]string{
+				"repository": private.String(), "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+				"expected-commit": strings.Repeat("0", 40), "max-retries": "3", "initial-backoff": "60",
+			}, environ)
+			log := filepath.Join(t.TempDir(), "log")
+			f, err := os.Create(log)
+			require.NoError(t, err)
+			defer f.Close()
+			cmd.Stdout, cmd.Stderr = f, f
+			// its own process group, so the signal reaches the backoff's
+			// sleep as it would a step's
+			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+			require.NoError(t, cmd.Start())
+			done := make(chan error, 1)
+			go func() { done <- cmd.Wait() }()
+
+			traced := func() bool {
+				found := false
+				require.NoError(t, filepath.WalkDir(tmp, func(p string, d os.DirEntry, err error) error {
+					if err == nil && d.Type().IsRegular() {
+						if b, rerr := os.ReadFile(p); rerr == nil && strings.Contains(string(b), "X-Token: wrong") {
+							found = true
+						}
+					}
+					return err
+				}))
+				return found
+			}
+			require.Eventually(t, func() bool {
+				b, _ := os.ReadFile(log)
+				return strings.Contains(string(b), "before retry")
+			}, 30*time.Second, 50*time.Millisecond, "the step never reached its retry backoff")
+			require.True(t, traced(), "the trace must hold the header before the kill, or this test proves nothing")
+
+			require.NoError(t, syscall.Kill(-cmd.Process.Pid, tt.sig))
+			select {
+			case err = <-done:
+			case <-time.After(30 * time.Second):
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+				t.Fatal("the step did not exit on the signal")
+			}
+			b, _ := os.ReadFile(log)
+			require.Error(t, err, string(b))
+			require.False(t, traced(), "the curl trace must be removed\n%s", b)
+			var exitErr *exec.ExitError
+			require.ErrorAs(t, err, &exitErr)
+			require.Equal(t, tt.status, exitErr.ExitCode(), string(b))
 		})
 	}
 }

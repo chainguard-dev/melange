@@ -393,33 +393,42 @@ pipeline:
       # client certificate is recorded when configured, even if never
       # requested: a deliberate fail-closed exception to "used, not
       # configured", since nothing in the trace shows its use. git-lfs
-      # downloads outside git's curl and is not seen. A missing trace is
-      # recorded as "unverified -": a defensive branch, not the fail-closed
-      # path, since the trace and this function's temporary file come from
-      # the same TMPDIR, so a failed mktemp stops the step first. Lines
-      # already in the record (restored with the archive) are kept.
+      # downloads outside git's curl and is not seen. A trace that is
+      # missing, or that shows no request at all although the step cloned
+      # an http(s) URL, is recorded as "unverified -", so a trace git did
+      # not write (GIT_CURL_VERBOSE, say, sends it to stderr instead) is
+      # never read as "no credentials". A checkout restored from the cache
+      # sent no request, so an empty trace is expected there. Lines already
+      # in the record (restored with the archive) are kept.
       # When melange assembles the companion it drops the authorization
       # lines for hosts named by --source-credential-exempt-host, which a
       # recipe cannot set.
       stash_credentials() {
-          local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" u=""
+          local repo=$1 dest=$2 recurse=$3 out=$4 tmp="" urls="" u=""
           tmp=$(mktemp) || return 1
+          # the repository's URL and each submodule's, one per line
+          urls=$repo
+          if [ "$recurse" = "true" ]; then
+              urls=$(printf '%s\n' "$repo"
+                  git -C "$dest" submodule foreach --recursive --quiet 'git config --get remote.origin.url || :' 2>/dev/null || :)
+          fi
           {
               if [ -n "${credtrace:-}" ] && [ -f "$credtrace" ]; then
                   awk -v parallel="${credparallel:-}" '{ l = tolower($0) }
                       l ~ /=> send header: host:/ { h = (parallel != "" ? "" : $NF); sub(/:[0-9]+$/, "", h) }
                       l ~ /=> send header: authorization:/ { print "authorization", (h == "" ? "-" : h) }
                       l ~ /=> send header: cookie:/ { print "cookie", (h == "" ? "-" : h) }' "$credtrace"
+                  if [ -z "${credrestored:-}" ] && ! grep -qi '=> send header' "$credtrace" &&
+                      printf '%s\n' "$urls" | while read -r u; do [ -z "$u" ] || resolved_url "$u"; done |
+                          awk 'tolower($0) ~ /^https?:\/\// { f = 1 } END { exit !f }'; then
+                      echo "unverified -"
+                  fi
               else
                   echo "unverified -"
               fi
-              url_credential_signals "$repo"
-              if [ "$recurse" = "true" ]; then
-                  git -C "$dest" submodule foreach --recursive --quiet 'git config --get remote.origin.url || :' 2>/dev/null |
-                  while read -r u; do
-                      [ -z "$u" ] || url_credential_signals "$u"
-                  done
-              fi
+              printf '%s\n' "$urls" | while read -r u; do
+                  [ -z "$u" ] || url_credential_signals "$u"
+              done
               if [ -f "$out" ]; then cat "$out"; fi
           } | LC_ALL=C sort -u > "$tmp" || { rm -f "$tmp"; return 1; }
           if [ -s "$tmp" ]; then
@@ -431,12 +440,18 @@ pipeline:
           rm -f "$tmp"
       }
 
+      # A URL as git would use it, url.*.insteadOf applied (no network).
+      resolved_url() {
+          local url=""
+          url=$(git ls-remote --get-url "$1" 2>/dev/null) || url=""
+          printf '%s\n' "${url:-$1}"
+      }
+
       # The credential signals in a URL as git would use it (insteadOf
       # applied), one "<signal> <host>" line each.
       url_credential_signals() {
           local url="" host=""
-          url=$(git ls-remote --get-url "$1" 2>/dev/null) || url=""
-          [ -n "$url" ] || url=$1
+          url=$(resolved_url "$1")
           case "$url" in
               *://*) host=$(printf '%s\n' "$url" | sed -e 's|^[^:]*://||' -e 's|[/?#].*$||' -e 's|^.*@||' -e 's|:[0-9]*$||') ;;
               *) host=$(printf '%s\n' "$url" | sed -e 's|:.*$||' -e 's|^.*@||') ;;
@@ -1108,6 +1123,8 @@ pipeline:
                   mkdir -p "$MELANGE_SOURCE_STASH"
                   cp "$cachebase".* "$MELANGE_SOURCE_STASH/"
               fi
+              # no request was sent, so stash_credentials expects an empty trace
+              credrestored=1
               return 0
           fi
 
@@ -1283,9 +1300,12 @@ pipeline:
       # and Cookie values: any other http.extraHeader and a request line's
       # query string are written in clear. The trace is removed however the
       # step ends, so only a killed step can leave one behind.
-      credtrace="" credparallel=""
+      # GIT_CURL_VERBOSE would make git trace to stderr instead, leaving the
+      # file empty.
+      credtrace="" credparallel="" credrestored=""
       if [ -n "${MELANGE_SOURCE_STASH:-}" ] && credtrace=$(mktemp); then
           trap 'rm -f "$credtrace"' EXIT
+          unset GIT_CURL_VERBOSE
           export GIT_TRACE_CURL="$credtrace" GIT_TRACE_CURL_NO_DATA=1 GIT_TRACE_REDACT=1
           credjobs='${{inputs.submodule-jobs}}'
           if [ '${{inputs.recurse-submodules}}' = "true" ] && [ "${credjobs:-1}" != "1" ]; then

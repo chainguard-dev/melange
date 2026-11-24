@@ -732,3 +732,61 @@ func TestGitCheckoutSecondStepKeepsTheRecord(t *testing.T) {
 		})
 	}
 }
+
+// GIT_CURL_VERBOSE makes git trace to stderr and leave GIT_TRACE_CURL's file
+// empty, so the step unsets it. And a trace that shows no request at all,
+// whatever kept git from writing it, is never read as "no credentials" when
+// the step cloned over http(s).
+func TestGitCheckoutEmptyTraceIsUnverified(t *testing.T) {
+	t.Parallel()
+	sourcesFromCacheRequireTools(t)
+	repo := t.TempDir()
+	sourcesFromCacheGit(t, repo, "init", "-q", "-b", "main")
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644))
+	sourcesFromCacheGit(t, repo, "add", "-A")
+	sourcesFromCacheGit(t, repo, "commit", "-q", "-m", "one")
+	commit := sourcesFromCacheGit(t, repo, "rev-parse", "HEAD")
+	private := credentialsGitServer(t, repo, true)
+	public := credentialsGitServer(t, repo, false)
+	host := private.Hostname()
+	helper := "[credential]\n\thelper = \"!f() { test \\\"$1\\\" = get && echo username=u && echo password=" + credentialsTestSecret + "; }; f\"\n"
+
+	// a git that writes no trace, as any cause of a silent trace would
+	realGit, err := exec.LookPath("git")
+	require.NoError(t, err)
+	noTrace := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(noTrace, "git"),
+		[]byte("#!/bin/sh\nunset GIT_TRACE_CURL\nexec "+realGit+" \"$@\"\n"), 0o755))
+
+	for _, tt := range []struct {
+		name, repo, gitconfig string
+		verbose, untraced     bool
+		want                  []string
+	}{
+		{name: "GIT_CURL_VERBOSE with a credential helper", repo: private.String(), gitconfig: helper, verbose: true, want: []string{"authorization " + host}},
+		{name: "GIT_CURL_VERBOSE on a public clone", repo: public.String(), verbose: true},
+		{name: "no trace of an http clone", repo: public.String(), untraced: true, want: []string{"unverified -"}},
+		{name: "no trace of a local clone", repo: repo, untraced: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			stash := t.TempDir()
+			environ := credentialsHome(t, tt.gitconfig)
+			environ["MELANGE_SOURCE_STASH"] = stash
+			if tt.verbose {
+				environ["GIT_CURL_VERBOSE"] = "1"
+			}
+			if tt.untraced {
+				environ["PATH"] = noTrace + string(os.PathListSeparator) + os.Getenv("PATH")
+			}
+			out, err := credentialsRun(t, "git-checkout", t.TempDir(), map[string]string{
+				"repository": tt.repo, "destination": filepath.Join(t.TempDir(), "out"), "branch": "main",
+				"expected-commit": commit, "max-retries": "0",
+			}, environ)
+			require.NoError(t, err, out)
+			require.FileExists(t, filepath.Join(stash, "git:"+commit+".tar.gz"), out)
+			requireRecord(t, filepath.Join(stash, "git:"+commit+sourceCredentialsSuffix), tt.want, out)
+			requireNoSecret(t, stash, out)
+		})
+	}
+}

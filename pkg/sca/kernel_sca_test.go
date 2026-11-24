@@ -21,7 +21,9 @@
 package sca
 
 import (
+	"io/fs"
 	"testing"
+	"testing/fstest"
 
 	"github.com/chainguard-dev/clog/slogtest"
 	"github.com/google/go-cmp/cmp"
@@ -112,5 +114,68 @@ func TestKernelSca(t *testing.T) {
 				t.Errorf("Analyze(): (-want, +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+// mapSCAFS adds the Readlink method of SCAFS to fstest.MapFS.
+type mapSCAFS struct {
+	fstest.MapFS
+}
+
+func (m mapSCAFS) Readlink(name string) (string, error) {
+	return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrInvalid}
+}
+
+// fsHandle serves a fixed filesystem. generateKernelDeps calls no other
+// SCAHandle method.
+type fsHandle struct {
+	SCAHandle
+	fsys SCAFS
+}
+
+func (h fsHandle) Filesystem() (SCAFS, error) {
+	return h.fsys, nil
+}
+
+func TestKernelScaOnlyModuleFiles(t *testing.T) {
+	ctx := slogtest.Context(t)
+
+	// An initramfs built by dracut-ng 113 or later starts with an
+	// uncompressed cpio of the compressed modules. Their zstd data can
+	// hold "vermagic=" followed by a truncated version.
+	initramfs := []byte("070701...kernel/uio.ko.zst\x28\xb5\x2f\xfdvermagic=6.17.7-te\x00")
+
+	h := fsHandle{fsys: mapSCAFS{fstest.MapFS{
+		"usr/lib/modules/6.17.7-test/kernel/uio.ko":   {Data: []byte("\x7fELFvermagic=6.17.7-test SMP mod_unload\x00")},
+		"usr/lib/modules/6.17.7-test/initramfs.img":   {Data: initramfs},
+		"usr/lib/modules/6.17.7-test/modules.builtin": {Data: []byte("vermagic=bogus\n")},
+	}}}
+
+	got := config.Dependencies{}
+	if err := generateKernelDeps(ctx, h, &got, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	want := config.Dependencies{Runtime: []string{"linux:6.17.7-test"}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("generateKernelDeps(): (-want, +got):\n%s", diff)
+	}
+}
+
+func TestIsKernelModule(t *testing.T) {
+	for path, want := range map[string]bool{
+		"usr/lib/modules/6.17.7/kernel/uio.ko":     true,
+		"usr/lib/modules/6.17.7/kernel/uio.ko.gz":  true,
+		"usr/lib/modules/6.17.7/kernel/uio.ko.xz":  true,
+		"usr/lib/modules/6.17.7/kernel/uio.ko.zst": true,
+		"usr/lib/modules/6.17.7/kernel/uio.ko.bz2": false,
+		"usr/lib/modules/6.17.7/initramfs.img":     false,
+		"usr/lib/modules/6.17.7/vmlinuz":           false,
+		"usr/lib/modules/6.17.7/modules.dep":       false,
+		"usr/lib/modules/6.17.7/kernel/uio.kobj":   false,
+	} {
+		if got := isKernelModule(path); got != want {
+			t.Errorf("isKernelModule(%q) = %v, want %v", path, got, want)
+		}
 	}
 }

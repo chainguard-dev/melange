@@ -44,8 +44,25 @@ import (
 var BootDirs = []string{"boot/...", "lib/modules/...", "usr/lib/modules/..."}
 
 // ModuleDirs is the list of directories to search for kernel modules.
-// This is exported so that callers can append to it as needed.
+// This is exported so that callers can append to it as needed. Only files in
+// these directories that have a kernel module suffix (see moduleSuffixes) are
+// scanned.
 var ModuleDirs = []string{"usr/lib/modules/...", "lib/modules/..."}
+
+// moduleSuffixes are the file name suffixes that kmod recognizes for kernel
+// modules. Other files in ModuleDirs, such as an initramfs installed for bootc,
+// can contain "vermagic=" in compressed module data that is not a version.
+var moduleSuffixes = []string{".ko", ".ko.gz", ".ko.xz", ".ko.zst"}
+
+// isKernelModule reports whether path names a kernel module.
+func isKernelModule(path string) bool {
+	for _, s := range moduleSuffixes {
+		if strings.HasSuffix(path, s) {
+			return true
+		}
+	}
+	return false
+}
 
 var logAboutXZOnce = new(sync.Once)
 
@@ -109,7 +126,7 @@ func generateKernelDeps(ctx context.Context, hdl SCAHandle, generated *config.De
 			}
 		}
 
-		if isInDir(path, ModuleDirs) {
+		if isInDir(path, ModuleDirs) && isKernelModule(path) {
 			ver, err := moduleVermagic(ctx, seekableFile)
 			if err != nil {
 				log.Debugf("%s has no vermagic: %v", path, err)

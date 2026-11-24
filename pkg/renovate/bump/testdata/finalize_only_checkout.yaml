@@ -1,0 +1,15 @@
+package:
+  name: cheese
+  version: 6.8
+  epoch: 2
+  description: "a cheesy library"
+
+pipeline:
+  - runs: echo build
+
+finalize:
+  - uses: git-checkout
+    with:
+      repository: cheese/cheese
+      expected-commit: bar
+      tag: fixed

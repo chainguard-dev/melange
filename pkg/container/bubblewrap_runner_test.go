@@ -586,3 +586,29 @@ func TestIsGuestRoot(t *testing.T) {
 		}
 	})
 }
+
+func TestIsGuestRootRejectsForeignOwner(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("chown to another user needs root")
+	}
+	parent := filepath.Join(t.TempDir(), guestParentPrefix+"1")
+	root := filepath.Join(parent, guestRootName)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(parent, guestMarkerName), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !isGuestRoot(root) {
+		t.Fatal("setup: expected a guest root before chown")
+	}
+	if err := os.Lchown(parent, 12345, 12345); err != nil {
+		t.Fatal(err)
+	}
+	if isGuestRoot(root) {
+		t.Error("isGuestRoot accepted a parent owned by another user")
+	}
+}

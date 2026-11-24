@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 
@@ -517,8 +518,9 @@ func removeGuestParent(parent string) {
 
 // isGuestRoot reports whether ref has the shape LoadImage returns: a clean
 // path to a rootfs directory inside a real bubblewrap-guest-* directory with
-// mode 0700 that holds the marker file. The Lstat checks keep a symlink, or a
-// directory that only shares the name, from passing. A path that is not clean
+// mode 0700 owned by the current user that holds the marker file. The Lstat
+// checks keep a symlink, or a directory that only shares the name, from
+// passing. A path that is not clean
 // is excluded because Dir would resolve its ".." lexically, where the kernel
 // resolves them through symlinks.
 func isGuestRoot(ref string) bool {
@@ -531,6 +533,10 @@ func isGuestRoot(ref string) bool {
 	}
 	fi, err := os.Lstat(parent)
 	if err != nil || !fi.IsDir() || fi.Mode().Perm() != 0o700 {
+		return false
+	}
+	// MkdirTemp creates the parent as the current user.
+	if st, ok := fi.Sys().(*syscall.Stat_t); !ok || int(st.Uid) != os.Getuid() {
 		return false
 	}
 	fi, err = os.Lstat(filepath.Join(parent, guestMarkerName))

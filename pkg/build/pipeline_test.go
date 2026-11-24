@@ -212,6 +212,14 @@ func Test_MutateWith_DeepForwarding(t *testing.T) {
 	}
 }
 
+// A value that refers to itself and grows on every pass never settles; it
+// must be reported, not looped on.
+func Test_MutateWith_ReferenceThatNeverSettles(t *testing.T) {
+	sm := &SubstitutionMap{Substitutions: map[string]string{}}
+	_, err := sm.MutateWith(map[string]string{"a": "x${{inputs.a}}"})
+	require.ErrorContains(t, err, "input references do not resolve")
+}
+
 // Functional: compile a 3-level nested `uses:` (parent->child->grandchild) that
 // forwards a same-named input down to a `runs:` block. Pre-fix this
 // intermittently failed stripComments with "invalid parameter name".
@@ -366,7 +374,7 @@ func Test_validateWith(t *testing.T) {
 			expectError: false,
 		},
 		{
-			// Digests are checked after substitution, by validateDigests, so a
+			// Digests are checked after substitution, by validateResolvedInputs, so a
 			// forwarded "${{inputs.X}}" reference must pass through untouched.
 			name: "Unsubstituted SHA256 reference",
 			data: map[string]string{
@@ -407,7 +415,7 @@ func Test_validateWith(t *testing.T) {
 	}
 }
 
-func Test_validateDigests(t *testing.T) {
+func Test_validateResolvedInputs(t *testing.T) {
 	sha256 := strings.Repeat("a", 64)
 	sha512 := strings.Repeat("b", 128)
 	commit := strings.Repeat("c", 40)
@@ -439,23 +447,32 @@ func Test_validateDigests(t *testing.T) {
 	}, {
 		name:     "invalid SHA256 length",
 		mutated:  map[string]string{"${{inputs.expected-sha256}}": "abcdef"},
-		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length: resolved to "abcdef" (6 characters, want 64 hex characters)`,
 	}, {
 		name:     "invalid SHA512 characters",
 		mutated:  map[string]string{"${{inputs.expected-sha512}}": strings.Repeat("z", 128)},
-		errorMsg: `checksum input "expected-sha512" for pipeline, invalid length`,
+		errorMsg: `checksum input "expected-sha512" for pipeline, invalid characters: resolved to "` + strings.Repeat("z", 128) + `" (128 characters, want 128 hex characters)`,
 	}, {
 		name:     "invalid commit",
 		mutated:  map[string]string{"${{inputs.expected-commit}}": "abcdef"},
-		errorMsg: `expected commit "expected-commit" for pipeline contains invalid characters or invalid sha length`,
+		errorMsg: `expected commit "expected-commit" for pipeline, invalid length: resolved to "abcdef" (6 characters, want 40 hex characters)`,
+	}, {
+		name:     "invalid commit characters",
+		mutated:  map[string]string{"${{inputs.expected-commit}}": strings.Repeat("g", 40)},
+		errorMsg: `expected commit "expected-commit" for pipeline, invalid characters: resolved to "` + strings.Repeat("g", 40) + `" (40 characters, want 40 hex characters)`,
 	}, {
 		name:     "required digest that resolved to empty",
 		inputs:   map[string]config.Input{"expected-sha256": {Required: true}},
 		mutated:  map[string]string{"${{inputs.expected-sha256}}": ""},
 		errorMsg: `required input "expected-sha256" for pipeline is missing`,
 	}, {
-		name:    "required non-digest input is left to validateWith",
-		inputs:  map[string]config.Input{"other": {Required: true}},
+		name:     "required non-digest input that resolved to empty",
+		inputs:   map[string]config.Input{"other": {Required: true}},
+		mutated:  map[string]string{"${{inputs.other}}": ""},
+		errorMsg: `required input "other" for pipeline is missing`,
+	}, {
+		name:    "optional non-digest input that resolved to empty",
+		inputs:  map[string]config.Input{"other": {}},
 		mutated: map[string]string{"${{inputs.other}}": ""},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -463,7 +480,7 @@ func Test_validateDigests(t *testing.T) {
 			if tt.inputs != nil {
 				in = tt.inputs
 			}
-			err := validateDigests(tt.mutated, in)
+			err := validateResolvedInputs(tt.mutated, in)
 			if tt.errorMsg != "" {
 				require.EqualError(t, err, tt.errorMsg)
 				return
@@ -527,7 +544,7 @@ pipeline:
 			"checker": checker("expected-sha256", "    required: true"),
 		},
 		with:     map[string]string{"digest": "abcdef"},
-		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length: resolved to "abcdef" (6 characters, want 64 hex characters)`,
 	}, {
 		name: "commit forwarded through a nested pipeline",
 		pipelines: map[string]string{
@@ -543,7 +560,7 @@ pipeline:
 			"checker": checker("expected-commit", "    required: true"),
 		},
 		with:     map[string]string{"digest": "zz"},
-		errorMsg: `expected commit "expected-commit" for pipeline contains invalid characters or invalid sha length`,
+		errorMsg: `expected commit "expected-commit" for pipeline, invalid characters: resolved to "zz" (2 characters, want 40 hex characters)`,
 	}, {
 		name: "sha256 from vars in a with value",
 		pipelines: map[string]string{
@@ -559,7 +576,7 @@ pipeline:
 		},
 		with:     map[string]string{"expected-sha256": "${{vars.sha}}"},
 		vars:     map[string]string{"sha": "abcdef"},
-		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length: resolved to "abcdef" (6 characters, want 64 hex characters)`,
 	}, {
 		name: "sha256 from vars in an input default",
 		pipelines: map[string]string{
@@ -573,7 +590,7 @@ pipeline:
 			"top": checker("expected-sha256", "    default: ${{vars.sha}}"),
 		},
 		vars:     map[string]string{"sha": "abcdef"},
-		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length: resolved to "abcdef" (6 characters, want 64 hex characters)`,
 	}, {
 		name: "sha256 defaulting to a sibling input",
 		pipelines: map[string]string{
@@ -603,7 +620,7 @@ pipeline:
 `,
 		},
 		with:     map[string]string{"other": "abcdef"},
-		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length`,
+		errorMsg: `checksum input "expected-sha256" for pipeline, invalid length: resolved to "abcdef" (6 characters, want 64 hex characters)`,
 	}, {
 		name: "required sha256 forwarded from an unset input is rejected",
 		pipelines: map[string]string{
@@ -611,6 +628,13 @@ pipeline:
 			"checker": checker("expected-sha256", "    required: true"),
 		},
 		errorMsg: `required input "expected-sha256" for pipeline is missing`,
+	}, {
+		name: "required non-digest input forwarded from an unset input is rejected",
+		pipelines: map[string]string{
+			"top":     wrapper("repository"),
+			"checker": checker("repository", "    required: true"),
+		},
+		errorMsg: `required input "repository" for pipeline is missing`,
 	}, {
 		name: "optional sha256 forwarded from an unset input is allowed",
 		pipelines: map[string]string{
@@ -648,5 +672,46 @@ pipeline:
 			require.Contains(t, p.Runs, `digest=`+tt.want+`"`)
 			require.NotContains(t, p.Runs, "${{")
 		})
+	}
+}
+
+// A digest forwarded through two sibling inputs (b -> a -> expected-sha256)
+// must compile on every run. With one substitution pass it resolved only when
+// map iteration visited a before expected-sha256, so some compiles failed with
+// expected-sha256 still holding "${{inputs.b}}".
+func Test_CompilePipelines_TwoHopSiblingDigest(t *testing.T) {
+	ctx := slogtest.Context(t)
+	sha256 := strings.Repeat("a", 64)
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "top.yaml"), []byte(`
+inputs:
+  b: {}
+  a:
+    default: ${{inputs.b}}
+  expected-sha256:
+    default: ${{inputs.a}}
+pipeline:
+  - runs: |
+      echo "digest=${{inputs.expected-sha256}}"
+`), 0o644))
+
+	for i := range 1000 {
+		cfg := config.Configuration{
+			Package:  config.Package{Name: "foo", Version: "1.2.3"},
+			Pipeline: []config.Pipeline{{Uses: "top", With: map[string]string{"b": sha256}}},
+		}
+		c := &Compiled{PipelineDirs: []string{dir}}
+		sm, err := NewSubstitutionMap(&cfg, "", "", nil)
+		require.NoError(t, err)
+		if err := c.CompilePipelines(ctx, sm, cfg.Pipeline); err != nil {
+			t.Fatalf("iter %d: %v", i, err)
+		}
+		p := &cfg.Pipeline[0]
+		for len(p.Pipeline) > 0 {
+			p = &p.Pipeline[0]
+		}
+		if !strings.Contains(p.Runs, `digest=`+sha256+`"`) {
+			t.Fatalf("iter %d: runs step = %q", i, p.Runs)
+		}
 	}
 }

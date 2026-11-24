@@ -455,6 +455,10 @@ pipeline:
       # Whether git-lfs, which downloads with an http client of its own
       # that the trace does not see, can have fetched content into the
       # worktree $1: its filter is configured and applies to a path there.
+      # Wolfi's git-lfs package sets filter.lfs.* in /etc/gitconfig, so with
+      # it installed a public checkout that has lfs-tracked paths records
+      # "unverified -" too, and its companion is refused for public serving.
+      # That fails closed.
       lfs_in_checkout() {
           [ -n "$(git -C "$1" config --get filter.lfs.process 2>/dev/null)$(git -C "$1" config --get filter.lfs.smudge 2>/dev/null)" ] ||
               return 1
@@ -1348,7 +1352,10 @@ pipeline:
       # query string are written in clear. The trace is removed however the
       # step ends: on exit, and on INT, TERM or HUP, which busybox sh does
       # not run the EXIT trap for; the step still fails with the signal's
-      # status. Only SIGKILL can leave a trace behind.
+      # status. Only SIGKILL can leave a trace behind. A TERM sent to the
+      # shell alone runs its trap only once the running command (git, or the
+      # retry backoff's sleep) returns; a signal to the process group is not
+      # delayed.
       # GIT_CURL_VERBOSE would make git trace to stderr instead, leaving the
       # file empty.
       credtrace="" credparallel="" credrestored=""

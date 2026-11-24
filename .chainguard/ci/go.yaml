@@ -41,6 +41,7 @@ checks:
         - busybox # the pipeline script tests run the scripts under its sh
         - bubblewrap~0.13
         - git
+        - git-daemon # git-http-backend, for the credential tests' smart-http servers
         - make
         - patch # TestPatchPipelineEndToEnd skips without it
         - dash # the patch pipeline's syntax check also runs under dash, as on ubuntu-latest
@@ -54,7 +55,8 @@ checks:
     # melange adds it to every build and test guest.
     vars:
       MELANGE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
-      # the pipeline script tests fail, rather than skip, without git and busybox
+      # the pipeline script tests fail, rather than skip, without git,
+      # git-http-backend (git-daemon), busybox and sha256sum
       MELANGE_REQUIRE_SCRIPT_TOOLS: "1"
     trigger: [presubmit, postsubmit]
     resources: medium-amd64

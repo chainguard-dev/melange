@@ -80,7 +80,9 @@ pipeline:
         exit 1
       fi
 
-      bn=$(basename ${{inputs.uri}})
+      # the URI, spliced into the script once
+      uri_in='${{inputs.uri}}'
+      bn=$(basename "$uri_in")
 
       if [ -n "${{inputs.expected-sha256}}" ]; then
         fn="/var/cache/melange/sha256:${{inputs.expected-sha256}}"
@@ -103,7 +105,7 @@ pipeline:
         # bytes, so only a build that asked to restore from a companion --
         # whose cache the pin in the binary package has verified -- looks;
         # an ordinary build with a cache it did not vet fetches as before.
-        uri=$(printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/?#]*@|://|' -e 's|[?#].*$||')
+        uri=$(printf '%s\n' "$uri_in" | sed -e 's|://[^/?#]*@|://|' -e 's|[?#].*$||')
         for u in /var/cache/melange/sha256:*.uri; do
           [ -f "$u" ] || continue
           [ "$(head -n 1 "$u")" = "$uri" ] || continue
@@ -117,7 +119,7 @@ pipeline:
       fi
 
       if [ ! -f $bn ]; then
-        wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue '${{inputs.uri}}'
+        wget '-T${{inputs.timeout}}' '--dns-timeout=${{inputs.dns-timeout}}' '--tries=${{inputs.retry-limit}}' --random-wait --retry-connrefused --continue "$uri_in"
       fi
 
       if [ -n "${{inputs.expected-none}}" ]; then
@@ -153,7 +155,88 @@ pipeline:
         cp "$bn" "$MELANGE_SOURCE_STASH/$key"
         # the URL as provenance: scheme, host and path only, since userinfo,
         # query and fragment are where credentials travel
-        printf '%s\n' '${{inputs.uri}}' | sed -e 's|://[^/?#]*@|://|' -e 's|[?#].*$||' > "$MELANGE_SOURCE_STASH/$key.uri"
+        printf '%s\n' "$uri_in" | sed -e 's|://[^/?#]*@|://|' -e 's|[?#].*$||' > "$MELANGE_SOURCE_STASH/$key.uri"
+        # Whether the artifact was obtained with credentials, recorded as
+        # $key.credentials: one "<signal> <host>" line for each way wget would
+        # send them, never a value. A publisher that serves source publicly
+        # refuses a companion holding any such file. wget's debug output
+        # prints headers unredacted, so the signals come from the URL and
+        # wget's configuration instead, which also covers an artifact the
+        # cache supplied without a fetch: userinfo in the URL; any query
+        # string, since signed URLs and tokens travel there under too many
+        # names to list; a netrc entry for the host, compared
+        # case-insensitively, or a default one; any other netrc entry, as
+        # "netrc -", since wget follows redirects to hosts the URL does not
+        # name; a user, password, header, cookie file, client certificate or
+        # key in a wgetrc, whose command names wget reads ignoring case, "-"
+        # and "_". ~/.netrc and $NETRC are both checked: GNU wget reads only
+        # ~/.netrc, but a $NETRC costs nothing to check and fails closed if
+        # some wget honours it. Proxy credentials (below). A record that came
+        # with a cached artifact is kept.
+        # "proxy <host>" when the proxy URL $1 holds userinfo
+        fetch_proxy_signal() {
+          fp="${1#*://}"
+          fp=${fp%%/*}
+          case "$fp" in
+            *@*) printf 'proxy %s\n' "$(printf '%s\n' "${fp##*@}" | sed 's|:[0-9]*$||')" ;;
+          esac
+          return 0
+        }
+        host=$(printf '%s\n' "$uri_in" | sed -e 's|^[^:/?#]*://||' -e 's|[/?#].*$||' -e 's|^.*@||' -e 's|:[0-9]*$||')
+        creds=$(mktemp)
+        {
+          if printf '%s\n' "$uri_in" | grep -q '^[^:/?#]*://[^/?#]*@'; then
+            echo "userinfo $host"
+          fi
+          if [ -n "$(printf '%s\n' "$uri_in" | sed -n -e 's|#.*$||' -e 's|^[^?]*?||p')" ]; then
+            echo "query $host"
+          fi
+          for f in "${HOME:-/root}/.netrc" "${NETRC:-}"; do
+          if [ -n "$f" ] && [ -f "$f" ]; then
+            awk -v h="$host" 'BEGIN { h = tolower(h) }
+              { for (i = 1; i <= NF; i++) {
+                  if ($i == "default" || ($i == "machine" && tolower($(i + 1)) == h)) own = 1
+                  else if ($i == "machine") other = 1 } }
+              END { if (own) print "netrc", h; else if (other) print "netrc -" }' "$f"
+          fi
+          done
+          # proxy credentials: userinfo in a proxy URL from the environment
+          # or a wgetrc, as "proxy <proxy host>", or a wgetrc proxy-user or
+          # proxy-password, as "proxy -"; whether or not no_proxy exempts
+          # the host
+          for p in "${http_proxy:-}" "${https_proxy:-}" "${ftp_proxy:-}" \
+              "${HTTP_PROXY:-}" "${HTTPS_PROXY:-}" "${FTP_PROXY:-}" "${all_proxy:-}" "${ALL_PROXY:-}"; do
+            fetch_proxy_signal "$p"
+          done
+          for f in "${SYSTEM_WGETRC:-/etc/wgetrc}" "${WGETRC:-${HOME:-/root}/.wgetrc}"; do
+            [ -f "$f" ] || continue
+            awk '/^[[:space:]]*#/ || index($0, "=") == 0 { next }
+                { k = tolower(substr($0, 1, index($0, "=") - 1)); gsub(/[-_[:space:]]/, "", k)
+                  v = substr($0, index($0, "=") + 1); gsub(/^[[:space:]]+|[[:space:]]+$/, "", v) }
+                k ~ /^proxy(user|password|passwd)$/ { print "-" }
+                k ~ /^(http|https|ftp)proxy$/ { print v }' "$f" |
+            while read -r p; do
+              if [ "$p" = "-" ]; then echo "proxy -"; else fetch_proxy_signal "$p"; fi
+            done
+          done
+          for f in "${SYSTEM_WGETRC:-/etc/wgetrc}" "${WGETRC:-${HOME:-/root}/.wgetrc}"; do
+            if [ -f "$f" ] && awk '/^[[:space:]]*#/ || index($0, "=") == 0 { next }
+                { k = tolower(substr($0, 1, index($0, "=") - 1)); gsub(/[-_[:space:]]/, "", k) }
+                k ~ /^(header|user|password|httpuser|httppassword|httppasswd|ftpuser|ftppassword|ftppasswd|askpassword|useaskpass|loadcookies|certificate|privatekey)$/ { found = 1 }
+                END { exit !found }' "$f"; then
+              echo "wgetrc $host"
+            fi
+          done
+          if [ -n "${fn:-}" ] && [ -f "$fn.credentials" ]; then
+            cat "$fn.credentials"
+          fi
+        } | LC_ALL=C sort -u > "$creds"
+        if [ -s "$creds" ]; then
+          cp "$creds" "$MELANGE_SOURCE_STASH/$key.credentials"
+          printf 'fetch: Warning: %s was obtained with credentials (%s); recorded in %s.credentials for the -source package\n' \
+            "$key" "$(awk 'NR > 1 { printf ", " } { printf "%s", $0 }' "$creds")" "$key"
+        fi
+        rm -f "$creds"
         printf "fetch: kept $key for the -source package\n"
       fi
 

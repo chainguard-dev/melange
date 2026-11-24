@@ -69,6 +69,7 @@ melange build [flags]
       --rm                                                      clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
       --runner string                                           which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --signing-key string                                      key to use for signing
+      --source-credential-exempt-host strings                   hosts whose Authorization, sent by a git checkout, the -source package does not record as credentials (hosts the caller supplies a credential for itself, such as a mirror of public upstreams); exact match
       --source-dir string                                       directory used for included sources
       --source-out-dir string                                   directory where -source companions will be output (default: --out-dir)
       --source-package                                          also emit a <package>-source companion carrying the resolved configuration, the source directory and every upstream artifact the build fetched (the source-package annotation overrides this per package)

@@ -17,6 +17,7 @@ package container
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -613,4 +614,189 @@ func TestIsGuestRootRejectsForeignOwner(t *testing.T) {
 	if isGuestRoot(root) {
 		t.Error("isGuestRoot accepted a parent owned by another user")
 	}
+}
+
+// fakeInfo is an os.FileInfo whose Sys value the test controls.
+type fakeInfo struct {
+	os.FileInfo
+	sys any
+}
+
+func (f fakeInfo) Sys() any { return f.sys }
+
+func TestOwnedByCurrentUser(t *testing.T) {
+	real, err := os.Lstat(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	euid := uint32(os.Geteuid())
+	tests := []struct {
+		name string
+		fi   os.FileInfo
+		want bool
+	}{
+		{"directory created by this process", real, true},
+		{"owned by the effective user", fakeInfo{real, &syscall.Stat_t{Uid: euid}}, true},
+		{"owned by another user", fakeInfo{real, &syscall.Stat_t{Uid: euid + 1}}, false},
+		{"owned by root, unless we are root", fakeInfo{real, &syscall.Stat_t{Uid: 0}}, euid == 0},
+		{"owner unknown", fakeInfo{real, nil}, false},
+		{"owner of an unexpected type", fakeInfo{real, "root"}, false},
+		{"stat by value", fakeInfo{real, syscall.Stat_t{Uid: euid}}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ownedByCurrentUser(tc.fi); got != tc.want {
+				t.Errorf("ownedByCurrentUser = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsPrivateDir(t *testing.T) {
+	mk := func(mode os.FileMode) os.FileInfo {
+		p := filepath.Join(t.TempDir(), "d")
+		if err := os.Mkdir(p, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(p, mode); err != nil {
+			t.Fatal(err)
+		}
+		fi, err := os.Lstat(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return fi
+	}
+	euid := uint32(os.Geteuid())
+	private := mk(0o700)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(t.TempDir(), link); err != nil {
+		t.Fatal(err)
+	}
+	linkInfo, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name string
+		fi   os.FileInfo
+		want bool
+	}{
+		{"private, ours", private, true},
+		{"private, owned by another user", fakeInfo{private, &syscall.Stat_t{Uid: euid + 1}}, false},
+		{"private, owner unknown", fakeInfo{private, nil}, false},
+		{"0755", mk(0o755), false},
+		{"0750", mk(0o750), false},
+		{"0770", mk(0o770), false},
+		{"0500", mk(0o500), false},
+		{"symlink to a directory", linkInfo, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isPrivateDir(tc.fi); got != tc.want {
+				t.Errorf("isPrivateDir = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// deepDir returns a directory under t.TempDir() whose path is exactly n bytes
+// long, so that a path built under it passes PATH_MAX or not by a known margin.
+func deepDir(t *testing.T, n int) string {
+	t.Helper()
+	cur := t.TempDir()
+	for len(cur) < n {
+		remaining := n - len(cur)
+		comp := remaining - 1
+		if remaining > 202 {
+			comp = 200
+		}
+		if comp < 1 {
+			t.Skipf("cannot build a %d byte path from %d", n, len(cur))
+		}
+		cur = filepath.Join(cur, strings.Repeat("d", comp))
+	}
+	if err := os.MkdirAll(cur, 0o755); err != nil {
+		t.Skipf("filesystem refuses a %d byte path: %v", n, err)
+	}
+	return cur
+}
+
+// The random suffix MkdirTemp appends to bubblewrap-guest- is 1 to 10 digits.
+// Sizing TMPDIR for the longest suffix makes a path built under the parent
+// pass or fail PATH_MAX for any suffix of 4 or more digits, so a run that
+// draws a shorter one is retried.
+const guestParentFixed = len(guestParentPrefix) + 1 // prefix, plus the "/" before it
+
+func TestBubblewrapLoadImageFailedMkdirLeavesNothing(t *testing.T) {
+	// parent is 4095 bytes at most, the longest a path can be, so parent/rootfs
+	// cannot be created.
+	base := deepDir(t, 4095-guestParentFixed-10)
+	t.Setenv("TMPDIR", base)
+
+	for range 20 {
+		loader := &bubblewrapOCILoader{}
+		ref, err := loader.LoadImage(t.Context(), tarLayer{tarball: usrTarball(t)}, apko_types.ParseArchitecture("amd64"), nil)
+		if err == nil {
+			// A short suffix left room for rootfs; remove it and draw again.
+			_ = os.RemoveAll(filepath.Dir(ref))
+			continue
+		}
+		if !errors.Is(err, syscall.ENAMETOOLONG) {
+			t.Fatalf("LoadImage error = %v, want ENAMETOOLONG", err)
+		}
+		entries, err := os.ReadDir(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 0 {
+			t.Errorf("failed Mkdir left %d entries in the temp dir", len(entries))
+		}
+		return
+	}
+	t.Skip("never drew a long enough suffix")
+}
+
+func TestBubblewrapLoadImageFailedMarkerKeepsParent(t *testing.T) {
+	// parent/rootfs fits in PATH_MAX but parent/.melange-guest does not, so the
+	// marker cannot be written. An empty layer keeps extraction from needing
+	// paths below rootfs.
+	base := deepDir(t, 4088-guestParentFixed-10)
+	t.Setenv("TMPDIR", base)
+	var empty bytes.Buffer
+	if err := tar.NewWriter(&empty).Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	for range 20 {
+		loader := &bubblewrapOCILoader{}
+		ref, err := loader.LoadImage(t.Context(), tarLayer{tarball: empty.Bytes()}, apko_types.ParseArchitecture("amd64"), nil)
+		if err != nil {
+			t.Fatalf("LoadImage: %v", err)
+		}
+		parent := filepath.Dir(ref)
+		entries, err := os.ReadDir(parent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 1 {
+			// A short suffix left room for the marker; remove it and draw again.
+			_ = os.RemoveAll(parent)
+			continue
+		}
+		if isGuestRoot(ref) {
+			t.Error("isGuestRoot accepted a ref whose marker was never written")
+		}
+		if err := (&bubblewrapOCILoader{}).RemoveImage(t.Context(), ref); err != nil {
+			t.Fatalf("RemoveImage: %v", err)
+		}
+		if _, err := os.Stat(ref); !os.IsNotExist(err) {
+			t.Errorf("rootfs still exists after RemoveImage: %v", err)
+		}
+		if _, err := os.Stat(parent); err != nil {
+			t.Errorf("parent was removed without a marker: %v", err)
+		}
+		return
+	}
+	t.Skip("never drew a long enough suffix")
 }

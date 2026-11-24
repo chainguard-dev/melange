@@ -516,6 +516,19 @@ func removeGuestParent(parent string) {
 	}
 }
 
+// ownedByCurrentUser reports whether fi is owned by the user that MkdirTemp
+// creates directories as. A file whose owner is unknown is not.
+func ownedByCurrentUser(fi os.FileInfo) bool {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	return ok && int(st.Uid) == os.Geteuid()
+}
+
+// isPrivateDir reports whether fi is a real directory, not a symlink to one,
+// that only the current user can enter.
+func isPrivateDir(fi os.FileInfo) bool {
+	return fi.IsDir() && fi.Mode().Perm() == 0o700 && ownedByCurrentUser(fi)
+}
+
 // isGuestRoot reports whether ref has the shape LoadImage returns: a clean
 // path to a rootfs directory inside a real bubblewrap-guest-* directory with
 // mode 0700 owned by the current user that holds the marker file. The Lstat
@@ -532,11 +545,7 @@ func isGuestRoot(ref string) bool {
 		return false
 	}
 	fi, err := os.Lstat(parent)
-	if err != nil || !fi.IsDir() || fi.Mode().Perm() != 0o700 {
-		return false
-	}
-	// MkdirTemp creates the parent as the current user.
-	if st, ok := fi.Sys().(*syscall.Stat_t); !ok || int(st.Uid) != os.Getuid() {
+	if err != nil || !isPrivateDir(fi) {
 		return false
 	}
 	fi, err = os.Lstat(filepath.Join(parent, guestMarkerName))

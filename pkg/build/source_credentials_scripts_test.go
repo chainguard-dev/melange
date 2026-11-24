@@ -937,9 +937,7 @@ func credentialsProxy(t *testing.T, auth bool) (*url.URL, *atomic.Int32) {
 		}
 		defer resp.Body.Close()
 		forwarded.Add(1)
-		for k, v := range resp.Header {
-			w.Header()[k] = v
-		}
+		maps.Copy(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
 		_, _ = io.Copy(w, resp.Body)
 	}))

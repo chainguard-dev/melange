@@ -15,17 +15,105 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	collector "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
+	"google.golang.org/protobuf/proto"
 )
+
+func TestBuildOTLPTraceParent(t *testing.T) {
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(key, "OTEL_") {
+			t.Setenv(key, "")
+		}
+	}
+	t.Setenv("OTEL_TRACES_EXPORTER", "otlp")
+	t.Setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+
+	var mu sync.Mutex
+	var spans []*tracepb.Span
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.Path != "/v1/traces" {
+			t.Errorf("unexpected OTLP request: %s %s", req.Method, req.URL.Path)
+		}
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		var data collector.ExportTraceServiceRequest
+		if err := proto.Unmarshal(body, &data); err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		mu.Lock()
+		for _, resource := range data.ResourceSpans {
+			for _, scope := range resource.ScopeSpans {
+				spans = append(spans, scope.Spans...)
+			}
+		}
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/x-protobuf")
+	}))
+	defer server.Close()
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", server.URL)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	previous := otel.GetTracerProvider()
+	cmd := buildCmd()
+	cmd.SetArgs([]string{filepath.Join(t.TempDir(), "missing.yaml"), "--arch", "x86_64"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	if err := cmd.ExecuteContext(ctx); err == nil {
+		t.Fatal("missing config should fail")
+	}
+	if cmd.Context() != ctx || otel.GetTracerProvider() != previous {
+		t.Error("command context or tracer provider was not restored")
+	}
+
+	// Run flushes before returning, so examine the spans received over HTTP.
+	mu.Lock()
+	defer mu.Unlock()
+	var root, build *tracepb.Span
+	roots := 0
+	for _, span := range spans {
+		if len(span.ParentSpanId) == 0 {
+			roots++
+		}
+		switch span.Name {
+		case "melange build":
+			root = span
+		case "BuildCmd":
+			build = span
+		}
+	}
+	if root == nil || build == nil {
+		t.Fatal("exported melange build root or BuildCmd span missing")
+	}
+	if roots != 1 || len(root.ParentSpanId) != 0 {
+		t.Errorf("got %d root spans, want only melange build", roots)
+	}
+	if !bytes.Equal(build.TraceId, root.TraceId) || !bytes.Equal(build.ParentSpanId, root.SpanId) {
+		t.Error("BuildCmd is not a child of melange build")
+	}
+}
 
 func TestBuildTraceFileCompatibility(t *testing.T) {
 	for _, exporter := range []string{"", "otlp"} {

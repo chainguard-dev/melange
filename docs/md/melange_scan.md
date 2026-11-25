@@ -25,9 +25,9 @@ melange scan bash.yaml
 
 ```
       --arch strings               architectures to scan (default is x86_64)
-      --comments                   include comments in .PKGINFO diff
-      --diff                       show diff output
-  -h, --help                       help for scan
+      --comments[=true|false]      include comments in .PKGINFO diff
+      --diff[=true|false]          show diff output
+  -h, --help[=true|false]          help for scan
   -k, --keyring-append string      path to key to include in the build environment keyring (default "local-melange.rsa.pub")
       --namespace string           namespace to use in package URLs in SBOM (eg wolfi, alpine) (default "unknown")
   -p, --package string             which package's .PKGINFO to print (if there are subpackages)

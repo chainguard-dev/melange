@@ -29,7 +29,7 @@ melange bump [flags]
 
 ```
       --expected-commit string   optional flag to update the expected-commit value of a git-checkout pipeline
-  -h, --help                     help for bump
+  -h, --help[=true|false]        help for bump
 ```
 
 ### Options inherited from parent commands

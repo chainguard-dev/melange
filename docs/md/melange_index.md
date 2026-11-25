@@ -29,8 +29,8 @@ melange index [flags]
 
 ```
   -a, --arch string          Index only packages which match the expected architecture
-  -h, --help                 help for index
-  -m, --merge                Merge pre-existing index entries
+  -h, --help[=true|false]    help for index
+  -m, --merge[=true|false]   Merge pre-existing index entries
   -o, --output string        Output generated index to FILE (default "APKINDEX.tar.gz")
       --signing-key string   Key to use for signing the index (optional)
   -s, --source string        Source FILE to use for pre-existing index entries (default "APKINDEX.tar.gz")

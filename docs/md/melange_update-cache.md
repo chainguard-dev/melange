@@ -28,8 +28,8 @@ melange update-cache [flags]
 ### Options
 
 ```
-      --cache-dir string   directory used for cached inputs (default "/var/cache/melange")
-  -h, --help               help for update-cache
+      --cache-dir string    directory used for cached inputs (default "/var/cache/melange")
+  -h, --help[=true|false]   help for update-cache
 ```
 
 ### Options inherited from parent commands

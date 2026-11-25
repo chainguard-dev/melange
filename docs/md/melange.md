@@ -14,8 +14,8 @@ toc: true
 ### Options
 
 ```
-  -h, --help               help for melange
-      --log-level string   log level (e.g. debug, info, warn, error) (default "INFO")
+  -h, --help[=true|false]   help for melange
+      --log-level string    log level (e.g. debug, info, warn, error) (default "INFO")
 ```
 
 ### SEE ALSO

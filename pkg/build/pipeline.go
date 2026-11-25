@@ -61,13 +61,30 @@ func (sm *SubstitutionMap) MutateWith(with map[string]string) (map[string]string
 		nw[nk] = v
 	}
 
-	// do the actual mutations
-	for k, v := range nw {
-		nval, err := util.MutateStringFromMap(nw, v)
-		if err != nil {
-			return nil, err
+	// Resolve references between entries. One pass resolves one hop, in map
+	// iteration order, so a chain such as b -> a -> expected-sha256 resolved
+	// only when the order happened to be right. Repeat the pass until nothing
+	// changes. An acyclic chain settles within len(nw) passes, so a map still
+	// changing after that has a reference that never settles: a cycle, or a
+	// value that refers to itself and grows on every pass.
+	for pass := 0; ; pass++ {
+		changed := false
+		for k, v := range nw {
+			nval, err := util.MutateStringFromMap(nw, v)
+			if err != nil {
+				return nil, err
+			}
+			if nval != v {
+				nw[k] = nval
+				changed = true
+			}
 		}
-		nw[k] = nval
+		if !changed {
+			break
+		}
+		if pass >= len(nw) {
+			return nil, fmt.Errorf("input references do not resolve after %d passes: check the inputs for a reference cycle", pass+1)
+		}
 	}
 
 	return nw, nil
@@ -155,24 +172,54 @@ func validateWith(data map[string]string, inputs map[string]config.Input) (map[s
 		if data[k] == "" {
 			data[k] = v.Default
 		}
-		if data[k] != "" {
-			switch k {
-			case "expected-sha256", "expected-sha512":
-				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
-					return data, fmt.Errorf("checksum input %q for pipeline, invalid length", k)
-				}
-			case "expected-commit":
-				if !matchValidShaChars(data[k]) || len(data[k]) != expectedShaLength(k) {
-					return data, fmt.Errorf("expected commit %q for pipeline contains invalid characters or invalid sha length", k)
-				}
-			}
-		}
 		if v.Required && data[k] == "" {
 			return data, fmt.Errorf("required input %q for pipeline is missing", k)
 		}
 	}
 
 	return data, nil
+}
+
+// validateResolvedInputs checks inputs once substitutions have been applied,
+// so that a pipeline can forward an input it was given (e.g.
+// `expected-sha256: ${{inputs.sha256}}`) to a nested pipeline. validateWith
+// sees only the unsubstituted value, which for a forwarded reference is the
+// non-empty "${{inputs.X}}" text.
+//
+// Every required input must resolve to a non-empty value. Digest inputs must
+// also resolve to hex of the right length; the error names the resolved
+// value, since the manifest shows only the reference.
+func validateResolvedInputs(mutated map[string]string, inputs map[string]config.Input) error {
+	for k, input := range inputs {
+		v := mutated[fmt.Sprintf("${{inputs.%s}}", k)]
+		if v == "" {
+			if input.Required {
+				return fmt.Errorf("required input %q for pipeline is missing", k)
+			}
+			continue
+		}
+		want := expectedShaLength(k)
+		if want == 0 {
+			continue
+		}
+		var problem string
+		switch {
+		case !matchValidShaChars(v):
+			problem = "invalid characters"
+		case len(v) != want:
+			problem = "invalid length"
+		default:
+			continue
+		}
+		switch k {
+		case "expected-sha256", "expected-sha512":
+			return fmt.Errorf("checksum input %q for pipeline, %s: resolved to %q (%d characters, want %d hex characters)", k, problem, v, len(v), want)
+		case "expected-commit":
+			return fmt.Errorf("expected commit %q for pipeline, %s: resolved to %q (%d characters, want %d hex characters)", k, problem, v, len(v), want)
+		}
+	}
+
+	return nil
 }
 
 func matchValidShaChars(s string) bool {

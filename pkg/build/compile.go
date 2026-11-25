@@ -366,6 +366,10 @@ func (c *Compiled) compilePipeline(ctx context.Context, sm *SubstitutionMap, pip
 		return fmt.Errorf("mutating with: %w", err)
 	}
 
+	if err := validateResolvedInputs(mutated, pipeline.Inputs); err != nil {
+		return fmt.Errorf("unable to validate with: %w", err)
+	}
+
 	// allow input mutations on needs.packages
 	if pipeline.Needs != nil {
 		for i := range pipeline.Needs.Packages {

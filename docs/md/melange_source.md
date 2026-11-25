@@ -18,7 +18,7 @@ Commands for managing source code from melange configurations.
 ### Options
 
 ```
-  -h, --help                help for source
+  -h, --help[=true|false]   help for source
   -o, --output string       output directory for extracted source (default "./source")
       --source-dir string   directory where patches and other sources are located (defaults to ./package-name/)
 ```

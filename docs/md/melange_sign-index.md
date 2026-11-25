@@ -34,8 +34,8 @@ melange sign-index [flags]
 ### Options
 
 ```
-  -f, --force                when toggled, overwrites the specified index with a new index using the provided signature
-  -h, --help                 help for sign-index
+  -f, --force[=true|false]   when toggled, overwrites the specified index with a new index using the provided signature
+  -h, --help[=true|false]    help for sign-index
       --signing-key string   the signing key to use (default "melange.rsa")
 ```
 

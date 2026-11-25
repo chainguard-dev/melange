@@ -32,7 +32,7 @@ melange sign [flags]
 ### Options
 
 ```
-  -h, --help                 help for sign
+  -h, --help[=true|false]    help for sign
   -k, --signing-key string   The signing key to use. (default "local-melange.rsa")
 ```
 

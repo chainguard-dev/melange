@@ -41,6 +41,11 @@ func TestBuildOTLPTraceParent(t *testing.T) {
 			t.Setenv(key, "")
 		}
 	}
+	// Check the documented default with no service-name override in the environment.
+	t.Setenv("OTEL_SERVICE_NAME", "")
+	if err := os.Unsetenv("OTEL_SERVICE_NAME"); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("OTEL_TRACES_EXPORTER", "otlp")
 	t.Setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
 
@@ -64,6 +69,15 @@ func TestBuildOTLPTraceParent(t *testing.T) {
 		}
 		mu.Lock()
 		for _, resource := range data.ResourceSpans {
+			serviceName := ""
+			for _, attr := range resource.Resource.GetAttributes() {
+				if attr.Key == "service.name" {
+					serviceName = attr.Value.GetStringValue()
+				}
+			}
+			if serviceName != "melange" {
+				t.Errorf("service.name = %q, want melange", serviceName)
+			}
 			for _, scope := range resource.ScopeSpans {
 				spans = append(spans, scope.Spans...)
 			}

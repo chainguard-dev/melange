@@ -834,3 +834,78 @@ func TestSBOMGenerationWithSubpackageGitCheckout(t *testing.T) {
 		}
 	}
 }
+
+func TestSBOMGenerationWithFinalizeSources(t *testing.T) {
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	outputFS := apkofs.DirFS(ctx, tmpDir)
+
+	fetch := func(name, sum string) config.Pipeline {
+		return config.Pipeline{
+			Uses: "fetch",
+			With: map[string]string{
+				"uri":             "https://example.com/" + name + ".tar.gz",
+				"expected-sha256": sum,
+				"purl-name":       name,
+				"purl-version":    "1.0",
+			},
+		}
+	}
+
+	// The main pipeline and finalize each fetch at index 0, which would give
+	// the same SBOM ID if finalize steps were not told apart.
+	cfg := &config.Configuration{
+		Package: config.Package{
+			Name:        "main-pkg",
+			Version:     "1.0.0",
+			Description: "Main package",
+			Copyright:   []config.Copyright{{License: "MIT"}},
+		},
+		Pipeline: []config.Pipeline{fetch("upstream", "aa")},
+		Finalize: []config.Pipeline{
+			fetch("upstream", "bb"),
+			{Runs: "echo not a source"},
+		},
+		Subpackages: []config.Subpackage{{Name: "sub-pkg", Description: "Subpackage"}},
+	}
+
+	genCtx := &build.GeneratorContext{
+		Configuration:   cfg,
+		WorkspaceDir:    tmpDir,
+		OutputFS:        outputFS,
+		SourceDateEpoch: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		Namespace:       "test-ns",
+		Arch:            "x86_64",
+	}
+	if err := (&Generator{}).GenerateSBOM(ctx, genCtx); err != nil {
+		t.Fatalf("GenerateSBOM failed: %v", err)
+	}
+
+	for _, name := range []string{"main-pkg", "sub-pkg"} {
+		data, err := os.ReadFile(filepath.Join(tmpDir, name, build.SBOMDir,
+			fmt.Sprintf("%s-%s.spdx.json", name, cfg.Package.FullVersion())))
+		if err != nil {
+			t.Fatalf("failed to read %s SBOM: %v", name, err)
+		}
+		var doc spdx.Document
+		if err := json.Unmarshal(data, &doc); err != nil {
+			t.Fatalf("failed to unmarshal %s SBOM: %v", name, err)
+		}
+
+		ids := map[string]bool{}
+		sources := 0
+		for _, p := range doc.Packages {
+			if p.PrimaryPurpose == "SOURCE" {
+				sources++
+				if ids[p.ID] {
+					t.Errorf("%s SBOM: duplicate source package ID %q", name, p.ID)
+				}
+				ids[p.ID] = true
+			}
+		}
+		// One from pipeline and one from finalize; the runs step adds none.
+		if sources != 2 {
+			t.Errorf("%s SBOM: want 2 source packages (pipeline and finalize), got %d", name, sources)
+		}
+	}
+}

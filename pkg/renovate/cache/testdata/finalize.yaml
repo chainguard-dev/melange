@@ -1,0 +1,14 @@
+package:
+  name: cheese
+  version: "7.0.1"
+  epoch: 0
+  description: "a cheesy library"
+
+pipeline:
+  - runs: echo build
+
+finalize:
+  - uses: fetch
+    with:
+      uri: REPLACE_ME/wine/cheese/cheese-${{package.version}}.tar.gz
+      expected-sha256: cc2c52929ace57623ff517408a577e783e10042655963b2c8f0633e109337d7a

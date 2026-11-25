@@ -396,3 +396,32 @@ func Test_stripComments(t *testing.T) {
 		t.Errorf("want:\n%s\ngot:\n%s", wantErr, err)
 	}
 }
+
+func TestCompileFinalize(t *testing.T) {
+	build := &Build{
+		Configuration: &config.Configuration{
+			Pipeline: []config.Pipeline{{Runs: "echo build"}},
+			Finalize: []config.Pipeline{{
+				Needs: &config.Needs{Packages: []string{"finalize-tool"}},
+				Pipeline: []config.Pipeline{{
+					Runs: "#!/bin/sh\n# comment\necho finalize\n",
+				}},
+			}},
+		},
+	}
+
+	if err := build.Compile(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Compile must process finalize steps (comment stripping is a visible
+	// effect) so they survive into the compiled configuration.
+	if got, want := build.Configuration.Finalize[0].Pipeline[0].Runs, "#!/bin/sh\necho finalize\n"; got != want {
+		t.Fatalf("finalize runs: want %q, got %q", want, got)
+	}
+
+	// The finalize step's packages must be added to the build environment.
+	if !slices.Contains(build.Configuration.Environment.Contents.Packages, "finalize-tool") {
+		t.Fatalf("finalize needs.packages missing from environment: %v", build.Configuration.Environment.Contents.Packages)
+	}
+}

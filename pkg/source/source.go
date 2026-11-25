@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -327,7 +328,8 @@ func FetchSourceFromMelange(ctx context.Context, filePath, destDir string) (*con
 	}
 
 	// Iterate over the pipeline steps and look for any source fetching steps.
-	for _, step := range cfg.Pipeline {
+	// Finalize pipelines run after the main one, so they come after it here too.
+	for _, step := range slices.Concat(cfg.Pipeline, cfg.Finalize) {
 		if step.Uses != "git-checkout" && step.Uses != "fetch" && step.Uses != "patch" {
 			continue
 		}

@@ -32,7 +32,6 @@ checks:
       changed:
         - ".github/workflows/**"
         - ".github/actions/**"
-        - ".github/dependabot.yml"
         - ".github/zizmor.yml"
         - ".chainguard/ci/workflows.yaml"
     description: >-

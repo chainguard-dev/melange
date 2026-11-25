@@ -1,0 +1,36 @@
+# The Chainguard deps agent opens one pull request per entry, on
+# chainguard/deps/<name>, that updates the entry's dependencies and fixes
+# what the updates break. Schedules are UTC. The paths and prompt guide the
+# agent; they are not enforced.
+version: 1
+
+updates:
+  - name: go
+    schedule: "0 5 * * 1-5" # weekdays
+    paths:
+      - go.mod
+      - go.sum
+    environment: .chainguard/ci/go.yaml
+    prompt: >-
+      Update the root module's dependencies to their latest minor and patch
+      releases; leave major version updates alone. Prefer releases at least 3
+      days old. The go.mod under pkg/sca/testdata is a test fixture and is out
+      of scope. Run go mod tidy after updating. Leave the go directive, and
+      the go-1.27 packages in .chainguard/ci, as they are unless an update
+      requires a newer Go. Run make docs-repo and make docs-pipeline, and keep
+      what they change, because the lint check fails on a dirty tree. Verify
+      with go build ./..., make unit and make lint.
+
+  - name: actions
+    schedule: "0 5 * * 1-5" # weekdays
+    paths:
+      - .github/workflows/**
+      - .github/actions/**
+    environment: .chainguard/ci/workflows.yaml
+    prompt: >-
+      Update the GitHub Actions used under .github/workflows and
+      .github/actions to their latest minor and patch releases; leave major
+      version updates alone. Prefer releases at least 3 days old. Keep every
+      action pinned to a full commit SHA with the release tag in a trailing
+      comment, as the files do now. Verify with actionlint over
+      .github/workflows and zizmor --persona pedantic --offline .github.

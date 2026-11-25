@@ -46,7 +46,7 @@ melange initramfs [flags]
 
 ```
       --arch string           target architecture (e.g., x86_64, aarch64)
-  -h, --help                  help for initramfs
+  -h, --help[=true|false]     help for initramfs
       --init-package string   init package to use (default "microvm-init")
   -k, --keyring strings       extra keys for APK signature verification
   -o, --output string         output path for the initramfs (required)

@@ -36,7 +36,7 @@ melange source pop [config.yaml] [flags]
 ### Options
 
 ```
-  -h, --help   help for pop
+  -h, --help[=true|false]   help for pop
 ```
 
 ### Options inherited from parent commands

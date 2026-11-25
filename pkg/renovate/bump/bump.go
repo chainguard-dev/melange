@@ -121,39 +121,44 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 			return err
 		}
 
-		// Find our main pipeline YAML node.
-		pipelineNode, err := renovate.NodeFromMapping(rc.Configuration.Root().Content[0], "pipeline")
+		// Find the YAML nodes of the main build stages: the main pipeline and
+		// the finalize pipelines, which run as part of the same build.
+		stageNodes, err := mainStageNodes(rc.Configuration.Root().Content[0])
 		if err != nil {
+			return err
+		}
+		if len(stageNodes) == 0 {
 			// The main pipeline doesn't exist. This is valid for empty virtual and metapackages so
 			// we will just return early instead of throwing an error
-			if strings.Contains(err.Error(), "not found in mapping") {
-				log.Infof("no main pipeline found, will not update expected commits or checksums")
-				return nil
-			}
-			return err
+			log.Infof("no main pipeline found, will not update expected commits or checksums")
+			return nil
 		}
 
 		// Look for fetch nodes.
-		it := yit.FromNode(pipelineNode).
-			RecurseNodes().
-			Filter(yit.WithMapValue("fetch"))
+		for _, stageNode := range stageNodes {
+			it := yit.FromNode(stageNode).
+				RecurseNodes().
+				Filter(yit.WithMapValue("fetch"))
 
-		for fetchNode, ok := it(); ok; fetchNode, ok = it() {
-			if err := updateFetch(ctx, rc, fetchNode, bcfg.TargetVersion); err != nil {
-				return err
+			for fetchNode, ok := it(); ok; fetchNode, ok = it() {
+				if err := updateFetch(ctx, rc, fetchNode, bcfg.TargetVersion); err != nil {
+					return err
+				}
 			}
 		}
 
 		// Look for git-checkout nodes.
-		it = yit.FromNode(pipelineNode).
-			RecurseNodes().
-			Filter(yit.WithMapValue("git-checkout"))
-
 		var gitCheckoutNodes []*yaml.Node
-		for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
-			gitCheckoutNodes = append(gitCheckoutNodes, gitCheckoutNode)
+		for _, stageNode := range stageNodes {
+			it := yit.FromNode(stageNode).
+				RecurseNodes().
+				Filter(yit.WithMapValue("git-checkout"))
+			for gitCheckoutNode, ok := it(); ok; gitCheckoutNode, ok = it() {
+				gitCheckoutNodes = append(gitCheckoutNodes, gitCheckoutNode)
+			}
 		}
 
+		bumped := make(map[gitCheckoutSource]struct{}, len(gitCheckoutNodes))
 		for _, gitCheckoutNode := range gitCheckoutNodes {
 			// When there are multiple git-checkout nodes, only bump the ones
 			// whose tag is derived from package.version. With a single
@@ -165,12 +170,125 @@ func New(ctx context.Context, opts ...Option) renovate.Renovator {
 				continue
 			}
 
+			if source, ok := readGitCheckoutSource(gitCheckoutNode); ok {
+				bumped[source] = struct{}{}
+			}
+			if err := updateGitCheckout(ctx, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
+				return err
+			}
+		}
+
+		// A git-checkout outside the main pipeline that fetches the same
+		// repository, ref and commit as one bumped above is the same source
+		// fetched again, so it has to move with it. Any other checkout there
+		// fetches a different source whose commit bump does not know.
+		for _, gitCheckoutNode := range secondaryGitCheckouts(rc.Configuration.Root().Content[0]) {
+			source, ok := readGitCheckoutSource(gitCheckoutNode)
+			if !ok {
+				continue
+			}
+			if _, ok := bumped[source]; !ok {
+				continue
+			}
 			if err := updateGitCheckout(ctx, gitCheckoutNode, bcfg.ExpectedCommit); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
+}
+
+// mainStageNodes returns the YAML nodes of the stages that make up the main
+// build, in the order they run: pipeline, then finalize. A stage the
+// configuration does not have is left out, so a package with neither returns
+// no nodes. Anything that walks pipeline steps for sources MUST walk all of
+// them.
+func mainStageNodes(root *yaml.Node) ([]*yaml.Node, error) {
+	var nodes []*yaml.Node
+	for _, key := range []string{"pipeline", "finalize"} {
+		node, err := renovate.NodeFromMapping(root, key)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found in mapping") {
+				continue
+			}
+			return nil, err
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
+}
+
+// gitCheckoutSource identifies what a "git-checkout" pipeline node fetches.
+type gitCheckoutSource struct {
+	repository string
+	tag        string
+	branch     string
+	commit     string
+}
+
+// readGitCheckoutSource reads the source of a "git-checkout" pipeline node. It
+// reports false when the node has no "with" mapping.
+func readGitCheckoutSource(node *yaml.Node) (gitCheckoutSource, bool) {
+	withNode, err := renovate.NodeFromMapping(node, "with")
+	if err != nil {
+		return gitCheckoutSource{}, false
+	}
+	value := func(key string) string {
+		if n, err := renovate.NodeFromMapping(withNode, key); err == nil {
+			return n.Value
+		}
+		return ""
+	}
+	return gitCheckoutSource{
+		repository: value("repository"),
+		tag:        value("tag"),
+		branch:     value("branch"),
+		commit:     value("expected-commit"),
+	}, true
+}
+
+// secondaryGitCheckouts returns the "git-checkout" nodes in test.pipeline,
+// subpackages[].pipeline and subpackages[].test.pipeline.
+func secondaryGitCheckouts(root *yaml.Node) []*yaml.Node {
+	var pipelines []*yaml.Node
+	if pipeline, ok := testPipeline(root); ok {
+		pipelines = append(pipelines, pipeline)
+	}
+	if subpackages, err := renovate.NodeFromMapping(root, "subpackages"); err == nil {
+		for _, subpackage := range subpackages.Content {
+			if pipeline, err := renovate.NodeFromMapping(subpackage, "pipeline"); err == nil {
+				pipelines = append(pipelines, pipeline)
+			}
+			if pipeline, ok := testPipeline(subpackage); ok {
+				pipelines = append(pipelines, pipeline)
+			}
+		}
+	}
+
+	var nodes []*yaml.Node
+	for _, pipeline := range pipelines {
+		it := yit.FromNode(pipeline).
+			RecurseNodes().
+			Filter(yit.WithMapValue("git-checkout"))
+		for node, ok := it(); ok; node, ok = it() {
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
+}
+
+// testPipeline returns the pipeline of the "test" section of a package or
+// subpackage node.
+func testPipeline(node *yaml.Node) (*yaml.Node, bool) {
+	test, err := renovate.NodeFromMapping(node, "test")
+	if err != nil {
+		return nil, false
+	}
+	pipeline, err := renovate.NodeFromMapping(test, "pipeline")
+	if err != nil {
+		return nil, false
+	}
+	return pipeline, true
 }
 
 // updateFetch takes a "fetch" pipeline node and updates the parameters of it.

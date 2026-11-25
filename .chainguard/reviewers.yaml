@@ -1,0 +1,13 @@
+# Copyright 2026 Chainguard, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Checks code reviewers for melange, read from the default branch. melange is
+# public, so the reviewer comments and gives a verdict but never approves;
+# approve: is left unset.
+version: 1
+reviewers:
+  - name: melange
+    trigger:
+      paths:
+        - "**"
+    prompt_file: review-prompt.md

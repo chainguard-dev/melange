@@ -51,7 +51,7 @@ melange completion [bash|zsh|fish|powershell]
 ### Options
 
 ```
-  -h, --help   help for completion
+  -h, --help[=true|false]   help for completion
 ```
 
 ### Options inherited from parent commands

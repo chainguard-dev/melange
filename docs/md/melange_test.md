@@ -35,18 +35,18 @@ melange test [flags]
       --cache-source string                 directory or bucket used for preloading the cache
       --cpu string                          default CPU resources to use for tests
       --cpumodel string                     default CPU model to use for tests
-      --debug                               enables debug logging of test pipelines (sets -x for steps)
-      --debug-runner                        when enabled, the builder pod will persist after the build succeeds or fails
+      --debug[=true|false]                  enables debug logging of test pipelines (sets -x for steps)
+      --debug-runner[=true|false]           when enabled, the builder pod will persist after the build succeeds or fails
       --disk string                         disk size to use for tests
       --env-file strings                    files to use for preloaded environment variables
-  -h, --help                                help for test
-      --ignore-signatures                   ignore repository signature verification
-  -i, --interactive                         when enabled, attaches stdin with a tty to the pod on failure
+  -h, --help[=true|false]                   help for test
+      --ignore-signatures[=true|false]      ignore repository signature verification
+  -i, --interactive[=true|false]            when enabled, attaches stdin with a tty to the pod on failure
   -k, --keyring-append strings              path to extra keys to include in the build environment keyring
       --memory string                       default memory resources to use for tests
       --pipeline-dirs strings               directories used to extend defined built-in pipelines
   -r, --repository-append strings           path to extra repositories to include in the build environment
-      --rm                                  clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
+      --rm[=true|false]                     clean up intermediate artifacts (e.g. container images, temp dirs) (default true)
       --runner string                       which runner to use to enable running commands, default is based on your platform. Options are ["bubblewrap" "docker" "qemu"]
       --source-dir string                   directory used for included sources
       --strict-sources-from-cache strings   step kinds (git-checkout) whose steps take their sources only from --cache-dir; the test fails instead of fetching them (runs: steps and language package managers are not restricted; see docs/BUILD-CACHE.md)

@@ -85,6 +85,15 @@ const (
 	sourceInstallRoot  = "usr/src"
 	sourceUpstreamDir  = "upstream"
 	sourceManifestFile = "SOURCES.sha256"
+
+	// sourceCredentialsSuffix names the record a fetch or git-checkout step
+	// leaves beside a stashed artifact it obtained with credentials,
+	// <key>.credentials: one "<signal> <host>" line for each way credentials
+	// reached the remote, never a value. It ships in upstream/ like every
+	// other stashed file, so it is listed in the manifest every APK of the
+	// build carries, and a publisher that serves source publicly can refuse
+	// the companion by that listing alone.
+	sourceCredentialsSuffix = ".credentials"
 )
 
 func (b *Build) sourcePackageName() string {
@@ -392,14 +401,40 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	upstream := 0
+	var credentialed []string
 	for _, e := range entries {
 		if !e.Type().IsRegular() {
 			continue
 		}
-		if err := copyNormalized(fsys, filepath.Join(stash, e.Name()), filepath.Join(root, sourceUpstreamDir, e.Name()), 0o644); err != nil {
+		src, dst := filepath.Join(stash, e.Name()), filepath.Join(root, sourceUpstreamDir, e.Name())
+		key, isRecord := strings.CutSuffix(e.Name(), sourceCredentialsSuffix)
+		if !isRecord {
+			if err := copyNormalized(fsys, src, dst, 0o644); err != nil {
+				return nil, err
+			}
+			upstream++
+			continue
+		}
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return nil, err
+		}
+		kept := b.withoutExemptCredentials(data)
+		if len(kept) == 0 {
+			log.Infof("%s: %s named only credential-exempt hosts; not recorded", b.sourcePackageName(), e.Name())
+			continue
+		}
+		if err := writeNormalized(fsys, dst, bytes.NewReader(kept), 0o644); err != nil {
 			return nil, err
 		}
 		upstream++
+		credentialed = append(credentialed, key)
+	}
+	if len(credentialed) > 0 {
+		// Not an error: a companion published only to those entitled to the
+		// private source is fine. The record ships, so a public publisher
+		// can refuse it.
+		log.Warnf("%s carries upstream artifacts obtained with credentials, which a public source repository will refuse: %s", b.sourcePackageName(), strings.Join(credentialed, ", "))
 	}
 	// The stash stays where it is: the workspace filesystem the later stages
 	// walk was seeded from the tree as the guest left it, and the runner
@@ -414,6 +449,29 @@ func (b *Build) assembleSourcePackage(ctx context.Context) ([]byte, error) {
 	}
 	log.Infof("assembled %s: configuration, %d source-dir files (%d bytes), %d upstream artifacts", b.sourcePackageName(), len(files), total, upstream)
 	return manifest, nil
+}
+
+// withoutExemptCredentials drops from a credentials record the
+// "authorization <host>" lines whose host is one of SourceCredentialExemptHosts,
+// exactly (case-insensitively), and returns what is left. Every other signal
+// is kept whatever its host, as is an authorization line naming any other
+// host, so the exemption covers only a credential the build service itself
+// supplied to a host it names on melange's command line, which a recipe
+// cannot change.
+func (b *Build) withoutExemptCredentials(record []byte) []byte {
+	var out []byte
+	for line := range strings.SplitSeq(string(record), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if signal, host, ok := strings.Cut(strings.TrimSpace(line), " "); ok && signal == "authorization" &&
+			slices.ContainsFunc(b.SourceCredentialExemptHosts, func(h string) bool { return strings.EqualFold(h, host) }) {
+			continue
+		}
+		out = append(out, line...)
+		out = append(out, '\n')
+	}
+	return out
 }
 
 // copyNormalized copies the file at src (a host path) to dst (a workspace

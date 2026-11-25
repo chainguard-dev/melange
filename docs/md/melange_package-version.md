@@ -33,7 +33,7 @@ melange package-version [flags]
 ### Options
 
 ```
-  -h, --help   help for package-version
+  -h, --help[=true|false]   help for package-version
 ```
 
 ### Options inherited from parent commands

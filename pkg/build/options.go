@@ -17,6 +17,7 @@ package build
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	apko_types "chainguard.dev/apko/pkg/build/types"
@@ -203,6 +204,24 @@ func WithStrictSourcesFromCache(kinds []string) Option {
 		var err error
 		b.StrictSourcesFromCache, err = normalizeStrictSources(kinds)
 		return err
+	}
+}
+
+// WithSourceCredentialExemptHosts names hosts whose Authorization, sent by a
+// git checkout, the companion does not record as credentials: hosts the
+// caller supplies a credential for itself, such as a mirror of public
+// upstreams. Each must be a bare host name; it matches exactly. "-" is
+// refused: git-checkout records that as the host of a parallel submodule
+// clone, whose real host is unknown, so exempting it would drop the record.
+func WithSourceCredentialExemptHosts(hosts []string) Option {
+	return func(b *Build) error {
+		for _, h := range hosts {
+			if h == "" || h == "-" || strings.ContainsAny(h, " \t\n/:@?#") {
+				return fmt.Errorf("source credential exempt host %q must be a bare host name", h)
+			}
+		}
+		b.SourceCredentialExemptHosts = hosts
+		return nil
 	}
 }
 

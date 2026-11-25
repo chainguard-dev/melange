@@ -28,8 +28,8 @@ melange keygen [flags]
 ### Options
 
 ```
-  -h, --help           help for keygen
-      --key-size int   the size of the prime to calculate (in bits) (default 4096)
+  -h, --help[=true|false]   help for keygen
+      --key-size int        the size of the prime to calculate (in bits) (default 4096)
 ```
 
 ### Options inherited from parent commands

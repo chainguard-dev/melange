@@ -117,12 +117,17 @@ type Build struct {
 	StrictSourcesFromCache []string
 	// SourceOutDir, when set, receives the companion instead of OutDir, so it
 	// can be published to a repository of its own.
-	SourceOutDir  string
-	Arch          apko_types.Architecture
-	Libc          string
-	ExtraKeys     []string
-	ExtraRepos    []string
-	ExtraPackages []string
+	SourceOutDir string
+	// SourceCredentialExemptHosts names hosts whose Authorization, sent by a
+	// git checkout, is not recorded as credentials in the companion: hosts the
+	// caller itself supplies a credential for, such as a mirror of public
+	// upstreams.
+	SourceCredentialExemptHosts []string
+	Arch                        apko_types.Architecture
+	Libc                        string
+	ExtraKeys                   []string
+	ExtraRepos                  []string
+	ExtraPackages               []string
 	// ExtraCACertificates are PEM files the build guest trusts on top of
 	// its own roots; they are never recorded in the package.
 	ExtraCACertificates []string
@@ -714,6 +719,10 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 		}()
 	}
 
+	if err := pr.runner.Run(ctx, pr.config, map[string]string{}, append(shellLinkClangConfigs, WorkDir)...); err != nil {
+		log.Warnf("unable to link clang configs into $HOME, clang links will miss --package-metadata: %v", err)
+	}
+
 	// run the main pipeline
 	log.Debug("running the main pipeline")
 	pipelines := b.Configuration.Pipeline
@@ -748,6 +757,14 @@ func (b *Build) BuildPackage(ctx context.Context) error {
 			disabled: sp.Checks.Disabled,
 		}
 		linterQueue = append(linterQueue, lintTarget)
+	}
+
+	// Run finalize pipelines
+	if len(b.Configuration.Finalize) > 0 {
+		log.Infof("running finalize pipelines for %s", pkg.Name)
+		if err := pr.runPipelines(ctx, b.Configuration.Finalize); err != nil {
+			return fmt.Errorf("unable to run finalize pipelines for %s: %w", pkg.Name, err)
+		}
 	}
 
 	// Store metadata for use after the workspace is loaded into memory
@@ -1317,7 +1334,7 @@ func (b *Build) retrieveWorkspace(ctx context.Context, fs apkofs.FullFS) error {
 			if strings.HasPrefix(attrName, "trusted.") {
 				continue
 			}
-			fmt.Println("setting xattr", attrName, "on", hdr.Name)
+			clog.FromContext(ctx).Debug("setting xattr", "attr", attrName, "path", hdr.Name)
 			if err := fs.SetXattr(hdr.Name, attrName, []byte(v)); err != nil {
 				return fmt.Errorf("unable to set xattr %s on %s: %w", attrName, hdr.Name, err)
 			}

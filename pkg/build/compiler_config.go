@@ -187,6 +187,31 @@ func (b *Build) createClangConfigFiles(ctx context.Context) error {
 	return nil
 }
 
+// shellLinkClangConfigs links the clang driver configs createClangConfigFiles
+// wrote under the workspace into $HOME/.config, where clang reads user
+// configs. The qemu runner sends HOME=/home/build, but sshd resets HOME from
+// the passwd entry, so root builds with HOME=/root and clang would never read
+// the configs: every clang link would miss --package-metadata. Separating
+// $HOME from the build root for every runner (melange#2550) would remove the
+// need for this. It links whole directories, not files, because each cfg
+// includes ../../.melange.clang.cfg relative to its own location. It leaves an
+// existing entry alone and never fails the build: a missing note is no worse
+// than before.
+var shellLinkClangConfigs = []string{
+	"sh", "-c",
+	`w="$1"
+[ $# -eq 1 ] || { echo "must provide workspace dir. got $# args."; exit 1; }
+[ -n "$HOME" ] && [ -d "$w/.config" ] || exit 0
+mkdir -p "$HOME/.config" || { echo "cannot create $HOME/.config; clang links will miss --package-metadata" >&2; exit 0; }
+for d in "$w"/.config/clang-*; do
+  [ -d "$d" ] || continue
+  t="$HOME/.config/${d##*/}"
+  [ -e "$t" ] || [ -L "$t" ] || ln -s "$d" "$t" || echo "could not link $d to $t" >&2
+done
+exit 0`,
+	"shellLinkClangConfigs",
+}
+
 // For now, just the gcc spec file and clang config files with link settings.
 // In the future can control debug symbol generation, march/mtune, etc.
 func (b *Build) createCompilerConfigFiles(ctx context.Context) error {

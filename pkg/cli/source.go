@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/chainguard-dev/clog"
@@ -72,32 +73,27 @@ Currently only supports git-checkout.
 				return fmt.Errorf("failed to parse melange config: %w", err)
 			}
 
-			// Look for git-checkout and patch/git-am pipelines
-			gitCheckoutIndex := -1
+			// Look for git-checkout and patch/git-am pipelines. The git-checkout
+			// may be in the main pipeline or in a finalize pipeline; the patches
+			// are the ones in the same stage, after it.
+			stage, gitCheckoutIndex := gitCheckoutStage(cfg)
 			var patches string
 			var recurseSubmodules bool
 
-			// First pass: find git-checkout step
-			for i, step := range cfg.Pipeline {
-				if step.Uses == "git-checkout" {
-					gitCheckoutIndex = i
-					if step.With["recurse-submodules"] == "true" {
-						recurseSubmodules = true
-					}
-					break
-				}
-			}
-
+			// First pass: the git-checkout step
 			if gitCheckoutIndex == -1 {
 				return fmt.Errorf("no git-checkout pipeline found in configuration")
+			}
+			if stage[gitCheckoutIndex].With["recurse-submodules"] == "true" {
+				recurseSubmodules = true
 			}
 
 			// Second pass: find patch or git-am steps that come after git-checkout.
 			// We check for both: 'patch' is the original melange pipeline, 'git-am'
 			// is what 'source pop' writes back. Supporting both means 'source get'
 			// can be re-run after 'source pop' has already converted the YAML.
-			for i := gitCheckoutIndex + 1; i < len(cfg.Pipeline); i++ {
-				step := cfg.Pipeline[i]
+			for i := gitCheckoutIndex + 1; i < len(stage); i++ {
+				step := stage[i]
 				if step.Uses == "patch" || step.Uses == "git-am" {
 					if patchList := step.With["patches"]; patchList != "" {
 						patches = patchList
@@ -107,7 +103,7 @@ Currently only supports git-checkout.
 			}
 
 			// Now perform the git checkout with patches
-			step := cfg.Pipeline[gitCheckoutIndex]
+			step := stage[gitCheckoutIndex]
 			log.Infof("Found git-checkout step")
 
 			// Construct destination: outputDir/packageName
@@ -176,11 +172,8 @@ This command:
 
 			// Find git-checkout step to get expected-commit
 			var expectedCommit string
-			for _, step := range cfg.Pipeline {
-				if step.Uses == "git-checkout" {
-					expectedCommit = step.With["expected-commit"]
-					break
-				}
+			if stage, i := gitCheckoutStage(cfg); i != -1 {
+				expectedCommit = stage[i].With["expected-commit"]
 			}
 
 			if expectedCommit == "" {
@@ -275,28 +268,62 @@ This command:
 	return cmd
 }
 
-// updatePipelineWithGitAm finds the pipeline array in the YAML node tree and
-// replaces all 'patch' pipeline steps with a single 'git-am' step using the
-// given patch files. If no 'patch' step exists, a 'git-am' step is inserted
-// immediately after the 'git-checkout' step.
+// gitCheckoutStage returns the stage holding the first git-checkout of the
+// build, and its index in that stage: the main pipeline is searched first, then
+// the finalize pipelines. The index is -1 when no stage has one. 'source get'
+// and 'source pop' act on the patch steps of that stage only; a patch in the
+// other stage may aim at something else and is neither applied nor removed.
+func gitCheckoutStage(cfg *config.Configuration) ([]config.Pipeline, int) {
+	for _, stage := range [][]config.Pipeline{cfg.Pipeline, cfg.Finalize} {
+		for i, step := range stage {
+			if step.Uses == "git-checkout" {
+				return stage, i
+			}
+		}
+	}
+	return nil, -1
+}
+
+// buildStageKeys are the top-level keys of the stages that make up the main
+// build, in the order they run.
+var buildStageKeys = []string{"pipeline", "finalize"}
+
+// updatePipelineWithGitAm finds the pipeline and finalize arrays in the YAML
+// node tree and, in the stage that holds the 'git-checkout' (the main pipeline
+// when none does), replaces all 'patch' pipeline steps with a single 'git-am'
+// step using the given patch files. If that stage has no 'patch' step, a
+// 'git-am' step is inserted immediately after the 'git-checkout' step. The
+// other stage is left as it is: its steps may aim at something other than the
+// checkout, and 'source get' did not apply them.
 func updatePipelineWithGitAm(doc *yaml.Node, patchFiles []string) error {
 	if len(doc.Content) == 0 || len(doc.Content[0].Content) == 0 {
 		return fmt.Errorf("invalid YAML structure")
 	}
 
 	rootMap := doc.Content[0]
-	var pipelineNode *yaml.Node
+	var stages []*yaml.Node
 
-	// Find the 'pipeline' key
-	for i := 0; i < len(rootMap.Content); i += 2 {
-		if rootMap.Content[i].Value == "pipeline" {
-			pipelineNode = rootMap.Content[i+1]
-			break
+	// Find the stage keys, in run order.
+	for _, key := range buildStageKeys {
+		for i := 0; i < len(rootMap.Content)-1; i += 2 {
+			if rootMap.Content[i].Value == key {
+				stages = append(stages, rootMap.Content[i+1])
+				break
+			}
 		}
 	}
 
-	if pipelineNode == nil {
+	if len(stages) == 0 {
 		return fmt.Errorf("no pipeline found in YAML")
+	}
+
+	// The stage that holds the git-checkout hosts the git-am step.
+	pipelineNode := stages[0]
+	for _, stage := range stages {
+		if slices.ContainsFunc(stage.Content, func(step *yaml.Node) bool { return isPipelineStep(step, "git-checkout") }) {
+			pipelineNode = stage
+			break
+		}
 	}
 
 	// Create git-am step

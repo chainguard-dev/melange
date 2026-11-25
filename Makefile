@@ -181,7 +181,7 @@ fetch-kernel:
 	rm -rf kernel/$(ARCH)
 	$(MAKE) kernel/$(ARCH)/vmlinuz
 
-QEMU_KERNEL_REPO = https://dl-cdn.alpinelinux.org/alpine/edge/main/
+QEMU_KERNEL_REPO ?= https://dl-cdn.alpinelinux.org/alpine/v3.23/main/
 kernel/%/APKINDEX.tar.gz:
 	@$(call curlget,$@,$(QEMU_KERNEL_REPO)/$(ARCH)/APKINDEX.tar.gz)
 

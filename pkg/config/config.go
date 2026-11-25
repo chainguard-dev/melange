@@ -944,6 +944,12 @@ type Configuration struct {
 	Pipeline []Pipeline `json:"pipeline,omitempty" yaml:"pipeline,omitempty"`
 	// Optional: The list of subpackages that this package also produces.
 	Subpackages []Subpackage `json:"subpackages,omitempty" yaml:"subpackages,omitempty"`
+	// Optional: The list of finalize pipelines to execute after the main
+	// pipeline and the subpackage pipelines, for adjusting the files that are
+	// about to be packaged (for example, adding or fixing up symlinks). Finalize
+	// steps that fetch or git-checkout upstream sources are recorded in the SBOM
+	// like those of the main pipeline.
+	Finalize []Pipeline `json:"finalize,omitempty" yaml:"finalize,omitempty"`
 	// Optional: An arbitrary list of data that can be used via templating in the
 	// pipeline
 	Data []RangeData `json:"data,omitempty" yaml:"data,omitempty"`
@@ -1704,6 +1710,10 @@ func (cfg *Configuration) propagatePipelines() {
 		sp.propagateChildPipelines()
 	}
 
+	for _, sp := range cfg.Finalize {
+		sp.propagateChildPipelines()
+	}
+
 	// Also propagate subpackages
 	for _, sp := range cfg.Subpackages {
 		for _, spp := range sp.Pipeline {
@@ -1788,6 +1798,7 @@ func ParseConfiguration(ctx context.Context, configurationFilePath string, opts 
 	cfg.Package = replacePackage(replacer, options.commit, cfg.Package)
 
 	cfg.Pipeline = replacePipelines(replacer, cfg.Pipeline)
+	cfg.Finalize = replacePipelines(replacer, cfg.Finalize)
 
 	datas := make(map[string]DataItems, len(cfg.Data))
 	for _, d := range cfg.Data {
@@ -1981,6 +1992,9 @@ func (cfg Configuration) validate(ctx context.Context) error {
 		return ErrInvalidConfiguration{Problem: errors.New("priority must convert to integer")}
 	}
 	if err := validatePipelines(ctx, cfg.Pipeline); err != nil {
+		return ErrInvalidConfiguration{Problem: err}
+	}
+	if err := validatePipelines(ctx, cfg.Finalize); err != nil {
 		return ErrInvalidConfiguration{Problem: err}
 	}
 	if err := validateCapabilities(cfg.Package.SetCap); err != nil {

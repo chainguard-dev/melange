@@ -266,7 +266,6 @@ func TestLinters(t *testing.T) {
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, "bin"), 0o700))
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, "sbin"), 0o700))
 			assert.NoError(t, os.MkdirAll(filepath.Join(d, "usr/sbin"), 0o700))
-			fmt.Printf("Creating dirs and such\n")
 			f, err := os.Create(filepath.Join(d, "bin/test"))
 			assert.NoError(t, err)
 			fmt.Fprintln(f, "blah")

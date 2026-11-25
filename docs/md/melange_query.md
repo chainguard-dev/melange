@@ -29,7 +29,7 @@ melange query [flags]
 ### Options
 
 ```
-  -h, --help   help for query
+  -h, --help[=true|false]   help for query
 ```
 
 ### Options inherited from parent commands

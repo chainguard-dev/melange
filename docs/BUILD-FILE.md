@@ -548,3 +548,7 @@ TODO(vaikas): melange config points to apko here:
 # pipeline
 Pipeline defines the ordered steps to build the package.
 
+# finalize
+Finalize defines a series of pipelines that are executed
+after the build and subpackages are processed. Use it to adjust the files
+that are about to be packaged, such as adding or fixing up symlinks.

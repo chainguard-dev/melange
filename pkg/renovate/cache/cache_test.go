@@ -68,3 +68,28 @@ func setupTestServer(t *testing.T) (*httptest.Server, error) {
 	}))
 	return server, err
 }
+
+// Finalize pipelines are part of the build, so their fetches MUST be cached
+// like those of the main pipeline.
+func TestCache_finalize(t *testing.T) {
+	dir := t.TempDir()
+	cacheDir := t.TempDir()
+
+	server, err := setupTestServer(t)
+	assert.NoError(t, err)
+
+	name := "finalize.yaml"
+	data, err := os.ReadFile(filepath.Join("testdata", name))
+	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(strings.Replace(string(data), "REPLACE_ME", server.URL, 1)), 0o755))
+
+	rctx, err := renovate.New(renovate.WithConfig(filepath.Join(dir, name)))
+	assert.NoError(t, err)
+	rc := renovate.RenovationContext{Context: rctx}
+
+	assert.NoError(t, rc.LoadConfig(t.Context()))
+	assert.NoError(t, New(WithCacheDir(cacheDir))(t.Context(), &rc))
+
+	_, err = os.Stat(filepath.Join(cacheDir, "sha256:cc2c52929ace57623ff517408a577e783e10042655963b2c8f0633e109337d7a"))
+	assert.NoError(t, err, "the finalize fetch was not cached")
+}

@@ -205,6 +205,28 @@ func (g *Generator) GenerateSPDX(ctx context.Context, gc *build.GeneratorContext
 		}
 	}
 
+	// Add upstream source packages from finalize pipelines. Finalize runs as part
+	// of the main package's build, so it is recorded exactly as the main
+	// pipeline is. The unique ID is prefixed so that a finalize step cannot
+	// collide with a main pipeline step at the same index.
+	for i, p := range gc.Configuration.Finalize {
+		uniqueID := "finalize" + strconv.Itoa(i)
+		upstreamPkg, err := p.SBOMPackageForUpstreamSource(gc.Configuration.Package.LicenseExpression(), gc.Namespace, uniqueID)
+		if err != nil {
+			return nil, fmt.Errorf("creating SBOM package for upstream source in finalize: %w", err)
+		}
+
+		if upstreamPkg == nil {
+			continue
+		}
+
+		pSBOM.AddUpstreamSourcePackage(upstreamPkg)
+
+		for _, sp := range gc.Configuration.Subpackages {
+			sg.Document(sp.Name).AddUpstreamSourcePackage(upstreamPkg)
+		}
+	}
+
 	// Add licensing information
 	li, err := gc.Configuration.Package.LicensingInfos(ctx, gc.WorkspaceDir)
 	if err != nil {

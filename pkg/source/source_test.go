@@ -129,6 +129,8 @@ func TestFetchSourceFromMelange(t *testing.T) {
 		{"fetch.yaml", []string{"fetch"}, "fetch", nil},
 		{"fetch-with-patch.yaml", []string{"fetch", "patch"}, "fetch-with-patch", []string{"foo.patch"}},
 		{"git-checkout.yaml", []string{"git-checkout"}, "git-checkout", nil},
+		// Finalize runs after the main pipeline, so its source steps come last.
+		{"finalize.yaml", []string{"fetch", "git-checkout"}, "finalize", nil},
 	}
 
 	// Test each file

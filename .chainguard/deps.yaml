@@ -19,11 +19,11 @@ updates:
       writes different gzip bytes for the same input, which changes every
       APK's bytes and makes melange rebuild report a digest diff for APKs an
       earlier melange built (see #2753). It is bumped by hand, in a pull
-      request that calls out that drift. Run go mod tidy after updating. Leave the go directive, and
-      the go-1.27 packages in .chainguard/ci, as they are unless an update
-      requires a newer Go. Run make docs-repo and make docs-pipeline, and keep
-      what they change, because the lint check fails on a dirty tree. Verify
-      with go build ./..., make unit and make lint.
+      request that calls out that drift. Run go mod tidy after updating. Leave
+      the go directive, and the go-1.27 packages in .chainguard/ci, as they
+      are unless an update requires a newer Go. Run make docs-repo and make
+      docs-pipeline, and keep what they change, because the lint check fails
+      on a dirty tree. Verify with go build ./..., make unit and make lint.
 
   - name: actions
     schedule: "0 5 * * 1-5" # weekdays

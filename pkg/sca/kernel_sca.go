@@ -45,18 +45,19 @@ var BootDirs = []string{"boot/...", "lib/modules/...", "usr/lib/modules/..."}
 
 // ModuleDirs is the list of directories to search for kernel modules.
 // This is exported so that callers can append to it as needed. Only files in
-// these directories that have a kernel module suffix (see moduleSuffixes) are
+// these directories that have a kernel module suffix (see ModuleSuffixes) are
 // scanned.
 var ModuleDirs = []string{"usr/lib/modules/...", "lib/modules/..."}
 
-// moduleSuffixes are the file name suffixes that kmod recognizes for kernel
-// modules. Other files in ModuleDirs, such as an initramfs installed for bootc,
-// can contain "vermagic=" in compressed module data that is not a version.
-var moduleSuffixes = []string{".ko", ".ko.gz", ".ko.xz", ".ko.zst"}
+// ModuleSuffixes is the list of file name suffixes that kmod recognizes for
+// kernel modules. This is exported so that callers can append to it as needed.
+// Other files in ModuleDirs, such as an initramfs installed for bootc, can
+// contain "vermagic=" in compressed module data that is not a version.
+var ModuleSuffixes = []string{".ko", ".ko.gz", ".ko.xz", ".ko.zst"}
 
 // isKernelModule reports whether path names a kernel module.
 func isKernelModule(path string) bool {
-	for _, s := range moduleSuffixes {
+	for _, s := range ModuleSuffixes {
 		if strings.HasSuffix(path, s) {
 			return true
 		}
